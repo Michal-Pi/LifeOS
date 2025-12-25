@@ -249,6 +249,7 @@ apps/web-vite/src/
 - ✅ Firebase Storage integration for attachments
 
 **Git Commits:**
+
 - f0d7491: Phase 1 foundation (package, models, validation, ports)
 - 7d81a16: Firestore adapters and Firebase Storage support
 
@@ -297,9 +298,11 @@ apps/web-vite/src/
 - ✅ Character count tracking
 
 **Git Commit:**
+
 - d72a744: Add TipTap editor components for Notes Phase 2
 
 **Files Created:**
+
 - apps/web-vite/src/components/editor/TipTapEditor.tsx
 - apps/web-vite/src/components/editor/TipTapEditor.css
 - apps/web-vite/src/components/editor/NoteEditor.tsx
