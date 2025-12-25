@@ -1,0 +1,216 @@
+/**
+ * TipTap Editor Styles
+ */
+
+.tiptap-wrapper {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tiptap-editor {
+  flex: 1;
+  padding: 16px;
+  outline: none;
+  min-height: 250px;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Headings */
+.tiptap-editor h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin: 1em 0 0.5em;
+  line-height: 1.2;
+}
+
+.tiptap-editor h2 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0.83em 0 0.5em;
+  line-height: 1.3;
+}
+
+.tiptap-editor h3 {
+  font-size: 1.17em;
+  font-weight: 600;
+  margin: 0.75em 0 0.5em;
+  line-height: 1.4;
+}
+
+.tiptap-editor h4,
+.tiptap-editor h5,
+.tiptap-editor h6 {
+  font-weight: 600;
+  margin: 0.67em 0 0.5em;
+  line-height: 1.4;
+}
+
+/* Paragraphs */
+.tiptap-editor p {
+  margin: 0.5em 0;
+}
+
+/* Lists */
+.tiptap-editor ul,
+.tiptap-editor ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.tiptap-editor li {
+  margin: 0.25em 0;
+}
+
+/* Task lists */
+.tiptap-editor ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tiptap-editor ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.tiptap-editor ul[data-type="taskList"] li input[type="checkbox"] {
+  margin-top: 0.3em;
+  cursor: pointer;
+}
+
+/* Code blocks */
+.tiptap-editor .code-block {
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 1em 0;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 0.9em;
+  overflow-x: auto;
+}
+
+.tiptap-editor pre {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.tiptap-editor code {
+  background: var(--muted);
+  border-radius: 3px;
+  padding: 0.2em 0.4em;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.tiptap-editor pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* Blockquotes */
+.tiptap-editor blockquote {
+  border-left: 4px solid var(--primary);
+  padding-left: 1em;
+  margin: 1em 0;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+/* Horizontal rule */
+.tiptap-editor hr {
+  border: none;
+  border-top: 2px solid var(--border);
+  margin: 2em 0;
+}
+
+/* Highlight */
+.tiptap-editor mark {
+  background-color: #fef3c7;
+  color: inherit;
+  padding: 0.1em 0.2em;
+  border-radius: 2px;
+}
+
+/* Tables */
+.tiptap-editor table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.tiptap-editor td,
+.tiptap-editor th {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tiptap-editor th {
+  background-color: var(--muted);
+  font-weight: 600;
+}
+
+/* Images */
+.tiptap-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 1em 0;
+}
+
+/* LaTeX/KaTeX */
+.tiptap-editor .math-inline,
+.tiptap-editor .math-display {
+  font-family: 'KaTeX_Main', serif;
+}
+
+.tiptap-editor .math-display {
+  display: block;
+  margin: 1em 0;
+  text-align: center;
+}
+
+/* Placeholder */
+.tiptap-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* Footer */
+.editor-footer {
+  border-top: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex;
+  justify-content: flex-end;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.character-count {
+  opacity: 0.7;
+}
+
+/* Focus state */
+.tiptap-wrapper:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .tiptap-editor mark {
+  background-color: #78350f;
+}
