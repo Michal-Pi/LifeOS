@@ -35,6 +35,7 @@ export function NoteEditor({
     isDirty,
     isSaving,
     lastSaved,
+    error,
     handleContentChange,
     handleHtmlChange,
   } = useNoteEditor({
@@ -47,13 +48,12 @@ export function NoteEditor({
   return (
     <div className={`note-editor ${className}`}>
       {/* Save status indicator */}
-      <div className="save-status">
+      <div className="save-status" aria-live="polite" aria-atomic="true">
         {isSaving && <span className="saving">Saving...</span>}
-        {!isSaving && isDirty && <span className="unsaved">Unsaved changes</span>}
-        {!isSaving && !isDirty && lastSaved && (
-          <span className="saved">
-            Saved {formatLastSaved(lastSaved)}
-          </span>
+        {error && <span className="error" role="alert">Save failed: {error.message}</span>}
+        {!isSaving && !error && isDirty && <span className="unsaved">Unsaved changes</span>}
+        {!isSaving && !error && !isDirty && lastSaved && (
+          <span className="saved">Saved {formatLastSaved(lastSaved)}</span>
         )}
       </div>
 

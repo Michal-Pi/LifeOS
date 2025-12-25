@@ -8,27 +8,28 @@
  * - Tables, task lists, images
  */
 
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, type JSONContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
 import Highlight from '@tiptap/extension-highlight'
-import Table from '@tiptap/extension-table'
-import TableRow from '@tiptap/extension-table-row'
-import TableCell from '@tiptap/extension-table-cell'
-import TableHeader from '@tiptap/extension-table-header'
-import TaskList from '@tiptap/extension-task-list'
-import TaskItem from '@tiptap/extension-task-item'
-import Image from '@tiptap/extension-image'
-import Mathematics from '@tiptap/extension-mathematics'
+import { Table } from '@tiptap/extension-table'
+import { TableRow } from '@tiptap/extension-table-row'
+import { TableCell } from '@tiptap/extension-table-cell'
+import { TableHeader } from '@tiptap/extension-table-header'
+import { TaskList } from '@tiptap/extension-task-list'
+import { TaskItem } from '@tiptap/extension-task-item'
+import { Image } from '@tiptap/extension-image'
+import { Mathematics } from '@tiptap/extension-mathematics'
+import { useEffect } from 'react'
 import 'katex/dist/katex.min.css'
 import './TipTapEditor.css'
 
 export interface TipTapEditorProps {
-  content?: object | string
+  content?: JSONContent | string
   placeholder?: string
   editable?: boolean
-  onChange?: (content: object) => void
+  onChange?: (content: JSONContent) => void
   onUpdate?: (html: string) => void
   className?: string
 }
@@ -95,16 +96,37 @@ export function TipTapEditor({
     editorProps: {
       attributes: {
         class: 'tiptap-editor',
+        role: 'textbox',
+        'aria-label': placeholder,
+        'aria-multiline': 'true',
       },
     },
   })
+
+  // Update content when prop changes
+  useEffect(() => {
+    if (editor && content !== undefined && !editor.isDestroyed) {
+      const currentContent = editor.getJSON()
+      // Only update if content has actually changed to avoid cursor jumps
+      if (JSON.stringify(currentContent) !== JSON.stringify(content)) {
+        editor.commands.setContent(content)
+      }
+    }
+  }, [editor, content])
+
+  // Cleanup editor on unmount
+  useEffect(() => {
+    return () => {
+      editor?.destroy()
+    }
+  }, [editor])
 
   return (
     <div className={`tiptap-wrapper ${className}`}>
       <EditorContent editor={editor} />
       {editor && (
         <div className="editor-footer">
-          <span className="character-count">
+          <span className="character-count" aria-live="polite" aria-atomic="true">
             {editor.storage.characterCount.characters()} characters
           </span>
         </div>

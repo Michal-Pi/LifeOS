@@ -68,18 +68,18 @@
 }
 
 /* Task lists */
-.tiptap-editor ul[data-type="taskList"] {
+.tiptap-editor ul[data-type='taskList'] {
   list-style: none;
   padding-left: 0;
 }
 
-.tiptap-editor ul[data-type="taskList"] li {
+.tiptap-editor ul[data-type='taskList'] li {
   display: flex;
   align-items: flex-start;
   gap: 0.5em;
 }
 
-.tiptap-editor ul[data-type="taskList"] li input[type="checkbox"] {
+.tiptap-editor ul[data-type='taskList'] li input[type='checkbox'] {
   margin-top: 0.3em;
   cursor: pointer;
 }
@@ -211,6 +211,6 @@
 }
 
 /* Dark mode adjustments */
-[data-theme="dark"] .tiptap-editor mark {
+[data-theme='dark'] .tiptap-editor mark {
   background-color: #78350f;
 }

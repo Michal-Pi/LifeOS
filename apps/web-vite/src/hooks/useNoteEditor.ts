@@ -7,21 +7,23 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Note } from '@lifeos/notes'
+import type { JSONContent } from '@tiptap/core'
 
 export interface UseNoteEditorOptions {
   note?: Note
   autoSaveDelay?: number
-  onSave?: (content: object, html: string) => Promise<void>
-  onChange?: (content: object, html: string) => void
+  onSave?: (content: JSONContent, html: string) => Promise<void>
+  onChange?: (content: JSONContent, html: string) => void
 }
 
 export interface UseNoteEditorReturn {
-  content: object | undefined
+  content: JSONContent | undefined
   html: string
   isDirty: boolean
   isSaving: boolean
   lastSaved: Date | null
-  handleContentChange: (content: object) => void
+  error: Error | null
+  handleContentChange: (content: JSONContent) => void
   handleHtmlChange: (html: string) => void
   save: () => Promise<void>
   reset: () => void
@@ -36,22 +38,25 @@ export function useNoteEditor({
   onSave,
   onChange,
 }: UseNoteEditorOptions): UseNoteEditorReturn {
-  const [content, setContent] = useState<object | undefined>(note?.content)
+  const [content, setContent] = useState<JSONContent | undefined>(note?.content as JSONContent)
   const [html, setHtml] = useState<string>(note?.contentHtml || '')
   const [isDirty, setIsDirty] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [error, setError] = useState<Error | null>(null)
 
-  const autoSaveTimer = useRef<NodeJS.Timeout>()
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>()
   const initialContent = useRef(note?.content)
   const onSaveRef = useRef(onSave)
   const onChangeRef = useRef(onChange)
+  const htmlRef = useRef(html)
 
   // Keep refs up to date
   useEffect(() => {
     onSaveRef.current = onSave
     onChangeRef.current = onChange
-  }, [onSave, onChange])
+    htmlRef.current = html
+  }, [onSave, onChange, html])
 
   // Save function
   const save = useCallback(async () => {
@@ -60,22 +65,25 @@ export function useNoteEditor({
     }
 
     setIsSaving(true)
+    setError(null)
 
     try {
-      await onSaveRef.current(content, html)
+      await onSaveRef.current(content, htmlRef.current)
       setIsDirty(false)
       setLastSaved(new Date())
-    } catch (error) {
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to save note')
+      setError(error)
       console.error('Failed to save note:', error)
       throw error
     } finally {
       setIsSaving(false)
     }
-  }, [content, html, isSaving])
+  }, [content, isSaving])
 
   // Handle content changes
   const handleContentChange = useCallback(
-    (newContent: object) => {
+    (newContent: JSONContent) => {
       setContent(newContent)
       setIsDirty(true)
 
@@ -91,19 +99,16 @@ export function useNoteEditor({
         }, autoSaveDelay)
       }
 
-      // Notify onChange callback
-      onChangeRef.current?.(newContent, html)
+      // Notify onChange callback with current HTML from ref
+      onChangeRef.current?.(newContent, htmlRef.current)
     },
-    [html, autoSaveDelay, save]
+    [autoSaveDelay, save]
   )
 
   // Handle HTML changes
-  const handleHtmlChange = useCallback(
-    (newHtml: string) => {
-      setHtml(newHtml)
-    },
-    []
-  )
+  const handleHtmlChange = useCallback((newHtml: string) => {
+    setHtml(newHtml)
+  }, [])
 
   // Reset to initial state
   const reset = useCallback(() => {
@@ -143,6 +148,7 @@ export function useNoteEditor({
     isDirty,
     isSaving,
     lastSaved,
+    error,
     handleContentChange,
     handleHtmlChange,
     save,
