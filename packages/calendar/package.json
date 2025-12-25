@@ -1,0 +1,38 @@
+{
+  "name": "@lifeos/calendar",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": "./dist/index.cjs",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    },
+    "./recurrence/rruleAdapter": {
+      "types": "./dist/recurrence/rruleAdapter.d.ts",
+      "node": "./dist/recurrence/rruleAdapter.cjs",
+      "require": "./dist/recurrence/rruleAdapter.cjs",
+      "import": "./dist/recurrence/rruleAdapter.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "idb": "^8.0.3",
+    "rrule": "^2.8.1",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "vitest": "^3.2.1"
+  }
+}

@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/profile/{docId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/settings/{docId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/notes/{noteId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/calendar/{docId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/privateIntegrations/{document=**} {
+      // Only the server (Admin SDK / Cloud Functions) may read/write private integration tokens
+      allow read, write: if false;
+    }
+    match /users/{userId}/calendarWritebackQueue/{jobId} {
+      // Clients can read their writeback queue status (for UI indicators)
+      // Only server (Cloud Functions) can write to prevent forged jobs
+      allow read: if isAuthenticated(userId);
+      allow write: if false;
+    }
+    // Phase 2.9: Composite events (owner-only)
+    match /users/{userId}/compositeEvents/{compositeId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Phase 2.9: Composite run logs (server-only writes, user can read)
+    match /users/{userId}/compositeRuns/{runId} {
+      allow read: if isAuthenticated(userId);
+      allow write: if false; // Server-only
+    }
+    // Phase 2.10: Free/busy cache (owner-only)
+    match /users/{userId}/freeBusyCache/{cacheId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Daily inspirational quotes collection
+    match /quotes/{userId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Calendars list (Phase 2.6)
+    // Allow both collection queries and individual document access
+    match /users/{userId}/calendars/{document=**} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/{collection=**}/{docId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+
+  function isAuthenticated(userId) {
+    return request.auth != null && request.auth.uid == userId;
+  }
+}

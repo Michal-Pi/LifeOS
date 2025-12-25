@@ -1,0 +1,596 @@
+# Learning/Notes Feature - Implementation Plan
+
+**Status:** 📋 Planning Complete - Ready to Start
+**Created:** 2025-12-25
+**Target Completion:** 8 weeks
+**Priority:** High
+
+## Overview
+
+A fully-powered, offline-capable note-taking and learning management system with rich text editing, scientific notation support, and project integration.
+
+## Key Features
+
+### Core Capabilities
+- ✅ **Rich Text Editor** - TipTap (ProseMirror-based) with full formatting
+- ✅ **Scientific Notation** - LaTeX math and physics notation via KaTeX
+- ✅ **Media Support** - Images, tables, structured data
+- ✅ **Offline-First** - Full offline capability with IndexedDB
+- ✅ **Organization** - Topics → Sections → Notes hierarchy
+- ✅ **Project Integration** - Link notes to Projects and OKRs
+- ✅ **Learning Projects** - Track learning with milestones and Key Results
+
+## Architecture
+
+### Data Models
+
+#### Note Document
+```typescript
+interface Note {
+  noteId: string                    // UUID
+  userId: string                    // Owner
+
+  // Content
+  title: string
+  content: object                   // ProseMirror JSON
+  contentHtml?: string             // Cached HTML for search/preview
+
+  // Organization
+  topicId: string | null           // Parent topic (folder)
+  sectionId: string | null         // Parent section (subfolder)
+
+  // Associations
+  projectIds: string[]             // Linked projects
+  okrIds: string[]                 // Linked OKRs
+  tags: string[]                   // User tags
+
+  // Metadata
+  createdAtMs: number
+  updatedAtMs: number
+  lastAccessedAtMs: number
+
+  // Offline sync
+  syncState: 'synced' | 'pending' | 'conflict'
+  version: number                  // For conflict resolution
+
+  // Attachments
+  attachmentIds: string[]          // References to Attachment documents
+}
+```
+
+#### Topic (Folder)
+```typescript
+interface Topic {
+  topicId: string
+  userId: string
+
+  name: string
+  description?: string
+  color?: string                   // UI color coding
+  icon?: string                    // Emoji or icon identifier
+
+  parentTopicId: string | null     // For nested topics
+  order: number                    // Display order
+
+  createdAtMs: number
+  updatedAtMs: number
+}
+```
+
+#### Section (Subfolder)
+```typescript
+interface Section {
+  sectionId: string
+  userId: string
+  topicId: string                  // Parent topic
+
+  name: string
+  description?: string
+  order: number
+
+  createdAtMs: number
+  updatedAtMs: number
+}
+```
+
+#### Attachment
+```typescript
+interface Attachment {
+  attachmentId: string
+  userId: string
+  noteId: string
+
+  // File info
+  fileName: string
+  fileType: string                 // MIME type
+  fileSizeBytes: number
+
+  // Storage
+  storageUrl?: string              // Firebase Storage URL (when synced)
+  localBlob?: Blob                 // Local-only until synced
+
+  // Metadata
+  uploadedAtMs: number
+  syncState: 'local' | 'uploading' | 'synced' | 'error'
+}
+```
+
+### Technology Stack
+
+#### Editor: TipTap
+- **Why TipTap over alternatives:**
+  - Modern React integration
+  - ProseMirror-based (extensible, robust)
+  - Better TypeScript support than Draft.js
+  - Active maintenance (vs Slate.js)
+  - Rich extension ecosystem
+
+#### Math Rendering: KaTeX
+- **Why KaTeX over MathJax:**
+  - 10x faster rendering
+  - No external dependencies for offline
+  - Smaller bundle size
+  - Supports most common LaTeX commands
+
+#### Storage: IndexedDB + Firestore
+- **IndexedDB** for offline-first local storage
+- **Firestore** for cloud sync and multi-device access
+- **Firebase Storage** for large attachments
+
+### TipTap Editor Configuration
+
+```typescript
+// Core extensions
+import StarterKit from '@tiptap/starter-kit'
+import Image from '@tiptap/extension-image'
+import Table from '@tiptap/extension-table'
+import TableRow from '@tiptap/extension-table-row'
+import TableCell from '@tiptap/extension-table-cell'
+import TableHeader from '@tiptap/extension-table-header'
+import Mathematics from '@tiptap/extension-mathematics'
+import Placeholder from '@tiptap/extension-placeholder'
+import CharacterCount from '@tiptap/extension-character-count'
+import Highlight from '@tiptap/extension-highlight'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
+
+const editor = useEditor({
+  extensions: [
+    StarterKit.configure({
+      history: { depth: 100 },
+      heading: { levels: [1, 2, 3, 4] }
+    }),
+    Image.configure({
+      inline: true,
+      allowBase64: true // For offline images
+    }),
+    Table.configure({
+      resizable: true
+    }),
+    TableRow,
+    TableCell,
+    TableHeader,
+    Mathematics.configure({
+      katexOptions: {
+        throwOnError: false,
+        displayMode: false
+      }
+    }),
+    Highlight.configure({
+      multicolor: true
+    }),
+    TaskList,
+    TaskItem.configure({
+      nested: true
+    }),
+    Placeholder.configure({
+      placeholder: 'Start writing your notes...'
+    }),
+    CharacterCount
+  ],
+  content: initialContent,
+  editable: true,
+  autofocus: true
+})
+```
+
+## Implementation Phases
+
+### Phase 1: Foundation (Week 1-2)
+**Status:** ⬜ Not Started
+
+#### Tasks
+- [ ] Set up data models (Note, Topic, Section, Attachment)
+- [ ] Create Firestore repositories
+- [ ] Set up IndexedDB schema and repository
+- [ ] Create basic offline sync queue pattern
+- [ ] Add TipTap dependencies
+- [ ] Set up KaTeX dependencies
+
+#### Files to Create
+```
+packages/notes/
+├── src/
+│   ├── domain/
+│   │   ├── models.ts              # Note, Topic, Section, Attachment interfaces
+│   │   └── validation.ts          # Data validation
+│   ├── repositories/
+│   │   ├── noteRepository.ts      # Abstract interface
+│   │   └── topicRepository.ts     # Abstract interface
+│   └── index.ts
+├── package.json
+└── tsconfig.json
+
+apps/web-vite/src/
+├── adapters/
+│   ├── firestoreNoteRepository.ts
+│   ├── firestoreTopicRepository.ts
+│   └── indexedDBNoteRepository.ts # Offline storage
+└── lib/
+    └── indexedDB.ts               # IndexedDB setup
+```
+
+#### Deliverables
+- ✅ TypeScript interfaces for all data models
+- ✅ Repository pattern with Firestore and IndexedDB implementations
+- ✅ Basic offline queue (reuse outbox pattern from calendar)
+
+---
+
+### Phase 2: TipTap Editor Integration (Week 2-3)
+**Status:** ⬜ Not Started
+
+#### Tasks
+- [ ] Create NoteEditor component with TipTap
+- [ ] Configure TipTap extensions (StarterKit, Image, Table)
+- [ ] Add KaTeX extension for math support
+- [ ] Implement auto-save functionality
+- [ ] Add toolbar with formatting controls
+- [ ] Test offline editing and content persistence
+
+#### Files to Create
+```
+apps/web-vite/src/
+├── components/notes/
+│   ├── NoteEditor.tsx             # Main editor component
+│   ├── EditorToolbar.tsx          # Formatting toolbar
+│   ├── MathInput.tsx              # LaTeX input helper
+│   └── TableControls.tsx          # Table manipulation
+├── hooks/
+│   ├── useNoteEditor.ts           # Editor state management
+│   └── useAutoSave.ts             # Auto-save logic
+└── styles/
+    └── editor.css                 # TipTap styling
+```
+
+#### Deliverables
+- ✅ Fully functional rich text editor
+- ✅ Math equation support with live preview
+- ✅ Table creation and editing
+- ✅ Image insertion (base64 for offline)
+- ✅ Auto-save every 2 seconds (debounced)
+
+---
+
+### Phase 3: Organization Structure (Week 3-4)
+**Status:** ⬜ Not Started
+
+#### Tasks
+- [ ] Create Topic management UI (folders)
+- [ ] Create Section management UI (subfolders)
+- [ ] Build hierarchical navigation sidebar
+- [ ] Implement drag-and-drop for organization
+- [ ] Add note search functionality
+- [ ] Create note list view with previews
+
+#### Files to Create
+```
+apps/web-vite/src/
+├── components/notes/
+│   ├── TopicSidebar.tsx           # Folder navigation
+│   ├── SectionList.tsx            # Subfolder list
+│   ├── NoteList.tsx               # Note cards
+│   ├── NoteCard.tsx               # Individual note preview
+│   └── SearchBar.tsx              # Full-text search
+├── hooks/
+│   ├── useTopics.ts               # Topic CRUD operations
+│   ├── useSections.ts             # Section CRUD operations
+│   └── useNoteSearch.ts           # Search functionality
+└── pages/
+    └── NotesPage.tsx              # Main notes interface
+```
+
+#### Deliverables
+- ✅ Topics and sections CRUD operations
+- ✅ Hierarchical sidebar navigation
+- ✅ Drag-and-drop note organization
+- ✅ Full-text search across notes
+- ✅ Note list with title and preview
+
+---
+
+### Phase 4: Project Integration (Week 4-5)
+**Status:** ⬜ Not Started
+
+#### Tasks
+- [ ] Add project linking UI in note editor
+- [ ] Create OKR linking UI in note editor
+- [ ] Show linked notes in project detail view
+- [ ] Show linked notes in OKR detail view
+- [ ] Add "Create learning project" workflow
+- [ ] Implement learning milestones
+
+#### Files to Create
+```
+apps/web-vite/src/
+├── components/notes/
+│   ├── ProjectLinker.tsx          # Link to projects
+│   ├── OKRLinker.tsx              # Link to OKRs
+│   └── LinkedNotesPanel.tsx       # Show linked notes
+├── hooks/
+│   └── useNoteLinking.ts          # Linking operations
+└── components/projects/
+    └── LearningProjectCard.tsx    # Special project type
+```
+
+#### Deliverables
+- ✅ Notes can be linked to multiple projects
+- ✅ Notes can be linked to specific OKRs
+- ✅ Projects show all linked notes
+- ✅ Special "Learning Project" template
+- ✅ Learning milestones integrated with KRs
+
+---
+
+### Phase 5: Attachments & Media (Week 5-6)
+**Status:** ⬜ Not Started
+
+#### Tasks
+- [ ] Implement file upload for attachments
+- [ ] Create attachment manager UI
+- [ ] Set up Firebase Storage integration
+- [ ] Add image optimization and thumbnails
+- [ ] Implement offline attachment queue
+- [ ] Add paste-image-from-clipboard support
+
+#### Files to Create
+```
+apps/web-vite/src/
+├── components/notes/
+│   ├── AttachmentUploader.tsx     # File upload
+│   ├── AttachmentList.tsx         # Show attachments
+│   └── ImageOptimizer.tsx         # Client-side optimization
+├── hooks/
+│   ├── useAttachments.ts          # Attachment CRUD
+│   └── useFileUpload.ts           # Upload with progress
+└── lib/
+    ├── imageOptimization.ts       # Resize/compress images
+    └── firebaseStorage.ts         # Storage helpers
+```
+
+#### Deliverables
+- ✅ File upload with progress indication
+- ✅ Image optimization before upload
+- ✅ Offline attachment queue
+- ✅ Paste images from clipboard
+- ✅ Attachment preview and download
+
+---
+
+### Phase 6: Offline Sync & Conflict Resolution (Week 6-7)
+**Status:** ⬜ Not Started
+
+#### Tasks
+- [ ] Implement offline operation queue
+- [ ] Add sync status indicators
+- [ ] Build conflict resolution UI
+- [ ] Add version control for notes
+- [ ] Implement "last write wins" with manual override
+- [ ] Test offline → online sync scenarios
+
+#### Files to Create
+```
+apps/web-vite/src/
+├── components/notes/
+│   ├── SyncStatusBadge.tsx        # Sync indicator
+│   └── ConflictResolver.tsx       # Resolve conflicts
+├── hooks/
+│   ├── useNoteSync.ts             # Sync operations
+│   └── useConflictResolution.ts   # Handle conflicts
+└── sync/
+    ├── noteSyncWorker.ts          # Background sync
+    └── conflictDetection.ts       # Detect conflicts
+```
+
+#### Deliverables
+- ✅ Offline queue for all note operations
+- ✅ Automatic sync when online
+- ✅ Conflict detection and resolution
+- ✅ Version history (last 10 versions)
+- ✅ Manual conflict resolution UI
+
+---
+
+### Phase 7: Advanced Features (Week 7-8)
+**Status:** ⬜ Not Started
+
+#### Tasks
+- [ ] Add collaborative editing foundations (read-only share)
+- [ ] Implement note templates
+- [ ] Add export functionality (Markdown, PDF)
+- [ ] Create learning progress dashboard
+- [ ] Add statistics (word count, reading time)
+- [ ] Implement note archiving
+
+#### Files to Create
+```
+apps/web-vite/src/
+├── components/notes/
+│   ├── NoteTemplates.tsx          # Template gallery
+│   ├── ExportDialog.tsx           # Export options
+│   ├── LearningDashboard.tsx      # Progress tracking
+│   └── NoteStatistics.tsx         # Analytics
+├── hooks/
+│   ├── useNoteTemplates.ts        # Template operations
+│   └── useNoteExport.ts           # Export to formats
+└── lib/
+    ├── markdownExport.ts          # ProseMirror → Markdown
+    └── pdfExport.ts               # HTML → PDF (html2pdf)
+```
+
+#### Deliverables
+- ✅ Note templates for common use cases
+- ✅ Export to Markdown and PDF
+- ✅ Learning progress dashboard
+- ✅ Note statistics and analytics
+- ✅ Archive/unarchive notes
+
+---
+
+### Phase 8: Polish & Testing (Week 8)
+**Status:** ⬜ Not Started
+
+#### Tasks
+- [ ] Write unit tests for repositories
+- [ ] Write integration tests for sync
+- [ ] Add E2E tests for critical workflows
+- [ ] Performance optimization (lazy loading, virtualization)
+- [ ] Accessibility audit (keyboard navigation, screen readers)
+- [ ] User documentation
+- [ ] Mobile responsiveness testing
+
+#### Deliverables
+- ✅ >80% test coverage for notes package
+- ✅ E2E tests for create/edit/sync workflows
+- ✅ Performance benchmarks met
+- ✅ WCAG 2.1 AA compliance
+- ✅ Complete user documentation
+
+---
+
+## Integration with Existing Architecture
+
+### Reuse from Calendar System
+
+The notes system will reuse proven patterns from the calendar implementation:
+
+1. **Outbox Pattern** - Offline operation queue (`apps/web-vite/src/outbox/`)
+2. **Repository Pattern** - Firestore adapters (`apps/web-vite/src/adapters/`)
+3. **Sync Worker** - Background sync (`apps/web-vite/src/lib/`)
+4. **IndexedDB** - Already using idb package
+
+### Firestore Collections
+
+```
+/users/{userId}/notes/{noteId}
+/users/{userId}/topics/{topicId}
+/users/{userId}/sections/{sectionId}
+/users/{userId}/attachments/{attachmentId}
+```
+
+### Security Rules
+
+```javascript
+// Only users can access their own notes
+match /users/{userId}/notes/{noteId} {
+  allow read, write: if request.auth.uid == userId;
+}
+
+// Same for topics, sections, attachments
+match /users/{userId}/{collection}/{docId} {
+  allow read, write: if request.auth.uid == userId;
+}
+```
+
+## Dependencies to Add
+
+### Production Dependencies
+```json
+{
+  "@tiptap/react": "^2.6.0",
+  "@tiptap/starter-kit": "^2.6.0",
+  "@tiptap/extension-image": "^2.6.0",
+  "@tiptap/extension-table": "^2.6.0",
+  "@tiptap/extension-table-row": "^2.6.0",
+  "@tiptap/extension-table-cell": "^2.6.0",
+  "@tiptap/extension-table-header": "^2.6.0",
+  "@tiptap/extension-mathematics": "^2.6.0",
+  "@tiptap/extension-placeholder": "^2.6.0",
+  "@tiptap/extension-character-count": "^2.6.0",
+  "@tiptap/extension-highlight": "^2.6.0",
+  "@tiptap/extension-task-list": "^2.6.0",
+  "@tiptap/extension-task-item": "^2.6.0",
+  "katex": "^0.16.9",
+  "html2pdf.js": "^0.10.1"
+}
+```
+
+### Dev Dependencies
+```json
+{
+  "@types/katex": "^0.16.7"
+}
+```
+
+## Success Metrics
+
+### Technical Metrics
+- [ ] <100ms time-to-interactive for note editor
+- [ ] <500ms full-text search response time
+- [ ] Offline mode works without network
+- [ ] Sync completes within 5 seconds for 100 notes
+- [ ] Math equations render in <50ms
+
+### User Experience Metrics
+- [ ] Can create and edit notes offline
+- [ ] Auto-save prevents data loss
+- [ ] Search finds relevant notes quickly
+- [ ] Organization is intuitive and flexible
+- [ ] Project integration enhances learning workflow
+
+## Risks & Mitigation
+
+### Risk: TipTap Bundle Size
+- **Mitigation:** Code-split editor, lazy load extensions
+- **Target:** <200KB additional bundle size
+
+### Risk: Offline Sync Conflicts
+- **Mitigation:** Version control, clear conflict UI
+- **Target:** <1% of syncs result in conflicts
+
+### Risk: Math Rendering Performance
+- **Mitigation:** Virtual scrolling, lazy render equations
+- **Target:** Smooth scrolling with 100+ equations
+
+### Risk: IndexedDB Quota Limits
+- **Mitigation:** Attachment size limits, quota monitoring
+- **Target:** Support 1000+ notes with 50MB attachments
+
+## Open Questions
+
+- [ ] Should we support real-time collaborative editing (like Google Docs)?
+  - **Decision:** Phase 1 = No, Phase 2 = Read-only sharing
+
+- [ ] Should we support handwriting/drawing (canvas)?
+  - **Decision:** Not in MVP, revisit after Phase 8
+
+- [ ] Should we integrate with external note-taking apps (Notion, Obsidian)?
+  - **Decision:** Export only initially, import later
+
+- [ ] Should we support version control (Git-like)?
+  - **Decision:** Simple version history (last 10), not full Git
+
+## Next Steps
+
+1. **Review and Approve Plan** - Get stakeholder buy-in
+2. **Set Up Notes Package** - Create `packages/notes` structure
+3. **Start Phase 1** - Data models and repositories
+4. **Weekly Check-ins** - Track progress and adjust timeline
+
+---
+
+**Plan Created By:** Claude Code (Anthropic)
+**Last Updated:** 2025-12-25
+**Version:** 1.0
+**Review Status:** Ready for approval
+

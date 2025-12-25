@@ -1,0 +1,36 @@
+{
+  "name": "lifeos",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.26.0",
+  "scripts": {
+    "dev": "pnpm --filter web-vite dev",
+    "firebase:deploy": "turbo run build && firebase deploy",
+    "firebase:deploy:functions": "turbo run build --filter functions... && firebase deploy --only functions",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^8.57.1",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.29.5",
+    "eslint-plugin-jsx-a11y": "^6.7.1",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "husky": "^9.0.0",
+    "lint-staged": "^14.0.0",
+    "prettier": "^3.0.0",
+    "turbo": "^1.13.4",
+    "typescript": "^5.5.2"
+  }
+}

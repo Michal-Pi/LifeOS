@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.base.json",
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/platform-web" },
+    { "path": "packages/sync-kit" },
+    { "path": "packages/agent-kit" },
+    { "path": "packages/calendar" },
+    { "path": "packages/todos" },
+    { "path": "packages/notes-learning" },
+    { "path": "packages/people" },
+    { "path": "packages/meetings" },
+    { "path": "packages/projects" },
+    { "path": "apps/web-vite" },
+    { "path": "functions" }
+  ],
+  "files": []
+}

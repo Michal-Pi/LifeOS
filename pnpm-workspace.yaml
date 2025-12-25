@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+  - functions
+
+ignoredBuiltDependencies:
+  - '@firebase/util'
+  - esbuild
+  - protobufjs

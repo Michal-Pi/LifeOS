@@ -1,0 +1,38 @@
+{
+  "hosting": {
+    "public": "apps/web-vite/dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [{
+    "source": "functions",
+    "codebase": "functions",
+    "runtime": "nodejs20",
+    "predeploy": [
+      "cd functions && ./prepare-deploy.sh"
+    ],
+    "ignore": [
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "*.local",
+      "src"
+    ]
+  }],
+  "emulators": {
+    "auth": {"port": 9099},
+    "firestore": {"port": 8080},
+    "functions": {"port": 5001},
+    "hosting": {"port": 5000},
+    "ui": {"enabled": true}
+  }
+}

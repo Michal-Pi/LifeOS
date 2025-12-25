@@ -1,0 +1,773 @@
+/**
+ * Calendar Page - The Main Calendar Interface
+ *
+ * This is the primary calendar user interface for LifeOS, providing a comprehensive
+ * event management experience with offline-first capabilities and Google Calendar sync.
+ *
+ * Key Features:
+ * - Full calendar event CRUD operations (Create, Read, Update, Delete)
+ * - Recurring event support with complex patterns and exceptions
+ * - RSVP functionality for meeting attendees
+ * - Alert notifications with dismissal tracking
+ * - Google Calendar bidirectional sync with conflict resolution
+ * - Offline mode with outbox queuing
+ * - Permission-aware UI based on calendar access roles
+ * - Real-time sync status and error handling
+ * - Month view calendar grid with event indicators
+ * - Event timeline with detailed event cards
+ * - Comprehensive event details panel
+ *
+ * Architecture:
+ * - React functional component with hooks for state management
+ * - Repository pattern for data access (Firestore adapters)
+ * - Outbox pattern for offline operations and sync
+ * - Alert scheduler for event notifications
+ * - Optimistic updates for responsive UI
+ * - Conflict resolution for multi-device sync
+ * - Permission checks for secure operations
+ *
+ * State Management:
+ * - Events: Current day's events with real-time updates
+ * - Selected event: Currently viewed event details
+ * - Sync status: Online/offline, pending operations, failed ops
+ * - Modals: Event form, delete confirmation, scope selection
+ * - Alerts: Active notifications with dismissal state
+ * - Permissions: Calendar access roles and event-level permissions
+ *
+ * Integration Points:
+ * - Google Calendar API via Firebase Functions
+ * - Firestore for data persistence
+ * - IndexedDB for offline outbox storage
+ * - Browser notifications for alerts
+ * - Real-time subscriptions for calendar updates
+ */
+
+import type {
+  CalendarAccountStatus,
+  CanonicalCalendarEvent,
+  CanonicalCalendar,
+  CanonicalAlert,
+  SyncState,
+  EditScope,
+  CalendarsById
+} from '@lifeos/calendar'
+import {
+  describeRecurrence,
+  createAlertDismissal,
+} from '@lifeos/calendar'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+
+import { createFirestoreCalendarListRepository } from '@/adapters/firestoreCalendarListRepository'
+import { createFirestoreSyncStatusRepository } from '@/adapters/firestoreSyncStatusRepository'
+import { startAlertScheduler, stopAlertScheduler, updateSchedulerEvents, type PendingAlert } from '@/alerts/alertScheduler'
+import { AlertBannerContainer } from '@/components/AlertBanner'
+import { CalendarSidebar } from '@/components/CalendarSidebar'
+import { AgendaView } from '@/components/AgendaView'
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal'
+import { EventFormModal, type EventFormData } from '@/components/EventFormModal'
+import { MonthView } from '@/components/MonthView'
+import { WeeklyView } from '@/components/WeeklyView'
+import { useAuth } from '@/hooks/useAuth'
+import { useEventOperations } from '@/hooks/useEventOperations'
+import { useCalendarEvents } from '@/hooks/useCalendarEvents'
+import { useOutbox } from '@/hooks/useOutbox'
+import { useAutoSync } from '@/hooks/useAutoSync'
+import { fetchCalendarAccountStatus } from '@/lib/accountStatus'
+import { functionUrl } from '@/lib/functionsUrl'
+import { enqueueUpdate } from '@/outbox/worker'
+
+/**
+ * Get display info for sync state
+ */
+function getSyncStateDisplay(syncState?: SyncState): { label: string; className: string; icon: string } {
+  switch (syncState) {
+    case 'synced':
+      return { label: 'Synced', className: 'synced', icon: '✓' }
+    case 'pending_writeback':
+      return { label: 'Syncing to Google…', className: 'pending', icon: '↻' }
+    case 'error':
+      return { label: 'Sync failed', className: 'error', icon: '!' }
+    case 'conflict':
+      return { label: 'Conflict', className: 'conflict', icon: '⚠' }
+    case 'read_only_provider':
+      return { label: 'Read-only', className: 'readonly', icon: '◎' }
+    default:
+      return { label: 'Local', className: 'local', icon: '○' }
+  }
+}
+
+const calendarListRepository = createFirestoreCalendarListRepository()
+const syncRepository = createFirestoreSyncStatusRepository()
+
+const dayFormatter = new Intl.DateTimeFormat('en-US', {
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric'
+})
+const timeFormatter = new Intl.DateTimeFormat('en-US', {
+  hour: 'numeric',
+  minute: 'numeric'
+})
+
+function minutesAgo(iso?: string) {
+  if (!iso) return 'never'
+  const diff = Date.now() - new Date(iso).getTime()
+  if (diff < 60_000) return 'moments ago'
+  if (diff < 3_600_000) return `${Math.round(diff / 60_000)} min ago`
+  return `${Math.round(diff / 3_600_000)}h ago`
+}
+
+const ACCOUNT_ID = 'primary'
+
+export function CalendarPage() {
+  const { user } = useAuth()
+  const userId = user?.uid ?? ''
+  const [selectedEvent, setSelectedEvent] = useState<CanonicalCalendarEvent | null>(null)
+  const [status, setStatus] = useState<{ lastSyncAt?: string; lastSuccessAt?: string; lastError?: string } | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [accountStatus, setAccountStatus] = useState<CalendarAccountStatus | null>(null)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
+
+  // Calendar permissions (Phase 2.6)
+  const [calendars, setCalendars] = useState<CanonicalCalendar[]>([])
+  const calendarsById = useMemo<CalendarsById>(() => {
+    const map = new Map<string, CanonicalCalendar>()
+    for (const cal of calendars) {
+      map.set(cal.calendarId, cal)
+      // Also index by provider calendar ID for backwards compatibility
+      if (cal.providerMeta?.providerCalendarId) {
+        map.set(cal.providerMeta.providerCalendarId, cal)
+      }
+    }
+    return map
+  }, [calendars])
+
+  // Outbox / offline state via hook
+  const { pendingOps, failedOps, isOnline, retryAll: handleRetryAll } = useOutbox(userId)
+  useAutoSync(userId, ACCOUNT_ID)
+  // Modal state
+  const [formModalOpen, setFormModalOpen] = useState(false)
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [editScope, setEditScope] = useState<EditScope | null>(null)
+  const [, setPendingFormData] = useState<EventFormData | null>(null)
+
+  // Alert state (Phase 2.5)
+  const [activeAlerts, setActiveAlerts] = useState<PendingAlert[]>([])
+
+  const todayKey = useMemo(() => new Date().toISOString().split('T')[0], [])
+  const today = useMemo(() => new Date(), [])
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+  // View state
+  const [viewType, setViewType] = useState<'daily' | 'weekly' | 'monthly' | 'agenda'>('monthly')
+  const [selectedMonthDate, setSelectedMonthDate] = useState<Date | null>(null)
+  const currentMonth = today.getMonth()
+  const currentYear = today.getFullYear()
+
+  // Calculate selected day key for event filtering
+  const selectedDayKey = useMemo(() => {
+    return selectedMonthDate?.toISOString().split('T')[0] || todayKey
+  }, [selectedMonthDate, todayKey])
+
+  // Use selected day for event loading
+  const displayDayKeys = useMemo(() => {
+    const keys: string[] = []
+    if (viewType === 'agenda') {
+      const start = selectedMonthDate || today
+      for (let i = 0; i < 14; i++) {
+        const d = new Date(start)
+        d.setDate(d.getDate() + i)
+        keys.push(d.toISOString().split('T')[0])
+      }
+      return keys
+    }
+
+    if (viewType === 'monthly') {
+      const start = new Date(currentYear, currentMonth, 1)
+      const end = new Date(currentYear, currentMonth + 1, 0)
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        keys.push(d.toISOString().split('T')[0])
+      }
+      return keys
+    }
+
+    if (viewType === 'weekly') {
+      const weekStart = new Date(selectedMonthDate || today)
+      const dayOfWeek = weekStart.getDay()
+      weekStart.setDate(weekStart.getDate() - dayOfWeek)
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStart)
+        d.setDate(d.getDate() + i)
+        keys.push(d.toISOString().split('T')[0])
+      }
+      return keys
+    }
+
+    return [selectedDayKey]
+  }, [selectedDayKey, viewType, selectedMonthDate, today, currentYear, currentMonth])
+
+  // Load events via hook
+  const { events, instances, setEvents, loading, reload: reloadEvents } = useCalendarEvents(userId, displayDayKeys)
+
+  // Event operations hook
+  const { createEvent, updateEvent, deleteEvent, retryWriteback, rsvpEvent } = useEventOperations({
+    userId,
+    setEvents,
+    selectedEvent,
+    setSelectedEvent,
+    setFormModalOpen,
+    setDeleteModalOpen,
+    setEditScope,
+    setPendingFormData,
+    setPendingOps: () => {}, // Handled by useOutbox listener mostly, but hook might trigger refresh
+    setConnectionError
+  })
+
+  // Load sync status
+  useEffect(() => {
+    let active = true
+    const loadStatus = async () => {
+      const remoteStatus = await syncRepository.getStatus(userId)
+      if (active) {
+        setStatus(remoteStatus)
+      }
+    }
+    void loadStatus()
+    return () => {
+      active = false
+    }
+  }, [userId])
+
+  // Load account status
+  useEffect(() => {
+    let active = true
+    const loadAccountStatus = async () => {
+      const result = await fetchCalendarAccountStatus(userId, ACCOUNT_ID)
+      if (active) {
+        setAccountStatus(result)
+      }
+    }
+    void loadAccountStatus()
+    return () => {
+      active = false
+    }
+  }, [userId])
+
+  // Subscribe to calendars (Phase 2.6 - real-time permission updates)
+  useEffect(() => {
+    // Initial load
+    const loadCalendars = async () => {
+      try {
+        const cals = await calendarListRepository.listCalendars(userId)
+        setCalendars(cals)
+      } catch (error) {
+        console.error('Failed to load calendars:', error)
+      }
+    }
+    void loadCalendars()
+
+    // Subscribe to real-time updates if available
+    if (calendarListRepository.subscribeToCalendars) {
+      const unsubscribe = calendarListRepository.subscribeToCalendars(userId, (cals) => {
+        setCalendars(cals)
+      })
+      return unsubscribe
+    }
+  }, [userId])
+
+  // Auto-select first event
+  useEffect(() => {
+    if (!selectedEvent && events.length) {
+      setSelectedEvent(events[0])
+    }
+  }, [events, selectedEvent])
+
+  // Alert scheduler (Phase 2.5)
+  useEffect(() => {
+    const handleAlert = (pendingAlert: PendingAlert) => {
+      // Add to active alerts (avoiding duplicates)
+      setActiveAlerts((prev) => {
+        if (prev.some((a) => a.event.canonicalEventId === pendingAlert.event.canonicalEventId)) {
+          return prev
+        }
+        return [...prev, pendingAlert]
+      })
+    }
+
+    startAlertScheduler(handleAlert)
+
+    return () => {
+      stopAlertScheduler()
+    }
+  }, [])
+
+  // Update alert scheduler when events change
+  useEffect(() => {
+    updateSchedulerEvents(events)
+  }, [events])
+
+  // Handle alert dismissal
+  const handleAlertDismiss = useCallback(async (event: CanonicalCalendarEvent) => {
+    // Remove from active alerts
+    setActiveAlerts((prev) => prev.filter((a) => a.event.canonicalEventId !== event.canonicalEventId))
+
+    // Create dismissal state
+    const dismissal = createAlertDismissal(event)
+
+    // Update canonical event with dismissal
+    const updatedEvent: CanonicalCalendarEvent = {
+      ...event,
+      alertDismissal: dismissal,
+      canonicalUpdatedAtMs: Date.now(),
+      source: { type: 'local' as const }
+    }
+
+    // Optimistic update
+    setEvents((prev) =>
+      prev.map((e) => (e.canonicalEventId === event.canonicalEventId ? updatedEvent : e))
+    )
+
+    // Persist via outbox
+    try {
+      await enqueueUpdate(userId, updatedEvent, event.updatedAtMs)
+    } catch (error) {
+      console.error('Failed to persist alert dismissal:', error)
+    }
+  }, [userId, setEvents])
+
+  // Handle opening event from alert banner
+  const handleAlertOpenEvent = useCallback((event: CanonicalCalendarEvent) => {
+    setSelectedEvent(event)
+    // Dismiss the alert when opening
+    handleAlertDismiss(event)
+  }, [handleAlertDismiss])
+
+  // Handle alert setting change
+  const handleAlertChange = useCallback(async (alert: CanonicalAlert | null) => {
+    if (!selectedEvent) return
+
+    const updatedEvent: CanonicalCalendarEvent = {
+      ...selectedEvent,
+      alerts: alert ? [alert] : [],
+      alertsUpdatedAtMs: Date.now(),
+      canonicalUpdatedAtMs: Date.now(),
+      source: { type: 'local' as const }
+    }
+
+    // Optimistic update
+    setEvents((prev) =>
+      prev.map((e) => (e.canonicalEventId === selectedEvent.canonicalEventId ? updatedEvent : e))
+    )
+    setSelectedEvent(updatedEvent)
+
+    // Persist via outbox
+    try {
+      await enqueueUpdate(userId, updatedEvent, selectedEvent.updatedAtMs)
+    } catch (error) {
+      console.error('Failed to persist alert change:', error)
+      // Revert on error
+      setEvents((prev) =>
+        prev.map((e) => (e.canonicalEventId === selectedEvent.canonicalEventId ? selectedEvent : e))
+      )
+      setSelectedEvent(selectedEvent)
+    }
+  }, [selectedEvent, userId, setEvents])
+
+  const handleSyncNow = async () => {
+    setSyncing(true)
+    try {
+      const response = await fetch(functionUrl('syncNow?uid=' + userId + '&accountId=' + ACCOUNT_ID))
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.error ?? 'Sync failed')
+      }
+      // Reload events after sync
+      await reloadEvents()
+    } catch (error) {
+      setConnectionError((error as Error).message)
+    } finally {
+      const remoteStatus = await syncRepository.getStatus(userId)
+      setStatus(remoteStatus)
+      setSyncing(false)
+    }
+  }
+
+  const handleConnectGoogle = async () => {
+    setConnectionError(null)
+    try {
+      const response = await fetch(functionUrl('googleAuthStart?uid=' + userId + '&accountId=' + ACCOUNT_ID))
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.error ?? 'Unable to start OAuth flow')
+      }
+      const { url } = await response.json()
+      if (typeof url === 'string') {
+        if (typeof window !== 'undefined' && typeof window.location?.assign === 'function') {
+          window.location.assign(url)
+        }
+      } else {
+        throw new Error('Invalid redirect URL')
+      }
+    } catch (error) {
+      setConnectionError((error as Error).message)
+    }
+  }
+
+  const handleDisconnectGoogle = async () => {
+    setConnectionError(null)
+    try {
+      const response = await fetch(functionUrl('googleDisconnect?uid=' + userId + '&accountId=' + ACCOUNT_ID))
+      if (!response.ok) {
+        const { error } = await response.json().catch(() => ({}))
+        throw new Error(error ?? 'Failed to disconnect')
+      }
+      setAccountStatus((prev) => ({ ...(prev ?? {}), status: 'disconnected' }))
+    } catch (error) {
+      setConnectionError((error as Error).message)
+    }
+  }
+
+  // Open create modal
+  const openCreateModal = () => {
+    setFormMode('create')
+    setFormModalOpen(true)
+  }
+
+  // Open edit modal
+  const openEditModal = () => {
+    if (!selectedEvent) return
+    setFormMode('edit')
+    setFormModalOpen(true)
+  }
+
+  // Open delete modal
+  const openDeleteModal = () => {
+    if (!selectedEvent) return
+    setDeleteModalOpen(true)
+  }
+
+  // Handle scope selection callback from EventFormModal
+  const handleScopeSelect = useCallback((scope: EditScope) => {
+    setEditScope(scope)
+  }, [])
+
+  // Check if selected event is recurring
+  const selectedIsRecurring = Boolean(
+    selectedEvent?.recurrence?.recurrenceRules?.length ||
+    selectedEvent?.providerRef?.recurringEventId
+  )
+
+  // Permission checks (Phase 2.6)
+  const primaryCalendar = calendars.find((c) => c.isPrimary)
+  const canCreateEvents = primaryCalendar?.canWrite ?? true // Optimistic if no calendar data yet
+
+  // Stats
+  const meetingHours = events
+    .filter((event) => (event.attendees?.length ?? 0) > 0)
+    .reduce((sum, event) => sum + (event.endMs - event.startMs) / 3_600_000, 0)
+  const busyHours = events.reduce((sum, event) => sum + (event.endMs - event.startMs) / 3_600_000, 0)
+  const freeHours = Math.max(24 - busyHours, 0)
+
+  return (
+    <>
+      {/* Alert Banner (Phase 2.5) */}
+      <AlertBannerContainer
+        alerts={activeAlerts}
+        onDismiss={handleAlertDismiss}
+        onOpenEvent={handleAlertOpenEvent}
+      />
+
+      <section className="calendar-page">
+        <header className="calendar-header">
+        <div>
+          <p className="section-label">
+            Calendar · {selectedMonthDate ? dayFormatter.format(selectedMonthDate) : dayFormatter.format(today)}
+          </p>
+          <h1>{selectedMonthDate ? 'Selected Date' : 'Today'} in {timezone}</h1>
+          <p className="calendar-meta">
+            {selectedMonthDate ? timeFormatter.format(selectedMonthDate) : timeFormatter.format(today)}
+          </p>
+        </div>
+        <div className="view-toggles">
+          <button
+            className={`view-toggle ${viewType === 'daily' ? 'active' : ''}`}
+            onClick={() => setViewType('daily')}
+          >
+            Day
+          </button>
+          <button
+            className={`view-toggle ${viewType === 'weekly' ? 'active' : ''}`}
+            onClick={() => setViewType('weekly')}
+          >
+            Week
+          </button>
+          <button
+            className={`view-toggle ${viewType === 'monthly' ? 'active' : ''}`}
+            onClick={() => setViewType('monthly')}
+          >
+            Month
+          </button>
+          <button
+            className={`view-toggle ${viewType === 'agenda' ? 'active' : ''}`}
+            onClick={() => setViewType('agenda')}
+          >
+            Agenda
+          </button>
+        </div>
+        <div className="calendar-sync">
+          {/* Online/offline indicator */}
+          <span className={`status-badge ${isOnline ? 'online' : 'offline'}`}>
+            {isOnline ? '● Online' : '○ Offline'}
+          </span>
+          {pendingOps.length > 0 && (
+            <span className="pending-badge">
+              {pendingOps.length} syncing…
+            </span>
+          )}
+          {failedOps.length > 0 && (
+            <span className="failed-badge">
+              {failedOps.length} failed
+              <button
+                className="retry-link"
+                onClick={handleRetryAll}
+                disabled={!isOnline}
+              >
+                Retry all
+              </button>
+            </span>
+          )}
+          <span className="sync-pill">
+            {status ? `Last synced ${minutesAgo(status.lastSuccessAt)}` : 'Awaiting sync'}
+          </span>
+          <p className="calendar-meta">
+            {accountStatus?.status === 'connected'
+              ? 'Connected to Google Calendar'
+              : 'Google account not connected'}
+          </p>
+          {connectionError && <p className="connection-error">{connectionError}</p>}
+          <div className="header-actions">
+            {selectedMonthDate && (
+              <button
+                className="ghost-button"
+                onClick={() => setSelectedMonthDate(null)}
+                title="Return to today's events"
+              >
+                Back to Today
+              </button>
+            )}
+            <button
+              className="primary-button"
+              onClick={openCreateModal}
+              disabled={!canCreateEvents}
+              title={canCreateEvents ? undefined : 'Calendar is read-only'}
+            >
+              + New Event
+            </button>
+            <button className="ghost-button" onClick={handleSyncNow} disabled={syncing || !isOnline}>
+              {syncing ? 'Syncing…' : 'Sync now'}
+            </button>
+            <button
+              className="ghost-button"
+              onClick={
+                accountStatus?.status === 'connected'
+                  ? handleDisconnectGoogle
+                  : handleConnectGoogle
+              }
+            >
+              {accountStatus?.status === 'connected' ? 'Disconnect' : 'Connect Google'}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <section className="calendar-stats">
+        <div>
+          <p className="section-label">Meetings</p>
+          <strong>{meetingHours.toFixed(1)}h</strong>
+          <p>hours with guests</p>
+        </div>
+        <div>
+          <p className="section-label">Free time</p>
+          <strong>{freeHours.toFixed(1)}h</strong>
+          <p>available today</p>
+        </div>
+        <div>
+          <p className="section-label">Sync status</p>
+          <strong>{status ? minutesAgo(status.lastSyncAt) : 'pending'}</strong>
+          <p className="calendar-meta">
+            Updated {status?.lastSyncAt ? timeFormatter.format(new Date(status.lastSyncAt)) : 'soon'}
+          </p>
+        </div>
+      </section>
+
+      {/* Calendar Views */}
+      {viewType === 'monthly' && (
+        <MonthView
+          year={currentYear}
+          month={currentMonth}
+          events={events}
+          instances={instances}
+          onDateSelect={setSelectedMonthDate}
+          selectedDate={selectedMonthDate}
+          onDateClick={() => {
+            // Scroll to event timeline when date is clicked
+            document.querySelector('.calendar-events')?.scrollIntoView({
+              behavior: 'smooth'
+            })
+          }}
+        />
+      )}
+
+      {viewType === 'weekly' && (
+        <WeeklyView
+          weekStartDate={selectedMonthDate || today}
+          events={events}
+          instances={instances}
+          onDateSelect={setSelectedMonthDate}
+          selectedDate={selectedMonthDate}
+          onDateClick={() => {
+            // Scroll to event timeline when date is clicked
+            document.querySelector('.calendar-events')?.scrollIntoView({
+              behavior: 'smooth'
+            })
+          }}
+        />
+      )}
+
+      {viewType === 'daily' && (
+        <div className="daily-view-placeholder">
+          <p>Daily view shows detailed events for the selected date in the timeline below.</p>
+          <p>Select a date from the month or week view to see its events.</p>
+        </div>
+      )}
+
+      {viewType === 'agenda' && (
+        <AgendaView
+          events={events}
+          onEventSelect={setSelectedEvent}
+          selectedEventId={selectedEvent?.canonicalEventId}
+        />
+      )}
+
+      <section className="calendar-grid">
+        <div className="calendar-events">
+          <div className="calendar-events-header">
+            <p className="section-label">Event timeline</p>
+            <p className="calendar-meta">
+              {events.length} event{events.length !== 1 ? 's' : ''} {selectedMonthDate ? 'on selected date' : 'today'}
+            </p>
+          </div>
+          <div role="list" aria-label="Today's events">
+            {loading ? (
+              <p>Loading events…</p>
+            ) : events.length === 0 ? (
+              <p>Nothing planned yet. Create an event or sync a calendar account to get started.</p>
+            ) : (
+              events.map((event) => {
+                  const isSelected = selectedEvent?.canonicalEventId === event.canonicalEventId
+                  const eventSyncState = getSyncStateDisplay(event.syncState)
+                  const hasPendingOp = pendingOps.some((op) => op.eventId === event.canonicalEventId)
+                  const isRecurring = Boolean(event.isRecurringSeries || event.recurrenceV2?.rule || event.recurrence?.recurrenceRules?.length)
+                  const hasGuests = (event.attendees?.length ?? 0) > 0
+                  const colorTone = hasGuests ? 'dark' : isRecurring ? 'light' : 'normal'
+                  return (
+                    <button
+                      key={event.canonicalEventId}
+                      className={`event-card ${isSelected ? 'selected' : ''} event-card--${colorTone}`}
+                      type="button"
+                      onClick={() => setSelectedEvent(event)}
+                    >
+                      <div className="event-time">
+                        <strong>
+                          {event.allDay
+                            ? 'All day'
+                            : `${timeFormatter.format(new Date(event.startIso))} — ${timeFormatter.format(new Date(event.endIso))}`}
+                        </strong>
+                        <span className="calendar-meta">{event.location ?? 'No location'}</span>
+                      </div>
+                      <div className="event-body">
+                        <h3>
+                          {event.title ?? 'Untitled event'}
+                          {isRecurring && (
+                            <span className="recurrence-indicator" title="Recurring event">
+                              ↻
+                            </span>
+                          )}
+                          <span
+                            className={`sync-indicator ${eventSyncState.className}`}
+                            title={hasPendingOp ? 'Saving to device…' : eventSyncState.label}
+                          >
+                            {hasPendingOp ? '↻' : eventSyncState.icon}
+                          </span>
+                        </h3>
+                        <p>{event.description ?? 'No description yet'}</p>
+                        {isRecurring && event.recurrenceV2 && (
+                          <p className="calendar-meta recurrence-description">
+                            {describeRecurrence(event.recurrenceV2)}
+                          </p>
+                        )}
+                        {event.attendees?.length ? (
+                          <p className="calendar-meta">
+                            {event.attendees.length} attendee{event.attendees.length > 1 ? 's' : ''}
+                          </p>
+                        ) : (
+                          <p className="calendar-meta">Private focus time</p>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })
+            )}
+          </div>
+        </div>
+
+        <CalendarSidebar
+          selectedEvent={selectedEvent}
+          isOnline={isOnline}
+          accountStatus={accountStatus}
+          calendarsById={calendarsById}
+          onRSVP={(eventId, status) => rsvpEvent(eventId, status, events)}
+          onAlertChange={handleAlertChange}
+          onRetryWriteback={retryWriteback}
+          onConnectGoogle={handleConnectGoogle}
+          onEdit={openEditModal}
+          onDelete={openDeleteModal}
+        />
+      </section>
+
+      {/* Event Form Modal */}
+      <EventFormModal
+        isOpen={formModalOpen}
+        onClose={() => {
+          setFormModalOpen(false)
+          setEditScope(null)
+          setPendingFormData(null)
+        }}
+        onSave={formMode === 'create'
+          ? createEvent
+          : (data) => updateEvent(data, editScope ?? undefined)
+        }
+        initialEvent={formMode === 'edit' ? selectedEvent : null}
+        mode={formMode}
+        isRecurrenceInstance={Boolean(
+          formMode === 'edit' &&
+          selectedEvent &&
+          (selectedEvent.isRecurringSeries || selectedEvent.recurrenceV2?.rule)
+        )}
+        onScopeSelect={handleScopeSelect}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={(scope) => deleteEvent(scope as EditScope | undefined)}
+        eventTitle={selectedEvent?.title}
+        isRecurring={selectedIsRecurring}
+        isRecurrenceInstance={selectedIsRecurring}
+      />
+    </section>
+    </>
+  )
+}

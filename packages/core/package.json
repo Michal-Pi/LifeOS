@@ -1,0 +1,29 @@
+{
+  "name": "@lifeos/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./*": "./dist/*.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "idb": "^8.0.3",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.1"
+  }
+}

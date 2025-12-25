@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "lifeos-phase-1",
+    "prod": "lifeos-pi",
+    "lifeos-pi": "lifeos-pi"
+  },
+  "targets": {},
+  "etags": {}
+}
