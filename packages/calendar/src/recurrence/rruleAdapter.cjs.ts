@@ -1,3 +1,4 @@
+/// <reference path="./rrule.d.ts" />
 import rruleModule from 'rrule/dist/es5/rrule.js'
 
 const { RRule, Weekday } = rruleModule as {

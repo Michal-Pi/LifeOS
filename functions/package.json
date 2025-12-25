@@ -22,6 +22,7 @@
     "idb": "^8.0.3"
   },
   "devDependencies": {
+    "@lifeos/calendar": "workspace:*",
     "vitest": "^3.2.1"
   }
 }
