@@ -11,7 +11,12 @@
 import { useState, useMemo } from 'react'
 import { NoteEditor } from '@/components/editor'
 import { TopicSidebar } from '@/components/notes/TopicSidebar'
+import { SyncStatusBanner, NoteSyncStatus } from '@/components/notes/NoteSyncStatus'
+import { ExportMenu } from '@/components/notes/ExportMenu'
+import { TemplateSelector } from '@/components/notes/TemplateSelector'
 import { useNoteOperations } from '@/hooks/useNoteOperations'
+import { useNoteSync } from '@/hooks/useNoteSync'
+import { getTemplateContent } from '@/lib/noteTemplates'
 import type { Note, TopicId, SectionId, AttachmentId } from '@lifeos/notes'
 import type { JSONContent } from '@tiptap/core'
 
@@ -27,10 +32,13 @@ export function NotesPage() {
     updateAttachments,
   } = useNoteOperations()
 
+  const { isOnline, lastSyncMs, stats, triggerSync } = useNoteSync()
+
   const [showEditor, setShowEditor] = useState(false)
   const [selectedTopicId, setSelectedTopicId] = useState<TopicId | null>(null)
   const [selectedSectionId, setSelectedSectionId] = useState<SectionId | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false)
 
   // Filter notes based on selected topic/section and search query
   const filteredNotes = useMemo(() => {
@@ -56,19 +64,29 @@ export function NotesPage() {
     return filtered
   }, [notes, selectedTopicId, selectedSectionId, searchQuery])
 
-  const handleCreateNote = async () => {
+  const handleCreateNote = () => {
+    setShowTemplateSelector(true)
+  }
+
+  const handleTemplateSelect = async (templateId: string) => {
     try {
+      const content = getTemplateContent(templateId)
       const newNote = await createNote({
         title: 'Untitled Note',
-        content: { type: 'doc', content: [] },
+        content,
         topicId: selectedTopicId,
         sectionId: selectedSectionId,
       })
       setCurrentNote(newNote)
       setShowEditor(true)
+      setShowTemplateSelector(false)
     } catch (error) {
       console.error('Failed to create note:', error)
     }
+  }
+
+  const handleTemplateCancelCreate = () => {
+    setShowTemplateSelector(false)
   }
 
   const handleSelectNote = (note: Note) => {
@@ -119,6 +137,9 @@ export function NotesPage() {
     }
   }
 
+  const pendingCount = (stats?.notes.pending || 0) + (stats?.topics.pending || 0) + (stats?.sections.pending || 0)
+  const failedCount = (stats?.notes.failed || 0) + (stats?.topics.failed || 0) + (stats?.sections.failed || 0)
+
   return (
     <div className="notes-page">
       <div className="notes-header">
@@ -136,6 +157,16 @@ export function NotesPage() {
           </button>
         </div>
       </div>
+
+      {/* Sync Status Banner */}
+      <SyncStatusBanner
+        isOnline={isOnline}
+        pendingCount={pendingCount}
+        failedCount={failedCount}
+        lastSyncMs={lastSyncMs}
+        onRetryAll={() => triggerSync()}
+        className="mb-4"
+      />
 
       <div className="notes-content">
         {/* Sidebar */}
@@ -165,7 +196,10 @@ export function NotesPage() {
               className={`note-item ${currentNote?.noteId === note.noteId ? 'active' : ''}`}
               onClick={() => handleSelectNote(note)}
             >
-              <h3>{note.title}</h3>
+              <div className="note-item-header">
+                <h3>{note.title}</h3>
+                <NoteSyncStatus syncState={note.syncState} />
+              </div>
               <p className="note-preview">{note.contentHtml?.substring(0, 100)}...</p>
               <span className="note-date">{new Date(note.updatedAtMs).toLocaleDateString()}</span>
             </div>
@@ -175,16 +209,22 @@ export function NotesPage() {
         {/* Editor */}
         <div className="notes-editor">
           {showEditor && currentNote ? (
-            <NoteEditor
-              note={currentNote}
-              onSave={handleSaveNote}
-              onProjectsChange={handleProjectsChange}
-              onAttachmentsChange={handleAttachmentsChange}
-              placeholder="Start writing your note..."
-              autoSaveDelay={2000}
-              showProjectLinker={true}
-              showAttachments={true}
-            />
+            <>
+              <div className="editor-header">
+                <h2 className="editor-title">{currentNote.title}</h2>
+                <ExportMenu note={currentNote} />
+              </div>
+              <NoteEditor
+                note={currentNote}
+                onSave={handleSaveNote}
+                onProjectsChange={handleProjectsChange}
+                onAttachmentsChange={handleAttachmentsChange}
+                placeholder="Start writing your note..."
+                autoSaveDelay={2000}
+                showProjectLinker={true}
+                showAttachments={true}
+              />
+            </>
           ) : (
             <div className="editor-placeholder">
               <p>Select a note or create a new one to start writing</p>
@@ -192,6 +232,13 @@ export function NotesPage() {
           )}
         </div>
       </div>
+
+      {/* Template Selector Modal */}
+      <TemplateSelector
+        isOpen={showTemplateSelector}
+        onSelect={handleTemplateSelect}
+        onCancel={handleTemplateCancelCreate}
+      />
 
       <style>{`
         .notes-page {
@@ -295,8 +342,15 @@ export function NotesPage() {
           border-color: var(--primary);
         }
 
+        .note-item-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+
         .note-item h3 {
-          margin: 0 0 8px 0;
+          margin: 0;
           font-size: 16px;
           font-weight: 500;
         }
@@ -318,6 +372,24 @@ export function NotesPage() {
         .notes-editor {
           overflow-y: auto;
           padding-left: 20px;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .editor-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-bottom: 16px;
+          margin-bottom: 16px;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .editor-title {
+          margin: 0;
+          font-size: 20px;
+          font-weight: 600;
+          color: var(--foreground);
         }
 
         .editor-placeholder {
