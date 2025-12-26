@@ -8,7 +8,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from './useAuth'
 import { createFirestoreNoteRepository } from '@/adapters/notes/firestoreNoteRepository'
-import type { Note, NoteId, CreateNoteInput, UpdateNoteInput, NoteFilters } from '@lifeos/notes'
+import type { Note, NoteId, CreateNoteInput, UpdateNoteInput, NoteFilters, AttachmentId } from '@lifeos/notes'
 import type { JSONContent } from '@tiptap/core'
 
 export interface UseNoteOperationsReturn {
@@ -24,6 +24,8 @@ export interface UseNoteOperationsReturn {
   listNotes: (filters?: NoteFilters) => Promise<Note[]>
   searchNotes: (query: string) => Promise<Note[]>
   saveNoteContent: (noteId: NoteId, content: JSONContent, html: string) => Promise<void>
+  updateProjectLinks: (noteId: NoteId, projectIds: string[]) => Promise<Note>
+  updateAttachments: (noteId: NoteId, attachmentIds: AttachmentId[]) => Promise<Note>
 }
 
 const noteRepository = createFirestoreNoteRepository()
@@ -229,9 +231,7 @@ export function useNoteOperations(): UseNoteOperationsReturn {
       // Update local state
       setNotes((prev) =>
         prev.map((n) =>
-          n.noteId === noteId
-            ? { ...n, content, contentHtml: html, updatedAtMs: Date.now() }
-            : n
+          n.noteId === noteId ? { ...n, content, contentHtml: html, updatedAtMs: Date.now() } : n
         )
       )
 
@@ -242,6 +242,30 @@ export function useNoteOperations(): UseNoteOperationsReturn {
       }
     },
     [userId, currentNote]
+  )
+
+  // Update project links for a note
+  const updateProjectLinks = useCallback(
+    async (noteId: NoteId, projectIds: string[]): Promise<Note> => {
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
+
+      return updateNote(noteId, { projectIds })
+    },
+    [userId, updateNote]
+  )
+
+  // Update attachments for a note
+  const updateAttachments = useCallback(
+    async (noteId: NoteId, attachmentIds: AttachmentId[]): Promise<Note> => {
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
+
+      return updateNote(noteId, { attachmentIds })
+    },
+    [userId, updateNote]
   )
 
   // Load initial notes when user is authenticated
@@ -264,5 +288,7 @@ export function useNoteOperations(): UseNoteOperationsReturn {
     listNotes,
     searchNotes,
     saveNoteContent,
+    updateProjectLinks,
+    updateAttachments,
   }
 }

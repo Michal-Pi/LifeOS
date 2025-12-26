@@ -12,12 +12,20 @@ import { useState, useMemo } from 'react'
 import { NoteEditor } from '@/components/editor'
 import { TopicSidebar } from '@/components/notes/TopicSidebar'
 import { useNoteOperations } from '@/hooks/useNoteOperations'
-import type { Note, TopicId, SectionId } from '@lifeos/notes'
+import type { Note, TopicId, SectionId, AttachmentId } from '@lifeos/notes'
 import type { JSONContent } from '@tiptap/core'
 
 export function NotesPage() {
-  const { notes, currentNote, isLoading, createNote, setCurrentNote, saveNoteContent } =
-    useNoteOperations()
+  const {
+    notes,
+    currentNote,
+    isLoading,
+    createNote,
+    setCurrentNote,
+    saveNoteContent,
+    updateProjectLinks,
+    updateAttachments,
+  } = useNoteOperations()
 
   const [showEditor, setShowEditor] = useState(false)
   const [selectedTopicId, setSelectedTopicId] = useState<TopicId | null>(null)
@@ -89,6 +97,28 @@ export function NotesPage() {
     setSelectedTopicId(topicId)
   }
 
+  const handleProjectsChange = async (projectIds: string[]) => {
+    if (!currentNote) return
+
+    try {
+      await updateProjectLinks(currentNote.noteId, projectIds)
+    } catch (error) {
+      console.error('Failed to update project links:', error)
+      throw error
+    }
+  }
+
+  const handleAttachmentsChange = async (attachmentIds: AttachmentId[]) => {
+    if (!currentNote) return
+
+    try {
+      await updateAttachments(currentNote.noteId, attachmentIds)
+    } catch (error) {
+      console.error('Failed to update attachments:', error)
+      throw error
+    }
+  }
+
   return (
     <div className="notes-page">
       <div className="notes-header">
@@ -148,8 +178,12 @@ export function NotesPage() {
             <NoteEditor
               note={currentNote}
               onSave={handleSaveNote}
+              onProjectsChange={handleProjectsChange}
+              onAttachmentsChange={handleAttachmentsChange}
               placeholder="Start writing your note..."
               autoSaveDelay={2000}
+              showProjectLinker={true}
+              showAttachments={true}
             />
           ) : (
             <div className="editor-placeholder">
