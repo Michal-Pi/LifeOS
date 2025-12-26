@@ -1,0 +1,28 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for LifeOS
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // User attachment uploads
+    // Path: users/{userId}/notes/{noteId}/attachments/{attachmentId}/{filename}
+    match /users/{userId}/notes/{noteId}/attachments/{attachmentId}/{filename} {
+      // Users can only read/write their own attachments
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   // File size limit: 10MB
+                   && request.resource.size < 10 * 1024 * 1024
+                   // Valid file types only
+                   && request.resource.contentType.matches('image/.*|application/pdf|text/.*|application/msword|application/vnd.openxmlformats-officedocument.*');
+
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
