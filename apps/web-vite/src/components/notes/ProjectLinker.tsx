@@ -16,7 +16,11 @@ export interface ProjectLinkerProps {
   className?: string
 }
 
-export function ProjectLinker({ linkedProjectIds, onProjectsChange, className = '' }: ProjectLinkerProps) {
+export function ProjectLinker({
+  linkedProjectIds,
+  onProjectsChange,
+  className = '',
+}: ProjectLinkerProps) {
   const { user } = useAuth()
   const { projects, loading } = useTodoOperations({ userId: user?.uid || '' })
   const [showDropdown, setShowDropdown] = useState(false)

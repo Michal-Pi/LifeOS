@@ -27,37 +27,40 @@ export function AttachmentUploader({
   const [uploadingFiles, setUploadingFiles] = useState<Map<string, number>>(new Map())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileSelect = useCallback(async (files: FileList | null) => {
-    if (!files || files.length === 0) return
+  const handleFileSelect = useCallback(
+    async (files: FileList | null) => {
+      if (!files || files.length === 0) return
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      const fileId = `${file.name}-${Date.now()}-${i}`
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const fileId = `${file.name}-${Date.now()}-${i}`
 
-      try {
-        // Add to uploading list
-        setUploadingFiles((prev) => new Map(prev).set(fileId, 0))
+        try {
+          // Add to uploading list
+          setUploadingFiles((prev) => new Map(prev).set(fileId, 0))
 
-        // Upload file
-        await onUpload(file)
+          // Upload file
+          await onUpload(file)
 
-        // Remove from uploading list
-        setUploadingFiles((prev) => {
-          const next = new Map(prev)
-          next.delete(fileId)
-          return next
-        })
-      } catch (error) {
-        console.error('Failed to upload file:', error)
-        // Remove from uploading list on error
-        setUploadingFiles((prev) => {
-          const next = new Map(prev)
-          next.delete(fileId)
-          return next
-        })
+          // Remove from uploading list
+          setUploadingFiles((prev) => {
+            const next = new Map(prev)
+            next.delete(fileId)
+            return next
+          })
+        } catch (error) {
+          console.error('Failed to upload file:', error)
+          // Remove from uploading list on error
+          setUploadingFiles((prev) => {
+            const next = new Map(prev)
+            next.delete(fileId)
+            return next
+          })
+        }
       }
-    }
-  }, [onUpload])
+    },
+    [onUpload]
+  )
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -173,7 +176,9 @@ export function AttachmentUploader({
                 )}
                 <div className="attachment-details">
                   <span className="attachment-name">{attachment.fileName}</span>
-                  <span className="attachment-size">{formatFileSize(attachment.fileSizeBytes)}</span>
+                  <span className="attachment-size">
+                    {formatFileSize(attachment.fileSizeBytes)}
+                  </span>
                 </div>
               </div>
               <button
