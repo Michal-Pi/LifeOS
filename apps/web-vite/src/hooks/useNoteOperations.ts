@@ -8,7 +8,14 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from './useAuth'
 import { createFirestoreNoteRepository } from '@/adapters/notes/firestoreNoteRepository'
-import type { Note, NoteId, CreateNoteInput, UpdateNoteInput, NoteFilters, AttachmentId } from '@lifeos/notes'
+import type {
+  Note,
+  NoteId,
+  CreateNoteInput,
+  UpdateNoteInput,
+  NoteFilters,
+  AttachmentId,
+} from '@lifeos/notes'
 import type { JSONContent } from '@tiptap/core'
 
 export interface UseNoteOperationsReturn {
@@ -25,6 +32,7 @@ export interface UseNoteOperationsReturn {
   searchNotes: (query: string) => Promise<Note[]>
   saveNoteContent: (noteId: NoteId, content: JSONContent, html: string) => Promise<void>
   updateProjectLinks: (noteId: NoteId, projectIds: string[]) => Promise<Note>
+  updateOKRLinks: (noteId: NoteId, okrIds: string[]) => Promise<Note>
   updateAttachments: (noteId: NoteId, attachmentIds: AttachmentId[]) => Promise<Note>
 }
 
@@ -256,6 +264,18 @@ export function useNoteOperations(): UseNoteOperationsReturn {
     [userId, updateNote]
   )
 
+  // Update OKR links for a note
+  const updateOKRLinks = useCallback(
+    async (noteId: NoteId, okrIds: string[]): Promise<Note> => {
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
+
+      return updateNote(noteId, { okrIds })
+    },
+    [userId, updateNote]
+  )
+
   // Update attachments for a note
   const updateAttachments = useCallback(
     async (noteId: NoteId, attachmentIds: AttachmentId[]): Promise<Note> => {
@@ -289,6 +309,7 @@ export function useNoteOperations(): UseNoteOperationsReturn {
     searchNotes,
     saveNoteContent,
     updateProjectLinks,
+    updateOKRLinks,
     updateAttachments,
   }
 }

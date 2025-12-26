@@ -29,6 +29,7 @@ export function NotesPage() {
     setCurrentNote,
     saveNoteContent,
     updateProjectLinks,
+    updateOKRLinks,
     updateAttachments,
   } = useNoteOperations()
 
@@ -126,6 +127,17 @@ export function NotesPage() {
     }
   }
 
+  const handleOKRsChange = async (okrIds: string[]) => {
+    if (!currentNote) return
+
+    try {
+      await updateOKRLinks(currentNote.noteId, okrIds)
+    } catch (error) {
+      console.error('Failed to update OKR links:', error)
+      throw error
+    }
+  }
+
   const handleAttachmentsChange = async (attachmentIds: AttachmentId[]) => {
     if (!currentNote) return
 
@@ -137,8 +149,10 @@ export function NotesPage() {
     }
   }
 
-  const pendingCount = (stats?.notes.pending || 0) + (stats?.topics.pending || 0) + (stats?.sections.pending || 0)
-  const failedCount = (stats?.notes.failed || 0) + (stats?.topics.failed || 0) + (stats?.sections.failed || 0)
+  const pendingCount =
+    (stats?.notes.pending || 0) + (stats?.topics.pending || 0) + (stats?.sections.pending || 0)
+  const failedCount =
+    (stats?.notes.failed || 0) + (stats?.topics.failed || 0) + (stats?.sections.failed || 0)
 
   return (
     <div className="notes-page">
@@ -218,10 +232,12 @@ export function NotesPage() {
                 note={currentNote}
                 onSave={handleSaveNote}
                 onProjectsChange={handleProjectsChange}
+                onOKRsChange={handleOKRsChange}
                 onAttachmentsChange={handleAttachmentsChange}
                 placeholder="Start writing your note..."
                 autoSaveDelay={2000}
                 showProjectLinker={true}
+                showOKRLinker={true}
                 showAttachments={true}
               />
             </>

@@ -14,6 +14,7 @@ import { TipTapEditor } from './TipTapEditor'
 import { useNoteEditor } from '@/hooks/useNoteEditor'
 import { useAttachments } from '@/hooks/useAttachments'
 import { ProjectLinker } from '@/components/notes/ProjectLinker'
+import { OKRLinker } from '@/components/notes/OKRLinker'
 import { AttachmentUploader } from '@/components/notes/AttachmentUploader'
 import type { Note, AttachmentId } from '@lifeos/notes'
 
@@ -25,8 +26,10 @@ export interface NoteEditorProps {
   onSave?: (content: object, html: string) => Promise<void>
   onChange?: (content: object, html: string) => void
   onProjectsChange?: (projectIds: string[]) => Promise<void>
+  onOKRsChange?: (okrIds: string[]) => Promise<void>
   onAttachmentsChange?: (attachmentIds: AttachmentId[]) => Promise<void>
   showProjectLinker?: boolean
+  showOKRLinker?: boolean
   showAttachments?: boolean
   className?: string
 }
@@ -39,8 +42,10 @@ export function NoteEditor({
   onSave,
   onChange,
   onProjectsChange,
+  onOKRsChange,
   onAttachmentsChange,
   showProjectLinker = true,
+  showOKRLinker = true,
   showAttachments = true,
   className = '',
 }: NoteEditorProps) {
@@ -71,6 +76,13 @@ export function NoteEditor({
   const handleProjectsChange = async (projectIds: string[]) => {
     if (onProjectsChange) {
       await onProjectsChange(projectIds)
+    }
+  }
+
+  // Handle OKR changes
+  const handleOKRsChange = async (okrIds: string[]) => {
+    if (onOKRsChange) {
+      await onOKRsChange(okrIds)
     }
   }
 
@@ -133,6 +145,17 @@ export function NoteEditor({
             linkedProjectIds={note.projectIds || []}
             onProjectsChange={handleProjectsChange}
             className="project-linker-section"
+          />
+        </div>
+      )}
+
+      {/* OKR Linker */}
+      {showOKRLinker && note && editable && (
+        <div className="editor-section">
+          <OKRLinker
+            selectedOKRIds={note.okrIds || []}
+            onChange={handleOKRsChange}
+            className="okr-linker-section"
           />
         </div>
       )}
