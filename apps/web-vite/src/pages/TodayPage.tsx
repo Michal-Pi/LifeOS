@@ -37,6 +37,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { calculatePriorityScore } from '@/lib/priority'
+import { HabitCheckInCard } from '@/components/habits/HabitCheckInCard'
 
 const quoteRepository = createFirestoreQuoteRepository()
 const calendarRepository = createFirestoreCalendarEventRepository()
@@ -66,15 +67,15 @@ export function TodayPage() {
 
   // Load tasks
   const { tasks, loadData: loadTasks } = useTodoOperations({ userId })
-  
+
   const activeTasks = useMemo(() => {
-    return tasks.filter(t => !t.completed && !t.archived)
+    return tasks.filter((t) => !t.completed && !t.archived)
   }, [tasks])
 
   // Filter for today's high priority tasks
   const todayTasks = useMemo(() => {
     return activeTasks
-      .filter(t => t.urgency === 'today' || calculatePriorityScore(t) >= 50)
+      .filter((t) => t.urgency === 'today' || calculatePriorityScore(t) >= 50)
       .slice(0, 5)
   }, [activeTasks])
 
@@ -105,12 +106,11 @@ export function TodayPage() {
           { repository: calendarRepository },
           { userId, dayKeys: [todayKey] }
         )
-        const filteredEvents = canonicalEvents.filter(e => !isDeleted(e))
+        const filteredEvents = canonicalEvents.filter((e) => !isDeleted(e))
         setEvents(filteredEvents)
 
         // Load tasks
         void loadTasks()
-
       } catch (error) {
         logger.error('Failed to load data:', error)
         // Fallback to first default quote
@@ -126,27 +126,28 @@ export function TodayPage() {
   }, [userId, todayKey, loadTasks])
 
   // Convert events to display format
-  const displayEvents = useMemo(() =>
-    events.map((event) => ({
-      title: event.title || 'Untitled event',
-      start: new Date(event.startMs),
-      end: new Date(event.endMs),
-      guests: event.attendees?.filter((a) => a.email).map((a) => a.email!) || []
-    })), [events]
+  const displayEvents = useMemo(
+    () =>
+      events.map((event) => ({
+        title: event.title || 'Untitled event',
+        start: new Date(event.startMs),
+        end: new Date(event.endMs),
+        guests: event.attendees?.filter((a) => a.email).map((a) => a.email!) || [],
+      })),
+    [events]
   )
 
-  const meetingHours = useMemo(() =>
-    displayEvents
-      .filter((evt) => evt.guests.length > 0)
-      .reduce((sum, evt) => sum + (evt.end.getTime() - evt.start.getTime()) / 36e5, 0),
+  const meetingHours = useMemo(
+    () =>
+      displayEvents
+        .filter((evt) => evt.guests.length > 0)
+        .reduce((sum, evt) => sum + (evt.end.getTime() - evt.start.getTime()) / 36e5, 0),
     [displayEvents]
   )
 
-  const busyHours = useMemo(() =>
-    displayEvents.reduce(
-      (sum, evt) => sum + (evt.end.getTime() - evt.start.getTime()) / 36e5,
-      0
-    ),
+  const busyHours = useMemo(
+    () =>
+      displayEvents.reduce((sum, evt) => sum + (evt.end.getTime() - evt.start.getTime()) / 36e5, 0),
     [displayEvents]
   )
 
@@ -159,9 +160,7 @@ export function TodayPage() {
         <div className="inspiration-header">
           <div>
             <p className="today-label">Today · {formatter.format(today)}</p>
-            <p className="today-location">
-              Today in {timezone}
-            </p>
+            <p className="today-location">Today in {timezone}</p>
           </div>
           <div className="today-time">
             <span>{timeFormat.format(today)}</span>
@@ -215,7 +214,15 @@ export function TodayPage() {
         {/* Top Priority Todos */}
         {/* Replaced static component with real data */}
         <section className="task-list-card">
-          <div className="task-list-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div
+            className="task-list-header"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1rem',
+            }}
+          >
             <p className="section-label">Top Priority To-dos</p>
             <button className="ghost-button small" onClick={() => navigate('/review')}>
               Weekly Review
@@ -224,28 +231,42 @@ export function TodayPage() {
           {frogTask && (
             <div className="frog-highlight" style={{ marginBottom: '1rem' }}>
               <p className="section-label">The Frog</p>
-              <div className="task-item" style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
+              <div
+                className="task-item"
+                style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}
+              >
                 <span style={{ fontWeight: 600 }}>{frogTask.title}</span>
-                <span className="priority-score" style={{ float: 'right', fontSize: '0.8em' }}>{calculatePriorityScore(frogTask)}</span>
+                <span className="priority-score" style={{ float: 'right', fontSize: '0.8em' }}>
+                  {calculatePriorityScore(frogTask)}
+                </span>
               </div>
             </div>
           )}
           <div className="task-items">
             {todayTasks.length === 0 ? (
-               <div className="empty-state">
-                  <p className="empty-state-text">No urgent tasks for today</p>
-               </div>
+              <div className="empty-state">
+                <p className="empty-state-text">No urgent tasks for today</p>
+              </div>
             ) : (
-              todayTasks.map(task => (
-                <div key={task.id} className="task-item" style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
+              todayTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="task-item"
+                  style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}
+                >
                   <span style={{ fontWeight: 500 }}>{task.title}</span>
-                  <span className="priority-score" style={{ float: 'right', fontSize: '0.8em' }}>{calculatePriorityScore(task)}</span>
+                  <span className="priority-score" style={{ float: 'right', fontSize: '0.8em' }}>
+                    {calculatePriorityScore(task)}
+                  </span>
                 </div>
               ))
             )}
           </div>
         </section>
       </div>
+
+      {/* Habits Check-In */}
+      <HabitCheckInCard userId={userId} dateKey={todayKey} />
 
       {/* Stats Grid */}
       <section className="today-stats-refined">
