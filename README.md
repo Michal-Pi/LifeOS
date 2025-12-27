@@ -64,11 +64,19 @@ Start here:
 - **Analytics Dashboard**: Weekly review with habit completion trends, mood correlation analysis, and intervention effectiveness tracking
 - **Domain-Driven Architecture**: Clean separation between UI (React hooks), business logic (usecases), and data access (repositories)
 
+### Training Module
+
+- **Workout Tracking**: Quick log daily workouts with context (gym/home/road)
+- **Session Status**: Visual indicators for completed, planned, and rest days
+- **Exercise Library**: Firestore-backed exercise catalog with categories and equipment tracking
+- **MVP Implementation**: Minimal viable product focused on daily tracking, full session editing coming in future phases
+
 ### Today + Review
 
 - Today dashboard with quick stats
 - Weekly review page with habit analytics
 - Mood tracking and correlation insights
+- Workout tracking integrated into daily view
 
 ### Quotes
 
@@ -149,7 +157,7 @@ pnpm firebase:deploy:functions   # Build + deploy functions only
 - Todos: active and in use
 - Habits & Mind Engine: production-ready with analytics (Phase 5 complete)
 - Notes: late beta with offline support and OKR integration
-- Training: foundation complete, workout planning in progress
+- Training: MVP complete with daily workout tracking (Phase 2-5 in roadmap)
 - People/Projects: placeholder UI
 
 ## Architecture

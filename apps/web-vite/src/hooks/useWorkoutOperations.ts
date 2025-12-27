@@ -74,9 +74,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
   // ========== Exercise Library Operations ==========
 
   const createExercise = useCallback(
-    async (
-      input: Omit<CreateExerciseInput, 'userId'>
-    ): Promise<ExerciseLibraryItem> => {
+    async (input: Omit<CreateExerciseInput, 'userId'>): Promise<ExerciseLibraryItem> => {
       if (!userId) throw new Error('User not authenticated')
       setIsLoading(true)
       setError(null)
@@ -100,10 +98,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
   )
 
   const updateExercise = useCallback(
-    async (
-      exerciseId: ExerciseId,
-      updates: UpdateExerciseInput
-    ): Promise<ExerciseLibraryItem> => {
+    async (exerciseId: ExerciseId, updates: UpdateExerciseInput): Promise<ExerciseLibraryItem> => {
       if (!userId) throw new Error('User not authenticated')
       setIsLoading(true)
       setError(null)
