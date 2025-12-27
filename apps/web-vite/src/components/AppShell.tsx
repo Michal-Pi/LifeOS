@@ -14,7 +14,7 @@ const modules = [
 ]
 const settingsItem = { label: 'Settings', href: '/settings', icon: '⚙️' }
 
-export function AppShell({ children }: { children: ReactNode}) {
+export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
   const pathname = location.pathname
   const [showSearch, setShowSearch] = useState(false)

@@ -1,0 +1,246 @@
+/**
+ * Training Module Styles
+ *
+ * Styles for workout tracking, exercise library, and training plans.
+ * Follows LifeOS design system with card-based layout and icon-driven UI.
+ */
+
+/* ========== Workout Session Card ========== */
+
+.training-session-card {
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.training-session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.training-session-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.training-icon {
+  font-size: 1.5rem;
+}
+
+.training-session-title h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.training-quick-log-button {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.training-quick-log-button:hover {
+  background: var(--primary-hover);
+}
+
+.training-quick-log-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========== Quick Log Panel ========== */
+
+.training-quick-log-panel {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.training-context-selector label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.training-context-buttons {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.context-button {
+  flex: 1;
+  background: var(--card-background);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.context-button:hover {
+  border-color: var(--primary-color);
+  background: var(--background-hover);
+}
+
+.context-button.active {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.training-submit-button {
+  width: 100%;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.training-submit-button:hover {
+  background: var(--primary-hover);
+}
+
+/* ========== Session Status ========== */
+
+.training-session-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.training-completed,
+.training-planned,
+.training-rest {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.training-completed {
+  background: var(--success-light);
+  border: 1px solid var(--success-color);
+}
+
+.training-planned {
+  background: var(--info-light);
+  border: 1px solid var(--info-color);
+}
+
+.training-rest {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.training-status-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.training-status-text {
+  flex: 1;
+}
+
+.training-status-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.training-status-detail {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* ========== Exercise Library ========== */
+
+.exercise-library-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.exercise-item {
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.exercise-item:hover {
+  border-color: var(--primary-color);
+  background: var(--background-hover);
+}
+
+.exercise-item-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.exercise-item-meta {
+  display: flex;
+  gap: var(--space-3);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.exercise-category-badge {
+  background: var(--background-secondary);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* ========== Responsive Design ========== */
+
+@media (max-width: 640px) {
+  .training-context-buttons {
+    flex-direction: column;
+  }
+
+  .context-button {
+    width: 100%;
+  }
+}
+
+/* ========== Dark Mode Support ========== */
+
+[data-theme='dark'] {
+  --success-light: rgba(16, 185, 129, 0.1);
+  --info-light: rgba(59, 130, 246, 0.1);
+}
+
+[data-theme='light'] {
+  --success-light: rgba(16, 185, 129, 0.1);
+  --info-light: rgba(59, 130, 246, 0.1);
+}
