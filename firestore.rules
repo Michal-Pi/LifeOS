@@ -45,9 +45,61 @@ service cloud.firestore {
     match /users/{userId}/calendars/{document=**} {
       allow read, write: if isAuthenticated(userId);
     }
-    match /users/{userId}/{collection=**}/{docId} {
+    // Calendar Events
+    match /users/{userId}/calendarEvents/{eventId} {
       allow read, write: if isAuthenticated(userId);
     }
+    // Recurrence instance map (server-managed, user-readable)
+    match /users/{userId}/recurrenceInstanceMap/{docId} {
+      allow read: if isAuthenticated(userId);
+      allow write: if false; // Server-only writes
+    }
+    // Projects (Todo module)
+    match /users/{userId}/projects/{projectId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Milestones (Todo module)
+    match /users/{userId}/milestones/{milestoneId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Tasks (Todo module)
+    match /users/{userId}/tasks/{taskId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Topics (Notes module)
+    match /users/{userId}/topics/{topicId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Sections (Notes module)
+    match /users/{userId}/sections/{sectionId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Attachments (Notes module)
+    match /users/{userId}/attachments/{attachmentId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Habits (Habits module)
+    match /users/{userId}/habits/{habitId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Habit Check-ins (Habits module)
+    match /users/{userId}/habitCheckins/{checkinId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Intervention Presets (Mind module)
+    match /users/{userId}/interventionPresets/{interventionId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Intervention Sessions (Mind module)
+    match /users/{userId}/interventionSessions/{sessionId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // System Intervention Presets (read-only for all authenticated users)
+    match /systemInterventions/{interventionId} {
+      allow read: if request.auth != null;
+      allow write: if false;  // Admin only
+    }
+    // Deny all other paths by default
     match /{document=**} {
       allow read, write: if false;
     }
