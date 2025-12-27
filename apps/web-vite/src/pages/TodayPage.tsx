@@ -38,6 +38,7 @@ import { useTodoOperations } from '@/hooks/useTodoOperations'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { calculatePriorityScore } from '@/lib/priority'
 import { HabitCheckInCard } from '@/components/habits/HabitCheckInCard'
+import { MindInterventionModal } from '@/components/mind/MindInterventionModal'
 
 const quoteRepository = createFirestoreQuoteRepository()
 const calendarRepository = createFirestoreCalendarEventRepository()
@@ -64,6 +65,7 @@ export function TodayPage() {
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState<CanonicalCalendarEvent[]>([])
   const [, setEventsLoading] = useState(true)
+  const [isMindModalOpen, setIsMindModalOpen] = useState(false)
 
   // Load tasks
   const { tasks, loadData: loadTasks } = useTodoOperations({ userId })
@@ -267,6 +269,29 @@ export function TodayPage() {
 
       {/* Habits Check-In */}
       <HabitCheckInCard userId={userId} dateKey={todayKey} />
+
+      {/* Mind Engine - "I'm Activated" Button */}
+      <section className="mind-intervention-card">
+        <div className="mind-intervention-header">
+          <p className="section-label">Feeling Activated?</p>
+          <p className="section-hint">Take a moment to regulate and refocus</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsMindModalOpen(true)}
+          className="btn-primary mind-intervention-trigger"
+        >
+          I'm Activated
+        </button>
+      </section>
+
+      {/* Mind Intervention Modal */}
+      <MindInterventionModal
+        isOpen={isMindModalOpen}
+        onClose={() => setIsMindModalOpen(false)}
+        dateKey={todayKey}
+        trigger="today_prompt"
+      />
 
       {/* Stats Grid */}
       <section className="today-stats-refined">
