@@ -1,6 +1,8 @@
 import { Link, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import { ThemeToggle } from './ThemeToggle'
+import { GlobalSearch } from './GlobalSearch'
 
 const modules = [
   { label: 'Today', href: '/', icon: '🌅' },
@@ -12,9 +14,11 @@ const modules = [
 ]
 const settingsItem = { label: 'Settings', href: '/settings', icon: '⚙️' }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children }: { children: ReactNode}) {
   const location = useLocation()
   const pathname = location.pathname
+  const [showSearch, setShowSearch] = useState(false)
+
   return (
     <div className="app-shell">
       <nav className="sidebar" aria-label="Primary">
@@ -63,8 +67,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             </h1>
           </div>
           <div className="top-bar-actions">
-            <button className="ghost-button" aria-label="Search placeholder" disabled>
-              Search (coming soon)
+            <button
+              className="ghost-button"
+              aria-label="Open search"
+              onClick={() => setShowSearch(true)}
+            >
+              🔍 Search
             </button>
             <ThemeToggle />
           </div>
@@ -72,6 +80,29 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="content-wrapper">
           <div className="content-card">{children}</div>
         </main>
+        {showSearch && (
+          <div
+            className="search-overlay"
+            onClick={() => setShowSearch(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'start',
+              justifyContent: 'center',
+              paddingTop: '20vh',
+            }}
+          >
+            <div onClick={(e) => e.stopPropagation()}>
+              <GlobalSearch />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

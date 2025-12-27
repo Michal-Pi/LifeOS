@@ -106,7 +106,7 @@ export function MindInterventionModal({
         const interventionTitle = flowState.intervention.title
         const taskTitle = `Next action: ${interventionTitle}`
 
-        await createTask({
+        const createdTask = await createTask({
           title: taskTitle,
           description: 'Next right action identified from mind intervention',
           domain: 'wellbeing',
@@ -116,8 +116,7 @@ export function MindInterventionModal({
           archived: false,
         })
 
-        // Note: createTask doesn't return the task, but we can mark it as created
-        createdTodoId = 'created'
+        createdTodoId = createdTask.id
       }
 
       await completeSession(flowState.sessionId, {

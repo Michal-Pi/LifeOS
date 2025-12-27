@@ -174,7 +174,9 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
 
   // --- Tasks ---
   const createTask = useCallback(
-    async (taskData: Omit<CanonicalTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+    async (
+      taskData: Omit<CanonicalTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+    ): Promise<CanonicalTask> => {
       const now = new Date().toISOString()
       const newTask: CanonicalTask = {
         ...taskData,
@@ -190,6 +192,7 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
       try {
         await todoRepository.saveTask(normalizedTask)
         toast.success('Task created successfully')
+        return normalizedTask
       } catch (err) {
         logger.error('Failed to create task:', err)
         const errorMessage = (err as Error).message
@@ -198,6 +201,7 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
         toast.error('Failed to create task', {
           description: errorMessage,
         })
+        throw err
       }
     },
     [userId, projects]
