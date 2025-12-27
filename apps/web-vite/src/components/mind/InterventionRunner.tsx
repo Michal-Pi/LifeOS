@@ -5,7 +5,7 @@
  * Handles text, timer, choice, and input steps with appropriate UI.
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback } from 'react'
 import type { CanonicalInterventionPreset } from '@lifeos/mind'
 
 interface InterventionRunnerProps {
@@ -21,32 +21,30 @@ export function InterventionRunner({
 }: InterventionRunnerProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [responses, setResponses] = useState<Record<string, unknown>>({})
-  const [timerRemaining, setTimerRemaining] = useState<number | null>(null)
 
   const currentStep = intervention.steps[currentStepIndex]
   const isLastStep = currentStepIndex === intervention.steps.length - 1
   const progress = ((currentStepIndex + 1) / intervention.steps.length) * 100
+
+  // Initialize timer state based on current step (derived state, not effect)
+  const initialTimerValue = currentStep?.kind === 'timer' ? currentStep.durationSec : null
+  const [timerRemaining, setTimerRemaining] = useState<number | null>(initialTimerValue)
 
   const handleNext = useCallback(() => {
     if (isLastStep) {
       onComplete(responses)
     } else {
       setCurrentStepIndex((prev) => prev + 1)
-      setTimerRemaining(null) // Reset timer for next step
+      // Timer will be re-initialized on next render based on new step
     }
   }, [isLastStep, onComplete, responses])
 
-  // Initialize timer state when currentStep changes and it's a timer step
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => {
-    if (currentStep?.kind === 'timer' && timerRemaining === null) {
-      // Only set if not already set to avoid resetting mid-countdown
-      setTimerRemaining(currentStep.durationSec)
-    } else if (currentStep?.kind !== 'timer' && timerRemaining !== null) {
-      // Clear timer if we moved away from a timer step
-      setTimerRemaining(null)
-    }
-  }, [currentStep, timerRemaining])
+  // Update timer when step index changes
+  // This is intentional - we need to sync timer state with currentStep changes
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTimerRemaining(currentStep?.kind === 'timer' ? currentStep.durationSec : null)
+  }, [currentStepIndex, currentStep])
 
   // Handle timer countdown
   useEffect(() => {

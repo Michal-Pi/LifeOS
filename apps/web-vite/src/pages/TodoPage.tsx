@@ -17,12 +17,12 @@ export function TodoPage() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const userId = user?.uid ?? ''
-  
-  const { 
-    projects, 
-    milestones, 
-    tasks, 
-    loading, 
+
+  const {
+    projects,
+    milestones,
+    tasks,
+    loading,
     loadData,
     loadTasks,
     createProject,
@@ -30,7 +30,7 @@ export function TodoPage() {
     createTask, // Will be used by Add Task button
     updateTask,
     deleteTask,
-    convertTaskToProject
+    convertTaskToProject,
   } = useTodoOperations({ userId })
 
   // Event operations for scheduling - using clean service layer
@@ -43,7 +43,10 @@ export function TodoPage() {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
   const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false)
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
-  const [scheduleDefaults, setScheduleDefaults] = useState<{ durationMinutes: number; formData: Partial<EventFormData> } | null>(null)
+  const [scheduleDefaults, setScheduleDefaults] = useState<{
+    durationMinutes: number
+    formData: Partial<EventFormData>
+  } | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'priority'>('list')
   const [priorityDomainFilter, setPriorityDomainFilter] = useState<'all' | Domain>('all')
 
@@ -97,28 +100,28 @@ export function TodoPage() {
     let milestoneToSelect: CanonicalMilestone | null = null
 
     if (taskId) {
-      const task = tasks.find(t => t.id === taskId)
+      const task = tasks.find((t) => t.id === taskId)
       if (task) {
         taskToSelect = task
         // Also select the project/milestone to make it visible
         if (task.projectId) {
-          const project = projects.find(p => p.id === task.projectId)
+          const project = projects.find((p) => p.id === task.projectId)
           if (project) projectToSelect = project
         }
         if (task.milestoneId) {
-          const milestone = milestones.find(m => m.id === task.milestoneId)
+          const milestone = milestones.find((m) => m.id === task.milestoneId)
           if (milestone) milestoneToSelect = milestone
         }
       }
     } else if (milestoneId) {
-      const milestone = milestones.find(m => m.id === milestoneId)
+      const milestone = milestones.find((m) => m.id === milestoneId)
       if (milestone) {
         milestoneToSelect = milestone
-        const project = projects.find(p => p.id === milestone.projectId)
+        const project = projects.find((p) => p.id === milestone.projectId)
         if (project) projectToSelect = project
       }
     } else if (projectId) {
-      const project = projects.find(p => p.id === projectId)
+      const project = projects.find((p) => p.id === projectId)
       if (project) projectToSelect = project
     }
 
@@ -137,16 +140,16 @@ export function TodoPage() {
     let filtered = tasks
 
     if (selectedMilestone) {
-      filtered = filtered.filter(t => t.milestoneId === selectedMilestone.id)
+      filtered = filtered.filter((t) => t.milestoneId === selectedMilestone.id)
     } else if (selectedProject) {
-      filtered = filtered.filter(t => t.projectId === selectedProject.id)
+      filtered = filtered.filter((t) => t.projectId === selectedProject.id)
     }
 
     return filtered
   }, [tasks, selectedProject, selectedMilestone])
 
   const activeTasks = useMemo(() => {
-    return filteredTasks.filter(t => !t.archived && !t.completed)
+    return filteredTasks.filter((t) => !t.archived && !t.completed)
   }, [filteredTasks])
 
   const handleSelectProject = (project: CanonicalProject) => {
@@ -158,7 +161,7 @@ export function TodoPage() {
   const handleSelectMilestone = (milestone: CanonicalMilestone) => {
     setSelectedMilestone(milestone)
     // Auto-select parent project if not already selected
-    const parentProject = projects.find(p => p.id === milestone.projectId)
+    const parentProject = projects.find((p) => p.id === milestone.projectId)
     if (parentProject) {
       setSelectedProject(parentProject)
     }
@@ -168,22 +171,28 @@ export function TodoPage() {
   const handleToggleComplete = async (task: CanonicalTask) => {
     const updatedTask: CanonicalTask = {
       ...task,
-      completed: !task.completed
+      completed: !task.completed,
     }
     await updateTask(updatedTask)
   }
 
-  const handleCreateTask = async (taskData: Omit<CanonicalTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+  const handleCreateTask = async (
+    taskData: Omit<CanonicalTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  ) => {
     await createTask(taskData)
     setIsTaskModalOpen(false)
   }
 
-  const handleCreateProject = async (projectData: Omit<CanonicalProject, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+  const handleCreateProject = async (
+    projectData: Omit<CanonicalProject, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  ) => {
     await createProject(projectData)
     setIsProjectModalOpen(false)
   }
 
-  const handleCreateMilestone = async (milestoneData: Omit<CanonicalMilestone, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+  const handleCreateMilestone = async (
+    milestoneData: Omit<CanonicalMilestone, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  ) => {
     await createMilestone(milestoneData)
     setIsMilestoneModalOpen(false)
   }
@@ -200,16 +209,15 @@ export function TodoPage() {
 
   const handleScheduleTask = (task: CanonicalTask) => {
     setSelectedTask(task)
-    const durationMinutes = task.allocatedTimeMinutes && task.allocatedTimeMinutes > 0
-      ? task.allocatedTimeMinutes
-      : 60
+    const durationMinutes =
+      task.allocatedTimeMinutes && task.allocatedTimeMinutes > 0 ? task.allocatedTimeMinutes : 60
     setScheduleDefaults({
       durationMinutes,
       formData: {
         title: task.title,
         description: task.description,
-        allDay: false
-      }
+        allDay: false,
+      },
     })
     setIsScheduleModalOpen(true)
   }
@@ -224,7 +232,10 @@ export function TodoPage() {
     const updatedTask: CanonicalTask = {
       ...selectedTask,
       status: 'scheduled',
-      calendarEventIds: [...(selectedTask.calendarEventIds || []), newCalendarEvent.canonicalEventId],
+      calendarEventIds: [
+        ...(selectedTask.calendarEventIds || []),
+        newCalendarEvent.canonicalEventId,
+      ],
     }
     await updateTask(updatedTask)
     setIsScheduleModalOpen(false)
@@ -236,9 +247,15 @@ export function TodoPage() {
       <aside className="todo-sidebar">
         <div className="sidebar-header">
           <h2>Projects</h2>
-          <button className="ghost-button small" title="New Project" onClick={() => setIsProjectModalOpen(true)}>+</button>
+          <button
+            className="ghost-button small"
+            title="New Project"
+            onClick={() => setIsProjectModalOpen(true)}
+          >
+            +
+          </button>
         </div>
-        
+
         {loading ? (
           <p className="loading-text">Loading...</p>
         ) : (
@@ -257,10 +274,15 @@ export function TodoPage() {
       <main className="todo-main">
         <header className="todo-header">
           <div className="header-breadcrumbs">
-            <span className="breadcrumb-item" onClick={() => {
-              setSelectedProject(null)
-              setSelectedMilestone(null)
-            }}>All Tasks</span>
+            <span
+              className="breadcrumb-item"
+              onClick={() => {
+                setSelectedProject(null)
+                setSelectedMilestone(null)
+              }}
+            >
+              All Tasks
+            </span>
             {selectedProject && (
               <>
                 <span className="breadcrumb-separator">/</span>
@@ -276,23 +298,27 @@ export function TodoPage() {
           </div>
           <div className="header-actions">
             {selectedProject && (
-              <button className="ghost-button" onClick={() => setIsMilestoneModalOpen(true)}>+ New Milestone</button>
+              <button className="ghost-button" onClick={() => setIsMilestoneModalOpen(true)}>
+                + New Milestone
+              </button>
             )}
             <div className="view-toggles" style={{ marginRight: '1rem' }}>
-              <button 
+              <button
                 className={`view-toggle ${viewMode === 'list' ? 'active' : ''}`}
                 onClick={() => setViewMode('list')}
               >
                 List
               </button>
-              <button 
+              <button
                 className={`view-toggle ${viewMode === 'priority' ? 'active' : ''}`}
                 onClick={() => setViewMode('priority')}
               >
                 Priority
               </button>
             </div>
-            <button className="primary-button" onClick={() => setIsTaskModalOpen(true)}>+ New Task</button>
+            <button className="primary-button" onClick={() => setIsTaskModalOpen(true)}>
+              + New Task
+            </button>
           </div>
         </header>
 
@@ -303,18 +329,29 @@ export function TodoPage() {
                 <h4>Milestone Objective: {selectedMilestone.objective || 'Not set'}</h4>
                 {selectedMilestone.keyResults && selectedMilestone.keyResults.length > 0 && (
                   <ul className="key-results-list">
-                    {selectedMilestone.keyResults.map(kr => {
-                      const linkedTasks = tasks.filter(t => t.keyResultId === kr.id)
-                      const completedTasks = linkedTasks.filter(t => t.completed)
-                      const progress = linkedTasks.length > 0 ? (completedTasks.length / linkedTasks.length) * 100 : 0
+                    {selectedMilestone.keyResults.map((kr) => {
+                      const linkedTasks = tasks.filter((t) => t.keyResultId === kr.id)
+                      const completedTasks = linkedTasks.filter((t) => t.completed)
+                      const progress =
+                        linkedTasks.length > 0
+                          ? (completedTasks.length / linkedTasks.length) * 100
+                          : 0
                       return (
                         <li key={kr.id}>
                           <span>{kr.text}</span>
                           {linkedTasks.length > 0 && (
                             <div className="kr-progress">
-                              <span className="progress-text">{completedTasks.length}/{linkedTasks.length}</span>
-                              <div className="mini-progress-bar" title={`${Math.round(progress)}% complete`}>
-                                <div className="mini-progress-fill" style={{ width: `${progress}%` }} />
+                              <span className="progress-text">
+                                {completedTasks.length}/{linkedTasks.length}
+                              </span>
+                              <div
+                                className="mini-progress-bar"
+                                title={`${Math.round(progress)}% complete`}
+                              >
+                                <div
+                                  className="mini-progress-fill"
+                                  style={{ width: `${progress}%` }}
+                                />
                               </div>
                             </div>
                           )}
@@ -329,18 +366,29 @@ export function TodoPage() {
                 <h4>Project Objective: {selectedProject.objective || 'Not set'}</h4>
                 {selectedProject.keyResults && selectedProject.keyResults.length > 0 && (
                   <ul className="key-results-list">
-                    {selectedProject.keyResults.map(kr => {
-                      const linkedTasks = tasks.filter(t => t.keyResultId === kr.id)
-                      const completedTasks = linkedTasks.filter(t => t.completed)
-                      const progress = linkedTasks.length > 0 ? (completedTasks.length / linkedTasks.length) * 100 : 0
+                    {selectedProject.keyResults.map((kr) => {
+                      const linkedTasks = tasks.filter((t) => t.keyResultId === kr.id)
+                      const completedTasks = linkedTasks.filter((t) => t.completed)
+                      const progress =
+                        linkedTasks.length > 0
+                          ? (completedTasks.length / linkedTasks.length) * 100
+                          : 0
                       return (
                         <li key={kr.id}>
                           <span>{kr.text}</span>
                           {linkedTasks.length > 0 && (
                             <div className="kr-progress">
-                              <span className="progress-text">{completedTasks.length}/{linkedTasks.length}</span>
-                              <div className="mini-progress-bar" title={`${Math.round(progress)}% complete`}>
-                                <div className="mini-progress-fill" style={{ width: `${progress}%` }} />
+                              <span className="progress-text">
+                                {completedTasks.length}/{linkedTasks.length}
+                              </span>
+                              <div
+                                className="mini-progress-bar"
+                                title={`${Math.round(progress)}% complete`}
+                              >
+                                <div
+                                  className="mini-progress-fill"
+                                  style={{ width: `${progress}%` }}
+                                />
                               </div>
                             </div>
                           )}
@@ -355,7 +403,7 @@ export function TodoPage() {
         )}
 
         {viewMode === 'list' ? (
-          <TaskList 
+          <TaskList
             tasks={activeTasks}
             onSelectTask={setSelectedTask}
             onToggleComplete={handleToggleComplete}

@@ -15,13 +15,8 @@ interface HabitCheckInCardProps {
 }
 
 export function HabitCheckInCard({ userId, dateKey }: HabitCheckInCardProps) {
-  const {
-    listHabitsForDate,
-    listCheckinsForDate,
-    upsertCheckin,
-    getHabitStats,
-    isLoading,
-  } = useHabitOperations()
+  const { listHabitsForDate, listCheckinsForDate, upsertCheckin, getHabitStats, isLoading } =
+    useHabitOperations()
 
   const [habits, setHabits] = useState<CanonicalHabit[]>([])
   const [checkins, setCheckins] = useState<Map<string, CanonicalHabitCheckin>>(new Map())
@@ -61,10 +56,7 @@ export function HabitCheckInCard({ userId, dateKey }: HabitCheckInCardProps) {
     void loadData()
   }, [userId, dateKey, listHabitsForDate, listCheckinsForDate, getHabitStats])
 
-  const handleCheckIn = async (
-    habitId: string,
-    status: 'done' | 'tiny' | 'skip'
-  ) => {
+  const handleCheckIn = async (habitId: string, status: 'done' | 'tiny' | 'skip') => {
     try {
       const checkin = await upsertCheckin({
         habitId: habitId as HabitId,

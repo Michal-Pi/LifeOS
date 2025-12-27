@@ -1,4 +1,5 @@
 # Phase 4: Mind Engine - Detailed Implementation Plan
+
 **Version:** 1.0
 **Created:** 2025-12-27
 **Duration:** 7-10 days
@@ -9,6 +10,7 @@
 Phase 4 implements the Mind Engine - a system for quick psychological interventions based on CBT, ACT, physiological regulation, and Gestalt-inspired techniques. The goal is to provide sub-60-second tools for managing stress, anxiety, and overwhelm.
 
 ### Key Features
+
 1. Pre-built intervention presets (breathing, CBT, ACT, Gestalt)
 2. "I'm Activated" button in Today page (Work Module)
 3. Intervention session logging with feeling before/after
@@ -19,6 +21,7 @@ Phase 4 implements the Mind Engine - a system for quick psychological interventi
 ---
 
 ## Table of Contents
+
 1. [Domain Package Implementation](#domain-package-implementation)
 2. [System Intervention Presets](#system-intervention-presets)
 3. [Firestore Adapters](#firestore-adapters)
@@ -61,6 +64,7 @@ packages/mind/
 ### 4.2 Domain Models (Extended)
 
 Already defined in main plan. Key types:
+
 - `CanonicalInterventionPreset`
 - `CanonicalInterventionSession`
 - `InterventionStep` (Text, Timer, Choice, Input)
@@ -81,7 +85,7 @@ export const FeelingStateSchema = z.enum([
   'avoidant',
   'restless',
   'tired',
-  'neutral'
+  'neutral',
 ])
 
 export const InterventionTypeSchema = z.enum([
@@ -94,41 +98,41 @@ export const InterventionTypeSchema = z.enum([
   'act_values_action',
   'gestalt_now',
   'loving_kindness',
-  'custom'
+  'custom',
 ])
 
 export const TextStepSchema = z.object({
   kind: z.literal('text'),
   content: z.string(),
-  durationSec: z.number().optional()
+  durationSec: z.number().optional(),
 })
 
 export const TimerStepSchema = z.object({
   kind: z.literal('timer'),
   instruction: z.string(),
   durationSec: z.number().min(1).max(300),
-  showProgress: z.boolean()
+  showProgress: z.boolean(),
 })
 
 export const ChoiceStepSchema = z.object({
   kind: z.literal('choice'),
   question: z.string(),
   options: z.array(z.string()).min(2).max(6),
-  allowMultiple: z.boolean().optional()
+  allowMultiple: z.boolean().optional(),
 })
 
 export const InputStepSchema = z.object({
   kind: z.literal('input'),
   prompt: z.string(),
   placeholder: z.string().optional(),
-  multiline: z.boolean().optional()
+  multiline: z.boolean().optional(),
 })
 
 export const InterventionStepSchema = z.discriminatedUnion('kind', [
   TextStepSchema,
   TimerStepSchema,
   ChoiceStepSchema,
-  InputStepSchema
+  InputStepSchema,
 ])
 
 export const InterventionPresetSchema = z.object({
@@ -144,7 +148,7 @@ export const InterventionPresetSchema = z.object({
   createdAtMs: z.number(),
   updatedAtMs: z.number(),
   syncState: z.enum(['synced', 'pending', 'conflict']),
-  version: z.number()
+  version: z.number(),
 })
 
 export const InterventionSessionSchema = z.object({
@@ -162,7 +166,7 @@ export const InterventionSessionSchema = z.object({
   completedAtMs: z.number().optional(),
   durationSec: z.number().optional(),
   syncState: z.enum(['synced', 'pending', 'conflict']),
-  version: z.number()
+  version: z.number(),
 })
 ```
 
@@ -185,70 +189,86 @@ import { asId } from '@lifeos/core'
 
 // ----- Physiological Interventions -----
 
-export const PHYSIOLOGICAL_SIGH: Omit<CanonicalInterventionPreset, 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'> = {
+export const PHYSIOLOGICAL_SIGH: Omit<
+  CanonicalInterventionPreset,
+  'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+> = {
   interventionId: asId('intervention:system-phys-sigh'),
   userId: 'system',
   type: 'physiological_sigh',
   title: 'Physiological Sigh',
-  description: 'Two inhales through nose, one long exhale through mouth. Scientifically proven to reduce stress in real-time.',
+  description:
+    'Two inhales through nose, one long exhale through mouth. Scientifically proven to reduce stress in real-time.',
   defaultDurationSec: 30,
   tags: ['breathing', 'quick', 'stress'],
   recommendedForFeelings: ['anxious', 'overwhelmed', 'restless'],
   steps: [
     {
       kind: 'text',
-      content: 'The physiological sigh is one of the fastest ways to reduce stress.\n\nYou\'ll do 2-3 cycles of: double inhale through nose, long exhale through mouth.',
-      durationSec: 5
+      content:
+        "The physiological sigh is one of the fastest ways to reduce stress.\n\nYou'll do 2-3 cycles of: double inhale through nose, long exhale through mouth.",
+      durationSec: 5,
     },
     {
       kind: 'timer',
-      instruction: 'Breathe in deeply through your nose...\nThen take a quick second inhale (top up the lungs)...\nNow exhale slowly through your mouth.',
+      instruction:
+        'Breathe in deeply through your nose...\nThen take a quick second inhale (top up the lungs)...\nNow exhale slowly through your mouth.',
       durationSec: 10,
-      showProgress: true
+      showProgress: true,
     },
     {
       kind: 'text',
       content: 'Great. Repeat that 2 more times at your own pace.',
-      durationSec: 15
+      durationSec: 15,
     },
     {
       kind: 'text',
-      content: 'Notice how your body feels now. You\'ve just activated your parasympathetic nervous system.',
-      durationSec: 5
-    }
-  ]
+      content:
+        "Notice how your body feels now. You've just activated your parasympathetic nervous system.",
+      durationSec: 5,
+    },
+  ],
 }
 
-export const BOX_BREATHING: Omit<CanonicalInterventionPreset, 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'> = {
+export const BOX_BREATHING: Omit<
+  CanonicalInterventionPreset,
+  'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+> = {
   interventionId: asId('intervention:system-box-breathing'),
   userId: 'system',
   type: 'box_breathing',
   title: 'Box Breathing (4-4-4-4)',
-  description: 'Inhale for 4, hold for 4, exhale for 4, hold for 4. Used by Navy SEALs for focus and calm.',
+  description:
+    'Inhale for 4, hold for 4, exhale for 4, hold for 4. Used by Navy SEALs for focus and calm.',
   defaultDurationSec: 45,
   tags: ['breathing', 'focus', 'calm'],
   recommendedForFeelings: ['anxious', 'restless', 'overwhelmed'],
   steps: [
     {
       kind: 'text',
-      content: 'Box breathing creates calm and focus.\n\nFollow the pattern: Inhale (4s) → Hold (4s) → Exhale (4s) → Hold (4s).',
-      durationSec: 5
+      content:
+        'Box breathing creates calm and focus.\n\nFollow the pattern: Inhale (4s) → Hold (4s) → Exhale (4s) → Hold (4s).',
+      durationSec: 5,
     },
     {
       kind: 'timer',
-      instruction: 'Breathe in... 2... 3... 4...\nHold... 2... 3... 4...\nBreathe out... 2... 3... 4...\nHold... 2... 3... 4...',
+      instruction:
+        'Breathe in... 2... 3... 4...\nHold... 2... 3... 4...\nBreathe out... 2... 3... 4...\nHold... 2... 3... 4...',
       durationSec: 32,
-      showProgress: true
+      showProgress: true,
     },
     {
       kind: 'text',
       content: 'You just completed 2 full cycles. Notice the steadiness in your body and mind.',
-      durationSec: 5
-    }
-  ]
+      durationSec: 5,
+    },
+  ],
 }
 
-export const BODY_SCAN_QUICK: Omit<CanonicalInterventionPreset, 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'> = {
+export const BODY_SCAN_QUICK: Omit<
+  CanonicalInterventionPreset,
+  'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+> = {
   interventionId: asId('intervention:system-body-scan'),
   userId: 'system',
   type: 'body_scan',
@@ -260,31 +280,36 @@ export const BODY_SCAN_QUICK: Omit<CanonicalInterventionPreset, 'createdAtMs' | 
   steps: [
     {
       kind: 'text',
-      content: 'Let\'s do a quick body scan to bring awareness to the present moment.',
-      durationSec: 3
+      content: "Let's do a quick body scan to bring awareness to the present moment.",
+      durationSec: 3,
     },
     {
       kind: 'timer',
-      instruction: 'Notice your feet on the ground... your back against the chair... your hands resting... your jaw... your shoulders.\n\nJust notice, without judgment.',
+      instruction:
+        'Notice your feet on the ground... your back against the chair... your hands resting... your jaw... your shoulders.\n\nJust notice, without judgment.',
       durationSec: 40,
-      showProgress: true
+      showProgress: true,
     },
     {
       kind: 'text',
-      content: 'You\'re here, in this moment. That\'s enough.',
-      durationSec: 5
-    }
-  ]
+      content: "You're here, in this moment. That's enough.",
+      durationSec: 5,
+    },
+  ],
 }
 
 // ----- CBT Interventions -----
 
-export const CBT_THOUGHT_RECORD: Omit<CanonicalInterventionPreset, 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'> = {
+export const CBT_THOUGHT_RECORD: Omit<
+  CanonicalInterventionPreset,
+  'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+> = {
   interventionId: asId('intervention:system-cbt-thought'),
   userId: 'system',
   type: 'cbt_thought_record',
   title: 'Label the Thought Distortion',
-  description: 'Identify cognitive distortions (catastrophizing, mind reading, all-or-nothing thinking).',
+  description:
+    'Identify cognitive distortions (catastrophizing, mind reading, all-or-nothing thinking).',
   defaultDurationSec: 60,
   tags: ['CBT', 'thinking', 'awareness'],
   recommendedForFeelings: ['anxious', 'overwhelmed', 'angry'],
@@ -293,7 +318,7 @@ export const CBT_THOUGHT_RECORD: Omit<CanonicalInterventionPreset, 'createdAtMs'
       kind: 'input',
       prompt: 'What thought is bothering you right now?',
       placeholder: 'e.g., "I\'m going to fail this presentation"',
-      multiline: true
+      multiline: true,
     },
     {
       kind: 'choice',
@@ -304,24 +329,27 @@ export const CBT_THOUGHT_RECORD: Omit<CanonicalInterventionPreset, 'createdAtMs'
         'All-or-nothing thinking',
         'Overgeneralization',
         'Emotional reasoning',
-        'None of these / Not sure'
+        'None of these / Not sure',
       ],
-      allowMultiple: false
+      allowMultiple: false,
     },
     {
       kind: 'input',
       prompt: 'What would be a more balanced thought?',
-      placeholder: 'e.g., "I\'ve prepared well. Even if it\'s not perfect, I\'ll learn something."',
-      multiline: true
+      placeholder: "e.g., \"I've prepared well. Even if it's not perfect, I'll learn something.\"",
+      multiline: true,
     },
     {
       kind: 'text',
-      content: 'Good work. You just practiced cognitive reframing - a core CBT skill.'
-    }
-  ]
+      content: 'Good work. You just practiced cognitive reframing - a core CBT skill.',
+    },
+  ],
 }
 
-export const CBT_LIKELY_OUTCOME: Omit<CanonicalInterventionPreset, 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'> = {
+export const CBT_LIKELY_OUTCOME: Omit<
+  CanonicalInterventionPreset,
+  'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+> = {
   interventionId: asId('intervention:system-cbt-outcome'),
   userId: 'system',
   type: 'cbt_likely_outcome',
@@ -334,29 +362,30 @@ export const CBT_LIKELY_OUTCOME: Omit<CanonicalInterventionPreset, 'createdAtMs'
     {
       kind: 'input',
       prompt: 'What situation are you worried about?',
-      placeholder: 'e.g., "Giving feedback to my team member"'
+      placeholder: 'e.g., "Giving feedback to my team member"',
     },
     {
       kind: 'input',
-      prompt: 'What\'s the WORST that could realistically happen?',
+      prompt: "What's the WORST that could realistically happen?",
       placeholder: 'They get defensive and the conversation is uncomfortable',
-      multiline: true
+      multiline: true,
     },
     {
       kind: 'input',
-      prompt: 'What\'s the BEST that could happen?',
+      prompt: "What's the BEST that could happen?",
       placeholder: 'They appreciate the feedback and we build better trust',
-      multiline: true
+      multiline: true,
     },
     {
       kind: 'input',
-      prompt: 'What\'s MOST LIKELY to happen?',
+      prompt: "What's MOST LIKELY to happen?",
       placeholder: 'They listen, ask some questions, and we work through it',
-      multiline: true
+      multiline: true,
     },
     {
       kind: 'text',
-      content: 'Notice how the most likely outcome is usually less extreme than what anxiety tells you.'
+      content:
+        'Notice how the most likely outcome is usually less extreme than what anxiety tells you.',
     },
     {
       kind: 'choice',
@@ -365,16 +394,19 @@ export const CBT_LIKELY_OUTCOME: Omit<CanonicalInterventionPreset, 'createdAtMs'
         'Prepare specific points for the conversation',
         'Schedule the conversation',
         'Ask a peer for advice',
-        'Just move forward - I\'ve thought it through',
-        'Create a reminder to revisit this later'
-      ]
-    }
-  ]
+        "Just move forward - I've thought it through",
+        'Create a reminder to revisit this later',
+      ],
+    },
+  ],
 }
 
 // ----- ACT Interventions -----
 
-export const ACT_DEFUSION: Omit<CanonicalInterventionPreset, 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'> = {
+export const ACT_DEFUSION: Omit<
+  CanonicalInterventionPreset,
+  'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+> = {
   interventionId: asId('intervention:system-act-defusion'),
   userId: 'system',
   type: 'act_defusion',
@@ -387,24 +419,29 @@ export const ACT_DEFUSION: Omit<CanonicalInterventionPreset, 'createdAtMs' | 'up
     {
       kind: 'input',
       prompt: 'What thought keeps showing up?',
-      placeholder: 'e.g., "I\'m not good enough"'
+      placeholder: 'e.g., "I\'m not good enough"',
     },
     {
       kind: 'text',
-      content: 'Now, rephrase that thought:\n\n"I\'m noticing I\'m having the thought that..."'
+      content: 'Now, rephrase that thought:\n\n"I\'m noticing I\'m having the thought that..."',
     },
     {
       kind: 'text',
-      content: 'This simple shift creates distance. You\'re not the thought - you\'re the observer of the thought.\n\nThoughts are just mental events passing through.'
+      content:
+        "This simple shift creates distance. You're not the thought - you're the observer of the thought.\n\nThoughts are just mental events passing through.",
     },
     {
       kind: 'text',
-      content: 'Can you let it be there, like a cloud passing in the sky, without needing to fight it or fix it?'
-    }
-  ]
+      content:
+        'Can you let it be there, like a cloud passing in the sky, without needing to fight it or fix it?',
+    },
+  ],
 }
 
-export const ACT_VALUES_ACTION: Omit<CanonicalInterventionPreset, 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'> = {
+export const ACT_VALUES_ACTION: Omit<
+  CanonicalInterventionPreset,
+  'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+> = {
   interventionId: asId('intervention:system-act-values'),
   userId: 'system',
   type: 'act_values_action',
@@ -423,29 +460,33 @@ export const ACT_VALUES_ACTION: Omit<CanonicalInterventionPreset, 'createdAtMs' 
         'Growth & learning',
         'Creativity & contribution',
         'Integrity & honesty',
-        'Freedom & autonomy'
-      ]
+        'Freedom & autonomy',
+      ],
     },
     {
       kind: 'input',
-      prompt: 'What\'s one tiny action you could take in the next hour that aligns with that value?',
+      prompt: "What's one tiny action you could take in the next hour that aligns with that value?",
       placeholder: 'e.g., "Send a thank-you message to someone I appreciate"',
-      multiline: true
+      multiline: true,
     },
     {
       kind: 'text',
-      content: 'Perfect. You don\'t need to feel motivated to act on your values. You can act first, and let meaning follow.'
-    }
-  ]
+      content:
+        "Perfect. You don't need to feel motivated to act on your values. You can act first, and let meaning follow.",
+    },
+  ],
 }
 
 // ----- Gestalt-Inspired -----
 
-export const GESTALT_PRESENT_AWARENESS: Omit<CanonicalInterventionPreset, 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'> = {
+export const GESTALT_PRESENT_AWARENESS: Omit<
+  CanonicalInterventionPreset,
+  'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+> = {
   interventionId: asId('intervention:system-gestalt-now'),
   userId: 'system',
   type: 'gestalt_now',
-  title: 'What\'s True Right Now?',
+  title: "What's True Right Now?",
   description: 'Gestalt-inspired grounding: separate fear from present reality.',
   defaultDurationSec: 45,
   tags: ['Gestalt', 'grounding', 'awareness'],
@@ -453,30 +494,35 @@ export const GESTALT_PRESENT_AWARENESS: Omit<CanonicalInterventionPreset, 'creat
   steps: [
     {
       kind: 'text',
-      content: 'Let\'s separate the story from what\'s actually happening right now.'
+      content: "Let's separate the story from what's actually happening right now.",
     },
     {
       kind: 'input',
       prompt: 'What does your "Alarmist Voice" keep saying?',
       placeholder: 'e.g., "Everything is going to fall apart"',
-      multiline: true
+      multiline: true,
     },
     {
       kind: 'input',
       prompt: 'Now: What is ACTUALLY true in this exact moment?',
-      placeholder: 'e.g., "I\'m sitting at my desk. I have a coffee. I\'m breathing. Nothing is on fire."',
-      multiline: true
+      placeholder:
+        'e.g., "I\'m sitting at my desk. I have a coffee. I\'m breathing. Nothing is on fire."',
+      multiline: true,
     },
     {
       kind: 'text',
-      content: 'The alarmist voice is trying to protect you. But it\'s often preparing for a future that hasn\'t happened.\n\nYou\'re here. You\'re okay. You can handle the next right action.'
-    }
-  ]
+      content:
+        "The alarmist voice is trying to protect you. But it's often preparing for a future that hasn't happened.\n\nYou're here. You're okay. You can handle the next right action.",
+    },
+  ],
 }
 
 // ----- Loving Kindness (Bonus) -----
 
-export const LOVING_KINDNESS_BRIEF: Omit<CanonicalInterventionPreset, 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'> = {
+export const LOVING_KINDNESS_BRIEF: Omit<
+  CanonicalInterventionPreset,
+  'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+> = {
   interventionId: asId('intervention:system-loving-kindness'),
   userId: 'system',
   type: 'loving_kindness',
@@ -488,19 +534,20 @@ export const LOVING_KINDNESS_BRIEF: Omit<CanonicalInterventionPreset, 'createdAt
   steps: [
     {
       kind: 'text',
-      content: 'Place one hand on your heart. Take a breath.'
+      content: 'Place one hand on your heart. Take a breath.',
     },
     {
       kind: 'timer',
-      instruction: 'Silently repeat:\n\n"May I be safe."\n"May I be peaceful."\n"May I be kind to myself."\n"May I accept myself as I am."',
+      instruction:
+        'Silently repeat:\n\n"May I be safe."\n"May I be peaceful."\n"May I be kind to myself."\n"May I accept myself as I am."',
       durationSec: 30,
-      showProgress: true
+      showProgress: true,
     },
     {
       kind: 'text',
-      content: 'You deserve compassion - especially from yourself.'
-    }
-  ]
+      content: 'You deserve compassion - especially from yourself.',
+    },
+  ],
 }
 
 // ----- Export All System Presets -----
@@ -514,7 +561,7 @@ export const SYSTEM_INTERVENTION_PRESETS = [
   ACT_DEFUSION,
   ACT_VALUES_ACTION,
   GESTALT_PRESENT_AWARENESS,
-  LOVING_KINDNESS_BRIEF
+  LOVING_KINDNESS_BRIEF,
 ]
 
 /**
@@ -529,7 +576,7 @@ export function hydrateSystemPreset(
     createdAtMs: now,
     updatedAtMs: now,
     syncState: 'synced',
-    version: 1
+    version: 1,
   }
 }
 ```
@@ -553,19 +600,29 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy
+  orderBy,
 } from 'firebase/firestore'
 import { newId, asId } from '@lifeos/core'
 import type {
   CanonicalInterventionPreset,
   InterventionId,
   InterventionType,
-  FeelingState
+  FeelingState,
 } from '@lifeos/mind'
 
 export interface InterventionRepository {
-  create(userId: string, preset: Omit<CanonicalInterventionPreset, 'interventionId' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'>): Promise<CanonicalInterventionPreset>
-  update(userId: string, interventionId: InterventionId, updates: Partial<CanonicalInterventionPreset>): Promise<CanonicalInterventionPreset>
+  create(
+    userId: string,
+    preset: Omit<
+      CanonicalInterventionPreset,
+      'interventionId' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+    >
+  ): Promise<CanonicalInterventionPreset>
+  update(
+    userId: string,
+    interventionId: InterventionId,
+    updates: Partial<CanonicalInterventionPreset>
+  ): Promise<CanonicalInterventionPreset>
   delete(userId: string, interventionId: InterventionId): Promise<void>
   get(interventionId: InterventionId): Promise<CanonicalInterventionPreset | null>
   listUserPresets(userId: string): Promise<CanonicalInterventionPreset[]>
@@ -589,7 +646,7 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
         createdAtMs: Date.now(),
         updatedAtMs: Date.now(),
         syncState: 'synced',
-        version: 1
+        version: 1,
       }
 
       const interventionDoc = doc(db, `users/${userId}/interventionPresets/${interventionId}`)
@@ -608,11 +665,11 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
       }
 
       const updated: CanonicalInterventionPreset = {
-        ...existing.data() as CanonicalInterventionPreset,
+        ...(existing.data() as CanonicalInterventionPreset),
         ...updates,
         updatedAtMs: Date.now(),
         version: (existing.data()?.version ?? 0) + 1,
-        syncState: 'synced'
+        syncState: 'synced',
       }
 
       await setDoc(interventionDoc, updated)
@@ -645,7 +702,7 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
       const q = query(presetsCol, orderBy('createdAtMs', 'desc'))
 
       const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => doc.data() as CanonicalInterventionPreset)
+      return snapshot.docs.map((doc) => doc.data() as CanonicalInterventionPreset)
     },
 
     async listSystemPresets(): Promise<CanonicalInterventionPreset[]> {
@@ -653,7 +710,7 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
       const systemCol = collection(db, 'systemInterventions')
       const snapshot = await getDocs(systemCol)
 
-      return snapshot.docs.map(doc => doc.data() as CanonicalInterventionPreset)
+      return snapshot.docs.map((doc) => doc.data() as CanonicalInterventionPreset)
     },
 
     async listByType(type): Promise<CanonicalInterventionPreset[]> {
@@ -662,7 +719,7 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
       const q = query(systemCol, where('type', '==', type))
 
       const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => doc.data() as CanonicalInterventionPreset)
+      return snapshot.docs.map((doc) => doc.data() as CanonicalInterventionPreset)
     },
 
     async listByFeeling(feeling): Promise<CanonicalInterventionPreset[]> {
@@ -671,8 +728,8 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
       const q = query(systemCol, where('recommendedForFeelings', 'array-contains', feeling))
 
       const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => doc.data() as CanonicalInterventionPreset)
-    }
+      return snapshot.docs.map((doc) => doc.data() as CanonicalInterventionPreset)
+    },
   }
 }
 ```
@@ -692,28 +749,42 @@ import {
   query,
   where,
   orderBy,
-  limit as firestoreLimit
+  limit as firestoreLimit,
 } from 'firebase/firestore'
 import { newId } from '@lifeos/core'
 import type {
   CanonicalInterventionSession,
   SessionId,
   InterventionId,
-  FeelingState
+  FeelingState,
 } from '@lifeos/mind'
 
 export interface SessionRepository {
-  create(userId: string, session: Omit<CanonicalInterventionSession, 'sessionId' | 'startedAtMs' | 'syncState' | 'version'>): Promise<CanonicalInterventionSession>
-  complete(userId: string, sessionId: SessionId, completion: {
-    feelingAfter?: FeelingState
-    responses?: Record<string, unknown>
-    createdTodoId?: string
-    linkedHabitCheckinIds?: string[]
-  }): Promise<CanonicalInterventionSession>
+  create(
+    userId: string,
+    session: Omit<
+      CanonicalInterventionSession,
+      'sessionId' | 'startedAtMs' | 'syncState' | 'version'
+    >
+  ): Promise<CanonicalInterventionSession>
+  complete(
+    userId: string,
+    sessionId: SessionId,
+    completion: {
+      feelingAfter?: FeelingState
+      responses?: Record<string, unknown>
+      createdTodoId?: string
+      linkedHabitCheckinIds?: string[]
+    }
+  ): Promise<CanonicalInterventionSession>
   get(userId: string, sessionId: SessionId): Promise<CanonicalInterventionSession | null>
   listForDate(userId: string, dateKey: string): Promise<CanonicalInterventionSession[]>
   listRecent(userId: string, limit?: number): Promise<CanonicalInterventionSession[]>
-  listForDateRange(userId: string, startDate: string, endDate: string): Promise<CanonicalInterventionSession[]>
+  listForDateRange(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<CanonicalInterventionSession[]>
 }
 
 export const createFirestoreSessionRepository = (): SessionRepository => {
@@ -729,7 +800,7 @@ export const createFirestoreSessionRepository = (): SessionRepository => {
         sessionId,
         startedAtMs: Date.now(),
         syncState: 'synced',
-        version: 1
+        version: 1,
       }
 
       const sessionDoc = doc(db, `users/${userId}/interventionSessions/${sessionId}`)
@@ -755,7 +826,7 @@ export const createFirestoreSessionRepository = (): SessionRepository => {
         completedAtMs: Date.now(),
         durationSec: Math.floor((Date.now() - existingSession.startedAtMs) / 1000),
         version: existingSession.version + 1,
-        syncState: 'synced'
+        syncState: 'synced',
       }
 
       await setDoc(sessionDoc, updated)
@@ -774,27 +845,19 @@ export const createFirestoreSessionRepository = (): SessionRepository => {
     async listForDate(userId, dateKey): Promise<CanonicalInterventionSession[]> {
       const db = getFirestoreClient()
       const sessionsCol = collection(db, `users/${userId}/interventionSessions`)
-      const q = query(
-        sessionsCol,
-        where('dateKey', '==', dateKey),
-        orderBy('startedAtMs', 'desc')
-      )
+      const q = query(sessionsCol, where('dateKey', '==', dateKey), orderBy('startedAtMs', 'desc'))
 
       const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => doc.data() as CanonicalInterventionSession)
+      return snapshot.docs.map((doc) => doc.data() as CanonicalInterventionSession)
     },
 
     async listRecent(userId, limit = 10): Promise<CanonicalInterventionSession[]> {
       const db = getFirestoreClient()
       const sessionsCol = collection(db, `users/${userId}/interventionSessions`)
-      const q = query(
-        sessionsCol,
-        orderBy('startedAtMs', 'desc'),
-        firestoreLimit(limit)
-      )
+      const q = query(sessionsCol, orderBy('startedAtMs', 'desc'), firestoreLimit(limit))
 
       const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => doc.data() as CanonicalInterventionSession)
+      return snapshot.docs.map((doc) => doc.data() as CanonicalInterventionSession)
     },
 
     async listForDateRange(userId, startDate, endDate): Promise<CanonicalInterventionSession[]> {
@@ -809,8 +872,8 @@ export const createFirestoreSessionRepository = (): SessionRepository => {
       )
 
       const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => doc.data() as CanonicalInterventionSession)
-    }
+      return snapshot.docs.map((doc) => doc.data() as CanonicalInterventionSession)
+    },
   }
 }
 ```
@@ -835,7 +898,7 @@ import type {
   CanonicalInterventionSession,
   InterventionId,
   SessionId,
-  FeelingState
+  FeelingState,
 } from '@lifeos/mind'
 
 const interventionRepo = createFirestoreInterventionRepository()
@@ -853,14 +916,20 @@ export interface UseMindInterventionsReturn {
   getRecommendedPresets: (feeling?: FeelingState) => CanonicalInterventionPreset[]
 
   // Session operations
-  startSession: (interventionId: InterventionId, feeling?: FeelingState) => Promise<CanonicalInterventionSession>
-  completeSession: (sessionId: SessionId, options: {
-    feelingAfter?: FeelingState
-    responses?: Record<string, unknown>
-    createTodo?: boolean
-    todoTitle?: string
-    linkToHabits?: boolean
-  }) => Promise<CanonicalInterventionSession>
+  startSession: (
+    interventionId: InterventionId,
+    feeling?: FeelingState
+  ) => Promise<CanonicalInterventionSession>
+  completeSession: (
+    sessionId: SessionId,
+    options: {
+      feelingAfter?: FeelingState
+      responses?: Record<string, unknown>
+      createTodo?: boolean
+      todoTitle?: string
+      linkToHabits?: boolean
+    }
+  ) => Promise<CanonicalInterventionSession>
   loadRecentSessions: () => Promise<void>
 }
 
@@ -883,7 +952,7 @@ export function useMindInterventions(): UseMindInterventionsReturn {
     try {
       const [system, userCustom] = await Promise.all([
         interventionRepo.listSystemPresets(),
-        userId ? interventionRepo.listUserPresets(userId) : Promise.resolve([])
+        userId ? interventionRepo.listUserPresets(userId) : Promise.resolve([]),
       ])
 
       setSystemPresets(system)
@@ -915,91 +984,97 @@ export function useMindInterventions(): UseMindInterventionsReturn {
     }
   }, [userId, loadPresets, loadRecentSessions])
 
-  const getRecommendedPresets = useCallback((feeling?: FeelingState): CanonicalInterventionPreset[] => {
-    if (!feeling) return systemPresets.slice(0, 3) // Default top 3
+  const getRecommendedPresets = useCallback(
+    (feeling?: FeelingState): CanonicalInterventionPreset[] => {
+      if (!feeling) return systemPresets.slice(0, 3) // Default top 3
 
-    return systemPresets.filter(preset =>
-      preset.recommendedForFeelings.includes(feeling)
-    )
-  }, [systemPresets])
+      return systemPresets.filter((preset) => preset.recommendedForFeelings.includes(feeling))
+    },
+    [systemPresets]
+  )
 
-  const startSession = useCallback(async (
-    interventionId: InterventionId,
-    feeling?: FeelingState
-  ): Promise<CanonicalInterventionSession> => {
-    if (!userId) throw new Error('User not authenticated')
+  const startSession = useCallback(
+    async (
+      interventionId: InterventionId,
+      feeling?: FeelingState
+    ): Promise<CanonicalInterventionSession> => {
+      if (!userId) throw new Error('User not authenticated')
 
-    const dateKey = new Date().toISOString().split('T')[0]
-
-    const session = await sessionRepo.create(userId, {
-      userId,
-      interventionId,
-      dateKey,
-      trigger: 'manual',
-      feelingBefore: feeling
-    })
-
-    setRecentSessions(prev => [session, ...prev])
-    return session
-  }, [userId])
-
-  const completeSession = useCallback(async (
-    sessionId: SessionId,
-    options: {
-      feelingAfter?: FeelingState
-      responses?: Record<string, unknown>
-      createTodo?: boolean
-      todoTitle?: string
-      linkToHabits?: boolean
-    }
-  ): Promise<CanonicalInterventionSession> => {
-    if (!userId) throw new Error('User not authenticated')
-
-    const linkedHabitCheckinIds: string[] = []
-
-    // Auto-link to meditation/mindfulness habits if requested
-    if (options.linkToHabits) {
       const dateKey = new Date().toISOString().split('T')[0]
 
-      const meditationHabits = habits.filter(h =>
-        (h.domain === 'meditation' || h.customDomain?.toLowerCase().includes('mindfulness')) &&
-        h.status === 'active'
-      )
+      const session = await sessionRepo.create(userId, {
+        userId,
+        interventionId,
+        dateKey,
+        trigger: 'manual',
+        feelingBefore: feeling,
+      })
 
-      for (const habit of meditationHabits) {
-        try {
-          const checkin = await checkIn(habit.habitId, dateKey, 'done', {
-            sourceType: 'intervention',
-            sourceId: sessionId,
-            note: 'Auto-logged from mind intervention'
-          })
-          linkedHabitCheckinIds.push(checkin.checkinId)
-        } catch (err) {
-          console.error('Failed to create habit check-in:', err)
+      setRecentSessions((prev) => [session, ...prev])
+      return session
+    },
+    [userId]
+  )
+
+  const completeSession = useCallback(
+    async (
+      sessionId: SessionId,
+      options: {
+        feelingAfter?: FeelingState
+        responses?: Record<string, unknown>
+        createTodo?: boolean
+        todoTitle?: string
+        linkToHabits?: boolean
+      }
+    ): Promise<CanonicalInterventionSession> => {
+      if (!userId) throw new Error('User not authenticated')
+
+      const linkedHabitCheckinIds: string[] = []
+
+      // Auto-link to meditation/mindfulness habits if requested
+      if (options.linkToHabits) {
+        const dateKey = new Date().toISOString().split('T')[0]
+
+        const meditationHabits = habits.filter(
+          (h) =>
+            (h.domain === 'meditation' || h.customDomain?.toLowerCase().includes('mindfulness')) &&
+            h.status === 'active'
+        )
+
+        for (const habit of meditationHabits) {
+          try {
+            const checkin = await checkIn(habit.habitId, dateKey, 'done', {
+              sourceType: 'intervention',
+              sourceId: sessionId,
+              note: 'Auto-logged from mind intervention',
+            })
+            linkedHabitCheckinIds.push(checkin.checkinId)
+          } catch (err) {
+            console.error('Failed to create habit check-in:', err)
+          }
+        }
+
+        if (linkedHabitCheckinIds.length > 0) {
+          toast.success(`Marked ${linkedHabitCheckinIds.length} habit(s) as done`)
         }
       }
 
-      if (linkedHabitCheckinIds.length > 0) {
-        toast.success(`Marked ${linkedHabitCheckinIds.length} habit(s) as done`)
-      }
-    }
+      // Complete the session
+      const completed = await sessionRepo.complete(userId, sessionId, {
+        feelingAfter: options.feelingAfter,
+        responses: options.responses,
+        createdTodoId: options.createTodo ? 'todo-placeholder' : undefined, // Would actually create todo
+        linkedHabitCheckinIds: linkedHabitCheckinIds.length > 0 ? linkedHabitCheckinIds : undefined,
+      })
 
-    // Complete the session
-    const completed = await sessionRepo.complete(userId, sessionId, {
-      feelingAfter: options.feelingAfter,
-      responses: options.responses,
-      createdTodoId: options.createTodo ? 'todo-placeholder' : undefined, // Would actually create todo
-      linkedHabitCheckinIds: linkedHabitCheckinIds.length > 0 ? linkedHabitCheckinIds : undefined
-    })
+      // Update local state
+      setRecentSessions((prev) => prev.map((s) => (s.sessionId === sessionId ? completed : s)))
 
-    // Update local state
-    setRecentSessions(prev =>
-      prev.map(s => s.sessionId === sessionId ? completed : s)
-    )
-
-    toast.success('Intervention complete')
-    return completed
-  }, [userId, habits, checkIn])
+      toast.success('Intervention complete')
+      return completed
+    },
+    [userId, habits, checkIn]
+  )
 
   return {
     systemPresets,
@@ -1011,7 +1086,7 @@ export function useMindInterventions(): UseMindInterventionsReturn {
     getRecommendedPresets,
     startSession,
     completeSession,
-    loadRecentSessions
+    loadRecentSessions,
   }
 }
 ```
@@ -1510,6 +1585,7 @@ export const seedSystemInterventions = onCall(async (request) => {
 ```
 
 **Run once after deployment:**
+
 ```bash
 firebase functions:call seedSystemInterventions --data '{}'
 ```
@@ -1557,9 +1633,7 @@ describe('System Intervention Presets', () => {
   })
 
   it('should have breathing interventions under 60 seconds', () => {
-    const breathingPresets = SYSTEM_INTERVENTION_PRESETS.filter(p =>
-      p.tags.includes('breathing')
-    )
+    const breathingPresets = SYSTEM_INTERVENTION_PRESETS.filter((p) => p.tags.includes('breathing'))
 
     for (const preset of breathingPresets) {
       expect(preset.defaultDurationSec).toBeLessThanOrEqual(60)
@@ -1571,6 +1645,7 @@ describe('System Intervention Presets', () => {
 ### 4.14 Integration Tests
 
 Test intervention flow:
+
 1. Start session
 2. Complete steps
 3. Auto-create habit check-in
@@ -1598,6 +1673,7 @@ Test intervention flow:
 ## Next Steps
 
 After Phase 4 completion:
+
 - **Phase 5:** Weekly Review integration, progress charts, recommendations
 - **Polish:** Performance optimization, accessibility, mobile responsiveness
 

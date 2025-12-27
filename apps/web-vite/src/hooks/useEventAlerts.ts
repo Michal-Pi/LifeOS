@@ -14,7 +14,12 @@ import { useState, useEffect, useCallback } from 'react'
 import type { CanonicalCalendarEvent, CanonicalAlert } from '@lifeos/calendar'
 import { createAlertDismissal } from '@lifeos/calendar'
 import { createLogger } from '@lifeos/core'
-import { startAlertScheduler, stopAlertScheduler, updateSchedulerEvents, type PendingAlert } from '@/alerts/alertScheduler'
+import {
+  startAlertScheduler,
+  stopAlertScheduler,
+  updateSchedulerEvents,
+  type PendingAlert,
+} from '@/alerts/alertScheduler'
 import { enqueueUpdate } from '@/outbox/worker'
 
 const logger = createLogger('useEventAlerts')
@@ -39,7 +44,7 @@ export function useEventAlerts({
   events,
   setEvents,
   selectedEvent,
-  setSelectedEvent
+  setSelectedEvent,
 }: UseEventAlertsParams): UseEventAlertsReturn {
   // Alert state
   const [activeAlerts, setActiveAlerts] = useState<PendingAlert[]>([])
@@ -69,76 +74,89 @@ export function useEventAlerts({
   }, [events])
 
   // Handle alert dismissal
-  const handleAlertDismiss = useCallback(async (event: CanonicalCalendarEvent) => {
-    // Remove from active alerts
-    setActiveAlerts((prev) => prev.filter((a) => a.event.canonicalEventId !== event.canonicalEventId))
+  const handleAlertDismiss = useCallback(
+    async (event: CanonicalCalendarEvent) => {
+      // Remove from active alerts
+      setActiveAlerts((prev) =>
+        prev.filter((a) => a.event.canonicalEventId !== event.canonicalEventId)
+      )
 
-    // Create dismissal state
-    const dismissal = createAlertDismissal(event)
+      // Create dismissal state
+      const dismissal = createAlertDismissal(event)
 
-    // Update canonical event with dismissal
-    const updatedEvent: CanonicalCalendarEvent = {
-      ...event,
-      alertDismissal: dismissal,
-      canonicalUpdatedAtMs: Date.now(),
-      source: { type: 'local' as const }
-    }
+      // Update canonical event with dismissal
+      const updatedEvent: CanonicalCalendarEvent = {
+        ...event,
+        alertDismissal: dismissal,
+        canonicalUpdatedAtMs: Date.now(),
+        source: { type: 'local' as const },
+      }
 
-    // Optimistic update
-    setEvents((prev) =>
-      prev.map((e) => (e.canonicalEventId === event.canonicalEventId ? updatedEvent : e))
-    )
+      // Optimistic update
+      setEvents((prev) =>
+        prev.map((e) => (e.canonicalEventId === event.canonicalEventId ? updatedEvent : e))
+      )
 
-    // Persist via outbox
-    try {
-      await enqueueUpdate(userId, updatedEvent, event.updatedAtMs)
-    } catch (error) {
-      logger.error('Failed to persist alert dismissal', error)
-    }
-  }, [userId, setEvents])
+      // Persist via outbox
+      try {
+        await enqueueUpdate(userId, updatedEvent, event.updatedAtMs)
+      } catch (error) {
+        logger.error('Failed to persist alert dismissal', error)
+      }
+    },
+    [userId, setEvents]
+  )
 
   // Handle opening event from alert banner
-  const handleAlertOpenEvent = useCallback((event: CanonicalCalendarEvent) => {
-    setSelectedEvent(event)
-    // Dismiss the alert when opening
-    void handleAlertDismiss(event)
-  }, [handleAlertDismiss, setSelectedEvent])
+  const handleAlertOpenEvent = useCallback(
+    (event: CanonicalCalendarEvent) => {
+      setSelectedEvent(event)
+      // Dismiss the alert when opening
+      void handleAlertDismiss(event)
+    },
+    [handleAlertDismiss, setSelectedEvent]
+  )
 
   // Handle alert setting change
-  const handleAlertChange = useCallback(async (alert: CanonicalAlert | null) => {
-    if (!selectedEvent) return
+  const handleAlertChange = useCallback(
+    async (alert: CanonicalAlert | null) => {
+      if (!selectedEvent) return
 
-    const updatedEvent: CanonicalCalendarEvent = {
-      ...selectedEvent,
-      alerts: alert ? [alert] : [],
-      alertsUpdatedAtMs: Date.now(),
-      canonicalUpdatedAtMs: Date.now(),
-      source: { type: 'local' as const }
-    }
+      const updatedEvent: CanonicalCalendarEvent = {
+        ...selectedEvent,
+        alerts: alert ? [alert] : [],
+        alertsUpdatedAtMs: Date.now(),
+        canonicalUpdatedAtMs: Date.now(),
+        source: { type: 'local' as const },
+      }
 
-    // Optimistic update
-    setEvents((prev) =>
-      prev.map((e) => (e.canonicalEventId === selectedEvent.canonicalEventId ? updatedEvent : e))
-    )
-    setSelectedEvent(updatedEvent)
-
-    // Persist via outbox
-    try {
-      await enqueueUpdate(userId, updatedEvent, selectedEvent.updatedAtMs)
-    } catch (error) {
-      logger.error('Failed to persist alert change', error)
-      // Revert on error
+      // Optimistic update
       setEvents((prev) =>
-        prev.map((e) => (e.canonicalEventId === selectedEvent.canonicalEventId ? selectedEvent : e))
+        prev.map((e) => (e.canonicalEventId === selectedEvent.canonicalEventId ? updatedEvent : e))
       )
-      setSelectedEvent(selectedEvent)
-    }
-  }, [selectedEvent, userId, setEvents, setSelectedEvent])
+      setSelectedEvent(updatedEvent)
+
+      // Persist via outbox
+      try {
+        await enqueueUpdate(userId, updatedEvent, selectedEvent.updatedAtMs)
+      } catch (error) {
+        logger.error('Failed to persist alert change', error)
+        // Revert on error
+        setEvents((prev) =>
+          prev.map((e) =>
+            e.canonicalEventId === selectedEvent.canonicalEventId ? selectedEvent : e
+          )
+        )
+        setSelectedEvent(selectedEvent)
+      }
+    },
+    [selectedEvent, userId, setEvents, setSelectedEvent]
+  )
 
   return {
     activeAlerts,
     handleAlertDismiss,
     handleAlertOpenEvent,
-    handleAlertChange
+    handleAlertChange,
   }
 }

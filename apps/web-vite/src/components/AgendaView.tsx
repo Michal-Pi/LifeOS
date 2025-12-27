@@ -9,14 +9,14 @@ interface AgendaViewProps {
 
 const timeFormatter = new Intl.DateTimeFormat('en-US', {
   hour: 'numeric',
-  minute: '2-digit'
+  minute: '2-digit',
 })
 
 export function AgendaView({ events, onEventSelect, selectedEventId }: AgendaViewProps) {
   // Group events by date
   const groupedEvents = useMemo(() => {
     const groups = new Map<string, CanonicalCalendarEvent[]>()
-    
+
     // Sort events by start time first
     const sortedEvents = [...events].sort((a, b) => a.startMs - b.startMs)
 
@@ -29,7 +29,7 @@ export function AgendaView({ events, onEventSelect, selectedEventId }: AgendaVie
 
     return Array.from(groups.entries()).map(([dateStr, events]) => ({
       date: new Date(dateStr),
-      events
+      events,
     }))
   }, [events])
 
@@ -49,39 +49,51 @@ export function AgendaView({ events, onEventSelect, selectedEventId }: AgendaVie
     }
   }
 
-  const hasToday = groupedEvents.some(g => g.date.toDateString() === new Date().toDateString())
+  const hasToday = groupedEvents.some((g) => g.date.toDateString() === new Date().toDateString())
 
   return (
     <div className="agenda-view">
       {hasToday && (
-        <div style={{ 
-          padding: '8px 16px', 
-          position: 'sticky', 
-          top: 0, 
-          zIndex: 10, 
-          backgroundColor: 'var(--bg-surface)',
-          borderBottom: '1px solid var(--border-color)'
-        }}>
-          <button onClick={scrollToToday} className="ghost-button small">Jump to Today</button>
+        <div
+          style={{
+            padding: '8px 16px',
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            backgroundColor: 'var(--bg-surface)',
+            borderBottom: '1px solid var(--border-color)',
+          }}
+        >
+          <button onClick={scrollToToday} className="ghost-button small">
+            Jump to Today
+          </button>
         </div>
       )}
 
       {groupedEvents.map(({ date, events }) => (
-        <div key={date.toISOString()} className="agenda-group" id={`agenda-date-${date.toDateString()}`}>
+        <div
+          key={date.toISOString()}
+          className="agenda-group"
+          id={`agenda-date-${date.toDateString()}`}
+        >
           <div className="agenda-date-header">
             <span className="agenda-date-day">{date.getDate()}</span>
             <div className="agenda-date-meta">
-              <span className="agenda-date-weekday">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
-              <span className="agenda-date-month">{date.toLocaleDateString('en-US', { month: 'long' })}</span>
+              <span className="agenda-date-weekday">
+                {date.toLocaleDateString('en-US', { weekday: 'short' })}
+              </span>
+              <span className="agenda-date-month">
+                {date.toLocaleDateString('en-US', { month: 'long' })}
+              </span>
             </div>
           </div>
-          
+
           <div className="agenda-events-list">
-            {events.map(event => {
+            {events.map((event) => {
               const isSelected = selectedEventId === event.canonicalEventId
               const isRecurring = Boolean(
-                event.isRecurringSeries || 
-                event.recurrenceV2?.rule || 
+                event.isRecurringSeries ||
+                event.recurrenceV2?.rule ||
                 event.recurrence?.recurrenceRules?.length
               )
 
@@ -99,19 +111,23 @@ export function AgendaView({ events, onEventSelect, selectedEventId }: AgendaVie
                       <>
                         <span>{timeFormatter.format(new Date(event.startMs))}</span>
                         <span className="time-separator"> - </span>
-                        <span className="end-time">{timeFormatter.format(new Date(event.endMs))}</span>
+                        <span className="end-time">
+                          {timeFormatter.format(new Date(event.endMs))}
+                        </span>
                       </>
                     )}
                   </div>
-                  
+
                   <div className="agenda-details">
                     <div className="agenda-title-row">
                       <h4>{event.title || 'Untitled Event'}</h4>
-                      {isRecurring && <span className="recurrence-icon" title="Recurring">↻</span>}
+                      {isRecurring && (
+                        <span className="recurrence-icon" title="Recurring">
+                          ↻
+                        </span>
+                      )}
                     </div>
-                    {event.location && (
-                      <p className="agenda-location">{event.location}</p>
-                    )}
+                    {event.location && <p className="agenda-location">{event.location}</p>}
                   </div>
                 </button>
               )

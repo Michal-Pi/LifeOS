@@ -112,11 +112,11 @@ export interface WritebackJob {
  */
 export function getRetryDelay(attempts: number): number {
   const delays = [
-    1 * 60 * 1000,      // 1 minute
-    5 * 60 * 1000,      // 5 minutes
-    15 * 60 * 1000,     // 15 minutes
-    60 * 60 * 1000,     // 1 hour
-    6 * 60 * 60 * 1000  // 6 hours (cap)
+    1 * 60 * 1000, // 1 minute
+    5 * 60 * 1000, // 5 minutes
+    15 * 60 * 1000, // 15 minutes
+    60 * 60 * 1000, // 1 hour
+    6 * 60 * 60 * 1000, // 6 hours (cap)
   ]
   return delays[Math.min(attempts, delays.length - 1)]
 }
@@ -143,7 +143,7 @@ export function createWritebackJob(params: {
     availableAtMs: now, // Immediately available
     attempts: 0,
     maxAttempts: 10,
-    status: 'pending'
+    status: 'pending',
   }
 }
 
@@ -154,7 +154,7 @@ export function markJobProcessing(job: WritebackJob): WritebackJob {
   return {
     ...job,
     status: 'processing',
-    attempts: job.attempts + 1
+    attempts: job.attempts + 1,
   }
 }
 
@@ -164,37 +164,31 @@ export function markJobProcessing(job: WritebackJob): WritebackJob {
 export function markJobSucceeded(job: WritebackJob): WritebackJob {
   return {
     ...job,
-    status: 'succeeded'
+    status: 'succeeded',
   }
 }
 
 /**
  * Mark a job as failed with retry
  */
-export function markJobFailedWithRetry(
-  job: WritebackJob,
-  error: WritebackJobError
-): WritebackJob {
+export function markJobFailedWithRetry(job: WritebackJob, error: WritebackJobError): WritebackJob {
   const delay = getRetryDelay(job.attempts)
   return {
     ...job,
     status: 'pending', // Back to pending for retry
     availableAtMs: Date.now() + delay,
-    lastError: error
+    lastError: error,
   }
 }
 
 /**
  * Mark a job as permanently failed
  */
-export function markJobFailed(
-  job: WritebackJob,
-  error: WritebackJobError
-): WritebackJob {
+export function markJobFailed(job: WritebackJob, error: WritebackJobError): WritebackJob {
   return {
     ...job,
     status: 'failed',
-    lastError: error
+    lastError: error,
   }
 }
 
@@ -216,18 +210,15 @@ export function isJobAvailable(job: WritebackJob): boolean {
  * Error categories for retry decisions
  */
 export type ErrorCategory =
-  | 'auth'       // Auth error - stop retries, mark account needs_attention
+  | 'auth' // Auth error - stop retries, mark account needs_attention
   | 'validation' // 4xx validation - fail permanently
-  | 'conflict'   // 409/412 etag mismatch - treat as conflict
-  | 'transient'  // 5xx or network - retry
+  | 'conflict' // 409/412 etag mismatch - treat as conflict
+  | 'transient' // 5xx or network - retry
 
 /**
  * Categorize an error for retry decisions
  */
-export function categorizeError(
-  code?: string,
-  statusCode?: number
-): ErrorCategory {
+export function categorizeError(code?: string, statusCode?: number): ErrorCategory {
   if (code === 'invalid_grant' || code === 'auth_error') {
     return 'auth'
   }
@@ -239,4 +230,3 @@ export function categorizeError(
   }
   return 'transient'
 }
-

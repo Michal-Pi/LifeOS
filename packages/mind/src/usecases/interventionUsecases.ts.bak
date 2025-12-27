@@ -1,0 +1,291 @@
+/**
+ * Intervention Usecases
+ *
+ * Pure business logic for mind intervention operations.
+ */
+
+import type { InterventionRepository } from '../ports/interventionRepository'
+import type { SessionRepository } from '../ports/sessionRepository'
+import type {
+  CanonicalInterventionPreset,
+  CanonicalInterventionSession,
+  InterventionId,
+  SessionId,
+  CreateInterventionInput,
+  UpdateInterventionInput,
+  CreateSessionInput,
+  CompleteSessionInput,
+  InterventionType,
+  FeelingState,
+} from '../domain/models'
+
+/**
+ * Create a new intervention preset with validation
+ */
+export function createInterventionUsecase(interventionRepo: InterventionRepository) {
+  return async (
+    userId: string,
+    input: Omit<CreateInterventionInput, 'userId'>
+  ): Promise<CanonicalInterventionPreset> => {
+    // Business rule: Must have at least one step
+    if (input.steps.length === 0) {
+      throw new Error('Intervention must have at least one step')
+    }
+
+    // Business rule: Title must not be empty
+    if (!input.title.trim()) {
+      throw new Error('Intervention title is required')
+    }
+
+    // Business rule: Validate step structure
+    for (const step of input.steps) {
+      switch (step.kind) {
+        case 'text':
+          if (!step.content.trim()) {
+            throw new Error('Text step content cannot be empty')
+          }
+          break
+        case 'timer':
+          if (step.durationSec <= 0) {
+            throw new Error('Timer duration must be positive')
+          }
+          if (!step.instruction.trim()) {
+            throw new Error('Timer step instruction cannot be empty')
+          }
+          break
+        case 'choice':
+          if (!step.question.trim()) {
+            throw new Error('Choice step question cannot be empty')
+          }
+          if (step.options.length < 2) {
+            throw new Error('Choice step must have at least 2 options')
+          }
+          break
+        case 'input':
+          if (!step.prompt.trim()) {
+            throw new Error('Input step prompt cannot be empty')
+          }
+          break
+      }
+    }
+
+    const fullInput: CreateInterventionInput = {
+      ...input,
+      userId,
+    }
+
+    return await interventionRepo.create(userId, fullInput)
+  }
+}
+
+/**
+ * Update an existing intervention preset
+ */
+export function updateInterventionUsecase(interventionRepo: InterventionRepository) {
+  return async (
+    userId: string,
+    interventionId: InterventionId,
+    updates: UpdateInterventionInput
+  ): Promise<CanonicalInterventionPreset> => {
+    // Business rule: If updating steps, must have at least one
+    if (updates.steps && updates.steps.length === 0) {
+      throw new Error('Intervention must have at least one step')
+    }
+
+    // Business rule: If updating title, must not be empty
+    if (updates.title !== undefined && !updates.title.trim()) {
+      throw new Error('Intervention title is required')
+    }
+
+    return await interventionRepo.update(userId, interventionId, updates)
+  }
+}
+
+/**
+ * Delete an intervention preset
+ */
+export function deleteInterventionUsecase(interventionRepo: InterventionRepository) {
+  return async (userId: string, interventionId: InterventionId): Promise<void> => {
+    await interventionRepo.delete(userId, interventionId)
+  }
+}
+
+/**
+ * Get a single intervention preset
+ */
+export function getInterventionUsecase(interventionRepo: InterventionRepository) {
+  return async (
+    userId: string,
+    interventionId: InterventionId
+  ): Promise<CanonicalInterventionPreset | null> => {
+    return await interventionRepo.get(userId, interventionId)
+  }
+}
+
+/**
+ * List intervention presets with optional filtering
+ */
+export function listInterventionsUsecase(interventionRepo: InterventionRepository) {
+  return async (
+    userId: string,
+    options?: { type?: InterventionType; feeling?: FeelingState }
+  ): Promise<CanonicalInterventionPreset[]> => {
+    let presets = await interventionRepo.list(userId)
+
+    // Filter by type if specified
+    if (options?.type) {
+      presets = presets.filter((p: any) => p.type === options.type)
+    }
+
+    // Filter by recommended feeling if specified
+    if (options?.feeling) {
+      presets = presets.filter((p: any) => p.recommendedForFeelings.includes(options.feeling!))
+    }
+
+    return presets
+  }
+}
+
+/**
+ * Get intervention presets recommended for a specific feeling
+ */
+export function getRecommendedInterventionsUsecase(interventionRepo: InterventionRepository) {
+  return async (userId: string, feeling: FeelingState): Promise<CanonicalInterventionPreset[]> => {
+    const allPresets = await interventionRepo.list(userId)
+
+    // Filter to presets recommended for this feeling
+    const recommended = allPresets.filter((p: any) =>
+      p.recommendedForFeelings.includes(feeling)
+    )
+
+    // Sort by relevance (could be enhanced with usage stats, effectiveness, etc.)
+    return recommended
+  }
+}
+
+/**
+ * Start a new intervention session
+ */
+export function startSessionUsecase(sessionRepo: SessionRepository) {
+  return async (
+    userId: string,
+    input: Omit<CreateSessionInput, 'userId'>
+  ): Promise<CanonicalInterventionSession> => {
+    const fullInput: CreateSessionInput = {
+      ...input,
+      userId,
+    }
+
+    return await sessionRepo.create(userId, fullInput)
+  }
+}
+
+/**
+ * Complete an intervention session with validation
+ */
+export function completeSessionUsecase(sessionRepo: SessionRepository) {
+  return async (userId: string, input: CompleteSessionInput): Promise<CanonicalInterventionSession> => {
+    // Get the session
+    const session = await sessionRepo.get(userId, input.sessionId)
+    if (!session) {
+      throw new Error('Session not found')
+    }
+
+    // Business rule: Cannot complete already completed session
+    if (session.completedAtMs) {
+      throw new Error('Session already completed')
+    }
+
+    return await sessionRepo.complete(userId, input)
+  }
+}
+
+/**
+ * Get a single session
+ */
+export function getSessionUsecase(sessionRepo: SessionRepository) {
+  return async (userId: string, sessionId: SessionId): Promise<CanonicalInterventionSession | null> => {
+    return await sessionRepo.get(userId, sessionId)
+  }
+}
+
+/**
+ * List sessions with optional filtering
+ */
+export function listSessionsUsecase(sessionRepo: SessionRepository) {
+  return async (
+    userId: string,
+    options?: { startDate?: string; endDate?: string; interventionId?: InterventionId }
+  ): Promise<CanonicalInterventionSession[]> => {
+    return await sessionRepo.list(userId, options)
+  }
+}
+
+/**
+ * Get session statistics for a date range
+ */
+export function getSessionStatsUsecase(sessionRepo: SessionRepository) {
+  return async (
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<{
+    totalSessions: number
+    completedSessions: number
+    averageDurationSec: number
+    mostCommonFeeling: FeelingState | null
+    mostUsedInterventionId: InterventionId | null
+  }> => {
+    const sessions = await sessionRepo.list(userId, { startDate, endDate })
+
+    const completedSessions = sessions.filter((s) => s.completedAtMs).length
+    const totalSessions = sessions.length
+
+    // Calculate average duration
+    const durationsSum = sessions.reduce((sum: any, s: any) => sum + (s.durationSec || 0), 0)
+    const averageDurationSec = totalSessions > 0 ? durationsSum / totalSessions : 0
+
+    // Find most common feeling
+    const feelingCounts = new Map<FeelingState, number>()
+    sessions.forEach((s: any) => {
+      if (s.feelingBefore) {
+        feelingCounts.set(s.feelingBefore, (feelingCounts.get(s.feelingBefore) || 0) + 1)
+      }
+    })
+
+    let mostCommonFeeling: FeelingState | null = null
+    let maxCount = 0
+    feelingCounts.forEach((count: any, feeling: any) => {
+      if (count > maxCount) {
+        maxCount = count
+        mostCommonFeeling = feeling
+      }
+    })
+
+    // Find most used intervention
+    const interventionCounts = new Map<InterventionId, number>()
+    sessions.forEach((s: any) => {
+      interventionCounts.set(
+        s.interventionId,
+        (interventionCounts.get(s.interventionId) || 0) + 1
+      )
+    })
+
+    let mostUsedInterventionId: InterventionId | null = null
+    let maxInterventionCount = 0
+    interventionCounts.forEach((count: any, id: any) => {
+      if (count > maxInterventionCount) {
+        maxInterventionCount = count
+        mostUsedInterventionId = id
+      }
+    })
+
+    return {
+      totalSessions,
+      completedSessions,
+      averageDurationSec,
+      mostCommonFeeling,
+      mostUsedInterventionId,
+    }
+  }
+}

@@ -14,15 +14,19 @@ Notes domain package for LifeOS - handles rich text note-taking, organization, a
 ## Data Models
 
 ### Note
+
 Core note document with rich content, organization, and metadata.
 
 ### Topic
+
 Folders for organizing notes (can be nested).
 
 ### Section
+
 Subfolders within topics for additional organization.
 
 ### Attachment
+
 File attachments linked to notes (images, PDFs, etc.).
 
 ## Repository Pattern

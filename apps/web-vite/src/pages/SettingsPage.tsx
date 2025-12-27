@@ -31,7 +31,11 @@ declare const confirm: (message: string) => boolean
 import type { Quote } from '@lifeos/core'
 import { getDefaultQuotes } from '@lifeos/core'
 import { useState, useEffect, useCallback } from 'react'
-import { createFirestoreQuoteRepository, type SortBy, type SortOrder } from '@/adapters/firestoreQuoteRepository'
+import {
+  createFirestoreQuoteRepository,
+  type SortBy,
+  type SortOrder,
+} from '@/adapters/firestoreQuoteRepository'
 import { useAuth } from '@/hooks/useAuth'
 import { SystemStatus } from '@/components/SystemStatus'
 import { CalendarSettingsPanel } from '@/components/CalendarSettingsPanel'
@@ -104,17 +108,20 @@ export function SettingsPage() {
   }, [userId, loadQuotes])
 
   // Handle sort column click
-  const handleSort = useCallback((column: SortBy) => {
-    if (sortBy === column) {
-      // Toggle order if same column
-      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
-    } else {
-      // New column, default to ascending for text/author, descending for date
-      setSortBy(column)
-      setSortOrder(column === 'addedAt' ? 'desc' : 'asc')
-    }
-    setPage(0) // Reset to first page
-  }, [sortBy])
+  const handleSort = useCallback(
+    (column: SortBy) => {
+      if (sortBy === column) {
+        // Toggle order if same column
+        setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+      } else {
+        // New column, default to ascending for text/author, descending for date
+        setSortBy(column)
+        setSortOrder(column === 'addedAt' ? 'desc' : 'asc')
+      }
+      setPage(0) // Reset to first page
+    },
+    [sortBy]
+  )
 
   // Handle page change
   const handlePageChange = useCallback((newPage: number) => {
@@ -122,20 +129,23 @@ export function SettingsPage() {
   }, [])
 
   // Handle delete
-  const handleDelete = useCallback(async (quoteId: string) => {
-    if (!confirm('Are you sure you want to delete this quote?')) return
+  const handleDelete = useCallback(
+    async (quoteId: string) => {
+      if (!confirm('Are you sure you want to delete this quote?')) return
 
-    try {
-      await quoteRepository.deleteQuote(userId, quoteId)
+      try {
+        await quoteRepository.deleteQuote(userId, quoteId)
 
-      // Reload current page
-      await loadQuotes()
+        // Reload current page
+        await loadQuotes()
 
-      setError(null)
-    } catch (err) {
-      setError((err as Error).message)
-    }
-  }, [userId, loadQuotes])
+        setError(null)
+      } catch (err) {
+        setError((err as Error).message)
+      }
+    },
+    [userId, loadQuotes]
+  )
 
   // Start adding new quote
   const handleStartAdd = useCallback(() => {
@@ -204,16 +214,10 @@ export function SettingsPage() {
         <div>
           <p className="section-label">Settings</p>
           <h1>Settings</h1>
-          <p className="settings-meta">
-            Configure calendar sync and manage daily quotes.
-          </p>
+          <p className="settings-meta">Configure calendar sync and manage daily quotes.</p>
         </div>
         <div className="settings-actions">
-          <button
-            className="ghost-button"
-            onClick={handleResetToDefaults}
-            disabled={loading}
-          >
+          <button className="ghost-button" onClick={handleResetToDefaults} disabled={loading}>
             Reset to Defaults
           </button>
           <button
@@ -306,9 +310,14 @@ export function SettingsPage() {
                         >
                           Quote
                           {sortBy === 'text' ? (
-                            <span className="sort-indicator">{sortOrder === 'asc' ? ' (A-Z)' : ' (Z-A)'}</span>
+                            <span className="sort-indicator">
+                              {sortOrder === 'asc' ? ' (A-Z)' : ' (Z-A)'}
+                            </span>
                           ) : (
-                            <span className="sort-indicator" style={{ opacity: 0.4 }}> ⇅</span>
+                            <span className="sort-indicator" style={{ opacity: 0.4 }}>
+                              {' '}
+                              ⇅
+                            </span>
                           )}
                         </th>
                         <th
@@ -318,9 +327,14 @@ export function SettingsPage() {
                         >
                           Author
                           {sortBy === 'author' ? (
-                            <span className="sort-indicator">{sortOrder === 'asc' ? ' (A-Z)' : ' (Z-A)'}</span>
+                            <span className="sort-indicator">
+                              {sortOrder === 'asc' ? ' (A-Z)' : ' (Z-A)'}
+                            </span>
                           ) : (
-                            <span className="sort-indicator" style={{ opacity: 0.4 }}> ⇅</span>
+                            <span className="sort-indicator" style={{ opacity: 0.4 }}>
+                              {' '}
+                              ⇅
+                            </span>
                           )}
                         </th>
                         <th
@@ -330,9 +344,14 @@ export function SettingsPage() {
                         >
                           Date Added
                           {sortBy === 'addedAt' ? (
-                            <span className="sort-indicator">{sortOrder === 'asc' ? ' ↑' : ' ↓'}</span>
+                            <span className="sort-indicator">
+                              {sortOrder === 'asc' ? ' ↑' : ' ↓'}
+                            </span>
                           ) : (
-                            <span className="sort-indicator" style={{ opacity: 0.4 }}> ⇅</span>
+                            <span className="sort-indicator" style={{ opacity: 0.4 }}>
+                              {' '}
+                              ⇅
+                            </span>
                           )}
                         </th>
                         <th className="actions-column">Actions</th>
@@ -342,7 +361,9 @@ export function SettingsPage() {
                       {quotes.map((quote) => (
                         <tr key={quote.id}>
                           <td className="quote-text-cell">&ldquo;{quote.text}&rdquo;</td>
-                          <td className="quote-author-cell">{quote.author || <em className="empty-author">(empty)</em>}</td>
+                          <td className="quote-author-cell">
+                            {quote.author || <em className="empty-author">(empty)</em>}
+                          </td>
                           <td className="quote-date-cell">{quote.addedAt}</td>
                           <td className="quote-actions-cell">
                             <button

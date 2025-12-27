@@ -39,28 +39,31 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div className="error-boundary-fallback" style={{
-          padding: '2rem',
-          margin: '2rem',
-          border: '2px solid var(--destructive, #ef4444)',
-          borderRadius: '8px',
-          backgroundColor: 'var(--destructive-bg, #fef2f2)',
-        }}>
+        <div
+          className="error-boundary-fallback"
+          style={{
+            padding: '2rem',
+            margin: '2rem',
+            border: '2px solid var(--destructive, #ef4444)',
+            borderRadius: '8px',
+            backgroundColor: 'var(--destructive-bg, #fef2f2)',
+          }}
+        >
           <h2 style={{ color: 'var(--destructive, #ef4444)', marginBottom: '1rem' }}>
             Something went wrong
           </h2>
           <details style={{ marginBottom: '1rem' }}>
-            <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>
-              Error details
-            </summary>
-            <pre style={{
-              marginTop: '0.5rem',
-              padding: '1rem',
-              backgroundColor: 'var(--muted, #f3f4f6)',
-              borderRadius: '4px',
-              overflow: 'auto',
-              fontSize: '0.875rem'
-            }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>Error details</summary>
+            <pre
+              style={{
+                marginTop: '0.5rem',
+                padding: '1rem',
+                backgroundColor: 'var(--muted, #f3f4f6)',
+                borderRadius: '4px',
+                overflow: 'auto',
+                fontSize: '0.875rem',
+              }}
+            >
               {this.state.error.message}
               {'\n\n'}
               {this.state.error.stack}
@@ -75,7 +78,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer',
-              fontWeight: 'bold'
+              fontWeight: 'bold',
             }}
           >
             Try again

@@ -14,6 +14,7 @@
 ### Step 1: Review the Plan (5 minutes)
 
 Read the complete plan:
+
 - **File:** [`docs/features/learning-notes-plan.md`](./learning-notes-plan.md)
 - **Focus on:** Phase 1 tasks and deliverables
 
@@ -37,6 +38,7 @@ touch packages/notes/README.md
 ### Step 3: Set Up Package Configuration (15 minutes)
 
 **Create `packages/notes/package.json`:**
+
 ```json
 {
   "name": "@lifeos/notes",
@@ -60,6 +62,7 @@ touch packages/notes/README.md
 ```
 
 **Create `packages/notes/tsconfig.json`:**
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -68,9 +71,7 @@ touch packages/notes/README.md
     "rootDir": "./src"
   },
   "include": ["src"],
-  "references": [
-    { "path": "../core" }
-  ]
+  "references": [{ "path": "../core" }]
 }
 ```
 
@@ -79,6 +80,7 @@ touch packages/notes/README.md
 **Edit `packages/notes/src/domain/models.ts`:**
 
 Start with the core interfaces from the plan:
+
 - `Note` interface
 - `Topic` interface
 - `Section` interface
@@ -91,6 +93,7 @@ Reference the detailed models in the plan document.
 **Edit `packages/notes/src/repositories/noteRepository.ts`:**
 
 Define the abstract repository interface following the pattern from calendar:
+
 ```typescript
 export interface NoteRepository {
   create(userId: string, note: Note): Promise<void>
@@ -104,9 +107,10 @@ export interface NoteRepository {
 ### Step 6: Add to Workspace (5 minutes)
 
 **Update `pnpm-workspace.yaml`:**
+
 ```yaml
 packages:
-  - 'packages/*'  # Should already include notes
+  - 'packages/*' # Should already include notes
   - 'apps/*'
 ```
 
@@ -150,11 +154,13 @@ Track your progress on Phase 1:
 ## Helpful Resources
 
 ### Internal References
+
 - **Calendar Package:** `packages/calendar/` - Similar patterns
 - **Outbox Pattern:** `apps/web-vite/src/outbox/` - Reuse for notes
 - **Firestore Adapters:** `apps/web-vite/src/adapters/` - Follow same pattern
 
 ### External Documentation
+
 - **TipTap Docs:** https://tiptap.dev/docs/editor/introduction
 - **KaTeX Docs:** https://katex.org/docs/api.html
 - **ProseMirror:** https://prosemirror.net/docs/
@@ -163,6 +169,7 @@ Track your progress on Phase 1:
 ## Questions or Issues?
 
 As you implement, update the plan document with:
+
 - Decisions made
 - Issues encountered
 - Deviations from original plan

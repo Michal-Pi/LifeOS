@@ -19,13 +19,13 @@ export function ProjectList({
   onSelectProject,
   onSelectMilestone,
   selectedProjectId,
-  selectedMilestoneId
+  selectedMilestoneId,
 }: ProjectListProps) {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
 
   const toggleProject = (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    setExpandedProjects(prev => {
+    setExpandedProjects((prev) => {
       const next = new Set(prev)
       if (next.has(projectId)) {
         next.delete(projectId)
@@ -43,20 +43,22 @@ export function ProjectList({
         <p className="empty-state-text">No projects yet</p>
       ) : (
         <ul className="project-tree">
-          {projects.map(project => {
-            const projectMilestones = milestones.filter(m => m.projectId === project.id)
+          {projects.map((project) => {
+            const projectMilestones = milestones.filter((m) => m.projectId === project.id)
             const isExpanded = expandedProjects.has(project.id)
             const isSelected = selectedProjectId === project.id
-            
-            const { progress } = calculateWeightedProgress(tasks.filter(t => t.projectId === project.id))
+
+            const { progress } = calculateWeightedProgress(
+              tasks.filter((t) => t.projectId === project.id)
+            )
 
             return (
               <li key={project.id} className="project-item">
-                <div 
+                <div
                   className={`project-row ${isSelected ? 'selected' : ''}`}
                   onClick={() => onSelectProject(project)}
                 >
-                  <button 
+                  <button
                     className="expand-toggle"
                     onClick={(e) => toggleProject(project.id, e)}
                     style={{ visibility: projectMilestones.length > 0 ? 'visible' : 'hidden' }}
@@ -64,7 +66,7 @@ export function ProjectList({
                     {isExpanded ? '▼' : '▶'}
                   </button>
                   <span className="project-title">{project.title}</span>
-                  {tasks.some(t => t.projectId === project.id) && (
+                  {tasks.some((t) => t.projectId === project.id) && (
                     <div className="mini-progress-bar" title={`${Math.round(progress)}% complete`}>
                       <div className="mini-progress-fill" style={{ width: `${progress}%` }} />
                     </div>
@@ -73,7 +75,7 @@ export function ProjectList({
 
                 {isExpanded && projectMilestones.length > 0 && (
                   <ul className="milestone-list">
-                    {projectMilestones.map(milestone => (
+                    {projectMilestones.map((milestone) => (
                       <li key={milestone.id}>
                         <button
                           className={`milestone-row ${selectedMilestoneId === milestone.id ? 'selected' : ''}`}

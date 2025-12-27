@@ -5,7 +5,7 @@ import type {
   GenerateInstancesOptions,
   GenerateInstancesResult,
   RecurrenceInstance,
-  Weekday
+  Weekday,
 } from './types'
 import { describeRecurrence, makeInstanceId } from './types'
 
@@ -19,7 +19,7 @@ const WEEKDAY_MAP: Record<Weekday, RRuleWeekdayType> = {
   TH: RRule.TH,
   FR: RRule.FR,
   SA: RRule.SA,
-  SU: RRule.SU
+  SU: RRule.SU,
 }
 
 // Map frequency to rrule frequency
@@ -27,7 +27,7 @@ const FREQ_MAP = {
   DAILY: RRule.DAILY,
   WEEKLY: RRule.WEEKLY,
   MONTHLY: RRule.MONTHLY,
-  YEARLY: RRule.YEARLY
+  YEARLY: RRule.YEARLY,
 }
 
 /**
@@ -49,12 +49,15 @@ export interface MasterEventData {
 /**
  * Convert canonical recurrence rule to rrule options
  */
-function toRRuleOptions(rule: CanonicalRecurrenceRule, dtstart: Date): Partial<ConstructorParameters<typeof RRule>[0]> {
+function toRRuleOptions(
+  rule: CanonicalRecurrenceRule,
+  dtstart: Date
+): Partial<ConstructorParameters<typeof RRule>[0]> {
   const options: Partial<ConstructorParameters<typeof RRule>[0]> = {
     freq: FREQ_MAP[rule.freq],
     interval: rule.interval ?? 1,
     dtstart,
-    wkst: rule.wkst === 'SU' ? RRule.SU : RRule.MO
+    wkst: rule.wkst === 'SU' ? RRule.SU : RRule.MO,
   }
 
   if (rule.byWeekday?.length) {
@@ -119,7 +122,7 @@ export function generateInstances(
   // Create modified rule with effective until
   const modifiedRule: CanonicalRecurrenceRule = {
     ...recurrence.rule,
-    untilMs: effectiveUntilMs
+    untilMs: effectiveUntilMs,
   }
 
   // Create rrule instance
@@ -183,7 +186,7 @@ export function generateInstances(
       isMaster: false,
       providerInstanceId: override?.providerInstanceId,
       providerEtag: override?.providerEtag,
-      recurrenceDescription: describeRecurrence(recurrence)
+      recurrenceDescription: describeRecurrence(recurrence),
     }
 
     instances.push(instance)
@@ -195,7 +198,7 @@ export function generateInstances(
   return {
     instances,
     truncated,
-    totalCount: truncated ? undefined : instances.length
+    totalCount: truncated ? undefined : instances.length,
   }
 }
 
@@ -224,7 +227,7 @@ export function generateSingleInstance(
     seriesId,
     occurrenceKey,
     startMs: override?.startMs ?? occurrenceStartMs,
-    endMs: override?.endMs ?? (occurrenceStartMs + durationMs),
+    endMs: override?.endMs ?? occurrenceStartMs + durationMs,
     allDay: override?.allDay ?? master.allDay ?? false,
     title: override?.title ?? master.title,
     description: override?.description ?? master.description,
@@ -237,7 +240,7 @@ export function generateSingleInstance(
     isMaster: false,
     providerInstanceId: override?.providerInstanceId,
     providerEtag: override?.providerEtag,
-    recurrenceDescription: describeRecurrence(recurrence)
+    recurrenceDescription: describeRecurrence(recurrence),
   }
 }
 

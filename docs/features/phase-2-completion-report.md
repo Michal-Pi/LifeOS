@@ -20,6 +20,7 @@ Created Firestore repository implementations for both habits and check-ins:
 **Location:** `apps/web-vite/src/adapters/habits/firestoreHabitRepository.ts`
 
 **Methods Implemented:**
+
 - `create(userId, input)` → Creates new habit with auto-generated ID
 - `update(userId, habitId, updates)` → Updates habit with version increment
 - `delete(userId, habitId)` → Deletes habit from Firestore
@@ -28,6 +29,7 @@ Created Firestore repository implementations for both habits and check-ins:
 - `listForDate(userId, dateKey)` → Gets habits scheduled for specific date
 
 **Key Features:**
+
 - Auto-generates habit IDs using `newId<'habit'>('habit')`
 - Tracks `createdAtMs` and `updatedAtMs` timestamps
 - Version tracking for conflict resolution
@@ -38,6 +40,7 @@ Created Firestore repository implementations for both habits and check-ins:
 **Location:** `apps/web-vite/src/adapters/habits/firestoreCheckinRepository.ts`
 
 **Methods Implemented:**
+
 - `upsert(userId, input)` → Creates or updates check-in (idempotent)
 - `update(userId, checkinId, updates)` → Updates existing check-in
 - `delete(userId, checkinId)` → Deletes check-in
@@ -48,6 +51,7 @@ Created Firestore repository implementations for both habits and check-ins:
 - `listForDateRange(userId, startDate, endDate)` → Range query
 
 **Key Features:**
+
 - Deterministic check-in IDs: `checkin:${habitId}_${dateKey}`
 - Upsert operation for idempotent updates
 - Support for retroactive logging
@@ -62,11 +66,13 @@ Created comprehensive offline storage layer for habits.
 **Location:** `apps/web-vite/src/habits/offlineStore.ts`
 
 **Database Schema:**
+
 - **Database:** `lifeos-habits`
 - **Version:** 1
 - **Stores:** `habits`, `checkins`
 
 **Habits Store Indexes:**
+
 - `userId` - Query by user
 - `status` - Query by status
 - `domain` - Query by domain
@@ -75,6 +81,7 @@ Created comprehensive offline storage layer for habits.
 - `createdAtMs` - Sorting
 
 **Checkins Store Indexes:**
+
 - `userId` - Query by user
 - `habitId` - Query by habit
 - `dateKey` - Query by date
@@ -86,6 +93,7 @@ Created comprehensive offline storage layer for habits.
 **Operations Implemented:**
 
 **Habits:**
+
 - `saveHabitLocally(habit)` - Store/update habit
 - `getHabitLocally(habitId)` - Retrieve habit
 - `deleteHabitLocally(habitId)` - Remove habit
@@ -95,6 +103,7 @@ Created comprehensive offline storage layer for habits.
 - `getUnsyncedHabits(userId)` - Pending sync
 
 **Checkins:**
+
 - `saveCheckinLocally(checkin)` - Store/update check-in
 - `getCheckinLocally(checkinId)` - Retrieve check-in
 - `getCheckinByHabitAndDateLocally(userId, habitId, dateKey)` - Specific lookup
@@ -106,6 +115,7 @@ Created comprehensive offline storage layer for habits.
 - `getUnsyncedCheckins(userId)` - Pending sync
 
 **Utility Functions:**
+
 - `clearAllLocalData()` - Reset storage
 - `getStorageStats(userId)` - Statistics dashboard
 
@@ -118,6 +128,7 @@ Created comprehensive React hook for habit operations.
 **Location:** `apps/web-vite/src/hooks/useHabitOperations.ts`
 
 **Hook Interface:**
+
 ```typescript
 export interface UseHabitOperationsReturn {
   // State
@@ -150,6 +161,7 @@ export interface UseHabitOperationsReturn {
 ```
 
 **Key Features:**
+
 - Automatic state management with `useState`
 - Error handling and loading states
 - Optimistic UI updates
@@ -171,6 +183,7 @@ Created comprehensive unit tests for domain models.
 **Location:** `packages/habits/src/domain/__tests__/models.test.ts`
 
 **Test Coverage:**
+
 - ✅ CanonicalHabit creation with time window anchor
 - ✅ CanonicalHabit creation with after-event anchor
 - ✅ All habit domains (sleep, exercise, meditation, etc.)
@@ -184,6 +197,7 @@ Created comprehensive unit tests for domain models.
 - ✅ Unique check-ins per habit per day
 
 **Results:**
+
 ```
 ✓ src/domain/__tests__/models.test.ts (11 tests) 4ms
 Test Files  1 passed (1)
@@ -195,6 +209,7 @@ Test Files  1 passed (1)
 **Location:** `packages/mind/src/domain/__tests__/models.test.ts`
 
 **Test Coverage:**
+
 - ✅ CanonicalInterventionPreset creation
 - ✅ All intervention types (physiological_sigh, CBT, ACT, etc.)
 - ✅ Choice step interventions
@@ -208,6 +223,7 @@ Test Files  1 passed (1)
 - ✅ All step types (text, timer, choice, input)
 
 **Results:**
+
 ```
 ✓ src/domain/__tests__/models.test.ts (11 tests) 4ms
 Test Files  1 passed (1)
@@ -226,6 +242,7 @@ pnpm turbo typecheck
 ```
 
 **New Packages:**
+
 - @lifeos/habits: ✅ Passed
 - @lifeos/mind: ✅ Passed
 
@@ -237,6 +254,7 @@ pnpm turbo lint
 ```
 
 **Issues Fixed:**
+
 - Fixed `prefer-const` in `firestoreCheckinRepository.ts:153`
 - Fixed `prefer-const` in `useHabitOperations.ts:456`
 
@@ -258,6 +276,7 @@ pnpm turbo build --filter=@lifeos/habits --filter=@lifeos/mind
 ```
 
 **Build Outputs:**
+
 - `packages/habits/dist/index.js` (68 B)
 - `packages/habits/dist/index.d.ts` (4.33 KB)
 - `packages/mind/dist/index.js` (68 B)
@@ -268,20 +287,25 @@ pnpm turbo build --filter=@lifeos/habits --filter=@lifeos/mind
 ## Files Created
 
 ### Firestore Adapters
+
 - `apps/web-vite/src/adapters/habits/firestoreHabitRepository.ts` (143 lines)
 - `apps/web-vite/src/adapters/habits/firestoreCheckinRepository.ts` (204 lines)
 
 ### Offline Storage
+
 - `apps/web-vite/src/habits/offlineStore.ts` (290 lines)
 
 ### React Hooks
+
 - `apps/web-vite/src/hooks/useHabitOperations.ts` (509 lines)
 
 ### Unit Tests
+
 - `packages/habits/src/domain/__tests__/models.test.ts` (193 lines)
 - `packages/mind/src/domain/__tests__/models.test.ts` (230 lines)
 
 ### Documentation
+
 - `docs/features/phase-2-completion-report.md` (this file)
 
 ---
@@ -291,6 +315,7 @@ pnpm turbo build --filter=@lifeos/habits --filter=@lifeos/mind
 ### ✅ Factory Pattern
 
 All repositories use factory functions:
+
 ```typescript
 export const createFirestoreHabitRepository = (): HabitRepository => {
   const db = getFirestoreClient()
@@ -314,6 +339,7 @@ export const createFirestoreHabitRepository = (): HabitRepository => {
 ### ✅ Optimistic Updates
 
 Hook updates local state immediately:
+
 ```typescript
 setHabits((prev) => [habit, ...prev])
 ```
@@ -321,6 +347,7 @@ setHabits((prev) => [habit, ...prev])
 ### ✅ Error Handling
 
 Consistent error handling in hooks:
+
 ```typescript
 try {
   // operation
@@ -338,14 +365,17 @@ try {
 ## Performance Metrics
 
 **Build Times:**
+
 - @lifeos/habits: 1.017s (22ms ESM, 995ms DTS)
 - @lifeos/mind: 1.017s (20ms ESM, 997ms DTS)
 
 **Test Execution:**
+
 - @lifeos/habits: 323ms (11 tests)
 - @lifeos/mind: 290ms (11 tests)
 
 **Bundle Sizes:**
+
 - habits ESM: 68 B
 - habits DTS: 4.33 KB
 - mind ESM: 68 B

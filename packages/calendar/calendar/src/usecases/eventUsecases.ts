@@ -18,7 +18,12 @@
  */
 
 import { generateId } from '@lifeos/core'
-import { computeOccursOn, isDeleted, type CanonicalCalendarEvent, type SyncState } from '../domain/models'
+import {
+  computeOccursOn,
+  isDeleted,
+  type CanonicalCalendarEvent,
+  type SyncState,
+} from '../domain/models'
 import type { CalendarEventRepository } from '../ports/calendarRepository'
 
 export interface CreateEventInput {
@@ -40,7 +45,20 @@ export interface CreateEventInput {
 export interface UpdateEventInput {
   userId: string
   eventId: string
-  patch: Partial<Pick<CanonicalCalendarEvent, 'title' | 'location' | 'description' | 'startMs' | 'endMs' | 'startIso' | 'endIso' | 'timezone' | 'allDay'>>
+  patch: Partial<
+    Pick<
+      CanonicalCalendarEvent,
+      | 'title'
+      | 'location'
+      | 'description'
+      | 'startMs'
+      | 'endMs'
+      | 'startIso'
+      | 'endIso'
+      | 'timezone'
+      | 'allDay'
+    >
+  >
   baseUpdatedAtMs?: number
 }
 
@@ -67,7 +85,10 @@ function validateTime(startMs: number, endMs: number, allDay = false) {
 /**
  * Determine if an event can be written back to a provider
  */
-export function canWriteBack(event: CanonicalCalendarEvent): { canWrite: boolean; reason?: string } {
+export function canWriteBack(event: CanonicalCalendarEvent): {
+  canWrite: boolean
+  reason?: string
+} {
   // Recurring events cannot be written back yet
   if (event.recurrence?.recurrenceRules?.length || event.providerRef.recurringEventId) {
     return { canWrite: false, reason: 'recurring_event_not_supported' }
@@ -110,7 +131,10 @@ function getInitialSyncState(hasTargetProvider: boolean): SyncState {
  * @param input - Event creation parameters
  * @returns The newly created canonical event
  */
-export async function createEvent(deps: EventUsecaseDeps, input: CreateEventInput): Promise<CanonicalCalendarEvent> {
+export async function createEvent(
+  deps: EventUsecaseDeps,
+  input: CreateEventInput
+): Promise<CanonicalCalendarEvent> {
   // Validate business rules before creating
   validateTime(input.startMs, input.endMs, Boolean(input.allDay))
   const nowMs = Date.now()
@@ -127,7 +151,7 @@ export async function createEvent(deps: EventUsecaseDeps, input: CreateEventInpu
       provider: input.targetProvider ?? 'local',
       accountId: input.targetAccountId ?? 'local',
       providerCalendarId: input.targetProviderCalendarId ?? input.calendarId ?? 'local',
-      providerEventId: `local:${generateId()}` // Will be replaced after writeback
+      providerEventId: `local:${generateId()}`, // Will be replaced after writeback
     },
     primaryProvider: input.targetProvider,
     createdAt: new Date(nowMs).toISOString(),
@@ -155,7 +179,7 @@ export async function createEvent(deps: EventUsecaseDeps, input: CreateEventInpu
     calendarId: input.calendarId,
     status: 'confirmed',
     visibility: 'default',
-    transparency: 'opaque'
+    transparency: 'opaque',
   }
   await deps.repository.createEvent(input.userId, canonicalEvent)
   return canonicalEvent
@@ -184,7 +208,10 @@ export async function createEvent(deps: EventUsecaseDeps, input: CreateEventInpu
  * @param input - Update parameters with base revision for conflict detection
  * @returns The updated canonical event
  */
-export async function updateEvent(deps: EventUsecaseDeps, input: UpdateEventInput): Promise<CanonicalCalendarEvent> {
+export async function updateEvent(
+  deps: EventUsecaseDeps,
+  input: UpdateEventInput
+): Promise<CanonicalCalendarEvent> {
   // Fetch current state for conflict detection and validation
   const existing = await deps.repository.getById(input.userId, input.eventId)
   if (!existing || isDeleted(existing)) {
@@ -223,7 +250,7 @@ export async function updateEvent(deps: EventUsecaseDeps, input: UpdateEventInpu
       input.patch.startIso ?? existing.startIso,
       input.patch.endIso ?? existing.endIso
     ),
-    source: { type: 'local' }
+    source: { type: 'local' },
   }
 
   {
@@ -274,4 +301,3 @@ export async function deleteEvent(deps: EventUsecaseDeps, input: DeleteEventInpu
   // Perform soft delete with conflict resolution
   await deps.repository.deleteEvent(input.userId, input.eventId, input.baseUpdatedAtMs)
 }
-

@@ -4,8 +4,3 @@ export interface AccountRepository {
   listAccounts(userId: string): Promise<CalendarAccount[]>
   getAccount(userId: string, accountId: string): Promise<CalendarAccount | null>
 }
-
-
-
-
-

@@ -39,6 +39,7 @@ import { useAutoSync } from '@/hooks/useAutoSync'
 import { calculatePriorityScore } from '@/lib/priority'
 import { HabitCheckInCard } from '@/components/habits/HabitCheckInCard'
 import { MindInterventionModal } from '@/components/mind/MindInterventionModal'
+import { IncantationDisplay } from '@/components/habits/IncantationDisplay'
 
 const quoteRepository = createFirestoreQuoteRepository()
 const calendarRepository = createFirestoreCalendarEventRepository()
@@ -182,6 +183,9 @@ export function TodayPage() {
           )}
         </div>
       </section>
+
+      {/* Daily Incantations */}
+      <IncantationDisplay />
 
       {/* Two-column layout for calendar and todos */}
       <div className="today-preview-refined">

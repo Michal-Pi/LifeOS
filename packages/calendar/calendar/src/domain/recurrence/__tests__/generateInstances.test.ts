@@ -4,7 +4,7 @@ import {
   generateSingleInstance,
   isValidOccurrence,
   getNextOccurrence,
-  type MasterEventData
+  type MasterEventData,
 } from '../generateInstances'
 import type { CanonicalRecurrence } from '../types'
 
@@ -20,7 +20,7 @@ function createMaster(
     endMs: startMs + durationMs,
     title: 'Test Event',
     timezone: 'UTC',
-    recurrence
+    recurrence,
   }
 }
 
@@ -28,12 +28,12 @@ describe('generateInstances', () => {
   describe('daily recurrence', () => {
     it('generates daily instances in range', () => {
       const master = createMaster({
-        rule: { freq: 'DAILY' }
+        rule: { freq: 'DAILY' },
       })
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
-        endMs: new Date('2025-01-05T23:59:59Z').getTime()
+        endMs: new Date('2025-01-05T23:59:59Z').getTime(),
       })
 
       expect(result.instances).toHaveLength(5)
@@ -42,12 +42,12 @@ describe('generateInstances', () => {
 
     it('respects interval', () => {
       const master = createMaster({
-        rule: { freq: 'DAILY', interval: 2 }
+        rule: { freq: 'DAILY', interval: 2 },
       })
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
-        endMs: new Date('2025-01-10T23:59:59Z').getTime()
+        endMs: new Date('2025-01-10T23:59:59Z').getTime(),
       })
 
       // Every other day: 1, 3, 5, 7, 9
@@ -58,12 +58,12 @@ describe('generateInstances', () => {
   describe('weekly recurrence', () => {
     it('generates weekly instances', () => {
       const master = createMaster({
-        rule: { freq: 'WEEKLY' }
+        rule: { freq: 'WEEKLY' },
       })
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
-        endMs: new Date('2025-01-31T23:59:59Z').getTime()
+        endMs: new Date('2025-01-31T23:59:59Z').getTime(),
       })
 
       // Jan 1, 8, 15, 22, 29
@@ -75,14 +75,14 @@ describe('generateInstances', () => {
       const monday = new Date('2025-01-06T09:00:00Z')
       const master = createMaster(
         {
-          rule: { freq: 'WEEKLY', byWeekday: ['MO', 'WE', 'FR'] }
+          rule: { freq: 'WEEKLY', byWeekday: ['MO', 'WE', 'FR'] },
         },
         monday.getTime()
       )
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-06T00:00:00Z').getTime(),
-        endMs: new Date('2025-01-12T23:59:59Z').getTime()
+        endMs: new Date('2025-01-12T23:59:59Z').getTime(),
       })
 
       // Week of Jan 6: Mon 6, Wed 8, Fri 10
@@ -93,12 +93,12 @@ describe('generateInstances', () => {
   describe('monthly recurrence', () => {
     it('generates monthly on same day', () => {
       const master = createMaster({
-        rule: { freq: 'MONTHLY' }
+        rule: { freq: 'MONTHLY' },
       })
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
-        endMs: new Date('2025-06-30T23:59:59Z').getTime()
+        endMs: new Date('2025-06-30T23:59:59Z').getTime(),
       })
 
       // Jan 1, Feb 1, Mar 1, Apr 1, May 1, Jun 1
@@ -109,12 +109,12 @@ describe('generateInstances', () => {
   describe('COUNT limit', () => {
     it('stops after count occurrences', () => {
       const master = createMaster({
-        rule: { freq: 'DAILY', count: 3 }
+        rule: { freq: 'DAILY', count: 3 },
       })
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
-        endMs: new Date('2025-01-31T23:59:59Z').getTime()
+        endMs: new Date('2025-01-31T23:59:59Z').getTime(),
       })
 
       expect(result.instances).toHaveLength(3)
@@ -125,12 +125,12 @@ describe('generateInstances', () => {
     it('stops at until date', () => {
       const until = new Date('2025-01-05T23:59:59Z')
       const master = createMaster({
-        rule: { freq: 'DAILY', untilMs: until.getTime() }
+        rule: { freq: 'DAILY', untilMs: until.getTime() },
       })
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
-        endMs: new Date('2025-01-31T23:59:59Z').getTime()
+        endMs: new Date('2025-01-31T23:59:59Z').getTime(),
       })
 
       expect(result.instances).toHaveLength(5)
@@ -142,12 +142,12 @@ describe('generateInstances', () => {
       const jan3 = new Date('2025-01-03T09:00:00Z')
       const master = createMaster({
         rule: { freq: 'DAILY' },
-        exdatesMs: [jan3.getTime()]
+        exdatesMs: [jan3.getTime()],
       })
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
-        endMs: new Date('2025-01-05T23:59:59Z').getTime()
+        endMs: new Date('2025-01-05T23:59:59Z').getTime(),
       })
 
       // Jan 1, 2, 4, 5 (skipping 3)
@@ -159,13 +159,13 @@ describe('generateInstances', () => {
       const jan3 = new Date('2025-01-03T09:00:00Z')
       const master = createMaster({
         rule: { freq: 'DAILY' },
-        exdatesMs: [jan3.getTime()]
+        exdatesMs: [jan3.getTime()],
       })
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
         endMs: new Date('2025-01-05T23:59:59Z').getTime(),
-        includeExcluded: true
+        includeExcluded: true,
       })
 
       expect(result.instances).toHaveLength(5)
@@ -183,14 +183,14 @@ describe('generateInstances', () => {
           [`${jan3Start}`]: {
             title: 'Modified Event',
             location: 'New Location',
-            updatedAtMs: Date.now()
-          }
-        }
+            updatedAtMs: Date.now(),
+          },
+        },
       })
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
-        endMs: new Date('2025-01-05T23:59:59Z').getTime()
+        endMs: new Date('2025-01-05T23:59:59Z').getTime(),
       })
 
       const jan3Instance = result.instances.find((i) => new Date(i.startMs).getUTCDate() === 3)
@@ -210,19 +210,17 @@ describe('generateInstances', () => {
           [`${jan3OriginalStart}`]: {
             startMs: jan3NewStart,
             endMs: jan3NewEnd,
-            updatedAtMs: Date.now()
-          }
-        }
+            updatedAtMs: Date.now(),
+          },
+        },
       })
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
-        endMs: new Date('2025-01-05T23:59:59Z').getTime()
+        endMs: new Date('2025-01-05T23:59:59Z').getTime(),
       })
 
-      const jan3Instance = result.instances.find(
-        (i) => i.occurrenceKey === `${jan3OriginalStart}`
-      )
+      const jan3Instance = result.instances.find((i) => i.occurrenceKey === `${jan3OriginalStart}`)
       expect(jan3Instance?.startMs).toBe(jan3NewStart)
       expect(jan3Instance?.endMs).toBe(jan3NewEnd)
     })
@@ -235,13 +233,13 @@ describe('generateInstances', () => {
         rule: { freq: 'DAILY' },
         split: {
           splitAtMs: splitAt,
-          childSeriesId: 'child-series'
-        }
+          childSeriesId: 'child-series',
+        },
       })
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
-        endMs: new Date('2025-01-15T23:59:59Z').getTime()
+        endMs: new Date('2025-01-15T23:59:59Z').getTime(),
       })
 
       // Should only have Jan 1-9 (before split)
@@ -254,17 +252,17 @@ describe('generateInstances', () => {
   describe('instance identity', () => {
     it('generates stable instanceId', () => {
       const master = createMaster({
-        rule: { freq: 'DAILY' }
+        rule: { freq: 'DAILY' },
       })
 
       const result1 = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
-        endMs: new Date('2025-01-03T23:59:59Z').getTime()
+        endMs: new Date('2025-01-03T23:59:59Z').getTime(),
       })
 
       const result2 = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
-        endMs: new Date('2025-01-03T23:59:59Z').getTime()
+        endMs: new Date('2025-01-03T23:59:59Z').getTime(),
       })
 
       expect(result1.instances[0].instanceId).toBe(result2.instances[0].instanceId)
@@ -275,13 +273,13 @@ describe('generateInstances', () => {
   describe('maxInstances limit', () => {
     it('truncates results and sets truncated flag', () => {
       const master = createMaster({
-        rule: { freq: 'DAILY' }
+        rule: { freq: 'DAILY' },
       })
 
       const result = generateInstances(master, {
         startMs: new Date('2025-01-01T00:00:00Z').getTime(),
         endMs: new Date('2025-12-31T23:59:59Z').getTime(),
-        maxInstances: 10
+        maxInstances: 10,
       })
 
       expect(result.instances).toHaveLength(10)
@@ -293,7 +291,7 @@ describe('generateInstances', () => {
 describe('generateSingleInstance', () => {
   it('generates a single instance', () => {
     const master = createMaster({
-      rule: { freq: 'DAILY' }
+      rule: { freq: 'DAILY' },
     })
 
     const occurrenceStartMs = new Date('2025-01-03T09:00:00Z').getTime()
@@ -308,7 +306,7 @@ describe('generateSingleInstance', () => {
     const jan3 = new Date('2025-01-03T09:00:00Z').getTime()
     const master = createMaster({
       rule: { freq: 'DAILY' },
-      exdatesMs: [jan3]
+      exdatesMs: [jan3],
     })
 
     const instance = generateSingleInstance(master, jan3)
@@ -319,7 +317,7 @@ describe('generateSingleInstance', () => {
 describe('isValidOccurrence', () => {
   it('returns true for valid occurrence', () => {
     const recurrence: CanonicalRecurrence = {
-      rule: { freq: 'DAILY' }
+      rule: { freq: 'DAILY' },
     }
     const masterStart = new Date('2025-01-01T09:00:00Z').getTime()
     const occurrence = new Date('2025-01-03T09:00:00Z').getTime()
@@ -329,7 +327,7 @@ describe('isValidOccurrence', () => {
 
   it('returns false for invalid time', () => {
     const recurrence: CanonicalRecurrence = {
-      rule: { freq: 'DAILY' }
+      rule: { freq: 'DAILY' },
     }
     const masterStart = new Date('2025-01-01T09:00:00Z').getTime()
     const invalidOccurrence = new Date('2025-01-03T10:00:00Z').getTime() // Wrong time
@@ -341,7 +339,7 @@ describe('isValidOccurrence', () => {
 describe('getNextOccurrence', () => {
   it('returns next occurrence after given time', () => {
     const recurrence: CanonicalRecurrence = {
-      rule: { freq: 'DAILY' }
+      rule: { freq: 'DAILY' },
     }
     const masterStart = new Date('2025-01-01T09:00:00Z').getTime()
     const afterMs = new Date('2025-01-03T10:00:00Z').getTime()
@@ -353,8 +351,3 @@ describe('getNextOccurrence', () => {
     expect(nextDate.getUTCDate()).toBe(4) // Jan 4
   })
 })
-
-
-
-
-

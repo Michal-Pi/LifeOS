@@ -15,13 +15,7 @@ import {
   query,
   where,
 } from 'firebase/firestore'
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-  deleteObject,
-  getBlob,
-} from 'firebase/storage'
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject, getBlob } from 'firebase/storage'
 import { getFirestoreClient, getStorageClient } from '@/lib/firebase'
 import { newId } from '@lifeos/core'
 import type {

@@ -21,7 +21,7 @@ export function AvailabilityTimeline({
   rangeStartMs,
   rangeEndMs,
   proposedStartMs,
-  proposedEndMs
+  proposedEndMs,
 }: AvailabilityTimelineProps) {
   const rangeMs = rangeEndMs - rangeStartMs
   const hourMs = 60 * 60 * 1000
@@ -43,9 +43,7 @@ export function AvailabilityTimeline({
     if (!proposedStartMs || !proposedEndMs) return false
 
     return attendees.some((attendee) =>
-      attendee.busy.some(
-        (block) => proposedStartMs < block.endMs && proposedEndMs > block.startMs
-      )
+      attendee.busy.some((block) => proposedStartMs < block.endMs && proposedEndMs > block.startMs)
     )
   }, [attendees, proposedStartMs, proposedEndMs])
 
@@ -58,11 +56,7 @@ export function AvailabilityTimeline({
       {/* Hour markers */}
       <div className="timeline-hours">
         {hours.map((hour) => (
-          <div
-            key={hour}
-            className="hour-marker"
-            style={{ left: `${getPosition(hour)}%` }}
-          >
+          <div key={hour} className="hour-marker" style={{ left: `${getPosition(hour)}%` }}>
             <span className="hour-label">
               {new Date(hour).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
@@ -79,7 +73,9 @@ export function AvailabilityTimeline({
                 {attendee.email.split('@')[0]}
               </span>
               {attendee.error && (
-                <span className="attendee-error" title={attendee.error}>⚠️</span>
+                <span className="attendee-error" title={attendee.error}>
+                  ⚠️
+                </span>
               )}
             </div>
             <div className="attendee-timeline">
@@ -90,7 +86,7 @@ export function AvailabilityTimeline({
                   className="busy-block"
                   style={{
                     left: `${getPosition(block.startMs)}%`,
-                    width: `${getWidth(block.startMs, block.endMs)}%`
+                    width: `${getWidth(block.startMs, block.endMs)}%`,
                   }}
                   title={`Busy: ${formatTime(block.startMs)} - ${formatTime(block.endMs)}`}
                 />
@@ -106,12 +102,10 @@ export function AvailabilityTimeline({
           className={`proposed-time ${hasConflict ? 'conflict' : 'available'}`}
           style={{
             left: `${getPosition(proposedStartMs)}%`,
-            width: `${getWidth(proposedStartMs, proposedEndMs)}%`
+            width: `${getWidth(proposedStartMs, proposedEndMs)}%`,
           }}
         >
-          <span className="proposed-label">
-            {hasConflict ? '⚠️ Conflict' : '✓ Available'}
-          </span>
+          <span className="proposed-label">{hasConflict ? '⚠️ Conflict' : '✓ Available'}</span>
         </div>
       )}
 
@@ -131,7 +125,6 @@ export function AvailabilityTimeline({
 function formatTime(ms: number): string {
   return new Date(ms).toLocaleTimeString([], {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
-

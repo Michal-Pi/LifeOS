@@ -36,10 +36,10 @@ export function useOutbox(userId: string) {
       const allOps = await listAll(userId)
       setPendingOps(allOps.filter((op) => op.status === 'pending' || op.status === 'applying'))
       setFailedOps(allOps.filter((op) => op.status === 'failed'))
-    });
+    })
 
     // Initial load
-    (async () => {
+    ;(async () => {
       const allOps = await listAll(userId)
       setPendingOps(allOps.filter((op) => op.status === 'pending' || op.status === 'applying'))
       setFailedOps(allOps.filter((op) => op.status === 'failed'))

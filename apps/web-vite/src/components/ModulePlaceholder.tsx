@@ -3,7 +3,7 @@
 export function ModulePlaceholder({
   title,
   description,
-  primaryActionLabel
+  primaryActionLabel,
 }: {
   title: string
   description: string

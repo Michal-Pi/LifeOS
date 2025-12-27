@@ -8,7 +8,9 @@ import { generateId } from '@/lib/idGenerator'
 interface MilestoneFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (milestone: Omit<CanonicalMilestone, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>
+  onSave: (
+    milestone: Omit<CanonicalMilestone, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  ) => Promise<void>
   projectId: string
 }
 
@@ -16,7 +18,7 @@ export function MilestoneFormModal({
   isOpen,
   onClose,
   onSave,
-  projectId
+  projectId,
 }: MilestoneFormModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -47,9 +49,14 @@ export function MilestoneFormModal({
         description: description.trim() || undefined,
         deadline: deadline || undefined,
         objective: objective.trim() || undefined,
-        keyResults: keyResults.trim() ? keyResults.split('\n').filter(Boolean).map(text => ({ id: generateId(), text })) : undefined,
+        keyResults: keyResults.trim()
+          ? keyResults
+              .split('\n')
+              .filter(Boolean)
+              .map((text) => ({ id: generateId(), text }))
+          : undefined,
         projectId,
-        archived: false
+        archived: false,
       })
       onClose()
     } catch (error) {
@@ -63,12 +70,14 @@ export function MilestoneFormModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content milestone-form-modal" onClick={e => e.stopPropagation()}>
+      <div className="modal-content milestone-form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>New Milestone</h2>
-          <button className="close-button" onClick={onClose}>×</button>
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
         </div>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="milestone-title">Title</label>
@@ -76,7 +85,7 @@ export function MilestoneFormModal({
               id="milestone-title"
               type="text"
               value={title}
-              onChange={e => setTitle(e.target.value)}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="Milestone Name"
               required
               autoFocus
@@ -89,7 +98,7 @@ export function MilestoneFormModal({
               id="milestone-deadline"
               type="date"
               value={deadline}
-              onChange={e => setDeadline(e.target.value)}
+              onChange={(e) => setDeadline(e.target.value)}
             />
           </div>
 
@@ -99,7 +108,7 @@ export function MilestoneFormModal({
               id="milestone-objective"
               type="text"
               value={objective}
-              onChange={e => setObjective(e.target.value)}
+              onChange={(e) => setObjective(e.target.value)}
               placeholder="What is the goal of this milestone?"
             />
           </div>
@@ -109,14 +118,16 @@ export function MilestoneFormModal({
             <textarea
               id="milestone-key-results"
               value={keyResults}
-              onChange={e => setKeyResults(e.target.value)}
+              onChange={(e) => setKeyResults(e.target.value)}
               placeholder="e.g., Launch beta to 100 users"
               rows={3}
             />
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="ghost-button" onClick={onClose}>Cancel</button>
+            <button type="button" className="ghost-button" onClick={onClose}>
+              Cancel
+            </button>
             <button type="submit" className="primary-button" disabled={isSubmitting}>
               Create Milestone
             </button>

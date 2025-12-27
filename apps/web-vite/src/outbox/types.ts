@@ -21,13 +21,13 @@ export interface OutboxOp {
   payload: CreatePayload | UpdatePayload | DeletePayload
 
   // Conflict resolution fields
-  baseRev?: number              // Revision the client was working from
-  baseUpdatedAtMs?: number      // Timestamp the client was working from
-  deviceId: string              // Stable device identifier
+  baseRev?: number // Revision the client was working from
+  baseUpdatedAtMs?: number // Timestamp the client was working from
+  deviceId: string // Stable device identifier
 
   // Timing and retry fields
   createdAtMs: number
-  availableAtMs: number         // When this op can be retried (for backoff)
+  availableAtMs: number // When this op can be retried (for backoff)
   attempts: number
   maxAttempts: number
 
@@ -37,17 +37,21 @@ export interface OutboxOp {
 }
 
 export type CreatePayload = { event: CanonicalCalendarEvent }
-export type UpdatePayload = { event: CanonicalCalendarEvent; writebackOp?: WritebackOp; writebackMeta?: WritebackMeta }
+export type UpdatePayload = {
+  event: CanonicalCalendarEvent
+  writebackOp?: WritebackOp
+  writebackMeta?: WritebackMeta
+}
 export type DeletePayload = object
 
 /**
  * Backoff configuration
  */
 export const BACKOFF_CONFIG = {
-  baseDelayMs: 1000,         // 1 second
-  maxDelayMs: 60 * 1000,     // 1 minute max
+  baseDelayMs: 1000, // 1 second
+  maxDelayMs: 60 * 1000, // 1 minute max
   maxAttempts: 10,
-  jitterFactor: 0.2          // 20% jitter
+  jitterFactor: 0.2, // 20% jitter
 } as const
 
 /**

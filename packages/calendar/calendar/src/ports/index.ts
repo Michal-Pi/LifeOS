@@ -6,4 +6,3 @@ export type { SyncStatusRepository } from './syncStatusRepository'
 export type { CalendarSyncRunRepository } from './calendarSyncRunRepository'
 export type { CompositeEventRepository } from './compositeRepository'
 export type { WritebackRepository } from './writebackRepository'
-

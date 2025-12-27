@@ -17,9 +17,8 @@ export function PriorityView({
   onToggleComplete,
   selectedTaskId,
   domainFilter,
-  onDomainFilterChange
+  onDomainFilterChange,
 }: PriorityViewProps) {
-  
   const groupedTasks = useMemo(() => {
     return groupTasksByBucket(tasks, domainFilter)
   }, [tasks, domainFilter])
@@ -27,7 +26,9 @@ export function PriorityView({
   return (
     <div className="priority-view">
       <div className="priority-toolbar">
-        <label htmlFor="priority-domain" className="section-label">Domain</label>
+        <label htmlFor="priority-domain" className="section-label">
+          Domain
+        </label>
         <select
           id="priority-domain"
           value={domainFilter}
@@ -41,27 +42,27 @@ export function PriorityView({
           <option value="wellbeing">Wellbeing</option>
         </select>
       </div>
-      {PRIORITY_BUCKETS.map(bucket => {
+      {PRIORITY_BUCKETS.map((bucket) => {
         const bucketTasks = groupedTasks.get(bucket.key) || []
         if (bucketTasks.length === 0) return null
 
         return (
           <div key={bucket.key} className="priority-bucket">
             <h3 className="bucket-header">
-              {bucket.label} 
+              {bucket.label}
               <span className="bucket-count">{bucketTasks.length}</span>
             </h3>
             <div className="bucket-tasks">
-              {bucketTasks.map(task => (
-                <div 
+              {bucketTasks.map((task) => (
+                <div
                   key={task.id}
                   className={`task-card ${selectedTaskId === task.id ? 'selected' : ''} ${task.completed ? 'completed' : ''}`}
                   onClick={() => onSelectTask(task)}
                 >
                   <div className="task-card-header">
-                    <input 
-                      type="checkbox" 
-                      checked={task.completed} 
+                    <input
+                      type="checkbox"
+                      checked={task.completed}
                       onChange={(e) => {
                         e.stopPropagation()
                         onToggleComplete(task)

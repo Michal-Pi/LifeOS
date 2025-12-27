@@ -5,6 +5,7 @@
 Completed comprehensive code review and implemented critical + high-priority improvements to the LifeOS codebase. All immediate issues have been resolved, resulting in improved performance, better error handling, reduced code duplication, and enhanced developer experience.
 
 **Total Changes:**
+
 - 20+ files modified
 - ~190 lines of duplicate code removed
 - 10+ new features/improvements added
@@ -17,11 +18,13 @@ Completed comprehensive code review and implemented critical + high-priority imp
 ### Critical Issues (All Completed)
 
 #### 1. Fixed ESLint Configuration Bug ⚠️
+
 **File:** [eslint.config.js](../eslint.config.js)
 
 **Issue:** Referenced non-existent `apps/web/` directory instead of `apps/web-vite/`
 
 **Fix:**
+
 - Line 12: `apps/web/tsconfig.json` → `apps/web-vite/tsconfig.json`
 - Line 42: `apps/web/out` → `apps/web-vite/out`
 
@@ -30,9 +33,11 @@ Completed comprehensive code review and implemented critical + high-priority imp
 ---
 
 #### 2. Added React.memo to Large Components
+
 **Purpose:** Prevent unnecessary re-renders and improve performance
 
 **Files Modified:**
+
 - [EventFormModal.tsx](../apps/web-vite/src/components/EventFormModal.tsx:74) (559 lines) - Wrapped with `React.memo`
 - [TaskList.tsx](../apps/web-vite/src/components/TaskList.tsx:28) (160 lines) - Wrapped with `React.memo`
 - [AttendeeList.tsx](../apps/web-vite/src/components/AttendeeList.tsx:73) (223 lines) - Wrapped with `React.memo`
@@ -40,6 +45,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 - [WeeklyView.tsx](../apps/web-vite/src/components/WeeklyView.tsx:52) (172 lines) - Wrapped with `React.memo`
 
 **Impact:**
+
 - 40-60% reduction in unnecessary re-renders (estimated)
 - Improved typing performance in EventFormModal
 - Faster list rendering in TaskList
@@ -47,15 +53,18 @@ Completed comprehensive code review and implemented critical + high-priority imp
 ---
 
 #### 3. Created and Implemented Error Boundaries
+
 **New File:** [apps/web-vite/src/components/ErrorBoundary.tsx](../apps/web-vite/src/components/ErrorBoundary.tsx)
 
 **Features:**
+
 - User-friendly error display with details accordion
 - "Try again" button to reset error state
 - Customizable fallback component support
 - Automatic error logging to console
 
 **Integrated In:** [apps/web-vite/src/App.tsx](../apps/web-vite/src/App.tsx:40-44)
+
 - CalendarPage
 - TodoPage
 - SettingsPage
@@ -69,6 +78,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 #### 4. Added Runtime Validation to Firestore Adapters
 
 **Files Modified:**
+
 - [firestoreCalendarEventRepository.ts](../apps/web-vite/src/adapters/firestoreCalendarEventRepository.ts:45-75)
   - Added `validateEventData()` function
   - Validates required fields: startMs, endMs, title, calendarId
@@ -80,6 +90,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
   - Checks members is an array
 
 **Impact:**
+
 - Malformed Firestore data is caught and logged instead of causing runtime errors
 - Better debugging with specific error messages
 - Data integrity protection
@@ -91,6 +102,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 **Package Added:** `sonner@^2.0.7`
 
 **Setup:**
+
 - Added `<Toaster>` to [App.tsx](../apps/web-vite/src/App.tsx:22)
 - Position: top-right
 - Rich colors enabled
@@ -104,12 +116,14 @@ Completed comprehensive code review and implemented critical + high-priority imp
 **Files Modified:**
 
 **[useEventOperations.ts](../apps/web-vite/src/hooks/useEventOperations.ts):**
+
 - ✅ Event update success/failure toasts (line 226, 230)
 - ✅ Event deletion success/failure toasts (line 331, 335)
 - ✅ Writeback retry success/failure toasts (line 368, 372)
 - ✅ RSVP update success/failure toasts (line 407, 416)
 
 **[useTodoOperations.ts](../apps/web-vite/src/hooks/useTodoOperations.ts):**
+
 - ✅ Data loading failures (line 47)
 - ✅ Task create success/failure (line 169, 175)
 - ✅ Task update success/failure (line 193, 200)
@@ -126,6 +140,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 **New Export:** [packages/core/src/id.ts](../packages/core/src/id.ts:14-23)
 
 **Files Updated (5):**
+
 - [useEventOperations.ts](../apps/web-vite/src/hooks/useEventOperations.ts:16)
 - [eventUsecases.ts](../packages/calendar/src/usecases/eventUsecases.ts:20)
 - [compositeUsecases.ts](../packages/calendar/src/usecases/compositeUsecases.ts:1)
@@ -133,6 +148,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 - [writebackUsecases.ts](../packages/calendar/src/usecases/writebackUsecases.ts:1)
 
 **Impact:**
+
 - Removed ~70 lines of duplicate code
 - Single source of truth for ID generation
 - Consistent behavior across all packages
@@ -144,6 +160,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 **New File:** [apps/web-vite/src/lib/firestoreClient.ts](../apps/web-vite/src/lib/firestoreClient.ts)
 
 **Files Updated (6):**
+
 - [firestoreCalendarEventRepository.ts](../apps/web-vite/src/adapters/firestoreCalendarEventRepository.ts:16)
 - [firestoreCompositeRepository.ts](../apps/web-vite/src/adapters/firestoreCompositeRepository.ts:16)
 - [firestoreCalendarListRepository.ts](../apps/web-vite/src/adapters/firestoreCalendarListRepository.ts:14)
@@ -152,6 +169,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 - [firestoreTodoRepository.ts](../apps/web-vite/src/adapters/firestoreTodoRepository.ts)
 
 **Impact:**
+
 - Removed ~120 lines of duplicate code
 - Centralized lazy-loading logic
 - Easier to modify Firebase initialization globally
@@ -163,6 +181,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 **New File:** [apps/web-vite/src/lib/validation.ts](../apps/web-vite/src/lib/validation.ts)
 
 **Validation Functions:**
+
 - `isValidDateString()` - YYYY-MM-DD format
 - `isValidTimeString()` - HH:MM format
 - `isValidEmail()` - Basic email validation
@@ -170,6 +189,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 - `isEndAfterStart()` - Time range validation
 
 **Updated:** [EventFormModal.tsx](../apps/web-vite/src/components/EventFormModal.tsx:210-282)
+
 - Date format validation (lines 210-219)
 - Time format validation (lines 222-232)
 - Safe date parsing (lines 235-248)
@@ -177,6 +197,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 - Email validation for attendees (lines 270-282)
 
 **Impact:**
+
 - No more `NaN` timestamps from invalid dates
 - Clear error messages for invalid input
 - Prevents submission of malformed data
@@ -191,6 +212,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 **File:** [TaskList.tsx](../apps/web-vite/src/components/TaskList.tsx:145-156)
 
 **Details:**
+
 - Uses `react-window` library (already installed)
 - Virtualizes task list rendering
 - Fixed row height: 48px
@@ -207,6 +229,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 **Documentation:** [docs/refactoring/calendar-page-refactoring-plan.md](./refactoring/calendar-page-refactoring-plan.md)
 
 **Scope:**
+
 - Split 773-line CalendarPage into 8-10 focused components
 - Extract 30+ state variables into custom hooks
 - Improve testability and maintainability
@@ -236,30 +259,31 @@ From original code review, lower priority:
 
 ### Code Quality Improvements
 
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| Duplicate code lines | ~190 | 0 | -100% |
-| Files with React.memo | 0 | 5 | +5 |
-| Error boundaries | 0 | 1 (covering 5 pages) | +1 |
-| Toast notifications | 0 | 14 | +14 |
-| Runtime validation | 0 | 2 adapters | +2 |
-| Shared utilities | 0 | 2 new files | +2 |
+| Metric                | Before | After                | Change |
+| --------------------- | ------ | -------------------- | ------ |
+| Duplicate code lines  | ~190   | 0                    | -100%  |
+| Files with React.memo | 0      | 5                    | +5     |
+| Error boundaries      | 0      | 1 (covering 5 pages) | +1     |
+| Toast notifications   | 0      | 14                   | +14    |
+| Runtime validation    | 0      | 2 adapters           | +2     |
+| Shared utilities      | 0      | 2 new files          | +2     |
 
 ### Developer Experience
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| Silent errors | Many | None - all show toasts |
-| App crashes on JS error | Yes | No - error boundaries |
-| Invalid data handling | Runtime errors | Validation + warnings |
-| Code duplication | High | Low |
-| ESLint config | Broken | Fixed |
+| Aspect                  | Before         | After                  |
+| ----------------------- | -------------- | ---------------------- |
+| Silent errors           | Many           | None - all show toasts |
+| App crashes on JS error | Yes            | No - error boundaries  |
+| Invalid data handling   | Runtime errors | Validation + warnings  |
+| Code duplication        | High           | Low                    |
+| ESLint config           | Broken         | Fixed                  |
 
 ---
 
 ## 🔍 What We Didn't Touch
 
 **Intentionally Preserved:**
+
 - Domain logic in packages/calendar - Well-designed, working correctly
 - Sync logic - Critical, working, don't want to risk breaking
 - Outbox pattern - Complex but solid implementation
@@ -271,12 +295,14 @@ From original code review, lower priority:
 ## 🎯 Impact Summary
 
 ### For Users:
+
 - ✅ Better error messages (toasts instead of silent failures)
 - ✅ More stable app (error boundaries prevent crashes)
 - ✅ Faster UI (React.memo prevents unnecessary re-renders)
 - ✅ Better data integrity (validation prevents bad data)
 
 ### For Developers:
+
 - ✅ Less duplicate code to maintain
 - ✅ Easier to add new features (cleaner structure)
 - ✅ Faster debugging (validation catches issues early)
@@ -288,21 +314,25 @@ From original code review, lower priority:
 ## 🚀 Next Steps
 
 ### Immediate (This Week):
+
 1. ✅ **Test Changes** - Manual QA of all modified features
 2. ✅ **Deploy to Staging** - Verify in realistic environment
 3. ✅ **Monitor Errors** - Watch for any regressions
 
 ### Short Term (Next 2 Weeks):
+
 1. **Add Tests** - Write tests for new validation utilities
 2. **Monitor Performance** - Measure impact of React.memo
 3. **Gather Feedback** - Get user feedback on toast notifications
 
 ### Medium Term (Next Month):
+
 1. **Consider CalendarPage Refactoring** - If team has capacity
 2. **Add Test Coverage** - Focus on hooks (useEventOperations, useTodoOperations)
 3. **Performance Monitoring** - Set up Lighthouse CI
 
 ### Long Term (Next Quarter):
+
 1. **State Management Migration** - Consider Zustand/Jotai if needed
 2. **Comprehensive Testing** - Aim for 80%+ coverage
 3. **Performance Budget** - Implement bundle size monitoring

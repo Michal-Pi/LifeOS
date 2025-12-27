@@ -21,6 +21,7 @@ src/
 ### Dependency graph
 
 Allowed:
+
 ```
 domain → (nothing)
 ports  → domain
@@ -30,6 +31,7 @@ apps/web-vite → shared package APIs + platform adapters
 ```
 
 Disallowed:
+
 - Shared packages importing browser APIs or React/Next packages.
 - Shared packages importing another package’s internals (`@lifeos/calendar/src/...`).
 - Shared packages importing `apps/web-vite` or other application code.
@@ -40,4 +42,3 @@ Disallowed:
 - All exports must be rooted in `src/index.ts`; external callers import only the root entrypoint.
 
 The ESLint boundaries in `eslint.config.js` enforce these rules automatically for RN readiness.
-

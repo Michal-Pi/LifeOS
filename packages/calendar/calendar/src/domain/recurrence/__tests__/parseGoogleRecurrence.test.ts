@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   parseGoogleRecurrenceStrings,
   canonicalToGoogleRRule,
-  canonicalToGoogleRecurrence
+  canonicalToGoogleRecurrence,
 } from '../parseGoogleRecurrence'
 
 describe('parseGoogleRecurrenceStrings', () => {
@@ -55,10 +55,7 @@ describe('parseGoogleRecurrenceStrings', () => {
 
   describe('EXDATE parsing', () => {
     it('parses UTC EXDATE', () => {
-      const result = parseGoogleRecurrenceStrings([
-        'RRULE:FREQ=DAILY',
-        'EXDATE:20250115T090000Z'
-      ])
+      const result = parseGoogleRecurrenceStrings(['RRULE:FREQ=DAILY', 'EXDATE:20250115T090000Z'])
       expect(result!.exdatesMs).toHaveLength(1)
       const exdate = new Date(result!.exdatesMs![0])
       expect(exdate.getUTCFullYear()).toBe(2025)
@@ -70,7 +67,7 @@ describe('parseGoogleRecurrenceStrings', () => {
       const result = parseGoogleRecurrenceStrings([
         'RRULE:FREQ=DAILY',
         'EXDATE:20250115T090000Z',
-        'EXDATE:20250116T090000Z'
+        'EXDATE:20250116T090000Z',
       ])
       expect(result!.exdatesMs).toHaveLength(2)
     })
@@ -78,7 +75,7 @@ describe('parseGoogleRecurrenceStrings', () => {
     it('parses date-only EXDATE', () => {
       const result = parseGoogleRecurrenceStrings([
         'RRULE:FREQ=DAILY',
-        'EXDATE;VALUE=DATE:20250115'
+        'EXDATE;VALUE=DATE:20250115',
       ])
       expect(result!.exdatesMs).toHaveLength(1)
     })
@@ -88,7 +85,7 @@ describe('parseGoogleRecurrenceStrings', () => {
     it('extracts timezone from EXDATE', () => {
       const result = parseGoogleRecurrenceStrings([
         'RRULE:FREQ=DAILY',
-        'EXDATE;TZID=America/New_York:20250115T090000'
+        'EXDATE;TZID=America/New_York:20250115T090000',
       ])
       expect(result!.tz).toBe('America/New_York')
     })
@@ -115,10 +112,7 @@ describe('parseGoogleRecurrenceStrings', () => {
     })
 
     it('ignores RDATE', () => {
-      const result = parseGoogleRecurrenceStrings([
-        'RRULE:FREQ=DAILY',
-        'RDATE:20250201T090000Z'
-      ])
+      const result = parseGoogleRecurrenceStrings(['RRULE:FREQ=DAILY', 'RDATE:20250201T090000Z'])
       // Should parse successfully, just ignoring RDATE
       expect(result).not.toBeNull()
       expect(result!.rule.freq).toBe('DAILY')
@@ -129,28 +123,28 @@ describe('parseGoogleRecurrenceStrings', () => {
 describe('canonicalToGoogleRRule', () => {
   it('converts daily recurrence', () => {
     const rrule = canonicalToGoogleRRule({
-      rule: { freq: 'DAILY' }
+      rule: { freq: 'DAILY' },
     })
     expect(rrule).toBe('RRULE:FREQ=DAILY')
   })
 
   it('includes INTERVAL when > 1', () => {
     const rrule = canonicalToGoogleRRule({
-      rule: { freq: 'WEEKLY', interval: 2 }
+      rule: { freq: 'WEEKLY', interval: 2 },
     })
     expect(rrule).toBe('RRULE:FREQ=WEEKLY;INTERVAL=2')
   })
 
   it('includes BYDAY', () => {
     const rrule = canonicalToGoogleRRule({
-      rule: { freq: 'WEEKLY', byWeekday: ['MO', 'WE', 'FR'] }
+      rule: { freq: 'WEEKLY', byWeekday: ['MO', 'WE', 'FR'] },
     })
     expect(rrule).toContain('BYDAY=MO,WE,FR')
   })
 
   it('includes COUNT', () => {
     const rrule = canonicalToGoogleRRule({
-      rule: { freq: 'DAILY', count: 10 }
+      rule: { freq: 'DAILY', count: 10 },
     })
     expect(rrule).toContain('COUNT=10')
   })
@@ -158,7 +152,7 @@ describe('canonicalToGoogleRRule', () => {
   it('includes UNTIL', () => {
     const until = new Date('2025-12-31T23:59:59Z')
     const rrule = canonicalToGoogleRRule({
-      rule: { freq: 'DAILY', untilMs: until.getTime() }
+      rule: { freq: 'DAILY', untilMs: until.getTime() },
     })
     expect(rrule).toContain('UNTIL=20251231T235959Z')
   })
@@ -169,7 +163,7 @@ describe('canonicalToGoogleRecurrence', () => {
     const exdate = new Date('2025-01-15T09:00:00Z')
     const result = canonicalToGoogleRecurrence({
       rule: { freq: 'DAILY' },
-      exdatesMs: [exdate.getTime()]
+      exdatesMs: [exdate.getTime()],
     })
     expect(result).toHaveLength(2)
     expect(result[0]).toContain('RRULE')
@@ -178,10 +172,9 @@ describe('canonicalToGoogleRecurrence', () => {
 
   it('handles no EXDATEs', () => {
     const result = canonicalToGoogleRecurrence({
-      rule: { freq: 'DAILY' }
+      rule: { freq: 'DAILY' },
     })
     expect(result).toHaveLength(1)
     expect(result[0]).toContain('RRULE')
   })
 })
-

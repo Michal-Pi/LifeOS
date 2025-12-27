@@ -29,11 +29,11 @@ export type Provider = 'google' | 'microsoft' | 'icloud' | 'local'
  * - 'read_only_provider': Event exists but cannot be modified (e.g., recurring series managed by provider)
  */
 export type SyncState =
-  | 'synced'              // In sync with provider
-  | 'pending_writeback'   // Local changes waiting to be written to provider
-  | 'error'               // Writeback failed
-  | 'conflict'            // Conflict detected between local and provider
-  | 'read_only_provider'  // Event cannot be written back (e.g., recurring)
+  | 'synced' // In sync with provider
+  | 'pending_writeback' // Local changes waiting to be written to provider
+  | 'error' // Writeback failed
+  | 'conflict' // Conflict detected between local and provider
+  | 'read_only_provider' // Event cannot be written back (e.g., recurring)
 
 export interface CalendarAccount {
   accountId: string
@@ -73,19 +73,14 @@ export interface CalendarListItem {
 /**
  * Access role for a calendar (matches Google Calendar API)
  */
-export type CalendarAccessRole = 
-  | 'owner'
-  | 'writer'
-  | 'reader'
-  | 'freeBusyReader'
-  | 'unknown'
+export type CalendarAccessRole = 'owner' | 'writer' | 'reader' | 'freeBusyReader' | 'unknown'
 
 /**
  * Owner information for a calendar
  */
 export interface CalendarOwner {
   email?: string
-  self?: boolean  // True if the current user owns this calendar
+  self?: boolean // True if the current user owns this calendar
 }
 
 /**
@@ -102,27 +97,27 @@ export interface CalendarProviderMeta {
  * Stored at /users/{uid}/calendars/{calendarId}
  */
 export interface CanonicalCalendar {
-  calendarId: string           // Canonical ID
-  name: string                 // Display name
+  calendarId: string // Canonical ID
+  name: string // Display name
   description?: string
-  
+
   // Permissions (Phase 2.6)
   owner?: CalendarOwner
   accessRole: CalendarAccessRole
-  canWrite: boolean            // Derived from accessRole; cached for quick checks
-  
+  canWrite: boolean // Derived from accessRole; cached for quick checks
+
   // Calendar metadata
-  isPrimary?: boolean          // True if this is the user's primary calendar
-  color?: string               // Background color (hex)
-  foregroundColor?: string     // Text color (hex)
+  isPrimary?: boolean // True if this is the user's primary calendar
+  color?: string // Background color (hex)
+  foregroundColor?: string // Text color (hex)
   timeZone?: string
-  
+
   // Provider reference
   providerMeta: CalendarProviderMeta
-  
+
   // Sync state
-  visible: boolean             // Whether to show in UI
-  selected?: boolean           // Whether currently selected for viewing
+  visible: boolean // Whether to show in UI
+  selected?: boolean // Whether currently selected for viewing
   createdAt: string
   updatedAt: string
 
@@ -168,12 +163,12 @@ export type CanonicalResponseStatus =
 export interface CanonicalAttendee {
   email?: string
   displayName?: string
-  self?: boolean           // True if this is the current user
-  organizer?: boolean      // True if this attendee is the organizer
-  optional?: boolean       // True if attendance is optional
-  resource?: boolean       // True if this is a room/resource
+  self?: boolean // True if this is the current user
+  organizer?: boolean // True if this attendee is the organizer
+  optional?: boolean // True if attendance is optional
+  resource?: boolean // True if this is a room/resource
   responseStatus: CanonicalResponseStatus
-  comment?: string         // Attendee's response comment
+  comment?: string // Attendee's response comment
   additionalGuests?: number // Number of additional guests
 }
 
@@ -183,7 +178,7 @@ export interface CanonicalAttendee {
 export interface CanonicalOrganizer {
   email?: string
   displayName?: string
-  self?: boolean           // True if current user is the organizer
+  self?: boolean // True if current user is the organizer
 }
 
 /**
@@ -192,7 +187,7 @@ export interface CanonicalOrganizer {
 export interface CanonicalCreator {
   email?: string
   displayName?: string
-  self?: boolean           // True if current user created the event
+  self?: boolean // True if current user created the event
 }
 
 /**
@@ -204,7 +199,7 @@ export type CanonicalEventRole = 'organizer' | 'attendee' | 'unknown'
  * RSVP capabilities and status for the current user
  */
 export interface CanonicalRSVP {
-  canRespond: boolean              // Whether user can respond
+  canRespond: boolean // Whether user can respond
   status?: CanonicalResponseStatus // Current user's response status
 }
 
@@ -212,10 +207,10 @@ export interface CanonicalRSVP {
  * Provider-specific capabilities for this event
  */
 export interface ProviderCapabilities {
-  canInvite?: boolean    // Can add attendees
-  canRespond?: boolean   // Can RSVP
-  canUpdate?: boolean    // Can update event details
-  canCancel?: boolean    // Can cancel the event
+  canInvite?: boolean // Can add attendees
+  canRespond?: boolean // Can RSVP
+  canUpdate?: boolean // Can update event details
+  canCancel?: boolean // Can cancel the event
 }
 
 // ==================== Alerts (Phase 2.5) ====================
@@ -231,7 +226,7 @@ export type CanonicalAlertMethod = 'in_app_banner'
  */
 export interface CanonicalAlert {
   method: CanonicalAlertMethod
-  minutesBefore: number  // e.g., 10, 5, 0 (at time of event)
+  minutesBefore: number // e.g., 10, 5, 0 (at time of event)
   enabled: boolean
 }
 
@@ -267,7 +262,7 @@ export type {
   WeekStart,
   RecurrenceInstance,
   GenerateInstancesOptions,
-  GenerateInstancesResult
+  GenerateInstancesResult,
 } from './recurrence/types'
 
 export interface CanonicalReminder {
@@ -332,14 +327,14 @@ export interface CanonicalCalendarEvent {
   writebackBlockedReason?: string // e.g., "recurring_event_not_supported"
 
   // Conflict resolution (Phase 2.7)
-  rev?: number                   // Monotonically increasing revision number (default 0)
-  updatedByDeviceId?: string     // Device ID that made the last update (for tie-breaking)
+  rev?: number // Monotonically increasing revision number (default 0)
+  updatedByDeviceId?: string // Device ID that made the last update (for tie-breaking)
 
   // Operation provenance
   source: { type: 'provider' | 'local'; description?: string }
 
   // Permission cache (Phase 2.6)
-  canWrite?: boolean               // Cached permission; prefer derived via calendar
+  canWrite?: boolean // Cached permission; prefer derived via calendar
 
   // Event fields
   status?: string
@@ -362,9 +357,9 @@ export interface CanonicalCalendarEvent {
   organizer?: CanonicalOrganizer
   creator?: CanonicalCreator
   attendees?: CanonicalAttendee[]
-  selfAttendee?: CanonicalAttendee        // Current user's attendee entry (derived/cached)
-  role?: CanonicalEventRole               // User's role: organizer, attendee, unknown
-  rsvp?: CanonicalRSVP                    // RSVP capabilities for current user
+  selfAttendee?: CanonicalAttendee // Current user's attendee entry (derived/cached)
+  role?: CanonicalEventRole // User's role: organizer, attendee, unknown
+  rsvp?: CanonicalRSVP // RSVP capabilities for current user
   providerCapabilities?: ProviderCapabilities // What actions are allowed
 
   // Recurrence (Phase 2.3)
@@ -377,13 +372,13 @@ export interface CanonicalCalendarEvent {
 
   reminders?: CanonicalReminder[]
   attachments?: Array<{ title?: string; url?: string }>
-  calendarId?: string           // Canonical calendar ID (Phase 2.6: used for permission lookup)
+  calendarId?: string // Canonical calendar ID (Phase 2.6: used for permission lookup)
   raw?: unknown
   deletedAtMs?: number
 
   // Alerts (Phase 2.5)
-  alerts?: CanonicalAlert[]         // Alert configurations for this event
-  alertsUpdatedAtMs?: number        // When alerts were last modified
+  alerts?: CanonicalAlert[] // Alert configurations for this event
+  alertsUpdatedAtMs?: number // When alerts were last modified
   alertDismissal?: AlertDismissalState // Dismissal state (syncs across devices)
 }
 
@@ -396,9 +391,7 @@ export function isDeleted(event: CanonicalCalendarEvent): boolean {
  */
 export function isRecurringSeries(event: CanonicalCalendarEvent): boolean {
   return Boolean(
-    event.isRecurringSeries ||
-    event.recurrenceV2?.rule ||
-    event.recurrence?.recurrenceRules?.length
+    event.isRecurringSeries || event.recurrenceV2?.rule || event.recurrence?.recurrenceRules?.length
   )
 }
 
@@ -432,11 +425,7 @@ export function getSeriesId(event: CanonicalCalendarEvent): string | null {
   return null
 }
 
-export function computeOccursOn(
-  start: string,
-  end: string,
-  capDays = 60
-): string[] {
+export function computeOccursOn(start: string, end: string, capDays = 60): string[] {
   const days: string[] = []
   const startDate = new Date(start)
   const endDate = new Date(end)
@@ -493,7 +482,7 @@ export function deriveRSVP(event: CanonicalCalendarEvent): CanonicalRSVP {
 
   return {
     canRespond,
-    status: selfAttendee?.responseStatus
+    status: selfAttendee?.responseStatus,
   }
 }
 
@@ -513,7 +502,7 @@ export function deriveProviderCapabilities(
     canInvite: isOrganizer && !isReadOnly,
     canRespond: isAttendee,
     canUpdate: isOrganizer && !isReadOnly,
-    canCancel: isOrganizer && !isReadOnly
+    canCancel: isOrganizer && !isReadOnly,
   }
 }
 
@@ -649,12 +638,12 @@ export function getPrimaryAlert(event: CanonicalCalendarEvent): CanonicalAlert |
 
 /**
  * Compute when an alert should fire for an event
- * 
+ *
  * Returns null if:
  * - Event is an all-day event (alerts not supported for all-day in v1)
  * - Event has no valid start time
  * - Alert is disabled
- * 
+ *
  * Note: All-day events are not supported for alerts in v1.
  * This is because all-day events have ambiguous start times
  * (midnight in what timezone?). Future versions may support
@@ -681,21 +670,18 @@ export function computeAlertFireTimeMs(
   }
 
   // Compute fire time: startMs minus minutesBefore
-  const fireTimeMs = event.startMs - (alert.minutesBefore * 60 * 1000)
+  const fireTimeMs = event.startMs - alert.minutesBefore * 60 * 1000
   return fireTimeMs
 }
 
 /**
  * Check if an alert has been dismissed for an event
- * 
+ *
  * An alert is considered dismissed if:
  * - dismissedUntilMs is set and now < dismissedUntilMs
  * - This prevents the alert from re-appearing until the event starts
  */
-export function isAlertDismissed(
-  event: CanonicalCalendarEvent,
-  nowMs: number
-): boolean {
+export function isAlertDismissed(event: CanonicalCalendarEvent, nowMs: number): boolean {
   if (!event.alertDismissal) {
     return false
   }
@@ -712,7 +698,7 @@ export function isAlertDismissed(
 
 /**
  * Check if an alert should fire for an event at the current time
- * 
+ *
  * An alert should fire if:
  * - Event is not deleted/cancelled
  * - Event is not an all-day event (not supported in v1)
@@ -760,7 +746,7 @@ export function shouldAlertFire(
 export function createAlertDismissal(event: CanonicalCalendarEvent): AlertDismissalState {
   return {
     dismissedUntilMs: event.startMs,
-    dismissedAtMs: Date.now()
+    dismissedAtMs: Date.now(),
   }
 }
 
@@ -775,7 +761,7 @@ export const ALERT_PRESETS = [
   { label: '15 minutes before', minutesBefore: 15 },
   { label: '30 minutes before', minutesBefore: 30 },
   { label: '1 hour before', minutesBefore: 60 },
-  { label: 'Custom', minutesBefore: -2 } // -2 means custom input
+  { label: 'Custom', minutesBefore: -2 }, // -2 means custom input
 ] as const
 
 /**
@@ -841,7 +827,7 @@ export function deriveCalendarCanWrite(accessRole?: CalendarAccessRole | string)
  */
 export function normalizeAccessRole(role?: string): CalendarAccessRole {
   if (!role) return 'unknown'
-  
+
   const normalized = role.toLowerCase()
   switch (normalized) {
     case 'owner':
@@ -867,7 +853,7 @@ export type CalendarsById = Map<string, CanonicalCalendar>
  * 1. The event's cached canWrite field (if set)
  * 2. The calendar's canWrite field
  * 3. The event's role (organizer can write, attendee cannot unless RSVP)
- * 
+ *
  * @param event - The canonical event
  * @param calendarsById - Map of calendars for lookup
  * @returns true if the user can write to this event
@@ -892,7 +878,7 @@ export function deriveEventCanWrite(
 
   // Check event-level permissions (role-based)
   const role = getEventRole(event)
-  
+
   // Organizers can write
   if (role === 'organizer') {
     return true
@@ -916,7 +902,7 @@ export function deriveEventCanWrite(
 
 /**
  * Check if an event can be edited (full edit, not RSVP)
- * 
+ *
  * @param event - The canonical event
  * @param calendarsById - Map of calendars for lookup
  * @returns true if the user can edit this event
@@ -928,14 +914,14 @@ export function canEditEvent(
   // Calendar must be writable
   const calendarId = event.calendarId ?? event.providerRef.providerCalendarId
   const calendar = calendarsById?.get(calendarId)
-  
+
   if (calendar && !calendar.canWrite) {
     return false
   }
 
   // User must be organizer or the only person on the event
   const role = getEventRole(event)
-  
+
   if (role === 'organizer') {
     return true
   }
@@ -950,7 +936,7 @@ export function canEditEvent(
 
 /**
  * Check if an event can be deleted
- * 
+ *
  * @param event - The canonical event
  * @param calendarsById - Map of calendars for lookup
  * @returns true if the user can delete this event
@@ -966,7 +952,7 @@ export function canDeleteEvent(
 /**
  * Check if user can RSVP to an event
  * (Different from editing - attendees can RSVP)
- * 
+ *
  * @param event - The canonical event
  * @returns true if the user can RSVP to this event
  */
@@ -977,7 +963,7 @@ export function canRSVPToEvent(event: CanonicalCalendarEvent): boolean {
 
 /**
  * Check if user can invite others to an event
- * 
+ *
  * @param event - The canonical event
  * @param calendarsById - Map of calendars for lookup
  * @returns true if the user can invite others
@@ -994,7 +980,7 @@ export function canInviteToEvent(
 
   const calendarId = event.calendarId ?? event.providerRef.providerCalendarId
   const calendar = calendarsById?.get(calendarId)
-  
+
   return calendar?.canWrite ?? true
 }
 
@@ -1040,7 +1026,12 @@ export interface ConflictResolutionResult {
   /** The winning event after resolution */
   winner: CanonicalCalendarEvent
   /** Reason for the resolution outcome */
-  reason: 'no_conflict' | 'incoming_wins_timestamp' | 'server_wins_timestamp' | 'incoming_wins_deviceid' | 'server_wins_deviceid'
+  reason:
+    | 'no_conflict'
+    | 'incoming_wins_timestamp'
+    | 'server_wins_timestamp'
+    | 'incoming_wins_deviceid'
+    | 'server_wins_deviceid'
   /** New revision number to use */
   newRev: number
 }
@@ -1104,7 +1095,7 @@ export function resolveConflict(
       hasConflict: false,
       winner: merged,
       reason: 'no_conflict',
-      newRev: serverRev + 1
+      newRev: serverRev + 1,
     }
   }
 
@@ -1119,7 +1110,7 @@ export function resolveConflict(
       hasConflict: true,
       winner: merged,
       reason: 'incoming_wins_timestamp',
-      newRev: serverRev + 1
+      newRev: serverRev + 1,
     }
   }
 
@@ -1128,7 +1119,7 @@ export function resolveConflict(
       hasConflict: true,
       winner: server,
       reason: 'server_wins_timestamp',
-      newRev: serverRev // Server wins, no rev increment needed
+      newRev: serverRev, // Server wins, no rev increment needed
     }
   }
 
@@ -1142,7 +1133,7 @@ export function resolveConflict(
       hasConflict: true,
       winner: merged,
       reason: 'incoming_wins_deviceid',
-      newRev: serverRev + 1
+      newRev: serverRev + 1,
     }
   }
 
@@ -1151,7 +1142,7 @@ export function resolveConflict(
     hasConflict: true,
     winner: server,
     reason: 'server_wins_deviceid',
-    newRev: serverRev
+    newRev: serverRev,
   }
 }
 
@@ -1177,17 +1168,14 @@ function applyPatch(
     updatedAtMs: now,
     canonicalUpdatedAtMs: incoming.updatedAtMs,
     updatedByDeviceId: incoming.deviceId,
-    rev: (server.rev ?? 0) + 1
+    rev: (server.rev ?? 0) + 1,
   }
 }
 
 /**
  * Check if an incoming update would cause a conflict
  */
-export function wouldConflict(
-  server: CanonicalCalendarEvent,
-  baseRev: number
-): boolean {
+export function wouldConflict(server: CanonicalCalendarEvent, baseRev: number): boolean {
   const serverRev = server.rev ?? 0
   return baseRev !== serverRev
 }
@@ -1216,11 +1204,11 @@ export function getOrCreateDeviceId(): string {
 /**
  * Merge conflict status type for UI display
  */
-export type ConflictStatus = 
-  | 'none'           // No conflict
-  | 'local_pending'  // Local changes waiting to sync
-  | 'conflict'       // Conflict detected, needs resolution
-  | 'resolved'       // Conflict was resolved
+export type ConflictStatus =
+  | 'none' // No conflict
+  | 'local_pending' // Local changes waiting to sync
+  | 'conflict' // Conflict detected, needs resolution
+  | 'resolved' // Conflict was resolved
 
 /**
  * Get the conflict status for an event

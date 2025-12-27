@@ -18,12 +18,12 @@ Stored at: `/users/{uid}/compositeEvents/{compositeId}`
 
 ```typescript
 interface CompositeEvent {
-  id: string                     // Composite ID
+  id: string // Composite ID
   userId: string
 
   // Membership
-  members: CompositeMemberRef[]  // References to canonical events
-  primaryMemberId: string        // Which canonical event is "display source"
+  members: CompositeMemberRef[] // References to canonical events
+  primaryMemberId: string // Which canonical event is "display source"
 
   // Derived display fields (from primary)
   startMs: number
@@ -34,9 +34,9 @@ interface CompositeEvent {
   description?: string
 
   // Identity & dedupe
-  iCalUID?: string              // Shared iCalUID if all members have same
-  dedupeKey?: string            // Stable identity hash
-  dedupeReason: DedupeReason    // How they were matched
+  iCalUID?: string // Shared iCalUID if all members have same
+  dedupeKey?: string // Stable identity hash
+  dedupeReason: DedupeReason // How they were matched
 
   // Auditing
   createdAtMs: number
@@ -45,7 +45,7 @@ interface CompositeEvent {
   version: number
 
   // Safety
-  manualLock?: boolean          // If true, don't auto-merge/split
+  manualLock?: boolean // If true, don't auto-merge/split
 }
 
 interface CompositeMemberRef {
@@ -147,6 +147,7 @@ GET /recomputeCompositesEndpoint?uid={userId}&startMs={ms}&endMs={ms}
 ```
 
 Response:
+
 ```json
 {
   "ok": true,
@@ -195,8 +196,8 @@ const result = await getBusyBlocksUnified(deps, {
   userId: 'user-1',
   startMs: rangeStart,
   endMs: rangeEnd,
-  useComposites: true,  // Use composites for deduplication
-  mergeOverlapping: true // Merge adjacent blocks
+  useComposites: true, // Use composites for deduplication
+  mergeOverlapping: true, // Merge adjacent blocks
 })
 
 // result.blocks: BusyBlock[]
@@ -218,6 +219,7 @@ pnpm --filter @lifeos/calendar test
 ```
 
 Tests cover:
+
 - iCalUID matching
 - Fuzzy time-title matching
 - Guardrails preventing false merges
@@ -254,8 +256,3 @@ match /users/{userId}/compositeRuns/{runId} {
 - [ ] Edit one instance; verify composite updates
 - [ ] Delete one instance; verify composite adjusts
 - [ ] Manually lock composite; verify no auto-changes
-
-
-
-
-

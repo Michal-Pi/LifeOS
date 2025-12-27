@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { CanonicalCalendarEvent } from '../../domain/models'
 import type { Weekday } from '../../domain/recurrence/types'
 import { createEvent, updateEvent, deleteEvent, type EventUsecaseDeps } from '../eventUsecases'
-import { createRecurringSeries, editRecurringEvent, deleteRecurringEvent } from '../recurrenceUsecases'
+import {
+  createRecurringSeries,
+  editRecurringEvent,
+  deleteRecurringEvent,
+} from '../recurrenceUsecases'
 
 // Mock repository
 const mockRepository = {
@@ -11,7 +15,7 @@ const mockRepository = {
   getById: vi.fn(),
   createEvent: vi.fn(),
   updateEvent: vi.fn(),
-  deleteEvent: vi.fn()
+  deleteEvent: vi.fn(),
 }
 
 const deps: EventUsecaseDeps = { repository: mockRepository }
@@ -27,7 +31,7 @@ describe('createEvent', () => {
       title: 'Meeting',
       startMs: Date.now(),
       endMs: Date.now() + 3600000, // 1 hour later
-      allDay: false
+      allDay: false,
     }
 
     mockRepository.createEvent.mockResolvedValue(undefined)
@@ -46,7 +50,7 @@ describe('createEvent', () => {
       title: 'Bad Meeting',
       startMs: Date.now() + 3600000,
       endMs: Date.now(), // Before start
-      allDay: false
+      allDay: false,
     }
 
     await expect(createEvent(deps, input)).rejects.toThrow('Timed events must end after they start')
@@ -61,7 +65,7 @@ describe('createEvent', () => {
       title: 'Conference',
       startMs: startDate.getTime(),
       endMs: endDate.getTime(),
-      allDay: true
+      allDay: true,
     }
 
     mockRepository.createEvent.mockResolvedValue(undefined)
@@ -82,7 +86,7 @@ describe('createEvent', () => {
       title: 'Quick Call',
       startMs: startDate.getTime(),
       endMs: endDate.getTime(),
-      allDay: false
+      allDay: false,
     }
 
     mockRepository.createEvent.mockResolvedValue(undefined)
@@ -106,7 +110,7 @@ describe('updateEvent', () => {
       provider: 'local',
       accountId: 'local',
       providerCalendarId: 'local',
-      providerEventId: 'local-1'
+      providerEventId: 'local-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -120,7 +124,7 @@ describe('updateEvent', () => {
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Original Title',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   it('updates event title', async () => {
@@ -130,7 +134,7 @@ describe('updateEvent', () => {
     const result = await updateEvent(deps, {
       userId: 'user-1',
       eventId: 'event-1',
-      patch: { title: 'Updated Title' }
+      patch: { title: 'Updated Title' },
     })
 
     expect(result.title).toBe('Updated Title')
@@ -144,7 +148,7 @@ describe('updateEvent', () => {
       updateEvent(deps, {
         userId: 'user-1',
         eventId: 'nonexistent',
-        patch: { title: 'New Title' }
+        patch: { title: 'New Title' },
       })
     ).rejects.toThrow('Event not found or deleted')
   })
@@ -152,14 +156,14 @@ describe('updateEvent', () => {
   it('throws error when updating a deleted event', async () => {
     mockRepository.getById.mockResolvedValue({
       ...existingEvent,
-      deletedAtMs: Date.now()
+      deletedAtMs: Date.now(),
     })
 
     await expect(
       updateEvent(deps, {
         userId: 'user-1',
         eventId: 'event-1',
-        patch: { title: 'New Title' }
+        patch: { title: 'New Title' },
       })
     ).rejects.toThrow('Event not found or deleted')
   })
@@ -178,8 +182,8 @@ describe('updateEvent', () => {
         startIso: newStartIso,
         endIso: newEndIso,
         startMs: new Date(newStartIso).getTime(),
-        endMs: new Date(newEndIso).getTime()
-      }
+        endMs: new Date(newEndIso).getTime(),
+      },
     })
 
     expect(result.occursOn).toContain('2025-02-15')
@@ -201,7 +205,7 @@ describe('deleteEvent', () => {
       provider: 'local',
       accountId: 'local',
       providerCalendarId: 'local',
-      providerEventId: 'local-1'
+      providerEventId: 'local-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -215,7 +219,7 @@ describe('deleteEvent', () => {
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Event to Delete',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   it('deletes a non-recurring event', async () => {
@@ -226,22 +230,18 @@ describe('deleteEvent', () => {
       deleteEvent(deps, { userId: 'user-1', eventId: 'event-1' })
     ).resolves.toBeUndefined()
 
-    expect(mockRepository.deleteEvent).toHaveBeenCalledWith(
-      'user-1',
-      'event-1',
-      undefined
-    )
+    expect(mockRepository.deleteEvent).toHaveBeenCalledWith('user-1', 'event-1', undefined)
   })
 
   it('throws error when deleting a recurring event (recurrenceRules)', async () => {
     mockRepository.getById.mockResolvedValue({
       ...existingEvent,
-      recurrence: { recurrenceRules: ['RRULE:FREQ=DAILY'] }
+      recurrence: { recurrenceRules: ['RRULE:FREQ=DAILY'] },
     })
 
-    await expect(
-      deleteEvent(deps, { userId: 'user-1', eventId: 'event-1' })
-    ).rejects.toThrow('Cannot delete event: recurring_event_not_supported')
+    await expect(deleteEvent(deps, { userId: 'user-1', eventId: 'event-1' })).rejects.toThrow(
+      'Cannot delete event: recurring_event_not_supported'
+    )
   })
 
   it('throws error when deleting a recurring event (recurringEventId)', async () => {
@@ -249,32 +249,32 @@ describe('deleteEvent', () => {
       ...existingEvent,
       providerRef: {
         ...existingEvent.providerRef,
-        recurringEventId: 'parent-event-123'
-      }
+        recurringEventId: 'parent-event-123',
+      },
     })
 
-    await expect(
-      deleteEvent(deps, { userId: 'user-1', eventId: 'event-1' })
-    ).rejects.toThrow('Cannot delete event: recurring_event_not_supported')
+    await expect(deleteEvent(deps, { userId: 'user-1', eventId: 'event-1' })).rejects.toThrow(
+      'Cannot delete event: recurring_event_not_supported'
+    )
   })
 
   it('throws error when event not found', async () => {
     mockRepository.getById.mockResolvedValue(null)
 
-    await expect(
-      deleteEvent(deps, { userId: 'user-1', eventId: 'nonexistent' })
-    ).rejects.toThrow('Event not found or already deleted')
+    await expect(deleteEvent(deps, { userId: 'user-1', eventId: 'nonexistent' })).rejects.toThrow(
+      'Event not found or already deleted'
+    )
   })
 
   it('throws error when event already deleted', async () => {
     mockRepository.getById.mockResolvedValue({
       ...existingEvent,
-      deletedAtMs: Date.now()
+      deletedAtMs: Date.now(),
     })
 
-    await expect(
-      deleteEvent(deps, { userId: 'user-1', eventId: 'event-1' })
-    ).rejects.toThrow('Event not found or already deleted')
+    await expect(deleteEvent(deps, { userId: 'user-1', eventId: 'event-1' })).rejects.toThrow(
+      'Event not found or already deleted'
+    )
   })
 })
 
@@ -294,8 +294,8 @@ describe('createRecurringSeries', () => {
       rule: {
         freq: 'WEEKLY' as const,
         interval: 1,
-        byWeekday: ['MO', 'WE', 'FR'] as Weekday[]
-      }
+        byWeekday: ['MO', 'WE', 'FR'] as Weekday[],
+      },
     }
 
     mockRepository.createEvent.mockResolvedValue(undefined)
@@ -317,13 +317,13 @@ describe('createRecurringSeries', () => {
       endMs: Date.now() + 3600000,
       rule: {
         // Missing freq
-        interval: 1
-      } as any
+        interval: 1,
+      } as any,
     }
 
-    await expect(
-      createRecurringSeries({ repository: mockRepository }, input)
-    ).rejects.toThrow('Recurrence rule must have a frequency')
+    await expect(createRecurringSeries({ repository: mockRepository }, input)).rejects.toThrow(
+      'Recurrence rule must have a frequency'
+    )
   })
 
   it('sets default interval to 1', async () => {
@@ -333,9 +333,9 @@ describe('createRecurringSeries', () => {
       startMs: Date.now(),
       endMs: Date.now() + 1800000,
       rule: {
-        freq: 'DAILY' as const
+        freq: 'DAILY' as const,
         // No interval specified
-      }
+      },
     }
 
     mockRepository.createEvent.mockResolvedValue(undefined)
@@ -355,7 +355,7 @@ describe('editRecurringEvent', () => {
       provider: 'local',
       accountId: 'local',
       providerCalendarId: 'local',
-      providerEventId: 'local-1'
+      providerEventId: 'local-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -375,10 +375,10 @@ describe('editRecurringEvent', () => {
       rule: {
         freq: 'WEEKLY',
         interval: 1,
-        byWeekday: ['MO']
-      }
+        byWeekday: ['MO'],
+      },
     },
-    isRecurringSeries: true
+    isRecurringSeries: true,
   }
 
   beforeEach(() => {
@@ -395,7 +395,7 @@ describe('editRecurringEvent', () => {
         userId: 'user-1',
         eventId: 'series-1',
         scope: 'all',
-        patch: { title: 'Updated Weekly Meeting' }
+        patch: { title: 'Updated Weekly Meeting' },
       }
     )
 
@@ -417,7 +417,7 @@ describe('editRecurringEvent', () => {
         eventId: 'series-1',
         scope: 'this',
         occurrenceStartMs,
-        patch: { title: 'Special Meeting' }
+        patch: { title: 'Special Meeting' },
       }
     )
 
@@ -440,7 +440,7 @@ describe('editRecurringEvent', () => {
         eventId: 'series-1',
         scope: 'this_and_future',
         occurrenceStartMs,
-        patch: { title: 'Future Meeting' }
+        patch: { title: 'Future Meeting' },
       }
     )
 
@@ -461,14 +461,18 @@ describe('editRecurringEvent', () => {
           userId: 'user-1',
           eventId: 'nonexistent',
           scope: 'all',
-          patch: { title: 'New Title' }
+          patch: { title: 'New Title' },
         }
       )
     ).rejects.toThrow('Series not found')
   })
 
   it('throws error when event is not recurring', async () => {
-    const nonRecurringEvent = { ...recurringEvent, isRecurringSeries: false, recurrenceV2: undefined }
+    const nonRecurringEvent = {
+      ...recurringEvent,
+      isRecurringSeries: false,
+      recurrenceV2: undefined,
+    }
     mockRepository.getById.mockResolvedValue(nonRecurringEvent)
 
     await expect(
@@ -478,7 +482,7 @@ describe('editRecurringEvent', () => {
           userId: 'user-1',
           eventId: 'event-1',
           scope: 'all',
-          patch: { title: 'New Title' }
+          patch: { title: 'New Title' },
         }
       )
     ).rejects.toThrow('Event is not a recurring series')
@@ -494,7 +498,7 @@ describe('deleteRecurringEvent', () => {
       provider: 'local',
       accountId: 'local',
       providerCalendarId: 'local',
-      providerEventId: 'local-1'
+      providerEventId: 'local-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -514,10 +518,10 @@ describe('deleteRecurringEvent', () => {
       rule: {
         freq: 'WEEKLY',
         interval: 1,
-        byWeekday: ['MO']
-      }
+        byWeekday: ['MO'],
+      },
     },
-    isRecurringSeries: true
+    isRecurringSeries: true,
   }
 
   beforeEach(() => {
@@ -533,7 +537,7 @@ describe('deleteRecurringEvent', () => {
       {
         userId: 'user-1',
         eventId: 'series-1',
-        scope: 'all'
+        scope: 'all',
       }
     )
 
@@ -553,7 +557,7 @@ describe('deleteRecurringEvent', () => {
         userId: 'user-1',
         eventId: 'series-1',
         scope: 'this',
-        occurrenceStartMs
+        occurrenceStartMs,
       }
     )
 
@@ -573,7 +577,7 @@ describe('deleteRecurringEvent', () => {
         userId: 'user-1',
         eventId: 'series-1',
         scope: 'this_and_future',
-        occurrenceStartMs
+        occurrenceStartMs,
       }
     )
 
@@ -581,4 +585,3 @@ describe('deleteRecurringEvent', () => {
     expect(mockRepository.updateEvent).toHaveBeenCalledTimes(1)
   })
 })
-

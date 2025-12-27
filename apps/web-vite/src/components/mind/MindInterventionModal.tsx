@@ -11,6 +11,8 @@ import { InterventionSelector } from './InterventionSelector'
 import { InterventionRunner } from './InterventionRunner'
 import { SessionComplete } from './SessionComplete'
 import { useMindInterventions } from '@/hooks/useMindInterventions'
+import { useTodoOperations } from '@/hooks/useTodoOperations'
+import { useAuth } from '@/hooks/useAuth'
 import type { FeelingState, CanonicalInterventionPreset, SessionId } from '@lifeos/mind'
 
 interface MindInterventionModalProps {
@@ -43,7 +45,10 @@ export function MindInterventionModal({
   dateKey,
   trigger = 'manual',
 }: MindInterventionModalProps) {
+  const { user } = useAuth()
+  const userId = user?.uid || ''
   const { startSession, completeSession } = useMindInterventions()
+  const { createTask } = useTodoOperations({ userId })
   const [flowState, setFlowState] = useState<FlowState>({ step: 'feeling' })
 
   if (!isOpen) {
@@ -94,11 +99,32 @@ export function MindInterventionModal({
     if (flowState.step !== 'complete') return
 
     try {
+      let createdTodoId: string | undefined
+
+      // Create todo if requested
+      if (createTodo) {
+        const interventionTitle = flowState.intervention.title
+        const taskTitle = `Next action: ${interventionTitle}`
+
+        await createTask({
+          title: taskTitle,
+          description: 'Next right action identified from mind intervention',
+          domain: 'wellbeing',
+          importance: 4,
+          status: 'next_action',
+          completed: false,
+          archived: false,
+        })
+
+        // Note: createTask doesn't return the task, but we can mark it as created
+        createdTodoId = 'created'
+      }
+
       await completeSession(flowState.sessionId, {
         sessionId: flowState.sessionId,
         feelingAfter,
         responses: flowState.responses,
-        createdTodoId: createTodo ? 'TODO_INTEGRATION' : undefined, // TODO: Integrate with todo creation
+        createdTodoId,
       })
 
       // Close modal and reset state
@@ -123,9 +149,7 @@ export function MindInterventionModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content mind-intervention-modal" onClick={(e) => e.stopPropagation()}>
-        {flowState.step === 'feeling' && (
-          <FeelingSelector onSelect={handleFeelingSelect} />
-        )}
+        {flowState.step === 'feeling' && <FeelingSelector onSelect={handleFeelingSelect} />}
 
         {flowState.step === 'selector' && (
           <InterventionSelector
@@ -143,11 +167,7 @@ export function MindInterventionModal({
           />
         )}
 
-        {flowState.step === 'complete' && (
-          <SessionComplete
-            onFinish={handleSessionFinish}
-          />
-        )}
+        {flowState.step === 'complete' && <SessionComplete onFinish={handleSessionFinish} />}
       </div>
     </div>
   )

@@ -268,7 +268,11 @@ export async function clearAllLocalData(): Promise<void> {
   const db = await getDb()
   const tx = db.transaction([NOTES_STORE, TOPICS_STORE, SECTIONS_STORE], 'readwrite')
 
-  await Promise.all([tx.objectStore(NOTES_STORE).clear(), tx.objectStore(TOPICS_STORE).clear(), tx.objectStore(SECTIONS_STORE).clear()])
+  await Promise.all([
+    tx.objectStore(NOTES_STORE).clear(),
+    tx.objectStore(TOPICS_STORE).clear(),
+    tx.objectStore(SECTIONS_STORE).clear(),
+  ])
 
   await tx.done
 }

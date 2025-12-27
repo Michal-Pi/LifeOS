@@ -8,16 +8,14 @@ import { generateId } from '@/lib/idGenerator'
 interface ProjectFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (project: Omit<CanonicalProject, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>
+  onSave: (
+    project: Omit<CanonicalProject, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  ) => Promise<void>
 }
 
 const DOMAINS: Domain[] = ['work', 'projects', 'life', 'learning', 'wellbeing']
 
-export function ProjectFormModal({
-  isOpen,
-  onClose,
-  onSave
-}: ProjectFormModalProps) {
+export function ProjectFormModal({ isOpen, onClose, onSave }: ProjectFormModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [domain, setDomain] = useState<Domain>('projects')
@@ -36,8 +34,13 @@ export function ProjectFormModal({
         description: description.trim(),
         domain,
         objective: objective.trim() || undefined,
-        keyResults: keyResults.trim() ? keyResults.split('\n').filter(Boolean).map(text => ({ id: generateId(), text })) : undefined,
-        archived: false
+        keyResults: keyResults.trim()
+          ? keyResults
+              .split('\n')
+              .filter(Boolean)
+              .map((text) => ({ id: generateId(), text }))
+          : undefined,
+        archived: false,
       })
       onClose()
       // Reset form
@@ -57,12 +60,14 @@ export function ProjectFormModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content project-form-modal" onClick={e => e.stopPropagation()}>
+      <div className="modal-content project-form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>New Project</h2>
-          <button className="close-button" onClick={onClose}>×</button>
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
         </div>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="project-title">Title</label>
@@ -70,7 +75,7 @@ export function ProjectFormModal({
               id="project-title"
               type="text"
               value={title}
-              onChange={e => setTitle(e.target.value)}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="Project Name"
               required
               autoFocus
@@ -82,10 +87,12 @@ export function ProjectFormModal({
             <select
               id="project-domain"
               value={domain}
-              onChange={e => setDomain(e.target.value as Domain)}
+              onChange={(e) => setDomain(e.target.value as Domain)}
             >
-              {DOMAINS.map(d => (
-                <option key={d} value={d}>{d}</option>
+              {DOMAINS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
               ))}
             </select>
           </div>
@@ -96,7 +103,7 @@ export function ProjectFormModal({
               id="project-objective"
               type="text"
               value={objective}
-              onChange={e => setObjective(e.target.value)}
+              onChange={(e) => setObjective(e.target.value)}
               placeholder="What is the main goal?"
             />
           </div>
@@ -106,14 +113,16 @@ export function ProjectFormModal({
             <textarea
               id="project-key-results"
               value={keyResults}
-              onChange={e => setKeyResults(e.target.value)}
+              onChange={(e) => setKeyResults(e.target.value)}
               placeholder="e.g., Achieve 20% user growth"
               rows={3}
             />
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="ghost-button" onClick={onClose}>Cancel</button>
+            <button type="button" className="ghost-button" onClick={onClose}>
+              Cancel
+            </button>
             <button type="submit" className="primary-button" disabled={isSubmitting}>
               Create Project
             </button>

@@ -50,8 +50,3 @@ export interface WritebackRepository {
    */
   cleanupSucceeded(uid: string, olderThanMs: number): Promise<number>
 }
-
-
-
-
-

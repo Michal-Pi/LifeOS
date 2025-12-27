@@ -38,7 +38,7 @@ async function getDb() {
           store.createIndex('status', 'status')
           store.createIndex('availableAtMs', 'availableAtMs')
         }
-      }
+      },
     })
   }
   return dbPromise
@@ -75,7 +75,7 @@ function defaultOp(
     availableAtMs: now, // Available immediately
     attempts: 0,
     maxAttempts: BACKOFF_CONFIG.maxAttempts,
-    status: 'pending'
+    status: 'pending',
   }
 }
 
@@ -208,7 +208,11 @@ export async function markApplied(opId: string): Promise<void> {
   await db.put(STORE_NAME, op)
 }
 
-export async function markFailed(opId: string, error: Error | string, errorCode?: string): Promise<void> {
+export async function markFailed(
+  opId: string,
+  error: Error | string,
+  errorCode?: string
+): Promise<void> {
   const db = await getDb()
   const op = await db.get(STORE_NAME, opId)
   if (!op) return
@@ -218,7 +222,7 @@ export async function markFailed(opId: string, error: Error | string, errorCode?
   op.lastError = {
     message: typeof error === 'string' ? error : error.message,
     code: errorCode,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   }
 
   // Calculate next retry time with backoff
@@ -302,7 +306,6 @@ export async function getOutboxStats(userId: string): Promise<{
     failed: ops.filter((op) => op.status === 'failed').length,
     applying: ops.filter((op) => op.status === 'applying').length,
     applied: ops.filter((op) => op.status === 'applied').length,
-    total: ops.length
+    total: ops.length,
   }
 }
-

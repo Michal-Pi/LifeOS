@@ -45,4 +45,3 @@ When running the emulator suite:
 1. Start the emulator: `pnpm firebase:emulators`.
 2. Visit `http://localhost:5001/` for the Functions emulator.
 3. Trigger `googleAuthStart` manually or via the UI to obtain the emulator auth URL. The callback also runs on the emulator port (e.g., `http://localhost:5001/<project-id>/us-central1/googleAuthCallback`), so `GOOGLE_OAUTH_REDIRECT_URI` for local testing should point there.
-

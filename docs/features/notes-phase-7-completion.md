@@ -239,10 +239,18 @@ const processNode = (node: JSONContent): string => {
 if (marks && marks.length > 0) {
   marks.forEach((mark) => {
     switch (mark.type) {
-      case 'bold': result = `**${result}**`; break
-      case 'italic': result = `*${result}*`; break
-      case 'code': result = `\`${result}\``; break
-      case 'link': result = `[${result}](${mark.attrs?.href})`; break
+      case 'bold':
+        result = `**${result}**`
+        break
+      case 'italic':
+        result = `*${result}*`
+        break
+      case 'code':
+        result = `\`${result}\``
+        break
+      case 'link':
+        result = `[${result}](${mark.attrs?.href})`
+        break
     }
   })
 }
@@ -282,9 +290,7 @@ export interface NoteTemplate {
 export function getTemplateContent(id: string): JSONContent {
   const template = getTemplateById(id)
   // Deep clone to prevent mutation
-  return template
-    ? JSON.parse(JSON.stringify(template.content))
-    : quickNoteTemplate.content
+  return template ? JSON.parse(JSON.stringify(template.content)) : quickNoteTemplate.content
 }
 ```
 
@@ -294,14 +300,10 @@ export function getTemplateContent(id: string): JSONContent {
 
 ```typescript
 const pendingCount =
-  (stats?.notes.pending || 0) +
-  (stats?.topics.pending || 0) +
-  (stats?.sections.pending || 0)
+  (stats?.notes.pending || 0) + (stats?.topics.pending || 0) + (stats?.sections.pending || 0)
 
 const failedCount =
-  (stats?.notes.failed || 0) +
-  (stats?.topics.failed || 0) +
-  (stats?.sections.failed || 0)
+  (stats?.notes.failed || 0) + (stats?.topics.failed || 0) + (stats?.sections.failed || 0)
 ```
 
 **Component Integration:**
@@ -464,23 +466,23 @@ None identified. All features working as expected.
 
 ### Phase 7 Deliverables
 
-| Feature | Status | Notes |
-|---------|--------|-------|
+| Feature                 | Status      | Notes                     |
+| ----------------------- | ----------- | ------------------------- |
 | Sync Status Integration | ✅ Complete | Banner and badges working |
-| Export to Markdown | ✅ Complete | Full formatting support |
-| Export to Plain Text | ✅ Complete | Clean text output |
-| Copy to Clipboard | ✅ Complete | With fallback support |
-| Download Files | ✅ Complete | .md and .txt formats |
-| Quick Note Template | ✅ Complete | Blank slate |
-| Meeting Notes Template | ✅ Complete | Structured sections |
-| Learning Notes Template | ✅ Complete | Educational format |
-| Project Notes Template | ✅ Complete | Goal tracking |
-| Daily Notes Template | ✅ Complete | Daily journaling |
-| Template Selector UI | ✅ Complete | Modal with grid |
-| Editor Header | ✅ Complete | Title and export |
-| Production Build | ✅ Complete | 1.74s build time |
-| Firebase Deployment | ✅ Complete | Live at lifeos-pi.web.app |
-| Documentation | ✅ Complete | Plan + completion reports |
+| Export to Markdown      | ✅ Complete | Full formatting support   |
+| Export to Plain Text    | ✅ Complete | Clean text output         |
+| Copy to Clipboard       | ✅ Complete | With fallback support     |
+| Download Files          | ✅ Complete | .md and .txt formats      |
+| Quick Note Template     | ✅ Complete | Blank slate               |
+| Meeting Notes Template  | ✅ Complete | Structured sections       |
+| Learning Notes Template | ✅ Complete | Educational format        |
+| Project Notes Template  | ✅ Complete | Goal tracking             |
+| Daily Notes Template    | ✅ Complete | Daily journaling          |
+| Template Selector UI    | ✅ Complete | Modal with grid           |
+| Editor Header           | ✅ Complete | Title and export          |
+| Production Build        | ✅ Complete | 1.74s build time          |
+| Firebase Deployment     | ✅ Complete | Live at lifeos-pi.web.app |
+| Documentation           | ✅ Complete | Plan + completion reports |
 
 ## Overall Notes Feature Status
 

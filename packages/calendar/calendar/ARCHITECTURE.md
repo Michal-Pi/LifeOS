@@ -3,6 +3,7 @@
 All calendar data lives under `/users/{uid}` with separate spaces for raw ingestion, canonical data, sync state, and composites. UI code, adapters, and use cases operate exclusively against the canonical collections so provider payloads never leak into the web tier.
 
 ## Accounts
+
 `/users/{uid}/calendarAccounts/{accountId}`
 
 - `provider`: `"google"` (future `"microsoft"`, `"icloud"`)
@@ -13,6 +14,7 @@ All calendar data lives under `/users/{uid}` with separate spaces for raw ingest
 - **Tokens do not live here**—see `/users/{uid}/privateIntegrations/googleAccounts/{accountId}` (server-only).
 
 ## Calendars
+
 `/users/{uid}/calendars/{calendarId}`
 
 - `accountId`, `providerCalendarId`, `provider`
@@ -20,6 +22,7 @@ All calendar data lives under `/users/{uid}` with separate spaces for raw ingest
 - `visible` boolean, `updatedAt`
 
 ## Raw ingestion
+
 `/users/{uid}/rawCalendarEvents/{accountId}/{providerCalendarId}/events/{providerEventId}`
 
 - Stores provider-native payload (Google event shape) plus:
@@ -27,6 +30,7 @@ All calendar data lives under `/users/{uid}` with separate spaces for raw ingest
   - `rawJson`: canonical copy of payload (optional, for debugging)
 
 ## Canonical events (source of truth)
+
 `/users/{uid}/calendarEvents/{canonicalEventId}`
 
 - Deterministic `canonicalEventId` key: `${provider}:${accountId}:${providerCalendarId}:${providerEventId}`
@@ -39,12 +43,14 @@ All calendar data lives under `/users/{uid}` with separate spaces for raw ingest
 - `attendees`, `reminders`, `recurrence` stubs, attachments, `providerCalendarId`, `providerEventId`
 
 ## Sync state
+
 `/users/{uid}/calendarSyncState/{accountId}`
 
 - Maps `providerCalendarId` → `{ syncToken?, pageToken? }`
 - `lastFullSyncAt`, `lastIncrementalSyncAt`, `lastError`, `schemaVersion`, `normalizationVersion`
 
 ## Sync runs (audit)
+
 `/users/{uid}/calendarSyncRuns/{runId}`
 
 - `startedAt`, `endedAt`, `status`, `mode`
@@ -52,6 +58,7 @@ All calendar data lives under `/users/{uid}` with separate spaces for raw ingest
 - `errors[]`, `cursorInfo`, `accountId`
 
 ## Composite Events (Phase 2.0E)
+
 `/users/{uid}/compositeEvents/{compositeEventId}`
 
 Composite events link multiple canonical events that represent the **same real-world event** across different calendar providers or accounts. This enables deduplication in unified views.
@@ -60,21 +67,21 @@ Composite events link multiple canonical events that represent the **same real-w
 
 ```typescript
 interface CompositeEvent {
-  compositeEventId: string          // UUID
-  
+  compositeEventId: string // UUID
+
   // Member references (2+ canonical events)
   members: CompositeMember[]
-  canonicalEventIds: string[]       // Denormalized for queries
-  
+  canonicalEventIds: string[] // Denormalized for queries
+
   // How the link was established
   heuristic: 'icaluid' | 'time-title' | 'manual'
-  confidence: number                // 0.0 - 1.0
-  
+  confidence: number // 0.0 - 1.0
+
   // Representative data (from primary member)
   primaryCanonicalEventId: string
-  title?: string                    // Cached for display
-  startMs: number                   // Cached for sorting
-  
+  title?: string // Cached for display
+  startMs: number // Cached for sorting
+
   // Metadata
   createdAt: string
   updatedAt: string
@@ -87,22 +94,23 @@ interface CompositeMember {
   accountId: string
   providerCalendarId: string
   providerEventId: string
-  iCalUID?: string                  // Key for icaluid matching
+  iCalUID?: string // Key for icaluid matching
   role: 'primary' | 'duplicate'
 }
 ```
 
 ### Deduplication Heuristics
 
-| Heuristic | Confidence | Criteria |
-|-----------|------------|----------|
-| `icaluid` | 0.95 | Same `iCalUID` across different accounts |
-| `time-title` | 0.75 | Same start time (±5 min) + normalized title match |
-| `manual` | 1.0 | User explicitly linked events |
+| Heuristic    | Confidence | Criteria                                          |
+| ------------ | ---------- | ------------------------------------------------- |
+| `icaluid`    | 0.95       | Same `iCalUID` across different accounts          |
+| `time-title` | 0.75       | Same start time (±5 min) + normalized title match |
+| `manual`     | 1.0        | User explicitly linked events                     |
 
 ### Query Patterns
 
 1. **Find composites for a canonical event**:
+
    ```
    where('canonicalEventIds', 'array-contains', eventId)
    ```
@@ -116,6 +124,7 @@ interface CompositeMember {
 ### Sync Integration
 
 During sync, after upserting canonical events:
+
 1. Extract `iCalUID` from new/updated events
 2. Query existing events with matching `iCalUID` (different accounts)
 3. Create/update composite if match found
@@ -124,6 +133,7 @@ During sync, after upserting canonical events:
 ---
 
 ## Sync Runs (updated for Phase 2.0E)
+
 `/users/{uid}/calendarSyncRuns/{runId}`
 
 ```typescript
@@ -134,7 +144,7 @@ interface CalendarSyncRun {
   endedAt?: string
   status: 'in_progress' | 'completed' | 'failed'
   mode: 'full' | 'incremental' | 'manual'
-  
+
   // Event counts
   counts: {
     calendarsFetched: number
@@ -147,7 +157,7 @@ interface CalendarSyncRun {
     compositeUpdated: number
     duplicatesDetected: number
   }
-  
+
   errors: Array<{ code: string; message: string; eventId?: string }>
   cursorInfo?: { syncToken?: string; pageToken?: string }
 }
@@ -156,6 +166,7 @@ interface CalendarSyncRun {
 ---
 
 ## Writeback Queue (Phase 2.2)
+
 `/users/{uid}/calendarWritebackQueue/{jobId}`
 
 Server-side queue for writing canonical changes back to Google Calendar.
@@ -166,14 +177,14 @@ Server-side queue for writing canonical changes back to Google Calendar.
 interface WritebackJob {
   jobId: string
   uid: string
-  eventId: string           // Canonical event ID
-  
+  eventId: string // Canonical event ID
+
   op: 'create' | 'update' | 'delete'
   provider: 'google'
   accountId: string
   providerCalendarId: string
-  providerEventId?: string  // Required for update/delete
-  
+  providerEventId?: string // Required for update/delete
+
   payload: {
     title?: string
     description?: string
@@ -185,12 +196,12 @@ interface WritebackJob {
     transparency?: string
     visibility?: string
   }
-  
-  baseProviderEtag?: string  // For optimistic concurrency
+
+  baseProviderEtag?: string // For optimistic concurrency
   createdAtMs: number
-  availableAtMs: number      // For retry scheduling
+  availableAtMs: number // For retry scheduling
   attempts: number
-  maxAttempts: number        // Default: 10
+  maxAttempts: number // Default: 10
   status: 'pending' | 'processing' | 'failed' | 'succeeded'
   lastError?: { code?: string; message: string; atMs?: number }
 }
@@ -210,7 +221,7 @@ interface WritebackJob {
   source: { type: 'provider' | 'local' }
 }
 
-type SyncState = 
+type SyncState =
   | 'synced'              // In sync with provider
   | 'pending_writeback'   // Local changes waiting to be written
   | 'error'               // Writeback failed
@@ -241,22 +252,22 @@ type SyncState =
 
 ### Retry Policy
 
-| Attempt | Delay    |
-|---------|----------|
-| 1       | 1 minute |
-| 2       | 5 minutes|
-| 3       | 15 minutes|
-| 4       | 1 hour   |
-| 5+      | 6 hours (cap)|
+| Attempt | Delay         |
+| ------- | ------------- |
+| 1       | 1 minute      |
+| 2       | 5 minutes     |
+| 3       | 15 minutes    |
+| 4       | 1 hour        |
+| 5+      | 6 hours (cap) |
 
 ### Error Categorization
 
-| Category     | Action                          | Examples              |
-|--------------|---------------------------------|-----------------------|
-| `auth`       | Fail, mark account needs_attention | `invalid_grant`     |
-| `validation` | Fail permanently                | 400, 403, 404        |
-| `conflict`   | Fail, mark syncState=conflict   | 409, 412             |
-| `transient`  | Retry with backoff              | 500, 502, 503        |
+| Category     | Action                             | Examples        |
+| ------------ | ---------------------------------- | --------------- |
+| `auth`       | Fail, mark account needs_attention | `invalid_grant` |
+| `validation` | Fail permanently                   | 400, 403, 404   |
+| `conflict`   | Fail, mark syncState=conflict      | 409, 412        |
+| `transient`  | Retry with backoff                 | 500, 502, 503   |
 
 ---
 
@@ -296,19 +307,19 @@ type Weekday = 'MO' | 'TU' | 'WE' | 'TH' | 'FR' | 'SA' | 'SU'
 
 interface CanonicalRecurrenceRule {
   freq: RecurrenceFrequency
-  interval?: number              // Default 1
-  byWeekday?: Weekday[]          // For WEEKLY
-  byMonthDay?: number[]          // For MONTHLY
-  byMonth?: number[]             // For YEARLY
-  count?: number                 // Stop after N occurrences
-  untilMs?: number               // Stop at this timestamp (inclusive)
-  wkst?: 'MO' | 'SU'             // Week start day
+  interval?: number // Default 1
+  byWeekday?: Weekday[] // For WEEKLY
+  byMonthDay?: number[] // For MONTHLY
+  byMonth?: number[] // For YEARLY
+  count?: number // Stop after N occurrences
+  untilMs?: number // Stop at this timestamp (inclusive)
+  wkst?: 'MO' | 'SU' // Week start day
 }
 
 interface CanonicalRecurrence {
-  tz?: string                    // IANA timezone
+  tz?: string // IANA timezone
   rule: CanonicalRecurrenceRule
-  exdatesMs?: number[]           // Excluded occurrences (by startMs)
+  exdatesMs?: number[] // Excluded occurrences (by startMs)
   overrides?: Record<string, CanonicalEventOverride>
   split?: RecurrenceSplit
 }
@@ -327,8 +338,8 @@ interface CanonicalEventOverride {
 
 interface RecurrenceSplit {
   splitAtMs: number
-  childSeriesId?: string         // For parent series
-  parentSeriesId?: string        // For child series
+  childSeriesId?: string // For parent series
+  parentSeriesId?: string // For child series
 }
 ```
 
@@ -355,6 +366,7 @@ occurrenceKey = occurrenceStartMs (string)
 ```
 
 This ensures:
+
 - Stable identity across devices
 - Deduplication when syncing
 - Correct mapping to provider instance IDs
@@ -378,17 +390,18 @@ Return unified render list
 ```
 
 **Safeguards:**
+
 - Max 500 instances per query (configurable)
 - Lookback limited to 1 year for past series
 - No pre-materialization of instances
 
 ### Edit Scopes
 
-| Scope | Action | Canonical Effect |
-|-------|--------|------------------|
-| `this` | Edit single instance | Add to `overrides` map |
-| `this_and_future` | Split series | Old series ends, new series starts |
-| `all` | Edit master | Update series master fields/rule |
+| Scope             | Action               | Canonical Effect                   |
+| ----------------- | -------------------- | ---------------------------------- |
+| `this`            | Edit single instance | Add to `overrides` map             |
+| `this_and_future` | Split series         | Old series ends, new series starts |
+| `all`             | Edit master          | Update series master fields/rule   |
 
 ### Split Strategy (This and Future)
 
@@ -418,37 +431,45 @@ overrides: {
 ### Write-back to Google (Phase 2.3 extensions)
 
 **Create Series:**
+
 - Send `recurrence: ["RRULE:..."]` in event.insert
 
 **Edit This Event:**
+
 1. Resolve provider instance ID via `events.instances` API
 2. Patch the specific instance
 3. Store mapping in canonical override
 
 **Edit This and Future (Split):**
+
 1. Update old series with `UNTIL`
 2. Create new series starting at split point
 
 **Delete This Event:**
+
 - Add `EXDATE` to series
 
 ### Instance ID Resolution Cache
+
 `/users/{uid}/recurrenceInstanceMap/{seriesId}`
 
 Caches the mapping from canonical occurrence keys to Google instance IDs:
 
 ```typescript
 interface InstanceMapping {
-  seriesId: string           // Canonical series ID
-  providerSeriesId: string   // Google recurring event ID
+  seriesId: string // Canonical series ID
+  providerSeriesId: string // Google recurring event ID
   accountId: string
   calendarId: string
-  occurrences: Record<string, {
-    providerInstanceId: string
-    providerEtag: string
-    providerUpdatedAtMs: number
-    originalStartMs: number
-  }>
+  occurrences: Record<
+    string,
+    {
+      providerInstanceId: string
+      providerEtag: string
+      providerUpdatedAtMs: number
+      originalStartMs: number
+    }
+  >
   fetchedAtMs: number
   rangeMinMs: number
   rangeMaxMs: number
@@ -456,6 +477,7 @@ interface InstanceMapping {
 ```
 
 **Resolution Flow:**
+
 1. Check cache for occurrence key
 2. If cache miss or stale, fetch via `events.instances` API (7-day window)
 3. Cache results for future lookups
@@ -470,35 +492,30 @@ interface InstanceMapping {
 Each canonical event includes attendee information when available:
 
 ```typescript
-type CanonicalResponseStatus = 
-  | 'needsAction' 
-  | 'accepted' 
-  | 'tentative' 
-  | 'declined' 
-  | 'unknown';
+type CanonicalResponseStatus = 'needsAction' | 'accepted' | 'tentative' | 'declined' | 'unknown'
 
 interface CanonicalAttendee {
-  email?: string;
-  displayName?: string;
-  self?: boolean;        // True for the current user
-  organizer?: boolean;   // True for the event organizer
-  optional?: boolean;
-  resource?: boolean;    // Room/resource
-  responseStatus: CanonicalResponseStatus;
-  comment?: string;
-  additionalGuests?: number;
+  email?: string
+  displayName?: string
+  self?: boolean // True for the current user
+  organizer?: boolean // True for the event organizer
+  optional?: boolean
+  resource?: boolean // Room/resource
+  responseStatus: CanonicalResponseStatus
+  comment?: string
+  additionalGuests?: number
 }
 
 interface CanonicalOrganizer {
-  email?: string;
-  displayName?: string;
-  self?: boolean;
+  email?: string
+  displayName?: string
+  self?: boolean
 }
 
 interface CanonicalCreator {
-  email?: string;
-  displayName?: string;
-  self?: boolean;
+  email?: string
+  displayName?: string
+  self?: boolean
 }
 ```
 
@@ -512,18 +529,19 @@ The user's role in an event is determined by:
 4. **Unknown**: No self markers present
 
 ```typescript
-type CanonicalEventRole = 'organizer' | 'attendee' | 'unknown';
+type CanonicalEventRole = 'organizer' | 'attendee' | 'unknown'
 
 // Helper functions
 function getEventRole(event): CanonicalEventRole
-function canRespond(event): boolean    // True for attendees
-function canUpdate(event): boolean     // True for organizers
-function canCancel(event): boolean     // True for organizers
+function canRespond(event): boolean // True for attendees
+function canUpdate(event): boolean // True for organizers
+function canCancel(event): boolean // True for organizers
 ```
 
 ### RSVP Flow
 
 **Attendee RSVP:**
+
 1. User clicks Accept/Maybe/Decline in UI
 2. Canonical event updated with new `selfAttendee.responseStatus`
 3. `syncState` set to `pending_writeback`
@@ -531,6 +549,7 @@ function canCancel(event): boolean     // True for organizers
 5. Cloud Function patches Google event with updated attendee status
 
 **Writeback Job for RSVP:**
+
 ```typescript
 {
   op: 'rsvp',
@@ -544,12 +563,14 @@ function canCancel(event): boolean     // True for organizers
 ### Organizer Flow
 
 **Add/Remove Attendees:**
+
 1. Organizer modifies attendee list in UI
 2. Canonical event updated with new attendees
 3. Writeback job created with `op: 'update_attendees'`
 4. Cloud Function patches Google event with `sendUpdates: 'all'`
 
 **Writeback Job for Attendee Updates:**
+
 ```typescript
 {
   op: 'update_attendees',
@@ -571,11 +592,11 @@ Events affect busy/free calculation based on:
 ```typescript
 function isEventBusy(event): boolean {
   // Declined = not busy
-  if (selfAttendee?.responseStatus === 'declined') return false;
+  if (selfAttendee?.responseStatus === 'declined') return false
   // Transparent = not busy
-  if (event.transparency === 'transparent') return false;
+  if (event.transparency === 'transparent') return false
   // Default = busy
-  return true;
+  return true
 }
 ```
 
@@ -585,10 +606,10 @@ Derived from role and calendar permissions:
 
 ```typescript
 interface ProviderCapabilities {
-  canInvite?: boolean;   // Organizer only
-  canRespond?: boolean;  // Attendee only
-  canUpdate?: boolean;   // Organizer only
-  canCancel?: boolean;   // Organizer only
+  canInvite?: boolean // Organizer only
+  canRespond?: boolean // Attendee only
+  canUpdate?: boolean // Organizer only
+  canCancel?: boolean // Organizer only
 }
 ```
 
@@ -600,4 +621,3 @@ interface ProviderCapabilities {
 - Private integration tokens live at `/users/{uid}/privateIntegrations/**` and are denied to clients.
 - Writeback queue is read-only for clients (status visibility), write-only for server (Cloud Functions).
 - OccursOn date keys are computed per canonical event and capped (e.g., iterating up to 60 days) to avoid runaway arrays.
-

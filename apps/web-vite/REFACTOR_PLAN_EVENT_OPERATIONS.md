@@ -3,6 +3,7 @@
 ## ✅ **STATUS: PHASE 1 COMPLETE**
 
 **Completed:**
+
 - ✅ Created `hooks/useEventService.ts` (business logic layer)
 - ✅ Migrated TodoPage to use clean service hook
 - ✅ TodoPage no longer needs dummy state setters
@@ -10,6 +11,7 @@
 - ✅ TodoPage now has clean, maintainable code
 
 **Remaining Work:**
+
 - ⏳ CalendarPage still uses `useEventOperations` (acceptable for now)
 - ⏳ Future: Create `useEventUI` to wrap service hook for CalendarPage when needed
 - ⏳ Future: Add updateEvent, deleteEvent methods to useEventService
@@ -21,20 +23,21 @@
 The `useEventOperations` hook is currently tightly coupled to UI state management, requiring consumers to pass in multiple state setters even when they don't need them. This creates unnecessary dependencies and forces workarounds.
 
 **Current Issue (TodoPage.tsx:36-51):**
+
 ```typescript
 // TodoPage has to create dummy state just to use createEvent
 const [, setDummyEvents] = useState<CanonicalCalendarEvent[]>([])
 const { createEvent } = useEventOperations({
   userId,
-  setEvents: setDummyEvents,        // unused
-  selectedEvent: null,               // unused
-  setSelectedEvent: () => {},        // no-op
-  setFormModalOpen: () => {},        // no-op
-  setDeleteModalOpen: () => {},      // no-op
-  setEditScope: () => {},            // no-op
-  setPendingFormData: () => {},      // no-op
-  setPendingOps: () => {},           // no-op
-  setConnectionError: (err) => console.error(err)
+  setEvents: setDummyEvents, // unused
+  selectedEvent: null, // unused
+  setSelectedEvent: () => {}, // no-op
+  setFormModalOpen: () => {}, // no-op
+  setDeleteModalOpen: () => {}, // no-op
+  setEditScope: () => {}, // no-op
+  setPendingFormData: () => {}, // no-op
+  setPendingOps: () => {}, // no-op
+  setConnectionError: (err) => console.error(err),
 })
 ```
 
@@ -62,6 +65,7 @@ This is a code smell indicating poor separation of concerns.
 Create a layered architecture with clear separation of concerns:
 
 #### Layer 1: Core Event Repository (No React)
+
 ```typescript
 // lib/eventRepository.ts
 export const eventRepository = {
@@ -73,6 +77,7 @@ export const eventRepository = {
 ```
 
 #### Layer 2: Business Logic Hook (React, No UI State)
+
 ```typescript
 // hooks/useEventService.ts
 export function useEventService(userId: string) {
@@ -86,6 +91,7 @@ export function useEventService(userId: string) {
 ```
 
 #### Layer 3: UI State Management Hook (Optional)
+
 ```typescript
 // hooks/useEventUI.ts - Only used by CalendarPage
 export function useEventUI(userId: string) {
@@ -99,7 +105,7 @@ export function useEventUI(userId: string) {
   // Wrap service methods with UI state updates
   const createEventWithUI = async (data: EventFormData) => {
     const event = await eventService.createEvent(data)
-    setEvents(prev => [...prev, event].sort((a, b) => a.startMs - b.startMs))
+    setEvents((prev) => [...prev, event].sort((a, b) => a.startMs - b.startMs))
     setSelectedEvent(event)
     setFormModalOpen(false)
     return event
@@ -117,6 +123,7 @@ export function useEventUI(userId: string) {
 ```
 
 #### Usage in TodoPage (Clean!)
+
 ```typescript
 // TodoPage.tsx
 const eventService = useEventService(userId)
@@ -137,6 +144,7 @@ const handleSaveSchedule = async (formData: EventFormData) => {
 ```
 
 #### Usage in CalendarPage (Full UI!)
+
 ```typescript
 // CalendarPage.tsx
 const {
@@ -146,7 +154,7 @@ const {
   setFormModalOpen,
   createEvent,
   updateEvent,
-  deleteEvent
+  deleteEvent,
 } = useEventUI(userId)
 
 // Everything works seamlessly with full UI state management
@@ -178,7 +186,7 @@ export function useEventOperations(props: UseEventOperationsProps) {
     const event = /* create event logic */
 
     // Only update UI state if provided
-    props.setEvents?.(prev => [...prev, event])
+    props.setEvents?.((prev) => [...prev, event])
     props.setSelectedEvent?.(event)
     props.setFormModalOpen?.(false)
 
@@ -190,10 +198,12 @@ export function useEventOperations(props: UseEventOperationsProps) {
 ```
 
 **Pros:**
+
 - Minimal refactoring required
 - Backward compatible
 
 **Cons:**
+
 - Still mixes concerns
 - Parameters still clutter the interface
 - Doesn't solve the architectural issue
@@ -203,6 +213,7 @@ export function useEventOperations(props: UseEventOperationsProps) {
 ## Recommended Approach: Option A
 
 **Why Option A is better:**
+
 1. ✅ Clean separation of concerns
 2. ✅ Easier to test (each layer independently testable)
 3. ✅ More flexible (can compose functionality as needed)
@@ -215,29 +226,34 @@ export function useEventOperations(props: UseEventOperationsProps) {
 ## Implementation Plan
 
 ### **Phase 1: Extract Core Repository** (1-2 hours)
+
 - [ ] Create `lib/eventRepository.ts` with core CRUD operations
 - [ ] Move Firestore interaction logic from hook to repository
 - [ ] Add unit tests for repository layer
 
 ### **Phase 2: Create Service Hook** (1-2 hours)
+
 - [ ] Create `hooks/useEventService.ts`
 - [ ] Move business logic from `useEventOperations` (recurrence building, event creation logic)
 - [ ] Use repository layer for persistence
 - [ ] Return simple async functions without UI dependencies
 
 ### **Phase 3: Create UI Hook** (2-3 hours)
+
 - [ ] Create `hooks/useEventUI.ts`
 - [ ] Wrap service hook with UI state management
 - [ ] Handle modal state, selections, etc.
 - [ ] Maintain backward compatibility
 
 ### **Phase 4: Migrate Consumers** (2-3 hours)
+
 - [ ] Update CalendarPage to use `useEventUI`
 - [ ] Update TodoPage to use `useEventService`
 - [ ] Update any other consumers
 - [ ] Test all workflows
 
 ### **Phase 5: Cleanup** (1 hour)
+
 - [ ] Remove old `useEventOperations` hook
 - [ ] Update documentation
 - [ ] Run full test suite
@@ -250,6 +266,7 @@ export function useEventOperations(props: UseEventOperationsProps) {
 ## Benefits After Refactor
 
 1. **TodoPage becomes cleaner:**
+
    ```typescript
    const eventService = useEventService(userId)
    // No dummy state needed!
@@ -274,10 +291,12 @@ export function useEventOperations(props: UseEventOperationsProps) {
 ## Migration Strategy
 
 ### Breaking Changes
+
 - `useEventOperations` hook interface will change
 - Consumers need to choose between `useEventService` or `useEventUI`
 
 ### Non-Breaking Approach
+
 1. Create new hooks alongside old one
 2. Gradually migrate consumers
 3. Deprecate old hook with warning
@@ -294,7 +313,9 @@ If full refactor is not feasible now, add a comment and defer:
 // TODO: Refactor useEventOperations to separate business logic from UI state
 // See: REFACTOR_PLAN_EVENT_OPERATIONS.md
 const [, setDummyEvents] = useState<CanonicalCalendarEvent[]>([])
-const { createEvent } = useEventOperations({ /* ... */ })
+const { createEvent } = useEventOperations({
+  /* ... */
+})
 ```
 
 This at least documents the technical debt for future work.

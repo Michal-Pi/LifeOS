@@ -80,15 +80,32 @@
 }
 
 /* Column Widths */
-.w-8 { width: 32px; }
-.w-24 { width: 96px; }
-.w-32 { width: 128px; }
-.flex-1 { flex: 1; }
+.w-8 {
+  width: 32px;
+}
+.w-24 {
+  width: 96px;
+}
+.w-32 {
+  width: 128px;
+}
+.flex-1 {
+  flex: 1;
+}
 
 /* Cell Specifics */
-.title-cell { flex: 1; font-weight: 500; }
-.checkbox-cell { width: 32px; justify-content: center; }
-.meta-cell { color: var(--text-secondary); font-size: 0.9rem; }
+.title-cell {
+  flex: 1;
+  font-weight: 500;
+}
+.checkbox-cell {
+  width: 32px;
+  justify-content: center;
+}
+.meta-cell {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
 
 .priority-score {
   font-family: monospace;

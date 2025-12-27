@@ -249,7 +249,9 @@ export function validateInterventionStep(step: InterventionStep): ValidationResu
 
 // ----- Intervention Session Validation -----
 
-export function validateInterventionSession(session: CanonicalInterventionSession): ValidationResult {
+export function validateInterventionSession(
+  session: CanonicalInterventionSession
+): ValidationResult {
   const errors: string[] = []
 
   if (!session.sessionId) {

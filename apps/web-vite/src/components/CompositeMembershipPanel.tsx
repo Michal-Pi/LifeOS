@@ -11,7 +11,10 @@ interface CompositeMembershipPanelProps {
  * Display composite membership (auditable)
  * Shows which canonical events are unified into this composite
  */
-export function CompositeMembershipPanel({ composite, onViewMember }: CompositeMembershipPanelProps) {
+export function CompositeMembershipPanel({
+  composite,
+  onViewMember,
+}: CompositeMembershipPanelProps) {
   const memberCount = composite.members?.length ?? 0
 
   if (memberCount <= 1) {
@@ -24,9 +27,7 @@ export function CompositeMembershipPanel({ composite, onViewMember }: CompositeM
     <div className="composite-membership-panel">
       <div className="composite-header">
         <span className="composite-icon">🔗</span>
-        <span className="composite-title">
-          Unified from {memberCount} sources
-        </span>
+        <span className="composite-title">Unified from {memberCount} sources</span>
       </div>
 
       <div className="dedupe-reason">
@@ -50,9 +51,7 @@ export function CompositeMembershipPanel({ composite, onViewMember }: CompositeM
             <div className="member-meta">
               <span className="member-calendar">{member.providerCalendarId}</span>
               {member.status && (
-                <span className={`member-status status-${member.status}`}>
-                  {member.status}
-                </span>
+                <span className={`member-status status-${member.status}`}>{member.status}</span>
               )}
             </div>
             {onViewMember && (
@@ -107,4 +106,3 @@ function getProviderIcon(provider: string): string {
       return '📌'
   }
 }
-

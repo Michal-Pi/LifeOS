@@ -12,13 +12,13 @@ Events can be created locally and synced to Firestore. The system uses an **Inde
 
 All-day events are stored differently from timed events:
 
-| Field | Timed Event | All-Day Event |
-|-------|-------------|---------------|
-| `allDay` | `false` | `true` |
-| `startMs` | Epoch ms of start time | Epoch ms of `00:00:00` on start date |
-| `endMs` | Epoch ms of end time | Epoch ms of `23:59:59` on end date |
-| `startIso` | Full ISO timestamp | Full ISO timestamp (time part is midnight) |
-| `endIso` | Full ISO timestamp | Full ISO timestamp (time part is 23:59:59) |
+| Field      | Timed Event            | All-Day Event                              |
+| ---------- | ---------------------- | ------------------------------------------ |
+| `allDay`   | `false`                | `true`                                     |
+| `startMs`  | Epoch ms of start time | Epoch ms of `00:00:00` on start date       |
+| `endMs`    | Epoch ms of end time   | Epoch ms of `23:59:59` on end date         |
+| `startIso` | Full ISO timestamp     | Full ISO timestamp (time part is midnight) |
+| `endIso`   | Full ISO timestamp     | Full ISO timestamp (time part is 23:59:59) |
 
 ### Validation Rules
 
@@ -52,7 +52,7 @@ Use the `isDeleted()` helper:
 ```typescript
 import { isDeleted } from '@lifeos/calendar'
 
-const activeEvents = events.filter(e => !isDeleted(e))
+const activeEvents = events.filter((e) => !isDeleted(e))
 ```
 
 ---
@@ -76,11 +76,11 @@ The outbox ensures operations succeed even when offline.
 
 ### Operation Types
 
-| Type | Payload | Description |
-|------|---------|-------------|
-| `create` | `{ event: CanonicalCalendarEvent }` | New event |
-| `update` | `{ event: CanonicalCalendarEvent }` | Full updated event |
-| `delete` | `{}` | Soft delete (uses `baseUpdatedAtMs`) |
+| Type     | Payload                             | Description                          |
+| -------- | ----------------------------------- | ------------------------------------ |
+| `create` | `{ event: CanonicalCalendarEvent }` | New event                            |
+| `update` | `{ event: CanonicalCalendarEvent }` | Full updated event                   |
+| `delete` | `{}`                                | Soft delete (uses `baseUpdatedAtMs`) |
 
 ### Operation Lifecycle
 
@@ -127,11 +127,11 @@ User B saves at 10:03 → event.updatedAtMs = 1003 (wins)
 
 ### Per-Event Indicators
 
-| Indicator | Meaning |
-|-----------|---------|
-| 🟡 Orange dot | Operation pending |
-| 🔴 Red dot | Operation failed |
-| (none) | Synced successfully |
+| Indicator     | Meaning             |
+| ------------- | ------------------- |
+| 🟡 Orange dot | Operation pending   |
+| 🔴 Red dot    | Operation failed    |
+| (none)        | Synced successfully |
 
 ### Global Indicators
 
@@ -145,6 +145,7 @@ User B saves at 10:03 → event.updatedAtMs = 1003 (wins)
 **Current limitation**: Recurring events cannot be edited or deleted.
 
 The system checks for:
+
 - `recurrence.recurrenceRules` array
 - `providerRef.recurringEventId` field
 
@@ -154,18 +155,14 @@ If either exists, edit/delete operations are blocked with an error message.
 
 ## Code Locations
 
-| Component | Path |
-|-----------|------|
-| Domain models | `packages/calendar/src/domain/models.ts` |
-| Event usecases | `packages/calendar/src/usecases/eventUsecases.ts` |
-| Outbox types | `apps/web-vite/src/outbox/types.ts` |
-| Outbox store | `apps/web-vite/src/outbox/store.ts` |
-| Outbox worker | `apps/web-vite/src/outbox/worker.ts` |
+| Component         | Path                                                             |
+| ----------------- | ---------------------------------------------------------------- |
+| Domain models     | `packages/calendar/src/domain/models.ts`                         |
+| Event usecases    | `packages/calendar/src/usecases/eventUsecases.ts`                |
+| Outbox types      | `apps/web-vite/src/outbox/types.ts`                              |
+| Outbox store      | `apps/web-vite/src/outbox/store.ts`                              |
+| Outbox worker     | `apps/web-vite/src/outbox/worker.ts`                             |
 | Firestore adapter | `apps/web-vite/src/adapters/firestoreCalendarEventRepository.ts` |
-| Event form | `apps/web-vite/src/components/EventFormModal.tsx` |
-| Delete confirm | `apps/web-vite/src/components/DeleteConfirmModal.tsx` |
-| Calendar page | `apps/web-vite/src/pages/CalendarPage.tsx` |
-
-
-
-
+| Event form        | `apps/web-vite/src/components/EventFormModal.tsx`                |
+| Delete confirm    | `apps/web-vite/src/components/DeleteConfirmModal.tsx`            |
+| Calendar page     | `apps/web-vite/src/pages/CalendarPage.tsx`                       |

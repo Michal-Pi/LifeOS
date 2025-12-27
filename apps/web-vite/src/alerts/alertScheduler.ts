@@ -1,9 +1,9 @@
 /**
  * Alert Scheduler Module
- * 
+ *
  * This module manages in-app alert delivery for calendar events.
  * It runs only while the app is open (foreground) and is best-effort.
- * 
+ *
  * Key behaviors:
  * - Watches events in a time window (next 24 hours)
  * - Computes next pending alerts
@@ -17,7 +17,7 @@ import {
   computeAlertFireTimeMs,
   shouldAlertFire,
   isDeleted,
-  createLogger
+  createLogger,
 } from '@lifeos/calendar'
 
 const logger = createLogger('AlertScheduler')
@@ -52,7 +52,7 @@ const state: SchedulerState = {
   timer: null,
   onAlert: null,
   isRunning: false,
-  lastComputeMs: 0
+  lastComputeMs: 0,
 }
 
 // Time window for alert checking (24 hours)
@@ -108,7 +108,7 @@ export function stopAlertScheduler(): void {
  */
 export function updateSchedulerEvents(events: CanonicalCalendarEvent[]): void {
   state.events = events
-  
+
   if (state.isRunning) {
     recomputeAlerts()
   }
@@ -218,7 +218,7 @@ function recomputeAlerts(): void {
 
     logger.info('Next alert scheduled', {
       eventTitle: nextAlert.event.title,
-      delaySeconds: Math.round(delay / 1000)
+      delaySeconds: Math.round(delay / 1000),
     })
   }
 }
@@ -234,11 +234,6 @@ export function getSchedulerStatus(): {
   return {
     isRunning: state.isRunning,
     eventCount: state.events.length,
-    hasTimer: state.timer !== null
+    hasTimer: state.timer !== null,
   }
 }
-
-
-
-
-

@@ -440,14 +440,17 @@ apps/web-vite/src/
 - ⬜ Learning milestones integrated with KRs (Deferred to Phase 7)
 
 **Git Commit:**
+
 - b4c8e79: Add Notes Phase 4B (Project Integration) and Phase 5 (Attachments & Media)
 
 **Files Created:**
+
 - apps/web-vite/src/components/notes/ProjectLinker.tsx
 - apps/web-vite/src/components/notes/AttachmentUploader.tsx
 - apps/web-vite/src/hooks/useAttachments.ts
 
 **Files Modified:**
+
 - apps/web-vite/src/components/editor/NoteEditor.tsx
 - apps/web-vite/src/hooks/useNoteOperations.ts
 - apps/web-vite/src/pages/NotesPage.tsx
@@ -496,9 +499,11 @@ apps/web-vite/src/
 - ⬜ Offline attachment queue (Deferred to Phase 6)
 
 **Git Commit:**
+
 - b4c8e79: Add Notes Phase 4B (Project Integration) and Phase 5 (Attachments & Media)
 
 **Files Created:**
+
 - apps/web-vite/src/components/notes/AttachmentUploader.tsx
 - apps/web-vite/src/hooks/useAttachments.ts
 

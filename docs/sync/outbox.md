@@ -15,23 +15,23 @@ User Action → Outbox (IndexedDB) → Firestore → Provider Writeback
 
 ```typescript
 interface OutboxOp {
-  opId: string            // Unique operation ID
+  opId: string // Unique operation ID
   type: 'create' | 'update' | 'delete'
   userId: string
   eventId: string
   payload: { event: CanonicalCalendarEvent } | {}
-  
+
   // Conflict resolution
-  baseRev?: number        // Server rev when client started editing
+  baseRev?: number // Server rev when client started editing
   baseUpdatedAtMs?: number
-  deviceId: string        // Stable device identifier
-  
+  deviceId: string // Stable device identifier
+
   // Timing
-  createdAtMs: number     // When op was created
-  availableAtMs: number   // When op can be retried (backoff)
-  attempts: number        // Number of attempts so far
-  maxAttempts: number     // Max attempts before giving up
-  
+  createdAtMs: number // When op was created
+  availableAtMs: number // When op can be retried (backoff)
+  attempts: number // Number of attempts so far
+  maxAttempts: number // Max attempts before giving up
+
   // Status
   status: 'pending' | 'applying' | 'failed' | 'applied'
   lastError?: { message: string; code?: string; timestamp?: number }
@@ -51,7 +51,9 @@ pending → applying → applied
 The outbox automatically coalesces operations:
 
 ### Multiple Updates
+
 If you update an event multiple times before sync:
+
 ```
 Update A (title: "Foo") → stored
 Update B (title: "Bar") → replaces A
@@ -59,7 +61,9 @@ Sync → only "Bar" is sent
 ```
 
 ### Delete Overrides
+
 If you delete an event with pending updates:
+
 ```
 Update A → stored
 Update B → stored
@@ -72,14 +76,14 @@ Sync     → only delete is sent
 Failed operations are retried with exponential backoff + jitter:
 
 | Attempt | Base Delay | With Jitter (±20%) |
-|---------|------------|---------------------|
-| 1 | 1s | 0.8s - 1.2s |
-| 2 | 2s | 1.6s - 2.4s |
-| 3 | 4s | 3.2s - 4.8s |
-| 4 | 8s | 6.4s - 9.6s |
-| 5 | 16s | 12.8s - 19.2s |
-| ... | ... | ... |
-| Max | 60s | 48s - 72s |
+| ------- | ---------- | ------------------ |
+| 1       | 1s         | 0.8s - 1.2s        |
+| 2       | 2s         | 1.6s - 2.4s        |
+| 3       | 4s         | 3.2s - 4.8s        |
+| 4       | 8s         | 6.4s - 9.6s        |
+| 5       | 16s        | 12.8s - 19.2s      |
+| ...     | ...        | ...                |
+| Max     | 60s        | 48s - 72s          |
 
 After 10 attempts, the operation stays in `failed` status until manually retried.
 
@@ -139,6 +143,7 @@ const all = await listAll(userId)
 Database: `lifeos-outbox` (version 2)
 
 Store: `outbox`
+
 - Key: `opId`
 - Indexes:
   - `userId` - For filtering by user
@@ -159,6 +164,7 @@ stopOutboxWorker()
 ```
 
 The worker:
+
 - Polls every 5 seconds for ready operations
 - Listens for online/offline events
 - Drains immediately when back online
@@ -193,11 +199,7 @@ useEffect(() => {
 return (
   <div>
     {pending > 0 && <span>{pending} syncing…</span>}
-    {failed > 0 && (
-      <button onClick={() => retryAllFailed(userId)}>
-        {failed} failed - Retry
-      </button>
-    )}
+    {failed > 0 && <button onClick={() => retryAllFailed(userId)}>{failed} failed - Retry</button>}
   </div>
 )
 ```
@@ -205,17 +207,13 @@ return (
 ### Per-Event Status
 
 ```tsx
-const hasPending = pendingOps.some(op => op.eventId === event.canonicalEventId)
-const failedOp = failedOps.find(op => op.eventId === event.canonicalEventId)
+const hasPending = pendingOps.some((op) => op.eventId === event.canonicalEventId)
+const failedOp = failedOps.find((op) => op.eventId === event.canonicalEventId)
 
 return (
   <div>
     {hasPending && <span>Syncing…</span>}
-    {failedOp && (
-      <button onClick={() => retryFailedOp(failedOp.opId)}>
-        Retry
-      </button>
-    )}
+    {failedOp && <button onClick={() => retryFailedOp(failedOp.opId)}>Retry</button>}
   </div>
 )
 ```
@@ -231,6 +229,7 @@ return (
 ### Console Logging
 
 The worker logs to console:
+
 - `[Outbox] Applied {type} for event {id}`
 - `[Outbox] Failed {type} for event {id}: {error}`
 - `[Outbox] Back online, draining queue`
@@ -238,6 +237,7 @@ The worker logs to console:
 ### Clear Outbox
 
 In browser console:
+
 ```javascript
 indexedDB.deleteDatabase('lifeos-outbox')
 ```
@@ -253,7 +253,3 @@ indexedDB.deleteDatabase('lifeos-outbox')
 
 - [Conflict Strategy](./conflict-strategy.md)
 - [Calendar Architecture](../../packages/calendar/ARCHITECTURE.md)
-
-
-
-

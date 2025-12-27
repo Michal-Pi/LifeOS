@@ -4,7 +4,7 @@ import type {
   CanonicalRecurrenceRule,
   RecurrenceFrequency,
   Weekday,
-  WeekStart
+  WeekStart,
 } from './types'
 
 const logger = createLogger('ParseGoogleRecurrence')
@@ -58,7 +58,7 @@ export function parseGoogleRecurrenceStrings(
   return {
     tz,
     rule,
-    exdatesMs: exdatesMs.length > 0 ? exdatesMs : undefined
+    exdatesMs: exdatesMs.length > 0 ? exdatesMs : undefined,
   }
 }
 
@@ -85,7 +85,7 @@ function parseRRule(rruleStr: string): CanonicalRecurrenceRule | null {
   }
 
   const rule: CanonicalRecurrenceRule = {
-    freq
+    freq,
   }
 
   // INTERVAL
@@ -106,7 +106,10 @@ function parseRRule(rruleStr: string): CanonicalRecurrenceRule | null {
 
   // BYMONTHDAY (for MONTHLY)
   if (props['BYMONTHDAY']) {
-    const byMonthDay = props['BYMONTHDAY'].split(',').map((d) => parseInt(d, 10)).filter((d) => !isNaN(d))
+    const byMonthDay = props['BYMONTHDAY']
+      .split(',')
+      .map((d) => parseInt(d, 10))
+      .filter((d) => !isNaN(d))
     if (byMonthDay.length > 0) {
       rule.byMonthDay = byMonthDay
     }
@@ -114,7 +117,10 @@ function parseRRule(rruleStr: string): CanonicalRecurrenceRule | null {
 
   // BYMONTH (for YEARLY)
   if (props['BYMONTH']) {
-    const byMonth = props['BYMONTH'].split(',').map((m) => parseInt(m, 10)).filter((m) => !isNaN(m))
+    const byMonth = props['BYMONTH']
+      .split(',')
+      .map((m) => parseInt(m, 10))
+      .filter((m) => !isNaN(m))
     if (byMonth.length > 0) {
       rule.byMonth = byMonth
     }
@@ -122,7 +128,10 @@ function parseRRule(rruleStr: string): CanonicalRecurrenceRule | null {
 
   // BYSETPOS
   if (props['BYSETPOS']) {
-    const bySetPos = props['BYSETPOS'].split(',').map((p) => parseInt(p, 10)).filter((p) => !isNaN(p))
+    const bySetPos = props['BYSETPOS']
+      .split(',')
+      .map((p) => parseInt(p, 10))
+      .filter((p) => !isNaN(p))
     if (bySetPos.length > 0) {
       rule.bySetPos = bySetPos
     }
@@ -198,14 +207,16 @@ function parseRRuleDate(dateStr: string): number | null {
     const match = clean.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/)
     if (match) {
       const [, year, month, day, hour, minute, second] = match
-      const date = new Date(Date.UTC(
-        parseInt(year, 10),
-        parseInt(month, 10) - 1,
-        parseInt(day, 10),
-        parseInt(hour, 10),
-        parseInt(minute, 10),
-        parseInt(second, 10)
-      ))
+      const date = new Date(
+        Date.UTC(
+          parseInt(year, 10),
+          parseInt(month, 10) - 1,
+          parseInt(day, 10),
+          parseInt(hour, 10),
+          parseInt(minute, 10),
+          parseInt(second, 10)
+        )
+      )
       return date.getTime()
     }
   }
@@ -214,12 +225,16 @@ function parseRRuleDate(dateStr: string): number | null {
   const dateMatch = clean.match(/^(\d{4})(\d{2})(\d{2})$/)
   if (dateMatch) {
     const [, year, month, day] = dateMatch
-    const date = new Date(Date.UTC(
-      parseInt(year, 10),
-      parseInt(month, 10) - 1,
-      parseInt(day, 10),
-      23, 59, 59 // End of day
-    ))
+    const date = new Date(
+      Date.UTC(
+        parseInt(year, 10),
+        parseInt(month, 10) - 1,
+        parseInt(day, 10),
+        23,
+        59,
+        59 // End of day
+      )
+    )
     return date.getTime()
   }
 
@@ -268,14 +283,16 @@ function parseExDateTime(dateStr: string): number | null {
     const match = dateStr.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/)
     if (match) {
       const [, year, month, day, hour, minute, second] = match
-      const date = new Date(Date.UTC(
-        parseInt(year, 10),
-        parseInt(month, 10) - 1,
-        parseInt(day, 10),
-        parseInt(hour, 10),
-        parseInt(minute, 10),
-        parseInt(second, 10)
-      ))
+      const date = new Date(
+        Date.UTC(
+          parseInt(year, 10),
+          parseInt(month, 10) - 1,
+          parseInt(day, 10),
+          parseInt(hour, 10),
+          parseInt(minute, 10),
+          parseInt(second, 10)
+        )
+      )
       return date.getTime()
     }
   }
@@ -285,14 +302,16 @@ function parseExDateTime(dateStr: string): number | null {
   if (localMatch) {
     const [, year, month, day, hour, minute, second] = localMatch
     // Treat as UTC for consistency (timezone should be handled separately)
-    const date = new Date(Date.UTC(
-      parseInt(year, 10),
-      parseInt(month, 10) - 1,
-      parseInt(day, 10),
-      parseInt(hour, 10),
-      parseInt(minute, 10),
-      parseInt(second, 10)
-    ))
+    const date = new Date(
+      Date.UTC(
+        parseInt(year, 10),
+        parseInt(month, 10) - 1,
+        parseInt(day, 10),
+        parseInt(hour, 10),
+        parseInt(minute, 10),
+        parseInt(second, 10)
+      )
+    )
     return date.getTime()
   }
 
@@ -300,11 +319,7 @@ function parseExDateTime(dateStr: string): number | null {
   const dateMatch = dateStr.match(/^(\d{4})(\d{2})(\d{2})$/)
   if (dateMatch) {
     const [, year, month, day] = dateMatch
-    const date = new Date(Date.UTC(
-      parseInt(year, 10),
-      parseInt(month, 10) - 1,
-      parseInt(day, 10)
-    ))
+    const date = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10)))
     return date.getTime()
   }
 
@@ -388,8 +403,3 @@ export function canonicalToGoogleRecurrence(recurrence: CanonicalRecurrence): st
 
   return result
 }
-
-
-
-
-

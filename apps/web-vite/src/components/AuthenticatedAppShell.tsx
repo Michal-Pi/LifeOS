@@ -2,7 +2,7 @@
 
 /**
  * Authenticated App Shell
- * 
+ *
  * Wraps the AppShell with authentication protection.
  * Provides the user context to child components.
  */
@@ -22,4 +22,3 @@ export function AuthenticatedAppShell({ children }: AuthenticatedAppShellProps) 
     </ProtectedRoute>
   )
 }
-

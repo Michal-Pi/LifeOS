@@ -17,7 +17,11 @@ export interface NoteSyncStatusProps {
   showLabel?: boolean
 }
 
-export function NoteSyncStatus({ syncState, className = '', showLabel = false }: NoteSyncStatusProps) {
+export function NoteSyncStatus({
+  syncState,
+  className = '',
+  showLabel = false,
+}: NoteSyncStatusProps) {
   const getStatusConfig = () => {
     switch (syncState) {
       case 'synced':
@@ -129,9 +133,7 @@ export function SyncStatusBanner({
       } ${className}`}
     >
       <div className="flex items-center gap-3">
-        <span className="text-xl">
-          {!isOnline ? '📡' : failedCount > 0 ? '⚠️' : '⏱️'}
-        </span>
+        <span className="text-xl">{!isOnline ? '📡' : failedCount > 0 ? '⚠️' : '⏱️'}</span>
         <div className="text-sm">
           {!isOnline ? (
             <p className="font-medium text-yellow-900 dark:text-yellow-100">
@@ -156,9 +158,7 @@ export function SyncStatusBanner({
               {pendingCount} {pendingCount === 1 ? 'change' : 'changes'} pending sync
             </p>
           )}
-          <p className="text-xs text-gray-600 dark:text-gray-400">
-            Last sync: {formatLastSync}
-          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-400">Last sync: {formatLastSync}</p>
         </div>
       </div>
 

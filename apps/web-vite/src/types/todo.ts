@@ -7,9 +7,22 @@
  * - Tasks (Atomic level)
  */
 
-export type UrgencyLevel = 'today' | 'next_3_days' | 'this_week' | 'this_month' | 'next_month' | 'later'
+export type UrgencyLevel =
+  | 'today'
+  | 'next_3_days'
+  | 'this_week'
+  | 'this_month'
+  | 'next_month'
+  | 'later'
 export type ImportanceLevel = 1 | 2 | 4 | 7 | 10
-export type TaskStatus = 'inbox' | 'next_action' | 'waiting_for' | 'scheduled' | 'someday' | 'done' | 'cancelled'
+export type TaskStatus =
+  | 'inbox'
+  | 'next_action'
+  | 'waiting_for'
+  | 'scheduled'
+  | 'someday'
+  | 'done'
+  | 'cancelled'
 export type Domain = 'work' | 'projects' | 'life' | 'learning' | 'wellbeing'
 
 export interface CanonicalProject {

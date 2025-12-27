@@ -10,10 +10,6 @@
     "module": "ESNext",
     "moduleResolution": "node"
   },
-  "include": [
-    "src"
-  ],
-  "references": [
-    { "path": "../core" }
-  ]
+  "include": ["src"],
+  "references": [{ "path": "../core" }]
 }

@@ -78,7 +78,9 @@ export function useTopics(): UseTopicsReturn {
         const updatedTopic = await topicRepository.update(userId, topicId, updates)
 
         setTopics((prev) =>
-          prev.map((t) => (t.topicId === topicId ? updatedTopic : t)).sort((a, b) => a.order - b.order)
+          prev
+            .map((t) => (t.topicId === topicId ? updatedTopic : t))
+            .sort((a, b) => a.order - b.order)
         )
 
         return updatedTopic

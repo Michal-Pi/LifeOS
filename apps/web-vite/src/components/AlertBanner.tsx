@@ -13,28 +13,28 @@ interface AlertBannerProps {
  */
 function formatTimeRemaining(startMs: number, nowMs: number): string {
   const diffMs = startMs - nowMs
-  
+
   if (diffMs <= 0) {
     return 'Starting now'
   }
 
   const diffMinutes = Math.ceil(diffMs / (60 * 1000))
-  
+
   if (diffMinutes <= 1) {
     return 'Starts in less than a minute'
   }
-  
+
   if (diffMinutes < 60) {
     return `Starts in ${diffMinutes} minute${diffMinutes === 1 ? '' : 's'}`
   }
-  
+
   const hours = Math.floor(diffMinutes / 60)
   const minutes = diffMinutes % 60
-  
+
   if (minutes === 0) {
     return `Starts in ${hours} hour${hours === 1 ? '' : 's'}`
   }
-  
+
   return `Starts in ${hours}h ${minutes}m`
 }
 
@@ -46,15 +46,11 @@ function formatStartTime(startIso: string): string {
   return date.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true
+    hour12: true,
   })
 }
 
-export function AlertBanner({
-  pendingAlert,
-  onDismiss,
-  onOpenEvent
-}: AlertBannerProps) {
+export function AlertBanner({ pendingAlert, onDismiss, onOpenEvent }: AlertBannerProps) {
   const { event } = pendingAlert
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [isDismissing, setIsDismissing] = useState(false)
@@ -95,7 +91,7 @@ export function AlertBanner({
   return (
     <div className={`alert-banner ${isDismissing ? 'dismissing' : ''}`}>
       <span className="alert-icon">🔔</span>
-      
+
       <div className="alert-content">
         <h4 className="alert-title">{event.title || 'Untitled Event'}</h4>
         <p className="alert-time">{startTime}</p>
@@ -103,21 +99,12 @@ export function AlertBanner({
       </div>
 
       <div className="alert-actions">
-        <button
-          type="button"
-          className="alert-action-button primary"
-          onClick={handleOpen}
-        >
+        <button type="button" className="alert-action-button primary" onClick={handleOpen}>
           Open
         </button>
       </div>
 
-      <button
-        type="button"
-        className="alert-dismiss"
-        onClick={handleDismiss}
-        title="Dismiss"
-      >
+      <button type="button" className="alert-dismiss" onClick={handleDismiss} title="Dismiss">
         ✕
       </button>
     </div>
@@ -136,7 +123,7 @@ interface AlertBannerContainerProps {
 export function AlertBannerContainer({
   alerts,
   onDismiss,
-  onOpenEvent
+  onOpenEvent,
 }: AlertBannerContainerProps) {
   if (alerts.length === 0) {
     return null

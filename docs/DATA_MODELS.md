@@ -13,6 +13,17 @@ users/{userId}/compositeEvents/{compositeId}
 users/{userId}/projects/{projectId}
 users/{userId}/milestones/{milestoneId}
 users/{userId}/tasks/{taskId}
+users/{userId}/notes/{noteId}
+users/{userId}/topics/{topicId}
+users/{userId}/sections/{sectionId}
+users/{userId}/attachments/{attachmentId}
+users/{userId}/habits/{habitId}
+users/{userId}/habitCheckins/{checkinId}
+users/{userId}/incantations/{incantationId}
+interventions/{interventionId} (system presets)
+users/{userId}/interventions/{interventionId}
+users/{userId}/intervention_sessions/{sessionId}
+users/{userId}/workoutSessions/{sessionId}
 ```
 
 ## Quotes
@@ -41,6 +52,7 @@ interface QuoteCollection {
 Canonical types live in `packages/calendar/src/domain/models.ts`.
 
 Collections:
+
 - `users/{userId}/calendarEvents` (canonical events)
 - `users/{userId}/calendars` (calendar metadata)
 - `users/{userId}/calendarSyncState` (sync tokens)
@@ -85,6 +97,7 @@ See `packages/calendar/src/domain/models.ts` and `packages/calendar/src/domain/r
 Types live in `apps/web-vite/src/types/todo.ts`.
 
 Collections:
+
 - `users/{userId}/projects`
 - `users/{userId}/milestones`
 - `users/{userId}/tasks`
@@ -125,4 +138,135 @@ interface CanonicalTask {
 
 ## Notes / People / Projects (CRM)
 
-Placeholder UI exists; data models are pending and will be added to this document when implemented.
+Notes are implemented (late beta). People and Projects remain placeholder modules.
+
+### Notes Collections
+
+- `users/{userId}/notes`
+- `users/{userId}/topics`
+- `users/{userId}/sections`
+- `users/{userId}/attachments`
+
+Key note fields (subset):
+
+```ts
+interface Note {
+  noteId: string
+  userId: string
+  title: string
+  content: object
+  contentHtml?: string
+  topicId: string | null
+  sectionId: string | null
+  projectIds: string[]
+  okrIds: string[]
+  tags: string[]
+  createdAtMs: number
+  updatedAtMs: number
+  lastAccessedAtMs: number
+  syncState: 'synced' | 'pending' | 'conflict'
+  version: number
+  attachmentIds: string[]
+}
+```
+
+Attachments store metadata in Firestore and file data in Storage at:
+
+```
+users/{userId}/attachments/{attachmentId}
+```
+
+### Local Notes Storage (IndexedDB)
+
+Notes use IndexedDB for offline storage and outbox operations:
+
+```
+Database: lifeos-notes (v1)
+Stores: notes, topics, sections
+
+Database: lifeos-note-outbox (v1)
+Stores: note-operations, topic-operations, section-operations
+```
+
+See `apps/web-vite/src/notes/offlineStore.ts` and `apps/web-vite/src/notes/noteOutbox.ts`.
+
+## Habits
+
+Collections:
+
+- `users/{userId}/habits`
+- `users/{userId}/habitCheckins`
+- `users/{userId}/incantations`
+
+Key habit fields (subset):
+
+```ts
+interface CanonicalHabit {
+  habitId: string
+  title: string
+  domain: string
+  status: 'active' | 'paused' | 'archived'
+  anchor: object
+  recipe: object
+  schedule: { daysOfWeek: number[]; timezone: string }
+  safetyNet: object
+  calendarProjection?: object
+  createdAtMs: number
+  updatedAtMs: number
+  syncState: 'synced' | 'pending' | 'conflict'
+  version: number
+}
+```
+
+See `packages/habits/src/domain/models.ts` for full definitions.
+
+## Mind
+
+Collections:
+
+- `interventions` (system presets, userId = 'system')
+- `users/{userId}/interventions`
+- `users/{userId}/intervention_sessions`
+
+Key preset/session fields (subset):
+
+```ts
+interface CanonicalInterventionPreset {
+  interventionId: string
+  type: string
+  title: string
+  steps: object[]
+  recommendedForFeelings: string[]
+  createdAtMs: number
+  updatedAtMs: number
+  syncState: 'synced' | 'pending' | 'conflict'
+  version: number
+}
+```
+
+See `packages/mind/src/domain/models.ts` for full definitions.
+
+## Training
+
+Collections:
+
+- `users/{userId}/workoutSessions`
+
+Key session fields (subset):
+
+```ts
+interface WorkoutSession {
+  sessionId: string
+  dateKey: string
+  context: string
+  status: 'planned' | 'in_progress' | 'completed' | 'skipped'
+  items: object[]
+  createdAtMs: number
+  updatedAtMs: number
+  syncState: 'synced' | 'pending' | 'conflict'
+  version: number
+}
+```
+
+Additional models (exercise library, templates, plans) are defined in
+`packages/training/src/domain/models.ts` but are not yet wired to Firestore.

@@ -19,7 +19,7 @@ export function DeleteConfirmModal({
   onConfirm,
   eventTitle,
   isRecurring,
-  isRecurrenceInstance
+  isRecurrenceInstance,
 }: DeleteConfirmModalProps) {
   const [selectedScope, setSelectedScope] = useState<DeleteScope | null>(null)
 
@@ -44,9 +44,7 @@ export function DeleteConfirmModal({
         <div className="modal-body">
           {showScopePicker ? (
             <>
-              <p>
-                This event is part of a recurring series. Which events do you want to delete?
-              </p>
+              <p>This event is part of a recurring series. Which events do you want to delete?</p>
               <div className="delete-scope-section">
                 <div className="scope-options">
                   <label className={`scope-option ${selectedScope === 'this' ? 'selected' : ''}`}>
@@ -60,7 +58,9 @@ export function DeleteConfirmModal({
                     <span className="scope-label">This event only</span>
                     <span className="scope-hint">Delete only this occurrence</span>
                   </label>
-                  <label className={`scope-option ${selectedScope === 'this_and_future' ? 'selected' : ''}`}>
+                  <label
+                    className={`scope-option ${selectedScope === 'this_and_future' ? 'selected' : ''}`}
+                  >
                     <input
                       type="radio"
                       name="deleteScope"
@@ -87,8 +87,8 @@ export function DeleteConfirmModal({
             </>
           ) : (
             <p>
-              Are you sure you want to delete{' '}
-              <strong>{eventTitle || 'this event'}</strong>? This action cannot be undone.
+              Are you sure you want to delete <strong>{eventTitle || 'this event'}</strong>? This
+              action cannot be undone.
             </p>
           )}
         </div>
@@ -109,4 +109,3 @@ export function DeleteConfirmModal({
     </div>
   )
 }
-

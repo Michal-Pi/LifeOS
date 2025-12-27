@@ -69,7 +69,7 @@ export type InterventionStep = TextStep | TimerStep | ChoiceStep | InputStep
 
 export interface CanonicalInterventionPreset {
   interventionId: InterventionId
-  userId: string  // User-specific or 'system' for defaults
+  userId: string // User-specific or 'system' for defaults
 
   type: InterventionType
   title: string
@@ -96,7 +96,7 @@ export interface CanonicalInterventionSession {
   userId: string
   interventionId: InterventionId
 
-  dateKey: string  // YYYY-MM-DD
+  dateKey: string // YYYY-MM-DD
   trigger: 'manual' | 'calendar_alert' | 'today_prompt'
 
   // Context
@@ -107,8 +107,8 @@ export interface CanonicalInterventionSession {
   responses?: Record<string, unknown>
 
   // Outcomes
-  createdTodoId?: string  // If user created next action
-  linkedHabitCheckinIds?: string[]  // If auto-created habit check-ins
+  createdTodoId?: string // If user created next action
+  linkedHabitCheckinIds?: string[] // If auto-created habit check-ins
 
   // Timing
   startedAtMs: number

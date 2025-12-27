@@ -92,11 +92,30 @@ export interface CompositeRecomputeResult {
 // ==================== Dedupe Heuristics ====================
 
 const GENERIC_TITLES = new Set([
-  'meeting', 'call', 'sync', 'chat', 'catchup', 'catch up',
-  '1:1', '1on1', 'standup', 'stand up',
-  'weekly', 'daily', 'monthly', 'bi-weekly',
-  'check in', 'check-in', 'checkin', 'touch base',
-  'busy', 'hold', 'block', 'blocked', 'focus', 'focus time'
+  'meeting',
+  'call',
+  'sync',
+  'chat',
+  'catchup',
+  'catch up',
+  '1:1',
+  '1on1',
+  'standup',
+  'stand up',
+  'weekly',
+  'daily',
+  'monthly',
+  'bi-weekly',
+  'check in',
+  'check-in',
+  'checkin',
+  'touch base',
+  'busy',
+  'hold',
+  'block',
+  'blocked',
+  'focus',
+  'focus time',
 ])
 
 function normalizeTitle(title?: string): string {
@@ -176,7 +195,8 @@ function findDuplicates(events: CanonicalEvent[]): DuplicateMatch[] {
       const providerIdA = a.providerRef.providerEventId
       const providerIdB = b.providerRef.providerEventId
       if (
-        providerIdA && providerIdB &&
+        providerIdA &&
+        providerIdB &&
         providerIdA === providerIdB &&
         a.providerRef.provider === b.providerRef.provider
       ) {
@@ -293,7 +313,7 @@ function createComposite(
     providerEventId: e.providerRef.providerEventId,
     iCalUID: e.iCalUID,
     status: e.status,
-    updatedAtMs: e.canonicalUpdatedAtMs ?? e.updatedAtMs
+    updatedAtMs: e.canonicalUpdatedAtMs ?? e.updatedAtMs,
   }))
 
   const iCalUIDs = events.map((e) => e.iCalUID).filter(Boolean)
@@ -318,7 +338,7 @@ function createComposite(
     createdAtMs: now,
     updatedAtMs: now,
     lastComputedAtMs: now,
-    version: 1
+    version: 1,
   }
 }
 
@@ -338,7 +358,7 @@ export async function recomputeComposites(
     compositesUpdated: 0,
     compositesDeleted: 0,
     mergesPerformed: 0,
-    errors: 0
+    errors: 0,
   }
 
   // Create run document
@@ -350,7 +370,7 @@ export async function recomputeComposites(
     rangeEndMs: endMs,
     startedAtMs: startTime,
     status: 'running',
-    stats
+    stats,
   }
   await runRef.set(run)
 
@@ -366,7 +386,7 @@ export async function recomputeComposites(
       const data = doc.data() as DocumentData
       return {
         canonicalEventId: doc.id,
-        ...data
+        ...data,
       } as CanonicalEvent
     })
 
@@ -453,7 +473,6 @@ export async function recomputeComposites(
     run.completedAtMs = Date.now()
     run.stats = stats
     await runRef.set(run)
-
   } catch (error) {
     stats.errors++
     run.status = 'failed'
@@ -467,7 +486,6 @@ export async function recomputeComposites(
   return {
     runId,
     ...stats,
-    durationMs: Date.now() - startTime
+    durationMs: Date.now() - startTime,
   }
 }
-

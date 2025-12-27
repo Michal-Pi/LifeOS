@@ -1,8 +1,5 @@
 import type { BusyBlock } from '../domain/composite'
-import {
-  getBusyBlocksFromComposites,
-  mergeOverlappingBlocks
-} from '../domain/composite'
+import { getBusyBlocksFromComposites, mergeOverlappingBlocks } from '../domain/composite'
 import type { CanonicalCalendarEvent } from '../domain/models'
 import type { CalendarEventRepository } from '../ports/calendarRepository'
 import type { CompositeEventRepository } from '../ports/compositeRepository'
@@ -16,8 +13,8 @@ export interface GetBusyBlocksInput {
   userId: string
   startMs: number
   endMs: number
-  useComposites?: boolean  // Default: true if composites enabled
-  mergeOverlapping?: boolean  // Default: true
+  useComposites?: boolean // Default: true if composites enabled
+  mergeOverlapping?: boolean // Default: true
 }
 
 export interface GetBusyBlocksResult {
@@ -29,10 +26,10 @@ export interface GetBusyBlocksResult {
 
 /**
  * Get busy blocks for a user in a time range
- * 
+ *
  * When unified view is enabled (useComposites: true), this uses composites
  * to avoid double-counting duplicates.
- * 
+ *
  * Busy rules (from Phase 2.4):
  * - Declined RSVP → not busy
  * - Transparency = transparent → not busy
@@ -42,20 +39,14 @@ export async function getBusyBlocksUnified(
   deps: BusyBlocksDeps,
   input: GetBusyBlocksInput
 ): Promise<GetBusyBlocksResult> {
-  const {
-    userId,
-    startMs,
-    endMs,
-    useComposites = true,
-    mergeOverlapping = true
-  } = input
+  const { userId, startMs, endMs, useComposites = true, mergeOverlapping = true } = input
 
   let blocks: BusyBlock[] = []
   let sourceMode: 'canonical' | 'composite' | 'mixed' = 'canonical'
   let compositesProcessed = 0
 
   // Fetch canonical events in range
-  const canonicalEvents = await deps.eventRepository.listByRange(userId, startMs, endMs) ?? []
+  const canonicalEvents = (await deps.eventRepository.listByRange(userId, startMs, endMs)) ?? []
 
   // Filter to only busy events
   const busyCanonicalEvents = canonicalEvents.filter((event) => isEventBusy(event))
@@ -88,7 +79,7 @@ export async function getBusyBlocksUnified(
     blocks,
     sourceMode,
     eventsProcessed: canonicalEvents.length,
-    compositesProcessed
+    compositesProcessed,
   }
 }
 
@@ -128,7 +119,7 @@ function canonicalToBusyBlocks(events: CanonicalCalendarEvent[]): BusyBlock[] {
     endMs: event.endMs,
     sourceCanonicalEventId: event.canonicalEventId,
     title: event.title,
-    isAllDay: event.allDay
+    isAllDay: event.allDay,
   }))
 }
 
@@ -202,4 +193,3 @@ export function findAvailableSlots(
 
   return slots
 }
-

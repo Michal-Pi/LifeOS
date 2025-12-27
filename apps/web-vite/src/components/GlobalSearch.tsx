@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
 import type { CanonicalProject, CanonicalMilestone, CanonicalTask } from '@/types/todo'
 
-type SearchResult = 
+type SearchResult =
   | { type: 'project'; item: CanonicalProject; context?: string }
   | { type: 'milestone'; item: CanonicalMilestone; context?: string }
   | { type: 'task'; item: CanonicalTask; context?: string }
@@ -14,7 +14,7 @@ export function GlobalSearch() {
   const userId = user?.uid ?? ''
   const navigate = useNavigate()
   const { projects, milestones, tasks, loadData } = useTodoOperations({ userId })
-  
+
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -31,25 +31,25 @@ export function GlobalSearch() {
     if (!query.trim()) return []
     const lowerQuery = query.toLowerCase()
     const newResults: SearchResult[] = []
-    const projectById = new Map(projects.map(project => [project.id, project]))
-    const milestoneById = new Map(milestones.map(milestone => [milestone.id, milestone]))
+    const projectById = new Map(projects.map((project) => [project.id, project]))
+    const milestoneById = new Map(milestones.map((milestone) => [milestone.id, milestone]))
 
     // Search Projects
-    projects.forEach(p => {
+    projects.forEach((p) => {
       if (p.title.toLowerCase().includes(lowerQuery)) {
         newResults.push({ type: 'project', item: p })
       }
     })
 
     // Search Milestones
-    milestones.forEach(m => {
+    milestones.forEach((m) => {
       if (m.title.toLowerCase().includes(lowerQuery)) {
         newResults.push({ type: 'milestone', item: m })
       }
     })
 
     // Search Tasks
-    tasks.forEach(t => {
+    tasks.forEach((t) => {
       const taskMatch = t.title.toLowerCase().includes(lowerQuery)
       const projectMatch = t.projectId
         ? projectById.get(t.projectId)?.title.toLowerCase().includes(lowerQuery)
@@ -65,7 +65,7 @@ export function GlobalSearch() {
         newResults.push({
           type: 'task',
           item: t,
-          context: contextParts.length > 0 ? contextParts.join(' / ') : undefined
+          context: contextParts.length > 0 ? contextParts.join(' / ') : undefined,
         })
       }
     })
@@ -87,7 +87,7 @@ export function GlobalSearch() {
   const handleSelect = (result: SearchResult) => {
     setIsOpen(false)
     setQuery('')
-    
+
     // Navigate based on type
     // For now, we just go to the Todo page with a query param or state
     // Ideally, TodoPage would read these params to open the item
@@ -112,7 +112,7 @@ export function GlobalSearch() {
         }}
         onFocus={() => setIsOpen(true)}
       />
-      
+
       {isOpen && results.length > 0 && (
         <ul className="search-results">
           {results.map((result) => (

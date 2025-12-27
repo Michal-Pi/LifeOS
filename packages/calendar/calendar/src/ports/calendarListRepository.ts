@@ -41,8 +41,3 @@ export interface CalendarListRepository {
     callback: (calendars: CanonicalCalendar[]) => void
   ): () => void
 }
-
-
-
-
-

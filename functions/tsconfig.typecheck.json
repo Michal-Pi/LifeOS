@@ -3,15 +3,10 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": [
-      "ES2022",
-      "DOM"
-    ],
+    "lib": ["ES2022", "DOM"],
     "baseUrl": "..",
     "paths": {
-      "@lifeos/*": [
-        "packages/*/src"
-      ]
+      "@lifeos/*": ["packages/*/src"]
     },
     "rootDir": "..",
     "noEmit": true

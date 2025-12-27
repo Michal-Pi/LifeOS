@@ -46,12 +46,9 @@ import type {
   CalendarAccountStatus,
   CanonicalCalendarEvent,
   CanonicalCalendar,
-  
-  
-  CalendarsById
+  CalendarsById,
 } from '@lifeos/calendar'
-import {
-} from '@lifeos/calendar'
+import {} from '@lifeos/calendar'
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { createLogger } from '@lifeos/core'
 
@@ -63,7 +60,10 @@ import { AlertBannerContainer } from '@/components/AlertBanner'
 import { CalendarSidebar } from '@/components/CalendarSidebar'
 import { CalendarHeader } from '@/components/calendar/CalendarHeader'
 import { SyncStatusBanner } from '@/components/calendar/SyncStatusBanner'
-import { EventModalsContainer, type EventModalsContainerHandle } from '@/components/calendar/EventModalsContainer'
+import {
+  EventModalsContainer,
+  type EventModalsContainerHandle,
+} from '@/components/calendar/EventModalsContainer'
 import { CalendarViewsContainer } from '@/components/calendar/CalendarViewsContainer'
 import { minutesAgo } from '@/utils/timeFormatters'
 import { useAuth } from '@/hooks/useAuth'
@@ -74,6 +74,7 @@ import { useAutoSync } from '@/hooks/useAutoSync'
 import { useEventAlerts } from '@/hooks/useEventAlerts'
 import { fetchCalendarAccountStatus } from '@/lib/accountStatus'
 import { functionUrl } from '@/lib/functionsUrl'
+import { authenticatedFetch } from '@/lib/authenticatedFetch'
 
 const calendarListRepository = createFirestoreCalendarListRepository()
 const syncRepository = createFirestoreSyncStatusRepository()
@@ -81,11 +82,11 @@ const syncRepository = createFirestoreSyncStatusRepository()
 const dayFormatter = new Intl.DateTimeFormat('en-US', {
   weekday: 'long',
   month: 'long',
-  day: 'numeric'
+  day: 'numeric',
 })
 const timeFormatter = new Intl.DateTimeFormat('en-US', {
   hour: 'numeric',
-  minute: 'numeric'
+  minute: 'numeric',
 })
 
 const ACCOUNT_ID = 'primary'
@@ -94,7 +95,11 @@ export function CalendarPage() {
   const { user } = useAuth()
   const userId = user?.uid ?? ''
   const [selectedEvent, setSelectedEvent] = useState<CanonicalCalendarEvent | null>(null)
-  const [status, setStatus] = useState<{ lastSyncAt?: string; lastSuccessAt?: string; lastError?: string } | null>(null)
+  const [status, setStatus] = useState<{
+    lastSyncAt?: string
+    lastSuccessAt?: string
+    lastError?: string
+  } | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [accountStatus, setAccountStatus] = useState<CalendarAccountStatus | null>(null)
   const [connectionError, setConnectionError] = useState<string | null>(null)
@@ -173,7 +178,13 @@ export function CalendarPage() {
   }, [selectedDayKey, viewType, selectedMonthDate, today, currentYear, currentMonth])
 
   // Load events via hook
-  const { events, instances, setEvents, loading, reload: reloadEvents } = useCalendarEvents(userId, displayDayKeys)
+  const {
+    events,
+    instances,
+    setEvents,
+    loading,
+    reload: reloadEvents,
+  } = useCalendarEvents(userId, displayDayKeys)
 
   // Event operations hook
   const { createEvent, updateEvent, deleteEvent, retryWriteback, rsvpEvent } = useEventOperations({
@@ -186,17 +197,18 @@ export function CalendarPage() {
     setEditScope: () => {},
     setPendingFormData: () => {},
     setPendingOps: () => {}, // Handled by useOutbox listener mostly, but hook might trigger refresh
-    setConnectionError
+    setConnectionError,
   })
 
   // Event alerts hook
-  const { activeAlerts, handleAlertDismiss, handleAlertOpenEvent, handleAlertChange } = useEventAlerts({
-    userId,
-    events,
-    setEvents,
-    selectedEvent,
-    setSelectedEvent
-  })
+  const { activeAlerts, handleAlertDismiss, handleAlertOpenEvent, handleAlertChange } =
+    useEventAlerts({
+      userId,
+      events,
+      setEvents,
+      selectedEvent,
+      setSelectedEvent,
+    })
 
   // Load sync status
   useEffect(() => {
@@ -260,7 +272,9 @@ export function CalendarPage() {
   const handleSyncNow = async () => {
     setSyncing(true)
     try {
-      const response = await fetch(functionUrl('syncNow?uid=' + userId + '&accountId=' + ACCOUNT_ID))
+      const response = await authenticatedFetch(
+        functionUrl('syncNow?uid=' + userId + '&accountId=' + ACCOUNT_ID)
+      )
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
         throw new Error(payload.error ?? 'Sync failed')
@@ -279,7 +293,9 @@ export function CalendarPage() {
   const handleConnectGoogle = async () => {
     setConnectionError(null)
     try {
-      const response = await fetch(functionUrl('googleAuthStart?uid=' + userId + '&accountId=' + ACCOUNT_ID))
+      const response = await authenticatedFetch(
+        functionUrl('googleAuthStart?uid=' + userId + '&accountId=' + ACCOUNT_ID)
+      )
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
         throw new Error(payload.error ?? 'Unable to start OAuth flow')
@@ -300,7 +316,9 @@ export function CalendarPage() {
   const handleDisconnectGoogle = async () => {
     setConnectionError(null)
     try {
-      const response = await fetch(functionUrl('googleDisconnect?uid=' + userId + '&accountId=' + ACCOUNT_ID))
+      const response = await authenticatedFetch(
+        functionUrl('googleDisconnect?uid=' + userId + '&accountId=' + ACCOUNT_ID)
+      )
       if (!response.ok) {
         const { error } = await response.json().catch(() => ({}))
         throw new Error(error ?? 'Failed to disconnect')
@@ -332,7 +350,10 @@ export function CalendarPage() {
   const meetingHours = events
     .filter((event) => (event.attendees?.length ?? 0) > 0)
     .reduce((sum, event) => sum + (event.endMs - event.startMs) / 3_600_000, 0)
-  const busyHours = events.reduce((sum, event) => sum + (event.endMs - event.startMs) / 3_600_000, 0)
+  const busyHours = events.reduce(
+    (sum, event) => sum + (event.endMs - event.startMs) / 3_600_000,
+    0
+  )
   const freeHours = Math.max(24 - busyHours, 0)
 
   return (
@@ -346,96 +367,100 @@ export function CalendarPage() {
 
       <section className="calendar-page">
         <header className="calendar-header">
-        <div>
-          <p className="section-label">
-            Calendar · {selectedMonthDate ? dayFormatter.format(selectedMonthDate) : dayFormatter.format(today)}
-          </p>
-          <CalendarHeader
-            viewType={viewType}
-            onViewTypeChange={setViewType}
+          <div>
+            <p className="section-label">
+              Calendar ·{' '}
+              {selectedMonthDate
+                ? dayFormatter.format(selectedMonthDate)
+                : dayFormatter.format(today)}
+            </p>
+            <CalendarHeader
+              viewType={viewType}
+              onViewTypeChange={setViewType}
+              selectedMonthDate={selectedMonthDate}
+              timezone={timezone}
+            />
+          </div>
+          <SyncStatusBanner
+            isOnline={isOnline}
+            accountStatus={accountStatus}
+            connectionError={connectionError}
+            syncing={syncing}
+            status={status}
+            pendingOps={pendingOps}
+            failedOps={failedOps}
             selectedMonthDate={selectedMonthDate}
-            timezone={timezone}
+            canCreateEvents={canCreateEvents}
+            onRetryAll={handleRetryAll}
+            onBackToToday={() => setSelectedMonthDate(null)}
+            onCreateEvent={openCreateModal}
+            onSyncNow={handleSyncNow}
+            onConnectGoogle={handleConnectGoogle}
+            onDisconnectGoogle={handleDisconnectGoogle}
           />
-        </div>
-        <SyncStatusBanner
-          isOnline={isOnline}
-          accountStatus={accountStatus}
-          connectionError={connectionError}
-          syncing={syncing}
-          status={status}
-          pendingOps={pendingOps}
-          failedOps={failedOps}
+        </header>
+
+        <section className="calendar-stats">
+          <div>
+            <p className="section-label">Meetings</p>
+            <strong>{meetingHours.toFixed(1)}h</strong>
+            <p>hours with guests</p>
+          </div>
+          <div>
+            <p className="section-label">Free time</p>
+            <strong>{freeHours.toFixed(1)}h</strong>
+            <p>available today</p>
+          </div>
+          <div>
+            <p className="section-label">Sync status</p>
+            <strong>{status ? minutesAgo(status.lastSyncAt) : 'pending'}</strong>
+            <p className="calendar-meta">
+              Updated{' '}
+              {status?.lastSyncAt ? timeFormatter.format(new Date(status.lastSyncAt)) : 'soon'}
+            </p>
+          </div>
+        </section>
+
+        {/* Calendar Views and Event Timeline */}
+        <CalendarViewsContainer
+          viewType={viewType}
+          currentYear={currentYear}
+          currentMonth={currentMonth}
           selectedMonthDate={selectedMonthDate}
-          canCreateEvents={canCreateEvents}
-          onRetryAll={handleRetryAll}
-          onBackToToday={() => setSelectedMonthDate(null)}
-          onCreateEvent={openCreateModal}
-          onSyncNow={handleSyncNow}
-          onConnectGoogle={handleConnectGoogle}
-          onDisconnectGoogle={handleDisconnectGoogle}
-        />
-      </header>
-
-      <section className="calendar-stats">
-        <div>
-          <p className="section-label">Meetings</p>
-          <strong>{meetingHours.toFixed(1)}h</strong>
-          <p>hours with guests</p>
-        </div>
-        <div>
-          <p className="section-label">Free time</p>
-          <strong>{freeHours.toFixed(1)}h</strong>
-          <p>available today</p>
-        </div>
-        <div>
-          <p className="section-label">Sync status</p>
-          <strong>{status ? minutesAgo(status.lastSyncAt) : 'pending'}</strong>
-          <p className="calendar-meta">
-            Updated {status?.lastSyncAt ? timeFormatter.format(new Date(status.lastSyncAt)) : 'soon'}
-          </p>
-        </div>
-      </section>
-
-      {/* Calendar Views and Event Timeline */}
-      <CalendarViewsContainer
-        viewType={viewType}
-        currentYear={currentYear}
-        currentMonth={currentMonth}
-        selectedMonthDate={selectedMonthDate}
-        today={today}
-        events={events}
-        instances={instances}
-        loading={loading}
-        selectedEvent={selectedEvent}
-        pendingOps={pendingOps}
-        onDateSelect={setSelectedMonthDate}
-        onEventSelect={setSelectedEvent}
-      />
-
-      <section className="calendar-grid">
-        <CalendarSidebar
+          today={today}
+          events={events}
+          instances={instances}
+          loading={loading}
           selectedEvent={selectedEvent}
-          isOnline={isOnline}
-          accountStatus={accountStatus}
-          calendarsById={calendarsById}
-          onRSVP={(eventId, status) => rsvpEvent(eventId, status, events)}
-          onAlertChange={handleAlertChange}
-          onRetryWriteback={retryWriteback}
-          onConnectGoogle={handleConnectGoogle}
-          onEdit={openEditModal}
-          onDelete={openDeleteModal}
+          pendingOps={pendingOps}
+          onDateSelect={setSelectedMonthDate}
+          onEventSelect={setSelectedEvent}
+        />
+
+        <section className="calendar-grid">
+          <CalendarSidebar
+            selectedEvent={selectedEvent}
+            isOnline={isOnline}
+            accountStatus={accountStatus}
+            calendarsById={calendarsById}
+            onRSVP={(eventId, status) => rsvpEvent(eventId, status, events)}
+            onAlertChange={handleAlertChange}
+            onRetryWriteback={retryWriteback}
+            onConnectGoogle={handleConnectGoogle}
+            onEdit={openEditModal}
+            onDelete={openDeleteModal}
+          />
+        </section>
+
+        {/* Event Modals */}
+        <EventModalsContainer
+          ref={modalsRef}
+          selectedEvent={selectedEvent}
+          onCreateEvent={createEvent}
+          onUpdateEvent={updateEvent}
+          onDeleteEvent={deleteEvent}
         />
       </section>
-
-      {/* Event Modals */}
-      <EventModalsContainer
-        ref={modalsRef}
-        selectedEvent={selectedEvent}
-        onCreateEvent={createEvent}
-        onUpdateEvent={updateEvent}
-        onDeleteEvent={deleteEvent}
-      />
-    </section>
     </>
   )
 }

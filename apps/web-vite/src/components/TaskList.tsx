@@ -22,21 +22,21 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   scheduled: 'Scheduled',
   someday: 'Someday',
   done: 'Done',
-  cancelled: 'Cancelled'
+  cancelled: 'Cancelled',
 }
 
 export const TaskList = React.memo(function TaskList({
   tasks,
   onSelectTask,
   onToggleComplete,
-  selectedTaskId
+  selectedTaskId,
 }: TaskListProps) {
   const [sortField, setSortField] = useState<SortField>('priority')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
     } else {
       setSortField(field)
       setSortDirection('desc') // Default to descending for most metrics
@@ -46,7 +46,7 @@ export const TaskList = React.memo(function TaskList({
   const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => {
       let comparison = 0
-      
+
       switch (sortField) {
         case 'priority':
           comparison = calculatePriorityScore(a) - calculatePriorityScore(b)
@@ -87,18 +87,25 @@ export const TaskList = React.memo(function TaskList({
     selectedTaskId?: string
   }
 
-  const Row = ({ index, style, tasks, onSelectTask, onToggleComplete, selectedTaskId }: RowComponentProps<RowProps>) => {
+  const Row = ({
+    index,
+    style,
+    tasks,
+    onSelectTask,
+    onToggleComplete,
+    selectedTaskId,
+  }: RowComponentProps<RowProps>) => {
     const task = tasks[index]
     return (
-      <div 
-        style={style} 
+      <div
+        style={style}
         className={`task-row ${selectedTaskId === task.id ? 'selected' : ''} ${task.completed ? 'completed' : ''}`}
         onClick={() => onSelectTask(task)}
       >
-        <div className="task-cell checkbox-cell" onClick={e => e.stopPropagation()}>
-          <input 
-            type="checkbox" 
-            checked={task.completed} 
+        <div className="task-cell checkbox-cell" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={task.completed}
             onChange={() => onToggleComplete(task)}
             className="task-checkbox"
           />
@@ -108,7 +115,13 @@ export const TaskList = React.memo(function TaskList({
           <span className="priority-score">{calculatePriorityScore(task)}</span>
         </div>
         <div className="task-cell meta-cell w-32">
-          {task.urgency ? <span className={`urgency-badge ${task.urgency}`}>{task.urgency.replace(/_/g, ' ')}</span> : '-'}
+          {task.urgency ? (
+            <span className={`urgency-badge ${task.urgency}`}>
+              {task.urgency.replace(/_/g, ' ')}
+            </span>
+          ) : (
+            '-'
+          )}
         </div>
         <div className="task-cell meta-cell w-24">{task.importance}</div>
         <div className="task-cell meta-cell w-32">{task.dueDate || '-'}</div>
@@ -140,7 +153,7 @@ export const TaskList = React.memo(function TaskList({
         </div>
         <div className="task-header-cell w-24">Status</div>
       </div>
-      
+
       <div className="task-list-body">
         <List
           rowCount={sortedTasks.length}
@@ -150,7 +163,7 @@ export const TaskList = React.memo(function TaskList({
             tasks: sortedTasks,
             onSelectTask,
             onToggleComplete,
-            selectedTaskId
+            selectedTaskId,
           }}
           style={{ height: 600, width: '100%' }}
         />

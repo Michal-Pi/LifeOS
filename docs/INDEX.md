@@ -24,7 +24,8 @@ Central navigation for the docs. Start here.
 - `docs/calendar/` - Calendar sync, schema notes, event operations
 - `docs/todos/overview.md` - Todos feature overview
 - `docs/todos/ui.md` - Todos UI behavior
-- `docs/sync/` - Outbox + conflict strategy
+- `docs/sync/` - Outbox + conflict strategy + overview
+- `docs/notes/sync.md` - Notes sync and local storage
 - `docs/firebase/` - OAuth, hosting, emulators, secrets
 - `docs/alerts.md` - Alert system behavior
 - `docs/composite.md` - Composite event model
@@ -35,13 +36,19 @@ Central navigation for the docs. Start here.
 - `apps/web-vite/README.md` - Web client details
 - `packages/calendar/README.md`
 - `packages/core/README.md`
+- `packages/habits/README.md`
+- `packages/mind/README.md`
 - `packages/todos/README.md`
-- `packages/notes-learning/README.md`
-- `packages/projects/README.md`
-- `packages/people/README.md`
-- `packages/meetings/README.md`
+- `packages/training/README.md`
+- `packages/notes/README.md`
 - `packages/platform-web/README.md`
 - `packages/sync-kit/README.md`
+
+## Planned Packages (No README Yet)
+
+- `packages/projects/`
+- `packages/people/`
+- `packages/meetings/`
 
 ## Quick Links
 

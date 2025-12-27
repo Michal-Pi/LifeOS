@@ -3,6 +3,7 @@ import { getOrCreateDeviceId, createLogger } from '@lifeos/calendar'
 
 import { createFirestoreCalendarEventRepository } from '@/adapters/firestoreCalendarEventRepository'
 import { functionUrl } from '@/lib/functionsUrl'
+import { authenticatedFetch } from '@/lib/authenticatedFetch'
 
 import {
   enqueueOp,
@@ -13,7 +14,7 @@ import {
   markFailed,
   retryOp,
   retryAll,
-  getOutboxStats
+  getOutboxStats,
 } from './store'
 import type { OutboxOp, CreatePayload, UpdatePayload, WritebackOp, WritebackMeta } from './types'
 
@@ -60,7 +61,7 @@ async function triggerWriteback(
     const params = new URLSearchParams({
       uid: userId,
       eventId,
-      op
+      op,
     })
     if (meta?.isInstanceEdit) {
       params.set('isInstanceEdit', 'true')
@@ -69,7 +70,7 @@ async function triggerWriteback(
       params.set('occurrenceStartMs', String(meta.occurrenceStartMs))
     }
     const url = functionUrl(`enqueueWriteback?${params.toString()}`)
-    const response = await fetch(url)
+    const response = await authenticatedFetch(url)
     if (!response.ok) {
       logger.warn('Failed to enqueue writeback', { response: await response.text(), eventId, op })
     }
@@ -96,7 +97,7 @@ async function applyOp(op: OutboxOp): Promise<boolean> {
       const eventWithMetadata: CanonicalCalendarEvent = {
         ...payload.event,
         rev: payload.event.rev ?? 1,
-        updatedByDeviceId: op.deviceId
+        updatedByDeviceId: op.deviceId,
       }
       await repository.createEvent(op.userId, eventWithMetadata)
       // Trigger writeback after successful canonical write
@@ -133,10 +134,12 @@ async function applyOp(op: OutboxOp): Promise<boolean> {
 
     await markFailed(op.opId, err, isConflict ? 'conflict' : errorCode)
 
-    logger.warn(
-      `Failed ${op.type} for event`,
-      { error: err, eventId: op.eventId, attempt: op.attempts + 1, opType: op.type }
-    )
+    logger.warn(`Failed ${op.type} for event`, {
+      error: err,
+      eventId: op.eventId,
+      attempt: op.attempts + 1,
+      opType: op.type,
+    })
 
     return false
   }
@@ -229,7 +232,7 @@ export async function enqueueCreate(
   const eventWithRev: CanonicalCalendarEvent = {
     ...event,
     rev: event.rev ?? 1,
-    updatedByDeviceId: getOrCreateDeviceId()
+    updatedByDeviceId: getOrCreateDeviceId(),
   }
 
   const op = await enqueueOp('create', userId, event.canonicalEventId, { event: eventWithRev })

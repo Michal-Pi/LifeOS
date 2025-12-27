@@ -1,4 +1,8 @@
-import type { CanonicalCalendarEvent, CalendarEventRepository, IncomingUpdate } from '@lifeos/calendar'
+import type {
+  CanonicalCalendarEvent,
+  CalendarEventRepository,
+  IncomingUpdate,
+} from '@lifeos/calendar'
 import { resolveConflict, createLogger } from '@lifeos/calendar'
 import {
   collection,
@@ -11,7 +15,7 @@ import {
   runTransaction,
   type DocumentData,
   type QuerySnapshot,
-  type Firestore
+  type Firestore,
 } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 
@@ -97,7 +101,7 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
       const db = await getDb()
       const constraints: Parameters<typeof query>[2][] = [
         where('startMs', '>=', startMs),
-        where('endMs', '<=', endMs)
+        where('endMs', '<=', endMs),
       ]
       if (filters?.calendarId) {
         constraints.push(where('calendarId', 'in', filters.calendarId.slice(0, EVENTS_LIMIT)))
@@ -133,7 +137,7 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
         }
         const eventWithRev: CanonicalCalendarEvent = {
           ...event,
-          rev: event.rev ?? 1
+          rev: event.rev ?? 1,
         }
         transaction.set(eventRef, eventWithRev)
       })
@@ -144,7 +148,7 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
         doc(db, 'users', userId, 'calendarEvents', eventId),
         {
           ...event,
-          updatedAtMs: baseUpdatedAtMs ?? Date.now()
+          updatedAtMs: baseUpdatedAtMs ?? Date.now(),
         },
         { merge: true }
       )
@@ -172,7 +176,7 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
           const newEvent: CanonicalCalendarEvent = {
             ...event,
             rev: 1,
-            updatedByDeviceId: deviceId
+            updatedByDeviceId: deviceId,
           }
           transaction.set(eventRef, newEvent)
           return { winner: newEvent, hadConflict: false }
@@ -185,10 +189,10 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
           baseRev: baseRev ?? serverEvent.rev ?? 0,
           event: {
             ...event,
-            canonicalEventId: eventId
+            canonicalEventId: eventId,
           },
           updatedAtMs: event.canonicalUpdatedAtMs ?? Date.now(),
-          deviceId: deviceId ?? 'unknown'
+          deviceId: deviceId ?? 'unknown',
         }
 
         // Resolve conflict deterministically
@@ -197,13 +201,13 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
         // Write the winner
         const winnerWithRev: CanonicalCalendarEvent = {
           ...result.winner,
-          rev: result.newRev
+          rev: result.newRev,
         }
         transaction.set(eventRef, winnerWithRev)
 
         return {
           winner: winnerWithRev,
-          hadConflict: result.hasConflict
+          hadConflict: result.hasConflict,
         }
       })
     },
@@ -222,11 +226,11 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
           {
             deletedAtMs: Date.now(),
             updatedAtMs: baseUpdatedAtMs ?? Date.now(),
-            rev: currentRev + 1
+            rev: currentRev + 1,
           },
           { merge: true }
         )
       })
-    }
+    },
   }
 }

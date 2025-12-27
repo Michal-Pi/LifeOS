@@ -109,6 +109,7 @@ users/{uid}/calendarSyncState/{accountId}:{calendarId}
 ```
 
 Fields (planned):
+
 ```
 accountId: string
 calendarId: string

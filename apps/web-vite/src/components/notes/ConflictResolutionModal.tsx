@@ -90,8 +90,7 @@ export function ConflictResolutionModal({
                 Sync Conflict Detected
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                This note was modified both locally and on the server. Choose which version to
-                keep.
+                This note was modified both locally and on the server. Choose which version to keep.
               </p>
             </div>
             <button

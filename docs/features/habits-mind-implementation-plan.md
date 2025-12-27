@@ -1,4 +1,5 @@
 # Implementation Plan: Habits & Mind Engine
+
 **Version:** 1.0
 **Created:** 2025-12-27
 **Status:** Planning
@@ -165,7 +166,7 @@ export interface AfterEventAnchor {
 
 export interface TimeWindowAnchor {
   type: 'time_window'
-  startTimeMs: number  // Milliseconds since midnight in user timezone
+  startTimeMs: number // Milliseconds since midnight in user timezone
   endTimeMs: number
 }
 
@@ -185,13 +186,13 @@ export interface HabitRecipe {
 
 // ----- Schedule -----
 export interface HabitSchedule {
-  daysOfWeek: number[]  // 0-6 (Sunday-Saturday)
-  timezone: string       // IANA timezone
+  daysOfWeek: number[] // 0-6 (Sunday-Saturday)
+  timezone: string // IANA timezone
 }
 
 // ----- Safety Net -----
 export interface SafetyNet {
-  tinyCounts: boolean      // Tiny version preserves streak
+  tinyCounts: boolean // Tiny version preserves streak
   recoveryAllowed: boolean // Can bounce back after skip
 }
 
@@ -210,7 +211,7 @@ export interface CanonicalHabit {
   // Core attributes
   title: string
   domain: HabitDomain
-  customDomain?: string  // If domain === 'custom'
+  customDomain?: string // If domain === 'custom'
   status: HabitStatus
 
   // Behavior
@@ -221,7 +222,7 @@ export interface CanonicalHabit {
 
   // Integration
   calendarProjection?: CalendarProjection
-  linkedInterventionTypes?: string[]  // Mind intervention types that count
+  linkedInterventionTypes?: string[] // Mind intervention types that count
 
   // Metadata
   createdAtMs: number
@@ -238,12 +239,12 @@ export interface CanonicalHabitCheckin {
   userId: string
   habitId: HabitId
 
-  dateKey: string  // YYYY-MM-DD in user timezone
+  dateKey: string // YYYY-MM-DD in user timezone
   status: CheckinStatus
 
   // Optional context
-  moodBefore?: number  // 1-5 scale
-  moodAfter?: number   // 1-5 scale
+  moodBefore?: number // 1-5 scale
+  moodAfter?: number // 1-5 scale
   note?: string
 
   // Tracking
@@ -251,7 +252,7 @@ export interface CanonicalHabitCheckin {
 
   // Link to source (if auto-created)
   sourceType?: 'manual' | 'intervention' | 'calendar'
-  sourceId?: string  // interventionSessionId, calendarEventId, etc.
+  sourceId?: string // interventionSessionId, calendarEventId, etc.
 
   // Sync
   syncState: SyncState
@@ -267,7 +268,7 @@ export interface HabitProgressStats {
   doneCount: number
   tinyCount: number
   skipCount: number
-  consistencyPercent: number  // (done + tiny) / scheduled days
+  consistencyPercent: number // (done + tiny) / scheduled days
 }
 
 // ----- Create/Update Types -----
@@ -276,9 +277,7 @@ export type CreateHabitInput = Omit<
   'habitId' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
 >
 
-export type UpdateHabitInput = Partial<
-  Omit<CanonicalHabit, 'habitId' | 'userId' | 'createdAtMs'>
->
+export type UpdateHabitInput = Partial<Omit<CanonicalHabit, 'habitId' | 'userId' | 'createdAtMs'>>
 
 export type CreateCheckinInput = Omit<
   CanonicalHabitCheckin,
@@ -360,7 +359,7 @@ export type InterventionStep = TextStep | TimerStep | ChoiceStep | InputStep
 // ----- Intervention Preset -----
 export interface CanonicalInterventionPreset {
   interventionId: InterventionId
-  userId: string  // User-specific or 'system' for defaults
+  userId: string // User-specific or 'system' for defaults
 
   type: InterventionType
   title: string
@@ -386,7 +385,7 @@ export interface CanonicalInterventionSession {
   userId: string
   interventionId: InterventionId
 
-  dateKey: string  // YYYY-MM-DD
+  dateKey: string // YYYY-MM-DD
   trigger: 'manual' | 'calendar_alert' | 'today_prompt'
 
   // Context
@@ -397,8 +396,8 @@ export interface CanonicalInterventionSession {
   responses?: Record<string, unknown>
 
   // Outcomes
-  createdTodoId?: string  // If user created next action
-  linkedHabitCheckinIds?: string[]  // If auto-created habit check-ins
+  createdTodoId?: string // If user created next action
+  linkedHabitCheckinIds?: string[] // If auto-created habit check-ins
 
   // Timing
   startedAtMs: number
@@ -446,7 +445,7 @@ export interface Note {
   // NEW: Journal-specific fields
   noteType?: 'standard' | 'journal' | 'meeting' | 'learning'
   journalType?: 'morning' | 'evening' | 'weekly_review' | 'intervention_reflection'
-  journalDate?: string  // YYYY-MM-DD for daily journals
+  journalDate?: string // YYYY-MM-DD for daily journals
   journalPrompts?: JournalPrompt[]
 
   // ... rest of existing fields ...
@@ -474,32 +473,49 @@ export const JOURNAL_TEMPLATES: Record<string, JournalTemplate> = {
     type: 'morning',
     prompts: [
       { key: 'intention', question: 'What is my intention for today?', placeholder: 'Focus on...' },
-      { key: 'keystone', question: 'Which keystone habit will I prioritize?', placeholder: 'Morning meditation' },
-      { key: 'if_then', question: 'My if-then plan:', placeholder: 'If I feel overwhelmed, then I will...' }
-    ]
+      {
+        key: 'keystone',
+        question: 'Which keystone habit will I prioritize?',
+        placeholder: 'Morning meditation',
+      },
+      {
+        key: 'if_then',
+        question: 'My if-then plan:',
+        placeholder: 'If I feel overwhelmed, then I will...',
+      },
+    ],
   },
   evening: {
     type: 'evening',
     prompts: [
       { key: 'wins', question: 'What went well today?', placeholder: 'I accomplished...' },
       { key: 'challenges', question: 'What was challenging?', placeholder: 'I struggled with...' },
-      { key: 'unresolved', question: 'What needs attention tomorrow?', placeholder: 'Follow up on...' }
-    ]
+      {
+        key: 'unresolved',
+        question: 'What needs attention tomorrow?',
+        placeholder: 'Follow up on...',
+      },
+    ],
   },
   intervention_reflection: {
     type: 'intervention_reflection',
     prompts: [
       { key: 'situation', question: 'What triggered this?', placeholder: 'I noticed...' },
       { key: 'insight', question: 'What did I learn?', placeholder: 'I realized...' },
-      { key: 'action', question: 'What will I do differently?', placeholder: 'Next time I will...' }
-    ]
-  }
+      {
+        key: 'action',
+        question: 'What will I do differently?',
+        placeholder: 'Next time I will...',
+      },
+    ],
+  },
 }
 ```
 
 ---
 
 ## Phase 1: Foundation
+
 **Duration:** 3-5 days
 **Goal:** Set up infrastructure without UI
 
@@ -515,6 +531,7 @@ mkdir -p packages/habits/src/{domain,ports,usecases}/__tests__
 Files to create:
 
 #### `packages/habits/package.json`
+
 ```json
 {
   "name": "@lifeos/habits",
@@ -548,6 +565,7 @@ Files to create:
 ```
 
 #### `packages/habits/tsconfig.json`
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -561,6 +579,7 @@ Files to create:
 ```
 
 #### `packages/habits/tsup.config.ts`
+
 ```typescript
 import { defineConfig } from 'tsup'
 
@@ -570,19 +589,20 @@ export default defineConfig({
   dts: true,
   clean: true,
   sourcemap: true,
-  treeshake: true
+  treeshake: true,
 })
 ```
 
 #### `packages/habits/vitest.config.ts`
+
 ```typescript
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node'
-  }
+    environment: 'node',
+  },
 })
 ```
 
@@ -593,6 +613,7 @@ export default defineConfig({
 **Create domain models with full TypeScript types** (see Domain Models section above)
 
 Files:
+
 - `packages/habits/src/domain/models.ts`
 - `packages/mind/src/domain/models.ts`
 
@@ -659,6 +680,7 @@ Files:
 ```
 
 **Deploy indexes:**
+
 ```bash
 firebase deploy --only firestore:indexes
 ```
@@ -701,6 +723,7 @@ service cloud.firestore {
 ```
 
 **Deploy rules:**
+
 ```bash
 firebase deploy --only firestore:rules
 ```
@@ -710,43 +733,59 @@ firebase deploy --only firestore:rules
 **Define repository interfaces**
 
 #### `packages/habits/src/ports/habitRepository.ts`
+
 ```typescript
-import type {
-  CanonicalHabit,
-  HabitId,
-  CreateHabitInput,
-  UpdateHabitInput
-} from '../domain/models'
+import type { CanonicalHabit, HabitId, CreateHabitInput, UpdateHabitInput } from '../domain/models'
 
 export interface HabitRepository {
   create(userId: string, input: CreateHabitInput): Promise<CanonicalHabit>
   update(userId: string, habitId: HabitId, updates: UpdateHabitInput): Promise<CanonicalHabit>
   delete(userId: string, habitId: HabitId): Promise<void>
   get(userId: string, habitId: HabitId): Promise<CanonicalHabit | null>
-  list(userId: string, options?: { status?: 'active' | 'paused' | 'archived' }): Promise<CanonicalHabit[]>
+  list(
+    userId: string,
+    options?: { status?: 'active' | 'paused' | 'archived' }
+  ): Promise<CanonicalHabit[]>
   listForDate(userId: string, dateKey: string): Promise<CanonicalHabit[]>
 }
 ```
 
 #### `packages/habits/src/ports/checkinRepository.ts`
+
 ```typescript
 import type {
   CanonicalHabitCheckin,
   CheckinId,
   HabitId,
   CreateCheckinInput,
-  UpdateCheckinInput
+  UpdateCheckinInput,
 } from '../domain/models'
 
 export interface CheckinRepository {
   upsert(userId: string, input: CreateCheckinInput): Promise<CanonicalHabitCheckin>
-  update(userId: string, checkinId: CheckinId, updates: UpdateCheckinInput): Promise<CanonicalHabitCheckin>
+  update(
+    userId: string,
+    checkinId: CheckinId,
+    updates: UpdateCheckinInput
+  ): Promise<CanonicalHabitCheckin>
   delete(userId: string, checkinId: CheckinId): Promise<void>
   get(userId: string, checkinId: CheckinId): Promise<CanonicalHabitCheckin | null>
-  getByHabitAndDate(userId: string, habitId: HabitId, dateKey: string): Promise<CanonicalHabitCheckin | null>
+  getByHabitAndDate(
+    userId: string,
+    habitId: HabitId,
+    dateKey: string
+  ): Promise<CanonicalHabitCheckin | null>
   listForDate(userId: string, dateKey: string): Promise<CanonicalHabitCheckin[]>
-  listForHabit(userId: string, habitId: HabitId, options?: { limit?: number }): Promise<CanonicalHabitCheckin[]>
-  listForDateRange(userId: string, startDate: string, endDate: string): Promise<CanonicalHabitCheckin[]>
+  listForHabit(
+    userId: string,
+    habitId: HabitId,
+    options?: { limit?: number }
+  ): Promise<CanonicalHabitCheckin[]>
+  listForDateRange(
+    userId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<CanonicalHabitCheckin[]>
 }
 ```
 
@@ -755,6 +794,7 @@ export interface CheckinRepository {
 ### 1.5 Package Exports
 
 #### `packages/habits/src/index.ts`
+
 ```typescript
 // Domain models
 export * from './domain/models'
@@ -771,6 +811,7 @@ export * from './ports/checkinRepository'
 ### 1.6 Update Root Package
 
 Add to `pnpm-workspace.yaml` (if not already included):
+
 ```yaml
 packages:
   - 'packages/*'
@@ -779,6 +820,7 @@ packages:
 ```
 
 Install dependencies:
+
 ```bash
 pnpm install
 ```
@@ -791,6 +833,7 @@ pnpm turbo typecheck
 ```
 
 **Acceptance Criteria:**
+
 - ✅ All packages build without errors
 - ✅ TypeScript type checking passes
 - ✅ Firestore indexes deployed
@@ -799,6 +842,7 @@ pnpm turbo typecheck
 ---
 
 ## Phase 2: Habits Core
+
 **Duration:** 5-7 days
 **Goal:** Full Habits CRUD with offline support
 
@@ -818,7 +862,7 @@ import {
   query,
   where,
   orderBy,
-  Timestamp
+  Timestamp,
 } from 'firebase/firestore'
 import { newId, asId } from '@lifeos/core'
 import type {
@@ -826,7 +870,7 @@ import type {
   CanonicalHabit,
   HabitId,
   CreateHabitInput,
-  UpdateHabitInput
+  UpdateHabitInput,
 } from '@lifeos/habits'
 
 export const createFirestoreHabitRepository = (): HabitRepository => {
@@ -844,7 +888,7 @@ export const createFirestoreHabitRepository = (): HabitRepository => {
         createdAtMs: Date.now(),
         updatedAtMs: Date.now(),
         syncState: 'synced',
-        version: 1
+        version: 1,
       }
 
       const habitDoc = doc(db, `users/${userId}/habits/${habitId}`)
@@ -853,7 +897,11 @@ export const createFirestoreHabitRepository = (): HabitRepository => {
       return habit
     },
 
-    async update(userId: string, habitId: HabitId, updates: UpdateHabitInput): Promise<CanonicalHabit> {
+    async update(
+      userId: string,
+      habitId: HabitId,
+      updates: UpdateHabitInput
+    ): Promise<CanonicalHabit> {
       const db = getFirestoreClient()
       const habitDoc = doc(db, `users/${userId}/habits/${habitId}`)
 
@@ -863,11 +911,11 @@ export const createFirestoreHabitRepository = (): HabitRepository => {
       }
 
       const updated: CanonicalHabit = {
-        ...existing.data() as CanonicalHabit,
+        ...(existing.data() as CanonicalHabit),
         ...updates,
         updatedAtMs: Date.now(),
         version: (existing.data()?.version ?? 0) + 1,
-        syncState: 'synced'
+        syncState: 'synced',
       }
 
       await setDoc(habitDoc, updated)
@@ -889,7 +937,10 @@ export const createFirestoreHabitRepository = (): HabitRepository => {
       return snapshot.data() as CanonicalHabit
     },
 
-    async list(userId: string, options?: { status?: 'active' | 'paused' | 'archived' }): Promise<CanonicalHabit[]> {
+    async list(
+      userId: string,
+      options?: { status?: 'active' | 'paused' | 'archived' }
+    ): Promise<CanonicalHabit[]> {
       const db = getFirestoreClient()
       const habitsCol = collection(db, `users/${userId}/habits`)
 
@@ -900,7 +951,7 @@ export const createFirestoreHabitRepository = (): HabitRepository => {
       }
 
       const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => doc.data() as CanonicalHabit)
+      return snapshot.docs.map((doc) => doc.data() as CanonicalHabit)
     },
 
     async listForDate(userId: string, dateKey: string): Promise<CanonicalHabit[]> {
@@ -909,10 +960,8 @@ export const createFirestoreHabitRepository = (): HabitRepository => {
 
       const dayOfWeek = new Date(dateKey).getDay()
 
-      return habits.filter(habit =>
-        habit.schedule.daysOfWeek.includes(dayOfWeek)
-      )
-    }
+      return habits.filter((habit) => habit.schedule.daysOfWeek.includes(dayOfWeek))
+    },
   }
 }
 ```
@@ -931,7 +980,7 @@ import {
   query,
   where,
   orderBy,
-  limit as firestoreLimit
+  limit as firestoreLimit,
 } from 'firebase/firestore'
 import { newId, asId } from '@lifeos/core'
 import type {
@@ -940,7 +989,7 @@ import type {
   CheckinId,
   HabitId,
   CreateCheckinInput,
-  UpdateCheckinInput
+  UpdateCheckinInput,
 } from '@lifeos/habits'
 
 export const createFirestoreCheckinRepository = (): CheckinRepository => {
@@ -961,7 +1010,7 @@ export const createFirestoreCheckinRepository = (): CheckinRepository => {
         userId,
         checkedInAtMs: existing?.checkedInAtMs ?? Date.now(),
         syncState: 'synced',
-        version: existing ? existing.version + 1 : 1
+        version: existing ? existing.version + 1 : 1,
       }
 
       const checkinDoc = doc(db, `users/${userId}/habitCheckins/${checkinId}`)
@@ -970,7 +1019,11 @@ export const createFirestoreCheckinRepository = (): CheckinRepository => {
       return checkin
     },
 
-    async update(userId: string, checkinId: CheckinId, updates: UpdateCheckinInput): Promise<CanonicalHabitCheckin> {
+    async update(
+      userId: string,
+      checkinId: CheckinId,
+      updates: UpdateCheckinInput
+    ): Promise<CanonicalHabitCheckin> {
       const db = getFirestoreClient()
       const checkinDoc = doc(db, `users/${userId}/habitCheckins/${checkinId}`)
 
@@ -980,10 +1033,10 @@ export const createFirestoreCheckinRepository = (): CheckinRepository => {
       }
 
       const updated: CanonicalHabitCheckin = {
-        ...existing.data() as CanonicalHabitCheckin,
+        ...(existing.data() as CanonicalHabitCheckin),
         ...updates,
         version: (existing.data()?.version ?? 0) + 1,
-        syncState: 'synced'
+        syncState: 'synced',
       }
 
       await setDoc(checkinDoc, updated)
@@ -1005,7 +1058,11 @@ export const createFirestoreCheckinRepository = (): CheckinRepository => {
       return snapshot.data() as CanonicalHabitCheckin
     },
 
-    async getByHabitAndDate(userId: string, habitId: HabitId, dateKey: string): Promise<CanonicalHabitCheckin | null> {
+    async getByHabitAndDate(
+      userId: string,
+      habitId: HabitId,
+      dateKey: string
+    ): Promise<CanonicalHabitCheckin | null> {
       const checkinId = asId<'checkin'>(`checkin:${habitId}_${dateKey}`)
       return this.get(userId, checkinId)
     },
@@ -1016,28 +1073,32 @@ export const createFirestoreCheckinRepository = (): CheckinRepository => {
       const q = query(checkinsCol, where('dateKey', '==', dateKey))
 
       const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => doc.data() as CanonicalHabitCheckin)
+      return snapshot.docs.map((doc) => doc.data() as CanonicalHabitCheckin)
     },
 
-    async listForHabit(userId: string, habitId: HabitId, options?: { limit?: number }): Promise<CanonicalHabitCheckin[]> {
+    async listForHabit(
+      userId: string,
+      habitId: HabitId,
+      options?: { limit?: number }
+    ): Promise<CanonicalHabitCheckin[]> {
       const db = getFirestoreClient()
       const checkinsCol = collection(db, `users/${userId}/habitCheckins`)
 
-      let q = query(
-        checkinsCol,
-        where('habitId', '==', habitId),
-        orderBy('dateKey', 'desc')
-      )
+      let q = query(checkinsCol, where('habitId', '==', habitId), orderBy('dateKey', 'desc'))
 
       if (options?.limit) {
         q = query(q, firestoreLimit(options.limit))
       }
 
       const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => doc.data() as CanonicalHabitCheckin)
+      return snapshot.docs.map((doc) => doc.data() as CanonicalHabitCheckin)
     },
 
-    async listForDateRange(userId: string, startDate: string, endDate: string): Promise<CanonicalHabitCheckin[]> {
+    async listForDateRange(
+      userId: string,
+      startDate: string,
+      endDate: string
+    ): Promise<CanonicalHabitCheckin[]> {
       const db = getFirestoreClient()
       const checkinsCol = collection(db, `users/${userId}/habitCheckins`)
       const q = query(
@@ -1048,8 +1109,8 @@ export const createFirestoreCheckinRepository = (): CheckinRepository => {
       )
 
       const snapshot = await getDocs(q)
-      return snapshot.docs.map(doc => doc.data() as CanonicalHabitCheckin)
-    }
+      return snapshot.docs.map((doc) => doc.data() as CanonicalHabitCheckin)
+    },
   }
 }
 ```
@@ -1092,7 +1153,7 @@ export const getHabitsDB = () => {
           checkinStore.createIndex('habitId', 'habitId')
           checkinStore.createIndex('syncState', 'syncState')
         }
-      }
+      },
     })
   }
   return dbPromise
@@ -1128,20 +1189,29 @@ export const saveCheckinOffline = async (checkin: CanonicalHabitCheckin): Promis
   await db.put('habitCheckins', checkin)
 }
 
-export const getCheckinOffline = async (userId: string, habitId: HabitId, dateKey: string): Promise<CanonicalHabitCheckin | undefined> => {
+export const getCheckinOffline = async (
+  userId: string,
+  habitId: HabitId,
+  dateKey: string
+): Promise<CanonicalHabitCheckin | undefined> => {
   const db = await getHabitsDB()
   const checkinId = `checkin:${habitId}_${dateKey}` as const
   return await db.get('habitCheckins', checkinId as any)
 }
 
-export const listCheckinsForDateOffline = async (userId: string, dateKey: string): Promise<CanonicalHabitCheckin[]> => {
+export const listCheckinsForDateOffline = async (
+  userId: string,
+  dateKey: string
+): Promise<CanonicalHabitCheckin[]> => {
   const db = await getHabitsDB()
   const index = db.transaction('habitCheckins').store.index('dateKey')
   const all = await index.getAll(dateKey)
-  return all.filter(c => c.userId === userId)
+  return all.filter((c) => c.userId === userId)
 }
 
-export const listCheckinsForHabitOffline = async (habitId: HabitId): Promise<CanonicalHabitCheckin[]> => {
+export const listCheckinsForHabitOffline = async (
+  habitId: HabitId
+): Promise<CanonicalHabitCheckin[]> => {
   const db = await getHabitsDB()
   const index = db.transaction('habitCheckins').store.index('habitId')
   return await index.getAll(habitId)
@@ -1154,7 +1224,7 @@ export const getPendingHabits = async (userId: string): Promise<CanonicalHabit[]
   const tx = db.transaction('habits', 'readonly')
   const store = tx.objectStore('habits')
   const all = await store.getAll()
-  return all.filter(h => h.userId === userId && h.syncState === 'pending')
+  return all.filter((h) => h.userId === userId && h.syncState === 'pending')
 }
 
 export const getPendingCheckins = async (userId: string): Promise<CanonicalHabitCheckin[]> => {
@@ -1162,7 +1232,7 @@ export const getPendingCheckins = async (userId: string): Promise<CanonicalHabit
   const tx = db.transaction('habitCheckins', 'readonly')
   const store = tx.objectStore('habitCheckins')
   const all = await store.getAll()
-  return all.filter(c => c.userId === userId && c.syncState === 'pending')
+  return all.filter((c) => c.userId === userId && c.syncState === 'pending')
 }
 ```
 
@@ -1180,7 +1250,7 @@ import {
   listHabitsOffline,
   deleteHabitOffline,
   saveCheckinOffline,
-  listCheckinsForDateOffline
+  listCheckinsForDateOffline,
 } from '@/habits/offlineStore'
 import { toast } from 'sonner'
 import type {
@@ -1189,7 +1259,7 @@ import type {
   HabitId,
   CreateHabitInput,
   UpdateHabitInput,
-  CreateCheckinInput
+  CreateCheckinInput,
 } from '@lifeos/habits'
 
 const habitRepository = createFirestoreHabitRepository()
@@ -1208,13 +1278,18 @@ export interface UseHabitOperationsReturn {
   loadHabits: () => Promise<void>
 
   // Check-in operations
-  checkIn: (habitId: HabitId, dateKey: string, status: 'done' | 'tiny' | 'skip', options?: {
-    moodBefore?: number
-    moodAfter?: number
-    note?: string
-    sourceType?: 'manual' | 'intervention' | 'calendar'
-    sourceId?: string
-  }) => Promise<CanonicalHabitCheckin>
+  checkIn: (
+    habitId: HabitId,
+    dateKey: string,
+    status: 'done' | 'tiny' | 'skip',
+    options?: {
+      moodBefore?: number
+      moodAfter?: number
+      note?: string
+      sourceType?: 'manual' | 'intervention' | 'calendar'
+      sourceId?: string
+    }
+  ) => Promise<CanonicalHabitCheckin>
 
   getCheckinsForDate: (dateKey: string) => Promise<CanonicalHabitCheckin[]>
 }
@@ -1267,149 +1342,167 @@ export function useHabitOperations(): UseHabitOperationsReturn {
     }
   }, [userId])
 
-  const createHabit = useCallback(async (input: Omit<CreateHabitInput, 'userId'>): Promise<CanonicalHabit> => {
-    if (!userId) throw new Error('User not authenticated')
+  const createHabit = useCallback(
+    async (input: Omit<CreateHabitInput, 'userId'>): Promise<CanonicalHabit> => {
+      if (!userId) throw new Error('User not authenticated')
 
-    const habitInput: CreateHabitInput = {
-      ...input,
-      userId
-    }
-
-    try {
-      const habit = await habitRepository.create(userId, habitInput)
-
-      // Save offline
-      await saveHabitOffline(habit)
-
-      // Update state
-      setHabits(prev => [habit, ...prev])
-
-      toast.success('Habit created')
-      return habit
-    } catch (err) {
-      toast.error('Failed to create habit')
-      throw err
-    }
-  }, [userId])
-
-  const updateHabit = useCallback(async (habitId: HabitId, updates: UpdateHabitInput): Promise<CanonicalHabit> => {
-    if (!userId) throw new Error('User not authenticated')
-
-    const existing = habits.find(h => h.habitId === habitId)
-    if (!existing) throw new Error('Habit not found')
-
-    const optimistic = { ...existing, ...updates, updatedAtMs: Date.now() }
-
-    // Optimistic update
-    setHabits(prev => prev.map(h => h.habitId === habitId ? optimistic : h))
-    await saveHabitOffline(optimistic)
-
-    try {
-      const updated = await habitRepository.update(userId, habitId, updates)
-
-      // Sync to offline
-      await saveHabitOffline(updated)
-
-      // Update state with server version
-      setHabits(prev => prev.map(h => h.habitId === habitId ? updated : h))
-
-      toast.success('Habit updated')
-      return updated
-    } catch (err) {
-      // Rollback
-      setHabits(prev => prev.map(h => h.habitId === habitId ? existing : h))
-      await saveHabitOffline(existing)
-
-      toast.error('Failed to update habit')
-      throw err
-    }
-  }, [userId, habits])
-
-  const deleteHabit = useCallback(async (habitId: HabitId): Promise<void> => {
-    if (!userId) throw new Error('User not authenticated')
-
-    const existing = habits.find(h => h.habitId === habitId)
-    if (!existing) return
-
-    // Optimistic delete
-    setHabits(prev => prev.filter(h => h.habitId !== habitId))
-    await deleteHabitOffline(habitId)
-
-    try {
-      await habitRepository.delete(userId, habitId)
-      toast.success('Habit deleted')
-    } catch (err) {
-      // Rollback
-      setHabits(prev => [...prev, existing])
-      await saveHabitOffline(existing)
-
-      toast.error('Failed to delete habit')
-      throw err
-    }
-  }, [userId, habits])
-
-  const getHabit = useCallback((habitId: HabitId): CanonicalHabit | undefined => {
-    return habits.find(h => h.habitId === habitId)
-  }, [habits])
-
-  const checkIn = useCallback(async (
-    habitId: HabitId,
-    dateKey: string,
-    status: 'done' | 'tiny' | 'skip',
-    options?: {
-      moodBefore?: number
-      moodAfter?: number
-      note?: string
-      sourceType?: 'manual' | 'intervention' | 'calendar'
-      sourceId?: string
-    }
-  ): Promise<CanonicalHabitCheckin> => {
-    if (!userId) throw new Error('User not authenticated')
-
-    const input: CreateCheckinInput = {
-      userId,
-      habitId,
-      dateKey,
-      status,
-      ...options
-    }
-
-    try {
-      const checkin = await checkinRepository.upsert(userId, input)
-
-      // Save offline
-      await saveCheckinOffline(checkin)
-
-      toast.success(`Habit marked as ${status}`)
-      return checkin
-    } catch (err) {
-      toast.error('Failed to save check-in')
-      throw err
-    }
-  }, [userId])
-
-  const getCheckinsForDate = useCallback(async (dateKey: string): Promise<CanonicalHabitCheckin[]> => {
-    if (!userId) return []
-
-    try {
-      // Try offline first
-      const offlineCheckins = await listCheckinsForDateOffline(userId, dateKey)
-
-      // Fetch from Firestore in background
-      const firestoreCheckins = await checkinRepository.listForDate(userId, dateKey)
-
-      // Save to IndexedDB
-      for (const checkin of firestoreCheckins) {
-        await saveCheckinOffline(checkin)
+      const habitInput: CreateHabitInput = {
+        ...input,
+        userId,
       }
 
-      return firestoreCheckins
-    } catch (err) {
-      console.error('Failed to get check-ins:', err)
-      // Return offline data as fallback
-      return await listCheckinsForDateOffline(userId, dateKey)
-    }
-  }, [userId])
+      try {
+        const habit = await habitRepository.create(userId, habitInput)
+
+        // Save offline
+        await saveHabitOffline(habit)
+
+        // Update state
+        setHabits((prev) => [habit, ...prev])
+
+        toast.success('Habit created')
+        return habit
+      } catch (err) {
+        toast.error('Failed to create habit')
+        throw err
+      }
+    },
+    [userId]
+  )
+
+  const updateHabit = useCallback(
+    async (habitId: HabitId, updates: UpdateHabitInput): Promise<CanonicalHabit> => {
+      if (!userId) throw new Error('User not authenticated')
+
+      const existing = habits.find((h) => h.habitId === habitId)
+      if (!existing) throw new Error('Habit not found')
+
+      const optimistic = { ...existing, ...updates, updatedAtMs: Date.now() }
+
+      // Optimistic update
+      setHabits((prev) => prev.map((h) => (h.habitId === habitId ? optimistic : h)))
+      await saveHabitOffline(optimistic)
+
+      try {
+        const updated = await habitRepository.update(userId, habitId, updates)
+
+        // Sync to offline
+        await saveHabitOffline(updated)
+
+        // Update state with server version
+        setHabits((prev) => prev.map((h) => (h.habitId === habitId ? updated : h)))
+
+        toast.success('Habit updated')
+        return updated
+      } catch (err) {
+        // Rollback
+        setHabits((prev) => prev.map((h) => (h.habitId === habitId ? existing : h)))
+        await saveHabitOffline(existing)
+
+        toast.error('Failed to update habit')
+        throw err
+      }
+    },
+    [userId, habits]
+  )
+
+  const deleteHabit = useCallback(
+    async (habitId: HabitId): Promise<void> => {
+      if (!userId) throw new Error('User not authenticated')
+
+      const existing = habits.find((h) => h.habitId === habitId)
+      if (!existing) return
+
+      // Optimistic delete
+      setHabits((prev) => prev.filter((h) => h.habitId !== habitId))
+      await deleteHabitOffline(habitId)
+
+      try {
+        await habitRepository.delete(userId, habitId)
+        toast.success('Habit deleted')
+      } catch (err) {
+        // Rollback
+        setHabits((prev) => [...prev, existing])
+        await saveHabitOffline(existing)
+
+        toast.error('Failed to delete habit')
+        throw err
+      }
+    },
+    [userId, habits]
+  )
+
+  const getHabit = useCallback(
+    (habitId: HabitId): CanonicalHabit | undefined => {
+      return habits.find((h) => h.habitId === habitId)
+    },
+    [habits]
+  )
+
+  const checkIn = useCallback(
+    async (
+      habitId: HabitId,
+      dateKey: string,
+      status: 'done' | 'tiny' | 'skip',
+      options?: {
+        moodBefore?: number
+        moodAfter?: number
+        note?: string
+        sourceType?: 'manual' | 'intervention' | 'calendar'
+        sourceId?: string
+      }
+    ): Promise<CanonicalHabitCheckin> => {
+      if (!userId) throw new Error('User not authenticated')
+
+      const input: CreateCheckinInput = {
+        userId,
+        habitId,
+        dateKey,
+        status,
+        ...options,
+      }
+
+      try {
+        const checkin = await checkinRepository.upsert(userId, input)
+
+        // Save offline
+        await saveCheckinOffline(checkin)
+
+        toast.success(`Habit marked as ${status}`)
+        return checkin
+      } catch (err) {
+        toast.error('Failed to save check-in')
+        throw err
+      }
+    },
+    [userId]
+  )
+
+  const getCheckinsForDate = useCallback(
+    async (dateKey: string): Promise<CanonicalHabitCheckin[]> => {
+      if (!userId) return []
+
+      try {
+        // Try offline first
+        const offlineCheckins = await listCheckinsForDateOffline(userId, dateKey)
+
+        // Fetch from Firestore in background
+        const firestoreCheckins = await checkinRepository.listForDate(userId, dateKey)
+
+        // Save to IndexedDB
+        for (const checkin of firestoreCheckins) {
+          await saveCheckinOffline(checkin)
+        }
+
+        return firestoreCheckins
+      } catch (err) {
+        console.error('Failed to get check-ins:', err)
+        // Return offline data as fallback
+        return await listCheckinsForDateOffline(userId, dateKey)
+      }
+    },
+    [userId]
+  )
 
   return {
     habits,
@@ -1421,7 +1514,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
     getHabit,
     loadHabits,
     checkIn,
-    getCheckinsForDate
+    getCheckinsForDate,
   }
 }
 ```
@@ -1439,17 +1532,17 @@ describe('Habits Domain Models', () => {
     it('should validate days of week', () => {
       const validSchedule: HabitSchedule = {
         daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
-        timezone: 'America/New_York'
+        timezone: 'America/New_York',
       }
 
       expect(validSchedule.daysOfWeek).toHaveLength(7)
-      expect(validSchedule.daysOfWeek.every(d => d >= 0 && d <= 6)).toBe(true)
+      expect(validSchedule.daysOfWeek.every((d) => d >= 0 && d <= 6)).toBe(true)
     })
 
     it('should support partial week schedules', () => {
       const weekdaysOnly: HabitSchedule = {
         daysOfWeek: [1, 2, 3, 4, 5], // Mon-Fri
-        timezone: 'America/New_York'
+        timezone: 'America/New_York',
       }
 
       expect(weekdaysOnly.daysOfWeek).toHaveLength(5)
@@ -1461,7 +1554,7 @@ describe('Habits Domain Models', () => {
       const habit: Partial<CanonicalHabit> = {
         title: 'Morning meditation',
         domain: 'meditation',
-        status: 'active'
+        status: 'active',
       }
 
       expect(habit.title).toBeDefined()
@@ -1473,6 +1566,7 @@ describe('Habits Domain Models', () => {
 ```
 
 **Acceptance Criteria:**
+
 - ✅ Habits can be created, updated, deleted via hooks
 - ✅ Check-ins work with deterministic IDs
 - ✅ Offline storage syncs correctly
@@ -1482,17 +1576,20 @@ describe('Habits Domain Models', () => {
 ---
 
 ## Phase 3: Habits Integration
+
 **Duration:** 5-7 days
 **Goal:** Habits visible in Today and Weekly Review
 
 ### 3.1 Today Page Refactoring
 
 **Current TodayPage structure:**
+
 - Shows calendar events
 - Shows tasks
 - Shows daily quote
 
 **New structure:**
+
 - Time-based modules (Morning/Work/Evening)
 - Each module conditionally visible based on time
 - Preserve existing calendar + tasks view
@@ -2011,14 +2108,16 @@ export function HabitCheckinCard({ habit, checkin, onCheckIn }: HabitCheckinCard
 ---
 
 ## Phase 4: Mind Engine
+
 **Duration:** 7-10 days
 **Goal:** Full Mind intervention system with auto-habit-linking
 
-*Due to length constraints, I'll provide a summary of Phase 4-5. Would you like me to create separate detailed documents for these phases?*
+_Due to length constraints, I'll provide a summary of Phase 4-5. Would you like me to create separate detailed documents for these phases?_
 
 ### Summary:
 
 **Phase 4 includes:**
+
 - Mind Engine package implementation
 - Intervention presets (breathing, CBT, ACT, Gestalt)
 - Session logging with responses
@@ -2027,6 +2126,7 @@ export function HabitCheckinCard({ habit, checkin, onCheckIn }: HabitCheckinCard
 - Integration with Work Module
 
 **Phase 5 includes:**
+
 - Weekly Review integration
 - Habit progress charts
 - Recommendations engine
@@ -2039,16 +2139,19 @@ export function HabitCheckinCard({ habit, checkin, onCheckIn }: HabitCheckinCard
 ## Testing Strategy
 
 ### Unit Tests
+
 - Domain model validation
 - Repository interfaces
 - Progress calculation logic
 
 ### Integration Tests
+
 - Offline-first workflow
 - Sync queue processing
 - Habit check-in deterministic IDs
 
 ### E2E Tests
+
 - Complete Today flow (morning → work → evening)
 - Habit creation and check-in
 - Mind intervention to habit linking

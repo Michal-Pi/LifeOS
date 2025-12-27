@@ -7,7 +7,7 @@ import {
   findDuplicateCandidates,
   createCompositeFromCandidate,
   addMemberToComposite,
-  removeMemberFromComposite
+  removeMemberFromComposite,
 } from '../composite'
 import type { CanonicalCalendarEvent } from '../models'
 
@@ -22,7 +22,7 @@ function createTestEvent(overrides: Partial<CanonicalCalendarEvent> = {}): Canon
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'primary',
-      providerEventId: 'provider-event-1'
+      providerEventId: 'provider-event-1',
     },
     createdAt: new Date(now).toISOString(),
     updatedAt: new Date(now).toISOString(),
@@ -37,7 +37,7 @@ function createTestEvent(overrides: Partial<CanonicalCalendarEvent> = {}): Canon
     endIso: new Date(now + 3600000).toISOString(),
     title: 'Test Event',
     occursOn: [new Date(now).toISOString().split('T')[0]],
-    ...overrides
+    ...overrides,
   }
 }
 
@@ -91,11 +91,21 @@ describe('matchByICalUID', () => {
   it('returns match for same iCalUID different accounts', () => {
     const eventA = createTestEvent({
       iCalUID: 'shared-uid@google.com',
-      providerRef: { provider: 'google', accountId: 'account-1', providerCalendarId: 'p1', providerEventId: 'e1' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'p1',
+        providerEventId: 'e1',
+      },
     })
     const eventB = createTestEvent({
       iCalUID: 'shared-uid@google.com',
-      providerRef: { provider: 'google', accountId: 'account-2', providerCalendarId: 'p2', providerEventId: 'e2' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-2',
+        providerCalendarId: 'p2',
+        providerEventId: 'e2',
+      },
     })
 
     const result = matchByICalUID(eventA, eventB)
@@ -108,11 +118,21 @@ describe('matchByICalUID', () => {
   it('returns null for same account', () => {
     const eventA = createTestEvent({
       iCalUID: 'shared-uid@google.com',
-      providerRef: { provider: 'google', accountId: 'account-1', providerCalendarId: 'p1', providerEventId: 'e1' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'p1',
+        providerEventId: 'e1',
+      },
     })
     const eventB = createTestEvent({
       iCalUID: 'shared-uid@google.com',
-      providerRef: { provider: 'google', accountId: 'account-1', providerCalendarId: 'p2', providerEventId: 'e2' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'p2',
+        providerEventId: 'e2',
+      },
     })
 
     expect(matchByICalUID(eventA, eventB)).toBeNull()
@@ -140,13 +160,23 @@ describe('matchByTimeTitle', () => {
       startMs,
       endMs: startMs + 3600000, // 1 hour
       title: 'Project Review Session',
-      providerRef: { provider: 'google', accountId: 'account-1', providerCalendarId: 'p1', providerEventId: 'e1' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'p1',
+        providerEventId: 'e1',
+      },
     })
     const eventB = createTestEvent({
       startMs: startMs + 60000, // 1 minute later
       endMs: startMs + 3660000, // ~1 hour
       title: 'Project Review Session',
-      providerRef: { provider: 'google', accountId: 'account-2', providerCalendarId: 'p2', providerEventId: 'e2' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-2',
+        providerCalendarId: 'p2',
+        providerEventId: 'e2',
+      },
     })
 
     const result = matchByTimeTitle(eventA, eventB)
@@ -161,12 +191,22 @@ describe('matchByTimeTitle', () => {
     const eventA = createTestEvent({
       startMs,
       title: 'Meeting',
-      providerRef: { provider: 'google', accountId: 'account-1', providerCalendarId: 'p1', providerEventId: 'e1' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'p1',
+        providerEventId: 'e1',
+      },
     })
     const eventB = createTestEvent({
       startMs: startMs + 10 * 60 * 1000, // 10 minutes later
       title: 'Meeting',
-      providerRef: { provider: 'google', accountId: 'account-2', providerCalendarId: 'p2', providerEventId: 'e2' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-2',
+        providerCalendarId: 'p2',
+        providerEventId: 'e2',
+      },
     })
 
     expect(matchByTimeTitle(eventA, eventB)).toBeNull()
@@ -177,12 +217,22 @@ describe('matchByTimeTitle', () => {
     const eventA = createTestEvent({
       startMs,
       title: 'Project Alpha',
-      providerRef: { provider: 'google', accountId: 'account-1', providerCalendarId: 'p1', providerEventId: 'e1' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'p1',
+        providerEventId: 'e1',
+      },
     })
     const eventB = createTestEvent({
       startMs,
       title: 'Project Beta',
-      providerRef: { provider: 'google', accountId: 'account-2', providerCalendarId: 'p2', providerEventId: 'e2' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-2',
+        providerCalendarId: 'p2',
+        providerEventId: 'e2',
+      },
     })
 
     expect(matchByTimeTitle(eventA, eventB)).toBeNull()
@@ -193,12 +243,22 @@ describe('matchByTimeTitle', () => {
     const eventA = createTestEvent({
       startMs,
       title: 'Meeting',
-      providerRef: { provider: 'google', accountId: 'account-1', providerCalendarId: 'p1', providerEventId: 'e1' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'p1',
+        providerEventId: 'e1',
+      },
     })
     const eventB = createTestEvent({
       startMs,
       title: 'Meeting',
-      providerRef: { provider: 'google', accountId: 'account-1', providerCalendarId: 'p2', providerEventId: 'e2' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'p2',
+        providerEventId: 'e2',
+      },
     })
 
     expect(matchByTimeTitle(eventA, eventB)).toBeNull()
@@ -214,22 +274,37 @@ describe('findDuplicateCandidates', () => {
         iCalUID: 'shared@google.com',
         title: 'Meeting Alpha',
         startMs: now,
-        providerRef: { provider: 'google', accountId: 'a1', providerCalendarId: 'p1', providerEventId: 'e1' }
+        providerRef: {
+          provider: 'google',
+          accountId: 'a1',
+          providerCalendarId: 'p1',
+          providerEventId: 'e1',
+        },
       }),
       createTestEvent({
         canonicalEventId: 'event-2',
         iCalUID: 'shared@google.com',
         title: 'Meeting Alpha',
         startMs: now,
-        providerRef: { provider: 'google', accountId: 'a2', providerCalendarId: 'p2', providerEventId: 'e2' }
+        providerRef: {
+          provider: 'google',
+          accountId: 'a2',
+          providerCalendarId: 'p2',
+          providerEventId: 'e2',
+        },
       }),
       createTestEvent({
         canonicalEventId: 'event-3',
         iCalUID: 'other@google.com',
-        title: 'Different Event',  // Different title to avoid time-title match
-        startMs: now + 7200000,     // 2 hours later to avoid time-title match
-        providerRef: { provider: 'google', accountId: 'a3', providerCalendarId: 'p3', providerEventId: 'e3' }
-      })
+        title: 'Different Event', // Different title to avoid time-title match
+        startMs: now + 7200000, // 2 hours later to avoid time-title match
+        providerRef: {
+          provider: 'google',
+          accountId: 'a3',
+          providerCalendarId: 'p3',
+          providerEventId: 'e3',
+        },
+      }),
     ]
 
     const candidates = findDuplicateCandidates(events)
@@ -245,14 +320,24 @@ describe('findDuplicateCandidates', () => {
         canonicalEventId: 'event-1',
         startMs,
         title: 'Team Sync',
-        providerRef: { provider: 'google', accountId: 'a1', providerCalendarId: 'p1', providerEventId: 'e1' }
+        providerRef: {
+          provider: 'google',
+          accountId: 'a1',
+          providerCalendarId: 'p1',
+          providerEventId: 'e1',
+        },
       }),
       createTestEvent({
         canonicalEventId: 'event-2',
         startMs: startMs + 60000,
         title: 'Team Sync',
-        providerRef: { provider: 'google', accountId: 'a2', providerCalendarId: 'p2', providerEventId: 'e2' }
-      })
+        providerRef: {
+          provider: 'google',
+          accountId: 'a2',
+          providerCalendarId: 'p2',
+          providerEventId: 'e2',
+        },
+      }),
     ]
 
     const candidates = findDuplicateCandidates(events)
@@ -269,15 +354,25 @@ describe('findDuplicateCandidates', () => {
         iCalUID: 'shared@google.com',
         startMs,
         title: 'Meeting',
-        providerRef: { provider: 'google', accountId: 'a1', providerCalendarId: 'p1', providerEventId: 'e1' }
+        providerRef: {
+          provider: 'google',
+          accountId: 'a1',
+          providerCalendarId: 'p1',
+          providerEventId: 'e1',
+        },
       }),
       createTestEvent({
         canonicalEventId: 'event-2',
         iCalUID: 'shared@google.com',
         startMs,
         title: 'Meeting',
-        providerRef: { provider: 'google', accountId: 'a2', providerCalendarId: 'p2', providerEventId: 'e2' }
-      })
+        providerRef: {
+          provider: 'google',
+          accountId: 'a2',
+          providerCalendarId: 'p2',
+          providerEventId: 'e2',
+        },
+      }),
     ]
 
     const candidates = findDuplicateCandidates(events)
@@ -294,27 +389,47 @@ describe('findDuplicateCandidates', () => {
         iCalUID: 'shared@google.com',
         startMs,
         title: 'Meeting',
-        providerRef: { provider: 'google', accountId: 'a1', providerCalendarId: 'p1', providerEventId: 'e1' }
+        providerRef: {
+          provider: 'google',
+          accountId: 'a1',
+          providerCalendarId: 'p1',
+          providerEventId: 'e1',
+        },
       }),
       createTestEvent({
         canonicalEventId: 'event-2',
         iCalUID: 'shared@google.com',
         startMs,
         title: 'Meeting',
-        providerRef: { provider: 'google', accountId: 'a2', providerCalendarId: 'p2', providerEventId: 'e2' }
+        providerRef: {
+          provider: 'google',
+          accountId: 'a2',
+          providerCalendarId: 'p2',
+          providerEventId: 'e2',
+        },
       }),
       createTestEvent({
         canonicalEventId: 'event-3',
         startMs: startMs + 100000,
         title: 'Other Call',
-        providerRef: { provider: 'google', accountId: 'a3', providerCalendarId: 'p3', providerEventId: 'e3' }
+        providerRef: {
+          provider: 'google',
+          accountId: 'a3',
+          providerCalendarId: 'p3',
+          providerEventId: 'e3',
+        },
       }),
       createTestEvent({
         canonicalEventId: 'event-4',
         startMs: startMs + 100000,
         title: 'Other Call',
-        providerRef: { provider: 'google', accountId: 'a4', providerCalendarId: 'p4', providerEventId: 'e4' }
-      })
+        providerRef: {
+          provider: 'google',
+          accountId: 'a4',
+          providerCalendarId: 'p4',
+          providerEventId: 'e4',
+        },
+      }),
     ]
 
     const candidates = findDuplicateCandidates(events)
@@ -332,12 +447,22 @@ describe('createCompositeFromCandidate', () => {
       canonicalEventId: 'event-a',
       title: 'Meeting',
       description: 'Long description here',
-      providerRef: { provider: 'google', accountId: 'a1', providerCalendarId: 'p1', providerEventId: 'e1' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'a1',
+        providerCalendarId: 'p1',
+        providerEventId: 'e1',
+      },
     })
     const eventB = createTestEvent({
       canonicalEventId: 'event-b',
       title: 'Meeting',
-      providerRef: { provider: 'google', accountId: 'a2', providerCalendarId: 'p2', providerEventId: 'e2' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'a2',
+        providerCalendarId: 'p2',
+        providerEventId: 'e2',
+      },
     })
 
     const candidate = {
@@ -345,7 +470,7 @@ describe('createCompositeFromCandidate', () => {
       eventB,
       heuristic: 'icaluid' as const,
       confidence: 0.95,
-      matchReason: 'test'
+      matchReason: 'test',
     }
 
     const composite = createCompositeFromCandidate(candidate, 'composite-1', 'user-1')
@@ -365,12 +490,23 @@ describe('addMemberToComposite', () => {
   it('adds new member to composite', () => {
     const eventC = createTestEvent({
       canonicalEventId: 'event-c',
-      providerRef: { provider: 'google', accountId: 'a3', providerCalendarId: 'p3', providerEventId: 'e3' }
+      providerRef: {
+        provider: 'google',
+        accountId: 'a3',
+        providerCalendarId: 'p3',
+        providerEventId: 'e3',
+      },
     })
 
     const eventA = createTestEvent({ canonicalEventId: 'event-a' })
     const eventB = createTestEvent({ canonicalEventId: 'event-b' })
-    const candidate = { eventA, eventB, heuristic: 'icaluid' as const, confidence: 0.95, matchReason: '' }
+    const candidate = {
+      eventA,
+      eventB,
+      heuristic: 'icaluid' as const,
+      confidence: 0.95,
+      matchReason: '',
+    }
     const composite = createCompositeFromCandidate(candidate, 'composite-1', 'user-1')
 
     const updated = addMemberToComposite(composite, eventC)
@@ -382,7 +518,13 @@ describe('addMemberToComposite', () => {
   it('does not add duplicate member', () => {
     const eventA = createTestEvent({ canonicalEventId: 'event-a' })
     const eventB = createTestEvent({ canonicalEventId: 'event-b' })
-    const candidate = { eventA, eventB, heuristic: 'icaluid' as const, confidence: 0.95, matchReason: '' }
+    const candidate = {
+      eventA,
+      eventB,
+      heuristic: 'icaluid' as const,
+      confidence: 0.95,
+      matchReason: '',
+    }
     const composite = createCompositeFromCandidate(candidate, 'composite-1', 'user-1')
 
     const updated = addMemberToComposite(composite, eventA)
@@ -396,7 +538,13 @@ describe('removeMemberFromComposite', () => {
     const eventA = createTestEvent({ canonicalEventId: 'event-a' })
     const eventB = createTestEvent({ canonicalEventId: 'event-b' })
     const eventC = createTestEvent({ canonicalEventId: 'event-c' })
-    const candidate = { eventA, eventB, heuristic: 'icaluid' as const, confidence: 0.95, matchReason: '' }
+    const candidate = {
+      eventA,
+      eventB,
+      heuristic: 'icaluid' as const,
+      confidence: 0.95,
+      matchReason: '',
+    }
     let composite = createCompositeFromCandidate(candidate, 'composite-1', 'user-1')
     composite = addMemberToComposite(composite, eventC)
 
@@ -410,7 +558,13 @@ describe('removeMemberFromComposite', () => {
   it('returns null when removing would leave < 2 members', () => {
     const eventA = createTestEvent({ canonicalEventId: 'event-a' })
     const eventB = createTestEvent({ canonicalEventId: 'event-b' })
-    const candidate = { eventA, eventB, heuristic: 'icaluid' as const, confidence: 0.95, matchReason: '' }
+    const candidate = {
+      eventA,
+      eventB,
+      heuristic: 'icaluid' as const,
+      confidence: 0.95,
+      matchReason: '',
+    }
     const composite = createCompositeFromCandidate(candidate, 'composite-1', 'user-1')
 
     const updated = removeMemberFromComposite(composite, 'event-a')
@@ -422,7 +576,13 @@ describe('removeMemberFromComposite', () => {
     const eventA = createTestEvent({ canonicalEventId: 'event-a' })
     const eventB = createTestEvent({ canonicalEventId: 'event-b' })
     const eventC = createTestEvent({ canonicalEventId: 'event-c' })
-    const candidate = { eventA, eventB, heuristic: 'icaluid' as const, confidence: 0.95, matchReason: '' }
+    const candidate = {
+      eventA,
+      eventB,
+      heuristic: 'icaluid' as const,
+      confidence: 0.95,
+      matchReason: '',
+    }
     let composite = createCompositeFromCandidate(candidate, 'composite-1', 'user-1')
     composite = addMemberToComposite(composite, eventC)
 
@@ -435,4 +595,3 @@ describe('removeMemberFromComposite', () => {
     expect(updated?.primaryMemberId).not.toBe('event-a')
   })
 })
-

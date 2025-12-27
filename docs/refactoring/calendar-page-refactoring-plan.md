@@ -42,9 +42,11 @@ CalendarPage (orchestrator)
 ### Phase 1: Extract Header Components (Quick Wins)
 
 #### 1.1 Create SyncStatusBanner Component
+
 **File:** `apps/web-vite/src/components/calendar/SyncStatusBanner.tsx`
 
 **Props:**
+
 ```typescript
 interface SyncStatusBannerProps {
   status: { lastSyncAt?: string; lastSuccessAt?: string; lastError?: string } | null
@@ -55,6 +57,7 @@ interface SyncStatusBannerProps {
 ```
 
 **Extracted State:**
+
 - `status`
 - `syncing`
 - `connectionError`
@@ -64,9 +67,11 @@ interface SyncStatusBannerProps {
 ---
 
 #### 1.2 Create CalendarHeader Component
+
 **File:** `apps/web-vite/src/components/calendar/CalendarHeader.tsx`
 
 **Props:**
+
 ```typescript
 interface CalendarHeaderProps {
   viewType: 'daily' | 'weekly' | 'monthly' | 'agenda'
@@ -81,6 +86,7 @@ interface CalendarHeaderProps {
 ```
 
 **Extracted State:**
+
 - `viewType`
 - Navigation logic
 
@@ -91,11 +97,13 @@ interface CalendarHeaderProps {
 ### Phase 2: Extract Modal Management
 
 #### 2.1 Create EventModalsContainer Component
+
 **File:** `apps/web-vite/src/components/calendar/EventModalsContainer.tsx`
 
 **Purpose:** Centralize all modal state and rendering logic
 
 **Props:**
+
 ```typescript
 interface EventModalsContainerProps {
   // Form modal
@@ -115,6 +123,7 @@ interface EventModalsContainerProps {
 ```
 
 **Extracted State:**
+
 - `formModalOpen`
 - `formMode`
 - `deleteModalOpen`
@@ -128,11 +137,13 @@ interface EventModalsContainerProps {
 ### Phase 3: Extract Main View Logic
 
 #### 3.1 Create CalendarMainView Component
+
 **File:** `apps/web-vite/src/components/calendar/CalendarMainView.tsx`
 
 **Purpose:** Handle view switching and event display
 
 **Props:**
+
 ```typescript
 interface CalendarMainViewProps {
   viewType: 'daily' | 'weekly' | 'monthly' | 'agenda'
@@ -149,6 +160,7 @@ interface CalendarMainViewProps {
 ```
 
 **Child Components:**
+
 - MonthView (already exists)
 - WeeklyView (already exists)
 - DayView (to be created)
@@ -161,11 +173,13 @@ interface CalendarMainViewProps {
 ### Phase 4: Extract Event Operations Hook
 
 #### 4.1 Create useCalendarState Hook
+
 **File:** `apps/web-vite/src/hooks/useCalendarState.ts`
 
 **Purpose:** Consolidate calendar-specific state management
 
 **Returns:**
+
 ```typescript
 interface CalendarState {
   // Events
@@ -193,9 +207,11 @@ interface CalendarState {
 ---
 
 #### 4.2 Refactor useEventOperations (Already Exists)
+
 **File:** `apps/web-vite/src/hooks/useEventOperations.ts` (410 lines)
 
 **Needs splitting into:**
+
 - `useEventMutations.ts` - create/update/delete
 - `useEventRecurrence.ts` - recurring event operations
 - `useEventRSVP.ts` - RSVP operations
@@ -205,11 +221,13 @@ interface CalendarState {
 ### Phase 5: Extract Alert Management
 
 #### 5.1 Create AlertsManager Component
+
 **File:** `apps/web-vite/src/components/calendar/AlertsManager.tsx`
 
 **Purpose:** Handle alert scheduling and display
 
 **Props:**
+
 ```typescript
 interface AlertsManagerProps {
   events: CanonicalCalendarEvent[]
@@ -218,6 +236,7 @@ interface AlertsManagerProps {
 ```
 
 **Extracted State:**
+
 - `activeAlerts`
 
 **Uses:** Custom hook `useEventAlerts`
@@ -260,6 +279,7 @@ interface AlertsManagerProps {
 ### For Each Component:
 
 1. **Unit Tests** - Test component in isolation
+
    ```typescript
    // Example: SyncStatusBanner.test.tsx
    describe('SyncStatusBanner', () => {
@@ -270,6 +290,7 @@ interface AlertsManagerProps {
    ```
 
 2. **Integration Tests** - Test with CalendarPage
+
    ```typescript
    // Example: CalendarPage.integration.test.tsx
    describe('CalendarPage with SyncStatusBanner', () => {
@@ -305,11 +326,13 @@ interface AlertsManagerProps {
 ## Performance Targets
 
 ### Before Refactoring:
+
 - Initial render: ~150ms
 - Re-render on state change: ~50-100ms
 - Bundle size: CalendarPage ~80KB
 
 ### After Refactoring:
+
 - Initial render: <100ms (target: 30% improvement)
 - Re-render on state change: <30ms (target: 50% improvement via selective memoization)
 - Bundle size: Total ~85KB (slight increase acceptable for code splitting benefits)

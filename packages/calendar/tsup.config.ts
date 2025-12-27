@@ -14,14 +14,14 @@ export default defineConfig([
     esbuildOptions(options) {
       options.alias = {
         ...(options.alias || {}),
-        '@lifeos/calendar/recurrence/rruleAdapter': path.resolve('src/recurrence/rruleAdapter.ts')
+        '@lifeos/calendar/recurrence/rruleAdapter': path.resolve('src/recurrence/rruleAdapter.ts'),
       }
-    }
+    },
   },
   {
     entry: {
       index: 'src/index.ts',
-      'recurrence/rruleAdapter': 'src/recurrence/rruleAdapter.cjs.ts'
+      'recurrence/rruleAdapter': 'src/recurrence/rruleAdapter.cjs.ts',
     },
     format: ['cjs'],
     dts: false,
@@ -34,8 +34,10 @@ export default defineConfig([
     esbuildOptions(options) {
       options.alias = {
         ...(options.alias || {}),
-        '@lifeos/calendar/recurrence/rruleAdapter': path.resolve('src/recurrence/rruleAdapter.cjs.ts')
+        '@lifeos/calendar/recurrence/rruleAdapter': path.resolve(
+          'src/recurrence/rruleAdapter.cjs.ts'
+        ),
       }
-    }
-  }
+    },
+  },
 ])

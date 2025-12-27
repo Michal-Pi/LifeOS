@@ -34,7 +34,7 @@ export function RSVPButtons({
   canRespond,
   isOffline = false,
   isPending = false,
-  onRSVP
+  onRSVP,
 }: RSVPButtonsProps) {
   if (!canRespond) {
     return null
@@ -49,7 +49,7 @@ export function RSVPButtons({
   return (
     <div className="rsvp-section">
       <span className="section-label">Your Response</span>
-      
+
       {/* Current status display */}
       {currentStatus && currentStatus !== 'needsAction' && currentStatus !== 'unknown' && (
         <div className="your-rsvp">
@@ -60,7 +60,7 @@ export function RSVPButtons({
           {isPending && <span className="sync-indicator pending">⟳</span>}
         </div>
       )}
-      
+
       <div className="rsvp-buttons">
         <button
           type="button"
@@ -93,7 +93,7 @@ export function RSVPButtons({
           Decline
         </button>
       </div>
-      
+
       {isOffline && (
         <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', marginTop: '0.5rem' }}>
           Response will be sent when you&apos;re back online
@@ -108,7 +108,7 @@ export function RSVPButtons({
  */
 export function YourRSVPStatus({
   status,
-  isPending = false
+  isPending = false,
 }: {
   status?: CanonicalResponseStatus
   isPending?: boolean
@@ -120,11 +120,8 @@ export function YourRSVPStatus({
   return (
     <div className="your-rsvp">
       <span className="your-rsvp-label">Your response:</span>
-      <span className={`your-rsvp-status ${status}`}>
-        {getStatusLabel(status)}
-      </span>
+      <span className={`your-rsvp-status ${status}`}>{getStatusLabel(status)}</span>
       {isPending && <span className="sync-indicator pending">⟳</span>}
     </div>
   )
 }
-

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import {
   signInWithGoogle as firebaseSignInWithGoogle,
   signInWithEmail as firebaseSignInWithEmail,
@@ -6,7 +7,7 @@ import {
   signOut as firebaseSignOut,
   subscribeToAuthState,
   initializeFirebase,
-  type User
+  type User,
 } from '../lib/firebase'
 import { AuthContext, type AuthContextValue } from './AuthContextDefinition'
 import { ThemeProvider } from './ThemeContext'
@@ -61,9 +62,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logger.info('Starting Google sign-in')
       await firebaseSignInWithGoogle()
       logger.info('Google sign-in successful')
+      toast.success('Welcome back!', {
+        description: 'Successfully signed in with Google',
+      })
     } catch (err) {
       logger.error('Google sign-in failed:', err)
       setError(err as Error)
+      toast.error('Sign in failed', {
+        description: 'Unable to sign in with Google. Please try again.',
+      })
       throw err
     }
   }
@@ -74,9 +81,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logger.info('Starting email sign-in')
       await firebaseSignInWithEmail(email, password)
       logger.info('Email sign-in successful')
+      toast.success('Welcome back!', {
+        description: 'Successfully signed in',
+      })
     } catch (err) {
       logger.error('Email sign-in failed:', err)
       setError(err as Error)
+      const errorMessage = (err as Error).message
+      if (errorMessage.includes('user-not-found')) {
+        toast.error('Account not found', {
+          description: 'No account exists with this email address.',
+        })
+      } else if (errorMessage.includes('wrong-password')) {
+        toast.error('Incorrect password', {
+          description: 'The password you entered is incorrect.',
+        })
+      } else {
+        toast.error('Sign in failed', {
+          description: 'Unable to sign in. Please check your credentials.',
+        })
+      }
       throw err
     }
   }
@@ -87,9 +111,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logger.info('Starting email sign-up')
       await firebaseSignUpWithEmail(email, password)
       logger.info('Email sign-up successful')
+      toast.success('Account created!', {
+        description: 'Welcome to LifeOS',
+      })
     } catch (err) {
       logger.error('Email sign-up failed:', err)
       setError(err as Error)
+      const errorMessage = (err as Error).message
+      if (errorMessage.includes('email-already-in-use')) {
+        toast.error('Account exists', {
+          description: 'An account with this email already exists.',
+        })
+      } else if (errorMessage.includes('weak-password')) {
+        toast.error('Weak password', {
+          description: 'Password should be at least 6 characters.',
+        })
+      } else {
+        toast.error('Sign up failed', {
+          description: 'Unable to create account. Please try again.',
+        })
+      }
       throw err
     }
   }
@@ -100,9 +141,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logger.info('Starting sign-out')
       await firebaseSignOut()
       logger.info('Sign-out successful')
+      toast.success('Signed out', {
+        description: 'You have been signed out successfully',
+      })
     } catch (err) {
       logger.error('Sign-out failed:', err)
       setError(err as Error)
+      toast.error('Sign out failed', {
+        description: 'Unable to sign out. Please try again.',
+      })
       throw err
     }
   }
@@ -114,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithGoogle: handleSignInWithGoogle,
     signInWithEmail: handleSignInWithEmail,
     signUpWithEmail: handleSignUpWithEmail,
-    signOut: handleSignOut
+    signOut: handleSignOut,
   }
 
   return (

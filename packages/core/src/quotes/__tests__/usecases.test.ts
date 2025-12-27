@@ -136,15 +136,17 @@ describe('getQuoteForDate', () => {
 
     it('should handle single quote array', () => {
       const now = new Date().toISOString()
-      const singleQuote: Quote[] = [{
-        id: 'only-1',
-        text: 'The only quote',
-        author: 'Test Author',
-        createdAt: now,
-        updatedAt: now,
-        addedAt: '21:12:24 10:30',
-        order: 0,
-      }]
+      const singleQuote: Quote[] = [
+        {
+          id: 'only-1',
+          text: 'The only quote',
+          author: 'Test Author',
+          createdAt: now,
+          updatedAt: now,
+          addedAt: '21:12:24 10:30',
+          order: 0,
+        },
+      ]
 
       const quote1 = getQuoteForDate(singleQuote, '2024-01-01')
       const quote2 = getQuoteForDate(singleQuote, '2024-12-31')

@@ -57,7 +57,9 @@ export interface UnifiedEventItem {
  */
 function canonicalToUnified(event: CanonicalCalendarEvent): UnifiedEventItem {
   const isSeries = isRecurringSeries(event)
-  const isProviderInstance = Boolean(event.isRecurrenceInstance || event.recurrence?.recurringEventId)
+  const isProviderInstance = Boolean(
+    event.isRecurrenceInstance || event.recurrence?.recurringEventId
+  )
 
   return {
     id: event.canonicalEventId,
@@ -72,14 +74,17 @@ function canonicalToUnified(event: CanonicalCalendarEvent): UnifiedEventItem {
     type: isSeries ? 'series_master' : isProviderInstance ? 'provider_instance' : 'single',
     seriesId: event.seriesId,
     syncState: event.syncState,
-    sourceEvent: event
+    sourceEvent: event,
   }
 }
 
 /**
  * Convert a recurrence instance to a unified event item
  */
-function instanceToUnified(instance: RecurrenceInstance, masterEvent: CanonicalCalendarEvent): UnifiedEventItem {
+function instanceToUnified(
+  instance: RecurrenceInstance,
+  masterEvent: CanonicalCalendarEvent
+): UnifiedEventItem {
   return {
     id: instance.instanceId,
     startMs: instance.startMs,
@@ -99,7 +104,7 @@ function instanceToUnified(instance: RecurrenceInstance, masterEvent: CanonicalC
     syncState: masterEvent.syncState,
     providerInstanceId: instance.providerInstanceId,
     sourceInstance: instance,
-    sourceEvent: masterEvent
+    sourceEvent: masterEvent,
   }
 }
 
@@ -121,7 +126,7 @@ function toMasterEventData(event: CanonicalCalendarEvent): MasterEventData | nul
     location: event.location,
     status: event.status,
     timezone: event.timezone,
-    recurrence: event.recurrenceV2
+    recurrence: event.recurrenceV2,
   }
 }
 
@@ -195,7 +200,7 @@ export async function listEventsWithRecurrence(
     const options: GenerateInstancesOptions = {
       startMs,
       endMs,
-      maxInstances: Math.min(maxInstances, 100) // Cap per series
+      maxInstances: Math.min(maxInstances, 100), // Cap per series
     }
 
     const { instances } = generateInstances(masterData, options)
@@ -252,9 +257,7 @@ async function fetchPotentialSeriesMasters(
   // 3. Cache recent series masters
   const events = await deps.repository.listByRange(userId, searchStartMs, rangeStartMs)
 
-  return events.filter(
-    (event) => isRecurringSeries(event) && !isDeleted(event)
-  )
+  return events.filter((event) => isRecurringSeries(event) && !isDeleted(event))
 }
 
 /**
@@ -280,12 +283,10 @@ export async function getRecurrenceInstance(
   const { instances } = generateInstances(masterData, {
     startMs: occurrenceStartMs - 1000,
     endMs: occurrenceStartMs + 1000,
-    maxInstances: 1
+    maxInstances: 1,
   })
 
-  const instance = instances.find(
-    (i) => Math.abs(i.startMs - occurrenceStartMs) < 1000
-  )
+  const instance = instances.find((i) => Math.abs(i.startMs - occurrenceStartMs) < 1000)
 
   if (!instance) {
     return null
@@ -317,11 +318,8 @@ export async function getSeriesInstances(
   const { instances } = generateInstances(masterData, {
     startMs,
     endMs,
-    maxInstances: 500
+    maxInstances: 500,
   })
 
-  return instances
-    .filter((i) => !i.isCancelled)
-    .map((i) => instanceToUnified(i, master))
+  return instances.filter((i) => !i.isCancelled).map((i) => instanceToUnified(i, master))
 }
-

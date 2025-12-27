@@ -18,7 +18,7 @@ export class SystemClock implements Clock {
 export function formatFriendlyTime(date: Date) {
   return date.toLocaleString(undefined, {
     dateStyle: 'medium',
-    timeStyle: 'short'
+    timeStyle: 'short',
   })
 }
 

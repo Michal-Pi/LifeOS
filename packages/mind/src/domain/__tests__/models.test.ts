@@ -14,15 +14,16 @@ import type {
 describe('CanonicalInterventionPreset', () => {
   it('creates a valid intervention preset', () => {
     const textStep: TextStep = {
-      type: 'text',
+      kind: 'text',
       content: 'Take a deep breath',
       durationSec: 5,
     }
 
     const timerStep: TimerStep = {
-      type: 'timer',
+      kind: 'timer',
       durationSec: 60,
       instruction: 'Continue breathing deeply',
+      showProgress: true,
     }
 
     const preset: CanonicalInterventionPreset = {
@@ -34,7 +35,7 @@ describe('CanonicalInterventionPreset', () => {
       steps: [textStep, timerStep],
       defaultDurationSec: 120,
       tags: ['stress', 'quick'],
-      recommendedForFeelings: ['stressed', 'anxious'],
+      recommendedForFeelings: ['anxious'],
       createdAtMs: Date.now(),
       updatedAtMs: Date.now(),
       syncState: 'synced',
@@ -43,8 +44,8 @@ describe('CanonicalInterventionPreset', () => {
 
     expect(preset.type).toBe('physiological_sigh')
     expect(preset.steps).toHaveLength(2)
-    expect(preset.steps[0].type).toBe('text')
-    expect(preset.steps[1].type).toBe('timer')
+    expect(preset.steps[0].kind).toBe('text')
+    expect(preset.steps[1].kind).toBe('timer')
   })
 
   it('supports all intervention types', () => {
@@ -68,7 +69,7 @@ describe('CanonicalInterventionPreset', () => {
 
   it('creates intervention with choice step', () => {
     const choiceStep: ChoiceStep = {
-      type: 'choice',
+      kind: 'choice',
       question: 'How do you feel?',
       options: ['Calm', 'Neutral', 'Stressed'],
     }
@@ -82,20 +83,20 @@ describe('CanonicalInterventionPreset', () => {
       steps: [choiceStep],
       defaultDurationSec: 300,
       tags: ['cbt', 'thoughts'],
-      recommendedForFeelings: ['anxious', 'ruminating'],
+      recommendedForFeelings: ['anxious'],
       createdAtMs: Date.now(),
       updatedAtMs: Date.now(),
       syncState: 'synced',
       version: 1,
     }
 
-    expect(preset.steps[0].type).toBe('choice')
+    expect(preset.steps[0].kind).toBe('choice')
     expect((preset.steps[0] as ChoiceStep).options).toHaveLength(3)
   })
 
   it('creates intervention with input step', () => {
     const inputStep: InputStep = {
-      type: 'input',
+      kind: 'input',
       prompt: 'What are you thinking?',
       placeholder: 'Describe your thought...',
     }
@@ -109,14 +110,14 @@ describe('CanonicalInterventionPreset', () => {
       steps: [inputStep],
       defaultDurationSec: 600,
       tags: ['journaling'],
-      recommendedForFeelings: ['any'],
+      recommendedForFeelings: ['neutral'],
       createdAtMs: Date.now(),
       updatedAtMs: Date.now(),
       syncState: 'synced',
       version: 1,
     }
 
-    expect(preset.steps[0].type).toBe('input')
+    expect(preset.steps[0].kind).toBe('input')
     expect((preset.steps[0] as InputStep).prompt).toBe('What are you thinking?')
   })
 })
@@ -129,8 +130,8 @@ describe('CanonicalInterventionSession', () => {
       interventionId: 'intervention:456' as any,
       dateKey: '2025-12-27',
       trigger: 'manual',
-      feelingBefore: 'stressed',
-      feelingAfter: 'calm',
+      feelingBefore: 'anxious',
+      feelingAfter: 'neutral',
       startedAtMs: Date.now(),
       completedAtMs: Date.now() + 120000,
       durationSec: 120,
@@ -139,8 +140,8 @@ describe('CanonicalInterventionSession', () => {
     }
 
     expect(session.trigger).toBe('manual')
-    expect(session.feelingBefore).toBe('stressed')
-    expect(session.feelingAfter).toBe('calm')
+    expect(session.feelingBefore).toBe('anxious')
+    expect(session.feelingAfter).toBe('neutral')
     expect(session.durationSec).toBe(120)
   })
 
@@ -206,7 +207,7 @@ describe('CanonicalInterventionSession', () => {
       dateKey: '2025-12-27',
       trigger: 'manual',
       feelingBefore: 'overwhelmed',
-      feelingAfter: 'focused',
+      feelingAfter: 'restless',
       createdTodoId: 'todo:xyz',
       startedAtMs: Date.now(),
       completedAtMs: Date.now() + 180000,
@@ -220,18 +221,13 @@ describe('CanonicalInterventionSession', () => {
 
   it('supports all feeling states', () => {
     const feelings: FeelingState[] = [
-      'calm',
-      'focused',
-      'energized',
-      'neutral',
-      'tired',
-      'stressed',
       'anxious',
       'overwhelmed',
-      'sad',
       'angry',
-      'frustrated',
-      'ruminating',
+      'avoidant',
+      'restless',
+      'tired',
+      'neutral',
     ]
 
     feelings.forEach((feeling) => {
@@ -243,25 +239,26 @@ describe('CanonicalInterventionSession', () => {
 describe('Step Types', () => {
   it('creates all step types correctly', () => {
     const textStep: TextStep = {
-      type: 'text',
+      kind: 'text',
       content: 'Instructions',
       durationSec: 10,
     }
 
     const timerStep: TimerStep = {
-      type: 'timer',
+      kind: 'timer',
       durationSec: 60,
       instruction: 'Breathe',
+      showProgress: true,
     }
 
     const choiceStep: ChoiceStep = {
-      type: 'choice',
+      kind: 'choice',
       question: 'How do you feel?',
       options: ['Good', 'Neutral', 'Bad'],
     }
 
     const inputStep: InputStep = {
-      type: 'input',
+      kind: 'input',
       prompt: 'Write your thought',
       placeholder: 'Enter here...',
     }
@@ -269,9 +266,9 @@ describe('Step Types', () => {
     const steps: InterventionStep[] = [textStep, timerStep, choiceStep, inputStep]
 
     expect(steps).toHaveLength(4)
-    expect(steps[0].type).toBe('text')
-    expect(steps[1].type).toBe('timer')
-    expect(steps[2].type).toBe('choice')
-    expect(steps[3].type).toBe('input')
+    expect(steps[0].kind).toBe('text')
+    expect(steps[1].kind).toBe('timer')
+    expect(steps[2].kind).toBe('choice')
+    expect(steps[3].kind).toBe('input')
   })
 })

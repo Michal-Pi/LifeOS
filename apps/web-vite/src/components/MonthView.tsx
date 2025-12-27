@@ -19,7 +19,7 @@ export const MonthView = React.memo(function MonthView({
   instances = [],
   onDateSelect,
   selectedDate,
-  onDateClick
+  onDateClick,
 }: MonthViewProps) {
   const today = useMemo(() => new Date(), [])
 
@@ -48,7 +48,7 @@ export const MonthView = React.memo(function MonthView({
           title: event.title ?? 'Untitled',
           isRecurring,
           isInstance: false,
-          colorTone
+          colorTone,
         })
         map.set(dayKey, existing)
       }
@@ -65,7 +65,7 @@ export const MonthView = React.memo(function MonthView({
         title: instance.title ?? 'Untitled',
         isRecurring: true,
         isInstance: true,
-        colorTone
+        colorTone,
       })
       map.set(dateKey, existing)
     }
@@ -83,12 +83,15 @@ export const MonthView = React.memo(function MonthView({
         dayOfMonth: date.getDate(),
         isCurrentMonth: date.getMonth() === month,
         isToday: isSameDay(date, today),
-        events: eventsByDate.get(dateKey) ?? []
+        events: eventsByDate.get(dateKey) ?? [],
       }
     })
   }, [grid, month, today, eventsByDate])
 
-  const monthName = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const monthName = new Date(year, month).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
 
   return (
     <div className="month-view">

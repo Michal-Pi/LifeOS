@@ -14,10 +14,13 @@ interface GoogleFreeBusyResponse {
   kind: string
   timeMin: string
   timeMax: string
-  calendars: Record<string, {
-    busy: Array<{ start: string; end: string }>
-    errors?: Array<{ domain: string; reason: string }>
-  }>
+  calendars: Record<
+    string,
+    {
+      busy: Array<{ start: string; end: string }>
+      errors?: Array<{ domain: string; reason: string }>
+    }
+  >
 }
 
 // Output types
@@ -66,9 +69,11 @@ export async function getAttendeeFreeBusy(
 ): Promise<FreeBusyResult> {
   // Check cache first
   const cacheKey = getCacheKey(emails, startMs, endMs, timeZone)
-  const cacheRef = db.collection('users').doc(userId).collection('freeBusyCache').doc(
-    Buffer.from(cacheKey).toString('base64').replace(/[/+=]/g, '_').slice(0, 100)
-  )
+  const cacheRef = db
+    .collection('users')
+    .doc(userId)
+    .collection('freeBusyCache')
+    .doc(Buffer.from(cacheKey).toString('base64').replace(/[/+=]/g, '_').slice(0, 100))
 
   try {
     const cacheDoc = await cacheRef.get()
@@ -117,7 +122,7 @@ export async function getAttendeeFreeBusy(
   oAuth2Client.setCredentials({
     access_token: tokens.accessToken,
     refresh_token: tokens.refreshToken,
-    expiry_date: tokens.expiresAt
+    expiry_date: tokens.expiresAt,
   })
 
   // Refresh if expired
@@ -126,7 +131,7 @@ export async function getAttendeeFreeBusy(
     const newCreds = refreshed.credentials
     await privateAccountRef(userId, accountId).update({
       accessToken: newCreds.access_token,
-      expiresAt: newCreds.expiry_date
+      expiresAt: newCreds.expiry_date,
     })
   }
 
@@ -136,16 +141,16 @@ export async function getAttendeeFreeBusy(
     timeMin: new Date(startMs).toISOString(),
     timeMax: new Date(endMs).toISOString(),
     timeZone,
-    items: emails.map((email) => ({ id: email }))
+    items: emails.map((email) => ({ id: email })),
   }
 
   const response = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
     },
-    body: JSON.stringify(requestBody)
+    body: JSON.stringify(requestBody),
   })
 
   if (!response.ok) {
@@ -153,7 +158,7 @@ export async function getAttendeeFreeBusy(
     throw new Error(`Google Freebusy API error: ${response.status} - ${errorText}`)
   }
 
-  const googleResponse = await response.json() as GoogleFreeBusyResponse
+  const googleResponse = (await response.json()) as GoogleFreeBusyResponse
 
   // Transform response
   const attendees: AttendeeAvailability[] = emails.map((email) => {
@@ -169,7 +174,7 @@ export async function getAttendeeFreeBusy(
 
     const busy: BusyBlock[] = calendarData.busy.map((block) => ({
       startMs: new Date(block.start).getTime(),
-      endMs: new Date(block.end).getTime()
+      endMs: new Date(block.end).getTime(),
     }))
 
     return { email, busy }
@@ -180,14 +185,14 @@ export async function getAttendeeFreeBusy(
     rangeStartMs: startMs,
     rangeEndMs: endMs,
     timeZone,
-    cached: false
+    cached: false,
   }
 
   // Cache the result
   try {
     await cacheRef.set({
       payload: result,
-      expiresAtMs: Date.now() + CACHE_TTL_MS
+      expiresAtMs: Date.now() + CACHE_TTL_MS,
     })
   } catch {
     // Cache write failed, continue anyway
@@ -204,9 +209,7 @@ export function hasConflict(
   proposedEndMs: number,
   busyBlocks: BusyBlock[]
 ): boolean {
-  return busyBlocks.some((block) =>
-    proposedStartMs < block.endMs && proposedEndMs > block.startMs
-  )
+  return busyBlocks.some((block) => proposedStartMs < block.endMs && proposedEndMs > block.startMs)
 }
 
 /**
@@ -228,7 +231,7 @@ export function findNextAvailable(
       if (gapEnd - currentStart >= durationMs && gapEnd <= searchEndMs) {
         return {
           startMs: currentStart,
-          endMs: currentStart + durationMs
+          endMs: currentStart + durationMs,
         }
       }
     }
@@ -240,7 +243,7 @@ export function findNextAvailable(
   if (currentStart + durationMs <= searchEndMs) {
     return {
       startMs: currentStart,
-      endMs: currentStart + durationMs
+      endMs: currentStart + durationMs,
     }
   }
 
@@ -251,9 +254,7 @@ export function findNextAvailable(
  * Get combined busy blocks for multiple attendees
  * Useful for finding times when all attendees are free
  */
-export function combineBusyBlocks(
-  attendees: AttendeeAvailability[]
-): BusyBlock[] {
+export function combineBusyBlocks(attendees: AttendeeAvailability[]): BusyBlock[] {
   const allBlocks: BusyBlock[] = []
 
   for (const attendee of attendees) {
@@ -281,4 +282,3 @@ export function combineBusyBlocks(
 
   return merged
 }
-

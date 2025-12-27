@@ -23,7 +23,7 @@ export function AttendeeEditor({
   onAttendeesChange,
   sendUpdates,
   onSendUpdatesChange,
-  isDisabled = false
+  isDisabled = false,
 }: AttendeeEditorProps) {
   const [newEmail, setNewEmail] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
@@ -33,7 +33,7 @@ export function AttendeeEditor({
 
   const handleAddAttendee = () => {
     const email = newEmail.trim().toLowerCase()
-    
+
     if (!email) {
       setEmailError('Please enter an email address')
       return
@@ -53,7 +53,7 @@ export function AttendeeEditor({
     // Add new attendee
     const newAttendee: CanonicalAttendee = {
       email,
-      responseStatus: 'needsAction'
+      responseStatus: 'needsAction',
     }
 
     onAttendeesChange([...attendees, newAttendee])
@@ -112,7 +112,9 @@ export function AttendeeEditor({
           {editableAttendees.map((attendee) => (
             <div key={attendee.email} className="attendee-item">
               <div className="attendee-avatar">
-                {attendee.displayName?.[0]?.toUpperCase() || attendee.email?.[0]?.toUpperCase() || '?'}
+                {attendee.displayName?.[0]?.toUpperCase() ||
+                  attendee.email?.[0]?.toUpperCase() ||
+                  '?'}
               </div>
               <div className="attendee-info">
                 <span className="attendee-name">
@@ -157,4 +159,3 @@ export function AttendeeEditor({
     </div>
   )
 }
-

@@ -18,13 +18,11 @@ export function checkConflicts(
   attendees: AttendeeAvailability[]
 ): { hasConflict: boolean; conflictingAttendees: string[] } {
   const conflicting = attendees.filter((attendee) =>
-    attendee.busy.some(
-      (block) => proposedStartMs < block.endMs && proposedEndMs > block.startMs
-    )
+    attendee.busy.some((block) => proposedStartMs < block.endMs && proposedEndMs > block.startMs)
   )
 
   return {
     hasConflict: conflicting.length > 0,
-    conflictingAttendees: conflicting.map((a) => a.email)
+    conflictingAttendees: conflicting.map((a) => a.email),
   }
 }

@@ -95,7 +95,7 @@ export const EventModalsContainer = forwardRef<
     () => ({
       openCreateModal,
       openEditModal,
-      openDeleteModal
+      openDeleteModal,
     }),
     [openCreateModal, openEditModal, openDeleteModal]
   )
@@ -103,13 +103,13 @@ export const EventModalsContainer = forwardRef<
   // Check if selected event is recurring
   const selectedIsRecurring = Boolean(
     selectedEvent?.recurrence?.recurrenceRules?.length ||
-      selectedEvent?.providerRef?.recurringEventId
+    selectedEvent?.providerRef?.recurringEventId
   )
 
   const isRecurrenceInstance = Boolean(
     formMode === 'edit' &&
-      selectedEvent &&
-      (selectedEvent.isRecurringSeries || selectedEvent.recurrenceV2?.rule)
+    selectedEvent &&
+    (selectedEvent.isRecurringSeries || selectedEvent.recurrenceV2?.rule)
   )
 
   return (

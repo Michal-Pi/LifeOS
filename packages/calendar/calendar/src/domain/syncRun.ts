@@ -78,9 +78,9 @@ export function createSyncRun(
       canonicalDeleted: 0,
       compositeCreated: 0,
       compositeUpdated: 0,
-      duplicatesDetected: 0
+      duplicatesDetected: 0,
     },
-    errors: []
+    errors: [],
   }
 }
 
@@ -91,7 +91,7 @@ export function completeSyncRun(run: CalendarSyncRun): CalendarSyncRun {
   return {
     ...run,
     status: 'completed',
-    endedAt: new Date().toISOString()
+    endedAt: new Date().toISOString(),
   }
 }
 
@@ -103,7 +103,7 @@ export function failSyncRun(run: CalendarSyncRun, error: SyncRunError): Calendar
     ...run,
     status: 'failed',
     endedAt: new Date().toISOString(),
-    errors: [...run.errors, error]
+    errors: [...run.errors, error],
   }
 }
 
@@ -118,12 +118,7 @@ export function updateSyncRunCounts(
     ...run,
     counts: {
       ...run.counts,
-      ...updates
-    }
+      ...updates,
+    },
   }
 }
-
-
-
-
-

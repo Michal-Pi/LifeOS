@@ -6,7 +6,9 @@ import { useAuth } from '@/hooks/useAuth'
 
 export function SystemStatus() {
   const { user } = useAuth()
-  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  )
   const [latency, setLatency] = useState<number | null>(null)
   const [downloadSpeed, setDownloadSpeed] = useState<number | null>(null)
   const [isTestingSpeed, setIsTestingSpeed] = useState(false)
@@ -34,7 +36,7 @@ export function SystemStatus() {
         setLatency(null)
       }
     }
-    
+
     void checkLatency()
     const interval = setInterval(checkLatency, 10000)
     return () => clearInterval(interval)
@@ -46,11 +48,15 @@ export function SystemStatus() {
     const start = performance.now()
     try {
       // Fetch ~1.5MB image from Wikimedia (CORS enabled)
-      const response = await fetch('https://upload.wikimedia.org/wikipedia/commons/3/3f/JPEG_example_flower.jpg?t=' + Date.now(), { cache: 'no-store' })
+      const response = await fetch(
+        'https://upload.wikimedia.org/wikipedia/commons/3/3f/JPEG_example_flower.jpg?t=' +
+          Date.now(),
+        { cache: 'no-store' }
+      )
       const blob = await response.blob()
       const duration = (performance.now() - start) / 1000
       const bits = blob.size * 8
-      const mbps = (bits / duration) / 1_000_000
+      const mbps = bits / duration / 1_000_000
       setDownloadSpeed(parseFloat(mbps.toFixed(2)))
     } catch (error) {
       logger.error('Speed test failed:', error)
@@ -60,50 +66,96 @@ export function SystemStatus() {
   }
 
   return (
-    <div className="settings-content" style={{ marginBottom: '2rem', padding: '1.5rem', border: '1px solid var(--primary-color)', boxShadow: '0 0 15px var(--glow-color)' }}>
-      <h3 style={{ marginTop: 0, color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '1px' }}>System Status</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+    <div
+      className="settings-content"
+      style={{
+        marginBottom: '2rem',
+        padding: '1.5rem',
+        border: '1px solid var(--primary-color)',
+        boxShadow: '0 0 15px var(--glow-color)',
+      }}
+    >
+      <h3
+        style={{
+          marginTop: 0,
+          color: 'var(--primary-color)',
+          textTransform: 'uppercase',
+          letterSpacing: '1px',
+        }}
+      >
+        System Status
+      </h3>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gap: '1rem',
+          marginTop: '1rem',
+        }}
+      >
         <div>
-            <p className="section-label" style={{ marginBottom: '0.5rem' }}>Network</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ 
-                    width: '10px', height: '10px', borderRadius: '50%', 
-                    backgroundColor: isOnline ? 'var(--success-color)' : 'var(--error-color)',
-                    boxShadow: `0 0 10px ${isOnline ? 'var(--success-color)' : 'var(--error-color)'}`
-                }} />
-                <span style={{ fontWeight: 'bold' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
-            </div>
+          <p className="section-label" style={{ marginBottom: '0.5rem' }}>
+            Network
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                backgroundColor: isOnline ? 'var(--success-color)' : 'var(--error-color)',
+                boxShadow: `0 0 10px ${isOnline ? 'var(--success-color)' : 'var(--error-color)'}`,
+              }}
+            />
+            <span style={{ fontWeight: 'bold' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+          </div>
         </div>
         <div>
-            <p className="section-label" style={{ marginBottom: '0.5rem' }}>Auth</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ 
-                    width: '10px', height: '10px', borderRadius: '50%', 
-                    backgroundColor: user ? 'var(--success-color)' : 'var(--text-secondary)',
-                    boxShadow: user ? '0 0 10px var(--success-color)' : 'none'
-                }} />
-                <span style={{ fontWeight: 'bold' }}>{user ? 'AUTHENTICATED' : 'GUEST'}</span>
-            </div>
+          <p className="section-label" style={{ marginBottom: '0.5rem' }}>
+            Auth
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                backgroundColor: user ? 'var(--success-color)' : 'var(--text-secondary)',
+                boxShadow: user ? '0 0 10px var(--success-color)' : 'none',
+              }}
+            />
+            <span style={{ fontWeight: 'bold' }}>{user ? 'AUTHENTICATED' : 'GUEST'}</span>
+          </div>
         </div>
         <div>
-            <p className="section-label" style={{ marginBottom: '0.5rem' }}>Latency</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontFamily: 'monospace', color: 'var(--primary-color)' }}>{latency ? `${latency}ms` : '...'}</span>
-            </div>
+          <p className="section-label" style={{ marginBottom: '0.5rem' }}>
+            Latency
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontFamily: 'monospace', color: 'var(--primary-color)' }}>
+              {latency ? `${latency}ms` : '...'}
+            </span>
+          </div>
         </div>
         <div>
-            <p className="section-label" style={{ marginBottom: '0.5rem' }}>Bandwidth</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button 
-                  onClick={runSpeedTest} 
-                  disabled={isTestingSpeed || !isOnline}
-                  className="ghost-button small"
-                  style={{ fontSize: '0.7rem', padding: '2px 8px', minWidth: 'auto' }}
-                >
-                  {isTestingSpeed ? 'TESTING...' : 'TEST SPEED'}
-                </button>
-                {downloadSpeed && <span style={{ fontFamily: 'monospace', color: 'var(--primary-color)' }}>{downloadSpeed} Mbps</span>}
-            </div>
+          <p className="section-label" style={{ marginBottom: '0.5rem' }}>
+            Bandwidth
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={runSpeedTest}
+              disabled={isTestingSpeed || !isOnline}
+              className="ghost-button small"
+              style={{ fontSize: '0.7rem', padding: '2px 8px', minWidth: 'auto' }}
+            >
+              {isTestingSpeed ? 'TESTING...' : 'TEST SPEED'}
+            </button>
+            {downloadSpeed && (
+              <span style={{ fontFamily: 'monospace', color: 'var(--primary-color)' }}>
+                {downloadSpeed} Mbps
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

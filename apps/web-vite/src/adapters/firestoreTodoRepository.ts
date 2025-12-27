@@ -1,19 +1,11 @@
 /**
  * Firestore Todo Repository
- * 
+ *
  * Implements data access for Projects, Milestones, and Tasks using Firestore.
  * Follows the Repository pattern to abstract database specifics from the UI.
  */
 
-import {
-  collection,
-  doc,
-  getDocs,
-  query,
-  setDoc,
-  where,
-  deleteDoc
-} from 'firebase/firestore'
+import { collection, doc, getDocs, query, setDoc, where, deleteDoc } from 'firebase/firestore'
 import { getFirestoreClient } from '@/lib/firebase'
 import type { CanonicalProject, CanonicalMilestone, CanonicalTask } from '@/types/todo'
 
@@ -28,7 +20,7 @@ export const createFirestoreTodoRepository = () => {
   const getProjects = async (userId: string): Promise<CanonicalProject[]> => {
     const q = query(collection(db, `users/${userId}/${COLLECTION_PROJECTS}`))
     const snapshot = await getDocs(q)
-    return snapshot.docs.map(doc => doc.data() as CanonicalProject)
+    return snapshot.docs.map((doc) => doc.data() as CanonicalProject)
   }
 
   const saveProject = async (project: CanonicalProject): Promise<void> => {
@@ -42,13 +34,16 @@ export const createFirestoreTodoRepository = () => {
   }
 
   // --- Milestones ---
-  const getMilestones = async (userId: string, projectId?: string): Promise<CanonicalMilestone[]> => {
+  const getMilestones = async (
+    userId: string,
+    projectId?: string
+  ): Promise<CanonicalMilestone[]> => {
     let q = query(collection(db, `users/${userId}/${COLLECTION_MILESTONES}`))
     if (projectId) {
       q = query(q, where('projectId', '==', projectId))
     }
     const snapshot = await getDocs(q)
-    return snapshot.docs.map(doc => doc.data() as CanonicalMilestone)
+    return snapshot.docs.map((doc) => doc.data() as CanonicalMilestone)
   }
 
   const saveMilestone = async (milestone: CanonicalMilestone): Promise<void> => {
@@ -73,7 +68,7 @@ export const createFirestoreTodoRepository = () => {
       q = query(q, where('projectId', '==', options.projectId))
     }
     const snapshot = await getDocs(q)
-    return snapshot.docs.map(doc => doc.data() as CanonicalTask)
+    return snapshot.docs.map((doc) => doc.data() as CanonicalTask)
   }
 
   const saveTask = async (task: CanonicalTask): Promise<void> => {
@@ -95,6 +90,6 @@ export const createFirestoreTodoRepository = () => {
     deleteMilestone,
     getTasks,
     saveTask,
-    deleteTask
+    deleteTask,
   }
 }

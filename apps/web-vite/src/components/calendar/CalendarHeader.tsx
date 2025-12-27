@@ -21,23 +21,27 @@ interface CalendarHeaderProps {
 
 const timeFormatter = new Intl.DateTimeFormat('en-US', {
   hour: 'numeric',
-  minute: 'numeric'
+  minute: 'numeric',
 })
 
 export function CalendarHeader({
   viewType,
   onViewTypeChange,
   selectedMonthDate,
-  timezone
+  timezone,
 }: CalendarHeaderProps) {
   const today = new Date()
 
   return (
     <>
       <div>
-        <h1>{selectedMonthDate ? 'Selected Date' : 'Today'} in {timezone}</h1>
+        <h1>
+          {selectedMonthDate ? 'Selected Date' : 'Today'} in {timezone}
+        </h1>
         <p className="calendar-meta">
-          {selectedMonthDate ? timeFormatter.format(selectedMonthDate) : timeFormatter.format(today)}
+          {selectedMonthDate
+            ? timeFormatter.format(selectedMonthDate)
+            : timeFormatter.format(today)}
         </p>
       </div>
 

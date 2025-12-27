@@ -8,7 +8,11 @@
 import type { Quote } from '@lifeos/core'
 import { getDefaultQuotes } from '@lifeos/core'
 import { useState, useEffect, useCallback } from 'react'
-import { createFirestoreQuoteRepository, type SortBy, type SortOrder } from '@/adapters/firestoreQuoteRepository'
+import {
+  createFirestoreQuoteRepository,
+  type SortBy,
+  type SortOrder,
+} from '@/adapters/firestoreQuoteRepository'
 
 const quoteRepository = createFirestoreQuoteRepository()
 
@@ -95,41 +99,50 @@ export function useQuotes({
     void loadQuotes()
   }, [loadQuotes])
 
-  const setSort = useCallback((column: SortBy) => {
-    if (sortBy === column) {
-      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortBy(column)
-      setSortOrder(column === 'addedAt' ? 'desc' : 'asc')
-    }
-    setPage(0)
-  }, [sortBy])
+  const setSort = useCallback(
+    (column: SortBy) => {
+      if (sortBy === column) {
+        setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+      } else {
+        setSortBy(column)
+        setSortOrder(column === 'addedAt' ? 'desc' : 'asc')
+      }
+      setPage(0)
+    },
+    [sortBy]
+  )
 
-  const deleteQuote = useCallback(async (quoteId: string) => {
-    try {
-      await quoteRepository.deleteQuote(userId, quoteId)
-      await loadQuotes() // Reload current page
-      setError(null)
-    } catch (err) {
-      setError((err as Error).message)
-    }
-  }, [userId, loadQuotes])
+  const deleteQuote = useCallback(
+    async (quoteId: string) => {
+      try {
+        await quoteRepository.deleteQuote(userId, quoteId)
+        await loadQuotes() // Reload current page
+        setError(null)
+      } catch (err) {
+        setError((err as Error).message)
+      }
+    },
+    [userId, loadQuotes]
+  )
 
-  const addQuote = useCallback(async (newQuote: { text: string; author: string }) => {
-    if (total >= 1000) {
-      setError('Maximum of 1000 quotes reached')
-      return
-    }
-    try {
-      await quoteRepository.addQuote(userId, newQuote)
-      setPage(0) // Go to first page to see new quote
-      await loadQuotes()
-      setError(null)
-    } catch (err) {
-      setError((err as Error).message)
-      throw err // Re-throw to allow form to handle its own state
-    }
-  }, [total, userId, loadQuotes])
+  const addQuote = useCallback(
+    async (newQuote: { text: string; author: string }) => {
+      if (total >= 1000) {
+        setError('Maximum of 1000 quotes reached')
+        return
+      }
+      try {
+        await quoteRepository.addQuote(userId, newQuote)
+        setPage(0) // Go to first page to see new quote
+        await loadQuotes()
+        setError(null)
+      } catch (err) {
+        setError((err as Error).message)
+        throw err // Re-throw to allow form to handle its own state
+      }
+    },
+    [total, userId, loadQuotes]
+  )
 
   const resetToDefaults = useCallback(async () => {
     try {

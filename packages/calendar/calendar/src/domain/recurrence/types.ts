@@ -203,7 +203,9 @@ export function makeOccurrenceKey(seriesId: string, occurrenceStartMs: number): 
 /**
  * Parse an occurrence key back to its components
  */
-export function parseOccurrenceKey(key: string): { seriesId: string; occurrenceStartMs: number } | null {
+export function parseOccurrenceKey(
+  key: string
+): { seriesId: string; occurrenceStartMs: number } | null {
   const lastColon = key.lastIndexOf(':')
   if (lastColon === -1) return null
 
@@ -273,7 +275,7 @@ function weekdayName(day: Weekday): string {
     TH: 'Thu',
     FR: 'Fri',
     SA: 'Sat',
-    SU: 'Sun'
+    SU: 'Sun',
   }
   return names[day]
 }
@@ -281,10 +283,8 @@ function weekdayName(day: Weekday): string {
 /**
  * Check if an event has recurrence
  */
-export function hasRecurrence(recurrence?: CanonicalRecurrence | null): recurrence is CanonicalRecurrence {
+export function hasRecurrence(
+  recurrence?: CanonicalRecurrence | null
+): recurrence is CanonicalRecurrence {
   return recurrence != null && recurrence.rule != null
 }
-
-
-
-

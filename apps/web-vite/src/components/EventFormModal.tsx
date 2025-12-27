@@ -3,7 +3,13 @@
 import type { CanonicalCalendarEvent, RecurrenceFrequency, Weekday } from '@lifeos/calendar'
 
 import React, { useEffect, useState, useMemo } from 'react'
-import { isValidDateString, isValidTimeString, parseDateTimeToMs, isEndAfterStart, isValidEmail } from '@/lib/validation'
+import {
+  isValidDateString,
+  isValidTimeString,
+  parseDateTimeToMs,
+  isEndAfterStart,
+  isValidEmail,
+} from '@/lib/validation'
 
 interface EventFormModalProps {
   isOpen: boolean
@@ -58,7 +64,7 @@ function getDefaultTimes(durationMinutes = 60) {
     startDate: toLocalDateString(now),
     startTime: toLocalTimeString(now),
     endDate: toLocalDateString(end),
-    endTime: toLocalTimeString(end)
+    endTime: toLocalTimeString(end),
   }
 }
 
@@ -69,7 +75,7 @@ const WEEKDAY_OPTIONS: { value: Weekday; label: string }[] = [
   { value: 'TH', label: 'Thu' },
   { value: 'FR', label: 'Fri' },
   { value: 'SA', label: 'Sat' },
-  { value: 'SU', label: 'Sun' }
+  { value: 'SU', label: 'Sun' },
 ]
 
 export const EventFormModal = React.memo(function EventFormModal({
@@ -81,7 +87,7 @@ export const EventFormModal = React.memo(function EventFormModal({
   defaultDurationMinutes,
   mode,
   isRecurrenceInstance,
-  onScopeSelect
+  onScopeSelect,
 }: EventFormModalProps) {
   const timezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, [])
 
@@ -107,7 +113,9 @@ export const EventFormModal = React.memo(function EventFormModal({
 
   // Edit scope state (for recurring instance editing)
   const [showScopePicker, setShowScopePicker] = useState(false)
-  const [selectedScope, setSelectedScope] = useState<'this' | 'this_and_future' | 'all' | null>(null)
+  const [selectedScope, setSelectedScope] = useState<'this' | 'this_and_future' | 'all' | null>(
+    null
+  )
 
   useEffect(() => {
     if (!isOpen) return
@@ -164,7 +172,7 @@ export const EventFormModal = React.memo(function EventFormModal({
         timezone,
         description: '',
         location: '',
-        attendees: []
+        attendees: [],
       }
       const merged = { ...baseData, ...initialFormData }
       setTitle(merged.title)
@@ -184,7 +192,15 @@ export const EventFormModal = React.memo(function EventFormModal({
       setSelectedScope(null)
     }
     setError(null)
-  }, [defaultDurationMinutes, initialEvent, initialFormData, isOpen, isRecurrenceInstance, mode, timezone])
+  }, [
+    defaultDurationMinutes,
+    initialEvent,
+    initialFormData,
+    isOpen,
+    isRecurrenceInstance,
+    mode,
+    timezone,
+  ])
 
   const toggleWeekday = (day: Weekday) => {
     setRepeatWeekdays((prev) =>
@@ -249,7 +265,9 @@ export const EventFormModal = React.memo(function EventFormModal({
 
     // Validate end is after start
     if (!isEndAfterStart(startMs, endMs)) {
-      setError(allDay ? 'End date must be on or after start date' : 'End time must be after start time')
+      setError(
+        allDay ? 'End date must be on or after start date' : 'End time must be after start time'
+      )
       return
     }
 
@@ -263,7 +281,7 @@ export const EventFormModal = React.memo(function EventFormModal({
         monthDay: repeatFrequency === 'MONTHLY' ? repeatMonthDay : undefined,
         endType: repeatEndType,
         untilDate: repeatEndType === 'until' ? repeatUntilDate : undefined,
-        count: repeatEndType === 'count' ? repeatCount : undefined
+        count: repeatEndType === 'count' ? repeatCount : undefined,
       }
     }
 
@@ -274,7 +292,7 @@ export const EventFormModal = React.memo(function EventFormModal({
       .filter(Boolean)
 
     if (attendeeEmails.length > 0) {
-      const invalidEmails = attendeeEmails.filter(email => !isValidEmail(email))
+      const invalidEmails = attendeeEmails.filter((email) => !isValidEmail(email))
       if (invalidEmails.length > 0) {
         setError(`Invalid email address(es): ${invalidEmails.join(', ')}`)
         return
@@ -297,7 +315,7 @@ export const EventFormModal = React.memo(function EventFormModal({
       endDate,
       endTime,
       timezone,
-      recurrence
+      recurrence,
     })
   }
 
@@ -425,7 +443,9 @@ export const EventFormModal = React.memo(function EventFormModal({
                 <select
                   id="repeatFrequency"
                   value={repeatFrequency}
-                  onChange={(e) => setRepeatFrequency(e.target.value as RecurrenceFrequency | 'none')}
+                  onChange={(e) =>
+                    setRepeatFrequency(e.target.value as RecurrenceFrequency | 'none')
+                  }
                 >
                   <option value="none">Does not repeat</option>
                   <option value="DAILY">Daily</option>
@@ -452,7 +472,8 @@ export const EventFormModal = React.memo(function EventFormModal({
                       <span>
                         {repeatFrequency === 'DAILY' && (repeatInterval === 1 ? 'day' : 'days')}
                         {repeatFrequency === 'WEEKLY' && (repeatInterval === 1 ? 'week' : 'weeks')}
-                        {repeatFrequency === 'MONTHLY' && (repeatInterval === 1 ? 'month' : 'months')}
+                        {repeatFrequency === 'MONTHLY' &&
+                          (repeatInterval === 1 ? 'month' : 'months')}
                         {repeatFrequency === 'YEARLY' && (repeatInterval === 1 ? 'year' : 'years')}
                       </span>
                     </div>
@@ -542,7 +563,9 @@ export const EventFormModal = React.memo(function EventFormModal({
           {showScopePicker && (
             <div className="scope-picker-section">
               <p className="section-label">Edit scope</p>
-              <p className="scope-description">This event is part of a recurring series. Which events do you want to change?</p>
+              <p className="scope-description">
+                This event is part of a recurring series. Which events do you want to change?
+              </p>
               <div className="scope-options">
                 <label className={`scope-option ${selectedScope === 'this' ? 'selected' : ''}`}>
                   <input
@@ -555,7 +578,9 @@ export const EventFormModal = React.memo(function EventFormModal({
                   <span className="scope-label">This event only</span>
                   <span className="scope-hint">Change only this occurrence</span>
                 </label>
-                <label className={`scope-option ${selectedScope === 'this_and_future' ? 'selected' : ''}`}>
+                <label
+                  className={`scope-option ${selectedScope === 'this_and_future' ? 'selected' : ''}`}
+                >
                   <input
                     type="radio"
                     name="editScope"

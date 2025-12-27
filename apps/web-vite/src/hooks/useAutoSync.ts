@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { getFirestoreClient } from '@/lib/firebase'
 import { functionUrl } from '@/lib/functionsUrl'
+import { authenticatedFetch } from '@/lib/authenticatedFetch'
 
 const AUTO_SYNC_AGE_MS = 15 * 60 * 1000
 
@@ -12,7 +13,9 @@ function parseTimestamp(value?: string): number {
 }
 
 async function getLatestSyncTimestamp(userId: string): Promise<number> {
-  const snapshot = await getDocs(collection(getFirestoreClient(), 'users', userId, 'calendarSyncState'))
+  const snapshot = await getDocs(
+    collection(getFirestoreClient(), 'users', userId, 'calendarSyncState')
+  )
   let latest = 0
   snapshot.forEach((doc) => {
     const data = doc.data() as { lastSuccessAt?: string; lastSyncAt?: string }
@@ -35,7 +38,7 @@ export function useAutoSync(userId: string, accountId: string): void {
         if (cancelled) return
         const needsSync = !latest || Date.now() - latest > AUTO_SYNC_AGE_MS
         if (!needsSync) return
-        await fetch(functionUrl(`syncNow?uid=${userId}&accountId=${accountId}`))
+        await authenticatedFetch(functionUrl(`syncNow?uid=${userId}&accountId=${accountId}`))
       } catch {
         // Ignore auto-sync errors; manual sync remains available
       }

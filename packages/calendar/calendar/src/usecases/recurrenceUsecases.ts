@@ -31,7 +31,7 @@ import { getPreviousOccurrence } from '../domain/recurrence/generateInstances'
 import type {
   CanonicalEventOverride,
   CanonicalRecurrence,
-  CanonicalRecurrenceRule
+  CanonicalRecurrenceRule,
 } from '../domain/recurrence/types'
 import type { CalendarEventRepository } from '../ports/calendarRepository'
 
@@ -81,8 +81,8 @@ export async function createRecurringSeries(
     tz: input.timezone,
     rule: {
       ...input.rule,
-      interval: input.rule.interval ?? 1
-    }
+      interval: input.rule.interval ?? 1,
+    },
   }
 
   const hasTargetProvider = Boolean(input.targetProvider && input.targetProvider !== 'local')
@@ -95,7 +95,7 @@ export async function createRecurringSeries(
       provider: input.targetProvider ?? 'local',
       accountId: input.targetAccountId ?? 'local',
       providerCalendarId: input.targetProviderCalendarId ?? input.calendarId ?? 'local',
-      providerEventId: `local:${generateId()}`
+      providerEventId: `local:${generateId()}`,
     },
     primaryProvider: input.targetProvider,
     createdAt: new Date(nowMs).toISOString(),
@@ -125,7 +125,7 @@ export async function createRecurringSeries(
     status: 'confirmed',
     visibility: 'default',
     transparency: 'opaque',
-    calendarId: input.calendarId
+    calendarId: input.calendarId,
   }
 
   await deps.repository.createEvent(input.userId, event)
@@ -233,7 +233,7 @@ async function editAllInstances(
     updatedAtMs: nowMs,
     canonicalUpdatedAtMs: nowMs,
     syncState: master.providerRef.provider !== 'local' ? 'pending_writeback' : master.syncState,
-    source: { type: 'local' }
+    source: { type: 'local' },
   }
 
   // Update occursOn if times changed
@@ -272,7 +272,7 @@ async function editSingleInstance(
     ...(patch.startMs !== undefined && { startMs: patch.startMs }),
     ...(patch.endMs !== undefined && { endMs: patch.endMs }),
     ...(patch.allDay !== undefined && { allDay: patch.allDay }),
-    updatedAtMs: nowMs
+    updatedAtMs: nowMs,
   }
 
   // Update master with override
@@ -280,8 +280,8 @@ async function editSingleInstance(
     ...recurrence,
     overrides: {
       ...recurrence.overrides,
-      [overrideKey]: override
-    }
+      [overrideKey]: override,
+    },
   }
 
   const updated: CanonicalCalendarEvent = {
@@ -291,7 +291,7 @@ async function editSingleInstance(
     updatedAtMs: nowMs,
     canonicalUpdatedAtMs: nowMs,
     syncState: master.providerRef.provider !== 'local' ? 'pending_writeback' : master.syncState,
-    source: { type: 'local' }
+    source: { type: 'local' },
   }
 
   await deps.repository.updateEvent('', master.canonicalEventId, updated)
@@ -317,7 +317,7 @@ async function editThisAndFuture(
 
   // Find the previous occurrence to set as the new until
   const previousOccurrence = getPreviousOccurrence(recurrence, master.startMs, splitAtMs)
-  const newUntilMs = previousOccurrence ?? (splitAtMs - 1)
+  const newUntilMs = previousOccurrence ?? splitAtMs - 1
 
   // Update old master to end before split
   const updatedOldRecurrence: CanonicalRecurrence = {
@@ -325,12 +325,12 @@ async function editThisAndFuture(
     rule: {
       ...recurrence.rule,
       untilMs: newUntilMs,
-      count: undefined // Remove count if present
+      count: undefined, // Remove count if present
     },
     split: {
       splitAtMs,
-      childSeriesId: undefined // Will be set after creating new series
-    }
+      childSeriesId: undefined, // Will be set after creating new series
+    },
   }
 
   const updatedMaster: CanonicalCalendarEvent = {
@@ -340,14 +340,14 @@ async function editThisAndFuture(
     updatedAtMs: nowMs,
     canonicalUpdatedAtMs: nowMs,
     syncState: master.providerRef.provider !== 'local' ? 'pending_writeback' : master.syncState,
-    source: { type: 'local' }
+    source: { type: 'local' },
   }
 
   // Create new series starting at split point
   const newSeriesId = `local:${generateId()}`
   const newStartMs = patch.startMs ?? splitAtMs
   const duration = master.endMs - master.startMs
-  const newEndMs = patch.endMs ?? (newStartMs + duration)
+  const newEndMs = patch.endMs ?? newStartMs + duration
 
   // Inherit the recurrence rule but start from split point
   const newRecurrence: CanonicalRecurrence = {
@@ -355,8 +355,8 @@ async function editThisAndFuture(
     rule: { ...recurrence.rule, untilMs: recurrence.rule.untilMs, count: undefined },
     split: {
       splitAtMs,
-      parentSeriesId: master.canonicalEventId
-    }
+      parentSeriesId: master.canonicalEventId,
+    },
   }
 
   const newSeries: CanonicalCalendarEvent = {
@@ -365,7 +365,7 @@ async function editThisAndFuture(
     normalizationVersion: 1,
     providerRef: {
       ...master.providerRef,
-      providerEventId: `local:${generateId()}`
+      providerEventId: `local:${generateId()}`,
     },
     primaryProvider: master.primaryProvider,
     createdAt: new Date(nowMs).toISOString(),
@@ -385,16 +385,13 @@ async function editThisAndFuture(
     endIso: new Date(newEndMs).toISOString(),
     timezone: patch.timezone ?? master.timezone,
     allDay: patch.allDay ?? master.allDay,
-    occursOn: computeOccursOn(
-      new Date(newStartMs).toISOString(),
-      new Date(newEndMs).toISOString()
-    ),
+    occursOn: computeOccursOn(new Date(newStartMs).toISOString(), new Date(newEndMs).toISOString()),
     recurrenceV2: newRecurrence,
     isRecurringSeries: true,
     status: master.status,
     visibility: master.visibility,
     transparency: master.transparency,
-    calendarId: master.calendarId
+    calendarId: master.calendarId,
   }
 
   // Update old master with child reference
@@ -494,7 +491,7 @@ async function deleteSingleInstance(
   // Add to exdates
   const updatedRecurrence: CanonicalRecurrence = {
     ...recurrence,
-    exdatesMs: [...(recurrence.exdatesMs ?? []), occurrenceStartMs]
+    exdatesMs: [...(recurrence.exdatesMs ?? []), occurrenceStartMs],
   }
 
   const updated: CanonicalCalendarEvent = {
@@ -504,7 +501,7 @@ async function deleteSingleInstance(
     updatedAtMs: nowMs,
     canonicalUpdatedAtMs: nowMs,
     syncState: master.providerRef.provider !== 'local' ? 'pending_writeback' : master.syncState,
-    source: { type: 'local' }
+    source: { type: 'local' },
   }
 
   await deps.repository.updateEvent('', master.canonicalEventId, updated)
@@ -528,7 +525,7 @@ async function deleteThisAndFuture(
 
   // Find previous occurrence
   const previousOccurrence = getPreviousOccurrence(recurrence, master.startMs, deleteFromMs)
-  const newUntilMs = previousOccurrence ?? (deleteFromMs - 1)
+  const newUntilMs = previousOccurrence ?? deleteFromMs - 1
 
   // Update rule to end before deleted occurrence
   const updatedRecurrence: CanonicalRecurrence = {
@@ -536,8 +533,8 @@ async function deleteThisAndFuture(
     rule: {
       ...recurrence.rule,
       untilMs: newUntilMs,
-      count: undefined
-    }
+      count: undefined,
+    },
   }
 
   const updated: CanonicalCalendarEvent = {
@@ -547,7 +544,7 @@ async function deleteThisAndFuture(
     updatedAtMs: nowMs,
     canonicalUpdatedAtMs: nowMs,
     syncState: master.providerRef.provider !== 'local' ? 'pending_writeback' : master.syncState,
-    source: { type: 'local' }
+    source: { type: 'local' },
   }
 
   await deps.repository.updateEvent('', master.canonicalEventId, updated)
@@ -576,4 +573,3 @@ function extractSeriesId(eventId: string): string {
 
   return eventId
 }
-

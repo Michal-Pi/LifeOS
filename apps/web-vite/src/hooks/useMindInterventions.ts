@@ -71,10 +71,6 @@ export function useMindInterventions(): UseMindInterventionsReturn {
 
   const userId = user?.uid
 
-  // ============================================================================
-  // Intervention Operations
-  // ============================================================================
-
   const createIntervention = useCallback(
     async (input: CreateInterventionInput): Promise<CanonicalInterventionPreset> => {
       if (!userId) {
@@ -220,8 +216,7 @@ export function useMindInterventions(): UseMindInterventionsReturn {
         const interventions = await interventionRepository.listByType(type)
         return interventions
       } catch (err) {
-        const error =
-          err instanceof Error ? err : new Error('Failed to list interventions by type')
+        const error = err instanceof Error ? err : new Error('Failed to list interventions by type')
         setError(error)
         throw error
       } finally {

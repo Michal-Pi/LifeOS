@@ -186,6 +186,7 @@ Added habits page to application routing.
 **Changes:**
 
 1. **Lazy Import:**
+
    ```typescript
    const HabitsPage = lazy(() =>
      import('./pages/HabitsPage').then((m) => ({ default: m.HabitsPage }))
@@ -193,6 +194,7 @@ Added habits page to application routing.
    ```
 
 2. **Navigation Link:**
+
    ```typescript
    <NavLink to="/habits" className={({ isActive }) => (isActive ? 'active' : '')}>
      Habits

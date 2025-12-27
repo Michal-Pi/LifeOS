@@ -44,11 +44,7 @@ export function LoginPage() {
           Sign in with Google
         </button>
 
-        {error && (
-          <div className="error-message">
-            {error.message}
-          </div>
-        )}
+        {error && <div className="error-message">{error.message}</div>}
       </div>
     </div>
   )

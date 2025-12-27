@@ -8,17 +8,17 @@ const logger = createLogger('Composite')
 /**
  * Heuristic used to detect duplicate events
  */
-export type DedupeHeuristic = 
-  | 'icaluid'           // Same iCalUID across accounts (strong)
-  | 'providerEventId'   // Same provider event ID (rare but deterministic)
-  | 'time-title'        // Fuzzy match by time and title (conservative)
-  | 'manual'            // User-linked
-  | 'none'              // Single event, no duplicate
+export type DedupeHeuristic =
+  | 'icaluid' // Same iCalUID across accounts (strong)
+  | 'providerEventId' // Same provider event ID (rare but deterministic)
+  | 'time-title' // Fuzzy match by time and title (conservative)
+  | 'manual' // User-linked
+  | 'none' // Single event, no duplicate
 
 /**
  * Reason for dedupe decision (more detailed than heuristic)
  */
-export type DedupeReason = 
+export type DedupeReason =
   | 'icaluid_match'
   | 'provider_event_id_match'
   | 'fuzzy_time_title'
@@ -38,8 +38,8 @@ export interface CompositeMemberRef {
   iCalUID?: string
   etag?: string
   status?: 'confirmed' | 'cancelled' | 'tentative' | 'unknown'
-  updatedAtMs?: number           // canonical updated time
-  providerUpdatedAtMs?: number   // provider updated time
+  updatedAtMs?: number // canonical updated time
+  providerUpdatedAtMs?: number // provider updated time
 }
 
 /**
@@ -61,13 +61,13 @@ export interface CompositeMember {
  * Stored at: /users/{uid}/compositeEvents/{compositeId}
  */
 export interface CompositeEvent {
-  id: string                     // Composite ID (was compositeEventId)
-  compositeEventId?: string      // Legacy alias
+  id: string // Composite ID (was compositeEventId)
+  compositeEventId?: string // Legacy alias
   userId: string
 
   // Membership
   members: CompositeMemberRef[]
-  primaryMemberId: string        // canonicalEventId chosen as "display source"
+  primaryMemberId: string // canonicalEventId chosen as "display source"
 
   // Derived display fields (computed from primary)
   startMs: number
@@ -78,14 +78,14 @@ export interface CompositeEvent {
   description?: string
 
   // Derived identity & dedupe keys
-  iCalUID?: string               // If all members share same iCalUID
-  dedupeKey?: string             // Stable hash of best-known identity
+  iCalUID?: string // If all members share same iCalUID
+  dedupeKey?: string // Stable hash of best-known identity
   dedupeReason: DedupeReason
 
   // Legacy fields (for backwards compatibility)
-  canonicalEventIds?: string[]   // Denormalized for array-contains queries
-  heuristic?: DedupeHeuristic    // Legacy
-  confidence?: number            // 0.0 - 1.0
+  canonicalEventIds?: string[] // Denormalized for array-contains queries
+  heuristic?: DedupeHeuristic // Legacy
+  confidence?: number // 0.0 - 1.0
   primaryCanonicalEventId?: string // Legacy alias for primaryMemberId
 
   // Auditing
@@ -95,8 +95,8 @@ export interface CompositeEvent {
   version: number
 
   // Safety / human override hooks
-  manualLock?: boolean           // If true, don't auto-merge/split
-  
+  manualLock?: boolean // If true, don't auto-merge/split
+
   // Legacy timestamp fields
   createdAt?: string
   updatedAt?: string
@@ -118,28 +118,49 @@ export interface DuplicateCandidate {
  * Configuration for time-title matching
  */
 export interface TimeTitleConfig {
-  timeToleranceMs: number         // Default: 5 minutes
+  timeToleranceMs: number // Default: 5 minutes
   titleSimilarityThreshold: number // Default: 0.9 (conservative)
-  maxDurationDiffMs: number       // Default: 30 minutes (guardrail)
-  minTitleLength: number          // Default: 4 (avoid "meeting", "call")
+  maxDurationDiffMs: number // Default: 30 minutes (guardrail)
+  minTitleLength: number // Default: 4 (avoid "meeting", "call")
 }
 
 export const DEFAULT_TIME_TITLE_CONFIG: TimeTitleConfig = {
-  timeToleranceMs: 5 * 60 * 1000,        // 5 minutes
-  titleSimilarityThreshold: 0.9,          // 90% similarity required (conservative)
-  maxDurationDiffMs: 30 * 60 * 1000,      // 30 minutes max duration difference
-  minTitleLength: 4                       // Minimum title length to consider fuzzy match
+  timeToleranceMs: 5 * 60 * 1000, // 5 minutes
+  titleSimilarityThreshold: 0.9, // 90% similarity required (conservative)
+  maxDurationDiffMs: 30 * 60 * 1000, // 30 minutes max duration difference
+  minTitleLength: 4, // Minimum title length to consider fuzzy match
 }
 
 /**
  * Generic titles that should not be used for fuzzy matching
  */
 const GENERIC_TITLES = new Set([
-  'meeting', 'call', 'sync', 'chat', 'catchup', 'catch up',
-  '1:1', '1on1', 'standup', 'stand up', 'standup meeting',
-  'weekly', 'daily', 'monthly', 'bi-weekly', 'biweekly',
-  'check in', 'check-in', 'checkin', 'touch base',
-  'busy', 'hold', 'block', 'blocked', 'focus', 'focus time'
+  'meeting',
+  'call',
+  'sync',
+  'chat',
+  'catchup',
+  'catch up',
+  '1:1',
+  '1on1',
+  'standup',
+  'stand up',
+  'standup meeting',
+  'weekly',
+  'daily',
+  'monthly',
+  'bi-weekly',
+  'biweekly',
+  'check in',
+  'check-in',
+  'checkin',
+  'touch base',
+  'busy',
+  'hold',
+  'block',
+  'blocked',
+  'focus',
+  'focus time',
 ])
 
 /**
@@ -221,7 +242,7 @@ export function titleSimilarity(a?: string, b?: string): number {
 
 /**
  * Check if two events match by iCalUID
- * 
+ *
  * Guardrail: Even with matching iCalUID, verify reasonable time overlap
  * (iCalUIDs can rarely be reused or collide)
  */
@@ -246,7 +267,10 @@ export function matchByICalUID(
   if (timeDiff > oneDayMs) {
     // iCalUID match but times too different - could be recurring instances
     // Log for debugging but don't merge automatically
-    logger.warn('iCalUID match with large time diff', { iCalUID: eventA.iCalUID, timeDiffMs: timeDiff })
+    logger.warn('iCalUID match with large time diff', {
+      iCalUID: eventA.iCalUID,
+      timeDiffMs: timeDiff,
+    })
     return null
   }
 
@@ -255,7 +279,7 @@ export function matchByICalUID(
     eventB,
     heuristic: 'icaluid',
     confidence: 0.95,
-    matchReason: `Matching iCalUID: ${eventA.iCalUID}`
+    matchReason: `Matching iCalUID: ${eventA.iCalUID}`,
   }
 }
 
@@ -282,13 +306,13 @@ export function matchByProviderEventId(
     eventB,
     heuristic: 'providerEventId',
     confidence: 0.98,
-    matchReason: `Matching providerEventId: ${providerIdA}`
+    matchReason: `Matching providerEventId: ${providerIdA}`,
   }
 }
 
 /**
  * Check if two events match by time and title (with guardrails)
- * 
+ *
  * Guardrails to prevent false merges:
  * 1. Don't merge if durations differ drastically (> 30 min)
  * 2. Don't merge if titles are too generic ("meeting", "call")
@@ -346,13 +370,13 @@ export function matchByTimeTitle(
     eventB,
     heuristic: 'time-title',
     confidence: 0.7 * similarity, // Lower base confidence for fuzzy matches
-    matchReason: `Start diff: ${startDiff}ms, End diff: ${endDiff}ms, Title similarity: ${(similarity * 100).toFixed(0)}%`
+    matchReason: `Start diff: ${startDiff}ms, End diff: ${endDiff}ms, Title similarity: ${(similarity * 100).toFixed(0)}%`,
   }
 }
 
 /**
  * Find all duplicate candidates among a set of events
- * 
+ *
  * Priority order:
  * 1. Provider event ID match (highest confidence)
  * 2. iCalUID match (strong)
@@ -480,11 +504,16 @@ export function choosePrimaryEvent(events: CanonicalCalendarEvent[]): CanonicalC
  */
 function heuristicToReason(heuristic: DedupeHeuristic): DedupeReason {
   switch (heuristic) {
-    case 'icaluid': return 'icaluid_match'
-    case 'providerEventId': return 'provider_event_id_match'
-    case 'time-title': return 'fuzzy_time_title'
-    case 'manual': return 'manual_link'
-    default: return 'no_match'
+    case 'icaluid':
+      return 'icaluid_match'
+    case 'providerEventId':
+      return 'provider_event_id_match'
+    case 'time-title':
+      return 'fuzzy_time_title'
+    case 'manual':
+      return 'manual_link'
+    default:
+      return 'no_match'
   }
 }
 
@@ -515,14 +544,13 @@ export function createCompositeFromCandidate(
     etag: e.providerRef.etag,
     status: (e.status as 'confirmed' | 'cancelled' | 'tentative') ?? 'unknown',
     updatedAtMs: e.canonicalUpdatedAtMs ?? e.updatedAtMs,
-    providerUpdatedAtMs: e.providerUpdatedAtMs
+    providerUpdatedAtMs: e.providerUpdatedAtMs,
   }))
 
   // Compute shared iCalUID if all members have the same one
   const iCalUIDs = events.map((e) => e.iCalUID).filter(Boolean)
-  const sharedICalUID = iCalUIDs.length === events.length && new Set(iCalUIDs).size === 1
-    ? iCalUIDs[0]
-    : undefined
+  const sharedICalUID =
+    iCalUIDs.length === events.length && new Set(iCalUIDs).size === 1 ? iCalUIDs[0] : undefined
 
   return {
     id: compositeId,
@@ -561,7 +589,7 @@ export function createCompositeFromCandidate(
     // Legacy timestamps
     createdAt: new Date(now).toISOString(),
     updatedAt: new Date(now).toISOString(),
-    createdBy: 'system'
+    createdBy: 'system',
   }
 }
 
@@ -592,13 +620,12 @@ export function createCompositeFromGroup(
     etag: e.providerRef.etag,
     status: (e.status as 'confirmed' | 'cancelled' | 'tentative') ?? 'unknown',
     updatedAtMs: e.canonicalUpdatedAtMs ?? e.updatedAtMs,
-    providerUpdatedAtMs: e.providerUpdatedAtMs
+    providerUpdatedAtMs: e.providerUpdatedAtMs,
   }))
 
   const iCalUIDs = events.map((e) => e.iCalUID).filter(Boolean)
-  const sharedICalUID = iCalUIDs.length === events.length && new Set(iCalUIDs).size === 1
-    ? iCalUIDs[0]
-    : undefined
+  const sharedICalUID =
+    iCalUIDs.length === events.length && new Set(iCalUIDs).size === 1 ? iCalUIDs[0] : undefined
 
   return {
     id: compositeId,
@@ -625,7 +652,7 @@ export function createCompositeFromGroup(
     version: 1,
     createdAt: new Date(now).toISOString(),
     updatedAt: new Date(now).toISOString(),
-    createdBy: 'system'
+    createdBy: 'system',
   }
 }
 
@@ -636,7 +663,8 @@ export function addMemberToComposite(
   composite: CompositeEvent,
   event: CanonicalCalendarEvent
 ): CompositeEvent {
-  const existingIds = composite.canonicalEventIds ?? composite.members.map((m) => m.canonicalEventId)
+  const existingIds =
+    composite.canonicalEventIds ?? composite.members.map((m) => m.canonicalEventId)
   if (existingIds.includes(event.canonicalEventId)) {
     return composite // Already a member
   }
@@ -651,7 +679,7 @@ export function addMemberToComposite(
     etag: event.providerRef.etag,
     status: (event.status as 'confirmed' | 'cancelled' | 'tentative') ?? 'unknown',
     updatedAtMs: event.canonicalUpdatedAtMs ?? event.updatedAtMs,
-    providerUpdatedAtMs: event.providerUpdatedAtMs
+    providerUpdatedAtMs: event.providerUpdatedAtMs,
   }
 
   const now = Date.now()
@@ -664,7 +692,7 @@ export function addMemberToComposite(
     canonicalEventIds: newCanonicalIds,
     updatedAtMs: now,
     updatedAt: new Date(now).toISOString(),
-    version: (composite.version ?? 0) + 1
+    version: (composite.version ?? 0) + 1,
   }
 }
 
@@ -676,9 +704,7 @@ export function removeMemberFromComposite(
   composite: CompositeEvent,
   canonicalEventId: string
 ): CompositeEvent | null {
-  const filteredMembers = composite.members.filter(
-    (m) => m.canonicalEventId !== canonicalEventId
-  )
+  const filteredMembers = composite.members.filter((m) => m.canonicalEventId !== canonicalEventId)
 
   if (filteredMembers.length < 2) {
     return null // Composite should be deleted
@@ -700,7 +726,7 @@ export function removeMemberFromComposite(
     primaryCanonicalEventId: newPrimaryId,
     updatedAtMs: now,
     updatedAt: new Date(now).toISOString(),
-    version: (composite.version ?? 0) + 1
+    version: (composite.version ?? 0) + 1,
   }
 }
 
@@ -714,13 +740,13 @@ export interface BusyBlock {
   endMs: number
   sourceCompositeId?: string
   sourceCanonicalEventId?: string
-  title?: string          // Optional: for debugging only
+  title?: string // Optional: for debugging only
   isAllDay?: boolean
 }
 
 /**
  * Get busy blocks from composite events (deduplicated)
- * 
+ *
  * @param composites - Composite events in the range
  * @param canonicalEvents - Canonical events (for single events not in composites)
  * @returns Deduplicated busy blocks
@@ -744,7 +770,7 @@ export function getBusyBlocksFromComposites(
       endMs: composite.endMs,
       sourceCompositeId: composite.id,
       title: composite.title,
-      isAllDay: composite.allDay
+      isAllDay: composite.allDay,
     })
 
     // Mark all member canonical IDs as processed
@@ -770,7 +796,7 @@ export function getBusyBlocksFromComposites(
       endMs: event.endMs,
       sourceCanonicalEventId: event.canonicalEventId,
       title: event.title,
-      isAllDay: event.allDay
+      isAllDay: event.allDay,
     })
   }
 
@@ -802,4 +828,3 @@ export function mergeOverlappingBlocks(blocks: BusyBlock[]): BusyBlock[] {
 
   return merged
 }
-

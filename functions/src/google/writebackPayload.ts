@@ -12,7 +12,14 @@ export function buildWritebackPayload(params: {
 }): WritebackJob['payload'] {
   const { op, event, writebackVisibility, isInstanceEdit, occurrenceStartMs } = params
 
-  let instanceOverride: { startMs?: number; endMs?: number; title?: string; description?: string; location?: string; allDay?: boolean } | null = null
+  let instanceOverride: {
+    startMs?: number
+    endMs?: number
+    title?: string
+    description?: string
+    location?: string
+    allDay?: boolean
+  } | null = null
   if (op === 'update' && isInstanceEdit) {
     if (typeof occurrenceStartMs !== 'number') {
       throw new Error('Missing occurrenceStartMs for instance edit')
@@ -26,7 +33,9 @@ export function buildWritebackPayload(params: {
 
   const effectiveStartMs = instanceOverride?.startMs ?? event.startMs
   const effectiveEndMs = instanceOverride?.endMs ?? event.endMs
-  const effectiveStartIso = effectiveStartMs ? new Date(effectiveStartMs).toISOString() : event.startIso
+  const effectiveStartIso = effectiveStartMs
+    ? new Date(effectiveStartMs).toISOString()
+    : event.startIso
   const effectiveEndIso = effectiveEndMs ? new Date(effectiveEndMs).toISOString() : event.endIso
 
   const attendees = (event.attendees ?? []).map((attendee) => ({
@@ -35,7 +44,7 @@ export function buildWritebackPayload(params: {
     responseStatus: attendee.responseStatus,
     optional: attendee.optional,
     resource: attendee.resource,
-    self: attendee.self
+    self: attendee.self,
   }))
   const selfAttendee = event.selfAttendee ?? event.attendees?.find((attendee) => attendee.self)
 
@@ -48,9 +57,7 @@ export function buildWritebackPayload(params: {
     allDay: instanceOverride?.allDay ?? event.allDay ?? false,
     timezone: event.timezone,
     transparency: event.transparency,
-    visibility: op === 'create' && writebackVisibility === 'private'
-      ? 'private'
-      : event.visibility
+    visibility: op === 'create' && writebackVisibility === 'private' ? 'private' : event.visibility,
   }
 
   if (op === 'update_attendees' || op === 'create') {

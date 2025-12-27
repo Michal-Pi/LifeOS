@@ -7,9 +7,8 @@ export function createSyncStatusRepositoryStub(): SyncStatusRepository {
       return {
         lastSyncAt: now.toISOString(),
         lastSuccessAt: now.toISOString(),
-        lastError: undefined
+        lastError: undefined,
       }
-    }
+    },
   }
 }
-

@@ -25,8 +25,8 @@ export function ProjectsPage() {
   const timeByProject = useMemo(() => {
     const totals = new Map<string, number>()
     tasks
-      .filter(task => task.completed && task.allocatedTimeMinutes && task.projectId)
-      .forEach(task => {
+      .filter((task) => task.completed && task.allocatedTimeMinutes && task.projectId)
+      .forEach((task) => {
         const current = totals.get(task.projectId as string) ?? 0
         totals.set(task.projectId as string, current + (task.allocatedTimeMinutes ?? 0))
       })
@@ -48,8 +48,10 @@ export function ProjectsPage() {
         <p className="empty-state-text">No projects yet. Create one from the To-dos page.</p>
       ) : (
         <div className="project-review-grid">
-          {projects.map(project => {
-            const { progress } = calculateWeightedProgress(tasks.filter(task => task.projectId === project.id))
+          {projects.map((project) => {
+            const { progress } = calculateWeightedProgress(
+              tasks.filter((task) => task.projectId === project.id)
+            )
             const minutes = timeByProject.get(project.id) ?? 0
             return (
               <div key={project.id} className="project-review-card">

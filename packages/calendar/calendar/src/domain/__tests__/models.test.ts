@@ -27,23 +27,17 @@ import {
   type CanonicalAlert,
   type CanonicalCalendar,
   type CalendarsById,
-  type IncomingUpdate
+  type IncomingUpdate,
 } from '../models'
 
 describe('computeOccursOn', () => {
   it('returns single day for same-day event', () => {
-    const result = computeOccursOn(
-      '2025-06-15T09:00:00Z',
-      '2025-06-15T17:00:00Z'
-    )
+    const result = computeOccursOn('2025-06-15T09:00:00Z', '2025-06-15T17:00:00Z')
     expect(result).toEqual(['2025-06-15'])
   })
 
   it('returns multiple days for multi-day event', () => {
-    const result = computeOccursOn(
-      '2025-06-15T09:00:00Z',
-      '2025-06-17T17:00:00Z'
-    )
+    const result = computeOccursOn('2025-06-15T09:00:00Z', '2025-06-17T17:00:00Z')
     expect(result).toEqual(['2025-06-15', '2025-06-16', '2025-06-17'])
   })
 
@@ -59,20 +53,13 @@ describe('computeOccursOn', () => {
   })
 
   it('respects custom cap', () => {
-    const result = computeOccursOn(
-      '2025-01-01T00:00:00Z',
-      '2025-01-31T00:00:00Z',
-      10
-    )
+    const result = computeOccursOn('2025-01-01T00:00:00Z', '2025-01-31T00:00:00Z', 10)
     expect(result.length).toBe(10)
   })
 
   it('handles all-day events correctly', () => {
     // All-day events typically use date-only format or midnight
-    const result = computeOccursOn(
-      '2025-07-04T00:00:00Z',
-      '2025-07-04T23:59:59Z'
-    )
+    const result = computeOccursOn('2025-07-04T00:00:00Z', '2025-07-04T23:59:59Z')
     expect(result).toEqual(['2025-07-04'])
   })
 })
@@ -86,7 +73,7 @@ describe('isDeleted', () => {
       provider: 'local',
       accountId: 'local',
       providerCalendarId: 'local',
-      providerEventId: 'local-1'
+      providerEventId: 'local-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -100,7 +87,7 @@ describe('isDeleted', () => {
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   it('returns false for event without deletedAtMs', () => {
@@ -135,7 +122,7 @@ describe('determineEventRole', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'primary',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -149,13 +136,13 @@ describe('determineEventRole', () => {
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   it('returns organizer when organizer.self is true', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
-      organizer: { email: 'me@example.com', self: true }
+      organizer: { email: 'me@example.com', self: true },
     }
     expect(determineEventRole(event)).toBe('organizer')
   })
@@ -166,8 +153,8 @@ describe('determineEventRole', () => {
       organizer: { email: 'other@example.com', self: false },
       attendees: [
         { email: 'me@example.com', self: true, responseStatus: 'accepted' },
-        { email: 'coworker@example.com', self: false, responseStatus: 'needsAction' }
-      ]
+        { email: 'coworker@example.com', self: false, responseStatus: 'needsAction' },
+      ],
     }
     expect(determineEventRole(event)).toBe('attendee')
   })
@@ -175,7 +162,7 @@ describe('determineEventRole', () => {
   it('returns organizer when creator.self is true and no explicit organizer', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
-      creator: { email: 'me@example.com', self: true }
+      creator: { email: 'me@example.com', self: true },
     }
     expect(determineEventRole(event)).toBe('organizer')
   })
@@ -184,9 +171,7 @@ describe('determineEventRole', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
       organizer: { email: 'other@example.com', self: false },
-      attendees: [
-        { email: 'other@example.com', self: false, responseStatus: 'accepted' }
-      ]
+      attendees: [{ email: 'other@example.com', self: false, responseStatus: 'accepted' }],
     }
     expect(determineEventRole(event)).toBe('unknown')
   })
@@ -205,7 +190,7 @@ describe('findSelfAttendee', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'primary',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -219,7 +204,7 @@ describe('findSelfAttendee', () => {
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   it('returns undefined when no attendees', () => {
@@ -229,9 +214,7 @@ describe('findSelfAttendee', () => {
   it('returns undefined when no self attendee', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
-      attendees: [
-        { email: 'other@example.com', self: false, responseStatus: 'accepted' }
-      ]
+      attendees: [{ email: 'other@example.com', self: false, responseStatus: 'accepted' }],
     }
     expect(findSelfAttendee(event)).toBeUndefined()
   })
@@ -240,14 +223,14 @@ describe('findSelfAttendee', () => {
     const selfAttendee: CanonicalAttendee = {
       email: 'me@example.com',
       self: true,
-      responseStatus: 'tentative'
+      responseStatus: 'tentative',
     }
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
       attendees: [
         { email: 'other@example.com', self: false, responseStatus: 'accepted' },
-        selfAttendee
-      ]
+        selfAttendee,
+      ],
     }
     expect(findSelfAttendee(event)).toEqual(selfAttendee)
   })
@@ -262,7 +245,7 @@ describe('isEventBusy', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'primary',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -276,7 +259,7 @@ describe('isEventBusy', () => {
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   it('returns true for regular event', () => {
@@ -286,7 +269,7 @@ describe('isEventBusy', () => {
   it('returns false for transparent event', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
-      transparency: 'transparent'
+      transparency: 'transparent',
     }
     expect(isEventBusy(event)).toBe(false)
   })
@@ -294,7 +277,7 @@ describe('isEventBusy', () => {
   it('returns true for opaque event', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
-      transparency: 'opaque'
+      transparency: 'opaque',
     }
     expect(isEventBusy(event)).toBe(true)
   })
@@ -302,9 +285,7 @@ describe('isEventBusy', () => {
   it('returns false when self attendee has declined', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
-      attendees: [
-        { email: 'me@example.com', self: true, responseStatus: 'declined' }
-      ]
+      attendees: [{ email: 'me@example.com', self: true, responseStatus: 'declined' }],
     }
     expect(isEventBusy(event)).toBe(false)
   })
@@ -312,9 +293,7 @@ describe('isEventBusy', () => {
   it('returns true when self attendee has accepted', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
-      attendees: [
-        { email: 'me@example.com', self: true, responseStatus: 'accepted' }
-      ]
+      attendees: [{ email: 'me@example.com', self: true, responseStatus: 'accepted' }],
     }
     expect(isEventBusy(event)).toBe(true)
   })
@@ -322,9 +301,7 @@ describe('isEventBusy', () => {
   it('returns true when self attendee has tentative', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
-      attendees: [
-        { email: 'me@example.com', self: true, responseStatus: 'tentative' }
-      ]
+      attendees: [{ email: 'me@example.com', self: true, responseStatus: 'tentative' }],
     }
     expect(isEventBusy(event)).toBe(true)
   })
@@ -332,9 +309,7 @@ describe('isEventBusy', () => {
   it('returns true when self attendee has needsAction', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
-      attendees: [
-        { email: 'me@example.com', self: true, responseStatus: 'needsAction' }
-      ]
+      attendees: [{ email: 'me@example.com', self: true, responseStatus: 'needsAction' }],
     }
     expect(isEventBusy(event)).toBe(true)
   })
@@ -343,9 +318,7 @@ describe('isEventBusy', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
       transparency: 'opaque',
-      attendees: [
-        { email: 'me@example.com', self: true, responseStatus: 'declined' }
-      ]
+      attendees: [{ email: 'me@example.com', self: true, responseStatus: 'declined' }],
     }
     expect(isEventBusy(event)).toBe(false)
   })
@@ -353,7 +326,7 @@ describe('isEventBusy', () => {
   it('uses selfAttendee property if available', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
-      selfAttendee: { email: 'me@example.com', self: true, responseStatus: 'declined' }
+      selfAttendee: { email: 'me@example.com', self: true, responseStatus: 'declined' },
     }
     expect(isEventBusy(event)).toBe(false)
   })
@@ -368,7 +341,7 @@ describe('deriveRSVP', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'primary',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -382,13 +355,13 @@ describe('deriveRSVP', () => {
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   it('returns canRespond: false for organizer', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
-      organizer: { email: 'me@example.com', self: true }
+      organizer: { email: 'me@example.com', self: true },
     }
     expect(deriveRSVP(event).canRespond).toBe(false)
   })
@@ -397,9 +370,7 @@ describe('deriveRSVP', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
       organizer: { email: 'other@example.com', self: false },
-      attendees: [
-        { email: 'me@example.com', self: true, responseStatus: 'needsAction' }
-      ]
+      attendees: [{ email: 'me@example.com', self: true, responseStatus: 'needsAction' }],
     }
     expect(deriveRSVP(event).canRespond).toBe(true)
   })
@@ -408,9 +379,7 @@ describe('deriveRSVP', () => {
     const event: CanonicalCalendarEvent = {
       ...baseEvent,
       organizer: { email: 'other@example.com', self: false },
-      attendees: [
-        { email: 'me@example.com', self: true, responseStatus: 'tentative' }
-      ]
+      attendees: [{ email: 'me@example.com', self: true, responseStatus: 'tentative' }],
     }
     expect(deriveRSVP(event).status).toBe('tentative')
   })
@@ -429,7 +398,7 @@ describe('convenience aliases', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'primary',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -443,14 +412,14 @@ describe('convenience aliases', () => {
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   describe('getEventRole', () => {
     it('uses stored role if available', () => {
       const event: CanonicalCalendarEvent = {
         ...baseEvent,
-        role: 'organizer'
+        role: 'organizer',
       }
       expect(getEventRole(event)).toBe('organizer')
     })
@@ -458,7 +427,7 @@ describe('convenience aliases', () => {
     it('derives role if not stored', () => {
       const event: CanonicalCalendarEvent = {
         ...baseEvent,
-        organizer: { email: 'me@example.com', self: true }
+        organizer: { email: 'me@example.com', self: true },
       }
       expect(getEventRole(event)).toBe('organizer')
     })
@@ -469,9 +438,7 @@ describe('convenience aliases', () => {
       const event: CanonicalCalendarEvent = {
         ...baseEvent,
         organizer: { email: 'other@example.com', self: false },
-        attendees: [
-          { email: 'me@example.com', self: true, responseStatus: 'needsAction' }
-        ]
+        attendees: [{ email: 'me@example.com', self: true, responseStatus: 'needsAction' }],
       }
       expect(canRespond(event)).toBe(true)
     })
@@ -479,7 +446,7 @@ describe('convenience aliases', () => {
     it('returns false for organizer', () => {
       const event: CanonicalCalendarEvent = {
         ...baseEvent,
-        organizer: { email: 'me@example.com', self: true }
+        organizer: { email: 'me@example.com', self: true },
       }
       expect(canRespond(event)).toBe(false)
     })
@@ -489,7 +456,7 @@ describe('convenience aliases', () => {
     it('returns true for organizer', () => {
       const event: CanonicalCalendarEvent = {
         ...baseEvent,
-        organizer: { email: 'me@example.com', self: true }
+        organizer: { email: 'me@example.com', self: true },
       }
       expect(canUpdate(event)).toBe(true)
     })
@@ -498,9 +465,7 @@ describe('convenience aliases', () => {
       const event: CanonicalCalendarEvent = {
         ...baseEvent,
         organizer: { email: 'other@example.com', self: false },
-        attendees: [
-          { email: 'me@example.com', self: true, responseStatus: 'accepted' }
-        ]
+        attendees: [{ email: 'me@example.com', self: true, responseStatus: 'accepted' }],
       }
       expect(canUpdate(event)).toBe(false)
     })
@@ -510,7 +475,7 @@ describe('convenience aliases', () => {
     it('returns true for organizer', () => {
       const event: CanonicalCalendarEvent = {
         ...baseEvent,
-        organizer: { email: 'me@example.com', self: true }
+        organizer: { email: 'me@example.com', self: true },
       }
       expect(canCancel(event)).toBe(true)
     })
@@ -519,9 +484,7 @@ describe('convenience aliases', () => {
       const event: CanonicalCalendarEvent = {
         ...baseEvent,
         organizer: { email: 'other@example.com', self: false },
-        attendees: [
-          { email: 'me@example.com', self: true, responseStatus: 'accepted' }
-        ]
+        attendees: [{ email: 'me@example.com', self: true, responseStatus: 'accepted' }],
       }
       expect(canCancel(event)).toBe(false)
     })
@@ -539,7 +502,7 @@ describe('getPrimaryAlert', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'primary',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -549,11 +512,11 @@ describe('getPrimaryAlert', () => {
     syncState: 'synced',
     source: { type: 'provider' },
     startMs: 1704110400000, // Jan 1, 2025 12:00 UTC
-    endMs: 1704114000000,   // Jan 1, 2025 13:00 UTC
+    endMs: 1704114000000, // Jan 1, 2025 13:00 UTC
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   it('returns null when no alerts', () => {
@@ -588,7 +551,7 @@ describe('computeAlertFireTimeMs', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'primary',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -598,11 +561,11 @@ describe('computeAlertFireTimeMs', () => {
     syncState: 'synced',
     source: { type: 'provider' },
     startMs: 1704110400000, // Jan 1, 2025 12:00 UTC
-    endMs: 1704114000000,   // Jan 1, 2025 13:00 UTC
+    endMs: 1704114000000, // Jan 1, 2025 13:00 UTC
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   const enabledAlert: CanonicalAlert = { method: 'in_app_banner', minutesBefore: 10, enabled: true }
@@ -620,7 +583,11 @@ describe('computeAlertFireTimeMs', () => {
   })
 
   it('returns null for disabled alert', () => {
-    const disabledAlert: CanonicalAlert = { method: 'in_app_banner', minutesBefore: 10, enabled: false }
+    const disabledAlert: CanonicalAlert = {
+      method: 'in_app_banner',
+      minutesBefore: 10,
+      enabled: false,
+    }
     expect(computeAlertFireTimeMs(baseEvent, disabledAlert)).toBeNull()
   })
 
@@ -644,7 +611,7 @@ describe('isAlertDismissed', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'primary',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -658,7 +625,7 @@ describe('isAlertDismissed', () => {
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   it('returns false when no dismissal state', () => {
@@ -670,8 +637,8 @@ describe('isAlertDismissed', () => {
       ...baseEvent,
       alertDismissal: {
         dismissedUntilMs: baseEvent.startMs,
-        dismissedAtMs: baseEvent.startMs - 600000
-      }
+        dismissedAtMs: baseEvent.startMs - 600000,
+      },
     }
     // Check at 10 minutes before start
     const nowMs = baseEvent.startMs - 600000
@@ -683,8 +650,8 @@ describe('isAlertDismissed', () => {
       ...baseEvent,
       alertDismissal: {
         dismissedUntilMs: baseEvent.startMs,
-        dismissedAtMs: baseEvent.startMs - 600000
-      }
+        dismissedAtMs: baseEvent.startMs - 600000,
+      },
     }
     // Check at start time
     expect(isAlertDismissed(event, baseEvent.startMs)).toBe(false)
@@ -700,7 +667,7 @@ describe('shouldAlertFire', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'primary',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -714,7 +681,7 @@ describe('shouldAlertFire', () => {
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   const alert: CanonicalAlert = { method: 'in_app_banner', minutesBefore: 10, enabled: true }
@@ -755,8 +722,8 @@ describe('shouldAlertFire', () => {
       ...baseEvent,
       alertDismissal: {
         dismissedUntilMs: baseEvent.startMs,
-        dismissedAtMs: baseEvent.startMs - 600000
-      }
+        dismissedAtMs: baseEvent.startMs - 600000,
+      },
     }
     const nowMs = baseEvent.startMs - 5 * 60 * 1000
     expect(shouldAlertFire(dismissedEvent, alert, nowMs)).toBe(false)
@@ -871,7 +838,7 @@ describe('deriveEventCanWrite', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'calendar-1',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -886,7 +853,7 @@ describe('deriveEventCanWrite', () => {
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
     occursOn: ['2025-01-01'],
-    calendarId: 'calendar-1'
+    calendarId: 'calendar-1',
   }
 
   const writableCalendar: CanonicalCalendar = {
@@ -897,11 +864,11 @@ describe('deriveEventCanWrite', () => {
     providerMeta: {
       provider: 'google',
       providerCalendarId: 'calendar-1',
-      accountId: 'account-1'
+      accountId: 'account-1',
     },
     visible: true,
     createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2025-01-01T00:00:00Z'
+    updatedAt: '2025-01-01T00:00:00Z',
   }
 
   const readOnlyCalendar: CanonicalCalendar = {
@@ -912,11 +879,11 @@ describe('deriveEventCanWrite', () => {
     providerMeta: {
       provider: 'google',
       providerCalendarId: 'calendar-2',
-      accountId: 'account-1'
+      accountId: 'account-1',
     },
     visible: true,
     createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2025-01-01T00:00:00Z'
+    updatedAt: '2025-01-01T00:00:00Z',
   }
 
   it('uses cached canWrite from event if set', () => {
@@ -937,7 +904,7 @@ describe('deriveEventCanWrite', () => {
     const calendarsMap: CalendarsById = new Map([['calendar-1', writableCalendar]])
     const event = {
       ...baseEvent,
-      organizer: { email: 'me@example.com', self: true }
+      organizer: { email: 'me@example.com', self: true },
     }
     expect(deriveEventCanWrite(event, calendarsMap)).toBe(true)
   })
@@ -947,9 +914,7 @@ describe('deriveEventCanWrite', () => {
     const event = {
       ...baseEvent,
       organizer: { email: 'other@example.com', self: false },
-      attendees: [
-        { email: 'me@example.com', self: true, responseStatus: 'accepted' as const }
-      ]
+      attendees: [{ email: 'me@example.com', self: true, responseStatus: 'accepted' as const }],
     }
     expect(deriveEventCanWrite(event, calendarsMap)).toBe(false)
   })
@@ -964,7 +929,7 @@ describe('canEditEvent', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'calendar-1',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -979,7 +944,7 @@ describe('canEditEvent', () => {
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
     occursOn: ['2025-01-01'],
-    calendarId: 'calendar-1'
+    calendarId: 'calendar-1',
   }
 
   const writableCalendar: CanonicalCalendar = {
@@ -990,11 +955,11 @@ describe('canEditEvent', () => {
     providerMeta: {
       provider: 'google',
       providerCalendarId: 'calendar-1',
-      accountId: 'account-1'
+      accountId: 'account-1',
     },
     visible: true,
     createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2025-01-01T00:00:00Z'
+    updatedAt: '2025-01-01T00:00:00Z',
   }
 
   const readOnlyCalendar: CanonicalCalendar = {
@@ -1005,18 +970,18 @@ describe('canEditEvent', () => {
     providerMeta: {
       provider: 'google',
       providerCalendarId: 'calendar-2',
-      accountId: 'account-1'
+      accountId: 'account-1',
     },
     visible: true,
     createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2025-01-01T00:00:00Z'
+    updatedAt: '2025-01-01T00:00:00Z',
   }
 
   it('returns true for organizer on writable calendar', () => {
     const calendarsMap: CalendarsById = new Map([['calendar-1', writableCalendar]])
     const event = {
       ...baseEvent,
-      organizer: { email: 'me@example.com', self: true }
+      organizer: { email: 'me@example.com', self: true },
     }
     expect(canEditEvent(event, calendarsMap)).toBe(true)
   })
@@ -1026,7 +991,7 @@ describe('canEditEvent', () => {
     const event = {
       ...baseEvent,
       calendarId: 'calendar-2',
-      organizer: { email: 'me@example.com', self: true }
+      organizer: { email: 'me@example.com', self: true },
     }
     expect(canEditEvent(event, calendarsMap)).toBe(false)
   })
@@ -1036,9 +1001,7 @@ describe('canEditEvent', () => {
     const event = {
       ...baseEvent,
       organizer: { email: 'other@example.com', self: false },
-      attendees: [
-        { email: 'me@example.com', self: true, responseStatus: 'accepted' as const }
-      ]
+      attendees: [{ email: 'me@example.com', self: true, responseStatus: 'accepted' as const }],
     }
     expect(canEditEvent(event, calendarsMap)).toBe(false)
   })
@@ -1058,7 +1021,7 @@ describe('canRSVPToEvent', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'calendar-1',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -1072,17 +1035,15 @@ describe('canRSVPToEvent', () => {
     startIso: '2025-01-01T12:00:00Z',
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
-    occursOn: ['2025-01-01']
+    occursOn: ['2025-01-01'],
   }
 
   it('returns true for attendee who can respond', () => {
     const event = {
       ...baseEvent,
       organizer: { email: 'other@example.com', self: false },
-      attendees: [
-        { email: 'me@example.com', self: true, responseStatus: 'needsAction' as const }
-      ],
-      rsvp: { canRespond: true, status: 'needsAction' as const }
+      attendees: [{ email: 'me@example.com', self: true, responseStatus: 'needsAction' as const }],
+      rsvp: { canRespond: true, status: 'needsAction' as const },
     }
     expect(canRSVPToEvent(event)).toBe(true)
   })
@@ -1090,7 +1051,7 @@ describe('canRSVPToEvent', () => {
   it('returns false for organizer', () => {
     const event = {
       ...baseEvent,
-      organizer: { email: 'me@example.com', self: true }
+      organizer: { email: 'me@example.com', self: true },
     }
     expect(canRSVPToEvent(event)).toBe(false)
   })
@@ -1111,7 +1072,7 @@ describe('wouldConflict', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'calendar-1',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -1126,7 +1087,7 @@ describe('wouldConflict', () => {
     endIso: '2025-01-01T13:00:00Z',
     title: 'Test Event',
     occursOn: ['2025-01-01'],
-    rev: 5
+    rev: 5,
   }
 
   it('returns false when baseRev matches server rev', () => {
@@ -1154,7 +1115,7 @@ describe('resolveConflict', () => {
       provider: 'google',
       accountId: 'account-1',
       providerCalendarId: 'calendar-1',
-      providerEventId: 'google-1'
+      providerEventId: 'google-1',
     },
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -1170,7 +1131,7 @@ describe('resolveConflict', () => {
     title: 'Server Title',
     occursOn: ['2025-01-01'],
     rev: 5,
-    updatedByDeviceId: 'device-server'
+    updatedByDeviceId: 'device-server',
   }
 
   it('applies update without conflict when baseRev matches', () => {
@@ -1178,10 +1139,10 @@ describe('resolveConflict', () => {
       baseRev: 5,
       event: {
         canonicalEventId: 'test-1',
-        title: 'New Title'
+        title: 'New Title',
       },
       updatedAtMs: 2000,
-      deviceId: 'device-client'
+      deviceId: 'device-client',
     }
 
     const result = resolveConflict(baseServerEvent, incoming)
@@ -1198,10 +1159,10 @@ describe('resolveConflict', () => {
       baseRev: 4, // Old base, will conflict
       event: {
         canonicalEventId: 'test-1',
-        title: 'Incoming Title'
+        title: 'Incoming Title',
       },
       updatedAtMs: 2000, // Newer than server's 1000
-      deviceId: 'device-client'
+      deviceId: 'device-client',
     }
 
     const result = resolveConflict(baseServerEvent, incoming)
@@ -1217,10 +1178,10 @@ describe('resolveConflict', () => {
       baseRev: 4, // Old base, will conflict
       event: {
         canonicalEventId: 'test-1',
-        title: 'Old Incoming Title'
+        title: 'Old Incoming Title',
       },
       updatedAtMs: 500, // Older than server's 1000
-      deviceId: 'device-client'
+      deviceId: 'device-client',
     }
 
     const result = resolveConflict(baseServerEvent, incoming)
@@ -1236,10 +1197,10 @@ describe('resolveConflict', () => {
       baseRev: 4, // Old base, will conflict
       event: {
         canonicalEventId: 'test-1',
-        title: 'Incoming Title'
+        title: 'Incoming Title',
       },
       updatedAtMs: 1000, // Same as server
-      deviceId: 'aaa-device' // Lexicographically lower than 'device-server'
+      deviceId: 'aaa-device', // Lexicographically lower than 'device-server'
     }
 
     const result = resolveConflict(baseServerEvent, incoming)
@@ -1255,10 +1216,10 @@ describe('resolveConflict', () => {
       baseRev: 4, // Old base, will conflict
       event: {
         canonicalEventId: 'test-1',
-        title: 'Incoming Title'
+        title: 'Incoming Title',
       },
       updatedAtMs: 1000, // Same as server
-      deviceId: 'zzz-device' // Lexicographically higher than 'device-server'
+      deviceId: 'zzz-device', // Lexicographically higher than 'device-server'
     }
 
     const result = resolveConflict(baseServerEvent, incoming)
@@ -1274,10 +1235,10 @@ describe('resolveConflict', () => {
       baseRev: 5,
       event: {
         canonicalEventId: 'different-id', // Should be ignored
-        title: 'New Title'
+        title: 'New Title',
       },
       updatedAtMs: 2000,
-      deviceId: 'device-client'
+      deviceId: 'device-client',
     }
 
     const result = resolveConflict(baseServerEvent, incoming)
@@ -1293,14 +1254,14 @@ describe('resolveConflict', () => {
       baseRev: 5,
       event: { canonicalEventId: 'test-1', title: 'Title from A' },
       updatedAtMs: 1500,
-      deviceId: 'device-A'
+      deviceId: 'device-A',
     }
 
     const incomingB: IncomingUpdate = {
       baseRev: 5,
       event: { canonicalEventId: 'test-1', location: 'Location from B' },
       updatedAtMs: 1500,
-      deviceId: 'device-B'
+      deviceId: 'device-B',
     }
 
     // Apply A first
@@ -1321,4 +1282,3 @@ describe('resolveConflict', () => {
     expect(resultB.winner.updatedByDeviceId).toBe('device-A')
   })
 })
-

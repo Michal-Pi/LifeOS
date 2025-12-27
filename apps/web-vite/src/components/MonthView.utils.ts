@@ -3,7 +3,12 @@ export interface DayCell {
   dayOfMonth: number
   isCurrentMonth: boolean
   isToday: boolean
-  events: Array<{ title: string; isRecurring: boolean; isInstance: boolean; colorTone?: 'light' | 'normal' | 'dark' }>
+  events: Array<{
+    title: string
+    isRecurring: boolean
+    isInstance: boolean
+    colorTone?: 'light' | 'normal' | 'dark'
+  }>
 }
 
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

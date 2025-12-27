@@ -23,6 +23,7 @@
 ## Priority Buckets
 
 Priority view groups tasks into:
+
 - Urgent / Overdue
 - Next 3 Days
 - This Week

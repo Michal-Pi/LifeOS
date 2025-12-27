@@ -52,7 +52,7 @@ export async function syncGoogleCalendars(uid: string, accountId: string): Promi
         writebackVisibility,
         lifeosColor,
         updatedAt: now,
-        createdAt: (existing.createdAt as string | undefined) ?? now
+        createdAt: (existing.createdAt as string | undefined) ?? now,
       },
       { merge: true }
     )
@@ -88,7 +88,7 @@ export async function syncGoogleAccount(uid: string, accountId: string): Promise
       provider: 'google',
       accountId,
       providerCalendarId: 'primary',
-      providerEventId: randomUUID()
+      providerEventId: randomUUID(),
     },
     // Phase 2.6: Add calendarId reference
     calendarId: `google:${accountId}:primary`,
@@ -102,7 +102,7 @@ export async function syncGoogleAccount(uid: string, accountId: string): Promise
     // Phase 2.6: Add sync metadata
     canonicalUpdatedAtMs: Date.now(),
     syncState: 'synced',
-    source: { type: 'provider' }
+    source: { type: 'provider' },
   })
 
   await accountRef(uid, accountId).set(
@@ -110,7 +110,7 @@ export async function syncGoogleAccount(uid: string, accountId: string): Promise
       lastSyncAt: new Date().toISOString(),
       lastSuccessAt: new Date().toISOString(),
       status: 'connected',
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     },
     { merge: true }
   )

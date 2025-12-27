@@ -3,7 +3,7 @@ import type {
   CanonicalAlert,
   CanonicalCalendarEvent,
   CanonicalResponseStatus,
-  SyncState
+  SyncState,
 } from '@lifeos/calendar'
 import {
   canEditEvent,
@@ -11,7 +11,7 @@ import {
   canRespond,
   describeRecurrence,
   getEventRole,
-  getPrimaryAlert
+  getPrimaryAlert,
 } from '@lifeos/calendar'
 import { AlertSelector } from '@/components/AlertSelector'
 import { AttendeeList } from '@/components/AttendeeList'
@@ -32,10 +32,14 @@ interface CalendarSidebarProps {
 
 const timeFormatter = new Intl.DateTimeFormat('en-US', {
   hour: 'numeric',
-  minute: 'numeric'
+  minute: 'numeric',
 })
 
-function getSyncStateDisplay(syncState?: SyncState): { label: string; className: string; icon: string } {
+function getSyncStateDisplay(syncState?: SyncState): {
+  label: string
+  className: string
+  icon: string
+} {
   switch (syncState) {
     case 'synced':
       return { label: 'Synced', className: 'synced', icon: '✓' }
@@ -60,7 +64,13 @@ interface RSVPButtonsProps {
   onRSVP: (status: CanonicalResponseStatus) => void
 }
 
-function RSVPButtons({ currentStatus, canRespond, isOffline, isPending, onRSVP }: RSVPButtonsProps) {
+function RSVPButtons({
+  currentStatus,
+  canRespond,
+  isOffline,
+  isPending,
+  onRSVP,
+}: RSVPButtonsProps) {
   if (!canRespond) return null
 
   const isActive = (status: CanonicalResponseStatus) => currentStatus === status
@@ -72,19 +82,25 @@ function RSVPButtons({ currentStatus, canRespond, isOffline, isPending, onRSVP }
         onClick={() => onRSVP('accepted')}
         disabled={isOffline || isPending}
         aria-pressed={isActive('accepted')}
-      >Yes</button>
+      >
+        Yes
+      </button>
       <button
         className={`ghost-button small ${isActive('declined') ? 'active' : ''}`}
         onClick={() => onRSVP('declined')}
         disabled={isOffline || isPending}
         aria-pressed={isActive('declined')}
-      >No</button>
+      >
+        No
+      </button>
       <button
         className={`ghost-button small ${isActive('tentative') ? 'active' : ''}`}
         onClick={() => onRSVP('tentative')}
         disabled={isOffline || isPending}
         aria-pressed={isActive('tentative')}
-      >Maybe</button>
+      >
+        Maybe
+      </button>
     </div>
   )
 }
@@ -99,7 +115,7 @@ export function CalendarSidebar({
   onRetryWriteback,
   onConnectGoogle,
   onEdit,
-  onDelete
+  onDelete,
 }: CalendarSidebarProps) {
   if (!selectedEvent) {
     return (
@@ -110,8 +126,7 @@ export function CalendarSidebar({
     )
   }
   const selectedIsRecurring = Boolean(
-    selectedEvent.recurrence?.recurrenceRules?.length ||
-    selectedEvent.providerRef?.recurringEventId
+    selectedEvent.recurrence?.recurrenceRules?.length || selectedEvent.providerRef?.recurringEventId
   )
   const selectedSyncState = getSyncStateDisplay(selectedEvent.syncState)
   const selectedEventCanEdit = canEditEvent(selectedEvent, calendarsById)
@@ -122,8 +137,15 @@ export function CalendarSidebar({
       <p className="section-label">Event details</p>
       <h2>
         {selectedEvent.title}
-        {selectedIsRecurring && <span className="recurrence-indicator" title="Recurring event">↻</span>}
-        <span className={`sync-indicator ${selectedSyncState.className}`} title={selectedSyncState.label}>
+        {selectedIsRecurring && (
+          <span className="recurrence-indicator" title="Recurring event">
+            ↻
+          </span>
+        )}
+        <span
+          className={`sync-indicator ${selectedSyncState.className}`}
+          title={selectedSyncState.label}
+        >
           {selectedSyncState.icon}
         </span>
       </h2>
@@ -137,7 +159,9 @@ export function CalendarSidebar({
         <div className="recurrence-info">
           <p className="recurrence-badge">
             <span className="recurrence-icon">↻</span>
-            {selectedEvent.recurrenceV2 ? describeRecurrence(selectedEvent.recurrenceV2) : 'Recurring series'}
+            {selectedEvent.recurrenceV2
+              ? describeRecurrence(selectedEvent.recurrenceV2)
+              : 'Recurring series'}
           </p>
         </div>
       )}
@@ -174,12 +198,21 @@ export function CalendarSidebar({
         <span className={`sync-state-badge ${selectedSyncState.className}`}>
           {selectedSyncState.icon} {selectedSyncState.label}
         </span>
-        {selectedEvent.writebackError && <p className="writeback-error">{selectedEvent.writebackError.message}</p>}
+        {selectedEvent.writebackError && (
+          <p className="writeback-error">{selectedEvent.writebackError.message}</p>
+        )}
         {selectedEvent.lastWritebackAtMs && (
-          <p className="calendar-meta">Last synced: {new Date(selectedEvent.lastWritebackAtMs).toLocaleString()}</p>
+          <p className="calendar-meta">
+            Last synced: {new Date(selectedEvent.lastWritebackAtMs).toLocaleString()}
+          </p>
         )}
         {(selectedEvent.syncState === 'error' || selectedEvent.syncState === 'conflict') && (
-          <button className="ghost-button retry-button" type="button" onClick={onRetryWriteback} disabled={!isOnline}>
+          <button
+            className="ghost-button retry-button"
+            type="button"
+            onClick={onRetryWriteback}
+            disabled={!isOnline}
+          >
             Retry sync
           </button>
         )}
@@ -191,11 +224,31 @@ export function CalendarSidebar({
       </div>
 
       <div className="detail-actions">
-        <button className="ghost-button" type="button" onClick={onEdit} disabled={!selectedEventCanEdit} title={selectedEventCanEdit ? undefined : 'You do not have permission to edit this event'}>Edit</button>
-        <button className="ghost-button danger" type="button" onClick={onDelete} disabled={!selectedEventCanDelete} title={selectedEventCanDelete ? undefined : 'You do not have permission to delete this event'}>Delete</button>
+        <button
+          className="ghost-button"
+          type="button"
+          onClick={onEdit}
+          disabled={!selectedEventCanEdit}
+          title={selectedEventCanEdit ? undefined : 'You do not have permission to edit this event'}
+        >
+          Edit
+        </button>
+        <button
+          className="ghost-button danger"
+          type="button"
+          onClick={onDelete}
+          disabled={!selectedEventCanDelete}
+          title={
+            selectedEventCanDelete ? undefined : 'You do not have permission to delete this event'
+          }
+        >
+          Delete
+        </button>
       </div>
 
-      {!selectedEventCanEdit && <p className="read-only-indicator">👁 View only - you cannot edit this event</p>}
+      {!selectedEventCanEdit && (
+        <p className="read-only-indicator">👁 View only - you cannot edit this event</p>
+      )}
     </aside>
   )
 }

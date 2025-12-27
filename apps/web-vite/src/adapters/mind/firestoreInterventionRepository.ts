@@ -80,12 +80,17 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
     return updatedIntervention
   }
 
-  const deleteIntervention = async (userId: string, interventionId: InterventionId): Promise<void> => {
+  const deleteIntervention = async (
+    userId: string,
+    interventionId: InterventionId
+  ): Promise<void> => {
     const ref = doc(db, `users/${userId}/${COLLECTION_INTERVENTIONS}/${interventionId}`)
     await deleteDoc(ref)
   }
 
-  const get = async (interventionId: InterventionId): Promise<CanonicalInterventionPreset | null> => {
+  const get = async (
+    interventionId: InterventionId
+  ): Promise<CanonicalInterventionPreset | null> => {
     // Try to get from system collection first (for system presets)
     if (interventionId.startsWith('intervention:system-')) {
       const systemRef = doc(db, `${COLLECTION_INTERVENTIONS}/${interventionId}`)

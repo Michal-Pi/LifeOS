@@ -2,7 +2,15 @@ import { useState, useEffect, useMemo } from 'react'
 import { createLogger } from '@lifeos/core'
 
 const logger = createLogger('TaskFormModal')
-import type { CanonicalTask, CanonicalProject, CanonicalMilestone, UrgencyLevel, ImportanceLevel, TaskStatus, Domain } from '@/types/todo'
+import type {
+  CanonicalTask,
+  CanonicalProject,
+  CanonicalMilestone,
+  UrgencyLevel,
+  ImportanceLevel,
+  TaskStatus,
+  Domain,
+} from '@/types/todo'
 import { calculateUrgency } from '@/lib/priority'
 import {
   urgencyFromSlider,
@@ -10,7 +18,7 @@ import {
   urgencyToSlider,
   importanceFromSlider,
   importanceLabel,
-  importanceToSlider
+  importanceToSlider,
 } from '@/lib/todoUi'
 
 interface TaskFormModalProps {
@@ -34,7 +42,7 @@ export function TaskFormModal({
   onSave,
   initialTask,
   projects,
-  milestones
+  milestones,
 }: TaskFormModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -88,7 +96,7 @@ export function TaskFormModal({
   // Auto-select project when milestone is selected
   useEffect(() => {
     if (milestoneId) {
-      const milestone = milestones.find(m => m.id === milestoneId)
+      const milestone = milestones.find((m) => m.id === milestoneId)
       if (milestone) {
         setProjectId(milestone.projectId)
       }
@@ -97,20 +105,20 @@ export function TaskFormModal({
 
   useEffect(() => {
     if (!projectId) return
-    const project = projects.find(p => p.id === projectId)
+    const project = projects.find((p) => p.id === projectId)
     if (project) {
       setDomain(project.domain)
     }
   }, [projectId, projects])
 
   // Filter milestones by selected project
-  const availableMilestones = projectId 
-    ? milestones.filter(m => m.projectId === projectId)
+  const availableMilestones = projectId
+    ? milestones.filter((m) => m.projectId === projectId)
     : milestones
-  
+
   const availableKeyResults = useMemo(() => {
-    const milestone = milestones.find(m => m.id === milestoneId)
-    return milestone?.keyResults || projects.find(p => p.id === projectId)?.keyResults || []
+    const milestone = milestones.find((m) => m.id === milestoneId)
+    return milestone?.keyResults || projects.find((p) => p.id === projectId)?.keyResults || []
   }, [projectId, milestoneId, projects, milestones])
 
   const effectiveUrgency = useMemo(() => {
@@ -144,7 +152,7 @@ export function TaskFormModal({
         completed: initialTask?.completed ?? false,
         archived: initialTask?.archived ?? false,
         calendarEventIds: initialTask?.calendarEventIds,
-        allocatedTimeMinutes: allocatedTimeMinutes || undefined
+        allocatedTimeMinutes: allocatedTimeMinutes || undefined,
       })
       onClose()
     } catch (error) {
@@ -158,12 +166,14 @@ export function TaskFormModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content task-form-modal" onClick={e => e.stopPropagation()}>
+      <div className="modal-content task-form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{initialTask ? 'Edit Task' : 'New Task'}</h2>
-          <button className="close-button" onClick={onClose}>×</button>
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
         </div>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="task-title">Title</label>
@@ -171,7 +181,7 @@ export function TaskFormModal({
               id="task-title"
               type="text"
               value={title}
-              onChange={e => setTitle(e.target.value)}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="What needs to be done?"
               required
               autoFocus
@@ -184,15 +194,17 @@ export function TaskFormModal({
               <select
                 id="task-project"
                 value={projectId}
-                onChange={e => {
+                onChange={(e) => {
                   setProjectId(e.target.value)
                   setMilestoneId('') // Clear milestone and KR when project changes
                   setKeyResultId('')
                 }}
               >
                 <option value="">No Project</option>
-                {projects.map(p => (
-                  <option key={p.id} value={p.id}>{p.title}</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
                 ))}
               </select>
             </div>
@@ -202,15 +214,17 @@ export function TaskFormModal({
               <select
                 id="task-milestone"
                 value={milestoneId}
-                onChange={e => {
+                onChange={(e) => {
                   setMilestoneId(e.target.value)
                   setKeyResultId('') // Clear KR when milestone changes
                 }}
                 disabled={!projectId && availableMilestones.length === 0}
               >
                 <option value="">No Milestone</option>
-                {availableMilestones.map(m => (
-                  <option key={m.id} value={m.id}>{m.title}</option>
+                {availableMilestones.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.title}
+                  </option>
                 ))}
               </select>
             </div>
@@ -222,11 +236,15 @@ export function TaskFormModal({
               <select
                 id="task-key-result"
                 value={keyResultId}
-                onChange={e => setKeyResultId(e.target.value)}
+                onChange={(e) => setKeyResultId(e.target.value)}
                 disabled={availableKeyResults.length === 0}
               >
                 <option value="">None</option>
-                {availableKeyResults.map(kr => <option key={kr.id} value={kr.id}>{kr.text}</option>)}
+                {availableKeyResults.map((kr) => (
+                  <option key={kr.id} value={kr.id}>
+                    {kr.text}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -275,7 +293,7 @@ export function TaskFormModal({
                 id="task-due-date"
                 type="date"
                 value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
+                onChange={(e) => setDueDate(e.target.value)}
               />
             </div>
 
@@ -284,16 +302,16 @@ export function TaskFormModal({
               <select
                 id="task-domain"
                 value={domain}
-                onChange={e => setDomain(e.target.value as Domain)}
+                onChange={(e) => setDomain(e.target.value as Domain)}
                 disabled={Boolean(projectId)}
               >
-                {DOMAINS.map(d => (
-                  <option key={d} value={d}>{d}</option>
+                {DOMAINS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
                 ))}
               </select>
-              {projectId && (
-                <p className="helper-text">Domain is inherited from the project.</p>
-              )}
+              {projectId && <p className="helper-text">Domain is inherited from the project.</p>}
             </div>
           </div>
 
@@ -306,7 +324,7 @@ export function TaskFormModal({
                   type="number"
                   min={0}
                   value={allocatedHours}
-                  onChange={e => setAllocatedHours(Number(e.target.value))}
+                  onChange={(e) => setAllocatedHours(Number(e.target.value))}
                   placeholder="Hours"
                 />
                 <input
@@ -315,7 +333,7 @@ export function TaskFormModal({
                   min={0}
                   max={59}
                   value={allocatedMinutes}
-                  onChange={e => setAllocatedMinutes(Number(e.target.value))}
+                  onChange={(e) => setAllocatedMinutes(Number(e.target.value))}
                   placeholder="Minutes"
                 />
               </div>
@@ -327,13 +345,15 @@ export function TaskFormModal({
             <textarea
               id="task-description"
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value)}
               rows={3}
             />
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="ghost-button" onClick={onClose}>Cancel</button>
+            <button type="button" className="ghost-button" onClick={onClose}>
+              Cancel
+            </button>
             <button type="submit" className="primary-button" disabled={isSubmitting}>
               {initialTask ? 'Save Changes' : 'Create Task'}
             </button>

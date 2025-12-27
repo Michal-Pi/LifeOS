@@ -154,7 +154,10 @@ export interface QuoteRepository {
    * console.log(newQuote.order) // 5 (if user had 5 quotes)
    * ```
    */
-  addQuote(userId: string, quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt' | 'order' | 'addedAt'>): Promise<Quote>
+  addQuote(
+    userId: string,
+    quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt' | 'order' | 'addedAt'>
+  ): Promise<Quote>
 
   /**
    * Updates the text and/or author of an existing quote.
@@ -180,7 +183,11 @@ export interface QuoteRepository {
    * })
    * ```
    */
-  updateQuote(userId: string, quoteId: string, updates: Partial<Pick<Quote, 'text' | 'author'>>): Promise<void>
+  updateQuote(
+    userId: string,
+    quoteId: string,
+    updates: Partial<Pick<Quote, 'text' | 'author'>>
+  ): Promise<void>
 
   /**
    * Deletes a quote from the user's collection.
@@ -296,13 +303,13 @@ export function createFirestoreQuoteRepository(): QuoteRepository {
 
       // Migrate quotes that don't have addedAt field
       let needsMigration = false
-      const migratedQuotes = quotes.map(quote => {
+      const migratedQuotes = quotes.map((quote) => {
         if (!quote.addedAt) {
           needsMigration = true
           return {
             ...quote,
             addedAt: formatAddedAt(quote.createdAt),
-            author: quote.author || '' // Ensure author is never undefined
+            author: quote.author || '', // Ensure author is never undefined
           }
         }
         return quote
@@ -375,7 +382,7 @@ export function createFirestoreQuoteRepository(): QuoteRepository {
       return {
         quotes: paginated,
         total: allQuotes.length,
-        hasMore: offset + limit < allQuotes.length
+        hasMore: offset + limit < allQuotes.length,
       }
     },
 

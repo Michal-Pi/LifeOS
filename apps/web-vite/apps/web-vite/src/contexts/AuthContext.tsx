@@ -6,7 +6,7 @@ import {
   signOut as firebaseSignOut,
   subscribeToAuthState,
   initializeFirebase,
-  type User
+  type User,
 } from '../lib/firebase'
 import { AuthContext, type AuthContextValue } from '../../contexts/AuthContextDefinition'
 
@@ -40,7 +40,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('[AuthProvider] Setting up auth state subscription')
 
     const unsubscribe = subscribeToAuthState((authUser) => {
-      console.log('[AuthProvider] Auth state changed:', authUser ? `User ${authUser.uid}` : 'No user')
+      console.log(
+        '[AuthProvider] Auth state changed:',
+        authUser ? `User ${authUser.uid}` : 'No user'
+      )
       setUser(authUser)
       setLoading(false)
     })
@@ -110,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithGoogle: handleSignInWithGoogle,
     signInWithEmail: handleSignInWithEmail,
     signUpWithEmail: handleSignUpWithEmail,
-    signOut: handleSignOut
+    signOut: handleSignOut,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

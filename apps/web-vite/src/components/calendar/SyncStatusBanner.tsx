@@ -59,7 +59,7 @@ export function SyncStatusBanner({
   onCreateEvent,
   onSyncNow,
   onConnectGoogle,
-  onDisconnectGoogle
+  onDisconnectGoogle,
 }: SyncStatusBannerProps) {
   return (
     <div className="calendar-sync">
@@ -69,21 +69,13 @@ export function SyncStatusBanner({
       </span>
 
       {/* Pending operations */}
-      {pendingOps.length > 0 && (
-        <span className="pending-badge">
-          {pendingOps.length} syncing…
-        </span>
-      )}
+      {pendingOps.length > 0 && <span className="pending-badge">{pendingOps.length} syncing…</span>}
 
       {/* Failed operations with retry */}
       {failedOps.length > 0 && (
         <span className="failed-badge">
           {failedOps.length} failed
-          <button
-            className="retry-link"
-            onClick={onRetryAll}
-            disabled={!isOnline}
-          >
+          <button className="retry-link" onClick={onRetryAll} disabled={!isOnline}>
             Retry all
           </button>
         </span>
@@ -107,11 +99,7 @@ export function SyncStatusBanner({
       {/* Action buttons */}
       <div className="header-actions">
         {selectedMonthDate && (
-          <button
-            className="ghost-button"
-            onClick={onBackToToday}
-            title="Return to today's events"
-          >
+          <button className="ghost-button" onClick={onBackToToday} title="Return to today's events">
             Back to Today
           </button>
         )}
@@ -125,21 +113,13 @@ export function SyncStatusBanner({
           + New Event
         </button>
 
-        <button
-          className="ghost-button"
-          onClick={onSyncNow}
-          disabled={syncing || !isOnline}
-        >
+        <button className="ghost-button" onClick={onSyncNow} disabled={syncing || !isOnline}>
           {syncing ? 'Syncing…' : 'Sync now'}
         </button>
 
         <button
           className="ghost-button"
-          onClick={
-            accountStatus?.status === 'connected'
-              ? onDisconnectGoogle
-              : onConnectGoogle
-          }
+          onClick={accountStatus?.status === 'connected' ? onDisconnectGoogle : onConnectGoogle}
         >
           {accountStatus?.status === 'connected' ? 'Disconnect' : 'Connect Google'}
         </button>

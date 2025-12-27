@@ -6,7 +6,7 @@ import type {
   CanonicalCreator,
   CanonicalEventRole,
   CanonicalRSVP,
-  ProviderCapabilities
+  ProviderCapabilities,
 } from '../../models'
 import { normalizeResponseStatus } from '../../models'
 import { parseGoogleRecurrenceStrings } from '../../recurrence/parseGoogleRecurrence'
@@ -26,28 +26,28 @@ export const GoogleCalendarEventSchema = z.object({
     .object({
       email: z.string().optional(),
       displayName: z.string().optional(),
-      self: z.boolean().optional()
+      self: z.boolean().optional(),
     })
     .optional(),
   organizer: z
     .object({
       email: z.string().optional(),
       displayName: z.string().optional(),
-      self: z.boolean().optional()
+      self: z.boolean().optional(),
     })
     .optional(),
   start: z
     .object({
       dateTime: z.string().optional(),
       date: z.string().optional(),
-      timeZone: z.string().optional()
+      timeZone: z.string().optional(),
     })
     .optional(),
   end: z
     .object({
       dateTime: z.string().optional(),
       date: z.string().optional(),
-      timeZone: z.string().optional()
+      timeZone: z.string().optional(),
     })
     .optional(),
   recurrence: z.array(z.string()).optional(),
@@ -55,24 +55,26 @@ export const GoogleCalendarEventSchema = z.object({
   originalStartTime: z
     .object({
       dateTime: z.string().optional(),
-      date: z.string().optional()
+      date: z.string().optional(),
     })
     .optional(),
   transparency: z.string().optional(),
   visibility: z.string().optional(),
-  attendees: z.array(
-    z.object({
-      email: z.string().optional(),
-      displayName: z.string().optional(),
-      self: z.boolean().optional(),
-      organizer: z.boolean().optional(),
-      optional: z.boolean().optional(),
-      resource: z.boolean().optional(),
-      responseStatus: z.string().optional(),
-      comment: z.string().optional(),
-      additionalGuests: z.number().optional()
-    })
-  ).optional(),
+  attendees: z
+    .array(
+      z.object({
+        email: z.string().optional(),
+        displayName: z.string().optional(),
+        self: z.boolean().optional(),
+        organizer: z.boolean().optional(),
+        optional: z.boolean().optional(),
+        resource: z.boolean().optional(),
+        responseStatus: z.string().optional(),
+        comment: z.string().optional(),
+        additionalGuests: z.number().optional(),
+      })
+    )
+    .optional(),
   reminders: z
     .object({
       useDefault: z.boolean().optional(),
@@ -80,10 +82,10 @@ export const GoogleCalendarEventSchema = z.object({
         .array(
           z.object({
             method: z.string().optional(),
-            minutes: z.number().optional()
+            minutes: z.number().optional(),
           })
         )
-        .optional()
+        .optional(),
     })
     .optional(),
   attendeesOmitted: z.boolean().optional(),
@@ -94,25 +96,22 @@ export const GoogleCalendarEventSchema = z.object({
         .array(
           z.object({
             uri: z.string().optional(),
-            entryPointType: z.string().optional()
+            entryPointType: z.string().optional(),
           })
         )
-        .optional()
+        .optional(),
     })
     .optional(),
   creatorSelf: z.boolean().optional(),
   source: z.object({ url: z.string().optional(), title: z.string().optional() }).optional(),
   iCalUID: z.string().optional(),
   sequence: z.number().optional(),
-  colorId: z.string().optional()
+  colorId: z.string().optional(),
 })
 
 export type GoogleCalendarEvent = z.infer<typeof GoogleCalendarEventSchema>
-type GoogleCalendarAttendee = NonNullable<GoogleCalendarEvent['attendees']> extends Array<
-  infer Att
->
-  ? Att
-  : never
+type GoogleCalendarAttendee =
+  NonNullable<GoogleCalendarEvent['attendees']> extends Array<infer Att> ? Att : never
 type GoogleCalendarReminderOverride = NonNullable<
   NonNullable<GoogleCalendarEvent['reminders']>['overrides']
 >[number]
@@ -144,7 +143,7 @@ function normalizeGoogleAttendee(attendee: GoogleCalendarAttendee): CanonicalAtt
     resource: attendee.resource,
     responseStatus: normalizeResponseStatus(attendee.responseStatus),
     comment: attendee.comment,
-    additionalGuests: attendee.additionalGuests
+    additionalGuests: attendee.additionalGuests,
   }
 }
 
@@ -158,7 +157,7 @@ function normalizeGoogleOrganizer(
   return {
     email: organizer.email,
     displayName: organizer.displayName,
-    self: organizer.self
+    self: organizer.self,
   }
 }
 
@@ -172,7 +171,7 @@ function normalizeGoogleCreator(
   return {
     email: creator.email,
     displayName: creator.displayName,
-    self: creator.self
+    self: creator.self,
   }
 }
 
@@ -201,16 +200,8 @@ export function normalizeGoogleEvent(
   context: { uid: string; accountId: string; providerCalendarId: string }
 ): CanonicalCalendarEvent {
   const startIso: string =
-    raw.start?.dateTime ??
-    raw.start?.date ??
-    raw.created ??
-    raw.updated ??
-    new Date().toISOString()
-  const endIso: string =
-    raw.end?.dateTime ??
-    raw.end?.date ??
-    raw.updated ??
-    startIso
+    raw.start?.dateTime ?? raw.start?.date ?? raw.created ?? raw.updated ?? new Date().toISOString()
+  const endIso: string = raw.end?.dateTime ?? raw.end?.date ?? raw.updated ?? startIso
   const startDate = new Date(startIso)
   const endDate = new Date(endIso)
   const canonicalEventId = `${'google'}:${context.accountId}:${context.providerCalendarId}:${raw.id}`
@@ -249,7 +240,7 @@ export function normalizeGoogleEvent(
   // Derive RSVP capabilities
   const rsvp: CanonicalRSVP = {
     canRespond: role === 'attendee' && selfAttendee != null,
-    status: selfAttendee?.responseStatus
+    status: selfAttendee?.responseStatus,
   }
 
   // Derive provider capabilities (based on role)
@@ -257,7 +248,7 @@ export function normalizeGoogleEvent(
     canInvite: role === 'organizer',
     canRespond: role === 'attendee',
     canUpdate: role === 'organizer',
-    canCancel: role === 'organizer'
+    canCancel: role === 'organizer',
   }
 
   return {
@@ -270,7 +261,7 @@ export function normalizeGoogleEvent(
       providerCalendarId: context.providerCalendarId,
       providerEventId: raw.id,
       etag: raw.etag,
-      recurringEventId: raw.recurringEventId
+      recurringEventId: raw.recurringEventId,
     },
     iCalUID: raw.iCalUID,
     createdAt: raw.created ?? new Date().toISOString(),
@@ -290,7 +281,8 @@ export function normalizeGoogleEvent(
     description: raw.description,
     location: raw.location,
     hangoutLink: raw.hangoutLink,
-    conferencing: (raw.conferenceData as { entryPoints?: { uri?: string }[] } | undefined)?.entryPoints?.[0]?.uri,
+    conferencing: (raw.conferenceData as { entryPoints?: { uri?: string }[] } | undefined)
+      ?.entryPoints?.[0]?.uri,
     startMs: Number(startDate.getTime()) || Date.now(),
     endMs: Number(endDate.getTime()) || Date.now(),
     startIso: startIso ?? '',
@@ -310,7 +302,7 @@ export function normalizeGoogleEvent(
     recurrence: {
       recurringEventId: raw.recurringEventId,
       recurrenceRules: raw.recurrence,
-      originalStartTime: raw.originalStartTime?.dateTime ?? raw.originalStartTime?.date
+      originalStartTime: raw.originalStartTime?.dateTime ?? raw.originalStartTime?.date,
     },
     // Phase 2.3 recurrence
     recurrenceV2,
@@ -320,10 +312,10 @@ export function normalizeGoogleEvent(
     originalStartTimeMs,
     reminders: raw.reminders?.overrides?.map((override: GoogleCalendarReminderOverride) => ({
       method: override?.method,
-      minutesBefore: override?.minutes
+      minutesBefore: override?.minutes,
     })),
     attachments: [],
     calendarId: context.providerCalendarId,
-    raw
+    raw,
   }
 }

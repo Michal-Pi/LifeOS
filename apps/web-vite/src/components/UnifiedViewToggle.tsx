@@ -14,7 +14,7 @@ export function UnifiedViewToggle({
   isUnified,
   onToggle,
   compositeCount = 0,
-  disabled = false
+  disabled = false,
 }: UnifiedViewToggleProps) {
   return (
     <div className="unified-view-toggle">
@@ -38,12 +38,7 @@ export function UnifiedViewToggle({
           {compositeCount} merged event{compositeCount !== 1 ? 's' : ''}
         </span>
       )}
-      {!isUnified && (
-        <span className="view-mode-hint">
-          Showing all events individually
-        </span>
-      )}
+      {!isUnified && <span className="view-mode-hint">Showing all events individually</span>}
     </div>
   )
 }
-

@@ -24,7 +24,7 @@ export function generateId(): string {
 
 type Brand<T extends string> = { readonly __brand: T }
 
-export type Id<T extends string> = (`${T}:${string}` & Brand<T>)
+export type Id<T extends string> = `${T}:${string}` & Brand<T>
 
 export function asId<T extends string>(value: string | Id<T>): Id<T> {
   return value as Id<T>

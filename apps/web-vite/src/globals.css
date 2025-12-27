@@ -294,7 +294,7 @@ a:focus-visible {
   background: var(--card);
 }
 
- .sidebar-heading {
+.sidebar-heading {
   font-size: 0.7rem;
   letter-spacing: 0.3em;
   text-transform: uppercase;
@@ -658,7 +658,9 @@ a:focus-visible {
   padding: 1rem;
   background: var(--muted);
   color: var(--foreground);
-  transition: border 0.2s ease, transform 0.2s ease;
+  transition:
+    border 0.2s ease,
+    transform 0.2s ease;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -742,7 +744,9 @@ a:focus-visible {
 .sidebar,
 .main-column,
 .content-wrapper {
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 /* Modal styles */
@@ -758,8 +762,12 @@ a:focus-visible {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-content {
@@ -775,8 +783,14 @@ a:focus-visible {
 }
 
 @keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .modal-confirm {
@@ -839,9 +853,9 @@ a:focus-visible {
   color: var(--muted-foreground);
 }
 
-.form-group input[type="text"],
-.form-group input[type="date"],
-.form-group input[type="time"],
+.form-group input[type='text'],
+.form-group input[type='date'],
+.form-group input[type='time'],
 .form-group textarea {
   padding: 0.75rem 1rem;
   border-radius: 0.75rem;
@@ -870,7 +884,7 @@ a:focus-visible {
   gap: 0.5rem;
 }
 
-.form-checkbox input[type="checkbox"] {
+.form-checkbox input[type='checkbox'] {
   width: 1.1rem;
   height: 1.1rem;
   accent-color: var(--primary);
@@ -1014,8 +1028,13 @@ a:focus-visible {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* Recurrence Indicator */
@@ -1361,7 +1380,7 @@ a:focus-visible {
   background: rgba(var(--primary-rgb), 0.05);
 }
 
-.scope-option input[type="radio"] {
+.scope-option input[type='radio'] {
   position: absolute;
   opacity: 0;
   pointer-events: none;
@@ -1716,10 +1735,18 @@ a:focus-visible {
   font-weight: 500;
 }
 
-.your-rsvp-status.accepted { color: var(--status-accepted); }
-.your-rsvp-status.tentative { color: var(--status-tentative); }
-.your-rsvp-status.declined { color: var(--status-declined); }
-.your-rsvp-status.pending { color: var(--status-pending); }
+.your-rsvp-status.accepted {
+  color: var(--status-accepted);
+}
+.your-rsvp-status.tentative {
+  color: var(--status-tentative);
+}
+.your-rsvp-status.declined {
+  color: var(--status-declined);
+}
+.your-rsvp-status.pending {
+  color: var(--status-pending);
+}
 
 /* Attendee edit section (organizer only) */
 .attendee-edit-section {
@@ -1793,7 +1820,7 @@ a:focus-visible {
   font-size: 0.85rem;
 }
 
-.send-updates-toggle input[type="checkbox"] {
+.send-updates-toggle input[type='checkbox'] {
   accent-color: var(--primary);
 }
 
@@ -2286,7 +2313,7 @@ a:focus-visible {
   border-radius: 50%;
   background: white;
   transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-button.on .toggle-thumb {
@@ -3005,7 +3032,7 @@ a:focus-visible {
 }
 
 .calendar-settings__field select,
-.calendar-settings__field input[type="text"] {
+.calendar-settings__field input[type='text'] {
   background: var(--background);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
@@ -3019,7 +3046,7 @@ a:focus-visible {
   align-items: center;
 }
 
-.calendar-settings__color-picker input[type="color"] {
+.calendar-settings__color-picker input[type='color'] {
   width: 2.5rem;
   height: 2.2rem;
   border: 1px solid var(--border);
@@ -3248,7 +3275,9 @@ a:focus-visible {
 .quotes-table th.sortable {
   cursor: pointer;
   user-select: none;
-  transition: background-color 0.2s, color 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 }
 
 .quotes-table th.sortable:hover {
@@ -3534,7 +3563,9 @@ a:focus-visible {
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition:
+    background 0.2s,
+    transform 0.1s;
 }
 
 .login-button:hover {

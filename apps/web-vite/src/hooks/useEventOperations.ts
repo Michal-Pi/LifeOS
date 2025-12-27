@@ -4,13 +4,13 @@ import type {
   CanonicalRecurrenceRule,
   CanonicalResponseStatus,
   EditScope,
-  Weekday
+  Weekday,
 } from '@lifeos/calendar'
 import {
   computeOccursOn,
   editRecurringEvent,
   deleteRecurringEvent,
-  createLogger
+  createLogger,
 } from '@lifeos/calendar'
 import { useCallback } from 'react'
 import { toast } from 'sonner'
@@ -18,6 +18,7 @@ import { generateId } from '@lifeos/core'
 import { createFirestoreCalendarEventRepository } from '@/adapters/firestoreCalendarEventRepository'
 import type { EventFormData } from '@/components/EventFormModal'
 import { functionUrl } from '@/lib/functionsUrl'
+import { authenticatedFetch } from '@/lib/authenticatedFetch'
 import type { OutboxOp } from '@/outbox/types'
 import { listPending } from '@/outbox/store'
 import { enqueueCreate, enqueueUpdate, enqueueDelete } from '@/outbox/worker'
@@ -48,9 +49,8 @@ export function useEventOperations({
   setEditScope,
   setPendingFormData,
   setPendingOps,
-  setConnectionError
+  setConnectionError,
 }: UseEventOperationsProps) {
-
   // Build canonical recurrence from form data
   const buildRecurrenceV2 = useCallback(
     (formData: EventFormData): CanonicalRecurrence | undefined => {
@@ -60,12 +60,14 @@ export function useEventOperations({
 
       const { recurrence } = formData
       const rule: CanonicalRecurrenceRule = {
-        freq: recurrence.frequency as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'
+        freq: recurrence.frequency as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY',
       }
 
       if (recurrence.interval && recurrence.interval > 1) rule.interval = recurrence.interval
-      if (recurrence.frequency === 'WEEKLY' && recurrence.weekdays?.length) rule.byWeekday = recurrence.weekdays as Weekday[]
-      if (recurrence.frequency === 'MONTHLY' && recurrence.monthDay) rule.byMonthDay = [recurrence.monthDay]
+      if (recurrence.frequency === 'WEEKLY' && recurrence.weekdays?.length)
+        rule.byWeekday = recurrence.weekdays as Weekday[]
+      if (recurrence.frequency === 'MONTHLY' && recurrence.monthDay)
+        rule.byMonthDay = [recurrence.monthDay]
 
       if (recurrence.endType === 'count' && recurrence.count) {
         rule.count = recurrence.count
@@ -79,80 +81,11 @@ export function useEventOperations({
     []
   )
 
-  const createEvent = useCallback(async (data: EventFormData, metadata?: { taskId?: string }): Promise<CanonicalCalendarEvent> => {
-    const startMs = data.allDay
-      ? new Date(`${data.startDate}T00:00:00`).getTime()
-      : new Date(`${data.startDate}T${data.startTime}`).getTime()
-    const endMs = data.allDay
-      ? new Date(`${data.endDate}T23:59:59`).getTime()
-      : new Date(`${data.endDate}T${data.endTime}`).getTime()
-
-    const nowMs = Date.now()
-    const recurrenceV2 = buildRecurrenceV2(data)
-    const isRecurring = Boolean(recurrenceV2)
-
-    const attendees = data.attendees?.map((email) => ({
-      email,
-      responseStatus: 'needsAction' as const
-    }))
-
-    const newEvent: CanonicalCalendarEvent = {
-      canonicalEventId: `local:${generateId()}`,
-      schemaVersion: 1,
-      normalizationVersion: 1,
-      providerRef: {
-        provider: 'local',
-        accountId: 'local',
-        providerCalendarId: 'local',
-        providerEventId: `local:${generateId()}`
-      },
-      createdAt: new Date(nowMs).toISOString(),
-      updatedAt: new Date(nowMs).toISOString(),
-      createdAtMs: nowMs,
-      updatedAtMs: nowMs,
-      canonicalUpdatedAtMs: nowMs,
-      syncState: 'pending_writeback',
-      source: { type: 'local' },
-      startMs,
-      endMs,
-      startIso: new Date(startMs).toISOString(),
-      endIso: new Date(endMs).toISOString(),
-      timezone: data.timezone,
-      allDay: data.allDay,
-      title: data.title,
-      description: data.description,
-      location: data.location,
-      attendees,
-      occursOn: computeOccursOn(new Date(startMs).toISOString(), new Date(endMs).toISOString()),
-      status: 'confirmed',
-      visibility: 'default',
-      transparency: 'opaque',
-      recurrenceV2,
-      isRecurringSeries: isRecurring,
-      ...metadata
-    }
-
-    setEvents((prev) => [...prev, newEvent].sort((a, b) => a.startMs - b.startMs))
-    setSelectedEvent(newEvent)
-    setFormModalOpen(false)
-
-    await enqueueCreate(userId, newEvent)
-    const ops = await listPending(userId)
-    setPendingOps(ops)
-
-    return newEvent
-  }, [buildRecurrenceV2, userId, setEvents, setSelectedEvent, setFormModalOpen, setPendingOps])
-
-  const updateEvent = useCallback(async (data: EventFormData, scope?: EditScope) => {
-    if (!selectedEvent) return
-
-    const isRecurring = Boolean(
-      selectedEvent.isRecurringSeries ||
-      selectedEvent.recurrenceV2?.rule ||
-      selectedEvent.recurrence?.recurrenceRules?.length
-    )
-
-    if (isRecurring && scope) {
+  const createEvent = useCallback(
+    async (
+      data: EventFormData,
+      metadata?: { taskId?: string }
+    ): Promise<CanonicalCalendarEvent> => {
       const startMs = data.allDay
         ? new Date(`${data.startDate}T00:00:00`).getTime()
         : new Date(`${data.startDate}T${data.startTime}`).getTime()
@@ -160,190 +93,306 @@ export function useEventOperations({
         ? new Date(`${data.endDate}T23:59:59`).getTime()
         : new Date(`${data.endDate}T${data.endTime}`).getTime()
 
-      try {
-        const result = await editRecurringEvent(
-          { repository: calendarRepository },
-          {
-            userId,
-            eventId: selectedEvent.canonicalEventId,
-            scope,
-            occurrenceStartMs: scope !== 'all' ? selectedEvent.startMs : undefined,
-            patch: {
-              title: data.title,
-              description: data.description,
-              location: data.location,
-              startMs,
-              endMs,
-              allDay: data.allDay,
-              timezone: data.timezone
+      const nowMs = Date.now()
+      const recurrenceV2 = buildRecurrenceV2(data)
+      const isRecurring = Boolean(recurrenceV2)
+
+      const attendees = data.attendees?.map((email) => ({
+        email,
+        responseStatus: 'needsAction' as const,
+      }))
+
+      const newEvent: CanonicalCalendarEvent = {
+        canonicalEventId: `local:${generateId()}`,
+        schemaVersion: 1,
+        normalizationVersion: 1,
+        providerRef: {
+          provider: 'local',
+          accountId: 'local',
+          providerCalendarId: 'local',
+          providerEventId: `local:${generateId()}`,
+        },
+        createdAt: new Date(nowMs).toISOString(),
+        updatedAt: new Date(nowMs).toISOString(),
+        createdAtMs: nowMs,
+        updatedAtMs: nowMs,
+        canonicalUpdatedAtMs: nowMs,
+        syncState: 'pending_writeback',
+        source: { type: 'local' },
+        startMs,
+        endMs,
+        startIso: new Date(startMs).toISOString(),
+        endIso: new Date(endMs).toISOString(),
+        timezone: data.timezone,
+        allDay: data.allDay,
+        title: data.title,
+        description: data.description,
+        location: data.location,
+        attendees,
+        occursOn: computeOccursOn(new Date(startMs).toISOString(), new Date(endMs).toISOString()),
+        status: 'confirmed',
+        visibility: 'default',
+        transparency: 'opaque',
+        recurrenceV2,
+        isRecurringSeries: isRecurring,
+        ...metadata,
+      }
+
+      setEvents((prev) => [...prev, newEvent].sort((a, b) => a.startMs - b.startMs))
+      setSelectedEvent(newEvent)
+      setFormModalOpen(false)
+
+      await enqueueCreate(userId, newEvent)
+      const ops = await listPending(userId)
+      setPendingOps(ops)
+
+      return newEvent
+    },
+    [buildRecurrenceV2, userId, setEvents, setSelectedEvent, setFormModalOpen, setPendingOps]
+  )
+
+  const updateEvent = useCallback(
+    async (data: EventFormData, scope?: EditScope) => {
+      if (!selectedEvent) return
+
+      const isRecurring = Boolean(
+        selectedEvent.isRecurringSeries ||
+        selectedEvent.recurrenceV2?.rule ||
+        selectedEvent.recurrence?.recurrenceRules?.length
+      )
+
+      if (isRecurring && scope) {
+        const startMs = data.allDay
+          ? new Date(`${data.startDate}T00:00:00`).getTime()
+          : new Date(`${data.startDate}T${data.startTime}`).getTime()
+        const endMs = data.allDay
+          ? new Date(`${data.endDate}T23:59:59`).getTime()
+          : new Date(`${data.endDate}T${data.endTime}`).getTime()
+
+        try {
+          const result = await editRecurringEvent(
+            { repository: calendarRepository },
+            {
+              userId,
+              eventId: selectedEvent.canonicalEventId,
+              scope,
+              occurrenceStartMs: scope !== 'all' ? selectedEvent.startMs : undefined,
+              patch: {
+                title: data.title,
+                description: data.description,
+                location: data.location,
+                startMs,
+                endMs,
+                allDay: data.allDay,
+                timezone: data.timezone,
+              },
             }
+          )
+
+          if (result.updatedMaster) {
+            setEvents((prev) =>
+              prev
+                .map((e) =>
+                  e.canonicalEventId === result.updatedMaster!.canonicalEventId
+                    ? result.updatedMaster!
+                    : e
+                )
+                .sort((a, b) => a.startMs - b.startMs)
+            )
+            setSelectedEvent(result.updatedMaster)
           }
-        )
 
-        if (result.updatedMaster) {
-          setEvents((prev) =>
-            prev.map((e) => (e.canonicalEventId === result.updatedMaster!.canonicalEventId ? result.updatedMaster! : e))
-              .sort((a, b) => a.startMs - b.startMs)
-          )
-          setSelectedEvent(result.updatedMaster)
+          if (result.newSeries) {
+            setEvents((prev) => [...prev, result.newSeries!].sort((a, b) => a.startMs - b.startMs))
+          }
+
+          setFormModalOpen(false)
+          setEditScope(null)
+          setPendingFormData(null)
+
+          if (result.updatedMaster) {
+            const writebackMeta =
+              scope === 'this'
+                ? { isInstanceEdit: true, occurrenceStartMs: selectedEvent.startMs }
+                : undefined
+            await enqueueUpdate(
+              userId,
+              result.updatedMaster,
+              selectedEvent.updatedAtMs,
+              'update',
+              writebackMeta
+            )
+          }
+          if (result.newSeries) {
+            await enqueueCreate(userId, result.newSeries)
+          }
+
+          const ops = await listPending(userId)
+          setPendingOps(ops)
+          toast.success('Event updated successfully')
+        } catch (error) {
+          const errorMessage = (error as Error).message
+          setConnectionError(errorMessage)
+          toast.error('Failed to update event', {
+            description: errorMessage,
+          })
         }
-
-        if (result.newSeries) {
-          setEvents((prev) => [...prev, result.newSeries!].sort((a, b) => a.startMs - b.startMs))
-        }
-
-        setFormModalOpen(false)
-        setEditScope(null)
-        setPendingFormData(null)
-
-        if (result.updatedMaster) {
-          const writebackMeta = scope === 'this'
-            ? { isInstanceEdit: true, occurrenceStartMs: selectedEvent.startMs }
-            : undefined
-          await enqueueUpdate(
-            userId,
-            result.updatedMaster,
-            selectedEvent.updatedAtMs,
-            'update',
-            writebackMeta
-          )
-        }
-        if (result.newSeries) {
-          await enqueueCreate(userId, result.newSeries)
-        }
-
-        const ops = await listPending(userId)
-        setPendingOps(ops)
-        toast.success('Event updated successfully')
-      } catch (error) {
-        const errorMessage = (error as Error).message
-        setConnectionError(errorMessage)
-        toast.error('Failed to update event', {
-          description: errorMessage
-        })
+        return
       }
-      return
-    }
 
-    const startMs = data.allDay
-      ? new Date(`${data.startDate}T00:00:00`).getTime()
-      : new Date(`${data.startDate}T${data.startTime}`).getTime()
-    const endMs = data.allDay
-      ? new Date(`${data.endDate}T23:59:59`).getTime()
-      : new Date(`${data.endDate}T${data.endTime}`).getTime()
+      const startMs = data.allDay
+        ? new Date(`${data.startDate}T00:00:00`).getTime()
+        : new Date(`${data.startDate}T${data.startTime}`).getTime()
+      const endMs = data.allDay
+        ? new Date(`${data.endDate}T23:59:59`).getTime()
+        : new Date(`${data.endDate}T${data.endTime}`).getTime()
 
-    const nowMs = Date.now()
-    const attendees = data.attendees?.map((email) => ({
-      email,
-      responseStatus: 'needsAction' as const
-    }))
-    const updatedEvent: CanonicalCalendarEvent = {
-      ...selectedEvent,
-      updatedAt: new Date(nowMs).toISOString(),
-      updatedAtMs: nowMs,
-      startMs,
-      endMs,
-      startIso: new Date(startMs).toISOString(),
-      endIso: new Date(endMs).toISOString(),
-      timezone: data.timezone,
-      allDay: data.allDay,
-      title: data.title,
-      description: data.description,
-      location: data.location,
-      attendees,
-      occursOn: computeOccursOn(new Date(startMs).toISOString(), new Date(endMs).toISOString()),
-      source: { type: 'local' }
-    }
+      const nowMs = Date.now()
+      const attendees = data.attendees?.map((email) => ({
+        email,
+        responseStatus: 'needsAction' as const,
+      }))
+      const updatedEvent: CanonicalCalendarEvent = {
+        ...selectedEvent,
+        updatedAt: new Date(nowMs).toISOString(),
+        updatedAtMs: nowMs,
+        startMs,
+        endMs,
+        startIso: new Date(startMs).toISOString(),
+        endIso: new Date(endMs).toISOString(),
+        timezone: data.timezone,
+        allDay: data.allDay,
+        title: data.title,
+        description: data.description,
+        location: data.location,
+        attendees,
+        occursOn: computeOccursOn(new Date(startMs).toISOString(), new Date(endMs).toISOString()),
+        source: { type: 'local' },
+      }
 
-    setEvents((prev) =>
-      prev.map((e) => (e.canonicalEventId === selectedEvent.canonicalEventId ? updatedEvent : e))
-        .sort((a, b) => a.startMs - b.startMs)
-    )
-    setSelectedEvent(updatedEvent)
-    setFormModalOpen(false)
+      setEvents((prev) =>
+        prev
+          .map((e) => (e.canonicalEventId === selectedEvent.canonicalEventId ? updatedEvent : e))
+          .sort((a, b) => a.startMs - b.startMs)
+      )
+      setSelectedEvent(updatedEvent)
+      setFormModalOpen(false)
 
-    const previousEmails = (selectedEvent.attendees ?? [])
-      .map((attendee) => attendee.email)
-      .filter((email): email is string => Boolean(email))
-      .sort()
-    const nextEmails = (attendees ?? [])
-      .map((attendee) => attendee.email)
-      .filter((email): email is string => Boolean(email))
-      .sort()
-    const attendeesChanged = previousEmails.join('|') !== nextEmails.join('|')
+      const previousEmails = (selectedEvent.attendees ?? [])
+        .map((attendee) => attendee.email)
+        .filter((email): email is string => Boolean(email))
+        .sort()
+      const nextEmails = (attendees ?? [])
+        .map((attendee) => attendee.email)
+        .filter((email): email is string => Boolean(email))
+        .sort()
+      const attendeesChanged = previousEmails.join('|') !== nextEmails.join('|')
 
-    await enqueueUpdate(
+      await enqueueUpdate(
+        userId,
+        updatedEvent,
+        selectedEvent.updatedAtMs,
+        attendeesChanged ? 'update_attendees' : undefined
+      )
+      const ops = await listPending(userId)
+      setPendingOps(ops)
+    },
+    [
+      selectedEvent,
       userId,
-      updatedEvent,
-      selectedEvent.updatedAtMs,
-      attendeesChanged ? 'update_attendees' : undefined
-    )
-    const ops = await listPending(userId)
-    setPendingOps(ops)
-  }, [selectedEvent, userId, setEvents, setSelectedEvent, setFormModalOpen, setEditScope, setPendingFormData, setPendingOps, setConnectionError])
+      setEvents,
+      setSelectedEvent,
+      setFormModalOpen,
+      setEditScope,
+      setPendingFormData,
+      setPendingOps,
+      setConnectionError,
+    ]
+  )
 
-  const deleteEvent = useCallback(async (scope?: EditScope) => {
-    if (!selectedEvent) return
+  const deleteEvent = useCallback(
+    async (scope?: EditScope) => {
+      if (!selectedEvent) return
 
-    const isRecurring = Boolean(
-      selectedEvent.isRecurringSeries ||
-      selectedEvent.recurrenceV2?.rule ||
-      selectedEvent.recurrence?.recurrenceRules?.length
-    )
+      const isRecurring = Boolean(
+        selectedEvent.isRecurringSeries ||
+        selectedEvent.recurrenceV2?.rule ||
+        selectedEvent.recurrence?.recurrenceRules?.length
+      )
 
-    if (isRecurring && scope) {
-      try {
-        const result = await deleteRecurringEvent(
-          { repository: calendarRepository },
-          {
-            userId,
-            eventId: selectedEvent.canonicalEventId,
-            scope,
-            occurrenceStartMs: scope !== 'all' ? selectedEvent.startMs : undefined
-          }
-        )
-
-        if (result.deletedSeriesId) {
-          setEvents((prev) => prev.filter((e) => e.canonicalEventId !== result.deletedSeriesId))
-          setSelectedEvent(null)
-          await enqueueDelete(userId, result.deletedSeriesId, selectedEvent.rev, selectedEvent.updatedAtMs)
-        } else if (result.updatedMaster) {
-          setEvents((prev) =>
-            prev.map((e) => (e.canonicalEventId === result.updatedMaster!.canonicalEventId ? result.updatedMaster! : e))
-              .sort((a, b) => a.startMs - b.startMs)
+      if (isRecurring && scope) {
+        try {
+          const result = await deleteRecurringEvent(
+            { repository: calendarRepository },
+            {
+              userId,
+              eventId: selectedEvent.canonicalEventId,
+              scope,
+              occurrenceStartMs: scope !== 'all' ? selectedEvent.startMs : undefined,
+            }
           )
-          setSelectedEvent(result.updatedMaster)
-          await enqueueUpdate(userId, result.updatedMaster, selectedEvent.updatedAtMs)
+
+          if (result.deletedSeriesId) {
+            setEvents((prev) => prev.filter((e) => e.canonicalEventId !== result.deletedSeriesId))
+            setSelectedEvent(null)
+            await enqueueDelete(
+              userId,
+              result.deletedSeriesId,
+              selectedEvent.rev,
+              selectedEvent.updatedAtMs
+            )
+          } else if (result.updatedMaster) {
+            setEvents((prev) =>
+              prev
+                .map((e) =>
+                  e.canonicalEventId === result.updatedMaster!.canonicalEventId
+                    ? result.updatedMaster!
+                    : e
+                )
+                .sort((a, b) => a.startMs - b.startMs)
+            )
+            setSelectedEvent(result.updatedMaster)
+            await enqueueUpdate(userId, result.updatedMaster, selectedEvent.updatedAtMs)
+          }
+
+          setDeleteModalOpen(false)
+          const ops = await listPending(userId)
+          setPendingOps(ops)
+          toast.success('Event deleted successfully')
+        } catch (error) {
+          const errorMessage = (error as Error).message
+          setConnectionError(errorMessage)
+          toast.error('Failed to delete event', {
+            description: errorMessage,
+          })
         }
-
-        setDeleteModalOpen(false)
-        const ops = await listPending(userId)
-        setPendingOps(ops)
-        toast.success('Event deleted successfully')
-      } catch (error) {
-        const errorMessage = (error as Error).message
-        setConnectionError(errorMessage)
-        toast.error('Failed to delete event', {
-          description: errorMessage
-        })
+        return
       }
-      return
-    }
 
-    setEvents((prev) => prev.filter((e) => e.canonicalEventId !== selectedEvent.canonicalEventId))
-    setDeleteModalOpen(false)
-    setSelectedEvent(null)
+      setEvents((prev) => prev.filter((e) => e.canonicalEventId !== selectedEvent.canonicalEventId))
+      setDeleteModalOpen(false)
+      setSelectedEvent(null)
 
-    await enqueueDelete(userId, selectedEvent.canonicalEventId, selectedEvent.updatedAtMs)
-    const ops = await listPending(userId)
-    setPendingOps(ops)
-  }, [selectedEvent, userId, setEvents, setSelectedEvent, setDeleteModalOpen, setPendingOps, setConnectionError])
+      await enqueueDelete(userId, selectedEvent.canonicalEventId, selectedEvent.updatedAtMs)
+      const ops = await listPending(userId)
+      setPendingOps(ops)
+    },
+    [
+      selectedEvent,
+      userId,
+      setEvents,
+      setSelectedEvent,
+      setDeleteModalOpen,
+      setPendingOps,
+      setConnectionError,
+    ]
+  )
 
   const retryWriteback = useCallback(async () => {
     if (!selectedEvent) return
 
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         functionUrl(`retryWriteback?uid=${userId}&eventId=${selectedEvent.canonicalEventId}`)
       )
       if (!response.ok) {
@@ -351,7 +400,11 @@ export function useEventOperations({
         throw new Error(payload.error ?? 'Retry failed')
       }
 
-      const updatedEvent = { ...selectedEvent, syncState: 'pending_writeback' as const, writebackError: undefined }
+      const updatedEvent = {
+        ...selectedEvent,
+        syncState: 'pending_writeback' as const,
+        writebackError: undefined,
+      }
       setEvents((prev) =>
         prev.map((e) => (e.canonicalEventId === selectedEvent.canonicalEventId ? updatedEvent : e))
       )
@@ -361,60 +414,65 @@ export function useEventOperations({
       const errorMessage = (error as Error).message
       setConnectionError(errorMessage)
       toast.error('Failed to retry writeback', {
-        description: errorMessage
+        description: errorMessage,
       })
     }
   }, [selectedEvent, userId, setEvents, setSelectedEvent, setConnectionError])
 
-  const rsvpEvent = useCallback(async (eventId: string, responseStatus: CanonicalResponseStatus, events: CanonicalCalendarEvent[]) => {
-    const event = events.find((e) => e.canonicalEventId === eventId)
-    if (!event) return
+  const rsvpEvent = useCallback(
+    async (
+      eventId: string,
+      responseStatus: CanonicalResponseStatus,
+      events: CanonicalCalendarEvent[]
+    ) => {
+      const event = events.find((e) => e.canonicalEventId === eventId)
+      if (!event) return
 
-    const attendees = event.attendees ?? []
-    const selfIndex = attendees.findIndex((a) => a.self)
+      const attendees = event.attendees ?? []
+      const selfIndex = attendees.findIndex((a) => a.self)
 
-    const updatedAttendees = selfIndex >= 0
-      ? attendees.map((a, i) => i === selfIndex ? { ...a, responseStatus } : a)
-      : attendees
+      const updatedAttendees =
+        selfIndex >= 0
+          ? attendees.map((a, i) => (i === selfIndex ? { ...a, responseStatus } : a))
+          : attendees
 
-    const updatedEvent: CanonicalCalendarEvent = {
-      ...event,
-      attendees: updatedAttendees,
-      selfAttendee: selfIndex >= 0 ? { ...attendees[selfIndex], responseStatus } : event.selfAttendee,
-      canonicalUpdatedAtMs: Date.now(),
-      syncState: 'pending_writeback' as const,
-      source: { type: 'local' as const }
-    }
-
-    setEvents((prev) =>
-      prev.map((e) => (e.canonicalEventId === eventId ? updatedEvent : e))
-    )
-    if (selectedEvent?.canonicalEventId === eventId) {
-      setSelectedEvent(updatedEvent)
-    }
-
-    try {
-      await enqueueUpdate(userId, updatedEvent, event.updatedAtMs, 'rsvp')
-      toast.success('RSVP updated successfully')
-    } catch (error) {
-      logger.error('Failed to enqueue RSVP update', error)
-      setEvents((prev) =>
-        prev.map((e) => (e.canonicalEventId === eventId ? event : e))
-      )
-      if (selectedEvent?.canonicalEventId === eventId) {
-        setSelectedEvent(event)
+      const updatedEvent: CanonicalCalendarEvent = {
+        ...event,
+        attendees: updatedAttendees,
+        selfAttendee:
+          selfIndex >= 0 ? { ...attendees[selfIndex], responseStatus } : event.selfAttendee,
+        canonicalUpdatedAtMs: Date.now(),
+        syncState: 'pending_writeback' as const,
+        source: { type: 'local' as const },
       }
-      toast.error('Failed to update RSVP', {
-        description: (error as Error).message
-      })
-    }
-  }, [selectedEvent, userId, setEvents, setSelectedEvent])
+
+      setEvents((prev) => prev.map((e) => (e.canonicalEventId === eventId ? updatedEvent : e)))
+      if (selectedEvent?.canonicalEventId === eventId) {
+        setSelectedEvent(updatedEvent)
+      }
+
+      try {
+        await enqueueUpdate(userId, updatedEvent, event.updatedAtMs, 'rsvp')
+        toast.success('RSVP updated successfully')
+      } catch (error) {
+        logger.error('Failed to enqueue RSVP update', error)
+        setEvents((prev) => prev.map((e) => (e.canonicalEventId === eventId ? event : e)))
+        if (selectedEvent?.canonicalEventId === eventId) {
+          setSelectedEvent(event)
+        }
+        toast.error('Failed to update RSVP', {
+          description: (error as Error).message,
+        })
+      }
+    },
+    [selectedEvent, userId, setEvents, setSelectedEvent]
+  )
 
   return {
     createEvent,
     updateEvent,
     deleteEvent,
     retryWriteback,
-    rsvpEvent
+    rsvpEvent,
   }
 }

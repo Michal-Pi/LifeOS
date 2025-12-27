@@ -6,7 +6,7 @@ import {
   importanceToSlider,
   urgencyFromSlider,
   urgencyLabel,
-  urgencyToSlider
+  urgencyToSlider,
 } from '@/lib/todoUi'
 
 interface TaskDetailSidebarProps {
@@ -24,7 +24,7 @@ export function TaskDetailSidebar({
   onUpdate,
   onDelete,
   onSchedule,
-  onConvert
+  onConvert,
 }: TaskDetailSidebarProps) {
   const totalMinutes = task?.allocatedTimeMinutes || 0
   const estimatedHours = Math.floor(totalMinutes / 60)
@@ -32,7 +32,7 @@ export function TaskDetailSidebar({
 
   const effectiveUrgency = task?.dueDate
     ? calculateUrgency(task.dueDate)
-    : task?.urgency ?? 'later'
+    : (task?.urgency ?? 'later')
 
   if (!task) {
     return (
@@ -67,7 +67,9 @@ export function TaskDetailSidebar({
     <aside className="task-detail-sidebar">
       <div className="sidebar-header">
         <h3>Task Details</h3>
-        <button className="close-button" onClick={onClose}>×</button>
+        <button className="close-button" onClick={onClose}>
+          ×
+        </button>
       </div>
       <div className="sidebar-content">
         <h4>{task.title}</h4>
@@ -121,7 +123,11 @@ export function TaskDetailSidebar({
 
         <div className="form-group">
           <label>Due Date</label>
-          <input type="date" value={task.dueDate || ''} onChange={(e) => onUpdate({ ...task, dueDate: e.target.value })} />
+          <input
+            type="date"
+            value={task.dueDate || ''}
+            onChange={(e) => onUpdate({ ...task, dueDate: e.target.value })}
+          />
         </div>
 
         <div className="form-group">
@@ -155,7 +161,9 @@ export function TaskDetailSidebar({
           <label>Scheduled Events</label>
           {task.calendarEventIds && task.calendarEventIds.length > 0 ? (
             <ul className="linked-events-list">
-              {task.calendarEventIds.map(id => <li key={id}>🔗 {id.substring(0, 12)}...</li>)}
+              {task.calendarEventIds.map((id) => (
+                <li key={id}>🔗 {id.substring(0, 12)}...</li>
+              ))}
             </ul>
           ) : (
             <p className="empty-state-text small">Not scheduled</p>
@@ -163,22 +171,21 @@ export function TaskDetailSidebar({
         </div>
 
         <div className="sidebar-actions">
-          <button
-            className="ghost-button"
-            onClick={() => onSchedule(task)}
-          >
+          <button className="ghost-button" onClick={() => onSchedule(task)}>
             {task.calendarEventIds && task.calendarEventIds.length > 0
               ? `Add Time Block (${task.calendarEventIds.length} scheduled)`
               : 'Schedule on Calendar'}
           </button>
-          <button 
+          <button
             className="ghost-button"
             onClick={() => onConvert(task)}
             title="Convert this task into a new project"
           >
             Convert to Project
           </button>
-          <button className="ghost-button danger" onClick={() => onDelete(task.id)}>Delete Task</button>
+          <button className="ghost-button danger" onClick={() => onDelete(task.id)}>
+            Delete Task
+          </button>
         </div>
       </div>
     </aside>

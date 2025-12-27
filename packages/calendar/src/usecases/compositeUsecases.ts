@@ -5,7 +5,7 @@ import {
   createCompositeFromCandidate,
   addMemberToComposite,
   removeMemberFromComposite,
-  DEFAULT_TIME_TITLE_CONFIG
+  DEFAULT_TIME_TITLE_CONFIG,
 } from '../domain/composite'
 import type { CanonicalCalendarEvent } from '../domain/models'
 import type { CalendarEventRepository } from '../ports/calendarRepository'
@@ -53,13 +53,19 @@ export async function detectAndLinkDuplicates(
     allEventIds.add(candidate.eventA.canonicalEventId)
     allEventIds.add(candidate.eventB.canonicalEventId)
   }
-  const compositeMap = await deps.compositeRepository.findByCanonicalEventIds(userId, Array.from(allEventIds))
+  const compositeMap = await deps.compositeRepository.findByCanonicalEventIds(
+    userId,
+    Array.from(allEventIds)
+  )
 
   for (const candidate of candidates) {
     const { eventA, eventB } = candidate
 
     // Skip if either event already processed
-    if (processedEventIds.has(eventA.canonicalEventId) || processedEventIds.has(eventB.canonicalEventId)) {
+    if (
+      processedEventIds.has(eventA.canonicalEventId) ||
+      processedEventIds.has(eventB.canonicalEventId)
+    ) {
       continue
     }
 
@@ -78,13 +84,21 @@ export async function detectAndLinkDuplicates(
       // Add eventB to eventA's composite
       const composite = existingA[0]
       const updated = addMemberToComposite(composite, eventB)
-      await deps.compositeRepository.update(userId, composite.id ?? composite.compositeEventId ?? '', updated)
+      await deps.compositeRepository.update(
+        userId,
+        composite.id ?? composite.compositeEventId ?? '',
+        updated
+      )
       updatedComposites.push(updated)
     } else if (existingB.length > 0) {
       // Add eventA to eventB's composite
       const composite = existingB[0]
       const updated = addMemberToComposite(composite, eventA)
-      await deps.compositeRepository.update(userId, composite.id ?? composite.compositeEventId ?? '', updated)
+      await deps.compositeRepository.update(
+        userId,
+        composite.id ?? composite.compositeEventId ?? '',
+        updated
+      )
       updatedComposites.push(updated)
     } else {
       // Create new composite
@@ -101,7 +115,7 @@ export async function detectAndLinkDuplicates(
   return {
     candidates,
     newComposites,
-    updatedComposites
+    updatedComposites,
   }
 }
 
@@ -124,7 +138,10 @@ export async function linkEventsManually(
   }
 
   // Check if any events are already in a composite - use batch lookup
-  const compositeMap = await deps.compositeRepository.findByCanonicalEventIds(userId, canonicalEventIds)
+  const compositeMap = await deps.compositeRepository.findByCanonicalEventIds(
+    userId,
+    canonicalEventIds
+  )
   for (const eventId of canonicalEventIds) {
     const existing = compositeMap.get(eventId) ?? []
     if (existing.length > 0) {
@@ -239,13 +256,12 @@ export async function processSyncForComposites(
   const result = await detectAndLinkDuplicates(deps, {
     userId,
     dayKeys: Array.from(dayKeys),
-    config
+    config,
   })
 
   return {
     compositeCreated: result.newComposites.length,
     compositeUpdated: result.updatedComposites.length,
-    duplicatesDetected: result.candidates.length
+    duplicatesDetected: result.candidates.length,
   }
 }
-

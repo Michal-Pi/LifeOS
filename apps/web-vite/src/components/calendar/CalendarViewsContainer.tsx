@@ -48,7 +48,11 @@ interface CalendarViewsContainerProps {
 /**
  * Get display info for sync state
  */
-function getSyncStateDisplay(syncState?: SyncState): { label: string; className: string; icon: string } {
+function getSyncStateDisplay(syncState?: SyncState): {
+  label: string
+  className: string
+  icon: string
+} {
   switch (syncState) {
     case 'synced':
       return { label: 'Synced', className: 'synced', icon: '✓' }
@@ -67,7 +71,7 @@ function getSyncStateDisplay(syncState?: SyncState): { label: string; className:
 
 const timeFormatter = new Intl.DateTimeFormat('en-US', {
   hour: 'numeric',
-  minute: 'numeric'
+  minute: 'numeric',
 })
 
 export function CalendarViewsContainer({
@@ -82,12 +86,12 @@ export function CalendarViewsContainer({
   selectedEvent,
   pendingOps,
   onDateSelect,
-  onEventSelect
+  onEventSelect,
 }: CalendarViewsContainerProps) {
   // Scroll to event timeline helper
   const scrollToTimeline = () => {
     document.querySelector('.calendar-events')?.scrollIntoView({
-      behavior: 'smooth'
+      behavior: 'smooth',
     })
   }
 
@@ -138,7 +142,8 @@ export function CalendarViewsContainer({
           <div className="calendar-events-header">
             <p className="section-label">Event timeline</p>
             <p className="calendar-meta">
-              {events.length} event{events.length !== 1 ? 's' : ''} {selectedMonthDate ? 'on selected date' : 'today'}
+              {events.length} event{events.length !== 1 ? 's' : ''}{' '}
+              {selectedMonthDate ? 'on selected date' : 'today'}
             </p>
           </div>
           <div role="list" aria-label="Today's events">
@@ -151,7 +156,11 @@ export function CalendarViewsContainer({
                 const isSelected = selectedEvent?.canonicalEventId === event.canonicalEventId
                 const eventSyncState = getSyncStateDisplay(event.syncState)
                 const hasPendingOp = pendingOps.some((op) => op.eventId === event.canonicalEventId)
-                const isRecurring = Boolean(event.isRecurringSeries || event.recurrenceV2?.rule || event.recurrence?.recurrenceRules?.length)
+                const isRecurring = Boolean(
+                  event.isRecurringSeries ||
+                  event.recurrenceV2?.rule ||
+                  event.recurrence?.recurrenceRules?.length
+                )
                 const hasGuests = (event.attendees?.length ?? 0) > 0
                 const colorTone = hasGuests ? 'dark' : isRecurring ? 'light' : 'normal'
 

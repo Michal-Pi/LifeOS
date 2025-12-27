@@ -72,10 +72,7 @@ function getOAuthClient() {
  * Get a valid access token for a user's Google account
  * Refreshes if necessary
  */
-export async function getValidAccessToken(
-  uid: string,
-  accountId: string
-): Promise<string> {
+export async function getValidAccessToken(uid: string, accountId: string): Promise<string> {
   const tokenDoc = await privateAccountRef(uid, accountId).get()
   if (!tokenDoc.exists) {
     throw new Error('No tokens found for account')
@@ -115,10 +112,8 @@ export async function getValidAccessToken(
   await privateAccountRef(uid, accountId).set(
     {
       accessToken: credentials.access_token,
-      expiryDate: credentials.expiry_date
-        ? new Date(credentials.expiry_date).toISOString()
-        : null,
-      updatedAt: new Date().toISOString()
+      expiryDate: credentials.expiry_date ? new Date(credentials.expiry_date).toISOString() : null,
+      updatedAt: new Date().toISOString(),
     },
     { merge: true }
   )
@@ -142,12 +137,12 @@ async function makeCalendarRequest<T>(
   const url = `${CALENDAR_API_BASE}${path}`
   const headers: Record<string, string> = {
     Authorization: `Bearer ${accessToken}`,
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
   }
 
   const options: RequestInit = {
     method,
-    headers
+    headers,
   }
 
   if (body) {
@@ -155,7 +150,7 @@ async function makeCalendarRequest<T>(
   }
 
   const response = await fetch(url, options)
-  const responseData = await response.json() as { error?: GoogleApiError; [key: string]: unknown }
+  const responseData = (await response.json()) as { error?: GoogleApiError; [key: string]: unknown }
 
   if (!response.ok) {
     const error = responseData.error
@@ -198,7 +193,7 @@ export function toGoogleEventInput(params: {
     transparency,
     visibility,
     recurrence,
-    attendees
+    attendees,
   } = params
 
   const event: GoogleCalendarEventInput = {
@@ -208,7 +203,7 @@ export function toGoogleEventInput(params: {
     transparency,
     visibility,
     start: {},
-    end: {}
+    end: {},
   }
 
   if (allDay) {
@@ -287,8 +282,8 @@ export async function deleteEvent(
   const response = await fetch(url, {
     method: 'DELETE',
     headers: {
-      Authorization: `Bearer ${accessToken}`
-    }
+      Authorization: `Bearer ${accessToken}`,
+    },
   })
 
   if (!response.ok && response.status !== 410) {
@@ -350,7 +345,7 @@ export async function getRecurringInstances(
       timeMin,
       timeMax,
       maxResults: '250',
-      showDeleted: 'true'
+      showDeleted: 'true',
     })
     if (pageToken) {
       params.set('pageToken', pageToken)
@@ -471,8 +466,8 @@ export async function fetchCalendarEvents(
   const params = new URLSearchParams()
 
   // Always expand recurring events and include deleted events
-  params.set('singleEvents', 'true')  // Expand recurring series into instances
-  params.set('showDeleted', 'true')   // Include cancelled events (for sync)
+  params.set('singleEvents', 'true') // Expand recurring series into instances
+  params.set('showDeleted', 'true') // Include cancelled events (for sync)
   params.set('maxResults', String(options.maxResults ?? 2500))
 
   if (options.syncToken) {
@@ -496,16 +491,12 @@ export async function fetchCalendarEvents(
   const path = `/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`
 
   try {
-    const response = await makeCalendarRequest<GoogleEventsListResponse>(
-      accessToken,
-      'GET',
-      path
-    )
+    const response = await makeCalendarRequest<GoogleEventsListResponse>(accessToken, 'GET', path)
 
     return {
       events: response.items ?? [],
       nextPageToken: response.nextPageToken,
-      nextSyncToken: response.nextSyncToken
+      nextSyncToken: response.nextSyncToken,
     }
   } catch (error: any) {
     // Handle syncToken invalidation (410 Gone)
@@ -572,7 +563,7 @@ export async function fetchCalendarList(
     const params = new URLSearchParams({
       maxResults: '250',
       showDeleted: 'false',
-      showHidden: 'false'
+      showHidden: 'false',
     })
     if (pageToken) {
       params.set('pageToken', pageToken)
@@ -580,11 +571,7 @@ export async function fetchCalendarList(
 
     const path = `/users/me/calendarList?${params.toString()}`
 
-    const response = await makeCalendarRequest<GoogleCalendarListResponse>(
-      accessToken,
-      'GET',
-      path
-    )
+    const response = await makeCalendarRequest<GoogleCalendarListResponse>(accessToken, 'GET', path)
 
     if (response.items) {
       calendars.push(...response.items)
@@ -639,9 +626,9 @@ export function normalizeGoogleCalendar(
     providerMeta: {
       provider: 'google',
       providerCalendarId: entry.id,
-      accountId
+      accountId,
     },
     visible: !entry.hidden,
-    selected: entry.selected ?? false
+    selected: entry.selected ?? false,
   }
 }

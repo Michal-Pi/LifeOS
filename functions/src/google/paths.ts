@@ -59,4 +59,3 @@ export function calendarRef(uid: string, calendarId: string) {
 export function calendarsCollection(uid: string) {
   return firestore.collection(`users/${uid}/calendars`)
 }
-

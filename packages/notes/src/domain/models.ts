@@ -144,16 +144,11 @@ export type CreateTopicInput = Omit<Topic, 'topicId' | 'createdAtMs' | 'updatedA
 
 export type CreateSectionInput = Omit<Section, 'sectionId' | 'createdAtMs' | 'updatedAtMs'>
 
-export type CreateAttachmentInput = Omit<
-  Attachment,
-  'attachmentId' | 'uploadedAtMs' | 'syncState'
->
+export type CreateAttachmentInput = Omit<Attachment, 'attachmentId' | 'uploadedAtMs' | 'syncState'>
 
 // ----- Update Input Types -----
 
-export type UpdateNoteInput = Partial<
-  Omit<Note, 'noteId' | 'userId' | 'createdAtMs' | 'version'>
->
+export type UpdateNoteInput = Partial<Omit<Note, 'noteId' | 'userId' | 'createdAtMs' | 'version'>>
 
 export type UpdateTopicInput = Partial<Omit<Topic, 'topicId' | 'userId' | 'createdAtMs'>>
 

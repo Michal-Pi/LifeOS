@@ -35,6 +35,7 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
     if (isOpen && projects.length === 0) {
       loadOKRs()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
   const loadOKRs = async () => {
@@ -107,7 +108,9 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
 
   const getSelectedOKRs = (): OKRItem[] => {
     const allOKRs = buildOKRList()
-    return selectedOKRIds.map((id) => allOKRs.find((okr) => okr.id === id)).filter(Boolean) as OKRItem[]
+    return selectedOKRIds
+      .map((id) => allOKRs.find((okr) => okr.id === id))
+      .filter(Boolean) as OKRItem[]
   }
 
   const selectedOKRs = getSelectedOKRs()
@@ -180,13 +183,9 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
                     <span className="okr-type-icon">{okr.type === 'project' ? '📊' : '🎯'}</span>
                     <div className="okr-item-info">
                       <p className="okr-item-title">{okr.title}</p>
-                      {okr.domain && (
-                        <span className="okr-domain">{okr.domain}</span>
-                      )}
+                      {okr.domain && <span className="okr-domain">{okr.domain}</span>}
                     </div>
-                    {selectedOKRIds.includes(okr.id) && (
-                      <span className="check-icon">✓</span>
-                    )}
+                    {selectedOKRIds.includes(okr.id) && <span className="check-icon">✓</span>}
                   </div>
 
                   {okr.objective && (

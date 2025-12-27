@@ -1,4 +1,4 @@
-export const storageKeyPrefix = 'lifeos.';
+export const storageKeyPrefix = 'lifeos.'
 
 function getLocalStorage() {
   if (typeof globalThis === 'undefined') {

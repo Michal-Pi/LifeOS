@@ -3,6 +3,48 @@
  * Includes mobile responsiveness and accessibility improvements
  */
 
+/* ========== Incantations ========== */
+
+.incantation-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.incantation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.incantation-item {
+  padding: 1rem;
+  background: var(--muted);
+  border-left: 4px solid var(--primary);
+  border-radius: 6px;
+}
+
+.incantation-type-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.05em;
+}
+
+.incantation-text {
+  font-size: 1.1rem;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--foreground);
+  font-style: italic;
+  margin: 0;
+}
+
 /* ========== Habit Consistency Chart ========== */
 
 .consistency-chart {

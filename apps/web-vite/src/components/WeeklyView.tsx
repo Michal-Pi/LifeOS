@@ -55,7 +55,7 @@ export const WeeklyView = React.memo(function WeeklyView({
   instances = [],
   onDateSelect,
   selectedDate,
-  onDateClick
+  onDateClick,
 }: WeeklyViewProps) {
   const today = useMemo(() => new Date(), [])
 
@@ -84,7 +84,7 @@ export const WeeklyView = React.memo(function WeeklyView({
           title: event.title ?? 'Untitled',
           isRecurring,
           isInstance: false,
-          colorTone
+          colorTone,
         })
         map.set(dayKey, existing)
       }
@@ -101,7 +101,7 @@ export const WeeklyView = React.memo(function WeeklyView({
         title: instance.title ?? 'Untitled',
         isRecurring: true,
         isInstance: true,
-        colorTone
+        colorTone,
       })
       map.set(dateKey, existing)
     }
@@ -119,7 +119,7 @@ export const WeeklyView = React.memo(function WeeklyView({
         dayOfMonth: date.getDate(),
         isCurrentMonth: date.getMonth() === weekStartDate.getMonth(),
         isToday: isSameDay(date, today),
-        events: eventsByDate.get(dateKey) ?? []
+        events: eventsByDate.get(dateKey) ?? [],
       }
     })
   }, [weekGrid, today, eventsByDate, weekStartDate])

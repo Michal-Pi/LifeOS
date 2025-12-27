@@ -1,4 +1,5 @@
 # Phase 5: Polish & Advanced Features - Detailed Implementation Plan
+
 **Version:** 1.0
 **Created:** 2025-12-27
 **Duration:** 7-10 days
@@ -9,6 +10,7 @@
 Phase 5 focuses on completing the Habits and Mind Engine implementation with advanced features, integrations, and production polish. This includes Weekly Review integration, habit analytics, calendar projection, performance optimization, and comprehensive testing.
 
 ### Key Deliverables
+
 1. Weekly Review Habits & Mind section
 2. Habit progress analytics and visualizations
 3. Intelligent recommendations engine
@@ -22,6 +24,7 @@ Phase 5 focuses on completing the Habits and Mind Engine implementation with adv
 ---
 
 ## Table of Contents
+
 1. [Weekly Review Integration](#weekly-review-integration)
 2. [Habit Analytics & Visualizations](#habit-analytics--visualizations)
 3. [Recommendations Engine](#recommendations-engine)
@@ -39,6 +42,7 @@ Phase 5 focuses on completing the Habits and Mind Engine implementation with adv
 ### 5.1 Weekly Review Architecture
 
 Current Weekly Review structure (from [apps/web-vite/src/pages/WeeklyReviewPage.tsx](../../apps/web-vite/src/pages/WeeklyReviewPage.tsx)):
+
 - Multi-step wizard pattern
 - Existing steps: Past week reflection, Upcoming week planning, etc.
 
@@ -284,115 +288,118 @@ export function useHabitProgress() {
   const { user } = useAuth()
   const userId = user?.uid
 
-  const getWeeklyStats = useCallback(async (
-    habitId: HabitId,
-    startDate: string,
-    endDate: string
-  ): Promise<HabitWeeklyStats> => {
-    if (!userId) throw new Error('User not authenticated')
+  const getWeeklyStats = useCallback(
+    async (habitId: HabitId, startDate: string, endDate: string): Promise<HabitWeeklyStats> => {
+      if (!userId) throw new Error('User not authenticated')
 
-    const checkins = await checkinRepo.listForDateRange(userId, startDate, endDate)
-    const habitCheckins = checkins.filter(c => c.habitId === habitId)
+      const checkins = await checkinRepo.listForDateRange(userId, startDate, endDate)
+      const habitCheckins = checkins.filter((c) => c.habitId === habitId)
 
-    // Calculate scheduled days in this range
-    // For simplicity, assuming 7 days (would actually check habit.schedule.daysOfWeek)
-    const totalScheduledDays = 7
+      // Calculate scheduled days in this range
+      // For simplicity, assuming 7 days (would actually check habit.schedule.daysOfWeek)
+      const totalScheduledDays = 7
 
-    const doneCount = habitCheckins.filter(c => c.status === 'done').length
-    const tinyCount = habitCheckins.filter(c => c.status === 'tiny').length
-    const skipCount = habitCheckins.filter(c => c.status === 'skip').length
-    const missedCount = totalScheduledDays - habitCheckins.length
+      const doneCount = habitCheckins.filter((c) => c.status === 'done').length
+      const tinyCount = habitCheckins.filter((c) => c.status === 'tiny').length
+      const skipCount = habitCheckins.filter((c) => c.status === 'skip').length
+      const missedCount = totalScheduledDays - habitCheckins.length
 
-    const consistencyPercent = Math.round(
-      ((doneCount + tinyCount) / totalScheduledDays) * 100
-    )
+      const consistencyPercent = Math.round(((doneCount + tinyCount) / totalScheduledDays) * 100)
 
-    return {
-      totalScheduledDays,
-      doneCount,
-      tinyCount,
-      skipCount,
-      missedCount,
-      consistencyPercent
-    }
-  }, [userId])
-
-  const calculateStreak = useCallback(async (habitId: HabitId): Promise<number> => {
-    if (!userId) throw new Error('User not authenticated')
-
-    // Get recent check-ins (last 60 days)
-    const sixtyDaysAgo = new Date()
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
-    const startDate = sixtyDaysAgo.toISOString().split('T')[0]
-    const endDate = new Date().toISOString().split('T')[0]
-
-    const checkins = await checkinRepo.listForDateRange(userId, startDate, endDate)
-    const habitCheckins = checkins
-      .filter(c => c.habitId === habitId)
-      .sort((a, b) => b.dateKey.localeCompare(a.dateKey)) // Most recent first
-
-    let streak = 0
-    let currentDate = new Date()
-
-    for (const checkin of habitCheckins) {
-      const checkinDate = new Date(checkin.dateKey)
-      const daysDiff = Math.floor((currentDate.getTime() - checkinDate.getTime()) / (1000 * 60 * 60 * 24))
-
-      // If there's a gap of more than 2 days (allowing for recovery), break
-      if (daysDiff > 2) break
-
-      // Count done and tiny as streak-preserving
-      if (checkin.status === 'done' || checkin.status === 'tiny') {
-        streak++
-        currentDate = checkinDate
-      } else if (checkin.status === 'skip') {
-        // Skip breaks the streak
-        break
+      return {
+        totalScheduledDays,
+        doneCount,
+        tinyCount,
+        skipCount,
+        missedCount,
+        consistencyPercent,
       }
-    }
+    },
+    [userId]
+  )
 
-    return streak
-  }, [userId])
+  const calculateStreak = useCallback(
+    async (habitId: HabitId): Promise<number> => {
+      if (!userId) throw new Error('User not authenticated')
 
-  const getProgressTrend = useCallback(async (
-    habitId: HabitId
-  ): Promise<'improving' | 'stable' | 'declining'> => {
-    if (!userId) return 'stable'
+      // Get recent check-ins (last 60 days)
+      const sixtyDaysAgo = new Date()
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+      const startDate = sixtyDaysAgo.toISOString().split('T')[0]
+      const endDate = new Date().toISOString().split('T')[0]
 
-    // Compare last week vs week before
-    const today = new Date()
-    const lastWeekStart = new Date(today)
-    lastWeekStart.setDate(today.getDate() - 7)
-    const lastWeekEnd = today
+      const checkins = await checkinRepo.listForDateRange(userId, startDate, endDate)
+      const habitCheckins = checkins
+        .filter((c) => c.habitId === habitId)
+        .sort((a, b) => b.dateKey.localeCompare(a.dateKey)) // Most recent first
 
-    const priorWeekStart = new Date(today)
-    priorWeekStart.setDate(today.getDate() - 14)
-    const priorWeekEnd = new Date(today)
-    priorWeekEnd.setDate(today.getDate() - 7)
+      let streak = 0
+      let currentDate = new Date()
 
-    const lastWeekStats = await getWeeklyStats(
-      habitId,
-      lastWeekStart.toISOString().split('T')[0],
-      lastWeekEnd.toISOString().split('T')[0]
-    )
+      for (const checkin of habitCheckins) {
+        const checkinDate = new Date(checkin.dateKey)
+        const daysDiff = Math.floor(
+          (currentDate.getTime() - checkinDate.getTime()) / (1000 * 60 * 60 * 24)
+        )
 
-    const priorWeekStats = await getWeeklyStats(
-      habitId,
-      priorWeekStart.toISOString().split('T')[0],
-      priorWeekEnd.toISOString().split('T')[0]
-    )
+        // If there's a gap of more than 2 days (allowing for recovery), break
+        if (daysDiff > 2) break
 
-    const diff = lastWeekStats.consistencyPercent - priorWeekStats.consistencyPercent
+        // Count done and tiny as streak-preserving
+        if (checkin.status === 'done' || checkin.status === 'tiny') {
+          streak++
+          currentDate = checkinDate
+        } else if (checkin.status === 'skip') {
+          // Skip breaks the streak
+          break
+        }
+      }
 
-    if (diff > 10) return 'improving'
-    if (diff < -10) return 'declining'
-    return 'stable'
-  }, [userId, getWeeklyStats])
+      return streak
+    },
+    [userId]
+  )
+
+  const getProgressTrend = useCallback(
+    async (habitId: HabitId): Promise<'improving' | 'stable' | 'declining'> => {
+      if (!userId) return 'stable'
+
+      // Compare last week vs week before
+      const today = new Date()
+      const lastWeekStart = new Date(today)
+      lastWeekStart.setDate(today.getDate() - 7)
+      const lastWeekEnd = today
+
+      const priorWeekStart = new Date(today)
+      priorWeekStart.setDate(today.getDate() - 14)
+      const priorWeekEnd = new Date(today)
+      priorWeekEnd.setDate(today.getDate() - 7)
+
+      const lastWeekStats = await getWeeklyStats(
+        habitId,
+        lastWeekStart.toISOString().split('T')[0],
+        lastWeekEnd.toISOString().split('T')[0]
+      )
+
+      const priorWeekStats = await getWeeklyStats(
+        habitId,
+        priorWeekStart.toISOString().split('T')[0],
+        priorWeekEnd.toISOString().split('T')[0]
+      )
+
+      const diff = lastWeekStats.consistencyPercent - priorWeekStats.consistencyPercent
+
+      if (diff > 10) return 'improving'
+      if (diff < -10) return 'declining'
+      return 'stable'
+    },
+    [userId, getWeeklyStats]
+  )
 
   return {
     getWeeklyStats,
     calculateStreak,
-    getProgressTrend
+    getProgressTrend,
   }
 }
 ```
@@ -711,62 +718,68 @@ export function useHabitCalendarProjection() {
   const { user } = useAuth()
   const userId = user?.uid
 
-  const enableProjection = useCallback(async (habit: CanonicalHabit) => {
-    if (!userId) throw new Error('User not authenticated')
-    if (!habit.calendarProjection?.enabled) return
+  const enableProjection = useCallback(
+    async (habit: CanonicalHabit) => {
+      if (!userId) throw new Error('User not authenticated')
+      if (!habit.calendarProjection?.enabled) return
 
-    // Create recurring event for this habit
-    const { blockMinutes, timeHint } = habit.calendarProjection
+      // Create recurring event for this habit
+      const { blockMinutes, timeHint } = habit.calendarProjection
 
-    // Determine start time based on anchor or timeHint
-    let startHour = 9 // Default
-    if (timeHint === 'morning') startHour = 7
-    if (timeHint === 'midday') startHour = 12
-    if (timeHint === 'evening') startHour = 18
+      // Determine start time based on anchor or timeHint
+      let startHour = 9 // Default
+      if (timeHint === 'morning') startHour = 7
+      if (timeHint === 'midday') startHour = 12
+      if (timeHint === 'evening') startHour = 18
 
-    if (habit.anchor.type === 'time_window') {
-      startHour = Math.floor(habit.anchor.startTimeMs / (1000 * 60 * 60))
-    }
+      if (habit.anchor.type === 'time_window') {
+        startHour = Math.floor(habit.anchor.startTimeMs / (1000 * 60 * 60))
+      }
 
-    // Create internal calendar event (one-time or recurring)
-    const event: Omit<CanonicalCalendarEvent, 'id' | 'createdAt' | 'updatedAt'> = {
-      userId,
-      calendarId: 'lifeos-habits', // Internal calendar
-      provider: 'lifeos',
-      title: `🎯 ${habit.title}`,
-      description: `Habit: ${habit.recipe.standardVersion.description}\nTiny version: ${habit.recipe.tinyVersion.description}`,
-      startTimeMs: Date.now(), // Would calculate actual time
-      endTimeMs: Date.now() + (blockMinutes * 60 * 1000),
-      allDay: false,
-      metadata: {
-        source: {
-          type: 'habit_projection',
-          habitId: habit.habitId
-        }
-      },
-      // Recurrence would be added here based on habit.schedule.daysOfWeek
-      recurrence: null, // Simplified for now
-      syncState: 'synced',
-      version: 1
-    }
+      // Create internal calendar event (one-time or recurring)
+      const event: Omit<CanonicalCalendarEvent, 'id' | 'createdAt' | 'updatedAt'> = {
+        userId,
+        calendarId: 'lifeos-habits', // Internal calendar
+        provider: 'lifeos',
+        title: `🎯 ${habit.title}`,
+        description: `Habit: ${habit.recipe.standardVersion.description}\nTiny version: ${habit.recipe.tinyVersion.description}`,
+        startTimeMs: Date.now(), // Would calculate actual time
+        endTimeMs: Date.now() + blockMinutes * 60 * 1000,
+        allDay: false,
+        metadata: {
+          source: {
+            type: 'habit_projection',
+            habitId: habit.habitId,
+          },
+        },
+        // Recurrence would be added here based on habit.schedule.daysOfWeek
+        recurrence: null, // Simplified for now
+        syncState: 'synced',
+        version: 1,
+      }
 
-    // Would save to calendar repository
-    // await calendarRepo.create(userId, event)
+      // Would save to calendar repository
+      // await calendarRepo.create(userId, event)
 
-    return event
-  }, [userId])
+      return event
+    },
+    [userId]
+  )
 
-  const disableProjection = useCallback(async (habit: CanonicalHabit) => {
-    if (!userId) throw new Error('User not authenticated')
+  const disableProjection = useCallback(
+    async (habit: CanonicalHabit) => {
+      if (!userId) throw new Error('User not authenticated')
 
-    // Find and delete calendar events with this habitId in metadata
-    // Would query: WHERE metadata.source.habitId == habit.habitId
-    // Then delete those events
-  }, [userId])
+      // Find and delete calendar events with this habitId in metadata
+      // Would query: WHERE metadata.source.habitId == habit.habitId
+      // Then delete those events
+    },
+    [userId]
+  )
 
   return {
     enableProjection,
-    disableProjection
+    disableProjection,
   }
 }
 ```
@@ -859,7 +872,7 @@ export const getHabitsDB = () => {
           checkinStore.createIndex('userId_dateKey', ['userId', 'dateKey'])
           checkinStore.createIndex('habitId_dateKey', ['habitId', 'dateKey'])
         }
-      }
+      },
     })
   }
   return dbPromise
@@ -883,7 +896,7 @@ export function useHabitProgress() {
   return {
     getWeeklyStats,
     calculateStreak: memoizedStreak,
-    getProgressTrend
+    getProgressTrend,
   }
 }
 ```
@@ -1067,12 +1080,12 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure'
+    video: 'retain-on-failure',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile', use: { ...devices['iPhone 13'] } }
-  ]
+    { name: 'mobile', use: { ...devices['iPhone 13'] } },
+  ],
 })
 ```
 
@@ -1103,6 +1116,7 @@ Create guide: `docs/features/HABITS_USER_GUIDE.md`
 ### Checking In
 
 In the **Evening Module** of Today page:
+
 - ✓ **Done** = Completed the full version
 - ~ **Tiny** = Did the minimal version (still counts!)
 - – **Skip** = Chose not to do it today
@@ -1118,6 +1132,7 @@ In the **Evening Module** of Today page:
 ### When to Use "I'm Activated"
 
 Tap the **I'm Activated** button when you feel:
+
 - Anxious before a meeting
 - Overwhelmed by your task list
 - Frustrated or angry
@@ -1126,14 +1141,17 @@ Tap the **I'm Activated** button when you feel:
 ### Intervention Types
 
 **Breathing (30-60 seconds)**
+
 - Physiological Sigh: Fastest stress reduction
 - Box Breathing: Focus and calm
 
 **Cognitive (1-2 minutes)**
+
 - CBT Thought Record: Challenge anxious thoughts
 - Best/Worst/Likely: Reality-test worries
 
 **Mindfulness (1 minute)**
+
 - ACT Defusion: Create distance from thoughts
 - What's True Right Now: Ground in present reality
 
@@ -1144,6 +1162,7 @@ When you complete a breathing or mindfulness intervention, it can automatically 
 ## Weekly Review
 
 The **Habits & Mind** section shows:
+
 - Consistency chart for all habits
 - Current streaks
 - Number of interventions used
@@ -1167,15 +1186,18 @@ The **Habits & Mind** section shows:
 ## Troubleshooting
 
 **Habit not showing in Evening Module?**
+
 - Check that it's scheduled for today's day of week
 - Ensure status is "Active" not "Paused"
 
 **Can't complete intervention?**
+
 - You can close and return to it later
 - Steps auto-advance after timers complete
 - Skip to next step if needed
 
 **Streak seems wrong?**
+
 - Retroactively log missed days if within grace period
 - Check timezone settings
 
@@ -1252,17 +1274,15 @@ import * as Sentry from '@sentry/react'
 
 Sentry.init({
   dsn: process.env.VITE_SENTRY_DSN,
-  integrations: [
-    new Sentry.BrowserTracing(),
-    new Sentry.Replay()
-  ],
+  integrations: [new Sentry.BrowserTracing(), new Sentry.Replay()],
   tracesSampleRate: 0.1,
   replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1.0
+  replaysOnErrorSampleRate: 1.0,
 })
 ```
 
 **Rollback plan:**
+
 ```bash
 # If issues detected:
 firebase hosting:rollback

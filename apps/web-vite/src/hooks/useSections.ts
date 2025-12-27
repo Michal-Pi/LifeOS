@@ -8,7 +8,13 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from './useAuth'
 import { createFirestoreSectionRepository } from '@/adapters/notes/firestoreSectionRepository'
-import type { Section, SectionId, TopicId, CreateSectionInput, UpdateSectionInput } from '@lifeos/notes'
+import type {
+  Section,
+  SectionId,
+  TopicId,
+  CreateSectionInput,
+  UpdateSectionInput,
+} from '@lifeos/notes'
 
 export interface UseSectionsReturn {
   sections: Section[]

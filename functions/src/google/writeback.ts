@@ -4,14 +4,14 @@ import {
   patchEvent,
   deleteEvent as deleteGoogleEvent,
   toGoogleEventInput,
-  getRecurringInstances
+  getRecurringInstances,
 } from './calendarApi.js'
 import {
   writebackQueueRef,
   writebackQueueCollection,
   canonicalEventRef,
   accountRef,
-  instanceMapRef
+  instanceMapRef,
 } from './paths.js'
 
 /**
@@ -88,7 +88,7 @@ const RETRY_DELAYS = [
   5 * 60 * 1000, // 5 minutes
   15 * 60 * 1000, // 15 minutes
   60 * 60 * 1000, // 1 hour
-  6 * 60 * 60 * 1000 // 6 hours (cap)
+  6 * 60 * 60 * 1000, // 6 hours (cap)
 ]
 
 function getRetryDelay(attempts: number): number {
@@ -131,7 +131,7 @@ export async function claimJob(uid: string, jobId: string): Promise<WritebackJob
 
     tx.update(jobRef, {
       status: 'processing',
-      attempts: FieldValue.increment(1)
+      attempts: FieldValue.increment(1),
     })
 
     return { ...job, status: 'processing' as const, attempts: job.attempts + 1 }
@@ -145,7 +145,7 @@ export async function claimJob(uid: string, jobId: string): Promise<WritebackJob
  */
 async function markJobSucceeded(uid: string, jobId: string): Promise<void> {
   await writebackQueueRef(uid, jobId).update({
-    status: 'succeeded'
+    status: 'succeeded',
   })
 }
 
@@ -162,7 +162,7 @@ async function markJobForRetry(
   await writebackQueueRef(uid, jobId).update({
     status: 'pending',
     availableAtMs: Date.now() + delay,
-    lastError: { ...error, atMs: Date.now() }
+    lastError: { ...error, atMs: Date.now() },
   })
 }
 
@@ -176,7 +176,7 @@ async function markJobFailed(
 ): Promise<void> {
   await writebackQueueRef(uid, jobId).update({
     status: 'failed',
-    lastError: { ...error, atMs: Date.now() }
+    lastError: { ...error, atMs: Date.now() },
   })
 }
 
@@ -197,7 +197,7 @@ async function updateEventSyncState(
 ): Promise<void> {
   const eventRef = canonicalEventRef(uid, eventId)
   const updateData: Record<string, unknown> = {
-    syncState: updates.syncState
+    syncState: updates.syncState,
   }
 
   if (updates.providerEventId) {
@@ -243,7 +243,7 @@ export async function processWritebackJob(job: WritebackJob): Promise<void> {
         transparency: payload.transparency,
         visibility: payload.visibility,
         recurrence: payload.recurrence,
-        attendees: payload.attendees
+        attendees: payload.attendees,
       })
 
       const result = await insertEvent(uid, accountId, providerCalendarId, googleEvent)
@@ -255,7 +255,7 @@ export async function processWritebackJob(job: WritebackJob): Promise<void> {
         providerEtag: result.etag,
         providerUpdatedAtMs: new Date(result.updated).getTime(),
         lastWritebackAtMs: Date.now(),
-        writebackError: null
+        writebackError: null,
       })
 
       await markJobSucceeded(uid, job.jobId)
@@ -295,17 +295,23 @@ export async function processWritebackJob(job: WritebackJob): Promise<void> {
         transparency: payload.transparency,
         visibility: payload.visibility,
         recurrence: job.isInstanceEdit ? undefined : payload.recurrence, // Don't set recurrence for instance edits
-        attendees: payload.attendees
+        attendees: payload.attendees,
       })
 
-      const result = await patchEvent(uid, accountId, providerCalendarId, targetEventId, googleEvent)
+      const result = await patchEvent(
+        uid,
+        accountId,
+        providerCalendarId,
+        targetEventId,
+        googleEvent
+      )
 
       await updateEventSyncState(uid, eventId, {
         syncState: 'synced',
         providerEtag: result.etag,
         providerUpdatedAtMs: new Date(result.updated).getTime(),
         lastWritebackAtMs: Date.now(),
-        writebackError: null
+        writebackError: null,
       })
 
       await markJobSucceeded(uid, job.jobId)
@@ -319,7 +325,7 @@ export async function processWritebackJob(job: WritebackJob): Promise<void> {
       await updateEventSyncState(uid, eventId, {
         syncState: 'synced',
         lastWritebackAtMs: Date.now(),
-        writebackError: null
+        writebackError: null,
       })
 
       await markJobSucceeded(uid, job.jobId)
@@ -335,18 +341,20 @@ export async function processWritebackJob(job: WritebackJob): Promise<void> {
       // Get current event to preserve other attendees
       // For RSVP, we only need to update the status of the self attendee
       const googleEventPatch = {
-        attendees: [{
-          email: payload.selfEmail,
-          responseStatus: payload.newStatus,
-          self: true
-        }]
+        attendees: [
+          {
+            email: payload.selfEmail,
+            responseStatus: payload.newStatus,
+            self: true,
+          },
+        ],
       }
 
       const result = await patchEvent(
-        uid, 
-        accountId, 
-        providerCalendarId, 
-        providerEventId, 
+        uid,
+        accountId,
+        providerCalendarId,
+        providerEventId,
         googleEventPatch,
         'externalOnly' // RSVP responses typically don't need to notify others
       )
@@ -356,7 +364,7 @@ export async function processWritebackJob(job: WritebackJob): Promise<void> {
         providerEtag: result.etag,
         providerUpdatedAtMs: new Date(result.updated).getTime(),
         lastWritebackAtMs: Date.now(),
-        writebackError: null
+        writebackError: null,
       })
 
       await markJobSucceeded(uid, job.jobId)
@@ -375,8 +383,8 @@ export async function processWritebackJob(job: WritebackJob): Promise<void> {
           displayName: a.displayName,
           responseStatus: a.responseStatus,
           optional: a.optional,
-          resource: a.resource
-        }))
+          resource: a.resource,
+        })),
       }
 
       const result = await patchEvent(
@@ -393,7 +401,7 @@ export async function processWritebackJob(job: WritebackJob): Promise<void> {
         providerEtag: result.etag,
         providerUpdatedAtMs: new Date(result.updated).getTime(),
         lastWritebackAtMs: Date.now(),
-        writebackError: null
+        writebackError: null,
       })
 
       await markJobSucceeded(uid, job.jobId)
@@ -408,26 +416,26 @@ export async function processWritebackJob(job: WritebackJob): Promise<void> {
       // Mark account as needs attention, fail job permanently
       await accountRef(uid, accountId).update({
         status: 'needs_attention',
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       })
       await markJobFailed(uid, job.jobId, errorInfo)
       await updateEventSyncState(uid, eventId, {
         syncState: 'error',
-        writebackError: { ...errorInfo, atMs: Date.now() }
+        writebackError: { ...errorInfo, atMs: Date.now() },
       })
     } else if (errorCategory === 'validation') {
       // Fail permanently - likely bad data
       await markJobFailed(uid, job.jobId, errorInfo)
       await updateEventSyncState(uid, eventId, {
         syncState: 'error',
-        writebackError: { ...errorInfo, atMs: Date.now() }
+        writebackError: { ...errorInfo, atMs: Date.now() },
       })
     } else if (errorCategory === 'conflict') {
       // etag mismatch - mark as conflict
       await markJobFailed(uid, job.jobId, errorInfo)
       await updateEventSyncState(uid, eventId, {
         syncState: 'conflict',
-        writebackError: { ...errorInfo, atMs: Date.now() }
+        writebackError: { ...errorInfo, atMs: Date.now() },
       })
     } else {
       // Transient error - retry if under max attempts
@@ -435,13 +443,13 @@ export async function processWritebackJob(job: WritebackJob): Promise<void> {
         await markJobForRetry(uid, job.jobId, job.attempts, errorInfo)
         await updateEventSyncState(uid, eventId, {
           syncState: 'pending_writeback',
-          writebackError: { ...errorInfo, atMs: Date.now() }
+          writebackError: { ...errorInfo, atMs: Date.now() },
         })
       } else {
         await markJobFailed(uid, job.jobId, errorInfo)
         await updateEventSyncState(uid, eventId, {
           syncState: 'error',
-          writebackError: { ...errorInfo, atMs: Date.now() }
+          writebackError: { ...errorInfo, atMs: Date.now() },
         })
       }
     }
@@ -504,7 +512,7 @@ export async function createWritebackJob(params: {
     availableAtMs: now,
     attempts: 0,
     maxAttempts: 10,
-    status: 'pending'
+    status: 'pending',
   }
 
   await writebackQueueRef(uid, jobId).set(job)
@@ -535,12 +543,15 @@ interface InstanceMapping {
   providerSeriesId: string
   accountId: string
   calendarId: string
-  occurrences: Record<string, {
-    providerInstanceId: string
-    providerEtag: string
-    providerUpdatedAtMs: number
-    originalStartMs: number
-  }>
+  occurrences: Record<
+    string,
+    {
+      providerInstanceId: string
+      providerEtag: string
+      providerUpdatedAtMs: number
+      originalStartMs: number
+    }
+  >
   fetchedAtMs: number
   rangeMinMs: number
   rangeMaxMs: number
@@ -575,7 +586,7 @@ export async function resolveInstanceId(
     if (cached && cacheValid) {
       return {
         instanceId: cached.providerInstanceId,
-        etag: cached.providerEtag
+        etag: cached.providerEtag,
       }
     }
   }
@@ -612,7 +623,7 @@ export async function resolveInstanceId(
           providerInstanceId: instance.id,
           providerEtag: instance.etag,
           providerUpdatedAtMs: new Date(instance.updated).getTime(),
-          originalStartMs
+          originalStartMs,
         }
       }
     }
@@ -626,7 +637,7 @@ export async function resolveInstanceId(
       occurrences,
       fetchedAtMs: Date.now(),
       rangeMinMs: occurrenceStartMs - windowMs,
-      rangeMaxMs: occurrenceStartMs + windowMs
+      rangeMaxMs: occurrenceStartMs + windowMs,
     }
 
     await instanceMapRef(uid, seriesId).set(mapping, { merge: true })
@@ -636,7 +647,7 @@ export async function resolveInstanceId(
     if (result) {
       return {
         instanceId: result.providerInstanceId,
-        etag: result.providerEtag
+        etag: result.providerEtag,
       }
     }
 

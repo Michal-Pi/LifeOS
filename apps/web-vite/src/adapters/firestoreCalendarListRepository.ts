@@ -9,7 +9,7 @@ import {
   query,
   setDoc,
   where,
-  type Firestore
+  type Firestore,
 } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 
@@ -31,10 +31,7 @@ export function createFirestoreCalendarListRepository(): CalendarListRepository 
       return snapshot.docs.map((d) => d.data() as CanonicalCalendar)
     },
 
-    async getCalendar(
-      userId: string,
-      calendarId: string
-    ): Promise<CanonicalCalendar | null> {
+    async getCalendar(userId: string, calendarId: string): Promise<CanonicalCalendar | null> {
       const db = await getDb()
       const docRef = getDocRef(db, userId, calendarId)
       const snapshot = await getDoc(docRef)
@@ -64,10 +61,7 @@ export function createFirestoreCalendarListRepository(): CalendarListRepository 
       return snapshot.docs[0].data() as CanonicalCalendar
     },
 
-    async saveCalendar(
-      userId: string,
-      calendar: CanonicalCalendar
-    ): Promise<void> {
+    async saveCalendar(userId: string, calendar: CanonicalCalendar): Promise<void> {
       const db = await getDb()
       const docRef = getDocRef(db, userId, calendar.calendarId)
       await setDoc(docRef, calendar, { merge: true })
@@ -100,6 +94,6 @@ export function createFirestoreCalendarListRepository(): CalendarListRepository 
           unsubscribe()
         }
       }
-    }
+    },
   }
 }

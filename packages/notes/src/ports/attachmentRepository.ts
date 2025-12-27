@@ -1,9 +1,4 @@
-import type {
-  Attachment,
-  AttachmentId,
-  NoteId,
-  CreateAttachmentInput,
-} from '../domain/models'
+import type { Attachment, AttachmentId, NoteId, CreateAttachmentInput } from '../domain/models'
 
 /**
  * Repository interface for Attachment persistence

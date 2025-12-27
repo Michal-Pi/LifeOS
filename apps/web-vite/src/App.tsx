@@ -22,9 +22,7 @@ const SettingsPage = lazy(() =>
 const WeeklyReviewPage = lazy(() =>
   import('./pages/WeeklyReviewPage').then((m) => ({ default: m.WeeklyReviewPage }))
 )
-const HabitsPage = lazy(() =>
-  import('./pages/HabitsPage').then((m) => ({ default: m.HabitsPage }))
-)
+const HabitsPage = lazy(() => import('./pages/HabitsPage').then((m) => ({ default: m.HabitsPage })))
 
 // Loading fallback component
 function PageLoader() {

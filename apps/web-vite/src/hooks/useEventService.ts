@@ -14,7 +14,7 @@ import type {
   CanonicalCalendarEvent,
   CanonicalRecurrence,
   CanonicalRecurrenceRule,
-  Weekday
+  Weekday,
 } from '@lifeos/calendar'
 import { computeOccursOn } from '@lifeos/calendar'
 import type { EventFormData } from '@/components/EventFormModal'
@@ -35,7 +35,7 @@ function buildRecurrenceV2(formData: EventFormData): CanonicalRecurrence | undef
 
   const { recurrence } = formData
   const rule: CanonicalRecurrenceRule = {
-    freq: recurrence.frequency as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'
+    freq: recurrence.frequency as 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY',
   }
 
   if (recurrence.interval && recurrence.interval > 1) rule.interval = recurrence.interval
@@ -64,7 +64,10 @@ export function useEventService({ userId }: UseEventServiceProps) {
    * @returns The created event
    */
   const createEvent = useCallback(
-    async (data: EventFormData, metadata?: Record<string, unknown>): Promise<CanonicalCalendarEvent> => {
+    async (
+      data: EventFormData,
+      metadata?: Record<string, unknown>
+    ): Promise<CanonicalCalendarEvent> => {
       const startMs = data.allDay
         ? new Date(`${data.startDate}T00:00:00`).getTime()
         : new Date(`${data.startDate}T${data.startTime}`).getTime()
@@ -84,7 +87,7 @@ export function useEventService({ userId }: UseEventServiceProps) {
           provider: 'local',
           accountId: 'local',
           providerCalendarId: 'local',
-          providerEventId: `local:${generateId()}`
+          providerEventId: `local:${generateId()}`,
         },
         createdAt: new Date(nowMs).toISOString(),
         updatedAt: new Date(nowMs).toISOString(),
@@ -108,7 +111,7 @@ export function useEventService({ userId }: UseEventServiceProps) {
         transparency: 'opaque',
         recurrenceV2,
         isRecurringSeries: isRecurring,
-        ...metadata
+        ...metadata,
       }
 
       // Enqueue for sync
@@ -120,7 +123,7 @@ export function useEventService({ userId }: UseEventServiceProps) {
   )
 
   return {
-    createEvent
+    createEvent,
     // TODO: Add updateEvent, deleteEvent, etc. as needed
   }
 }

@@ -4,6 +4,7 @@ import type { Id } from '@lifeos/core'
 
 export type HabitId = Id<'habit'>
 export type CheckinId = Id<'checkin'>
+export type IncantationId = Id<'incantation'>
 
 // ----- Sync State -----
 
@@ -30,14 +31,13 @@ export type CheckinStatus = 'done' | 'tiny' | 'skip'
 
 export interface AfterEventAnchor {
   type: 'after_event'
-  event: 'wake_up' | 'breakfast' | 'lunch' | 'work_end' | 'dinner' | 'bedtime' | 'custom'
-  customLabel?: string
+  eventDescription: string
 }
 
 export interface TimeWindowAnchor {
   type: 'time_window'
-  startTimeMs: number  // Milliseconds since midnight in user timezone
-  endTimeMs: number
+  startTimeHHMM: string // HH:MM format
+  endTimeHHMM: string
 }
 
 export type HabitAnchor = AfterEventAnchor | TimeWindowAnchor
@@ -45,28 +45,22 @@ export type HabitAnchor = AfterEventAnchor | TimeWindowAnchor
 // ----- Habit Recipe -----
 
 export interface HabitRecipe {
-  tinyVersion: {
-    description: string
-    durationMinutes?: number
-  }
-  standardVersion: {
-    description: string
-    durationMinutes?: number
-  }
+  tiny?: string
+  standard: string
 }
 
 // ----- Schedule -----
 
 export interface HabitSchedule {
-  daysOfWeek: number[]  // 0-6 (Sunday-Saturday)
-  timezone: string       // IANA timezone
+  daysOfWeek: number[] // 0-6 (Sunday-Saturday)
+  timezone: string // IANA timezone
 }
 
 // ----- Safety Net -----
 
 export interface SafetyNet {
-  tinyCounts: boolean      // Tiny version preserves streak
-  recoveryAllowed: boolean // Can bounce back after skip
+  tinyCountsAsSuccess: boolean // Tiny version preserves streak
+  allowRecovery: boolean // Can bounce back after skip
 }
 
 // ----- Calendar Projection -----
@@ -86,7 +80,7 @@ export interface CanonicalHabit {
   // Core attributes
   title: string
   domain: HabitDomain
-  customDomain?: string  // If domain === 'custom'
+  customDomain?: string // If domain === 'custom'
   status: HabitStatus
 
   // Behavior
@@ -97,7 +91,8 @@ export interface CanonicalHabit {
 
   // Integration
   calendarProjection?: CalendarProjection
-  linkedInterventionTypes?: string[]  // Mind intervention types that count
+  linkedInterventionTypes?: string[] // Mind intervention types that count
+  linkedIncantationIds?: IncantationId[] // Incantations to show for this habit
 
   // Metadata
   createdAtMs: number
@@ -115,12 +110,12 @@ export interface CanonicalHabitCheckin {
   userId: string
   habitId: HabitId
 
-  dateKey: string  // YYYY-MM-DD in user timezone
+  dateKey: string // YYYY-MM-DD in user timezone
   status: CheckinStatus
 
   // Optional context
-  moodBefore?: number  // 1-5 scale
-  moodAfter?: number   // 1-5 scale
+  moodBefore?: number // 1-5 scale
+  moodAfter?: number // 1-5 scale
   note?: string
 
   // Tracking
@@ -128,7 +123,7 @@ export interface CanonicalHabitCheckin {
 
   // Link to source (if auto-created)
   sourceType?: 'manual' | 'intervention' | 'calendar'
-  sourceId?: string  // interventionSessionId, calendarEventId, etc.
+  sourceId?: string // interventionSessionId, calendarEventId, etc.
 
   // Sync
   syncState: SyncState
@@ -138,14 +133,14 @@ export interface CanonicalHabitCheckin {
 // ----- Progress Stats (Computed) -----
 
 export interface HabitProgressStats {
-  habitId: HabitId
+  habitId?: HabitId
   currentStreak: number
-  longestStreak: number
+  bestStreak: number
   totalCheckins: number
   doneCount: number
   tinyCount: number
   skipCount: number
-  consistencyPercent: number  // (done + tiny) / scheduled days
+  completionRate: number // (done + tiny) / total checkins
 }
 
 // ----- Create/Update Types -----
@@ -155,9 +150,7 @@ export type CreateHabitInput = Omit<
   'habitId' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
 >
 
-export type UpdateHabitInput = Partial<
-  Omit<CanonicalHabit, 'habitId' | 'userId' | 'createdAtMs'>
->
+export type UpdateHabitInput = Partial<Omit<CanonicalHabit, 'habitId' | 'userId' | 'createdAtMs'>>
 
 export type CreateCheckinInput = Omit<
   CanonicalHabitCheckin,
@@ -166,4 +159,38 @@ export type CreateCheckinInput = Omit<
 
 export type UpdateCheckinInput = Partial<
   Omit<CanonicalHabitCheckin, 'checkinId' | 'userId' | 'habitId' | 'dateKey'>
+>
+
+// Alias for compatibility with existing code
+export type UpsertCheckinInput = CreateCheckinInput
+
+// ----- Incantations -----
+
+export type IncantationType = 'identity_action' | 'values' | 'self_compassion'
+
+export interface CanonicalIncantation {
+  incantationId: IncantationId
+  userId: string
+
+  type: IncantationType
+  text: string
+  domains?: HabitDomain[] // Which habit domains this applies to
+  active: boolean
+
+  // Metadata
+  createdAtMs: number
+  updatedAtMs: number
+
+  // Sync
+  syncState: SyncState
+  version: number
+}
+
+export type CreateIncantationInput = Omit<
+  CanonicalIncantation,
+  'incantationId' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+>
+
+export type UpdateIncantationInput = Partial<
+  Omit<CanonicalIncantation, 'incantationId' | 'userId' | 'createdAtMs'>
 >

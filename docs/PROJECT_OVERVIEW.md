@@ -13,6 +13,7 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 **Status**: ✅ Production-ready (recently refactored from 773 → 440 lines)
 
 **Core Features**:
+
 - **Canonical Calendar Model**: Provider-agnostic event representation
 - **Recurrence Engine**: RFC 5545 compliant via rrule library
 - **Google Calendar Sync**: Bidirectional sync with full writeback support
@@ -21,30 +22,41 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 - **Offline-First**: IndexedDB storage with sync queue pattern
 
 **Architecture**:
+
 - `@lifeos/calendar` package: Domain models, recurrence logic, validation
 - Repository pattern with Firestore and IndexedDB adapters
 - Outbox pattern for offline operations
 - Cloud Functions for Google Calendar integration
 
 **Key Components**:
-- [CalendarPage.tsx](../apps/web-vite/src/pages/CalendarPage.tsx) (440 lines) - Main calendar interface
-- [useCalendarEvents.ts](../apps/web-vite/src/hooks/useCalendarEvents.ts) - Event CRUD operations
+
+- [CalendarPage.tsx](../apps/web-vite/src/pages/CalendarPage.tsx) - Main calendar interface
+- [useCalendarEvents.ts](../apps/web-vite/src/hooks/useCalendarEvents.ts) - Event data loading + instances
+- [useEventOperations.ts](../apps/web-vite/src/hooks/useEventOperations.ts) - Event CRUD + writeback
 - [useEventAlerts.ts](../apps/web-vite/src/hooks/useEventAlerts.ts) - Alert scheduling and management
-- [useCalendarSync.ts](../apps/web-vite/src/hooks/useCalendarSync.ts) - Google Calendar synchronization
-- [CalendarViewsContainer.tsx](../apps/web-vite/src/components/calendar/CalendarViewsContainer.tsx) - Month/week/day views
-- [RecurringEventsContainer.tsx](../apps/web-vite/src/components/calendar/RecurringEventsContainer.tsx) - Recurrence UI
+- [useAutoSync.ts](../apps/web-vite/src/hooks/useAutoSync.ts) - Background sync trigger
+- [CalendarViewsContainer.tsx](../apps/web-vite/src/components/calendar/CalendarViewsContainer.tsx) - Month/week/day/agenda views + recurrence rendering
+- [EventModalsContainer.tsx](../apps/web-vite/src/components/calendar/EventModalsContainer.tsx) - Recurring edit scope selection + modals
 
 **Data Models**:
+
 - `CanonicalCalendarEvent` - Core event structure with source tracking
 - `RecurrencePattern` - Recurrence rules (RRULE format)
 - `RecurrenceInstance` - Individual occurrences of recurring events
 - `AlertDismissal` - Alert state and dismissal tracking
 
-**Test Coverage**: Comprehensive unit tests in `calendarRules.test.ts` and `calendar.test.ts`
+**Test Coverage**: Domain and recurrence tests in:
+
+- `packages/calendar/src/domain/__tests__/models.test.ts`
+- `packages/calendar/src/domain/__tests__/composite.test.ts`
+- `packages/calendar/src/domain/recurrence/__tests__/generateInstances.test.ts`
+- `packages/calendar/src/domain/recurrence/__tests__/parseGoogleRecurrence.test.ts`
+- `packages/calendar/src/usecases/__tests__/eventUsecases.test.ts`
 
 **Recent Improvements**:
+
 - Phase 1: Extracted event management to `useCalendarEvents` hook
-- Phase 2: Extracted sync logic to `useCalendarSync` hook
+- Phase 2: Extracted sync trigger to `useAutoSync` and writeback to `useEventOperations`
 - Phase 3: Extracted view state management
 - Phase 4: Extracted alert system to `useEventAlerts` hook
 - Result: 43.1% reduction in CalendarPage complexity (773 → 440 lines)
@@ -56,6 +68,7 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 **Status**: ✅ Production-ready with full feature set
 
 **Core Features**:
+
 - **Hierarchical Task Management**: Projects → Milestones → Tasks
 - **Priority Levels**: Top, high, medium, low priority categorization
 - **Due Date Management**: Date-based task scheduling
@@ -65,12 +78,14 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 - **Offline-First**: Firestore + IndexedDB with real-time sync
 
 **Architecture**:
+
 - `@lifeos/todos` package: Domain models, usecases, validation
 - Repository pattern with Firestore adapters
 - Ports and adapters architecture
 - Real-time sync with Firestore listeners
 
 **Key Components**:
+
 - [TodosPage.tsx](../apps/web-vite/src/pages/TodosPage.tsx) - Task list and management interface
 - [TodoPage.tsx](../apps/web-vite/src/pages/TodoPage.tsx) - Individual task detail view
 - [useTodoOperations.ts](../apps/web-vite/src/hooks/useTodoOperations.ts) - Todo CRUD operations hook
@@ -78,6 +93,7 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 - Todo adapters in `apps/web-vite/src/adapters/`
 
 **Data Models**:
+
 - `Todo` - Core task structure with:
   - Priority levels (top, high, medium, low)
   - Due dates and timestamps
@@ -88,36 +104,43 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 - `Milestone` - Project milestone with associated tasks
 
 **Domain Logic** (in `@lifeos/todos` package):
+
 - Task validation rules
 - Priority management
 - Due date calculations
 - Project hierarchy management
 - Completion tracking
 
-**Test Coverage**: Comprehensive tests in:
-- `todoRules.test.ts` - Domain logic tests
-- `todoUi.test.ts` - UI component tests
+**Test Coverage**:
+
+- `apps/web-vite/src/lib/__tests__/todoRules.test.ts`
+- `apps/web-vite/src/lib/__tests__/todoUi.test.ts`
+- `apps/web-vite/src/lib/__tests__/priority.test.ts`
 
 ---
 
 #### 3. Supporting Systems
 
 **Quotes System**:
+
 - Deterministic daily quote generation
 - CRUD operations in settings
 - Quote rotation algorithm
 
 **Today View**:
+
 - Daily overview with top priorities
 - Calendar events for the day
 - Task planning interface
 
 **Weekly Review**:
+
 - Weekly reflection workflow
 - Progress tracking
 - Goal review
 
 **Auth & Infrastructure**:
+
 - Firebase Authentication
 - Firestore for data persistence
 - Cloud Functions for backend operations
@@ -129,25 +152,27 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 
 #### Notes System
 
-**Status**: 📋 Planning complete - Ready to start Phase 1
+**Status**: 🟡 Late beta (close to GA)
 
-**Overview**: Fully-powered, offline-capable note-taking and learning management system
+**Overview**: Offline-capable notes + learning management with TipTap content and sync pipeline
 
-**Key Features** (planned):
+**Key Features** (current/near GA):
+
 - TipTap rich text editor with ProseMirror
 - LaTeX math notation via KaTeX
 - Images and tables
 - Hierarchical organization: Topics → Sections → Notes
 - Project and OKR integration
 - Learning projects with milestones
-- Offline-first with IndexedDB
+- Offline-first with IndexedDB + outbox
 
 **Documentation**:
+
 - [Complete 8-week implementation plan](./features/learning-notes-plan.md)
 - [Getting started guide](./features/GETTING_STARTED.md)
+- [Notes package README](../packages/notes/README.md)
 
-**Timeline**: 8 weeks across 8 phases
-**Next Step**: Phase 1 - Foundation (data models, repositories, dependencies)
+**Timeline**: Implementation in late beta; remaining polish + tests
 
 ---
 
@@ -156,6 +181,7 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 **Status**: 🔲 Placeholder UI only
 
 **Planned Features**:
+
 - Contact management
 - Relationship tracking
 - Project collaboration
@@ -206,7 +232,8 @@ LifeOS_2/
 │       │   ├── hooks/               # Custom React hooks
 │       │   │   ├── useCalendarEvents.ts
 │       │   │   ├── useEventAlerts.ts
-│       │   │   ├── useCalendarSync.ts
+│       │   │   ├── useAutoSync.ts
+│       │   │   └── useEventOperations.ts
 │       │   │   └── useTodoOperations.ts
 │       │   ├── components/          # Reusable components
 │       │   │   ├── calendar/        # Calendar components
@@ -275,26 +302,31 @@ LifeOS_2/
 ## Key Technical Decisions
 
 ### SPA over Next.js
+
 - **Rationale**: Simplifies Firebase Auth integration
 - **Benefit**: Cleaner local development without SSR complexity
 - **Trade-off**: No server-side rendering (acceptable for productivity app)
 
 ### Canonical Calendar Model
+
 - **Rationale**: Provider-agnostic core representation
 - **Benefit**: Can integrate multiple calendar providers (Google, Outlook, etc.)
 - **Implementation**: Google Calendar is just one adapter
 
 ### Offline-First Architecture
+
 - **Rationale**: Users need to work without internet
 - **Implementation**: IndexedDB + Firestore with outbox pattern
 - **Benefit**: Resilient to network failures
 
 ### Monorepo Structure
+
 - **Rationale**: Share domain logic across frontend/backend
 - **Tool**: pnpm workspaces + Turbo
 - **Benefit**: Type-safe sharing of models and logic
 
 ### Domain-Driven Design
+
 - **Rationale**: Separate business logic from infrastructure
 - **Pattern**: Domain models in `packages/`, adapters in `apps/`
 - **Benefit**: Testable, portable business logic
@@ -304,6 +336,7 @@ LifeOS_2/
 ## Firestore Collections
 
 ### Calendar Data
+
 ```
 /users/{userId}/calendarEvents/{eventId}
 /users/{userId}/eventInstances/{instanceId}
@@ -311,6 +344,7 @@ LifeOS_2/
 ```
 
 ### Todo Data
+
 ```
 /users/{userId}/todos/{todoId}
 /users/{userId}/projects/{projectId}
@@ -318,6 +352,7 @@ LifeOS_2/
 ```
 
 ### Notes Data (planned)
+
 ```
 /users/{userId}/notes/{noteId}
 /users/{userId}/topics/{topicId}
@@ -326,6 +361,7 @@ LifeOS_2/
 ```
 
 ### User Data
+
 ```
 /users/{userId}/profile
 /users/{userId}/settings
@@ -337,11 +373,13 @@ LifeOS_2/
 ## Development Workflow
 
 ### Installation
+
 ```bash
 pnpm install
 ```
 
 ### Development Server
+
 ```bash
 # Web app
 pnpm --filter web-vite dev
@@ -351,6 +389,7 @@ pnpm --filter functions dev
 ```
 
 ### Quality Checks
+
 ```bash
 # Lint all packages
 pnpm turbo lint
@@ -366,6 +405,7 @@ pnpm turbo build
 ```
 
 ### Deployment
+
 ```bash
 # Deploy functions and hosting
 pnpm firebase:deploy
@@ -380,16 +420,27 @@ pnpm firebase:deploy:hosting
 ## Testing Strategy
 
 ### Calendar System
+
 - **Unit Tests**: Domain logic, recurrence rules, validation
-- **Integration Tests**: Firestore adapters, sync operations
-- **Files**: `calendarRules.test.ts`, `calendar.test.ts`
+- **Files**:
+  - `packages/calendar/src/domain/__tests__/models.test.ts`
+  - `packages/calendar/src/domain/__tests__/composite.test.ts`
+  - `packages/calendar/src/domain/recurrence/__tests__/generateInstances.test.ts`
+  - `packages/calendar/src/domain/recurrence/__tests__/parseGoogleRecurrence.test.ts`
+  - `packages/calendar/src/usecases/__tests__/eventUsecases.test.ts`
 
 ### Todo System
-- **Unit Tests**: Todo rules, priority logic, completion tracking
-- **UI Tests**: Component rendering, user interactions
-- **Files**: `todoRules.test.ts`, `todoUi.test.ts`
+
+- **Unit Tests**: Todo rules + priority logic
+- **Files**:
+  - `apps/web-vite/src/lib/__tests__/todoRules.test.ts`
+  - `apps/web-vite/src/lib/__tests__/priority.test.ts`
+- **UI Tests**:
+  - `apps/web-vite/src/lib/__tests__/todoUi.test.ts`
+  - `apps/web-vite/src/hooks/__tests__/useTodoOperations.test.tsx`
 
 ### Target Coverage
+
 - **Goal**: >80% coverage for domain packages
 - **Focus**: Business logic over UI components
 
@@ -398,18 +449,21 @@ pnpm firebase:deploy:hosting
 ## Recent Accomplishments
 
 ### Calendar Refactoring (Phases 1-4)
+
 - **Before**: 773 lines in CalendarPage.tsx
 - **After**: 440 lines (43.1% reduction)
-- **Method**: Extracted 4 custom hooks (events, sync, views, alerts)
+- **Method**: Extracted custom hooks (events, operations, views, alerts, auto-sync)
 - **Result**: Improved testability, maintainability, separation of concerns
 
 ### Build & Deployment Fixes
+
 - Fixed rrule ESM module resolution (deployment blocker)
 - Fixed Firebase workspace: dependencies for Cloud Build
 - Fixed React Fast Refresh lint errors
 - All quality checks passing (lint, typecheck, build)
 
 ### Documentation
+
 - Created comprehensive Learning/Notes 8-week plan
 - Created getting started guide for Notes Phase 1
 - Documented build fixes and deployment process
@@ -420,18 +474,21 @@ pnpm firebase:deploy:hosting
 ## Where to Start
 
 ### For New Developers
+
 1. Read this overview
 2. Check [ARCHITECTURE.md](./ARCHITECTURE.md) for system design
 3. Review [DATA_MODELS.md](./DATA_MODELS.md) for schemas
 4. Run `pnpm install` and start dev server
 
 ### For Feature Development
+
 1. Review [features/learning-notes-plan.md](./features/learning-notes-plan.md) for next steps
 2. Follow [features/GETTING_STARTED.md](./features/GETTING_STARTED.md) for Phase 1
 3. Maintain domain logic in `packages/`
 4. Add adapters in `apps/web-vite/src/adapters/`
 
 ### For Debugging
+
 1. Check [refactoring/build-fixes-completion-report.md](./refactoring/build-fixes-completion-report.md)
 2. Review [DEPLOYMENT.md](./DEPLOYMENT.md) for deployment issues
 3. Use browser DevTools for IndexedDB inspection
@@ -442,17 +499,20 @@ pnpm firebase:deploy:hosting
 ## Success Metrics
 
 ### Performance
+
 - ✅ CalendarPage: <100ms time-to-interactive
 - ✅ Offline mode: Works without network
 - ✅ Sync: <5s for 100 events
 
 ### Code Quality
+
 - ✅ All lint checks passing
 - ✅ All type checks passing
 - ✅ Build succeeds without errors
 - ✅ >80% test coverage for calendar and todos
 
 ### User Experience
+
 - ✅ Offline-first: No data loss
 - ✅ Real-time sync: Updates across devices
 - ✅ Intuitive UI: Clear navigation and feedback
@@ -462,18 +522,21 @@ pnpm firebase:deploy:hosting
 ## Next Steps
 
 ### Immediate (This Week)
+
 1. ✅ Complete CalendarPage refactoring
 2. ✅ Fix all build and deployment issues
 3. ✅ Create Learning/Notes implementation plan
 4. ✅ Set up git repository with proper .gitignore
 
 ### Short Term (Next 2-4 Weeks)
+
 1. Start Notes Phase 1: Data models and repositories
 2. Add TipTap editor dependencies
 3. Create IndexedDB schema for notes
 4. Implement basic note CRUD operations
 
 ### Medium Term (2-3 Months)
+
 1. Complete Notes implementation (Phases 1-8)
 2. Add People/CRM features
 3. Enhance project management

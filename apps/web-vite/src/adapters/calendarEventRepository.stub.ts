@@ -1,4 +1,9 @@
-import { computeOccursOn, type CalendarEventRepository, type CanonicalCalendarEvent, type CanonicalAttendee } from '@lifeos/calendar'
+import {
+  computeOccursOn,
+  type CalendarEventRepository,
+  type CanonicalCalendarEvent,
+  type CanonicalAttendee,
+} from '@lifeos/calendar'
 import { newId, SystemClock } from '@lifeos/core'
 
 const clock = new SystemClock()
@@ -11,7 +16,7 @@ const createEvent = ({
   durationMinutes = 45,
   attendees = 0,
   location,
-  description
+  description,
 }: {
   title: string
   offsetHours: number
@@ -32,7 +37,7 @@ const createEvent = ({
       ? Array.from({ length: attendees }).map((_, index) => ({
           email: `guest${index + 1}@example.com`,
           displayName: `Guest ${index + 1}`,
-          responseStatus: 'accepted' as const
+          responseStatus: 'accepted' as const,
         }))
       : undefined
 
@@ -47,7 +52,7 @@ const createEvent = ({
       accountId: 'account-1',
       providerCalendarId: 'primary',
       providerEventId: newId('ProviderEvent'),
-      etag: undefined
+      etag: undefined,
     },
     createdAt: clock.toISOString(startsAt),
     updatedAt: clock.toISOString(startsAt),
@@ -74,7 +79,7 @@ const createEvent = ({
     visibility: 'default',
     transparency: 'opaque',
     calendarId: 'primary',
-    raw: undefined
+    raw: undefined,
   }
 }
 
@@ -85,22 +90,22 @@ const stubEvents: CanonicalCalendarEvent[] = [
     durationMinutes: 30,
     attendees: 3,
     description: 'Align on intents and blockers',
-    location: 'Zoom'
+    location: 'Zoom',
   }),
   createEvent({
     title: 'Product review',
     offsetHours: 2,
     durationMinutes: 60,
     attendees: 5,
-    location: 'Design Studio'
+    location: 'Design Studio',
   }),
   createEvent({
     title: 'Deep focus',
     offsetHours: 4,
     durationMinutes: 90,
     attendees: 0,
-    description: 'Timeboxed writing and research'
-  })
+    description: 'Timeboxed writing and research',
+  }),
 ]
 
 export function createCalendarEventRepositoryStub(): CalendarEventRepository {
@@ -125,7 +130,6 @@ export function createCalendarEventRepositoryStub(): CalendarEventRepository {
     },
     async deleteEvent() {
       stubEvents.push() // no-op
-    }
+    },
   }
 }
-

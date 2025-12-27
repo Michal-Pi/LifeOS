@@ -8,7 +8,7 @@ const modules = [
   { label: 'To-dos', href: '/todos', icon: '📝' },
   { label: 'Notes', href: '/notes', icon: '📓' },
   { label: 'People', href: '/people', icon: '👥' },
-  { label: 'Projects', href: '/projects', icon: '📦' }
+  { label: 'Projects', href: '/projects', icon: '📦' },
 ]
 const settingsItem = { label: 'Settings', href: '/settings', icon: '⚙️' }
 
@@ -33,10 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             const active = pathname === item.href
             return (
               <li key={item.href}>
-                <Link
-                  to={item.href}
-                  className={`nav-link ${active ? 'active' : ''}`}
-                >
+                <Link to={item.href} className={`nav-link ${active ? 'active' : ''}`}>
                   <span className="nav-icon" aria-hidden="true">
                     {item.icon}
                   </span>

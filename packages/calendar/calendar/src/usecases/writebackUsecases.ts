@@ -4,7 +4,7 @@ import type {
   WritebackJob,
   WritebackOp,
   WritebackCreatePayload,
-  WritebackUpdatePayload
+  WritebackUpdatePayload,
 } from '../domain/writeback'
 import { createWritebackJob } from '../domain/writeback'
 import type { CalendarEventRepository } from '../ports/calendarRepository'
@@ -30,7 +30,10 @@ export interface EnqueueWritebackResult {
 /**
  * Check if event is eligible for writeback
  */
-function isWritebackEligible(event: CanonicalCalendarEvent): { eligible: boolean; reason?: string } {
+function isWritebackEligible(event: CanonicalCalendarEvent): {
+  eligible: boolean
+  reason?: string
+} {
   // Skip local-only events
   if (event.providerRef.provider === 'local' && !event.primaryProvider) {
     return { eligible: false, reason: 'no_target_provider' }
@@ -62,7 +65,7 @@ function buildCreatePayload(event: CanonicalCalendarEvent): WritebackCreatePaylo
     allDay: event.allDay ?? false,
     timezone: event.timezone,
     transparency: event.transparency,
-    visibility: event.visibility
+    visibility: event.visibility,
   }
 }
 
@@ -79,7 +82,7 @@ function buildUpdatePayload(event: CanonicalCalendarEvent): WritebackUpdatePaylo
     allDay: event.allDay,
     timezone: event.timezone,
     transparency: event.transparency,
-    visibility: event.visibility
+    visibility: event.visibility,
   }
 }
 
@@ -110,7 +113,7 @@ export async function enqueueWriteback(
   if (existingJobs.length > 0) {
     // Update existing job instead of creating new one
     const existingJob = existingJobs[0]
-    
+
     // If same op, just return the existing job
     if (existingJob.op === op) {
       return { job: existingJob, skipped: false, reason: 'reusing_existing_job' }
@@ -153,7 +156,7 @@ export async function enqueueWriteback(
     providerCalendarId,
     providerEventId: op !== 'create' ? providerEventId : undefined,
     payload,
-    baseProviderEtag: event.providerRef.etag
+    baseProviderEtag: event.providerRef.etag,
   })
 
   await deps.writebackRepository.create(uid, job)
@@ -187,14 +190,14 @@ export async function updateEventSyncState(
   }
 
   const patch: Partial<CanonicalCalendarEvent> = {
-    syncState: updates.syncState
+    syncState: updates.syncState,
   }
 
   if (updates.providerEventId) {
     patch.providerRef = {
       ...event.providerRef,
       providerEventId: updates.providerEventId,
-      etag: updates.providerEtag
+      etag: updates.providerEtag,
     }
   }
 
@@ -240,7 +243,7 @@ export function checkForConflict(input: ConflictCheckInput): ConflictCheckResult
       return {
         hasConflict: true,
         resolution: 'local_wins',
-        reason: 'Local changes pending, will attempt writeback'
+        reason: 'Local changes pending, will attempt writeback',
       }
     }
 
@@ -248,14 +251,14 @@ export function checkForConflict(input: ConflictCheckInput): ConflictCheckResult
     return {
       hasConflict: true,
       resolution: 'provider_wins',
-      reason: 'Provider updated after last local change'
+      reason: 'Provider updated after last local change',
     }
   }
 
   return {
     hasConflict: false,
     resolution: 'no_conflict',
-    reason: 'No conflict detected'
+    reason: 'No conflict detected',
   }
 }
 
@@ -282,7 +285,10 @@ export async function retryWriteback(
   let op: WritebackOp = 'update'
   if (event.deletedAtMs) {
     op = 'delete'
-  } else if (!event.providerRef.providerEventId || event.providerRef.providerEventId.startsWith('local:')) {
+  } else if (
+    !event.providerRef.providerEventId ||
+    event.providerRef.providerEventId.startsWith('local:')
+  ) {
     op = 'create'
   }
 
@@ -291,13 +297,8 @@ export async function retryWriteback(
     uid,
     eventId,
     syncState: 'pending_writeback',
-    writebackError: undefined
+    writebackError: undefined,
   })
 
   return enqueueWriteback(deps, { uid, eventId, op })
 }
-
-
-
-
-

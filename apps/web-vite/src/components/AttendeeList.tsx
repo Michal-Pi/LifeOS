@@ -5,7 +5,7 @@ import type {
   CanonicalAttendee,
   CanonicalOrganizer,
   CanonicalResponseStatus,
-  CanonicalEventRole
+  CanonicalEventRole,
 } from '@lifeos/calendar'
 
 interface AttendeeListProps {
@@ -73,7 +73,7 @@ function getStatusIcon(status: CanonicalResponseStatus): string {
 export const AttendeeList = React.memo(function AttendeeList({
   organizer,
   attendees,
-  showRSVPStatus = true
+  showRSVPStatus = true,
 }: AttendeeListProps) {
   // Filter out the organizer from attendees list (they're shown separately)
   const guestAttendees = attendees?.filter((a) => !a.organizer) ?? []
@@ -97,7 +97,9 @@ export const AttendeeList = React.memo(function AttendeeList({
           <span className="attendee-label">Organizer</span>
           <div className="attendee-item organizer">
             <div className="attendee-avatar">
-              {organizer.displayName?.[0]?.toUpperCase() || organizer.email?.[0]?.toUpperCase() || 'O'}
+              {organizer.displayName?.[0]?.toUpperCase() ||
+                organizer.email?.[0]?.toUpperCase() ||
+                'O'}
             </div>
             <div className="attendee-info">
               <span className="attendee-name">
@@ -115,9 +117,7 @@ export const AttendeeList = React.memo(function AttendeeList({
       {/* Guests */}
       {guestAttendees.length > 0 && (
         <div className="attendee-section">
-          <span className="attendee-label">
-            Guests ({guestAttendees.length})
-          </span>
+          <span className="attendee-label">Guests ({guestAttendees.length})</span>
           <div className="attendee-items">
             {guestAttendees.map((attendee, index) => (
               <AttendeeItem
@@ -151,7 +151,9 @@ function AttendeeItem({ attendee, showRSVPStatus = true }: AttendeeItemProps) {
   return (
     <div className={`attendee-item ${attendee.resource ? 'resource' : ''}`}>
       <div className="attendee-avatar" style={{ borderColor: statusColor }}>
-        {attendee.resource ? '🏢' : (attendee.displayName?.[0]?.toUpperCase() || attendee.email?.[0]?.toUpperCase() || '?')}
+        {attendee.resource
+          ? '🏢'
+          : attendee.displayName?.[0]?.toUpperCase() || attendee.email?.[0]?.toUpperCase() || '?'}
       </div>
       <div className="attendee-info">
         <span className="attendee-name">
@@ -189,7 +191,9 @@ function ResponseSummary({ attendees }: ResponseSummaryProps) {
     accepted: attendees.filter((a) => a.responseStatus === 'accepted').length,
     tentative: attendees.filter((a) => a.responseStatus === 'tentative').length,
     declined: attendees.filter((a) => a.responseStatus === 'declined').length,
-    pending: attendees.filter((a) => a.responseStatus === 'needsAction' || a.responseStatus === 'unknown').length
+    pending: attendees.filter(
+      (a) => a.responseStatus === 'needsAction' || a.responseStatus === 'unknown'
+    ).length,
   }
 
   return (
@@ -221,4 +225,3 @@ function ResponseSummary({ attendees }: ResponseSummaryProps) {
     </div>
   )
 }
-

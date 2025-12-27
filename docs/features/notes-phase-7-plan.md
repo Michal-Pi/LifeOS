@@ -65,11 +65,13 @@ Phase 7 focuses on making the Notes feature production-ready by integrating all 
 ### Task 1: Integration & Wiring (~1 hour)
 
 **Files to modify:**
+
 - `apps/web-vite/src/pages/NotesPage.tsx` - Add sync banner and status
 - `apps/web-vite/src/components/notes/TopicSidebar.tsx` - Add sync indicators
 - `apps/web-vite/src/components/editor/NoteEditor.tsx` - Use offline attachments
 
 **Deliverables:**
+
 - Sync status banner at top of NotesPage
 - Sync indicators next to note titles
 - Offline-aware attachment uploads
@@ -78,10 +80,12 @@ Phase 7 focuses on making the Notes feature production-ready by integrating all 
 ### Task 2: Export Functionality (~30 min)
 
 **Files to create:**
+
 - `apps/web-vite/src/lib/noteExport.ts` - Export utilities
 - `apps/web-vite/src/components/notes/ExportMenu.tsx` - Export dropdown
 
 **Deliverables:**
+
 - Export to Markdown (ProseMirror → Markdown)
 - Export to plain text
 - Copy to clipboard
@@ -90,10 +94,12 @@ Phase 7 focuses on making the Notes feature production-ready by integrating all 
 ### Task 3: Note Templates (~45 min)
 
 **Files to create:**
+
 - `apps/web-vite/src/lib/noteTemplates.ts` - Template definitions
 - `apps/web-vite/src/components/notes/TemplateSelector.tsx` - Template picker
 
 **Deliverables:**
+
 - 4-5 predefined templates
 - Template selection on note creation
 - Apply template to existing note
@@ -101,9 +107,11 @@ Phase 7 focuses on making the Notes feature production-ready by integrating all 
 ### Task 4: Polish & UX (~45 min)
 
 **Files to modify:**
+
 - Various components - Add loading states, error boundaries, empty states
 
 **Deliverables:**
+
 - Consistent loading states
 - Error boundaries around critical components
 - Empty state illustrations
@@ -113,9 +121,11 @@ Phase 7 focuses on making the Notes feature production-ready by integrating all 
 ### Task 5: Testing (~30 min)
 
 **Files to create:**
+
 - `apps/web-vite/src/notes/__tests__/integration.test.ts` - Integration tests
 
 **Deliverables:**
+
 - Test create → edit → sync flow
 - Test offline → online sync
 - Test attachment upload
@@ -124,6 +134,7 @@ Phase 7 focuses on making the Notes feature production-ready by integrating all 
 ### Task 6: Documentation (~30 min)
 
 **Files to update:**
+
 - Phase 7 completion report
 - README updates
 - User guide

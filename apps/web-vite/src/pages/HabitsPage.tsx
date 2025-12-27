@@ -22,15 +22,8 @@ export function HabitsPage() {
   const { user } = useAuth()
   const userId = user?.uid ?? ''
 
-  const {
-    habits,
-    listHabits,
-    createHabit,
-    updateHabit,
-    deleteHabit,
-    getHabitStats,
-    isLoading,
-  } = useHabitOperations()
+  const { habits, listHabits, createHabit, updateHabit, deleteHabit, getHabitStats, isLoading } =
+    useHabitOperations()
 
   const [filterStatus, setFilterStatus] = useState<HabitStatus>('active')
   const [isModalOpen, setIsModalOpen] = useState(false)

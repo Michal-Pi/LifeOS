@@ -25,7 +25,11 @@ interface UseDailyQuoteResult {
   error: Error | null
 }
 
-export function useDailyQuote({ userId, dateKey, enabled = true }: UseDailyQuoteOptions): UseDailyQuoteResult {
+export function useDailyQuote({
+  userId,
+  dateKey,
+  enabled = true,
+}: UseDailyQuoteOptions): UseDailyQuoteResult {
   const [quote, setQuote] = useState<Quote | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)

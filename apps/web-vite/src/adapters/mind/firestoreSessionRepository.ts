@@ -111,7 +111,10 @@ export const createFirestoreSessionRepository = (): SessionRepository => {
     return snapshot.docs.map((doc) => doc.data() as CanonicalInterventionSession)
   }
 
-  const listRecent = async (userId: string, limit = 10): Promise<CanonicalInterventionSession[]> => {
+  const listRecent = async (
+    userId: string,
+    limit = 10
+  ): Promise<CanonicalInterventionSession[]> => {
     const q = query(
       collection(db, `users/${userId}/${COLLECTION_SESSIONS}`),
       orderBy('startedAtMs', 'desc'),

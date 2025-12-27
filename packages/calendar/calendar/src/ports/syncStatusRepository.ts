@@ -5,8 +5,3 @@ export interface SyncStatusRepository {
     lastError?: string
   }>
 }
-
-
-
-
-

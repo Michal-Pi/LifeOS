@@ -19,16 +19,16 @@ LifeOS provides a **best-effort, in-app alert system** that notifies users when 
 
 Users can configure alerts with the following presets:
 
-| Option | Minutes Before |
-|--------|----------------|
-| None | — |
-| At time of event | 0 |
-| 5 minutes before | 5 |
-| 10 minutes before | 10 |
-| 15 minutes before | 15 |
-| 30 minutes before | 30 |
-| 1 hour before | 60 |
-| Custom | User-defined |
+| Option            | Minutes Before |
+| ----------------- | -------------- |
+| None              | —              |
+| At time of event  | 0              |
+| 5 minutes before  | 5              |
+| 10 minutes before | 10             |
+| 15 minutes before | 15             |
+| 30 minutes before | 30             |
+| 1 hour before     | 60             |
+| Custom            | User-defined   |
 
 ### Limitations
 
@@ -39,12 +39,12 @@ Users can configure alerts with the following presets:
 ### CanonicalAlert
 
 ```typescript
-type CanonicalAlertMethod = 'in_app_banner';
+type CanonicalAlertMethod = 'in_app_banner'
 
 interface CanonicalAlert {
-  method: CanonicalAlertMethod;
-  minutesBefore: number;
-  enabled: boolean;
+  method: CanonicalAlertMethod
+  minutesBefore: number
+  enabled: boolean
 }
 ```
 
@@ -88,6 +88,7 @@ When an alert fires, a banner appears at the top of the page showing:
 - "X" dismiss button
 
 Banners automatically hide when:
+
 - User clicks dismiss
 - User opens the event
 - Event start time is reached
@@ -106,6 +107,7 @@ When a user dismisses an alert:
 **Important**: Alerts are best-effort and only work while the app is open.
 
 This means:
+
 - If the browser tab is closed or in the background, alerts won't fire
 - Browser throttling may delay alerts in inactive tabs
 - No notifications will appear if the app isn't running
@@ -121,21 +123,21 @@ An alert should fire when:
 ```typescript
 function shouldAlertFire(event, alert, nowMs) {
   // Don't fire for deleted/cancelled events
-  if (isDeleted(event) || event.status === 'cancelled') return false;
-  
+  if (isDeleted(event) || event.status === 'cancelled') return false
+
   // Compute fire time
-  const fireTimeMs = event.startMs - (alert.minutesBefore * 60 * 1000);
-  
+  const fireTimeMs = event.startMs - alert.minutesBefore * 60 * 1000
+
   // Must be after fire time
-  if (nowMs < fireTimeMs) return false;
-  
+  if (nowMs < fireTimeMs) return false
+
   // Must be before event start
-  if (nowMs >= event.startMs) return false;
-  
+  if (nowMs >= event.startMs) return false
+
   // Must not be dismissed
-  if (event.alertDismissal?.dismissedUntilMs > nowMs) return false;
-  
-  return true;
+  if (event.alertDismissal?.dismissedUntilMs > nowMs) return false
+
+  return true
 }
 ```
 
@@ -196,8 +198,3 @@ Alert helpers are tested in `packages/calendar/src/domain/__tests__/models.test.
    - Pick a Google event starting soon
    - Set alert in LifeOS
    - ✅ Banner triggers based on canonical data
-
-
-
-
-

@@ -1,4 +1,8 @@
-import { normalizeGoogleEvent, type CanonicalCalendar, type GoogleCalendarEvent } from '@lifeos/calendar'
+import {
+  normalizeGoogleEvent,
+  type CanonicalCalendar,
+  type GoogleCalendarEvent,
+} from '@lifeos/calendar'
 import { firestore } from '../lib/firebase.js'
 import { fetchCalendarEvents } from './calendarApi.js'
 import { calendarsCollection, canonicalEventRef, syncStateRef } from './paths.js'
@@ -43,14 +47,11 @@ async function readCalendarSyncState(
   return stateSnap.data() as CalendarSyncState
 }
 
-async function writeCalendarSyncState(
-  uid: string,
-  state: CalendarSyncState
-): Promise<void> {
+async function writeCalendarSyncState(uid: string, state: CalendarSyncState): Promise<void> {
   await syncStateRef(uid, calendarStateId(state.accountId, state.calendarId)).set(
     {
       ...state,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     },
     { merge: true }
   )
@@ -69,13 +70,14 @@ async function upsertEvents(
     const normalized = normalizeGoogleEvent(raw, {
       uid,
       accountId: calendar.providerMeta.accountId,
-      providerCalendarId: calendar.providerMeta.providerCalendarId
+      providerCalendarId: calendar.providerMeta.providerCalendarId,
     })
 
     const eventToWrite = {
       ...normalized,
       calendarId: calendar.calendarId,
-      deletedAtMs: normalized.status === 'cancelled' ? normalized.updatedAtMs : normalized.deletedAtMs
+      deletedAtMs:
+        normalized.status === 'cancelled' ? normalized.updatedAtMs : normalized.deletedAtMs,
     }
 
     const ref = canonicalEventRef(uid, eventToWrite.canonicalEventId)
@@ -112,7 +114,7 @@ export async function syncCalendarEventsFull(
   do {
     const response = await fetchCalendarEvents(uid, accountId, providerCalendarId, {
       timeMin,
-      pageToken
+      pageToken,
     })
 
     const pageEvents = (response.events ?? []) as GoogleCalendarEvent[]
@@ -131,7 +133,7 @@ export async function syncCalendarEventsFull(
     syncToken: nextSyncToken,
     lastSyncAt: new Date().toISOString(),
     lastSuccessAt: new Date().toISOString(),
-    lastError: undefined
+    lastError: undefined,
   })
 
   return {
@@ -139,7 +141,7 @@ export async function syncCalendarEventsFull(
     providerCalendarId,
     eventsFetched,
     eventsUpserted,
-    nextSyncToken
+    nextSyncToken,
   }
 }
 
@@ -158,7 +160,7 @@ async function syncCalendarEventsIncremental(
   do {
     const response = await fetchCalendarEvents(uid, accountId, providerCalendarId, {
       syncToken,
-      pageToken
+      pageToken,
     })
 
     const pageEvents = (response.events ?? []) as GoogleCalendarEvent[]
@@ -177,7 +179,7 @@ async function syncCalendarEventsIncremental(
     syncToken: nextSyncToken ?? syncToken,
     lastSyncAt: new Date().toISOString(),
     lastSuccessAt: new Date().toISOString(),
-    lastError: undefined
+    lastError: undefined,
   })
 
   return {
@@ -185,11 +187,14 @@ async function syncCalendarEventsIncremental(
     providerCalendarId,
     eventsFetched,
     eventsUpserted,
-    nextSyncToken: nextSyncToken ?? syncToken
+    nextSyncToken: nextSyncToken ?? syncToken,
   }
 }
 
-export async function syncAllCalendarsFull(uid: string, accountId: string): Promise<CalendarSyncResult[]> {
+export async function syncAllCalendarsFull(
+  uid: string,
+  accountId: string
+): Promise<CalendarSyncResult[]> {
   const calendarsSnap = await calendarsCollection(uid)
     .where('providerMeta.provider', '==', 'google')
     .get()
@@ -246,7 +251,7 @@ export async function syncAllCalendarsIncremental(
           calendarId: calendar.calendarId,
           syncToken: state.syncToken,
           lastSyncAt: new Date().toISOString(),
-          lastError: err.message
+          lastError: err.message,
         })
         throw error
       }

@@ -15,23 +15,24 @@ export function AlertSelector({
   currentAlert,
   onAlertChange,
   disabled = false,
-  isAllDay = false
+  isAllDay = false,
 }: AlertSelectorProps) {
   const [showCustom, setShowCustom] = useState(false)
   const [customMinutes, setCustomMinutes] = useState(
-    currentAlert && !ALERT_PRESETS.slice(0, -1).some(p => p.minutesBefore === currentAlert.minutesBefore)
+    currentAlert &&
+      !ALERT_PRESETS.slice(0, -1).some((p) => p.minutesBefore === currentAlert.minutesBefore)
       ? String(currentAlert.minutesBefore)
       : ''
   )
 
   // Find current preset index
   const currentPresetIndex = currentAlert
-    ? ALERT_PRESETS.findIndex(p => p.minutesBefore === currentAlert.minutesBefore)
+    ? ALERT_PRESETS.findIndex((p) => p.minutesBefore === currentAlert.minutesBefore)
     : 0 // "None"
 
   const handlePresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = parseInt(e.target.value, 10)
-    
+
     if (value === -1) {
       // None
       onAlertChange(null)
@@ -44,7 +45,7 @@ export function AlertSelector({
       onAlertChange({
         method: 'in_app_banner',
         minutesBefore: value,
-        enabled: true
+        enabled: true,
       })
       setShowCustom(false)
     }
@@ -56,7 +57,7 @@ export function AlertSelector({
       onAlertChange({
         method: 'in_app_banner',
         minutesBefore: minutes,
-        enabled: true
+        enabled: true,
       })
       setShowCustom(false)
     }
@@ -67,9 +68,7 @@ export function AlertSelector({
     return (
       <div className="alert-selector">
         <span className="section-label">Alert</span>
-        <p className="alert-not-supported">
-          Alerts are not available for all-day events
-        </p>
+        <p className="alert-not-supported">Alerts are not available for all-day events</p>
       </div>
     )
   }
@@ -77,11 +76,17 @@ export function AlertSelector({
   return (
     <div className="alert-selector">
       <span className="section-label">Alert</span>
-      
+
       <div className="alert-select-row">
         <select
           className="alert-select"
-          value={showCustom ? -2 : (currentPresetIndex >= 0 ? ALERT_PRESETS[currentPresetIndex].minutesBefore : -1)}
+          value={
+            showCustom
+              ? -2
+              : currentPresetIndex >= 0
+                ? ALERT_PRESETS[currentPresetIndex].minutesBefore
+                : -1
+          }
           onChange={handlePresetChange}
           disabled={disabled}
         >
@@ -123,15 +128,10 @@ export function AlertSelector({
       )}
 
       {currentAlert && currentAlert.enabled && (
-        <p className="alert-description">
-          {describeAlert(currentAlert)}
-        </p>
+        <p className="alert-description">{describeAlert(currentAlert)}</p>
       )}
 
-      <p className="alert-hint">
-        💡 Alerts only work while the app is open
-      </p>
+      <p className="alert-hint">💡 Alerts only work while the app is open</p>
     </div>
   )
 }
-

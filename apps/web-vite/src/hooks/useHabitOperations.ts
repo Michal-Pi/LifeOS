@@ -1,14 +1,31 @@
 /**
  * useHabitOperations Hook
  *
- * Provides CRUD operations for habits and check-ins using Firestore repositories.
- * Manages habit state, loading, and error handling with offline-first support.
+ * React wrapper around habit usecases.
+ * Manages UI state (loading, error) and delegates business logic to domain layer.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useAuth } from './useAuth'
 import { createFirestoreHabitRepository } from '@/adapters/habits/firestoreHabitRepository'
 import { createFirestoreCheckinRepository } from '@/adapters/habits/firestoreCheckinRepository'
+import {
+  createHabitUsecase,
+  updateHabitUsecase,
+  deleteHabitUsecase,
+  getHabitUsecase,
+  listHabitsUsecase,
+  listHabitsForDateUsecase,
+  upsertCheckinUsecase,
+  updateCheckinUsecase,
+  deleteCheckinUsecase,
+  getCheckinUsecase,
+  getCheckinByHabitAndDateUsecase,
+  listCheckinsForDateUsecase,
+  listCheckinsForHabitUsecase,
+  listCheckinsForDateRangeUsecase,
+  getHabitStatsUsecase,
+} from '@lifeos/habits'
 import type {
   CanonicalHabit,
   HabitId,
@@ -38,10 +55,16 @@ export interface UseHabitOperationsReturn {
 
   // Checkin operations
   upsertCheckin: (input: UpsertCheckinInput) => Promise<CanonicalHabitCheckin>
-  updateCheckin: (checkinId: CheckinId, updates: UpdateCheckinInput) => Promise<CanonicalHabitCheckin>
+  updateCheckin: (
+    checkinId: CheckinId,
+    updates: UpdateCheckinInput
+  ) => Promise<CanonicalHabitCheckin>
   deleteCheckin: (checkinId: CheckinId) => Promise<void>
   getCheckin: (checkinId: CheckinId) => Promise<CanonicalHabitCheckin | null>
-  getCheckinByHabitAndDate: (habitId: HabitId, dateKey: string) => Promise<CanonicalHabitCheckin | null>
+  getCheckinByHabitAndDate: (
+    habitId: HabitId,
+    dateKey: string
+  ) => Promise<CanonicalHabitCheckin | null>
   listCheckinsForDate: (dateKey: string) => Promise<CanonicalHabitCheckin[]>
   listCheckinsForHabit: (
     habitId: HabitId,
@@ -58,6 +81,7 @@ const checkinRepository = createFirestoreCheckinRepository()
 
 /**
  * Hook for managing habit and check-in operations
+ * Thin wrapper around usecases - handles React state, delegates business logic to domain
  */
 export function useHabitOperations(): UseHabitOperationsReturn {
   const { user } = useAuth()
@@ -67,6 +91,28 @@ export function useHabitOperations(): UseHabitOperationsReturn {
   const [error, setError] = useState<Error | null>(null)
 
   const userId = user?.uid
+
+  // Initialize usecases with repositories
+  const usecases = useMemo(
+    () => ({
+      createHabit: createHabitUsecase(habitRepository),
+      updateHabit: updateHabitUsecase(habitRepository),
+      deleteHabit: deleteHabitUsecase(habitRepository),
+      getHabit: getHabitUsecase(habitRepository),
+      listHabits: listHabitsUsecase(habitRepository),
+      listHabitsForDate: listHabitsForDateUsecase(habitRepository),
+      upsertCheckin: upsertCheckinUsecase(checkinRepository),
+      updateCheckin: updateCheckinUsecase(checkinRepository),
+      deleteCheckin: deleteCheckinUsecase(checkinRepository),
+      getCheckin: getCheckinUsecase(checkinRepository),
+      getCheckinByHabitAndDate: getCheckinByHabitAndDateUsecase(checkinRepository),
+      listCheckinsForDate: listCheckinsForDateUsecase(checkinRepository),
+      listCheckinsForHabit: listCheckinsForHabitUsecase(checkinRepository),
+      listCheckinsForDateRange: listCheckinsForDateRangeUsecase(checkinRepository),
+      getHabitStats: getHabitStatsUsecase(checkinRepository),
+    }),
+    []
+  )
 
   // ============================================================================
   // Habit Operations
@@ -82,7 +128,8 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        const habit = await habitRepository.create(userId, input as CreateHabitInput)
+        // Delegate to usecase (contains business logic and validation)
+        const habit = await usecases.createHabit(userId, input)
         setHabits((prev) => [habit, ...prev])
         return habit
       } catch (err) {
@@ -93,7 +140,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const updateHabit = useCallback(
@@ -106,7 +153,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        const updatedHabit = await habitRepository.update(userId, habitId, updates)
+        const updatedHabit = await usecases.updateHabit(userId, habitId, updates)
         setHabits((prev) => prev.map((h) => (h.habitId === habitId ? updatedHabit : h)))
         return updatedHabit
       } catch (err) {
@@ -117,7 +164,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const deleteHabit = useCallback(
@@ -130,7 +177,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        await habitRepository.delete(userId, habitId)
+        await usecases.deleteHabit(userId, habitId)
         setHabits((prev) => prev.filter((h) => h.habitId !== habitId))
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to delete habit')
@@ -140,7 +187,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const getHabit = useCallback(
@@ -153,7 +200,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        const habit = await habitRepository.get(userId, habitId)
+        const habit = await usecases.getHabit(userId, habitId)
         return habit
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to get habit')
@@ -163,7 +210,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const listHabits = useCallback(
@@ -176,7 +223,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        const fetchedHabits = await habitRepository.list(userId, options)
+        const fetchedHabits = await usecases.listHabits(userId, options)
         setHabits(fetchedHabits)
         return fetchedHabits
       } catch (err) {
@@ -187,7 +234,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const listHabitsForDate = useCallback(
@@ -200,7 +247,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        const fetchedHabits = await habitRepository.listForDate(userId, dateKey)
+        const fetchedHabits = await usecases.listHabitsForDate(userId, dateKey)
         return fetchedHabits
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to list habits for date')
@@ -210,7 +257,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   // ============================================================================
@@ -227,7 +274,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        const checkin = await checkinRepository.upsert(userId, input)
+        const checkin = await usecases.upsertCheckin(userId, input)
 
         // Update local state
         setCheckins((prev) => {
@@ -249,7 +296,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const updateCheckin = useCallback(
@@ -262,7 +309,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        const updatedCheckin = await checkinRepository.update(userId, checkinId, updates)
+        const updatedCheckin = await usecases.updateCheckin(userId, checkinId, updates)
         setCheckins((prev) => prev.map((c) => (c.checkinId === checkinId ? updatedCheckin : c)))
         return updatedCheckin
       } catch (err) {
@@ -273,7 +320,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const deleteCheckin = useCallback(
@@ -286,7 +333,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        await checkinRepository.delete(userId, checkinId)
+        await usecases.deleteCheckin(userId, checkinId)
         setCheckins((prev) => prev.filter((c) => c.checkinId !== checkinId))
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to delete checkin')
@@ -296,7 +343,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const getCheckin = useCallback(
@@ -309,7 +356,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        const checkin = await checkinRepository.get(userId, checkinId)
+        const checkin = await usecases.getCheckin(userId, checkinId)
         return checkin
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to get checkin')
@@ -319,7 +366,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const getCheckinByHabitAndDate = useCallback(
@@ -332,17 +379,18 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        const checkin = await checkinRepository.getByHabitAndDate(userId, habitId, dateKey)
+        const checkin = await usecases.getCheckinByHabitAndDate(userId, habitId, dateKey)
         return checkin
       } catch (err) {
-        const error = err instanceof Error ? err : new Error('Failed to get checkin by habit and date')
+        const error =
+          err instanceof Error ? err : new Error('Failed to get checkin by habit and date')
         setError(error)
         throw error
       } finally {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const listCheckinsForDate = useCallback(
@@ -355,7 +403,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        const fetchedCheckins = await checkinRepository.listForDate(userId, dateKey)
+        const fetchedCheckins = await usecases.listCheckinsForDate(userId, dateKey)
         return fetchedCheckins
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to list checkins for date')
@@ -365,7 +413,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const listCheckinsForHabit = useCallback(
@@ -381,7 +429,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        const fetchedCheckins = await checkinRepository.listForHabit(userId, habitId, options)
+        const fetchedCheckins = await usecases.listCheckinsForHabit(userId, habitId, options)
         return fetchedCheckins
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to list checkins for habit')
@@ -391,7 +439,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const listCheckinsForDateRange = useCallback(
@@ -404,18 +452,19 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        const fetchedCheckins = await checkinRepository.listForDateRange(userId, startDate, endDate)
+        const fetchedCheckins = await usecases.listCheckinsForDateRange(userId, startDate, endDate)
         setCheckins(fetchedCheckins)
         return fetchedCheckins
       } catch (err) {
-        const error = err instanceof Error ? err : new Error('Failed to list checkins for date range')
+        const error =
+          err instanceof Error ? err : new Error('Failed to list checkins for date range')
         setError(error)
         throw error
       } finally {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   // ============================================================================
@@ -432,70 +481,8 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        // Calculate date range
-        const endDate = new Date()
-        const startDate = new Date()
-        startDate.setDate(startDate.getDate() - days)
-
-        const startDateKey = startDate.toISOString().split('T')[0]
-        const endDateKey = endDate.toISOString().split('T')[0]
-
-        const checkins = await checkinRepository.listForHabit(userId, habitId, {
-          startDate: startDateKey,
-          endDate: endDateKey,
-        })
-
-        const totalCheckins = checkins.length
-        const doneCount = checkins.filter((c) => c.status === 'done').length
-        const tinyCount = checkins.filter((c) => c.status === 'tiny').length
-        const skipCount = checkins.filter((c) => c.status === 'skip').length
-
-        // Calculate current streak (consecutive days with done or tiny)
-        let currentStreak = 0
-        const today = new Date().toISOString().split('T')[0]
-        const checkDate = new Date(today)
-
-        while (true) {
-          const dateKey = checkDate.toISOString().split('T')[0]
-          const checkin = checkins.find((c) => c.dateKey === dateKey)
-
-          if (!checkin || checkin.status === 'skip') {
-            break
-          }
-
-          if (checkin.status === 'done' || checkin.status === 'tiny') {
-            currentStreak++
-          }
-
-          checkDate.setDate(checkDate.getDate() - 1)
-        }
-
-        // Calculate best streak
-        let bestStreak = 0
-        let tempStreak = 0
-
-        const sortedCheckins = [...checkins].sort((a, b) => a.dateKey.localeCompare(b.dateKey))
-
-        for (const checkin of sortedCheckins) {
-          if (checkin.status === 'done' || checkin.status === 'tiny') {
-            tempStreak++
-            bestStreak = Math.max(bestStreak, tempStreak)
-          } else {
-            tempStreak = 0
-          }
-        }
-
-        const completionRate = totalCheckins > 0 ? (doneCount + tinyCount) / totalCheckins : 0
-
-        return {
-          totalCheckins,
-          doneCount,
-          tinyCount,
-          skipCount,
-          currentStreak,
-          bestStreak,
-          completionRate,
-        }
+        // Delegate to usecase (all calculation logic lives in domain layer)
+        return await usecases.getHabitStats(userId, habitId, days)
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to calculate habit stats')
         setError(error)
@@ -504,7 +491,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   return {

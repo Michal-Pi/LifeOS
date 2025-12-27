@@ -184,6 +184,7 @@ Successfully implemented comprehensive offline-first capabilities for the Notes 
 **Features:**
 
 **NoteSyncStatus Badge:**
+
 - Visual indicator for individual note sync state
 - States: synced (✓), pending (⏱), syncing (⟳), failed (⚠)
 - Color coding (green/yellow/blue/red)
@@ -191,6 +192,7 @@ Successfully implemented comprehensive offline-first capabilities for the Notes 
 - Spinner animation for syncing state
 
 **SyncStatusBanner:**
+
 - Banner for overall sync status
 - Shows pending/failed operation counts
 - Last sync time with "time ago" formatting

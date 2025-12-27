@@ -13,15 +13,15 @@ const projectPaths = [
   path.resolve(__dirname, 'packages/core/tsconfig.json'),
   path.resolve(__dirname, 'packages/platform-web/tsconfig.json'),
   path.resolve(__dirname, 'packages/calendar/tsconfig.json'),
-  path.resolve(__dirname, 'packages/todos/tsconfig.json')
+  path.resolve(__dirname, 'packages/todos/tsconfig.json'),
 ]
 
 const resolverSettings = {
   'import/resolver': {
     typescript: {
-      project: projectPaths
-    }
-  }
+      project: projectPaths,
+    },
+  },
 }
 
 const languageOptions = {
@@ -29,13 +29,20 @@ const languageOptions = {
   parserOptions: {
     project: projectPaths,
     tsconfigRootDir: __dirname,
-    sourceType: 'module'
-  }
+    sourceType: 'module',
+  },
 }
 
 export default [
   {
-    ignores: ['**/node_modules/**', '**/.next/**', '**/.turbo/**', '**/dist/**', 'out', 'apps/web-vite/out']
+    ignores: [
+      '**/node_modules/**',
+      '**/.next/**',
+      '**/.turbo/**',
+      '**/dist/**',
+      'out',
+      'apps/web-vite/out',
+    ],
   },
   js.configs.recommended,
   {
@@ -45,7 +52,7 @@ export default [
     settings: resolverSettings,
     plugins: {
       '@typescript-eslint': tsPlugin,
-      import: importPlugin
+      import: importPlugin,
     },
     rules: {
       'no-unused-vars': 'off',
@@ -54,8 +61,8 @@ export default [
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_'
-        }
+          caughtErrorsIgnorePattern: '^_',
+        },
       ],
       '@typescript-eslint/no-empty-interface': 'off',
       'import/order': [
@@ -67,18 +74,18 @@ export default [
             {
               pattern: '@lifeos/**',
               group: 'internal',
-              position: 'before'
-            }
-          ]
-        }
-      ]
-    }
+              position: 'before',
+            },
+          ],
+        },
+      ],
+    },
   },
   {
     files: ['packages/**'],
     rules: {
-      'import/no-extraneous-dependencies': 'off'
-    }
+      'import/no-extraneous-dependencies': 'off',
+    },
   },
   // Node.js environment for functions
   {
@@ -96,9 +103,9 @@ export default [
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         setInterval: 'readonly',
-        clearInterval: 'readonly'
-      }
-    }
+        clearInterval: 'readonly',
+      },
+    },
   },
   // Browser globals for packages that may use them
   {
@@ -111,8 +118,8 @@ export default [
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         setInterval: 'readonly',
-        clearInterval: 'readonly'
-      }
-    }
-  }
+        clearInterval: 'readonly',
+      },
+    },
+  },
 ]

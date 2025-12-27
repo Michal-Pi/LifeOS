@@ -12,7 +12,7 @@ import {
   writeBatch,
   type DocumentData,
   type QuerySnapshot,
-  type Firestore
+  type Firestore,
 } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 
@@ -34,7 +34,10 @@ function validateCompositeData(data: DocumentData, compositeId: string): data is
     }
   }
   if (!Array.isArray(data.members)) {
-    logger.warn('Invalid members field in composite', { compositeId, membersType: typeof data.members })
+    logger.warn('Invalid members field in composite', {
+      compositeId,
+      membersType: typeof data.members,
+    })
     return false
   }
   return true
@@ -46,7 +49,7 @@ function mapSnapshot(snapshot: QuerySnapshot<DocumentData>): CompositeEvent[] {
       const data = d.data()
       const composite = {
         ...data,
-        compositeEventId: d.id
+        compositeEventId: d.id,
       }
       if (!validateCompositeData(composite, d.id)) {
         return null
@@ -68,7 +71,7 @@ export function createFirestoreCompositeRepository(): CompositeEventRepository {
       const data = snapshot.data()
       const composite = {
         ...data,
-        compositeEventId: snapshot.id
+        compositeEventId: snapshot.id,
       }
       if (!validateCompositeData(composite, snapshot.id)) {
         logger.error('Invalid composite data', undefined, { compositeId: snapshot.id })
@@ -140,9 +143,7 @@ export function createFirestoreCompositeRepository(): CompositeEventRepository {
       const q = query(compositeCollection(db, userId))
       const snapshot = await getDocs(q)
       const composites = mapSnapshot(snapshot)
-      return composites.filter((c) =>
-        c.members.some((m) => m.iCalUID === iCalUID)
-      )
+      return composites.filter((c) => c.members.some((m) => m.iCalUID === iCalUID))
     },
 
     async listByRange(userId, startMs, endMs) {
@@ -159,25 +160,17 @@ export function createFirestoreCompositeRepository(): CompositeEventRepository {
     async create(userId, composite) {
       const db = await getDb()
       const compositeId = composite.id ?? composite.compositeEventId ?? ''
-      await setDoc(
-        doc(db, 'users', userId, 'compositeEvents', compositeId),
-        composite
-      )
+      await setDoc(doc(db, 'users', userId, 'compositeEvents', compositeId), composite)
     },
 
     async update(userId, compositeEventId, composite) {
       const db = await getDb()
-      await setDoc(
-        doc(db, 'users', userId, 'compositeEvents', compositeEventId),
-        composite
-      )
+      await setDoc(doc(db, 'users', userId, 'compositeEvents', compositeEventId), composite)
     },
 
     async delete(userId, compositeEventId) {
       const db = await getDb()
-      await deleteDoc(
-        doc(db, 'users', userId, 'compositeEvents', compositeEventId)
-      )
+      await deleteDoc(doc(db, 'users', userId, 'compositeEvents', compositeEventId))
     },
 
     async batchCreate(userId, composites) {
@@ -185,16 +178,10 @@ export function createFirestoreCompositeRepository(): CompositeEventRepository {
       const batch = writeBatch(db)
       for (const composite of composites) {
         const compositeId = composite.id ?? composite.compositeEventId ?? ''
-        const ref = doc(
-          db,
-          'users',
-          userId,
-          'compositeEvents',
-          compositeId
-        )
+        const ref = doc(db, 'users', userId, 'compositeEvents', compositeId)
         batch.set(ref, composite)
       }
       await batch.commit()
-    }
+    },
   }
 }

@@ -10,7 +10,7 @@ const baseEvent: CanonicalCalendarEvent = {
     provider: 'google',
     accountId: 'primary',
     providerCalendarId: 'primary',
-    providerEventId: 'evt-1'
+    providerEventId: 'evt-1',
   },
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -26,7 +26,7 @@ const baseEvent: CanonicalCalendarEvent = {
   allDay: false,
   title: 'Test Event',
   occursOn: ['2025-01-01'],
-  visibility: 'default'
+  visibility: 'default',
 }
 
 describe('buildWritebackPayload', () => {
@@ -34,21 +34,21 @@ describe('buildWritebackPayload', () => {
     const payload = buildWritebackPayload({
       op: 'create',
       event: baseEvent,
-      writebackVisibility: 'private'
+      writebackVisibility: 'private',
     })
     expect(payload.visibility).toBe('private')
   })
 
   it('requires RSVP details for rsvp op', () => {
-    expect(() =>
-      buildWritebackPayload({ op: 'rsvp', event: baseEvent })
-    ).toThrow('Missing RSVP details')
+    expect(() => buildWritebackPayload({ op: 'rsvp', event: baseEvent })).toThrow(
+      'Missing RSVP details'
+    )
   })
 
   it('requires attendees for update_attendees op', () => {
-    expect(() =>
-      buildWritebackPayload({ op: 'update_attendees', event: baseEvent })
-    ).toThrow('Missing attendees for update')
+    expect(() => buildWritebackPayload({ op: 'update_attendees', event: baseEvent })).toThrow(
+      'Missing attendees for update'
+    )
   })
 
   it('uses instance override for instance edit updates', () => {
@@ -61,17 +61,17 @@ describe('buildWritebackPayload', () => {
             startMs: baseEvent.startMs + 3600000,
             endMs: baseEvent.endMs + 3600000,
             title: 'Override',
-            updatedAtMs: Date.now()
-          }
-        }
-      }
+            updatedAtMs: Date.now(),
+          },
+        },
+      },
     }
 
     const payload = buildWritebackPayload({
       op: 'update',
       event,
       isInstanceEdit: true,
-      occurrenceStartMs: baseEvent.startMs
+      occurrenceStartMs: baseEvent.startMs,
     })
 
     expect(payload.title).toBe('Override')

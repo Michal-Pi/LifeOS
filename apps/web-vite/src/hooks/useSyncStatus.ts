@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createLogger } from '@lifeos/calendar'
 import { createFirestoreSyncStatusRepository } from '@/adapters/firestoreSyncStatusRepository'
 import { functionUrl } from '@/lib/functionsUrl'
+import { authenticatedFetch } from '@/lib/authenticatedFetch'
 
 const logger = createLogger('useSyncStatus')
 const syncRepository = createFirestoreSyncStatusRepository()
@@ -58,7 +59,9 @@ export function useSyncStatus(userId: string, accountId: string): UseSyncStatusR
     setError(null)
 
     try {
-      const response = await fetch(functionUrl(`syncNow?uid=${userId}&accountId=${accountId}`))
+      const response = await authenticatedFetch(
+        functionUrl(`syncNow?uid=${userId}&accountId=${accountId}`)
+      )
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
@@ -80,6 +83,6 @@ export function useSyncStatus(userId: string, accountId: string): UseSyncStatusR
     status,
     syncing,
     error,
-    syncNow
+    syncNow,
   }
 }

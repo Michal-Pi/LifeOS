@@ -5,6 +5,7 @@ LifeOS is a personal productivity and knowledge management system built as a Vit
 ## Vision
 
 LifeOS helps you organize daily work and long-term goals through:
+
 - Calendar-first planning with Google sync
 - Project/milestone/task management
 - Daily overview + weekly review
@@ -31,6 +32,7 @@ pnpm firebase:deploy
 ## Documentation
 
 Start here:
+
 - `docs/INDEX.md`
 - `docs/PROJECT_OVERVIEW.md`
 - `docs/ARCHITECTURE.md`
@@ -40,6 +42,7 @@ Start here:
 ## Current Features
 
 ### Calendar
+
 - Event CRUD + rich recurrence
 - Instances + overrides
 - RSVP + attendees
@@ -48,38 +51,54 @@ Start here:
 - Offline-first patterns + outbox
 
 ### Todos (Projects/Milestones/Tasks)
+
 - Hierarchical project → milestone → task model
 - Task detail sidebar + scheduling into calendar
 - Priority/urgency/importance support
 - Firestore-backed persistence
 
+### Habits & Mind Engine
+
+- **Habit Tracking**: Create habits with flexible schedules, track check-ins with mood before/after, view progress with streaks and completion rates
+- **Mind Interventions**: Pre-built interventions (breathing, grounding, ROAM, etc.) with step-by-step guidance including text, timers, choices, and input prompts
+- **Analytics Dashboard**: Weekly review with habit completion trends, mood correlation analysis, and intervention effectiveness tracking
+- **Domain-Driven Architecture**: Clean separation between UI (React hooks), business logic (usecases), and data access (repositories)
+
 ### Today + Review
+
 - Today dashboard with quick stats
-- Weekly review page
+- Weekly review page with habit analytics
+- Mood tracking and correlation insights
 
 ### Quotes
+
 - Deterministic daily quote selection
 - Quote CRUD in settings
 
 ### Platform + Infrastructure
+
 - Firebase Auth (Google Sign-In)
 - Firestore persistence
 - Cloud Functions for sync/writeback
 - pnpm + Turbo monorepo
+- Clean Architecture with usecases layer for testable business logic
 
 ## Tech Stack
 
 **Frontend**
+
 - Vite + React 19 + TypeScript
 - React Router
 - Custom hooks + repository adapters
 
 **Backend**
+
 - Firebase Auth
 - Firestore
 - Cloud Functions (Node 20)
 
 **Infra**
+
 - pnpm workspaces
 - Turbo
 - Vitest
@@ -128,7 +147,26 @@ pnpm firebase:deploy:functions   # Build + deploy functions only
 
 - Calendar: production-ready
 - Todos: active and in use
-- Notes/People/Projects: placeholder UI, domain work in progress
+- Habits & Mind Engine: production-ready with analytics (Phase 5 complete)
+- Notes: late beta with offline support and OKR integration
+- Training: foundation complete, workout planning in progress
+- People/Projects: placeholder UI
+
+## Architecture
+
+LifeOS follows Clean Architecture principles:
+
+- **Domain Layer**: Pure business logic in `@lifeos/habits`, `@lifeos/mind`, `@lifeos/calendar` packages
+- **Usecases Layer**: Testable business operations that orchestrate repositories
+- **Adapters Layer**: Firestore implementations of repository interfaces
+- **UI Layer**: React components and hooks that delegate to usecases
+
+This separation enables:
+
+- Unit testing business logic without React dependencies
+- Reusable domain logic across different UI implementations
+- Clear boundaries between concerns
+- Type-safe data flow from domain to UI
 
 ---
 

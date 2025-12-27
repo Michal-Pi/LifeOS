@@ -57,9 +57,10 @@ class ConsoleLogger implements Logger {
 
   error(message: string, error?: Error | unknown, context?: LogContext): void {
     if (this.shouldLog('error')) {
-      const errorContext = error instanceof Error
-        ? { ...context, error: error.message, stack: error.stack }
-        : { ...context, error }
+      const errorContext =
+        error instanceof Error
+          ? { ...context, error: error.message, stack: error.stack }
+          : { ...context, error }
       console.error(this.formatMessage('error', message, errorContext))
     }
   }

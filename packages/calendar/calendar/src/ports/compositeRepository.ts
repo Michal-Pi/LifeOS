@@ -19,7 +19,10 @@ export interface CompositeEventRepository {
    * Returns a map of canonicalEventId -> CompositeEvent[]
    * More efficient than calling findByCanonicalEventId multiple times
    */
-  findByCanonicalEventIds(userId: string, canonicalEventIds: string[]): Promise<Map<string, CompositeEvent[]>>
+  findByCanonicalEventIds(
+    userId: string,
+    canonicalEventIds: string[]
+  ): Promise<Map<string, CompositeEvent[]>>
 
   /**
    * Find composite events by iCalUID (for deduplication during sync)
@@ -29,11 +32,7 @@ export interface CompositeEventRepository {
   /**
    * List composite events in a time range
    */
-  listByRange(
-    userId: string,
-    startMs: number,
-    endMs: number
-  ): Promise<CompositeEvent[]>
+  listByRange(userId: string, startMs: number, endMs: number): Promise<CompositeEvent[]>
 
   /**
    * Create a new composite event
@@ -55,8 +54,3 @@ export interface CompositeEventRepository {
    */
   batchCreate(userId: string, composites: CompositeEvent[]): Promise<void>
 }
-
-
-
-
-

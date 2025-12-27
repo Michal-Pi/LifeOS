@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { listEventsWithRecurrence, type CanonicalCalendarEvent, type RecurrenceInstance, createLogger } from '@lifeos/calendar'
+import {
+  listEventsWithRecurrence,
+  type CanonicalCalendarEvent,
+  type RecurrenceInstance,
+  createLogger,
+} from '@lifeos/calendar'
 import { createFirestoreCalendarEventRepository } from '@/adapters/firestoreCalendarEventRepository'
 
 const logger = createLogger('useCalendarEvents')
