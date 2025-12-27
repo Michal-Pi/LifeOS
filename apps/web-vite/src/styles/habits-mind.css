@@ -1,0 +1,497 @@
+/**
+ * Habits & Mind Engine Styles
+ * Includes mobile responsiveness and accessibility improvements
+ */
+
+/* ========== Habit Consistency Chart ========== */
+
+.consistency-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.consistency-chart-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
+.consistency-bar-container {
+  display: grid;
+  grid-template-columns: 200px 1fr 60px;
+  gap: 1rem;
+  align-items: center;
+}
+
+.habit-label {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.consistency-bar {
+  display: flex;
+  height: 32px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--muted);
+}
+
+.bar-segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.bar-segment.done {
+  background: #22c55e; /* green */
+}
+
+.bar-segment.tiny {
+  background: #3b82f6; /* blue */
+}
+
+.bar-segment.skip {
+  background: #f59e0b; /* orange */
+}
+
+.bar-segment.missed {
+  background: #e5e7eb; /* gray */
+}
+
+.consistency-percent {
+  font-weight: 600;
+  font-size: 1.125rem;
+  text-align: right;
+}
+
+.consistency-legend {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--muted);
+  border-radius: 8px;
+  justify-content: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.legend-color.done {
+  background: #22c55e;
+}
+
+.legend-color.tiny {
+  background: #3b82f6;
+}
+
+.legend-color.skip {
+  background: #f59e0b;
+}
+
+.legend-color.missed {
+  background: #e5e7eb;
+}
+
+.legend-label {
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+
+/* ========== Intervention Summary ========== */
+
+.intervention-summary {
+  margin: 1.5rem 0;
+}
+
+.intervention-summary-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
+.intervention-summary-empty .hint {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.stat-number,
+.stat-emoji {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.feeling-breakdown {
+  margin-top: 1rem;
+}
+
+.feeling-breakdown h4 {
+  margin-bottom: 0.75rem;
+}
+
+.feeling-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.feeling-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: var(--muted);
+  border-radius: 6px;
+}
+
+.feeling-emoji {
+  font-size: 1.5rem;
+}
+
+.feeling-name {
+  flex: 1;
+  text-transform: capitalize;
+}
+
+.feeling-count {
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+/* ========== Habit Recommendations ========== */
+
+.habit-recommendations {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.no-recommendations {
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 1.125rem;
+}
+
+.recommendation-card {
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.recommendation-card.priority-high {
+  border-left: 4px solid #ef4444; /* red */
+}
+
+.recommendation-card.priority-medium {
+  border-left: 4px solid #f59e0b; /* orange */
+}
+
+.recommendation-card.priority-low {
+  border-left: 4px solid #3b82f6; /* blue */
+}
+
+.rec-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.rec-priority-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.rec-priority-badge.high {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.rec-priority-badge.medium {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.rec-priority-badge.low {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.rec-header h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.rec-message {
+  margin: 0.5rem 0;
+  color: var(--foreground);
+}
+
+.rec-action-btn {
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.2s;
+}
+
+.rec-action-btn:hover {
+  opacity: 0.9;
+}
+
+/* ========== Weekly Review Step ========== */
+
+.habits-mind-step {
+  padding: 2rem;
+}
+
+.habits-mind-step h2 {
+  margin-bottom: 0.5rem;
+}
+
+.step-subtitle {
+  color: var(--muted-foreground);
+  margin-bottom: 2rem;
+}
+
+.review-section {
+  margin: 2rem 0;
+}
+
+.review-section h3 {
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.stats-summary {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.habit-stat-card {
+  padding: 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.habit-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.habit-stat-header h4 {
+  margin: 0;
+}
+
+.streak-badge {
+  padding: 0.25rem 0.75rem;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.habit-stat-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  margin-bottom: 0.25rem;
+}
+
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.streak-message {
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: #fef3c7;
+  color: #78350f;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.reflection-prompt {
+  margin-bottom: 1.5rem;
+}
+
+.reflection-prompt label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.reflection-prompt textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: inherit;
+  resize: vertical;
+}
+
+.step-actions {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ========== Mobile Responsiveness ========== */
+
+@media (max-width: 768px) {
+  .consistency-bar-container {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .habit-label {
+    font-size: 0.875rem;
+    white-space: normal;
+  }
+
+  .consistency-percent {
+    text-align: left;
+    font-size: 1rem;
+  }
+
+  .consistency-legend {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .summary-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .habit-stat-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .habit-stat-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .habits-mind-step {
+    padding: 1rem;
+  }
+}
+
+/* Touch-friendly buttons on mobile */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  .rec-action-btn {
+    min-height: 44px; /* iOS minimum tap target */
+    min-width: 44px;
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* ========== Accessibility Improvements ========== */
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .bar-segment,
+  .rec-action-btn {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Focus visible states */
+button:focus-visible,
+.rec-action-btn:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .consistency-bar,
+  .stat-card,
+  .recommendation-card,
+  .habit-stat-card {
+    border-width: 2px;
+  }
+}
+
+/* Screen reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

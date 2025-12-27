@@ -3,6 +3,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
 import { calculatePriorityScore } from '@/lib/priority'
 import { calculateWeightedProgress } from '@/lib/progress'
+import { HabitsAndMindStep } from '@/components/weeklyReview/HabitsAndMindStep'
+import { startOfWeek, endOfWeek } from 'date-fns'
 
 export function WeeklyReviewPage() {
   const { user } = useAuth()
@@ -19,12 +21,17 @@ export function WeeklyReviewPage() {
   const completedThisWeek = useMemo(() => {
     const oneWeekAgo = new Date()
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-    return tasks.filter(t => t.completed && t.completedAt && new Date(t.completedAt) > oneWeekAgo)
+    return tasks.filter((t) => t.completed && t.completedAt && new Date(t.completedAt) > oneWeekAgo)
   }, [tasks])
 
   const pendingHighPriority = useMemo(() => {
-    return tasks.filter(t => !t.completed && calculatePriorityScore(t) > 50)
+    return tasks.filter((t) => !t.completed && calculatePriorityScore(t) > 50)
   }, [tasks])
+
+  // Calculate week boundaries for habits review
+  const today = useMemo(() => new Date(), [])
+  const weekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today]) // Monday
+  const weekEnd = useMemo(() => endOfWeek(today, { weekStartsOn: 1 }), [today]) // Sunday
 
   const steps = [
     {
@@ -33,29 +40,31 @@ export function WeeklyReviewPage() {
         <div className="review-step">
           <p>You completed {completedThisWeek.length} tasks this week. Great job!</p>
           <ul className="review-list">
-            {completedThisWeek.map(t => (
+            {completedThisWeek.map((t) => (
               <li key={t.id} className="review-item completed">
                 <span className="check">✓</span> {t.title}
               </li>
             ))}
           </ul>
         </div>
-      )
+      ),
     },
     {
       title: 'Check Pending Priorities',
       content: (
         <div className="review-step">
-          <p>These high-priority tasks are still pending. Should they be scheduled for next week?</p>
+          <p>
+            These high-priority tasks are still pending. Should they be scheduled for next week?
+          </p>
           <ul className="review-list">
-            {pendingHighPriority.map(t => (
+            {pendingHighPriority.map((t) => (
               <li key={t.id} className="review-item pending">
                 <span className="priority-badge">{calculatePriorityScore(t)}</span> {t.title}
               </li>
             ))}
           </ul>
         </div>
-      )
+      ),
     },
     {
       title: 'Project Progress',
@@ -63,9 +72,11 @@ export function WeeklyReviewPage() {
         <div className="review-step">
           <p>Review your active projects.</p>
           <div className="project-review-grid">
-            {projects.map(p => {
-              const { progress } = calculateWeightedProgress(tasks.filter(t => t.projectId === p.id))
-              
+            {projects.map((p) => {
+              const { progress } = calculateWeightedProgress(
+                tasks.filter((t) => t.projectId === p.id)
+              )
+
               return (
                 <div key={p.id} className="project-review-card">
                   <h4>{p.title}</h4>
@@ -78,8 +89,19 @@ export function WeeklyReviewPage() {
             })}
           </div>
         </div>
-      )
-    }
+      ),
+    },
+    {
+      title: 'Habits & Mind Review',
+      content: (
+        <HabitsAndMindStep
+          userId={userId}
+          weekStartDate={weekStart}
+          weekEndDate={weekEnd}
+          onNext={() => setStep((s) => s + 1)}
+        />
+      ),
+    },
   ]
 
   if (loading) return <div className="loading-screen">Loading review data...</div>
@@ -99,26 +121,20 @@ export function WeeklyReviewPage() {
       </div>
 
       <footer className="review-footer">
-        <button 
-          className="ghost-button" 
-          onClick={() => setStep(s => Math.max(0, s - 1))}
+        <button
+          className="ghost-button"
+          onClick={() => setStep((s) => Math.max(0, s - 1))}
           disabled={step === 0}
         >
           Previous
         </button>
-        
+
         {step < steps.length - 1 ? (
-          <button 
-            className="primary-button" 
-            onClick={() => setStep(s => s + 1)}
-          >
+          <button className="primary-button" onClick={() => setStep((s) => s + 1)}>
             Next
           </button>
         ) : (
-          <button 
-            className="primary-button success" 
-            onClick={() => alert('Review Complete!')}
-          >
+          <button className="primary-button success" onClick={() => alert('Review Complete!')}>
             Finish Review
           </button>
         )}
