@@ -9,3 +9,6 @@ export * from './ports/exerciseLibraryRepository'
 export * from './ports/workoutTemplateRepository'
 export * from './ports/workoutPlanRepository'
 export * from './ports/workoutSessionRepository'
+
+// Usecases
+export * from './usecases'

@@ -1,15 +1,28 @@
 /**
  * useWorkoutOperations Hook
  *
- * React wrapper for workout session and exercise library operations.
- * Manages UI state (loading, error) and delegates to repositories.
- * Note: Usecases layer for training module to be added in future iteration.
+ * React wrapper around workout usecases.
+ * Manages UI state (loading, error) and delegates business logic to domain layer.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useAuth } from './useAuth'
 import { createFirestoreExerciseLibraryRepository } from '@/adapters/training/firestoreExerciseLibraryRepository'
 import { createFirestoreWorkoutSessionRepository } from '@/adapters/training/firestoreWorkoutSessionRepository'
+import {
+  createExerciseUsecase,
+  updateExerciseUsecase,
+  deleteExerciseUsecase,
+  getExerciseUsecase,
+  listExercisesUsecase,
+  createSessionUsecase,
+  updateSessionUsecase,
+  deleteSessionUsecase,
+  getSessionUsecase,
+  getSessionsByDateUsecase,
+  getSessionByDateAndContextUsecase,
+  listSessionsForDateRangeUsecase,
+} from '@lifeos/training'
 import type {
   ExerciseLibraryItem,
   ExerciseId,
@@ -60,7 +73,7 @@ const sessionRepository = createFirestoreWorkoutSessionRepository()
 
 /**
  * Hook for managing workout sessions and exercise library
- * Thin wrapper around repositories - handles React state
+ * Thin wrapper around usecases - handles React state, delegates business logic to domain
  */
 export function useWorkoutOperations(): UseWorkoutOperationsReturn {
   const { user } = useAuth()
@@ -71,6 +84,28 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
 
   const userId = user?.uid
 
+  // Initialize usecases with repositories
+  const usecases = useMemo(
+    () => ({
+      // Exercise usecases
+      createExercise: createExerciseUsecase(exerciseRepository),
+      updateExercise: updateExerciseUsecase(exerciseRepository),
+      deleteExercise: deleteExerciseUsecase(exerciseRepository),
+      getExercise: getExerciseUsecase(exerciseRepository),
+      listExercises: listExercisesUsecase(exerciseRepository),
+
+      // Session usecases
+      createSession: createSessionUsecase(sessionRepository),
+      updateSession: updateSessionUsecase(sessionRepository),
+      deleteSession: deleteSessionUsecase(sessionRepository),
+      getSession: getSessionUsecase(sessionRepository),
+      getSessionsByDate: getSessionsByDateUsecase(sessionRepository),
+      getSessionByDateAndContext: getSessionByDateAndContextUsecase(sessionRepository),
+      listSessionsForDateRange: listSessionsForDateRangeUsecase(sessionRepository),
+    }),
+    []
+  )
+
   // ========== Exercise Library Operations ==========
 
   const createExercise = useCallback(
@@ -80,10 +115,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
       setError(null)
 
       try {
-        const exercise = await exerciseRepository.create(userId, {
-          ...input,
-          userId,
-        })
+        const exercise = await usecases.createExercise(userId, input)
         setExercises((prev) => [exercise, ...prev])
         return exercise
       } catch (err) {
@@ -94,7 +126,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const updateExercise = useCallback(
@@ -104,7 +136,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
       setError(null)
 
       try {
-        const updated = await exerciseRepository.update(userId, exerciseId, updates)
+        const updated = await usecases.updateExercise(userId, exerciseId, updates)
         setExercises((prev) => prev.map((e) => (e.exerciseId === exerciseId ? updated : e)))
         return updated
       } catch (err) {
@@ -115,7 +147,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const deleteExercise = useCallback(
@@ -125,7 +157,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
       setError(null)
 
       try {
-        await exerciseRepository.delete(userId, exerciseId)
+        await usecases.deleteExercise(userId, exerciseId)
         setExercises((prev) => prev.filter((e) => e.exerciseId !== exerciseId))
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to delete exercise')
@@ -135,7 +167,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const getExercise = useCallback(
@@ -145,7 +177,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
       setError(null)
 
       try {
-        const exercise = await exerciseRepository.get(userId, exerciseId)
+        const exercise = await usecases.getExercise(userId, exerciseId)
         return exercise
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to get exercise')
@@ -155,7 +187,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const listExercises = useCallback(
@@ -168,7 +200,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
       setError(null)
 
       try {
-        const exerciseList = await exerciseRepository.list(userId, options)
+        const exerciseList = await usecases.listExercises(userId, options)
         setExercises(exerciseList)
         return exerciseList
       } catch (err) {
@@ -179,7 +211,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   // ========== Workout Session Operations ==========
@@ -191,10 +223,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
       setError(null)
 
       try {
-        const session = await sessionRepository.create(userId, {
-          ...input,
-          userId,
-        })
+        const session = await usecases.createSession(userId, input)
         setSessions((prev) => [session, ...prev])
         return session
       } catch (err) {
@@ -205,7 +234,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const updateSession = useCallback(
@@ -215,7 +244,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
       setError(null)
 
       try {
-        const updated = await sessionRepository.update(userId, sessionId, updates)
+        const updated = await usecases.updateSession(userId, sessionId, updates)
         setSessions((prev) => prev.map((s) => (s.sessionId === sessionId ? updated : s)))
         return updated
       } catch (err) {
@@ -226,7 +255,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const deleteSession = useCallback(
@@ -236,7 +265,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
       setError(null)
 
       try {
-        await sessionRepository.delete(userId, sessionId)
+        await usecases.deleteSession(userId, sessionId)
         setSessions((prev) => prev.filter((s) => s.sessionId !== sessionId))
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to delete session')
@@ -246,7 +275,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const getSession = useCallback(
@@ -256,7 +285,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
       setError(null)
 
       try {
-        const session = await sessionRepository.get(userId, sessionId)
+        const session = await usecases.getSession(userId, sessionId)
         return session
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to get session')
@@ -266,7 +295,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const getSessionByDate = useCallback(
@@ -276,7 +305,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
       setError(null)
 
       try {
-        const sessionList = await sessionRepository.getByDate(userId, dateKey)
+        const sessionList = await usecases.getSessionsByDate(userId, dateKey)
         return sessionList
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to get sessions by date')
@@ -286,7 +315,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const getSessionByDateAndContext = useCallback(
@@ -296,7 +325,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
       setError(null)
 
       try {
-        const session = await sessionRepository.getByDateAndContext(userId, dateKey, context)
+        const session = await usecases.getSessionByDateAndContext(userId, dateKey, context)
         return session
       } catch (err) {
         const error =
@@ -307,7 +336,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   const listSessionsForDateRange = useCallback(
@@ -317,7 +346,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
       setError(null)
 
       try {
-        const sessionList = await sessionRepository.listForDateRange(userId, startDate, endDate)
+        const sessionList = await usecases.listSessionsForDateRange(userId, startDate, endDate)
         setSessions(sessionList)
         return sessionList
       } catch (err) {
@@ -328,7 +357,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId]
+    [userId, usecases]
   )
 
   return {
