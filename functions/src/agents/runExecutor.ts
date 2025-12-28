@@ -10,10 +10,13 @@ import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import { onDocumentCreated } from 'firebase-functions/v2/firestore'
 
-import { createOpenAIClient, executeWithOpenAI } from './openaiService.js'
+import { executeWithProvider } from './providerService.js'
 
-// Firebase secret for OpenAI API key
+// Firebase secrets for AI provider API keys
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY')
+const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY')
+const GOOGLE_AI_API_KEY = defineSecret('GOOGLE_AI_API_KEY')
+const XAI_API_KEY = defineSecret('XAI_API_KEY')
 
 // Function configuration (matching existing patterns)
 const FUNCTION_CONFIG = {
@@ -31,7 +34,7 @@ export const onRunCreated = onDocumentCreated(
   {
     ...FUNCTION_CONFIG,
     document: 'users/{userId}/workspaces/{workspaceId}/runs/{runId}',
-    secrets: [OPENAI_API_KEY],
+    secrets: [OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_AI_API_KEY, XAI_API_KEY],
   },
   async (event) => {
     const snapshot = event.data
@@ -81,16 +84,13 @@ export const onRunCreated = onDocumentCreated(
       }
       const agent = agentDoc.data() as AgentConfig
 
-      // Validate agent uses OpenAI (Phase 4A only supports OpenAI)
-      if (agent.modelProvider !== 'openai') {
-        throw new Error(
-          `Agent uses ${agent.modelProvider} provider. Phase 4A only supports OpenAI.`
-        )
-      }
-
-      // Execute with OpenAI
-      const openaiClient = createOpenAIClient(OPENAI_API_KEY.value())
-      const result = await executeWithOpenAI(openaiClient, agent, run.goal, run.context)
+      // Execute with the appropriate provider
+      const result = await executeWithProvider(agent, run.goal, run.context, {
+        openai: OPENAI_API_KEY.value(),
+        anthropic: ANTHROPIC_API_KEY.value(),
+        google: GOOGLE_AI_API_KEY.value(),
+        grok: XAI_API_KEY.value(),
+      })
 
       // Update run with successful result
       await runRef.update({
@@ -104,7 +104,7 @@ export const onRunCreated = onDocumentCreated(
       })
 
       console.log(
-        `Run ${runId} completed successfully. Tokens: ${result.tokensUsed}, Cost: $${result.estimatedCost.toFixed(4)}`
+        `Run ${runId} completed successfully. Provider: ${result.provider}, Model: ${result.model}, Tokens: ${result.tokensUsed}, Cost: $${result.estimatedCost.toFixed(4)}`
       )
     } catch (error) {
       console.error(`Run ${runId} failed:`, error)
