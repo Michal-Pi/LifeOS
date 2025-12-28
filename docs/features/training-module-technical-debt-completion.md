@@ -42,6 +42,7 @@ Successfully resolved the technical debt from the Training Module MVP by adding 
 ### Remaining Technical Debt
 
 ⚠️ **No Offline Support**: Unlike Habits/Mind, no IndexedDB integration (est. 4-6 hours)
+
 - Deferred to future phase - requires offline queue implementation
 - Not critical for MVP as Training data is less time-sensitive than Calendar events
 
@@ -78,6 +79,7 @@ export function createExerciseUsecase(exerciseRepo: ExerciseLibraryRepository) {
 ```
 
 **Usecases Implemented:**
+
 - `createExerciseUsecase` - Validates name and metrics
 - `updateExerciseUsecase` - Validates updates if provided
 - `deleteExerciseUsecase` - Soft delete (archives exercise)
@@ -142,6 +144,7 @@ export function calculateWorkoutStats(sessions: WorkoutSession[]) {
 ```
 
 **Usecases Implemented:**
+
 - `createSessionUsecase` - Validates dateKey format and completion status
 - `updateSessionUsecase` - Validates updates for dateKey and status consistency
 - `deleteSessionUsecase` - Hard delete (sessions are date-bound)
@@ -180,7 +183,7 @@ export {
 
 ### 4. Unit Tests - Exercise Usecases
 
-**packages/training/src/usecases/__tests__/exerciseUsecases.test.ts** (210 lines)
+**packages/training/src/usecases/**tests**/exerciseUsecases.test.ts** (210 lines)
 
 Tests for exercise business logic:
 
@@ -256,6 +259,7 @@ describe('createExerciseUsecase', () => {
 ```
 
 **Test Coverage:**
+
 - 9 tests total
 - Validates empty name
 - Validates empty metrics array
@@ -263,7 +267,7 @@ describe('createExerciseUsecase', () => {
 
 ### 5. Unit Tests - Session Usecases
 
-**packages/training/src/usecases/__tests__/sessionUsecases.test.ts** (296 lines)
+**packages/training/src/usecases/**tests**/sessionUsecases.test.ts** (296 lines)
 
 Tests for session business logic and analytics:
 
@@ -396,6 +400,7 @@ describe('calculateWorkoutStats', () => {
 ```
 
 **Test Coverage:**
+
 - 13 tests total
 - Validates date format (YYYY-MM-DD)
 - Validates completion status consistency
@@ -436,6 +441,7 @@ export * from './usecases'
 Refactored from direct repository calls to usecases delegation:
 
 **Before:**
+
 ```typescript
 const createExercise = useCallback(
   async (input) => {
@@ -460,6 +466,7 @@ const createExercise = useCallback(
 ```
 
 **After:**
+
 ```typescript
 // Initialize usecases with repositories
 const usecases = useMemo(
@@ -503,6 +510,7 @@ const createExercise = useCallback(
 ```
 
 **Changes:**
+
 - Added imports for all 13 usecases
 - Created `usecases` object with useMemo for initialization
 - Updated all 13 callback functions to delegate to usecases
@@ -613,6 +621,7 @@ Test Files  2 passed (2)
 ### Original Estimate (from MVP completion report)
 
 **Technical Debt Resolution:**
+
 1. No Usecases Layer: 2-3 hours to refactor
 2. No Tests: 3-4 hours
 3. Minimal Validation: 1-2 hours
@@ -624,6 +633,7 @@ Test Files  2 passed (2)
 **Time Spent**: ~3 hours
 
 **Efficiency Factors:**
+
 - Pattern reuse from Habits/Mind modules
 - Clear test structure template
 - Well-defined business rules from domain models
@@ -656,11 +666,13 @@ Test Files  2 passed (2)
 ### Still Technical Debt
 
 ⚠️ **Offline Support** (4-6 hours estimated)
+
 - IndexedDB integration for offline-first experience
 - Sync queue for workout sessions
 - Conflict resolution for exercise library
 
 **Rationale for Deferral:**
+
 - Training data is less time-sensitive than Calendar events
 - Offline support can be added in Phase 3-4
 - User feedback on core functionality should drive priority

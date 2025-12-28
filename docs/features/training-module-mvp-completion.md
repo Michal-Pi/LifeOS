@@ -34,6 +34,7 @@ Successfully implemented the **Training Module MVP** with workout session tracki
 - Version tracking and sync state management
 
 **Key Methods**:
+
 ```typescript
 create(userId, input) -> ExerciseLibraryItem
 update(userId, exerciseId, updates) -> ExerciseLibraryItem
@@ -52,10 +53,12 @@ list(userId, options?) -> ExerciseLibraryItem[]  // Filter by category, activeOn
 - Note: Usecases layer deferred for future iteration
 
 **Operations Provided**:
+
 - Exercise Library: createExercise, updateExercise, deleteExercise, getExercise, listExercises
 - Workout Sessions: createSession, updateSession, deleteSession, getSession, getSessionByDate, getSessionByDateAndContext, listSessionsForDateRange
 
 **Pattern**:
+
 ```typescript
 export function useWorkoutOperations(): UseWorkoutOperationsReturn {
   const { user } = useAuth()
@@ -65,23 +68,28 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
   const [error, setError] = useState<Error | null>(null)
 
   // Operations follow established pattern:
-  const createSession = useCallback(async (input) => {
-    if (!userId) throw new Error('User not authenticated')
-    setIsLoading(true)
-    setError(null)
-    try {
-      const session = await sessionRepository.create(userId, input)
-      setSessions((prev) => [session, ...prev])
-      return session
-    } catch (err) {
-      setError(err)
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }, [userId])
+  const createSession = useCallback(
+    async (input) => {
+      if (!userId) throw new Error('User not authenticated')
+      setIsLoading(true)
+      setError(null)
+      try {
+        const session = await sessionRepository.create(userId, input)
+        setSessions((prev) => [session, ...prev])
+        return session
+      } catch (err) {
+        setError(err)
+        throw err
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [userId]
+  )
 
-  return { /* all operations */ }
+  return {
+    /* all operations */
+  }
 }
 ```
 
@@ -95,6 +103,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
 - Real-time session data loading from Firestore
 
 **Features**:
+
 - Context selector with active state highlighting
 - Session status with visual indicators
 - Quick log flow: Select context → Log Workout
@@ -102,6 +111,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
 - Loading state handling
 
 **Component Structure**:
+
 ```typescript
 export function WorkoutSessionCard({ dateKey }: Props) {
   const { isLoading, getSessionByDate, createSession } = useWorkoutOperations()
@@ -145,12 +155,14 @@ export function WorkoutSessionCard({ dateKey }: Props) {
 - Dark mode support
 
 **CSS Custom Properties Used**:
+
 - `--card-background`, `--border-color`, `--radius-lg/md`
 - `--space-4/3/2`, `--text-primary/secondary`
 - `--primary-color`, `--primary-hover`, `--primary-light`
 - `--success-light/color`, `--info-light/color`
 
 **Components Styled**:
+
 ```css
 .training-session-card         /* Main container */
 .training-quick-log-panel      /* Quick log form */
@@ -174,6 +186,7 @@ export function WorkoutSessionCard({ dateKey }: Props) {
    - Positioned before Mind Engine section
 
 **Integration Point**:
+
 ```tsx
 {/* Habits Check-In */}
 <HabitCheckInCard userId={userId} dateKey={todayKey} />
@@ -194,6 +207,7 @@ export function WorkoutSessionCard({ dateKey }: Props) {
 **Decision**: Direct repository calls from hooks, usecases layer deferred.
 
 **Rationale**:
+
 - MVP focused on speed to value
 - Habits/Mind already demonstrated usecases pattern
 - Can refactor to usecases layer in future iteration (est. 2-3 hours)
@@ -206,12 +220,14 @@ export function WorkoutSessionCard({ dateKey }: Props) {
 **Decision**: Quick log only, no session detail editing, no exercise library UI.
 
 **Rationale**:
+
 - Absolute minimum to demonstrate value
 - Users can log "I worked out today" with context
 - Full session editing requires 8+ additional components
 - Exercise library requires separate management UI
 
 **Future Enhancements**:
+
 - Session detail editor (sets, reps, exercises)
 - Exercise library browser/manager
 - Template system integration
@@ -222,6 +238,7 @@ export function WorkoutSessionCard({ dateKey }: Props) {
 **Decision**: `delete()` marks as `archived: true` instead of hard delete.
 
 **Rationale**:
+
 - Preserves historical workout session data
 - Exercise references in past sessions remain valid
 - Matches Notes module pattern
@@ -270,6 +287,7 @@ users/{userId}/
 ### Type Safety
 
 All operations fully typed with `@lifeos/training` types:
+
 - `ExerciseLibraryItem`, `CreateExerciseInput`, `UpdateExerciseInput`
 - `WorkoutSession`, `CreateSessionInput`, `UpdateSessionInput`
 - `WorkoutContext`, `SessionStatus`, `ExerciseCategory`
@@ -406,6 +424,7 @@ All operations fully typed with `@lifeos/training` types:
 ### Original Plan (from audit)
 
 **HIGH PRIORITY: Training Module UI Integration (15-20 hours)**
+
 - Create Firestore adapters (4 of 4 repos)
 - Create React hooks (5 hooks)
 - Build UI components (8 components)
@@ -414,12 +433,14 @@ All operations fully typed with `@lifeos/training` types:
 ### What We Actually Did (6 hours)
 
 **ABSOLUTE MINIMUM MVP**
+
 - ✅ Created 1 Firestore adapter (Exercise Library)
 - ✅ Created 1 React hook (Workout Operations)
 - ✅ Built 1 UI component (Workout Session Card)
 - ✅ Integrated with TodayPage only
 
 **Deferred to Future**:
+
 - Template Repository (2 hours)
 - Plan Repository (2 hours)
 - Template Editor UI (4 hours)
