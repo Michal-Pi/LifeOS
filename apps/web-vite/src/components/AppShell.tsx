@@ -12,6 +12,8 @@ const modules = [
   { label: 'People', href: '/people', icon: '👥' },
   { label: 'Projects', href: '/projects', icon: '📦' },
   { label: 'Exercises', href: '/exercises', icon: '💪' },
+  { label: 'Templates', href: '/templates', icon: '📋' },
+  { label: 'Plan', href: '/plan', icon: '📅' },
 ]
 const settingsItem = { label: 'Settings', href: '/settings', icon: '⚙️' }
 

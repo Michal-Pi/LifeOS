@@ -121,7 +121,10 @@ export function WorkoutSessionCard({ dateKey }: WorkoutSessionCardProps) {
 
       <div className="training-session-status">
         {completedSessions.length > 0 ? (
-          <div className="training-completed" onClick={() => handleOpenSessionDetail(completedSessions[0])}>
+          <div
+            className="training-completed"
+            onClick={() => handleOpenSessionDetail(completedSessions[0])}
+          >
             <span className="training-status-icon">✅</span>
             <div className="training-status-text">
               <div className="training-status-label">Completed</div>
@@ -139,7 +142,10 @@ export function WorkoutSessionCard({ dateKey }: WorkoutSessionCardProps) {
             </div>
           </div>
         ) : plannedSessions.length > 0 ? (
-          <div className="training-planned" onClick={() => handleOpenSessionDetail(plannedSessions[0])}>
+          <div
+            className="training-planned"
+            onClick={() => handleOpenSessionDetail(plannedSessions[0])}
+          >
             <span className="training-status-icon">📅</span>
             <div className="training-status-text">
               <div className="training-status-label">Planned</div>

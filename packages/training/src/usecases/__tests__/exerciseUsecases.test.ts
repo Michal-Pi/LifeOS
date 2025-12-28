@@ -98,9 +98,9 @@ describe('exerciseUsecases', () => {
 
       const usecase = updateExerciseUsecase(mockRepo)
 
-      await expect(
-        usecase('user123', 'exercise:123' as any, { name: '  ' })
-      ).rejects.toThrow('Exercise name cannot be empty')
+      await expect(usecase('user123', 'exercise:123' as any, { name: '  ' })).rejects.toThrow(
+        'Exercise name cannot be empty'
+      )
 
       expect(mockRepo.update).not.toHaveBeenCalled()
     })

@@ -35,11 +35,7 @@ export function createSessionUsecase(sessionRepo: WorkoutSessionRepository) {
     }
 
     // Business rule: If session has completedAtMs, status should be completed or skipped
-    if (
-      input.completedAtMs &&
-      input.status !== 'completed' &&
-      input.status !== 'skipped'
-    ) {
+    if (input.completedAtMs && input.status !== 'completed' && input.status !== 'skipped') {
       throw new Error('Only completed or skipped sessions can have completedAtMs')
     }
 
@@ -137,11 +133,7 @@ export function getSessionByDateAndContextUsecase(sessionRepo: WorkoutSessionRep
  * Used for analytics and weekly review
  */
 export function listSessionsForDateRangeUsecase(sessionRepo: WorkoutSessionRepository) {
-  return async (
-    userId: string,
-    startDate: string,
-    endDate: string
-  ): Promise<WorkoutSession[]> => {
+  return async (userId: string, startDate: string, endDate: string): Promise<WorkoutSession[]> => {
     // Business rule: Validate date formats
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/
     if (!dateRegex.test(startDate)) {

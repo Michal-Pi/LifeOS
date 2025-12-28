@@ -26,6 +26,12 @@ const HabitsPage = lazy(() => import('./pages/HabitsPage').then((m) => ({ defaul
 const ExerciseLibraryPage = lazy(() =>
   import('./pages/ExerciseLibraryPage').then((m) => ({ default: m.ExerciseLibraryPage }))
 )
+const WorkoutTemplatePage = lazy(() =>
+  import('./pages/WorkoutTemplatePage').then((m) => ({ default: m.WorkoutTemplatePage }))
+)
+const WorkoutPlanPage = lazy(() =>
+  import('./pages/WorkoutPlanPage').then((m) => ({ default: m.WorkoutPlanPage }))
+)
 
 // Loading fallback component
 function PageLoader() {
@@ -131,6 +137,26 @@ function App() {
                     <ProtectedRoute>
                       <ErrorBoundary>
                         <ExerciseLibraryPage />
+                      </ErrorBoundary>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/templates"
+                  element={
+                    <ProtectedRoute>
+                      <ErrorBoundary>
+                        <WorkoutTemplatePage />
+                      </ErrorBoundary>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/plan"
+                  element={
+                    <ProtectedRoute>
+                      <ErrorBoundary>
+                        <WorkoutPlanPage />
                       </ErrorBoundary>
                     </ProtectedRoute>
                   }

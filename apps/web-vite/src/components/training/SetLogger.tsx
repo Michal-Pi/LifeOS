@@ -91,7 +91,11 @@ export function SetLogger({ exercise, onUpdate, onClose }: SetLoggerProps) {
                   className="set-input"
                   value={set.reps ?? ''}
                   onChange={(e) =>
-                    handleUpdateSet(index, 'reps', e.target.value ? parseInt(e.target.value) : undefined)
+                    handleUpdateSet(
+                      index,
+                      'reps',
+                      e.target.value ? parseInt(e.target.value) : undefined
+                    )
                   }
                   placeholder="0"
                 />
@@ -127,7 +131,11 @@ export function SetLogger({ exercise, onUpdate, onClose }: SetLoggerProps) {
                   className="set-input"
                   value={set.rpe ?? ''}
                   onChange={(e) =>
-                    handleUpdateSet(index, 'rpe', e.target.value ? parseInt(e.target.value) : undefined)
+                    handleUpdateSet(
+                      index,
+                      'rpe',
+                      e.target.value ? parseInt(e.target.value) : undefined
+                    )
                   }
                   placeholder="0"
                 />

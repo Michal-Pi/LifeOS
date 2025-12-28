@@ -1148,3 +1148,576 @@
     width: 100%;
   }
 }
+
+/* ========== Workout Template Page ========== */
+
+.template-page {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+.template-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  gap: var(--space-4);
+}
+
+.template-page-title h1 {
+  margin: 0 0 var(--space-1) 0;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.template-page-meta {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.template-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.template-context-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.template-context-filter-button {
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-secondary);
+}
+
+.template-context-filter-button:hover {
+  border-color: var(--primary-color);
+  background: var(--background-hover);
+}
+
+.template-context-filter-button.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-4);
+}
+
+.template-card {
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.template-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.template-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--space-4);
+  gap: var(--space-2);
+}
+
+.template-card-header h3 {
+  margin: 0 0 var(--space-1) 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.template-context-badge {
+  background: var(--primary-light);
+  color: var(--primary-color);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.template-card-body {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.template-exercises-count {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.template-exercise-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.template-exercise-preview-item {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  padding-left: var(--space-3);
+  position: relative;
+}
+
+.template-exercise-preview-item::before {
+  content: '•';
+  position: absolute;
+  left: var(--space-1);
+}
+
+.template-card-actions {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border-color);
+  background: var(--background-secondary);
+}
+
+.template-edit-button,
+.template-delete-button {
+  flex: 1;
+  padding: var(--space-2);
+  font-size: 0.875rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--card-background);
+  color: var(--text-primary);
+}
+
+.template-edit-button:hover {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.template-delete-button:hover {
+  background: var(--danger-color);
+  color: white;
+  border-color: var(--danger-color);
+}
+
+.template-empty-state {
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--text-secondary);
+}
+
+.template-empty-state p {
+  margin: var(--space-2) 0;
+}
+
+/* ========== Template Form Modal ========== */
+
+.template-form-modal {
+  width: 90%;
+  max-width: 700px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.template-items-section {
+  margin-top: var(--space-4);
+}
+
+.template-items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.template-items-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.add-template-exercise-button {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-template-exercise-button:hover {
+  background: var(--primary-hover);
+}
+
+.template-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.template-item-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.template-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.template-item-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.template-item-remove-button {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.template-item-remove-button:hover {
+  color: var(--danger-color);
+}
+
+.template-item-target {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.target-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.target-input-group label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.target-input {
+  width: 80px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  background: var(--card-background);
+  color: var(--text-primary);
+}
+
+.target-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+/* ========== Workout Plan Page ========== */
+
+.plan-page {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+.plan-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  gap: var(--space-4);
+}
+
+.plan-page-title h1 {
+  margin: 0 0 var(--space-1) 0;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.plan-page-meta {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.plan-days-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.plan-day-card {
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.plan-day-card.rest-day {
+  background: var(--background-secondary);
+  opacity: 0.7;
+}
+
+.plan-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.plan-day-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rest-badge {
+  background: var(--info-light);
+  color: var(--info-color);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.plan-day-variants {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.plan-variant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.plan-variant-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.plan-variant-template {
+  padding: var(--space-2);
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.plan-rest-message {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.plan-empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--text-secondary);
+}
+
+.plan-empty-state p {
+  margin: var(--space-2) 0;
+}
+
+/* ========== Plan Form Modal ========== */
+
+.plan-form-modal {
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.plan-schedule-section {
+  margin-top: var(--space-4);
+}
+
+.plan-schedule-section h3 {
+  margin: 0 0 var(--space-3) 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.plan-schedule-days {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.plan-day-builder {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.plan-day-builder.rest-day {
+  opacity: 0.6;
+}
+
+.plan-day-builder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.plan-day-builder-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rest-day-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rest-day-toggle label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.rest-day-toggle input[type='checkbox'] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+.plan-variant-selectors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.variant-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.variant-selector label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.variant-selector select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  background: var(--card-background);
+  color: var(--text-primary);
+}
+
+.variant-selector select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.variant-selector select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========== Responsive: Templates & Plans ========== */
+
+@media (max-width: 768px) {
+  .template-page-header,
+  .plan-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .template-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-days-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .template-card-actions {
+    flex-direction: column;
+  }
+
+  .template-edit-button,
+  .template-delete-button {
+    width: 100%;
+  }
+
+  .template-item-target {
+    flex-direction: column;
+  }
+
+  .target-input-group {
+    width: 100%;
+  }
+
+  .target-input {
+    width: 100%;
+  }
+
+  .plan-variant-selectors {
+    gap: var(--space-2);
+  }
+}
