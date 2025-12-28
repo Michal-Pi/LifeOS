@@ -102,10 +102,7 @@ export function WorkoutPlanPage() {
               const hasTemplates = gymTemplate || homeTemplate || roadTemplate
 
               return (
-                <div
-                  key={index}
-                  className={`plan-day-card ${day.restDay ? 'rest-day' : ''}`}
-                >
+                <div key={index} className={`plan-day-card ${day.restDay ? 'rest-day' : ''}`}>
                   <div className="plan-day-header">
                     <h3>{DAY_NAMES[day.dayOfWeek]}</h3>
                     {day.restDay && <span className="rest-badge">Rest</span>}

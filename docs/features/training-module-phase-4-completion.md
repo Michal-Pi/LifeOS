@@ -48,6 +48,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
 ```
 
 **Features**:
+
 - CRUD operations for templates
 - Filter templates by context (Gym/Home/Road)
 - Firestore document management with Timestamps
@@ -74,6 +75,7 @@ export function createFirestoreWorkoutPlanRepository(): WorkoutPlanRepository {
 ```
 
 **Features**:
+
 - CRUD operations for plans
 - Get active plan (only one plan active at a time)
 - Weekly schedule storage with day variants
@@ -94,18 +96,46 @@ export function useWorkoutTemplates(): UseWorkoutTemplatesReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  const createTemplate = useCallback(async (input) => { /* ... */ }, [userId])
-  const updateTemplate = useCallback(async (templateId, updates) => { /* ... */ }, [userId])
-  const deleteTemplate = useCallback(async (templateId) => { /* ... */ }, [userId])
-  const getTemplate = useCallback(async (templateId) => { /* ... */ }, [userId])
-  const listTemplates = useCallback(async () => { /* ... */ }, [userId])
-  const listTemplatesByContext = useCallback(async (context) => { /* ... */ }, [userId])
+  const createTemplate = useCallback(
+    async (input) => {
+      /* ... */
+    },
+    [userId]
+  )
+  const updateTemplate = useCallback(
+    async (templateId, updates) => {
+      /* ... */
+    },
+    [userId]
+  )
+  const deleteTemplate = useCallback(
+    async (templateId) => {
+      /* ... */
+    },
+    [userId]
+  )
+  const getTemplate = useCallback(
+    async (templateId) => {
+      /* ... */
+    },
+    [userId]
+  )
+  const listTemplates = useCallback(async () => {
+    /* ... */
+  }, [userId])
+  const listTemplatesByContext = useCallback(
+    async (context) => {
+      /* ... */
+    },
+    [userId]
+  )
 
   return { templates, isLoading, error, ...operations }
 }
 ```
 
 **Features**:
+
 - State management for templates list
 - Loading and error states
 - All CRUD operations with optimistic UI updates
@@ -133,20 +163,24 @@ export function useWorkoutPlan(): UseWorkoutPlanReturn {
     void load()
   }, [userId])
 
-  const activatePlan = useCallback(async (planId) => {
-    // Deactivate current, activate new
-    if (activePlan) {
-      await planRepository.update(userId, activePlan.planId, { active: false })
-    }
-    const updated = await planRepository.update(userId, planId, { active: true })
-    setActivePlan(updated)
-  }, [userId, activePlan])
+  const activatePlan = useCallback(
+    async (planId) => {
+      // Deactivate current, activate new
+      if (activePlan) {
+        await planRepository.update(userId, activePlan.planId, { active: false })
+      }
+      const updated = await planRepository.update(userId, planId, { active: true })
+      setActivePlan(updated)
+    },
+    [userId, activePlan]
+  )
 
   return { activePlan, plans, isLoading, error, ...operations, activatePlan }
 }
 ```
 
 **Features**:
+
 - State management for active plan and plan list
 - Auto-load active plan on component mount
 - Plan activation (deactivates previous, activates new)
@@ -206,6 +240,7 @@ export function WorkoutTemplatePage() {
 ```
 
 **Features**:
+
 - Search templates by title
 - Filter by context (All/Gym/Home/Road)
 - Card grid layout with hover effects
@@ -294,6 +329,7 @@ export function TemplateFormModal({ template, isOpen, onClose, onSave }) {
 ```
 
 **Features**:
+
 - Title input (required)
 - Context selector (Gym/Home/Road)
 - Add exercises via ExercisePicker
@@ -385,6 +421,7 @@ export function WorkoutPlanPage() {
 ```
 
 **Features**:
+
 - Display active weekly plan (7 days)
 - Show assigned templates for each day
 - Display Gym/Home/Road variants separately
@@ -529,6 +566,7 @@ export function PlanFormModal({ isOpen, onClose, onSave }) {
 ```
 
 **Features**:
+
 - Start date input (YYYY-MM-DD format)
 - 7-day schedule builder (Sunday-Saturday)
 - Rest day checkbox per day
@@ -546,6 +584,7 @@ export function PlanFormModal({ isOpen, onClose, onSave }) {
 Added comprehensive CSS for templates and plans:
 
 **New Sections**:
+
 - Workout Template Page (100 lines) - Card grid, filters, badges
 - Template Form Modal (115 lines) - Nested modal, target inputs
 - Workout Plan Page (120 lines) - Day grid, variant display
@@ -553,6 +592,7 @@ Added comprehensive CSS for templates and plans:
 - Responsive adjustments (58 lines) - Mobile layouts
 
 **Key Patterns**:
+
 - Card grid with hover effects (transform, shadow)
 - Context badges with color coding
 - Day-based grid layout for weekly view
@@ -593,7 +633,7 @@ const modules = [
   // ... existing modules
   { label: 'Exercises', href: '/exercises', icon: '💪' },
   { label: 'Templates', href: '/templates', icon: '📋' }, // NEW
-  { label: 'Plan', href: '/plan', icon: '📅' },           // NEW
+  { label: 'Plan', href: '/plan', icon: '📅' }, // NEW
 ]
 ```
 
@@ -736,6 +776,7 @@ interface WorkoutDaySchedule {
 ```
 
 This allows users to plan different workouts based on their location/availability:
+
 - Gym template: For when at the gym with full equipment
 - Home template: For home workouts with limited equipment
 - Road template: For traveling/on-the-road workouts
@@ -776,6 +817,7 @@ interface WorkoutTemplateItem {
 ```
 
 Can be extended later to support:
+
 - Time-based targets (duration)
 - Distance-based targets (running)
 - Reps-only targets (AMRAP)
@@ -808,6 +850,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
 ```
 
 **Benefits**:
+
 - Lazy Firestore client initialization (getDb())
 - Consistent Timestamp handling
 - Version tracking for conflict resolution
@@ -978,7 +1021,7 @@ This allows users to add exercises without leaving the template creation flow.
   items: Array<{
     exerciseId: string
     displayName: string
-    target: { type: 'sets_reps', sets: number, reps: number }
+    target: { type: 'sets_reps'; sets: number; reps: number }
   }>
   createdAtMs: number
   updatedAtMs: number

@@ -7,12 +7,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from './useAuth'
 import { createFirestoreWorkoutPlanRepository } from '@/adapters/training/firestoreWorkoutPlanRepository'
-import type {
-  WorkoutPlan,
-  PlanId,
-  CreatePlanInput,
-  UpdatePlanInput,
-} from '@lifeos/training'
+import type { WorkoutPlan, PlanId, CreatePlanInput, UpdatePlanInput } from '@lifeos/training'
 
 const planRepository = createFirestoreWorkoutPlanRepository()
 
@@ -212,7 +207,9 @@ export function useWorkoutPlan(): UseWorkoutPlanReturn {
         const updated = await planRepository.update(userId, planId, { active: true })
 
         setActivePlan(updated)
-        setPlans((prev) => prev.map((p) => (p.planId === planId ? updated : { ...p, active: false })))
+        setPlans((prev) =>
+          prev.map((p) => (p.planId === planId ? updated : { ...p, active: false }))
+        )
 
         return updated
       } catch (err) {
