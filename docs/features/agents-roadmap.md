@@ -1,7 +1,7 @@
 # AI Agent Framework - Complete Roadmap
 
 **Last Updated**: 2025-12-28
-**Current Phase**: Phase 4E (Tool-Aware Agents) ✅ Complete
+**Current Phase**: Phase 5A (Multi-Provider Tool Support) ✅ Complete
 
 ## Overview
 
@@ -195,6 +195,32 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 
 **Scope Decision**: Minimal viable implementation with OpenAI only. Deferred multi-provider tools, UI updates, and storage to Phase 5.
 
+### Phase 5A: Multi-Provider Tool Support ✅ Complete
+
+**Date**: 2025-12-28
+**Documentation**: [agents-phase-5a-completion.md](./agents-phase-5a-completion.md)
+
+**Deliverables**:
+
+- ✅ anthropicService.ts (tool calling support)
+- ✅ googleService.ts (tool calling support)
+- ✅ grokService.ts (tool calling support)
+- ✅ providerService.ts (unified tool context)
+- ✅ Provider-specific tool format converters
+- ✅ TypeScript compilation successful
+
+**What Was Built**:
+
+- Anthropic (Claude) tool calling with content-block pattern
+- Google (Gemini) tool calling with function declarations
+- xAI (Grok) tool calling with OpenAI-compatible format
+- Unified tool interface across all providers
+- Type-safe schema conversions (Google SchemaType)
+- Iterative execution for all providers (max 5 iterations)
+- Provider-agnostic tool infrastructure
+
+**Scope Decision**: Complete multi-provider tool support. All four providers now support tool calling with feature parity.
+
 ## Current State Summary
 
 ### What Works End-to-End
@@ -202,7 +228,7 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 1. **Agent Management**:
    - ✅ Create agents with any of 4 providers
    - ✅ Configure model, temperature, max tokens
-   - ✅ Assign tools to agents (OpenAI only)
+   - ✅ Assign tools to agents (all providers)
    - ✅ Edit and delete agents
 
 2. **Workspace Management**:
@@ -216,22 +242,22 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
    - ✅ Automatic cloud execution via Firestore trigger
    - ✅ Real-time status updates (pending → running → completed/failed)
    - ✅ Multi-agent orchestration (all 3 workflows)
-   - ✅ Tool calling (OpenAI agents only)
+   - ✅ Tool calling (all providers)
    - ✅ Token usage and cost tracking
 
-4. **Tool Calling** (OpenAI only):
-   - ✅ Agents can call get_current_time
+4. **Tool Calling** (All Providers):
+   - ✅ Agents can call get_current_time (OpenAI, Anthropic, Google, xAI)
    - ✅ Agents can query Firestore (user's own data)
    - ✅ Agents can perform calculations
    - ✅ Iterative tool calling (up to 5 iterations)
    - ✅ Parallel tool execution
+   - ✅ Provider-specific tool formats (automatic conversion)
 
 ### Known Limitations
 
 1. **Tool Calling**:
-   - ⚠️ OpenAI only (Anthropic, Google, xAI can't call tools yet)
-   - ⚠️ Tool calls not saved to Firestore
-   - ⚠️ Tool calls not displayed in UI (only in Cloud Function logs)
+   - ⚠️ Tool calls not saved to Firestore (Phase 5B)
+   - ⚠️ Tool calls not displayed in UI (Phase 5C)
    - ⚠️ Fixed max iterations (5, not configurable)
 
 2. **Advanced Features Not Yet Implemented**:
