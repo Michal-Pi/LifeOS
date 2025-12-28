@@ -2,11 +2,12 @@
  * WorkoutSessionCard Component
  *
  * Displays today's workout session status and allows quick logging.
- * MVP: Simple status display and basic session creation.
+ * Phase 2: Added session detail editing modal.
  */
 
 import { useState, useEffect } from 'react'
 import { useWorkoutOperations } from '@/hooks/useWorkoutOperations'
+import { SessionDetailModal } from './SessionDetailModal'
 import type { WorkoutSession, WorkoutContext } from '@lifeos/training'
 
 interface WorkoutSessionCardProps {
@@ -18,6 +19,8 @@ export function WorkoutSessionCard({ dateKey }: WorkoutSessionCardProps) {
   const [todaySessions, setTodaySessions] = useState<WorkoutSession[]>([])
   const [showQuickLog, setShowQuickLog] = useState(false)
   const [selectedContext, setSelectedContext] = useState<WorkoutContext>('gym')
+  const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null)
+  const [showDetailModal, setShowDetailModal] = useState(false)
 
   useEffect(() => {
     const loadSessions = async () => {
@@ -48,6 +51,22 @@ export function WorkoutSessionCard({ dateKey }: WorkoutSessionCardProps) {
     } catch (error) {
       console.error('Failed to create workout session:', error)
     }
+  }
+
+  const handleOpenSessionDetail = (session: WorkoutSession) => {
+    setSelectedSession(session)
+    setShowDetailModal(true)
+  }
+
+  const handleCloseSessionDetail = () => {
+    setShowDetailModal(false)
+    setSelectedSession(null)
+  }
+
+  const handleSaveSessionDetail = async () => {
+    // Reload sessions after save
+    const sessions = await getSessionByDate(dateKey)
+    setTodaySessions(sessions)
   }
 
   const completedSessions = todaySessions.filter((s) => s.status === 'completed')
@@ -102,7 +121,7 @@ export function WorkoutSessionCard({ dateKey }: WorkoutSessionCardProps) {
 
       <div className="training-session-status">
         {completedSessions.length > 0 ? (
-          <div className="training-completed">
+          <div className="training-completed" onClick={() => handleOpenSessionDetail(completedSessions[0])}>
             <span className="training-status-icon">✅</span>
             <div className="training-status-text">
               <div className="training-status-label">Completed</div>
@@ -115,11 +134,12 @@ export function WorkoutSessionCard({ dateKey }: WorkoutSessionCardProps) {
                     {s.context === 'road' && '🏃 Road'}
                   </span>
                 ))}
+                <span className="click-to-edit"> • Click to edit</span>
               </div>
             </div>
           </div>
         ) : plannedSessions.length > 0 ? (
-          <div className="training-planned">
+          <div className="training-planned" onClick={() => handleOpenSessionDetail(plannedSessions[0])}>
             <span className="training-status-icon">📅</span>
             <div className="training-status-text">
               <div className="training-status-label">Planned</div>
@@ -128,6 +148,7 @@ export function WorkoutSessionCard({ dateKey }: WorkoutSessionCardProps) {
                 {plannedSessions[0].context === 'home' && '🏠 Home'}
                 {plannedSessions[0].context === 'road' && '🏃 Road'}
                 {plannedSessions[0].title && ` - ${plannedSessions[0].title}`}
+                <span className="click-to-edit"> • Click to start</span>
               </div>
             </div>
           </div>
@@ -141,6 +162,14 @@ export function WorkoutSessionCard({ dateKey }: WorkoutSessionCardProps) {
           </div>
         )}
       </div>
+
+      {/* Session Detail Modal */}
+      <SessionDetailModal
+        session={selectedSession}
+        isOpen={showDetailModal}
+        onClose={handleCloseSessionDetail}
+        onSave={handleSaveSessionDetail}
+      />
     </div>
   )
 }
