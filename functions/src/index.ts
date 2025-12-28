@@ -888,3 +888,11 @@ export const getFirebaseConfig = onRequest(
     }
   }
 )
+
+// ==================== AI Agent Framework (Phase 4A) ====================
+
+/**
+ * Agent run execution trigger
+ * Executes AI agent runs when they are created with 'pending' status
+ */
+export { onRunCreated } from './agents/runExecutor.js'
