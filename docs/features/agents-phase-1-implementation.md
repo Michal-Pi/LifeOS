@@ -54,6 +54,7 @@ Defined comprehensive TypeScript types for:
 - **ToolDefinition**: Server-side functions agents can invoke
 
 All types include:
+
 - Branded IDs using `@lifeos/core` utilities
 - Sync state and versioning fields
 - Metadata (timestamps, user ownership)
@@ -69,6 +70,7 @@ Implemented Zod schemas for all domain models:
 - `ToolDefinitionSchema`
 
 Plus input schemas:
+
 - `CreateAgentInputSchema`
 - `UpdateAgentInputSchema`
 - `CreateWorkspaceInputSchema`
@@ -91,6 +93,7 @@ Defined interfaces (contracts) for data persistence:
 Implemented pure functions with validation:
 
 **Agent Usecases**:
+
 - `createAgentUsecase` - Validates name, prompt, model, temperature, tokens
 - `updateAgentUsecase` - Validates updates
 - `deleteAgentUsecase` - Archives agent
@@ -98,6 +101,7 @@ Implemented pure functions with validation:
 - `listAgentsUsecase` - Lists with filtering
 
 **Workspace Usecases**:
+
 - `createWorkspaceUsecase` - Validates name, agents, default agent, max iterations
 - `updateWorkspaceUsecase` - Validates updates
 - `deleteWorkspaceUsecase` - Archives workspace
@@ -105,6 +109,7 @@ Implemented pure functions with validation:
 - `listWorkspacesUsecase` - Lists with filtering
 
 **Run Usecases**:
+
 - `createRunUsecase` - Validates goal
 - `updateRunUsecase` - Updates status/progress
 - `getRunUsecase` - Retrieves single run
@@ -185,14 +190,14 @@ This package is designed to integrate with:
 ```json
 {
   "dependencies": {
-    "@lifeos/core": "workspace:*",  // For branded IDs, logger
-    "zod": "^4.2.1"                 // Validation
+    "@lifeos/core": "workspace:*", // For branded IDs, logger
+    "zod": "^4.2.1" // Validation
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "tsup": "^8.5.1",               // Build tool
+    "tsup": "^8.5.1", // Build tool
     "typescript": "^5.9.3",
-    "vitest": "^3.2.1"              // Testing
+    "vitest": "^3.2.1" // Testing
   }
 }
 ```
@@ -206,6 +211,7 @@ This package is designed to integrate with:
    - Integration tests with Firebase emulator
 
 2. **Schema Design**
+
    ```
    users/{userId}/
      agents/{agentId}           # AgentConfig
@@ -237,9 +243,11 @@ pnpm --filter=@lifeos/agents build    # ✅ Build successful
 ## Files Changed
 
 **New Package**:
+
 - `packages/agents/` (entire new package)
 
 **Documentation**:
+
 - `packages/agents/README.md`
 - `docs/features/agents-phase-1-implementation.md`
 

@@ -35,7 +35,10 @@ export function createWorkspaceUsecase(workspaceRepo: WorkspaceRepository) {
     }
 
     // Business rule: Max iterations must be reasonable if provided
-    if (input.maxIterations !== undefined && (input.maxIterations < 1 || input.maxIterations > 50)) {
+    if (
+      input.maxIterations !== undefined &&
+      (input.maxIterations < 1 || input.maxIterations > 50)
+    ) {
       throw new Error('Max iterations must be between 1 and 50')
     }
 
@@ -63,12 +66,19 @@ export function updateWorkspaceUsecase(workspaceRepo: WorkspaceRepository) {
     }
 
     // Business rule: If updating default agent, validate it's in the list
-    if (updates.defaultAgentId && updates.agentIds && !updates.agentIds.includes(updates.defaultAgentId)) {
+    if (
+      updates.defaultAgentId &&
+      updates.agentIds &&
+      !updates.agentIds.includes(updates.defaultAgentId)
+    ) {
       throw new Error('Default agent must be in the workspace agent list')
     }
 
     // Business rule: Max iterations validation
-    if (updates.maxIterations !== undefined && (updates.maxIterations < 1 || updates.maxIterations > 50)) {
+    if (
+      updates.maxIterations !== undefined &&
+      (updates.maxIterations < 1 || updates.maxIterations > 50)
+    ) {
       throw new Error('Max iterations must be between 1 and 50')
     }
 

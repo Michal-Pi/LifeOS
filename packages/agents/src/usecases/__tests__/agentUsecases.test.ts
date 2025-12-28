@@ -171,9 +171,9 @@ describe('agentUsecases', () => {
 
       const usecase = updateAgentUsecase(mockRepo)
 
-      await expect(
-        usecase('user123', 'agent:123' as any, { systemPrompt: '  ' })
-      ).rejects.toThrow('System prompt cannot be empty')
+      await expect(usecase('user123', 'agent:123' as any, { systemPrompt: '  ' })).rejects.toThrow(
+        'System prompt cannot be empty'
+      )
 
       expect(mockRepo.update).not.toHaveBeenCalled()
     })
@@ -185,9 +185,9 @@ describe('agentUsecases', () => {
 
       const usecase = updateAgentUsecase(mockRepo)
 
-      await expect(
-        usecase('user123', 'agent:123' as any, { temperature: 5.0 })
-      ).rejects.toThrow('Temperature must be between 0 and 2')
+      await expect(usecase('user123', 'agent:123' as any, { temperature: 5.0 })).rejects.toThrow(
+        'Temperature must be between 0 and 2'
+      )
 
       expect(mockRepo.update).not.toHaveBeenCalled()
     })

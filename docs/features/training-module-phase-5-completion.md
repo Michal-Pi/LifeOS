@@ -225,7 +225,8 @@ export function calculateConsistencyMetrics(sessions: WorkoutSession[]): Consist
   const plannedWorkouts = sessions.filter((s) => s.status === 'planned').length
 
   const totalPlanned = completedWorkouts + skippedWorkouts + plannedWorkouts
-  const consistencyPercentage = totalPlanned > 0 ? Math.round((completedWorkouts / totalPlanned) * 100) : 0
+  const consistencyPercentage =
+    totalPlanned > 0 ? Math.round((completedWorkouts / totalPlanned) * 100) : 0
 
   // Calculate current streak (consecutive completed days)
   const sortedSessions = [...sessions].sort((a, b) => b.dateKey.localeCompare(a.dateKey))
@@ -239,7 +240,13 @@ export function calculateConsistencyMetrics(sessions: WorkoutSession[]): Consist
     }
   }
 
-  return { completedWorkouts, skippedWorkouts, plannedWorkouts, consistencyPercentage, currentStreak }
+  return {
+    completedWorkouts,
+    skippedWorkouts,
+    plannedWorkouts,
+    consistencyPercentage,
+    currentStreak,
+  }
 }
 
 export function calculateExerciseStats(sessions: WorkoutSession[]): ExerciseStats[] {
@@ -248,8 +255,16 @@ export function calculateExerciseStats(sessions: WorkoutSession[]): ExerciseStat
 
 export function getTopExercisesByVolume(sessions: WorkoutSession[], limit = 5): ExerciseStats[]
 export function getTopExercisesByFrequency(sessions: WorkoutSession[], limit = 5): ExerciseStats[]
-export function calculateVolumeTrend(currentSessions, previousSessions): { change, changePercentage }
-export function calculateDurationStats(sessions): { averageDuration, totalDuration, shortest, longest }
+export function calculateVolumeTrend(
+  currentSessions,
+  previousSessions
+): { change; changePercentage }
+export function calculateDurationStats(sessions): {
+  averageDuration
+  totalDuration
+  shortest
+  longest
+}
 ```
 
 **Functions**:
@@ -390,6 +405,7 @@ WeeklyReviewPage
 ### Key Algorithms
 
 **Volume Calculation**:
+
 ```
 Volume = Σ (reps × weight) for all working sets
 - Excludes warmup sets
@@ -398,6 +414,7 @@ Volume = Σ (reps × weight) for all working sets
 ```
 
 **Consistency Calculation**:
+
 ```
 Consistency % = (completed workouts / total planned) × 100
 - Total planned = completed + skipped + planned
@@ -405,6 +422,7 @@ Consistency % = (completed workouts / total planned) × 100
 ```
 
 **Top Exercises**:
+
 ```
 Rank exercises by total working sets
 - Group sets by exerciseId
@@ -702,6 +720,7 @@ const loadWeekSessions = async () => {
 ```
 
 **Key relationships**:
+
 - `templateId` links session to template
 - `dateKey` groups sessions by day for weekly analytics
 - `status` tracks completion state

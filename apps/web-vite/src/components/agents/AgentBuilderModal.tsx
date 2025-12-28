@@ -260,9 +260,7 @@ export function AgentBuilderModal({ agent, isOpen, onClose, onSave }: AgentBuild
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="temperature">
-                Temperature: {temperature.toFixed(2)}
-              </label>
+              <label htmlFor="temperature">Temperature: {temperature.toFixed(2)}</label>
               <input
                 id="temperature"
                 type="range"

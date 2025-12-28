@@ -107,9 +107,7 @@ export function useAgentOperations(): UseAgentOperationsReturn {
 
       try {
         const updated = await usecases.updateAgent(userId, agentId, updates)
-        setAgents((prev) =>
-          prev.map((agent) => (agent.agentId === agentId ? updated : agent))
-        )
+        setAgents((prev) => prev.map((agent) => (agent.agentId === agentId ? updated : agent)))
         toast.success('Agent updated successfully')
         logger.info('Agent updated', { agentId })
         return updated

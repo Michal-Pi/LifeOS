@@ -173,10 +173,7 @@ export type CreateAgentInput = Omit<
 >
 
 export type UpdateAgentInput = Partial<
-  Omit<
-    AgentConfig,
-    'agentId' | 'userId' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
-  >
+  Omit<AgentConfig, 'agentId' | 'userId' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'>
 >
 
 export type CreateWorkspaceInput = Omit<
@@ -205,7 +202,4 @@ export type CreateRunInput = Omit<
 
 export type CreateMessageInput = Omit<Message, 'messageId' | 'timestampMs'>
 
-export type CreateToolInput = Omit<
-  ToolDefinition,
-  'toolId' | 'createdAtMs' | 'updatedAtMs'
->
+export type CreateToolInput = Omit<ToolDefinition, 'toolId' | 'createdAtMs' | 'updatedAtMs'>

@@ -80,7 +80,8 @@ export function calculateConsistencyMetrics(sessions: WorkoutSession[]): Consist
   const plannedWorkouts = sessions.filter((s) => s.status === 'planned').length
 
   const totalPlanned = completedWorkouts + skippedWorkouts + plannedWorkouts
-  const consistencyPercentage = totalPlanned > 0 ? Math.round((completedWorkouts / totalPlanned) * 100) : 0
+  const consistencyPercentage =
+    totalPlanned > 0 ? Math.round((completedWorkouts / totalPlanned) * 100) : 0
 
   // Calculate current streak (consecutive completed days)
   const sortedSessions = [...sessions].sort((a, b) => b.dateKey.localeCompare(a.dateKey))
@@ -162,7 +163,10 @@ export function calculateExerciseStats(sessions: WorkoutSession[]): ExerciseStat
     totalReps: data.totalReps,
     totalVolume: data.totalVolume,
     maxWeight: data.maxWeight,
-    averageReps: data.repsArray.length > 0 ? data.repsArray.reduce((a, b) => a + b, 0) / data.repsArray.length : 0,
+    averageReps:
+      data.repsArray.length > 0
+        ? data.repsArray.reduce((a, b) => a + b, 0) / data.repsArray.length
+        : 0,
   }))
 }
 
@@ -185,7 +189,10 @@ export function getTopExercisesByFrequency(sessions: WorkoutSession[], limit = 5
 /**
  * Calculate volume trend (comparison with previous period)
  */
-export function calculateVolumeTrend(currentSessions: WorkoutSession[], previousSessions: WorkoutSession[]): {
+export function calculateVolumeTrend(
+  currentSessions: WorkoutSession[],
+  previousSessions: WorkoutSession[]
+): {
   currentVolume: number
   previousVolume: number
   change: number

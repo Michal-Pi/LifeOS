@@ -28,7 +28,12 @@ export const ToolParameterSchema: z.ZodType<any> = z.lazy(() =>
     type: z.enum(['string', 'number', 'boolean', 'object', 'array']),
     description: z.string(),
     required: z.boolean().optional(),
-    properties: z.record(z.string(), z.lazy(() => ToolParameterSchema)).optional(),
+    properties: z
+      .record(
+        z.string(),
+        z.lazy(() => ToolParameterSchema)
+      )
+      .optional(),
   })
 )
 

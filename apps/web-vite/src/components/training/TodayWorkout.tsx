@@ -101,7 +101,10 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
 
   // Auto-select first available context
   useEffect(() => {
-    if (availableTemplates.length > 0 && !availableTemplates.find((t) => t.context === selectedContext)) {
+    if (
+      availableTemplates.length > 0 &&
+      !availableTemplates.find((t) => t.context === selectedContext)
+    ) {
       setSelectedContext(availableTemplates[0].context)
     }
   }, [availableTemplates, selectedContext])
@@ -139,7 +142,16 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
     } finally {
       setIsStarting(false)
     }
-  }, [selectedTemplate, userId, todaySession, dateKey, selectedContext, createSession, updateSession, listSessions])
+  }, [
+    selectedTemplate,
+    userId,
+    todaySession,
+    dateKey,
+    selectedContext,
+    createSession,
+    updateSession,
+    listSessions,
+  ])
 
   // If no active plan
   if (!activePlan) {
@@ -181,7 +193,9 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
         </div>
         <div className="empty-state">
           <p className="empty-state-text">No workout scheduled</p>
-          <p className="empty-state-hint">Edit your plan to assign a template for {DAY_NAMES[dayOfWeek]}</p>
+          <p className="empty-state-hint">
+            Edit your plan to assign a template for {DAY_NAMES[dayOfWeek]}
+          </p>
         </div>
       </section>
     )
@@ -238,13 +252,18 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
                     {item.target.type === 'sets_reps' && (
                       <span className="exercise-target">
                         {' '}
-                        · {item.target.sets}x{typeof item.target.reps === 'number' ? item.target.reps : `${item.target.reps.min}-${item.target.reps.max}`}
+                        · {item.target.sets}x
+                        {typeof item.target.reps === 'number'
+                          ? item.target.reps
+                          : `${item.target.reps.min}-${item.target.reps.max}`}
                       </span>
                     )}
                   </li>
                 ))}
                 {selectedTemplate.items.length > 3 && (
-                  <li className="exercise-preview-more">+{selectedTemplate.items.length - 3} more</li>
+                  <li className="exercise-preview-more">
+                    +{selectedTemplate.items.length - 3} more
+                  </li>
                 )}
               </ul>
             </div>

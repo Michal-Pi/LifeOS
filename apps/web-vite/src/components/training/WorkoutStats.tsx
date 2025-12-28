@@ -136,7 +136,9 @@ export function WorkoutStats({ sessions, weekStartDate, weekEndDate }: WorkoutSt
           <div className="stat-content">
             <p className="stat-value">{(volumeStats.totalVolume / 1000).toFixed(1)}t</p>
             <p className="stat-label">Total Volume</p>
-            <p className="stat-hint">{volumeStats.totalSets} sets · {volumeStats.totalReps} reps</p>
+            <p className="stat-hint">
+              {volumeStats.totalSets} sets · {volumeStats.totalReps} reps
+            </p>
           </div>
         </div>
       </div>
@@ -196,12 +198,14 @@ export function WorkoutStats({ sessions, weekStartDate, weekEndDate }: WorkoutSt
             )}
             {consistency < 50 && skippedWorkouts > 0 && (
               <li className="insight-item warning">
-                You missed {skippedWorkouts} {skippedWorkouts === 1 ? 'workout' : 'workouts'} this week. Try to plan ahead for next week.
+                You missed {skippedWorkouts} {skippedWorkouts === 1 ? 'workout' : 'workouts'} this
+                week. Try to plan ahead for next week.
               </li>
             )}
             {volumeStats.totalVolume > 0 && (
               <li className="insight-item">
-                Average volume per workout: {(volumeStats.totalVolume / completedWorkouts / 1000).toFixed(1)}t
+                Average volume per workout:{' '}
+                {(volumeStats.totalVolume / completedWorkouts / 1000).toFixed(1)}t
               </li>
             )}
           </ul>

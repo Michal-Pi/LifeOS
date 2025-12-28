@@ -2,15 +2,15 @@
  * Run Executor
  *
  * Cloud Function trigger that executes agent runs when they are created.
- * Follows existing patterns from other Firestore triggers in the codebase.
+ * Supports both single-agent execution and multi-agent workflows.
  */
 
-import type { AgentConfig, Run, Workspace } from '@lifeos/agents'
+import type { Run, Workspace } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import { onDocumentCreated } from 'firebase-functions/v2/firestore'
 
-import { executeWithProvider } from './providerService.js'
+import { executeWorkflow } from './workflowExecutor.js'
 
 // Firebase secrets for AI provider API keys
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY')
@@ -61,7 +61,7 @@ export const onRunCreated = onDocumentCreated(
       // Update status to running
       await runRef.update({
         status: 'running',
-        currentStep: 1,
+        currentStep: 0,
       })
 
       // Load workspace configuration
@@ -71,21 +71,12 @@ export const onRunCreated = onDocumentCreated(
       }
       const workspace = workspaceDoc.data() as Workspace
 
-      // Get the agent to use (default or first agent)
-      const agentIdToUse = workspace.defaultAgentId ?? workspace.agentIds[0]
-      if (!agentIdToUse) {
+      if (!workspace.agentIds || workspace.agentIds.length === 0) {
         throw new Error('No agents configured in workspace')
       }
 
-      // Load agent configuration
-      const agentDoc = await db.doc(`users/${userId}/agents/${agentIdToUse}`).get()
-      if (!agentDoc.exists) {
-        throw new Error(`Agent ${agentIdToUse} not found`)
-      }
-      const agent = agentDoc.data() as AgentConfig
-
-      // Execute with the appropriate provider
-      const result = await executeWithProvider(agent, run.goal, run.context, {
+      // Execute workflow with multi-agent orchestration
+      const result = await executeWorkflow(userId, workspace, run, {
         openai: OPENAI_API_KEY.value(),
         anthropic: ANTHROPIC_API_KEY.value(),
         google: GOOGLE_AI_API_KEY.value(),
@@ -96,15 +87,15 @@ export const onRunCreated = onDocumentCreated(
       await runRef.update({
         status: 'completed',
         output: result.output,
-        tokensUsed: result.tokensUsed,
-        estimatedCost: result.estimatedCost,
+        tokensUsed: result.totalTokensUsed,
+        estimatedCost: result.totalEstimatedCost,
         completedAtMs: Date.now(),
-        totalSteps: 1,
-        currentStep: 1,
+        totalSteps: result.totalSteps,
+        currentStep: result.totalSteps,
       })
 
       console.log(
-        `Run ${runId} completed successfully. Provider: ${result.provider}, Model: ${result.model}, Tokens: ${result.tokensUsed}, Cost: $${result.estimatedCost.toFixed(4)}`
+        `Run ${runId} completed successfully. Workflow: ${workspace.workflowType}, Steps: ${result.totalSteps}, Tokens: ${result.totalTokensUsed}, Cost: $${result.totalEstimatedCost.toFixed(4)}`
       )
     } catch (error) {
       console.error(`Run ${runId} failed:`, error)

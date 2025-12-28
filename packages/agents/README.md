@@ -54,7 +54,7 @@ const agent = await createAgent('user123', {
   modelName: 'gpt-4',
   temperature: 0.7,
   maxTokens: 2000,
-  toolIds: ['tool:create_workout', 'tool:search_exercises']
+  toolIds: ['tool:create_workout', 'tool:search_exercises'],
 })
 ```
 
@@ -72,7 +72,7 @@ const workspace = await createWorkspace('user123', {
   agentIds: [planner.agentId, researcher.agentId, critic.agentId],
   defaultAgentId: planner.agentId,
   workflowType: 'supervisor',
-  maxIterations: 10
+  maxIterations: 10,
 })
 ```
 
@@ -89,8 +89,8 @@ const run = await createRun('user123', {
   goal: 'Create a 4-day upper/lower split workout plan for building strength',
   context: {
     userLevel: 'intermediate',
-    equipment: ['barbell', 'dumbbells', 'bench']
-  }
+    equipment: ['barbell', 'dumbbells', 'bench'],
+  },
 })
 ```
 
@@ -106,7 +106,7 @@ const input = {
   role: 'planner',
   systemPrompt: 'You are helpful',
   modelProvider: 'openai',
-  modelName: 'gpt-4'
+  modelName: 'gpt-4',
 }
 
 // Validate input
@@ -216,6 +216,7 @@ export const createFirestoreAgentRepository = (): AgentRepository => {
 All business logic is encapsulated in pure functions that take repository dependencies:
 
 ### Agent Usecases
+
 - `createAgentUsecase` - Create new agent with validation
 - `updateAgentUsecase` - Update existing agent
 - `deleteAgentUsecase` - Delete (archive) an agent
@@ -223,6 +224,7 @@ All business logic is encapsulated in pure functions that take repository depend
 - `listAgentsUsecase` - List agents with filtering
 
 ### Workspace Usecases
+
 - `createWorkspaceUsecase` - Create new workspace
 - `updateWorkspaceUsecase` - Update existing workspace
 - `deleteWorkspaceUsecase` - Delete workspace
@@ -230,6 +232,7 @@ All business logic is encapsulated in pure functions that take repository depend
 - `listWorkspacesUsecase` - List workspaces
 
 ### Run Usecases
+
 - `createRunUsecase` - Start new execution
 - `updateRunUsecase` - Update run status/progress
 - `getRunUsecase` - Retrieve single run

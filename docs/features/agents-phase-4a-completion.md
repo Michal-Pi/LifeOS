@@ -17,6 +17,7 @@ Phase 4A implements the foundational backend execution logic for the AI Agent Fr
 A clean, typed wrapper around the OpenAI API with cost tracking and token counting.
 
 **Features**:
+
 - OpenAI client creation with API key injection
 - Single-agent task execution
 - Token counting (input + output tokens)
@@ -24,6 +25,7 @@ A clean, typed wrapper around the OpenAI API with cost tracking and token counti
 - Error handling with descriptive messages
 
 **Supported Models**:
+
 - `gpt-4o` - $2.50/$10.00 per 1M tokens (input/output)
 - `gpt-4o-mini` - $0.15/$0.60 per 1M tokens (default)
 - `gpt-4-turbo` - $10/$30 per 1M tokens
@@ -31,6 +33,7 @@ A clean, typed wrapper around the OpenAI API with cost tracking and token counti
 - `gpt-3.5-turbo` - $0.50/$1.50 per 1M tokens
 
 **Function Signature**:
+
 ```typescript
 async function executeWithOpenAI(
   client: OpenAI,
@@ -41,15 +44,17 @@ async function executeWithOpenAI(
 ```
 
 **Result Structure**:
+
 ```typescript
 interface OpenAIExecutionResult {
-  output: string          // AI-generated response
-  tokensUsed: number      // Total tokens (input + output)
-  estimatedCost: number   // Cost in USD
+  output: string // AI-generated response
+  tokensUsed: number // Total tokens (input + output)
+  estimatedCost: number // Cost in USD
 }
 ```
 
 **Prompt Construction**:
+
 - **System Prompt**: Uses agent's `systemPrompt` or defaults to role-based prompt
 - **User Prompt**: Combines goal + optional context (as formatted JSON)
 - **Parameters**: Respects agent's `temperature`, `maxTokens`, and `modelName` settings
@@ -61,6 +66,7 @@ interface OpenAIExecutionResult {
 A Firestore trigger that automatically executes agent runs when they are created.
 
 **Trigger Configuration**:
+
 - **Document Path**: `users/{userId}/workspaces/{workspaceId}/runs/{runId}`
 - **Event**: Document creation (`onDocumentCreated`)
 - **Condition**: Only processes runs with `status: 'pending'`
@@ -81,11 +87,13 @@ A Firestore trigger that automatically executes agent runs when they are created
 9. **Update Failure**: Set status to `'failed'`, store error message, timestamp
 
 **Run Status Lifecycle**:
+
 ```
 pending → running → completed/failed
 ```
 
 **Firestore Updates** (Success):
+
 ```typescript
 {
   status: 'completed',
@@ -99,6 +107,7 @@ pending → running → completed/failed
 ```
 
 **Firestore Updates** (Failure):
+
 ```typescript
 {
   status: 'failed',
@@ -108,6 +117,7 @@ pending → running → completed/failed
 ```
 
 **Error Handling**:
+
 - Missing workspace → Error stored in run
 - Missing agent → Error stored in run
 - Non-OpenAI provider → Error with clear message
@@ -135,6 +145,7 @@ export { onRunCreated } from './agents/runExecutor.js'
 Added to [functions/package.json](../../functions/package.json):
 
 **New Dependencies**:
+
 - `openai` - Official OpenAI Node.js SDK
 - `@lifeos/agents` - Workspace dependency (domain models, types)
 - `@lifeos/calendar` - Workspace dependency (existing dependency added)
@@ -142,26 +153,31 @@ Added to [functions/package.json](../../functions/package.json):
 ## Architecture Patterns Used
 
 ✅ **Firestore Trigger Pattern**
+
 - Follows existing `onDocumentCreated` pattern from calendar functions
 - Uses Firebase Admin SDK (not client SDK)
 - Proper error handling with status updates
 
 ✅ **Secrets Management**
+
 - Uses `defineSecret()` from firebase-functions/params
 - API key injected at runtime via `OPENAI_API_KEY.value()`
 - Never exposed to client
 
 ✅ **Function Configuration**
+
 - Matches existing FUNCTION_CONFIG pattern
 - Extended timeout for AI API calls (300s)
 - Increased memory for processing (512 MiB)
 
 ✅ **Error Handling**
+
 - Try/catch blocks with detailed logging
 - Updates run status to 'failed' on errors
 - Stores error messages in Firestore for user visibility
 
 ✅ **TypeScript Typing**
+
 - Full type safety with domain models from @lifeos/agents
 - Explicit types for OpenAI responses
 - No `any` types used
@@ -178,12 +194,14 @@ Phase 4A seamlessly integrates with all previous phases:
 ## User Workflow (End-to-End)
 
 ### Before Phase 4A:
+
 1. User creates agents via UI ✅
 2. User creates workspaces via UI ✅
 3. User starts runs via UI ✅
 4. ❌ **Runs stay in 'pending' status forever (no execution)**
 
 ### After Phase 4A:
+
 1. User creates agents via UI ✅
 2. User creates workspaces via UI ✅
 3. User starts runs via UI ✅
@@ -194,11 +212,13 @@ Phase 4A seamlessly integrates with all previous phases:
 ### Example Scenario:
 
 **Setup**:
+
 1. Create OpenAI agent: "Research Assistant" with `gpt-4o-mini`
 2. Create workspace: "Research Team" with the assistant
 3. Start run with goal: "Summarize the benefits of serverless architecture"
 
 **Automatic Execution**:
+
 1. Run created with `status: 'pending'`
 2. Cloud Function triggers within ~1 second
 3. Status updates to `'running'`
@@ -217,21 +237,25 @@ Phase 4A seamlessly integrates with all previous phases:
 ### New Files
 
 **Cloud Functions**:
+
 - `functions/src/agents/openaiService.ts` - OpenAI API wrapper
 - `functions/src/agents/runExecutor.ts` - Firestore trigger for execution
 
 **Documentation**:
+
 - `docs/features/agents-phase-4a-completion.md` - This file
 
 ### Modified Files
 
 **Configuration**:
+
 - `functions/package.json` - Added openai, @lifeos/agents, @lifeos/calendar
 - `functions/src/index.ts` - Exported onRunCreated function
 
 ## Testing
 
 ### TypeScript Compilation
+
 - ✅ `pnpm --filter functions typecheck` - Passed
 - ✅ `pnpm --filter functions build` - Passed
 - ✅ No type errors
@@ -240,12 +264,14 @@ Phase 4A seamlessly integrates with all previous phases:
 ### Manual Testing (Required Before Production)
 
 **Prerequisites**:
+
 1. Deploy functions: `firebase deploy --only functions`
 2. Set secret: `firebase functions:secrets:set OPENAI_API_KEY`
 3. Create agent via UI with OpenAI provider
 4. Create workspace with that agent
 
 **Test Steps**:
+
 1. Navigate to workspace detail page
 2. Click "Start Run"
 3. Enter goal: "Explain quantum computing in simple terms"
@@ -257,6 +283,7 @@ Phase 4A seamlessly integrates with all previous phases:
 9. **Expected**: Tokens and cost are displayed
 
 **Error Testing**:
+
 1. Create agent with non-OpenAI provider (e.g., Anthropic)
 2. Start run
 3. **Expected**: Status changes to "failed"
@@ -278,19 +305,23 @@ These limitations are intentional for Phase 4A and will be addressed in subseque
 ## Security Considerations
 
 ✅ **API Keys Never Exposed to Client**
+
 - OpenAI API key stored as Firebase secret
 - Accessed only in Cloud Functions backend
 - Never sent to frontend
 
 ✅ **User Data Isolation**
+
 - Functions verify userId from document path
 - Cannot access other users' runs/workspaces/agents
 
 ✅ **Firebase Auth Integration**
+
 - Firestore security rules enforce authentication
 - Only authenticated users can create runs
 
 ✅ **Cost Control**
+
 - Agent `maxTokens` setting prevents runaway costs
 - Cost estimation visible to users
 - Future: Can add per-user budget limits
@@ -300,21 +331,25 @@ These limitations are intentional for Phase 4A and will be addressed in subseque
 ### Per-Run Costs (Example):
 
 **Short Run** (100 input tokens, 200 output tokens, gpt-4o-mini):
+
 - Input: 100/1M × $0.15 = $0.000015
 - Output: 200/1M × $0.60 = $0.000120
 - **Total**: ~$0.00014 per run
 
 **Medium Run** (500 input tokens, 1000 output tokens, gpt-4o-mini):
+
 - Input: 500/1M × $0.15 = $0.000075
 - Output: 1000/1M × $0.60 = $0.000600
 - **Total**: ~$0.00068 per run
 
 **Large Run** (1000 input tokens, 2048 output tokens, gpt-4o):
+
 - Input: 1000/1M × $2.50 = $0.0025
 - Output: 2048/1M × $10.00 = $0.0205
 - **Total**: ~$0.023 per run
 
 ### Cloud Functions Costs:
+
 - Invocations: $0.40 per 1M invocations
 - Compute: ~$0.0000025 per second (512 MiB)
 - For typical 5-10 second execution: **$0.00001-$0.00003 per run**

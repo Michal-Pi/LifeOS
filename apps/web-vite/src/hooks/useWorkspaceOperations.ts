@@ -135,9 +135,7 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
       try {
         const updated = await usecases.updateWorkspace(userId, workspaceId, updates)
         setWorkspaces((prev) =>
-          prev.map((workspace) =>
-            workspace.workspaceId === workspaceId ? updated : workspace
-          )
+          prev.map((workspace) => (workspace.workspaceId === workspaceId ? updated : workspace))
         )
         toast.success('Workspace updated successfully')
         logger.info('Workspace updated', { workspaceId })
@@ -163,9 +161,7 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
 
       try {
         await usecases.deleteWorkspace(userId, workspaceId)
-        setWorkspaces((prev) =>
-          prev.filter((workspace) => workspace.workspaceId !== workspaceId)
-        )
+        setWorkspaces((prev) => prev.filter((workspace) => workspace.workspaceId !== workspaceId))
         toast.success('Workspace deleted successfully')
         logger.info('Workspace deleted', { workspaceId })
       } catch (err) {

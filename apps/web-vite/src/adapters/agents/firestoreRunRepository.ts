@@ -58,10 +58,7 @@ export const createFirestoreRunRepository = (): RunRepository => {
       const workspacesSnapshot = await getDocs(workspacesCol)
 
       for (const workspaceDoc of workspacesSnapshot.docs) {
-        const runDoc = doc(
-          db,
-          `users/${userId}/workspaces/${workspaceDoc.id}/runs/${runId}`
-        )
+        const runDoc = doc(db, `users/${userId}/workspaces/${workspaceDoc.id}/runs/${runId}`)
         const existing = await getDoc(runDoc)
 
         if (existing.exists()) {
@@ -88,10 +85,7 @@ export const createFirestoreRunRepository = (): RunRepository => {
       const workspacesSnapshot = await getDocs(workspacesCol)
 
       for (const workspaceDoc of workspacesSnapshot.docs) {
-        const runDoc = doc(
-          db,
-          `users/${userId}/workspaces/${workspaceDoc.id}/runs/${runId}`
-        )
+        const runDoc = doc(db, `users/${userId}/workspaces/${workspaceDoc.id}/runs/${runId}`)
         const snapshot = await getDoc(runDoc)
 
         if (snapshot.exists()) {
@@ -119,11 +113,7 @@ export const createFirestoreRunRepository = (): RunRepository => {
         let q = query(runsCol, orderBy('startedAtMs', 'desc'))
 
         if (options.status) {
-          q = query(
-            runsCol,
-            where('status', '==', options.status),
-            orderBy('startedAtMs', 'desc')
-          )
+          q = query(runsCol, where('status', '==', options.status), orderBy('startedAtMs', 'desc'))
         }
 
         if (options.limit) {
@@ -138,10 +128,7 @@ export const createFirestoreRunRepository = (): RunRepository => {
         const workspacesSnapshot = await getDocs(workspacesCol)
 
         for (const workspaceDoc of workspacesSnapshot.docs) {
-          const runsCol = collection(
-            db,
-            `users/${userId}/workspaces/${workspaceDoc.id}/runs`
-          )
+          const runsCol = collection(db, `users/${userId}/workspaces/${workspaceDoc.id}/runs`)
           let q = query(runsCol, orderBy('startedAtMs', 'desc'))
 
           if (options?.status) {
@@ -176,10 +163,7 @@ export const createFirestoreRunRepository = (): RunRepository => {
       const workspacesSnapshot = await getDocs(workspacesCol)
 
       for (const workspaceDoc of workspacesSnapshot.docs) {
-        const runDoc = doc(
-          db,
-          `users/${userId}/workspaces/${workspaceDoc.id}/runs/${runId}`
-        )
+        const runDoc = doc(db, `users/${userId}/workspaces/${workspaceDoc.id}/runs/${runId}`)
         const existing = await getDoc(runDoc)
 
         if (existing.exists()) {

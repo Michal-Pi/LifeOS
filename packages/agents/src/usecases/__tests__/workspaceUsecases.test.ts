@@ -128,9 +128,9 @@ describe('workspaceUsecases', () => {
 
       const usecase = updateWorkspaceUsecase(mockRepo)
 
-      await expect(
-        usecase('user123', 'workspace:123' as any, { name: '  ' })
-      ).rejects.toThrow('Workspace name cannot be empty')
+      await expect(usecase('user123', 'workspace:123' as any, { name: '  ' })).rejects.toThrow(
+        'Workspace name cannot be empty'
+      )
 
       expect(mockRepo.update).not.toHaveBeenCalled()
     })
@@ -142,9 +142,9 @@ describe('workspaceUsecases', () => {
 
       const usecase = updateWorkspaceUsecase(mockRepo)
 
-      await expect(
-        usecase('user123', 'workspace:123' as any, { agentIds: [] })
-      ).rejects.toThrow('Workspace must have at least one agent')
+      await expect(usecase('user123', 'workspace:123' as any, { agentIds: [] })).rejects.toThrow(
+        'Workspace must have at least one agent'
+      )
 
       expect(mockRepo.update).not.toHaveBeenCalled()
     })
