@@ -32,6 +32,7 @@ const WorkoutTemplatePage = lazy(() =>
 const WorkoutPlanPage = lazy(() =>
   import('./pages/WorkoutPlanPage').then((m) => ({ default: m.WorkoutPlanPage }))
 )
+const AgentsPage = lazy(() => import('./pages/AgentsPage').then((m) => ({ default: m.AgentsPage })))
 
 // Loading fallback component
 function PageLoader() {
@@ -62,8 +63,11 @@ function App() {
             <NavLink to="/todo" className={({ isActive }) => (isActive ? 'active' : '')}>
               To-Do
             </NavLink>
-            <NavLink to="/habits" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <NavLink to="/habits" className={({ isActive}) => (isActive ? 'active' : '')}>
               Habits
+            </NavLink>
+            <NavLink to="/agents" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Agents
             </NavLink>
             <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
               Settings
@@ -127,6 +131,16 @@ function App() {
                     <ProtectedRoute>
                       <ErrorBoundary>
                         <HabitsPage />
+                      </ErrorBoundary>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/agents"
+                  element={
+                    <ProtectedRoute>
+                      <ErrorBoundary>
+                        <AgentsPage />
                       </ErrorBoundary>
                     </ProtectedRoute>
                   }
