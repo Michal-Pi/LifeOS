@@ -3,7 +3,7 @@
  *
  * Unified abstraction layer for all AI providers (OpenAI, Anthropic, Google, Grok).
  * Routes execution requests to the appropriate provider based on agent configuration.
- * Supports tool calling for OpenAI (Phase 4E).
+ * Supports tool calling for all providers (Phase 5A).
  */
 
 import type { AgentConfig } from '@lifeos/agents'
@@ -73,7 +73,7 @@ export async function executeWithProvider(
         throw new Error('Anthropic API key not configured')
       }
       const client = createAnthropicClient(apiKeys.anthropic)
-      const result = await executeWithAnthropic(client, agent, goal, context)
+      const result = await executeWithAnthropic(client, agent, goal, context, toolContext)
       return {
         ...result,
         provider: 'anthropic',
@@ -86,7 +86,7 @@ export async function executeWithProvider(
         throw new Error('Google AI API key not configured')
       }
       const client = createGoogleAIClient(apiKeys.google)
-      const result = await executeWithGoogle(client, agent, goal, context)
+      const result = await executeWithGoogle(client, agent, goal, context, toolContext)
       return {
         ...result,
         provider: 'google',
@@ -99,7 +99,7 @@ export async function executeWithProvider(
         throw new Error('xAI (Grok) API key not configured')
       }
       const client = createGrokClient(apiKeys.grok)
-      const result = await executeWithGrok(client, agent, goal, context)
+      const result = await executeWithGrok(client, agent, goal, context, toolContext)
       return {
         ...result,
         provider: 'xai',

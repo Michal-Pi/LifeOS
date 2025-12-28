@@ -2,11 +2,15 @@
  * Grok (xAI) Service
  *
  * Wrapper for xAI's Grok API calls with token counting and cost estimation.
+ * Supports tool calling with iterative execution.
  * Grok uses an OpenAI-compatible API, so we use the OpenAI SDK with a custom base URL.
  */
 
 import type { AgentConfig } from '@lifeos/agents'
 import OpenAI from 'openai'
+
+import type { ToolExecutionContext } from './toolExecutor.js'
+import { executeTools, getAgentTools } from './toolExecutor.js'
 
 /**
  * Initialize Grok client with API key from Firebase secrets
@@ -57,13 +61,15 @@ function calculateCost(modelName: string, inputTokens: number, outputTokens: num
  * @param agent Agent configuration
  * @param goal User's goal/task description
  * @param context Optional context object
+ * @param toolContext Optional tool execution context (enables tool calling)
  * @returns Execution result with output, tokens, and cost
  */
 export async function executeWithGrok(
   client: OpenAI,
   agent: AgentConfig,
   goal: string,
-  context?: Record<string, unknown>
+  context?: Record<string, unknown>,
+  toolContext?: ToolExecutionContext
 ): Promise<GrokExecutionResult> {
   try {
     // Build the prompt
@@ -77,28 +83,101 @@ export async function executeWithGrok(
     // Determine model name (use agent's modelName or default to grok-2-1212)
     const modelName = agent.modelName ?? 'grok-2-1212'
 
-    // Call Grok API (OpenAI-compatible)
-    const response = await client.chat.completions.create({
-      model: modelName,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: agent.temperature ?? 0.7,
-      max_tokens: agent.maxTokens ?? 2048,
-    })
+    // Initialize message history
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ]
 
-    // Extract result
-    const output = response.choices[0]?.message?.content ?? ''
-    const inputTokens = response.usage?.prompt_tokens ?? 0
-    const outputTokens = response.usage?.completion_tokens ?? 0
-    const tokensUsed = inputTokens + outputTokens
+    // Get available tools for this agent
+    const tools = toolContext ? getAgentTools(agent) : []
 
-    // Calculate cost
-    const estimatedCost = calculateCost(modelName, inputTokens, outputTokens)
+    // Track total tokens and cost across all iterations
+    let totalInputTokens = 0
+    let totalOutputTokens = 0
+
+    // Iterative execution loop (max 5 iterations to prevent infinite loops)
+    const MAX_ITERATIONS = 5
+    let iteration = 0
+    let finalOutput = ''
+
+    while (iteration < MAX_ITERATIONS) {
+      iteration++
+      console.log(`Grok iteration ${iteration}/${MAX_ITERATIONS}`)
+
+      // Call Grok API (OpenAI-compatible)
+      const response = await client.chat.completions.create({
+        model: modelName,
+        messages,
+        temperature: agent.temperature ?? 0.7,
+        max_tokens: agent.maxTokens ?? 2048,
+        tools: tools.length > 0 ? tools : undefined,
+        tool_choice: tools.length > 0 ? 'auto' : undefined,
+      })
+
+      // Track token usage
+      totalInputTokens += response.usage?.prompt_tokens ?? 0
+      totalOutputTokens += response.usage?.completion_tokens ?? 0
+
+      const message = response.choices[0]?.message
+
+      if (!message) {
+        throw new Error('No message in Grok response')
+      }
+
+      // Add assistant's message to history
+      messages.push(message)
+
+      // Check if agent wants to call tools
+      if (message.tool_calls && message.tool_calls.length > 0 && toolContext) {
+        console.log(`Agent requesting ${message.tool_calls.length} tool calls`)
+
+        // Execute all tool calls in parallel (same as OpenAI format)
+        const toolCalls = message.tool_calls
+          .filter((tc) => tc.type === 'function')
+          .map((tc) => ({
+            toolCallId: tc.id,
+            toolName: tc.type === 'function' ? tc.function.name : '',
+            parameters: tc.type === 'function' ? JSON.parse(tc.function.arguments) : {},
+          }))
+
+        const toolResults = await executeTools(toolCalls, toolContext)
+
+        // Add tool results to message history
+        for (const toolResult of toolResults) {
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolResult.toolCallId,
+            content: toolResult.error
+              ? `Error: ${toolResult.error}`
+              : JSON.stringify(toolResult.result),
+          })
+        }
+
+        console.log(`Executed ${toolResults.length} tools, continuing agent iteration`)
+        // Continue loop to get agent's response with tool results
+      } else {
+        // No tool calls, agent provided final output
+        finalOutput = message.content ?? ''
+        console.log(`Agent completed in ${iteration} iterations (no more tool calls)`)
+        break
+      }
+    }
+
+    if (iteration >= MAX_ITERATIONS) {
+      console.warn(`Agent reached max iterations (${MAX_ITERATIONS}) with tool calls`)
+      // Use last message content as final output
+      finalOutput =
+        messages[messages.length - 1]?.content?.toString() ??
+        'Agent reached max iterations without providing final output'
+    }
+
+    // Calculate totals
+    const tokensUsed = totalInputTokens + totalOutputTokens
+    const estimatedCost = calculateCost(modelName, totalInputTokens, totalOutputTokens)
 
     return {
-      output,
+      output: finalOutput,
       tokensUsed,
       estimatedCost,
     }
