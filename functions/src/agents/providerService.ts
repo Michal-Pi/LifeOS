@@ -3,6 +3,7 @@
  *
  * Unified abstraction layer for all AI providers (OpenAI, Anthropic, Google, Grok).
  * Routes execution requests to the appropriate provider based on agent configuration.
+ * Supports tool calling for OpenAI (Phase 4E).
  */
 
 import type { AgentConfig } from '@lifeos/agents'
@@ -11,6 +12,7 @@ import { createAnthropicClient, executeWithAnthropic } from './anthropicService.
 import { createGoogleAIClient, executeWithGoogle } from './googleService.js'
 import { createGrokClient, executeWithGrok } from './grokService.js'
 import { createOpenAIClient, executeWithOpenAI } from './openaiService.js'
+import type { ToolExecutionContext } from './toolExecutor.js'
 
 /**
  * Unified execution result from any provider
@@ -40,13 +42,15 @@ export interface ProviderKeys {
  * @param goal User's goal/task description
  * @param context Optional context object
  * @param apiKeys Provider API keys (only the needed one is used)
+ * @param toolContext Optional tool execution context (enables tool calling for OpenAI)
  * @returns Execution result with output, tokens, cost, and metadata
  */
 export async function executeWithProvider(
   agent: AgentConfig,
   goal: string,
   context: Record<string, unknown> | undefined,
-  apiKeys: ProviderKeys
+  apiKeys: ProviderKeys,
+  toolContext?: ToolExecutionContext
 ): Promise<ProviderExecutionResult> {
   const provider = agent.modelProvider
 
@@ -56,7 +60,7 @@ export async function executeWithProvider(
         throw new Error('OpenAI API key not configured')
       }
       const client = createOpenAIClient(apiKeys.openai)
-      const result = await executeWithOpenAI(client, agent, goal, context)
+      const result = await executeWithOpenAI(client, agent, goal, context, toolContext)
       return {
         ...result,
         provider: 'openai',

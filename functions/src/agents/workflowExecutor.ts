@@ -46,6 +46,8 @@ export interface WorkflowExecutionResult {
  * @param context Optional initial context
  * @param apiKeys Provider API keys
  * @param maxIterations Maximum number of iterations to prevent infinite loops
+ * @param userId User ID for tool execution context
+ * @param runId Run ID for tool execution context
  * @returns Workflow execution result
  */
 export async function executeSequentialWorkflow(
@@ -54,7 +56,9 @@ export async function executeSequentialWorkflow(
   goal: string,
   context: Record<string, unknown> | undefined,
   apiKeys: ProviderKeys,
-  maxIterations: number = 10
+  maxIterations: number = 10,
+  userId?: string,
+  runId?: string
 ): Promise<WorkflowExecutionResult> {
   const steps: AgentExecutionStep[] = []
   let currentContext = context ?? {}
@@ -71,8 +75,19 @@ export async function executeSequentialWorkflow(
       `Sequential workflow step ${i + 1}/${executionCount}: Executing agent ${agent.agentId} (${agent.name})`
     )
 
+    // Build tool execution context if userId and runId are provided
+    const toolContext =
+      userId && runId
+        ? {
+            userId,
+            agentId: agent.agentId,
+            workspaceId: workspace.workspaceId,
+            runId,
+          }
+        : undefined
+
     // Execute agent with current goal and context
-    const result = await executeWithProvider(agent, currentGoal, currentContext, apiKeys)
+    const result = await executeWithProvider(agent, currentGoal, currentContext, apiKeys, toolContext)
 
     // Record execution step
     const step: AgentExecutionStep = {
@@ -121,6 +136,8 @@ export async function executeSequentialWorkflow(
  * @param goal User's goal/task description
  * @param context Optional initial context
  * @param apiKeys Provider API keys
+ * @param userId User ID for tool execution context
+ * @param runId Run ID for tool execution context
  * @returns Workflow execution result
  */
 export async function executeParallelWorkflow(
@@ -128,7 +145,9 @@ export async function executeParallelWorkflow(
   agents: AgentConfig[],
   goal: string,
   context: Record<string, unknown> | undefined,
-  apiKeys: ProviderKeys
+  apiKeys: ProviderKeys,
+  userId?: string,
+  runId?: string
 ): Promise<WorkflowExecutionResult> {
   console.log(`Parallel workflow: Executing ${agents.length} agents concurrently`)
 
@@ -136,7 +155,18 @@ export async function executeParallelWorkflow(
   const executionPromises = agents.map(async (agent) => {
     console.log(`Parallel workflow: Starting agent ${agent.agentId} (${agent.name})`)
 
-    const result = await executeWithProvider(agent, goal, context, apiKeys)
+    // Build tool execution context if userId and runId are provided
+    const toolContext =
+      userId && runId
+        ? {
+            userId,
+            agentId: agent.agentId,
+            workspaceId: workspace.workspaceId,
+            runId,
+          }
+        : undefined
+
+    const result = await executeWithProvider(agent, goal, context, apiKeys, toolContext)
 
     const step: AgentExecutionStep = {
       agentId: agent.agentId,
@@ -160,7 +190,9 @@ export async function executeParallelWorkflow(
   const totalEstimatedCost = steps.reduce((sum, step) => sum + step.estimatedCost, 0)
 
   // Combine all outputs into a summary
-  const combinedOutput = steps.map((step) => `**${step.agentName}:**\n${step.output}`).join('\n\n---\n\n')
+  const combinedOutput = steps
+    .map((step) => `**${step.agentName}:**\n${step.output}`)
+    .join('\n\n---\n\n')
 
   return {
     output: combinedOutput,
@@ -182,6 +214,8 @@ export async function executeParallelWorkflow(
  * @param context Optional initial context
  * @param apiKeys Provider API keys
  * @param maxIterations Maximum number of iterations
+ * @param userId User ID for tool execution context
+ * @param runId Run ID for tool execution context
  * @returns Workflow execution result
  */
 export async function executeSupervisorWorkflow(
@@ -191,7 +225,9 @@ export async function executeSupervisorWorkflow(
   goal: string,
   context: Record<string, unknown> | undefined,
   apiKeys: ProviderKeys,
-  maxIterations: number = 10
+  maxIterations: number = 10,
+  userId?: string,
+  runId?: string
 ): Promise<WorkflowExecutionResult> {
   const steps: AgentExecutionStep[] = []
   const iterationLimit = Math.min(maxIterations, workspace.maxIterations ?? 10)
@@ -210,7 +246,24 @@ export async function executeSupervisorWorkflow(
       'You are a supervisor agent. Analyze the goal and create a delegation plan. Which agents should work on this task and in what order?',
   }
 
-  const planResult = await executeWithProvider(supervisorAgent, goal, supervisorContext, apiKeys)
+  // Build tool execution context for supervisor
+  const supervisorToolContext =
+    userId && runId
+      ? {
+          userId,
+          agentId: supervisorAgent.agentId,
+          workspaceId: workspace.workspaceId,
+          runId,
+        }
+      : undefined
+
+  const planResult = await executeWithProvider(
+    supervisorAgent,
+    goal,
+    supervisorContext,
+    apiKeys,
+    supervisorToolContext
+  )
 
   steps.push({
     agentId: supervisorAgent.agentId,
@@ -236,7 +289,18 @@ export async function executeSupervisorWorkflow(
       `Supervisor workflow: Executing worker ${i + 1}/${workerAgents.length}: ${worker.name}`
     )
 
-    const result = await executeWithProvider(worker, goal, currentContext, apiKeys)
+    // Build tool execution context for worker
+    const workerToolContext =
+      userId && runId
+        ? {
+            userId,
+            agentId: worker.agentId,
+            workspaceId: workspace.workspaceId,
+            runId,
+          }
+        : undefined
+
+    const result = await executeWithProvider(worker, goal, currentContext, apiKeys, workerToolContext)
 
     steps.push({
       agentId: worker.agentId,
@@ -263,7 +327,13 @@ export async function executeSupervisorWorkflow(
       'You are a supervisor agent. Review all worker outputs and synthesize a final comprehensive response.',
   }
 
-  const finalResult = await executeWithProvider(supervisorAgent, goal, synthesisContext, apiKeys)
+  const finalResult = await executeWithProvider(
+    supervisorAgent,
+    goal,
+    synthesisContext,
+    apiKeys,
+    supervisorToolContext
+  )
 
   steps.push({
     agentId: supervisorAgent.agentId,
@@ -327,12 +397,14 @@ export async function executeWorkflow(
         run.goal,
         run.context,
         apiKeys,
-        workspace.maxIterations
+        workspace.maxIterations,
+        userId,
+        run.runId
       )
 
     case 'parallel':
       console.log('Executing parallel workflow')
-      return executeParallelWorkflow(workspace, agents, run.goal, run.context, apiKeys)
+      return executeParallelWorkflow(workspace, agents, run.goal, run.context, apiKeys, userId, run.runId)
 
     case 'supervisor': {
       console.log('Executing supervisor workflow')
@@ -349,7 +421,9 @@ export async function executeWorkflow(
         run.goal,
         run.context,
         apiKeys,
-        workspace.maxIterations
+        workspace.maxIterations,
+        userId,
+        run.runId
       )
     }
 
@@ -362,7 +436,9 @@ export async function executeWorkflow(
         run.goal,
         run.context,
         apiKeys,
-        workspace.maxIterations
+        workspace.maxIterations,
+        userId,
+        run.runId
       )
 
     default:
