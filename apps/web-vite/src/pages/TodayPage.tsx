@@ -41,6 +41,7 @@ import { HabitCheckInCard } from '@/components/habits/HabitCheckInCard'
 import { MindInterventionModal } from '@/components/mind/MindInterventionModal'
 import { IncantationDisplay } from '@/components/habits/IncantationDisplay'
 import { WorkoutSessionCard } from '@/components/training/WorkoutSessionCard'
+import { TodayWorkout } from '@/components/training/TodayWorkout'
 
 const quoteRepository = createFirestoreQuoteRepository()
 const calendarRepository = createFirestoreCalendarEventRepository()
@@ -274,6 +275,9 @@ export function TodayPage() {
 
       {/* Habits Check-In */}
       <HabitCheckInCard userId={userId} dateKey={todayKey} />
+
+      {/* Today's Workout */}
+      <TodayWorkout userId={userId} dateKey={todayKey} />
 
       {/* Workout Session Tracker */}
       <WorkoutSessionCard dateKey={todayKey} />

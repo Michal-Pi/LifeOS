@@ -1,15 +1,18 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
+import { useWorkoutOperations } from '@/hooks/useWorkoutOperations'
 import { calculatePriorityScore } from '@/lib/priority'
 import { calculateWeightedProgress } from '@/lib/progress'
 import { HabitsAndMindStep } from '@/components/weeklyReview/HabitsAndMindStep'
-import { startOfWeek, endOfWeek } from 'date-fns'
+import { WorkoutStats } from '@/components/training/WorkoutStats'
+import { startOfWeek, endOfWeek, format } from 'date-fns'
 
 export function WeeklyReviewPage() {
   const { user } = useAuth()
   const userId = user?.uid ?? ''
   const { tasks, projects, loading, loadData } = useTodoOperations({ userId })
+  const { sessions, listSessions } = useWorkoutOperations()
   const [step, setStep] = useState(0)
 
   useEffect(() => {
@@ -17,6 +20,28 @@ export function WeeklyReviewPage() {
       void loadData()
     }
   }, [userId, loadData])
+
+  // Load workout sessions for the week
+  useEffect(() => {
+    if (!userId) return
+
+    const loadWeekSessions = async () => {
+      const today = new Date()
+      const weekStart = startOfWeek(today, { weekStartsOn: 1 })
+      const weekEnd = endOfWeek(today, { weekStartsOn: 1 })
+
+      // Generate date keys for the week
+      const dateKeys: string[] = []
+      for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
+        dateKeys.push(format(d, 'yyyy-MM-dd'))
+      }
+
+      // Load sessions for each day
+      await Promise.all(dateKeys.map((dateKey) => listSessions(dateKey)))
+    }
+
+    void loadWeekSessions()
+  }, [userId, listSessions])
 
   const completedThisWeek = useMemo(() => {
     const oneWeekAgo = new Date()
@@ -100,6 +125,15 @@ export function WeeklyReviewPage() {
           weekEndDate={weekEnd}
           onNext={() => setStep((s) => s + 1)}
         />
+      ),
+    },
+    {
+      title: 'Training Progress',
+      content: (
+        <div className="review-step">
+          <p>Review your workout performance this week.</p>
+          <WorkoutStats sessions={sessions} weekStartDate={weekStart} weekEndDate={weekEnd} />
+        </div>
       ),
     },
   ]
