@@ -11,6 +11,7 @@ const modules = [
   { label: 'Notes', href: '/notes', icon: '📓' },
   { label: 'People', href: '/people', icon: '👥' },
   { label: 'Projects', href: '/projects', icon: '📦' },
+  { label: 'Exercises', href: '/exercises', icon: '💪' },
 ]
 const settingsItem = { label: 'Settings', href: '/settings', icon: '⚙️' }
 

@@ -23,6 +23,9 @@ const WeeklyReviewPage = lazy(() =>
   import('./pages/WeeklyReviewPage').then((m) => ({ default: m.WeeklyReviewPage }))
 )
 const HabitsPage = lazy(() => import('./pages/HabitsPage').then((m) => ({ default: m.HabitsPage })))
+const ExerciseLibraryPage = lazy(() =>
+  import('./pages/ExerciseLibraryPage').then((m) => ({ default: m.ExerciseLibraryPage }))
+)
 
 // Loading fallback component
 function PageLoader() {
@@ -118,6 +121,16 @@ function App() {
                     <ProtectedRoute>
                       <ErrorBoundary>
                         <HabitsPage />
+                      </ErrorBoundary>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/exercises"
+                  element={
+                    <ProtectedRoute>
+                      <ErrorBoundary>
+                        <ExerciseLibraryPage />
                       </ErrorBoundary>
                     </ProtectedRoute>
                   }

@@ -11,6 +11,9 @@ export default defineConfig({
       '@lifeos/calendar': path.resolve(__dirname, '../../packages/calendar/src'),
       '@lifeos/core': path.resolve(__dirname, '../../packages/core/src'),
       '@lifeos/platform-web': path.resolve(__dirname, '../../packages/platform-web/src'),
+      '@lifeos/habits': path.resolve(__dirname, '../../packages/habits/src'),
+      '@lifeos/mind': path.resolve(__dirname, '../../packages/mind/src'),
+      '@lifeos/training': path.resolve(__dirname, '../../packages/training/src'),
     },
   },
   build: {

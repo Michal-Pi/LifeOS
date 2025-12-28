@@ -801,3 +801,350 @@
   --success-light: rgba(16, 185, 129, 0.1);
   --info-light: rgba(59, 130, 246, 0.1);
 }
+
+/* ========== Exercise Library Page ========== */
+
+.exercise-library-page {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+.exercise-library-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  gap: var(--space-4);
+}
+
+.exercise-library-meta {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-top: var(--space-1);
+}
+
+.exercise-library-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.search-box {
+  width: 100%;
+}
+
+.search-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  background: var(--card-background);
+  color: var(--text-primary);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.category-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.category-filter-button {
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-secondary);
+}
+
+.category-filter-button:hover {
+  border-color: var(--primary-color);
+  background: var(--background-hover);
+}
+
+.category-filter-button.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.exercise-library-loading {
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--text-secondary);
+}
+
+.exercise-table-container {
+  background: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+}
+
+.exercise-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.exercise-table thead {
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.exercise-table th {
+  text-align: left;
+  padding: var(--space-3);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.exercise-table tbody tr {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.exercise-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.exercise-table tbody tr:hover {
+  background: var(--background-hover);
+}
+
+.exercise-table td {
+  padding: var(--space-3);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.exercise-name-cell {
+  font-weight: 500;
+}
+
+.exercise-category-cell {
+  text-transform: capitalize;
+  color: var(--text-secondary);
+}
+
+.exercise-equipment-cell {
+  color: var(--text-secondary);
+}
+
+.exercise-metrics-cell {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-transform: capitalize;
+}
+
+.exercise-actions-cell {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.edit-button-small,
+.delete-button-small {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-button-small {
+  background: var(--background-secondary);
+  color: var(--text-primary);
+}
+
+.edit-button-small:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.delete-button-small {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.delete-button-small:hover {
+  background: var(--danger-color);
+  color: white;
+}
+
+/* ========== Exercise Form Modal ========== */
+
+.exercise-form-modal {
+  width: 90%;
+  max-width: 600px;
+}
+
+.form-group {
+  margin-bottom: var(--space-4);
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.required {
+  color: var(--danger-color);
+}
+
+.form-input,
+.form-select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  background: var(--card-background);
+  color: var(--text-primary);
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.equipment-input-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.add-equipment-button {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.add-equipment-button:hover {
+  background: var(--primary-hover);
+}
+
+.add-equipment-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.equipment-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.equipment-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--background-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
+.chip-remove-button {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.chip-remove-button:hover {
+  color: var(--danger-color);
+}
+
+.metrics-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.checkbox-label input[type='checkbox'] {
+  cursor: pointer;
+}
+
+.error-banner-inline {
+  background: var(--danger-light);
+  color: var(--danger-color);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+  font-size: 0.875rem;
+}
+
+/* ========== Responsive: Exercise Library ========== */
+
+@media (max-width: 768px) {
+  .exercise-library-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .exercise-table-container {
+    overflow-x: scroll;
+  }
+
+  .exercise-table {
+    min-width: 600px;
+  }
+
+  .category-filters {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .exercise-actions-cell {
+    flex-direction: column;
+  }
+
+  .edit-button-small,
+  .delete-button-small {
+    width: 100%;
+  }
+
+  .equipment-input-row {
+    flex-direction: column;
+  }
+
+  .add-equipment-button {
+    width: 100%;
+  }
+}
