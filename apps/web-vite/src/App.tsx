@@ -33,6 +33,12 @@ const WorkoutPlanPage = lazy(() =>
   import('./pages/WorkoutPlanPage').then((m) => ({ default: m.WorkoutPlanPage }))
 )
 const AgentsPage = lazy(() => import('./pages/AgentsPage').then((m) => ({ default: m.AgentsPage })))
+const WorkspacesPage = lazy(() =>
+  import('./pages/WorkspacesPage').then((m) => ({ default: m.WorkspacesPage }))
+)
+const WorkspaceDetailPage = lazy(() =>
+  import('./pages/WorkspaceDetailPage').then((m) => ({ default: m.WorkspaceDetailPage }))
+)
 
 // Loading fallback component
 function PageLoader() {
@@ -63,11 +69,14 @@ function App() {
             <NavLink to="/todo" className={({ isActive }) => (isActive ? 'active' : '')}>
               To-Do
             </NavLink>
-            <NavLink to="/habits" className={({ isActive}) => (isActive ? 'active' : '')}>
+            <NavLink to="/habits" className={({ isActive }) => (isActive ? 'active' : '')}>
               Habits
             </NavLink>
             <NavLink to="/agents" className={({ isActive }) => (isActive ? 'active' : '')}>
               Agents
+            </NavLink>
+            <NavLink to="/workspaces" className={({ isActive }) => (isActive ? 'active' : '')}>
+              Workspaces
             </NavLink>
             <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
               Settings
@@ -141,6 +150,26 @@ function App() {
                     <ProtectedRoute>
                       <ErrorBoundary>
                         <AgentsPage />
+                      </ErrorBoundary>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/workspaces"
+                  element={
+                    <ProtectedRoute>
+                      <ErrorBoundary>
+                        <WorkspacesPage />
+                      </ErrorBoundary>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/workspaces/:workspaceId"
+                  element={
+                    <ProtectedRoute>
+                      <ErrorBoundary>
+                        <WorkspaceDetailPage />
                       </ErrorBoundary>
                     </ProtectedRoute>
                   }
