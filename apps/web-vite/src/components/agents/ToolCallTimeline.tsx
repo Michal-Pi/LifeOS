@@ -118,9 +118,7 @@ export function ToolCallTimeline({ toolCalls }: ToolCallTimelineProps) {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-gray-500">Started:</span>{' '}
-                      <span className="text-gray-900">
-                        {formatTimestamp(toolCall.startedAtMs)}
-                      </span>
+                      <span className="text-gray-900">{formatTimestamp(toolCall.startedAtMs)}</span>
                     </div>
                     {toolCall.completedAtMs && (
                       <div>

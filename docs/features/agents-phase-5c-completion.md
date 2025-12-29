@@ -25,6 +25,7 @@ export function useToolCallOperations(runId: RunId | null): UseToolCallOperation
 ```
 
 **Features**:
+
 - Real-time subscriptions via Firebase `onSnapshot`
 - Automatic updates as tool calls execute
 - Error handling with graceful degradation
@@ -39,6 +40,7 @@ const q = query(toolCallsRef, orderBy('startedAtMs', 'asc'))
 ```
 
 **ESLint Compliance**:
+
 - Avoids synchronous setState in effects (strict rule compliance)
 - Uses subscription pattern (onSnapshot) for external system sync
 - Clean-up via unsubscribe on unmount
@@ -63,12 +65,12 @@ const q = query(toolCallsRef, orderBy('startedAtMs', 'asc'))
 
 Color-coded based on execution status:
 
-| Status      | Color  | Class               |
-| ----------- | ------ | ------------------- |
-| `completed` | Green  | `bg-green-100`      |
-| `failed`    | Red    | `bg-red-100`        |
-| `running`   | Blue   | `bg-blue-100`       |
-| `pending`   | Yellow | `bg-yellow-100`     |
+| Status      | Color  | Class           |
+| ----------- | ------ | --------------- |
+| `completed` | Green  | `bg-green-100`  |
+| `failed`    | Red    | `bg-red-100`    |
+| `running`   | Blue   | `bg-blue-100`   |
+| `pending`   | Yellow | `bg-yellow-100` |
 
 #### Detailed Information (When Expanded)
 
@@ -96,6 +98,7 @@ Color-coded based on execution status:
    - Monospace font for stack traces
 
 **Visual Design**:
+
 - White cards with gray borders
 - Hover effect on header
 - Smooth expand/collapse animation (CSS transform)
@@ -107,17 +110,20 @@ Color-coded based on execution status:
 **Purpose**: Unified component for displaying run details including tool calls
 
 **Responsibilities**:
+
 - Fetch tool calls via `useToolCallOperations` hook
 - Display all run metadata (goal, status, progress, output, error, context)
 - Embed `ToolCallTimeline` when tool calls exist
 - Handle run deletion
 
 **Integration**:
+
 - Moved all run display logic from WorkspaceDetailPage
 - Encapsulates tool call fetching per-run
 - Clean separation of concerns
 
 **Benefits**:
+
 - Reusable across multiple pages
 - Self-contained state management
 - Easier to test and maintain
@@ -125,6 +131,7 @@ Color-coded based on execution status:
 ### 4. Updated WorkspaceDetailPage (`apps/web-vite/src/pages/WorkspaceDetailPage.tsx`)
 
 **Changes**:
+
 - Replaced inline run cards with `<RunCard>` component
 - Removed redundant helper functions (moved to RunCard)
 - Cleaner, more maintainable code
@@ -133,11 +140,13 @@ Color-coded based on execution status:
 **Before**:
 
 ```tsx
-{filteredRuns.map((run) => (
-  <div key={run.runId} className="run-card">
-    {/* 60+ lines of inline JSX */}
-  </div>
-))}
+{
+  filteredRuns.map((run) => (
+    <div key={run.runId} className="run-card">
+      {/* 60+ lines of inline JSX */}
+    </div>
+  ))
+}
 ```
 
 **After**:
@@ -201,6 +210,7 @@ const unsubscribe = onSnapshot(
 ```
 
 **Timeline**:
+
 1. Run starts (status: pending)
 2. Tool call created (status: pending) → UI updates immediately
 3. Tool starts executing (status: running) → Badge turns blue
@@ -220,6 +230,7 @@ const formatDuration = (durationMs?: number) => {
 ```
 
 Examples:
+
 - `45ms`
 - `1.23s`
 - `N/A` (still running)
@@ -233,6 +244,7 @@ const formatTimestamp = (timestampMs: number) => {
 ```
 
 Examples:
+
 - `2:45:30 PM`
 - `14:45:30` (24-hour format)
 
@@ -245,6 +257,7 @@ Examples:
 ```
 
 Features:
+
 - 2-space indentation
 - Scrollable horizontal overflow
 - Monospace font
@@ -292,6 +305,7 @@ pnpm --filter web-vite run lint   # ✅ Passed
 **Scenario**: Agent run fails with error
 
 **Workflow**:
+
 1. Open WorkspaceDetailPage
 2. Find the failed run (red badge)
 3. Scroll to "Tool Calls" section
@@ -313,6 +327,7 @@ Parameters: { "collection": "invalid_collection", "limit": 10 }
 **Scenario**: Want to see what the agent did
 
 **Workflow**:
+
 1. Open completed run
 2. View "Tool Calls" timeline
 3. See sequence of tool executions
@@ -331,6 +346,7 @@ Parameters: { "collection": "invalid_collection", "limit": 10 }
 **Scenario**: Identify slow tools
 
 **Workflow**:
+
 1. Review tool call durations
 2. Identify outliers
 3. Optimize slow tools
@@ -348,6 +364,7 @@ calculate: 12ms (fast)
 **Scenario**: Ensure agent is calling tools correctly
 
 **Workflow**:
+
 1. Expand tool call
 2. Inspect parameters section
 3. Verify values are correct
@@ -366,6 +383,7 @@ calculate: 12ms (fast)
 **Scenario**: Agent uses multiple tool calls in sequence
 
 **Workflow**:
+
 1. View all tool calls
 2. Note iteration numbers
 3. Understand execution flow

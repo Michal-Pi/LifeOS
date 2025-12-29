@@ -4,10 +4,12 @@
  * Framework for executing server-side tools that agents can invoke.
  * Provides built-in tools and infrastructure for custom tool registration.
  * Phase 5B: Persists tool call records to Firestore for tracking and analytics.
+ * Phase 5D: Advanced built-in tools (calendar, notes, web search).
  */
 
 import type { AgentConfig, ToolCallStatus, ModelProvider } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
+import { advancedTools } from './advancedTools'
 
 /**
  * Tool call request from an agent
@@ -425,3 +427,10 @@ registerTool({
     }
   },
 })
+
+// ==================== Phase 5D: Advanced Tools ====================
+
+/**
+ * Register all advanced tools (calendar, notes, web search)
+ */
+advancedTools.forEach((tool) => registerTool(tool))
