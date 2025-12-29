@@ -9,6 +9,7 @@
 import type { AgentConfig } from '@lifeos/agents'
 
 import { createAnthropicClient, executeWithAnthropic } from './anthropicService.js'
+import { AgentError, ERROR_MESSAGES } from './errorHandler.js'
 import { createGoogleAIClient, executeWithGoogle } from './googleService.js'
 import { createGrokClient, executeWithGrok } from './grokService.js'
 import { createOpenAIClient, executeWithOpenAI } from './openaiService.js'
@@ -57,7 +58,10 @@ export async function executeWithProvider(
   switch (provider) {
     case 'openai': {
       if (!apiKeys.openai) {
-        throw new Error('OpenAI API key not configured')
+        const errorMsg = ERROR_MESSAGES.PROVIDER_NOT_CONFIGURED('OpenAI')
+        throw new AgentError(errorMsg.message, errorMsg.userMessage, 'auth', false, {
+          provider: 'openai',
+        })
       }
       const client = createOpenAIClient(apiKeys.openai)
       const result = await executeWithOpenAI(client, agent, goal, context, toolContext)
@@ -70,7 +74,10 @@ export async function executeWithProvider(
 
     case 'anthropic': {
       if (!apiKeys.anthropic) {
-        throw new Error('Anthropic API key not configured')
+        const errorMsg = ERROR_MESSAGES.PROVIDER_NOT_CONFIGURED('Anthropic')
+        throw new AgentError(errorMsg.message, errorMsg.userMessage, 'auth', false, {
+          provider: 'anthropic',
+        })
       }
       const client = createAnthropicClient(apiKeys.anthropic)
       const result = await executeWithAnthropic(client, agent, goal, context, toolContext)
@@ -83,7 +90,10 @@ export async function executeWithProvider(
 
     case 'google': {
       if (!apiKeys.google) {
-        throw new Error('Google AI API key not configured')
+        const errorMsg = ERROR_MESSAGES.PROVIDER_NOT_CONFIGURED('Google')
+        throw new AgentError(errorMsg.message, errorMsg.userMessage, 'auth', false, {
+          provider: 'google',
+        })
       }
       const client = createGoogleAIClient(apiKeys.google)
       const result = await executeWithGoogle(client, agent, goal, context, toolContext)
@@ -96,7 +106,10 @@ export async function executeWithProvider(
 
     case 'xai': {
       if (!apiKeys.grok) {
-        throw new Error('xAI (Grok) API key not configured')
+        const errorMsg = ERROR_MESSAGES.PROVIDER_NOT_CONFIGURED('xAI (Grok)')
+        throw new AgentError(errorMsg.message, errorMsg.userMessage, 'auth', false, {
+          provider: 'xai',
+        })
       }
       const client = createGrokClient(apiKeys.grok)
       const result = await executeWithGrok(client, agent, goal, context, toolContext)

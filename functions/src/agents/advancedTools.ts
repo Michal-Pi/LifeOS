@@ -9,9 +9,11 @@
  * All tools are scoped to the authenticated user's data for security.
  */
 
-import { generateId } from '@lifeos/core'
+import { randomUUID } from 'crypto'
 import { getFirestore } from 'firebase-admin/firestore'
-import type { ToolDefinition, ToolExecutionContext } from './toolExecutor'
+import type { ToolDefinition, ToolExecutionContext } from './toolExecutor.js'
+
+const generateId = () => randomUUID()
 
 /**
  * Calendar Tool: List upcoming events

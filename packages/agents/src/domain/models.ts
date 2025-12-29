@@ -100,6 +100,18 @@ export interface Run {
   output?: string // Final synthesized output
   error?: string // Error message if failed
 
+  // Phase 5E: Enhanced error tracking
+  errorCategory?:
+    | 'network'
+    | 'auth'
+    | 'rate_limit'
+    | 'validation'
+    | 'timeout'
+    | 'internal'
+    | 'quota'
+  errorDetails?: Record<string, unknown> // Technical details for debugging
+  quotaExceeded?: boolean // True if run failed due to quota limits
+
   // Metrics
   startedAtMs: number
   completedAtMs?: number
@@ -187,6 +199,11 @@ export interface ToolCallRecord {
   status: ToolCallStatus
   result?: unknown
   error?: string
+
+  // Phase 5E: Enhanced error tracking
+  errorCategory?: 'network' | 'auth' | 'rate_limit' | 'validation' | 'timeout' | 'internal'
+  errorDetails?: Record<string, unknown> // Technical details for debugging
+  retryAttempt?: number // Number of retry attempts (0 = no retries)
 
   // Timing metrics
   startedAtMs: number

@@ -22,6 +22,9 @@ Central navigation for the docs. Start here.
 ## Feature/Subsystem Docs
 
 - `docs/calendar/` - Calendar sync, schema notes, event operations
+- `docs/features/ai-agents-progress-summary.md` - AI Agent Framework status + roadmap
+- `docs/features/agents-roadmap.md` - AI Agent Framework phases
+- `docs/features/agents-phase-5e-completion.md` - AI Agent Framework Phase 5E completion
 - `docs/todos/overview.md` - Todos feature overview
 - `docs/todos/ui.md` - Todos UI behavior
 - `docs/sync/` - Outbox + conflict strategy + overview

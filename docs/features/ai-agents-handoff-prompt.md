@@ -91,6 +91,11 @@ Please review the summary doc first, then let me know you're ready to proceed wi
 - `functions/src/agents/runExecutor.ts` - Cloud Function trigger
 - `functions/src/agents/toolExecutor.ts` - Tool framework
 - `functions/src/agents/advancedTools.ts` - Phase 5D tools
+- `functions/src/agents/retryHelper.ts` - Retry logic (Phase 5E)
+- `functions/src/agents/errorHandler.ts` - Error handling and timeouts (Phase 5E)
+- `functions/src/agents/rateLimiter.ts` - Rate limiting (Phase 5E)
+- `functions/src/agents/quotaManager.ts` - Quota management (Phase 5E)
+- `users/{userId}/settings/aiProviderKeys` - Per-user API keys (openaiKey, anthropicKey, googleKey, xaiKey)
 
 **Frontend (Phase 2-3, 5C)**:
 

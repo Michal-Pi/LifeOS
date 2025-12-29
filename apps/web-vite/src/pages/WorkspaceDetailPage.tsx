@@ -180,6 +180,7 @@ export function WorkspaceDetailPage() {
 
       <RunWorkspaceModal
         workspace={workspace}
+        agents={agents}
         isOpen={showRunModal}
         onClose={() => setShowRunModal(false)}
         onRunCreated={handleRunCreated}

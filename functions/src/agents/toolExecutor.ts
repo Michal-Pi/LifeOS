@@ -5,11 +5,14 @@
  * Provides built-in tools and infrastructure for custom tool registration.
  * Phase 5B: Persists tool call records to Firestore for tracking and analytics.
  * Phase 5D: Advanced built-in tools (calendar, notes, web search).
+ * Phase 5E: Retry logic, timeout handling, and error management.
  */
 
 import type { AgentConfig, ToolCallStatus, ModelProvider } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
-import { advancedTools } from './advancedTools'
+import { advancedTools } from './advancedTools.js'
+import { ERROR_MESSAGES, executeWithTimeout, getToolTimeout, wrapError } from './errorHandler.js'
+import { TOOL_RETRY_CONFIG, executeWithRetry } from './retryHelper.js'
 
 /**
  * Tool call request from an agent
@@ -137,6 +140,7 @@ export function getAgentTools(agent: AgentConfig): Array<{
 
 /**
  * Execute a tool call and persist the record to Firestore
+ * Phase 5E: Added retry logic, timeout handling, and better error messages
  */
 export async function executeTool(
   toolCall: ToolCall,
@@ -155,6 +159,9 @@ export async function executeTool(
     .doc() // Auto-generate ID
 
   const toolCallRecordId = toolCallDocRef.id as any // Cast to ToolCallRecordId
+
+  // Track retry attempts
+  let retryAttempt = 0
 
   // Create initial tool call record (pending)
   const toolCallRecord = {
@@ -178,6 +185,8 @@ export async function executeTool(
     modelName: context.modelName,
     iteration: context.iteration,
 
+    retryAttempt: 0, // Phase 5E: Track retry attempts
+
     syncState: 'synced' as const,
     version: 1,
   }
@@ -189,10 +198,13 @@ export async function executeTool(
     const tool = TOOL_REGISTRY.get(toolCall.toolName)
 
     if (!tool) {
-      // Update record with error
+      // Tool not found - use error message template
+      const errorMsg = ERROR_MESSAGES.TOOL_NOT_FOUND(toolCall.toolName)
+
       await toolCallDocRef.update({
         status: 'failed',
-        error: `Tool '${toolCall.toolName}' not found`,
+        error: errorMsg.userMessage,
+        errorCategory: 'validation',
         completedAtMs: Date.now(),
         durationMs: Date.now() - startTime,
         version: 2,
@@ -202,7 +214,7 @@ export async function executeTool(
         toolCallId: toolCall.toolCallId,
         toolName: toolCall.toolName,
         result: null,
-        error: `Tool '${toolCall.toolName}' not found`,
+        error: errorMsg.userMessage,
         executedAtMs: Date.now(),
       }
     }
@@ -215,12 +227,39 @@ export async function executeTool(
       version: 2,
     })
 
-    const result = await tool.execute(toolCall.parameters, context)
+    // Get timeout for this specific tool
+    const timeoutMs = getToolTimeout(toolCall.toolName)
+
+    // Execute with retry logic and timeout
+    const result = await executeWithRetry(
+      async () => {
+        // Execute tool with timeout
+        return await executeWithTimeout(
+          tool.execute(toolCall.parameters, context),
+          timeoutMs,
+          `tool:${toolCall.toolName}`
+        )
+      },
+      TOOL_RETRY_CONFIG,
+      (attempt, error, delayMs) => {
+        retryAttempt = attempt
+        console.log(
+          `Tool ${toolCall.toolName} retry ${attempt}/${TOOL_RETRY_CONFIG.maxRetries} after ${delayMs}ms. Error: ${(error as Error).message}`
+        )
+
+        // Update retry attempt in Firestore
+        toolCallDocRef.update({
+          retryAttempt: attempt,
+        })
+      }
+    )
 
     const completedAtMs = Date.now()
     const durationMs = completedAtMs - startTime
 
-    console.log(`Tool ${toolCall.toolName} completed in ${durationMs}ms`)
+    console.log(
+      `Tool ${toolCall.toolName} completed in ${durationMs}ms${retryAttempt > 0 ? ` (after ${retryAttempt} retries)` : ''}`
+    )
 
     // Update record with success
     await toolCallDocRef.update({
@@ -228,6 +267,7 @@ export async function executeTool(
       result,
       completedAtMs,
       durationMs,
+      retryAttempt,
       version: 3,
     })
 
@@ -238,15 +278,20 @@ export async function executeTool(
       executedAtMs: completedAtMs,
     }
   } catch (error) {
-    console.error(`Tool ${toolCall.toolName} failed:`, error)
+    console.error(`Tool ${toolCall.toolName} failed after retries:`, error)
 
+    // Wrap error for better user messages
+    const agentError = wrapError(error, `tool:${toolCall.toolName}`)
     const completedAtMs = Date.now()
     const durationMs = completedAtMs - startTime
 
     // Update record with error
     await toolCallDocRef.update({
       status: 'failed',
-      error: (error as Error).message,
+      error: agentError.userMessage,
+      errorCategory: agentError.category,
+      errorDetails: agentError.details, // Include technical details
+      retryAttempt,
       completedAtMs,
       durationMs,
       version: 3,
@@ -256,7 +301,7 @@ export async function executeTool(
       toolCallId: toolCall.toolCallId,
       toolName: toolCall.toolName,
       result: null,
-      error: (error as Error).message,
+      error: agentError.userMessage,
       executedAtMs: completedAtMs,
     }
   }

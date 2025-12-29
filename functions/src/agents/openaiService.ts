@@ -9,6 +9,9 @@
 import type { AgentConfig } from '@lifeos/agents'
 import OpenAI from 'openai'
 
+import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
+import { checkProviderRateLimit } from './rateLimiter.js'
+import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
 import { executeTools, getAgentTools } from './toolExecutor.js'
 
@@ -71,6 +74,8 @@ export async function executeWithOpenAI(
   context?: Record<string, unknown>,
   toolContext?: BaseToolExecutionContext
 ): Promise<OpenAIExecutionResult> {
+  const modelName = agent.modelName ?? 'gpt-4o-mini'
+
   try {
     // Build the prompt
     const systemPrompt =
@@ -79,9 +84,6 @@ export async function executeWithOpenAI(
     const contextStr = context ? `\n\nContext:\n${JSON.stringify(context, null, 2)}` : ''
 
     const userPrompt = `Goal: ${goal}${contextStr}`
-
-    // Determine model name (use agent's modelName or default to gpt-4o-mini)
-    const modelName = agent.modelName ?? 'gpt-4o-mini'
 
     // Initialize message history
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -106,14 +108,32 @@ export async function executeWithOpenAI(
       console.log(`OpenAI iteration ${iteration}/${MAX_ITERATIONS}`)
 
       // Call OpenAI API
-      const response = await client.chat.completions.create({
-        model: modelName,
-        messages,
-        temperature: agent.temperature ?? 0.7,
-        max_tokens: agent.maxTokens ?? 2048,
-        tools: tools.length > 0 ? tools : undefined,
-        tool_choice: tools.length > 0 ? 'auto' : undefined,
-      })
+      const response = await executeWithRetry(
+        async () => {
+          if (toolContext?.userId) {
+            await checkProviderRateLimit(toolContext.userId, 'openai')
+          }
+
+          return executeWithTimeout(
+            client.chat.completions.create({
+              model: modelName,
+              messages,
+              temperature: agent.temperature ?? 0.7,
+              max_tokens: agent.maxTokens ?? 2048,
+              tools: tools.length > 0 ? tools : undefined,
+              tool_choice: tools.length > 0 ? 'auto' : undefined,
+            }),
+            TIMEOUTS.PROVIDER,
+            'openai.chat.completions.create'
+          )
+        },
+        PROVIDER_RETRY_CONFIG,
+        (attempt, error, delayMs) => {
+          console.log(
+            `OpenAI retry ${attempt}/${PROVIDER_RETRY_CONFIG.maxRetries} after ${delayMs}ms: ${(error as Error).message}`
+          )
+        }
+      )
 
       // Track token usage
       totalInputTokens += response.usage?.prompt_tokens ?? 0
@@ -188,6 +208,12 @@ export async function executeWithOpenAI(
     }
   } catch (error) {
     console.error('OpenAI execution error:', error)
-    throw new Error(`OpenAI API error: ${(error as Error).message}`)
+    const agentError = wrapError(error, 'openai')
+    agentError.details = {
+      ...agentError.details,
+      provider: 'openai',
+      model: modelName,
+    }
+    throw agentError
   }
 }

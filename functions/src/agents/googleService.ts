@@ -10,6 +10,9 @@ import type { Tool, Schema } from '@google/generative-ai'
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai'
 import type { AgentConfig } from '@lifeos/agents'
 
+import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
+import { checkProviderRateLimit } from './rateLimiter.js'
+import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
 import { executeTools, getAgentTools } from './toolExecutor.js'
 
@@ -142,6 +145,8 @@ export async function executeWithGoogle(
   context?: Record<string, unknown>,
   toolContext?: BaseToolExecutionContext
 ): Promise<GoogleExecutionResult> {
+  const modelName = agent.modelName ?? 'gemini-1.5-flash'
+
   try {
     // Build the prompt
     const systemPrompt =
@@ -150,9 +155,6 @@ export async function executeWithGoogle(
     const contextStr = context ? `\n\nContext:\n${JSON.stringify(context, null, 2)}` : ''
 
     const userPrompt = `${systemPrompt}\n\nGoal: ${goal}${contextStr}`
-
-    // Determine model name (use agent's modelName or default to Gemini 1.5 Flash)
-    const modelName = agent.modelName ?? 'gemini-1.5-flash'
 
     // Get available tools for this agent
     const toolsOpenAIFormat = toolContext ? getAgentTools(agent) : []
@@ -189,8 +191,25 @@ export async function executeWithGoogle(
       console.log(`Google iteration ${iteration}/${MAX_ITERATIONS}`)
 
       // Send message (first iteration uses userPrompt, subsequent use empty to continue)
-      const result =
-        iteration === 1 ? await chat.sendMessage(userPrompt) : await chat.sendMessage('')
+      const result = await executeWithRetry(
+        async () => {
+          if (toolContext?.userId) {
+            await checkProviderRateLimit(toolContext.userId, 'google')
+          }
+
+          return executeWithTimeout(
+            iteration === 1 ? chat.sendMessage(userPrompt) : chat.sendMessage(''),
+            TIMEOUTS.PROVIDER,
+            'google.chat.sendMessage'
+          )
+        },
+        PROVIDER_RETRY_CONFIG,
+        (attempt, error, delayMs) => {
+          console.log(
+            `Google retry ${attempt}/${PROVIDER_RETRY_CONFIG.maxRetries} after ${delayMs}ms: ${(error as Error).message}`
+          )
+        }
+      )
       const response = result.response
 
       totalOutputChars += response.text().length
@@ -263,6 +282,12 @@ export async function executeWithGoogle(
     }
   } catch (error) {
     console.error('Google Gemini execution error:', error)
-    throw new Error(`Google Gemini API error: ${(error as Error).message}`)
+    const agentError = wrapError(error, 'google')
+    agentError.details = {
+      ...agentError.details,
+      provider: 'google',
+      model: modelName,
+    }
+    throw agentError
   }
 }

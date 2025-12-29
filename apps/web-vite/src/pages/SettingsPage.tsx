@@ -37,6 +37,7 @@ import {
   type SortOrder,
 } from '@/adapters/firestoreQuoteRepository'
 import { useAuth } from '@/hooks/useAuth'
+import { useAiProviderKeys, type AiProviderKeyType } from '@/hooks/useAiProviderKeys'
 import { SystemStatus } from '@/components/SystemStatus'
 import { CalendarSettingsPanel } from '@/components/CalendarSettingsPanel'
 
@@ -46,6 +47,13 @@ const QUOTES_PER_PAGE = 50
 export function SettingsPage() {
   const { user } = useAuth()
   const userId = user?.uid ?? ''
+  const {
+    keys: providerKeys,
+    isLoading: providerKeysLoading,
+    error: providerKeysError,
+    saveKey,
+    removeKey,
+  } = useAiProviderKeys(user?.uid)
 
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [total, setTotal] = useState(0)
@@ -57,6 +65,48 @@ export function SettingsPage() {
   const [newQuoteText, setNewQuoteText] = useState('')
   const [newQuoteAuthor, setNewQuoteAuthor] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [keyInputs, setKeyInputs] = useState({
+    openai: '',
+    anthropic: '',
+    google: '',
+    xai: '',
+  })
+  const [keySaving, setKeySaving] = useState<Partial<Record<AiProviderKeyType, boolean>>>({})
+
+  const handleSaveKey = useCallback(
+    async (provider: AiProviderKeyType) => {
+      const value = keyInputs[provider]?.trim()
+      if (!value) {
+        setError('Please enter a key before saving.')
+        return
+      }
+
+      try {
+        setKeySaving((prev) => ({ ...prev, [provider]: true }))
+        await saveKey(provider, value)
+        setKeyInputs((prev) => ({ ...prev, [provider]: '' }))
+      } catch (err) {
+        setError((err as Error).message)
+      } finally {
+        setKeySaving((prev) => ({ ...prev, [provider]: false }))
+      }
+    },
+    [keyInputs, saveKey]
+  )
+
+  const handleRemoveKey = useCallback(
+    async (provider: AiProviderKeyType) => {
+      try {
+        setKeySaving((prev) => ({ ...prev, [provider]: true }))
+        await removeKey(provider)
+      } catch (err) {
+        setError((err as Error).message)
+      } finally {
+        setKeySaving((prev) => ({ ...prev, [provider]: false }))
+      }
+    },
+    [removeKey]
+  )
 
   // Load quotes for current page
   const loadQuotes = useCallback(async () => {
@@ -207,6 +257,27 @@ export function SettingsPage() {
 
   const totalPages = Math.ceil(total / QUOTES_PER_PAGE)
   const hasMore = page < totalPages - 1
+  const providerRows: Array<{
+    id: AiProviderKeyType
+    label: string
+    saved: boolean
+    placeholder: string
+  }> = [
+    {
+      id: 'openai',
+      label: 'OpenAI',
+      saved: Boolean(providerKeys.openaiKey),
+      placeholder: 'sk-...',
+    },
+    {
+      id: 'anthropic',
+      label: 'Anthropic',
+      saved: Boolean(providerKeys.anthropicKey),
+      placeholder: 'sk-ant-...',
+    },
+    { id: 'google', label: 'Google', saved: Boolean(providerKeys.googleKey), placeholder: 'AI...' },
+    { id: 'xai', label: 'xAI (Grok)', saved: Boolean(providerKeys.xaiKey), placeholder: 'xai-...' },
+  ]
 
   return (
     <div className="settings-page">
@@ -241,6 +312,72 @@ export function SettingsPage() {
 
       <div className="settings-content">
         <CalendarSettingsPanel />
+        <section className="settings-panel">
+          <header className="settings-panel__header">
+            <div>
+              <p className="section-label">AI Providers</p>
+              <h2>AI Provider Keys</h2>
+              <p className="settings-panel__meta">
+                Add your own API keys to enable agent runs. Keys are stored per account and can be
+                removed at any time.
+              </p>
+            </div>
+          </header>
+
+          {providerKeysError && <p className="settings-panel__error">⚠ {providerKeysError}</p>}
+          {providerKeysLoading && <p className="settings-panel__meta">Loading keys…</p>}
+
+          <div className="ai-keys-grid">
+            {providerRows.map((provider) => (
+              <div key={provider.id} className="ai-key-row">
+                <div className="ai-key-meta">
+                  <div className="ai-key-title">
+                    <strong>{provider.label}</strong>
+                    <span
+                      className={`ai-key-status ${provider.saved ? 'ai-key-status--set' : 'ai-key-status--missing'}`}
+                    >
+                      {provider.saved ? 'Saved' : 'Not set'}
+                    </span>
+                  </div>
+                  <p className="ai-key-help">
+                    {provider.saved
+                      ? 'You can replace the key or remove it.'
+                      : 'Add a key to enable agents for this provider.'}
+                  </p>
+                </div>
+                <div className="ai-key-actions">
+                  <input
+                    type="password"
+                    value={keyInputs[provider.id]}
+                    onChange={(e) =>
+                      setKeyInputs((prev) => ({ ...prev, [provider.id]: e.target.value }))
+                    }
+                    placeholder={provider.saved ? '••••••••••••' : provider.placeholder}
+                    className="ai-key-input"
+                  />
+                  <div className="ai-key-buttons">
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => handleRemoveKey(provider.id)}
+                      disabled={!provider.saved || keySaving[provider.id]}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={() => handleSaveKey(provider.id)}
+                      disabled={keySaving[provider.id]}
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
         {loading && page === 0 ? (
           <div className="settings-loading">
             <p>Loading quotes...</p>

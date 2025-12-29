@@ -213,17 +213,29 @@ users/{userId}/
 
 ### Phase 5E: Error Handling & Reliability
 
-**Not Yet Started**
+**Complete**
 
 **Deliverables**:
 
-- Retry logic for transient failures
-- Better error messages
-- Timeout handling for slow tools
-- Graceful degradation (fallback to no-tool mode)
-- Rate limiting and quota management
+- Retry logic with exponential backoff for tool and provider calls
+- Timeout handling for tools and provider calls
+- Structured error messages with categories and technical details
+- Rate limiting (runs/hour, tokens/day, provider calls/min, daily cost)
+- Quota management (daily/weekly/monthly usage + alerts)
+- Manual daily cost overrides (admin helper)
 
-**Estimated Effort**: 1-2 implementation sessions
+**Key Files**:
+
+- `functions/src/agents/retryHelper.ts`
+- `functions/src/agents/errorHandler.ts`
+- `functions/src/agents/rateLimiter.ts`
+- `functions/src/agents/quotaManager.ts`
+- `functions/src/agents/toolExecutor.ts`
+- `functions/src/agents/runExecutor.ts`
+- `functions/src/agents/openaiService.ts`
+- `functions/src/agents/anthropicService.ts`
+- `functions/src/agents/googleService.ts`
+- `functions/src/agents/grokService.ts`
 
 ---
 
@@ -316,7 +328,11 @@ LifeOS_2/
 │   ├── workflowExecutor.ts        # Phase 4E: Orchestration
 │   ├── runExecutor.ts             # Phase 4: Cloud Function
 │   ├── toolExecutor.ts            # Phase 5A-5B: Tool framework
-│   └── advancedTools.ts           # Phase 5D: Advanced tools
+│   ├── advancedTools.ts           # Phase 5D: Advanced tools
+│   ├── retryHelper.ts             # Phase 5E: Retry logic
+│   ├── errorHandler.ts            # Phase 5E: Error handling + timeouts
+│   ├── rateLimiter.ts             # Phase 5E: Rate limiting
+│   └── quotaManager.ts            # Phase 5E: Quota management
 │
 └── docs/features/                 # Documentation
     ├── agents-phase-1-implementation.md
@@ -330,6 +346,7 @@ LifeOS_2/
     ├── agents-phase-5a-completion.md
     ├── agents-phase-5b-completion.md
     ├── agents-phase-5c-completion.md
+    ├── agents-phase-5e-completion.md
     ├── agents-roadmap.md
     └── ai-agents-progress-summary.md (this file)
 ```
@@ -370,9 +387,7 @@ LifeOS_2/
 1. **No conversation history**: Each run is stateless (Phase 6A will add memory)
 2. **No streaming**: Responses arrive all at once (Phase 6B will add streaming)
 3. **Tool marketplace removed**: Custom tool UI deferred to Phase 6C
-4. **No retry logic**: Failed tools don't retry automatically (Phase 5E)
-5. **No rate limiting**: No quota management yet (Phase 5E)
-6. **Web search**: Requires manual configuration of Google Custom Search API
+4. **Web search**: Requires manual configuration of Google Custom Search API
 
 ### Known Bugs
 
@@ -385,16 +400,29 @@ None reported at this time.
 ### Environment Variables (Firebase Functions)
 
 ```bash
-# Required for all providers
+# Optional fallback provider keys (used only if user has not set their own)
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_AI_API_KEY=AI...
-GROK_API_KEY=xai-...
+XAI_API_KEY=xai-...
 
 # Optional: For web_search tool
 GOOGLE_SEARCH_API_KEY=AI...
 GOOGLE_SEARCH_ENGINE_ID=...
 ```
+
+### Per-User Provider Keys
+
+Users can add/remove their own AI provider keys in Settings. Keys are stored at:
+
+```
+users/{userId}/settings/aiProviderKeys
+```
+
+Fields: `openaiKey`, `anthropicKey`, `googleKey`, `xaiKey`
+
+If a user has not set a key, the backend falls back to project-level secrets
+(when configured) for OpenAI and Anthropic.
 
 ### Firebase Setup
 
@@ -497,19 +525,18 @@ Each run tracks:
 
 ## Next Steps
 
-### Immediate (Phase 5E)
-
-1. Implement retry logic for failed tool calls
-2. Add timeout handling (prevent infinite hangs)
-3. Improve error messages (user-friendly)
-4. Add rate limiting per user
-5. Implement quota management
-
-### Near-term (Phase 6A-6B)
+### Immediate (Phase 6A)
 
 1. Add conversation memory (Phase 6A)
-2. Implement streaming responses (Phase 6B)
-3. Improve UX with real-time feedback
+2. Resume conversations
+3. Context window management
+4. Message pruning strategies
+
+### Near-term (Phase 6B)
+
+1. Implement streaming responses (Phase 6B)
+2. Real-time token streaming
+3. Incremental tool execution updates
 
 ### Long-term (Phase 6C-6E)
 
@@ -551,6 +578,6 @@ Each run tracks:
 
 ---
 
-**Status**: Phase 5D Complete ✅
-**Next Phase**: Phase 5E (Error Handling & Reliability)
+**Status**: Phase 5E Complete ✅
+**Next Phase**: Phase 6A (Conversation Memory)
 **Last Updated**: December 29, 2025

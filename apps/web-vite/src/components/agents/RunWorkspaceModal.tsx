@@ -9,12 +9,15 @@
  * - Form validation
  */
 
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import { useAiProviderKeys } from '@/hooks/useAiProviderKeys'
 import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
-import type { Workspace } from '@lifeos/agents'
+import type { AgentConfig, Workspace } from '@lifeos/agents'
+import { useAuth } from '@/hooks/useAuth'
 
 interface RunWorkspaceModalProps {
   workspace: Workspace | null
+  agents: AgentConfig[]
   isOpen: boolean
   onClose: () => void
   onRunCreated: () => void
@@ -22,17 +25,39 @@ interface RunWorkspaceModalProps {
 
 export function RunWorkspaceModal({
   workspace,
+  agents,
   isOpen,
   onClose,
   onRunCreated,
 }: RunWorkspaceModalProps) {
   const { createRun } = useWorkspaceOperations()
+  const { user } = useAuth()
+  const { keys } = useAiProviderKeys(user?.uid)
 
   const [goal, setGoal] = useState('')
   const [contextInput, setContextInput] = useState('')
 
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const missingProviders = useMemo(() => {
+    if (!workspace) return []
+    const providers = new Set(
+      agents
+        .filter((agent) => workspace.agentIds.includes(agent.agentId))
+        .map((agent) => agent.modelProvider)
+    )
+
+    const missing: string[] = []
+    providers.forEach((provider) => {
+      if (provider === 'openai' && !keys.openaiKey) missing.push('OpenAI')
+      if (provider === 'anthropic' && !keys.anthropicKey) missing.push('Anthropic')
+      if (provider === 'google' && !keys.googleKey) missing.push('Google')
+      if (provider === 'xai' && !keys.xaiKey) missing.push('xAI (Grok)')
+    })
+
+    return missing
+  }, [agents, keys, workspace])
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -52,6 +77,15 @@ export function RunWorkspaceModal({
 
     if (!workspace) {
       setError('No workspace selected')
+      return
+    }
+
+    if (missingProviders.length > 0) {
+      setError(
+        `Missing API key${missingProviders.length > 1 ? 's' : ''}: ${missingProviders.join(
+          ', '
+        )}. Add keys in Settings to continue.`
+      )
       return
     }
 

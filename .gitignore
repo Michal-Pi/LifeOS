@@ -49,6 +49,7 @@ Thumbs.db
 # Functions deployment artifacts
 functions/node_modules/@lifeos/
 functions/package.json.bak
+functions/vendor/
 
 # Testing
 coverage/

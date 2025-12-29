@@ -9,6 +9,9 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { AgentConfig } from '@lifeos/agents'
 
+import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
+import { checkProviderRateLimit } from './rateLimiter.js'
+import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
 import { executeTools, getAgentTools } from './toolExecutor.js'
 
@@ -91,6 +94,8 @@ export async function executeWithAnthropic(
   context?: Record<string, unknown>,
   toolContext?: BaseToolExecutionContext
 ): Promise<AnthropicExecutionResult> {
+  const modelName = agent.modelName ?? 'claude-3-5-haiku-20241022'
+
   try {
     // Build the prompt
     const systemPrompt =
@@ -99,9 +104,6 @@ export async function executeWithAnthropic(
     const contextStr = context ? `\n\nContext:\n${JSON.stringify(context, null, 2)}` : ''
 
     const userPrompt = `Goal: ${goal}${contextStr}`
-
-    // Determine model name (use agent's modelName or default to Claude 3.5 Haiku)
-    const modelName = agent.modelName ?? 'claude-3-5-haiku-20241022'
 
     // Get available tools for this agent
     const toolsOpenAIFormat = toolContext ? getAgentTools(agent) : []
@@ -130,14 +132,32 @@ export async function executeWithAnthropic(
       console.log(`Anthropic iteration ${iteration}/${MAX_ITERATIONS}`)
 
       // Call Anthropic API
-      const response = await client.messages.create({
-        model: modelName,
-        max_tokens: agent.maxTokens ?? 2048,
-        temperature: agent.temperature ?? 0.7,
-        system: systemPrompt,
-        messages,
-        tools,
-      })
+      const response = await executeWithRetry(
+        async () => {
+          if (toolContext?.userId) {
+            await checkProviderRateLimit(toolContext.userId, 'anthropic')
+          }
+
+          return executeWithTimeout(
+            client.messages.create({
+              model: modelName,
+              max_tokens: agent.maxTokens ?? 2048,
+              temperature: agent.temperature ?? 0.7,
+              system: systemPrompt,
+              messages,
+              tools,
+            }),
+            TIMEOUTS.PROVIDER,
+            'anthropic.messages.create'
+          )
+        },
+        PROVIDER_RETRY_CONFIG,
+        (attempt, error, delayMs) => {
+          console.log(
+            `Anthropic retry ${attempt}/${PROVIDER_RETRY_CONFIG.maxRetries} after ${delayMs}ms: ${(error as Error).message}`
+          )
+        }
+      )
 
       // Track token usage
       totalInputTokens += response.usage.input_tokens
@@ -234,6 +254,12 @@ export async function executeWithAnthropic(
     }
   } catch (error) {
     console.error('Anthropic execution error:', error)
-    throw new Error(`Anthropic API error: ${(error as Error).message}`)
+    const agentError = wrapError(error, 'anthropic')
+    agentError.details = {
+      ...agentError.details,
+      provider: 'anthropic',
+      model: modelName,
+    }
+    throw agentError
   }
 }
