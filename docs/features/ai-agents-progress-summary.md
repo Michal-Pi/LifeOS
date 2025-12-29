@@ -25,6 +25,7 @@ The AI Agent Framework is a multi-AI provider collaboration system integrated in
 ### Phase 1: Core Domain (✅ Complete)
 
 **Deliverables**:
+
 - Domain models (AgentConfig, Workspace, Run, Message, ToolDefinition)
 - Zod validation schemas
 - Repository ports (interfaces)
@@ -38,12 +39,14 @@ The AI Agent Framework is a multi-AI provider collaboration system integrated in
 ### Phase 2: React Integration (✅ Complete)
 
 **Deliverables**:
+
 - Firestore adapters (agents, workspaces, runs)
 - React hooks (useAgentOperations, useWorkspaceOperations)
 - UI components (AgentBuilderModal, AgentsPage)
 - Routing integration (/agents)
 
 **Location**:
+
 - `apps/web-vite/src/adapters/agents/`
 - `apps/web-vite/src/hooks/`
 - `apps/web-vite/src/components/agents/`
@@ -54,6 +57,7 @@ The AI Agent Framework is a multi-AI provider collaboration system integrated in
 ### Phase 3: Workspace Management UI (✅ Complete)
 
 **Deliverables**:
+
 - WorkspaceFormModal (create/edit workspaces)
 - RunWorkspaceModal (start runs with goals and context)
 - WorkspacesPage (list all workspaces)
@@ -62,6 +66,7 @@ The AI Agent Framework is a multi-AI provider collaboration system integrated in
 - Max iterations configuration
 
 **Location**:
+
 - `apps/web-vite/src/components/agents/`
 - `apps/web-vite/src/pages/`
 
@@ -72,25 +77,30 @@ The AI Agent Framework is a multi-AI provider collaboration system integrated in
 Broken into sub-phases for each provider:
 
 #### Phase 4A: OpenAI Integration (✅ Complete)
+
 - OpenAI service with token counting and cost estimation
 - Single-agent execution via Cloud Functions
 - Run status tracking (pending → running → completed/failed)
 
 #### Phase 4B: Anthropic (Claude) Integration (✅ Complete)
+
 - Anthropic service supporting Claude models
 - Tool calling with Anthropic's format
 - Cost tracking for Claude API
 
 #### Phase 4C: Google (Gemini) Integration (✅ Complete)
+
 - Google Generative AI service
 - Gemini model support
 - Tool execution compatibility
 
 #### Phase 4D: xAI (Grok) Integration (✅ Complete)
+
 - Grok service using OpenAI-compatible API
 - Full tool calling support
 
 #### Phase 4E: Multi-Agent Workflows (✅ Complete)
+
 - Sequential workflow (agents run in order)
 - Parallel workflow (agents run simultaneously)
 - Supervisor workflow (supervisor routes between specialist agents)
@@ -101,6 +111,7 @@ Broken into sub-phases for each provider:
 **Location**: `functions/src/agents/`
 
 **Key Files**:
+
 - `openaiService.ts`, `anthropicService.ts`, `googleService.ts`, `grokService.ts`
 - `workflowExecutor.ts` (orchestration logic)
 - `runExecutor.ts` (Cloud Function trigger)
@@ -110,6 +121,7 @@ Broken into sub-phases for each provider:
 ### Phase 5: Tool Calling (✅ Complete)
 
 #### Phase 5A: Tool Framework (✅ Complete)
+
 - Tool definition interface
 - Tool registry and registration
 - Tool execution with context
@@ -117,6 +129,7 @@ Broken into sub-phases for each provider:
 - Provider-agnostic tool calling
 
 #### Phase 5B: Tool Call Persistence (✅ Complete)
+
 - ToolCallRecord domain model
 - Firestore subcollection: `users/{userId}/runs/{runId}/toolCalls/{toolCallRecordId}`
 - Status tracking (pending → running → completed/failed)
@@ -125,6 +138,7 @@ Broken into sub-phases for each provider:
 - Real-time updates via Firestore
 
 #### Phase 5C: Tool UI Updates (✅ Complete)
+
 - useToolCallOperations hook (real-time subscriptions)
 - ToolCallTimeline component (collapsible cards)
 - RunCard component (unified run display)
@@ -133,6 +147,7 @@ Broken into sub-phases for each provider:
 - Performance metrics display
 
 #### Phase 5D: Advanced Built-in Tools (✅ Complete)
+
 - **Calendar Tools**:
   - `list_calendar_events`: Query upcoming events
   - `create_calendar_event`: Create new events
@@ -145,6 +160,7 @@ Broken into sub-phases for each provider:
 - **Integration**: All tools registered and available to agents
 
 **Location**:
+
 - `functions/src/agents/toolExecutor.ts` (framework)
 - `functions/src/agents/advancedTools.ts` (Phase 5D tools)
 - `apps/web-vite/src/hooks/useToolCallOperations.ts` (UI hook)
@@ -200,6 +216,7 @@ users/{userId}/
 **Not Yet Started**
 
 **Deliverables**:
+
 - Retry logic for transient failures
 - Better error messages
 - Timeout handling for slow tools
@@ -215,18 +232,21 @@ users/{userId}/
 **Not Yet Started** (removed tool marketplace per user request)
 
 #### Phase 6A: Conversation Memory
+
 - Persistent message history
 - Resume conversations
 - Context window management
 - Message pruning strategies
 
 #### Phase 6B: Streaming Responses
+
 - Server-Sent Events (SSE) support
 - Real-time token streaming
 - Incremental tool execution updates
 - UI updates for streaming
 
 #### Phase 6C: Custom Tool Registration
+
 - UI for creating custom tools
 - Tool parameter schema editor
 - Code execution sandbox
@@ -234,12 +254,14 @@ users/{userId}/
 - Tool permissions (per-user, per-workspace)
 
 #### Phase 6D: Agent Templates & Presets
+
 - Pre-configured agent templates (researcher, writer, analyst)
 - Workspace templates (research project, content creation)
 - Import/export agent configs
 - Community sharing (optional)
 
 #### Phase 6E: Advanced Orchestration
+
 - Conditional branching in workflows
 - Loop detection and prevention
 - Agent communication protocols
@@ -317,13 +339,16 @@ LifeOS_2/
 ## Testing Status
 
 ### Unit Tests
+
 - ✅ Phase 1: 36 unit tests passing (domain logic)
 - ⚠️ Phase 2-5: No dedicated unit tests yet (manual testing only)
 
 ### Integration Tests
+
 - ⚠️ No automated integration tests yet
 
 ### Manual Testing
+
 - ✅ Agent creation and editing
 - ✅ Workspace creation and configuration
 - ✅ Run execution (all 4 providers)
@@ -331,6 +356,7 @@ LifeOS_2/
 - ✅ UI updates and real-time subscriptions
 
 ### Build Status
+
 - ✅ TypeScript compilation: Passing
 - ✅ ESLint: Passing
 - ✅ Build: Passing
@@ -440,6 +466,7 @@ GOOGLE_SEARCH_ENGINE_ID=...
 ### Per-Run Costs
 
 Each run tracks:
+
 - Total tokens used (prompt + completion)
 - Estimated cost (based on provider pricing)
 - Per-tool token usage (when available)
@@ -447,19 +474,23 @@ Each run tracks:
 ### Cost Estimates (as of Dec 2025)
 
 **OpenAI**:
+
 - gpt-4o-mini: $0.15/$0.60 per 1M tokens (input/output)
 - gpt-4o: $2.50/$10.00 per 1M tokens
 - gpt-4-turbo: $10.00/$30.00 per 1M tokens
 
 **Anthropic**:
+
 - claude-3-5-sonnet: $3.00/$15.00 per 1M tokens
 - claude-3-5-haiku: $0.80/$4.00 per 1M tokens
 
 **Google**:
+
 - gemini-1.5-flash: $0.075/$0.30 per 1M tokens
 - gemini-1.5-pro: $1.25/$5.00 per 1M tokens
 
 **xAI**:
+
 - grok-2-latest: $2.00/$10.00 per 1M tokens
 
 ---
@@ -467,6 +498,7 @@ Each run tracks:
 ## Next Steps
 
 ### Immediate (Phase 5E)
+
 1. Implement retry logic for failed tool calls
 2. Add timeout handling (prevent infinite hangs)
 3. Improve error messages (user-friendly)
@@ -474,11 +506,13 @@ Each run tracks:
 5. Implement quota management
 
 ### Near-term (Phase 6A-6B)
+
 1. Add conversation memory (Phase 6A)
 2. Implement streaming responses (Phase 6B)
 3. Improve UX with real-time feedback
 
 ### Long-term (Phase 6C-6E)
+
 1. Custom tool registration UI (Phase 6C)
 2. Agent/workspace templates (Phase 6D)
 3. Advanced orchestration patterns (Phase 6E)

@@ -18,8 +18,7 @@ import type { ToolDefinition, ToolExecutionContext } from './toolExecutor'
  */
 export const listCalendarEventsTool: ToolDefinition = {
   name: 'list_calendar_events',
-  description:
-    'List upcoming calendar events for the user. Returns events sorted by start time.',
+  description: 'List upcoming calendar events for the user. Returns events sorted by start time.',
   parameters: {
     type: 'object',
     properties: {
@@ -238,9 +237,7 @@ export const listNotesTool: ToolDefinition = {
       count: notes.length,
       notes,
       note:
-        notes.length === 0
-          ? 'No notes found matching the criteria'
-          : `Found ${notes.length} notes`,
+        notes.length === 0 ? 'No notes found matching the criteria' : `Found ${notes.length} notes`,
     }
   },
 }
@@ -261,8 +258,7 @@ export const createNoteTool: ToolDefinition = {
       },
       content: {
         type: 'string',
-        description:
-          'Note content as plain text (will be converted to ProseMirror JSON structure)',
+        description: 'Note content as plain text (will be converted to ProseMirror JSON structure)',
       },
       topicId: {
         type: 'string',

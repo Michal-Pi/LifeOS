@@ -68,6 +68,7 @@ Please review the summary doc first, then let me know you're ready to proceed wi
 ## Quick Reference
 
 ### Read First
+
 1. [docs/features/ai-agents-progress-summary.md](./ai-agents-progress-summary.md) - Complete status
 2. [docs/features/agents-roadmap.md](./agents-roadmap.md) - Phase breakdown
 3. [docs/Agent Framework.md](../Agent%20Framework.md) - Original PRD
@@ -75,11 +76,13 @@ Please review the summary doc first, then let me know you're ready to proceed wi
 ### File Locations
 
 **Domain (Phase 1)**:
+
 - `packages/agents/src/domain/models.ts` - Core types
 - `packages/agents/src/ports/` - Repository interfaces
 - `packages/agents/src/usecases/` - Business logic
 
 **Backend (Phase 4-5)**:
+
 - `functions/src/agents/openaiService.ts` - OpenAI integration
 - `functions/src/agents/anthropicService.ts` - Anthropic integration
 - `functions/src/agents/googleService.ts` - Google integration
@@ -90,6 +93,7 @@ Please review the summary doc first, then let me know you're ready to proceed wi
 - `functions/src/agents/advancedTools.ts` - Phase 5D tools
 
 **Frontend (Phase 2-3, 5C)**:
+
 - `apps/web-vite/src/adapters/agents/` - Firestore adapters
 - `apps/web-vite/src/hooks/` - React hooks (useAgentOperations, useWorkspaceOperations, useToolCallOperations)
 - `apps/web-vite/src/components/agents/` - UI components
@@ -144,6 +148,7 @@ firebase deploy --only hosting           # Frontend
 ### Common Patterns
 
 **Firestore Queries**:
+
 ```typescript
 const db = getFirestore()
 const ref = db.collection(`users/${userId}/collection`)
@@ -151,6 +156,7 @@ const snapshot = await ref.where('field', '==', value).get()
 ```
 
 **React Hooks**:
+
 ```typescript
 export function useXOperations() {
   const { user } = useAuth()
@@ -165,6 +171,7 @@ export function useXOperations() {
 ```
 
 **Tool Definition**:
+
 ```typescript
 export const myTool: ToolDefinition = {
   name: 'tool_name',
