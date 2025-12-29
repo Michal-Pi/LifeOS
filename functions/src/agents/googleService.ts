@@ -10,7 +10,7 @@ import type { Tool, Schema } from '@google/generative-ai'
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai'
 import type { AgentConfig } from '@lifeos/agents'
 
-import type { ToolExecutionContext } from './toolExecutor.js'
+import type { BaseToolExecutionContext } from './toolExecutor.js'
 import { executeTools, getAgentTools } from './toolExecutor.js'
 
 /**
@@ -140,7 +140,7 @@ export async function executeWithGoogle(
   agent: AgentConfig,
   goal: string,
   context?: Record<string, unknown>,
-  toolContext?: ToolExecutionContext
+  toolContext?: BaseToolExecutionContext
 ): Promise<GoogleExecutionResult> {
   try {
     // Build the prompt
@@ -189,7 +189,8 @@ export async function executeWithGoogle(
       console.log(`Google iteration ${iteration}/${MAX_ITERATIONS}`)
 
       // Send message (first iteration uses userPrompt, subsequent use empty to continue)
-      const result = iteration === 1 ? await chat.sendMessage(userPrompt) : await chat.sendMessage('')
+      const result =
+        iteration === 1 ? await chat.sendMessage(userPrompt) : await chat.sendMessage('')
       const response = result.response
 
       totalOutputChars += response.text().length
@@ -207,7 +208,12 @@ export async function executeWithGoogle(
           parameters: fc.args as Record<string, unknown>,
         }))
 
-        const toolResults = await executeTools(toolCalls, toolContext)
+        const toolResults = await executeTools(toolCalls, {
+          ...toolContext,
+          provider: 'google',
+          modelName,
+          iteration,
+        })
 
         // Send tool results back to model
         const functionResponses = toolResults.map((toolResult) => ({

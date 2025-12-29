@@ -321,7 +321,9 @@ while (iteration < MAX_ITERATIONS) {
       messages.push({
         role: 'tool',
         tool_call_id: toolResult.toolCallId,
-        content: toolResult.error ? `Error: ${toolResult.error}` : JSON.stringify(toolResult.result),
+        content: toolResult.error
+          ? `Error: ${toolResult.error}`
+          : JSON.stringify(toolResult.result),
       })
     }
   } else {
@@ -378,7 +380,11 @@ export async function executeWithProvider(
     case 'anthropic': {
       const client = createAnthropicClient(apiKeys.anthropic)
       const result = await executeWithAnthropic(client, agent, goal, context, toolContext)
-      return { ...result, provider: 'anthropic', model: agent.modelName ?? 'claude-3-5-haiku-20241022' }
+      return {
+        ...result,
+        provider: 'anthropic',
+        model: agent.modelName ?? 'claude-3-5-haiku-20241022',
+      }
     }
 
     case 'google': {
@@ -474,7 +480,7 @@ Phase 5A builds on Phase 4E infrastructure without creating new files.
 ### Google Format
 
 ```typescript
-[
+;[
   {
     functionDeclarations: [
       {
@@ -485,14 +491,14 @@ Phase 5A builds on Phase 4E infrastructure without creating new files.
           properties: {
             timezone: {
               type: SchemaType.STRING,
-              description: 'IANA timezone'
-            }
+              description: 'IANA timezone',
+            },
           },
-          required: ['timezone']
-        }
-      }
-    ]
-  }
+          required: ['timezone'],
+        },
+      },
+    ],
+  },
 ]
 
 // Tool calls: response.functionCalls() with name, args

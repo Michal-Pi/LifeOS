@@ -3,9 +3,10 @@
  *
  * Framework for executing server-side tools that agents can invoke.
  * Provides built-in tools and infrastructure for custom tool registration.
+ * Phase 5B: Persists tool call records to Firestore for tracking and analytics.
  */
 
-import type { AgentConfig } from '@lifeos/agents'
+import type { AgentConfig, ToolCallStatus, ModelProvider } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 
 /**
@@ -50,13 +51,22 @@ export interface ToolDefinition {
 }
 
 /**
- * Context available during tool execution
+ * Base context for tool execution (provided by workflow executor)
  */
-export interface ToolExecutionContext {
+export interface BaseToolExecutionContext {
   userId: string
   agentId: string
   workspaceId: string
   runId: string
+}
+
+/**
+ * Full context for tool execution (augmented by provider services)
+ */
+export interface ToolExecutionContext extends BaseToolExecutionContext {
+  provider: ModelProvider
+  modelName: string
+  iteration: number
 }
 
 /**
@@ -124,18 +134,68 @@ export function getAgentTools(agent: AgentConfig): Array<{
 }
 
 /**
- * Execute a tool call
+ * Execute a tool call and persist the record to Firestore
  */
 export async function executeTool(
   toolCall: ToolCall,
   context: ToolExecutionContext
 ): Promise<ToolResult> {
   const startTime = Date.now()
+  const db = getFirestore()
+
+  // Create document reference with auto-generated ID
+  const toolCallDocRef = db
+    .collection('users')
+    .doc(context.userId)
+    .collection('runs')
+    .doc(context.runId)
+    .collection('toolCalls')
+    .doc() // Auto-generate ID
+
+  const toolCallRecordId = toolCallDocRef.id as any // Cast to ToolCallRecordId
+
+  // Create initial tool call record (pending)
+  const toolCallRecord = {
+    toolCallRecordId,
+    runId: context.runId,
+    workspaceId: context.workspaceId,
+    userId: context.userId,
+    agentId: context.agentId,
+
+    toolCallId: toolCall.toolCallId,
+    toolName: toolCall.toolName,
+    toolId: `tool:${toolCall.toolName}` as any, // Simplified - would use proper ToolId
+
+    parameters: toolCall.parameters,
+
+    status: 'pending' as ToolCallStatus,
+
+    startedAtMs: startTime,
+
+    provider: context.provider,
+    modelName: context.modelName,
+    iteration: context.iteration,
+
+    syncState: 'synced' as const,
+    version: 1,
+  }
 
   try {
+    // Save pending record
+    await toolCallDocRef.set(toolCallRecord)
+
     const tool = TOOL_REGISTRY.get(toolCall.toolName)
 
     if (!tool) {
+      // Update record with error
+      await toolCallDocRef.update({
+        status: 'failed',
+        error: `Tool '${toolCall.toolName}' not found`,
+        completedAtMs: Date.now(),
+        durationMs: Date.now() - startTime,
+        version: 2,
+      })
+
       return {
         toolCallId: toolCall.toolCallId,
         toolName: toolCall.toolName,
@@ -147,25 +207,55 @@ export async function executeTool(
 
     console.log(`Executing tool: ${toolCall.toolName} with params:`, toolCall.parameters)
 
+    // Update to running
+    await toolCallDocRef.update({
+      status: 'running',
+      version: 2,
+    })
+
     const result = await tool.execute(toolCall.parameters, context)
 
-    console.log(`Tool ${toolCall.toolName} completed in ${Date.now() - startTime}ms`)
+    const completedAtMs = Date.now()
+    const durationMs = completedAtMs - startTime
+
+    console.log(`Tool ${toolCall.toolName} completed in ${durationMs}ms`)
+
+    // Update record with success
+    await toolCallDocRef.update({
+      status: 'completed',
+      result,
+      completedAtMs,
+      durationMs,
+      version: 3,
+    })
 
     return {
       toolCallId: toolCall.toolCallId,
       toolName: toolCall.toolName,
       result,
-      executedAtMs: Date.now(),
+      executedAtMs: completedAtMs,
     }
   } catch (error) {
     console.error(`Tool ${toolCall.toolName} failed:`, error)
+
+    const completedAtMs = Date.now()
+    const durationMs = completedAtMs - startTime
+
+    // Update record with error
+    await toolCallDocRef.update({
+      status: 'failed',
+      error: (error as Error).message,
+      completedAtMs,
+      durationMs,
+      version: 3,
+    })
 
     return {
       toolCallId: toolCall.toolCallId,
       toolName: toolCall.toolName,
       result: null,
       error: (error as Error).message,
-      executedAtMs: Date.now(),
+      executedAtMs: completedAtMs,
     }
   }
 }

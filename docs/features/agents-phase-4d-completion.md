@@ -175,11 +175,13 @@ const TOOL_REGISTRY: Map<string, ToolDefinition> = new Map()
 registerTool({
   name: 'my_tool',
   description: 'Tool description',
-  parameters: { /* ... */ },
+  parameters: {
+    /* ... */
+  },
   execute: async (params, context) => {
     // Tool logic
     return result
-  }
+  },
 })
 ```
 
@@ -352,12 +354,12 @@ const result = await executeTool(
 
 ## Built-in Tools Reference
 
-| Tool Name           | Purpose                      | Parameters                  | Use Cases                       |
-| ------------------- | ---------------------------- | --------------------------- | ------------------------------- |
-| `get_current_time`  | Get current date/time        | `timezone` (optional)       | Scheduling, time-based analysis |
-| `query_firestore`   | Query user's Firestore data  | `collection`, `limit`       | Access todos, events, notes     |
-| `search_web`        | Web search (placeholder)     | `query`, `maxResults`       | Research, fact-checking         |
-| `calculate`         | Mathematical calculations    | `expression`                | Computations, data analysis     |
+| Tool Name          | Purpose                     | Parameters            | Use Cases                       |
+| ------------------ | --------------------------- | --------------------- | ------------------------------- |
+| `get_current_time` | Get current date/time       | `timezone` (optional) | Scheduling, time-based analysis |
+| `query_firestore`  | Query user's Firestore data | `collection`, `limit` | Access todos, events, notes     |
+| `search_web`       | Web search (placeholder)    | `query`, `maxResults` | Research, fact-checking         |
+| `calculate`        | Mathematical calculations   | `expression`          | Computations, data analysis     |
 
 ## Security Considerations
 

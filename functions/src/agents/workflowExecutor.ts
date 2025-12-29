@@ -87,7 +87,13 @@ export async function executeSequentialWorkflow(
         : undefined
 
     // Execute agent with current goal and context
-    const result = await executeWithProvider(agent, currentGoal, currentContext, apiKeys, toolContext)
+    const result = await executeWithProvider(
+      agent,
+      currentGoal,
+      currentContext,
+      apiKeys,
+      toolContext
+    )
 
     // Record execution step
     const step: AgentExecutionStep = {
@@ -300,7 +306,13 @@ export async function executeSupervisorWorkflow(
           }
         : undefined
 
-    const result = await executeWithProvider(worker, goal, currentContext, apiKeys, workerToolContext)
+    const result = await executeWithProvider(
+      worker,
+      goal,
+      currentContext,
+      apiKeys,
+      workerToolContext
+    )
 
     steps.push({
       agentId: worker.agentId,
@@ -404,7 +416,15 @@ export async function executeWorkflow(
 
     case 'parallel':
       console.log('Executing parallel workflow')
-      return executeParallelWorkflow(workspace, agents, run.goal, run.context, apiKeys, userId, run.runId)
+      return executeParallelWorkflow(
+        workspace,
+        agents,
+        run.goal,
+        run.context,
+        apiKeys,
+        userId,
+        run.runId
+      )
 
     case 'supervisor': {
       console.log('Executing supervisor workflow')

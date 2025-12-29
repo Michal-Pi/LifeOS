@@ -9,7 +9,7 @@
 import type { AgentConfig } from '@lifeos/agents'
 import OpenAI from 'openai'
 
-import type { ToolExecutionContext } from './toolExecutor.js'
+import type { BaseToolExecutionContext } from './toolExecutor.js'
 import { executeTools, getAgentTools } from './toolExecutor.js'
 
 /**
@@ -69,7 +69,7 @@ export async function executeWithGrok(
   agent: AgentConfig,
   goal: string,
   context?: Record<string, unknown>,
-  toolContext?: ToolExecutionContext
+  toolContext?: BaseToolExecutionContext
 ): Promise<GrokExecutionResult> {
   try {
     // Build the prompt
@@ -141,7 +141,12 @@ export async function executeWithGrok(
             parameters: tc.type === 'function' ? JSON.parse(tc.function.arguments) : {},
           }))
 
-        const toolResults = await executeTools(toolCalls, toolContext)
+        const toolResults = await executeTools(toolCalls, {
+          ...toolContext,
+          provider: 'xai',
+          modelName,
+          iteration,
+        })
 
         // Add tool results to message history
         for (const toolResult of toolResults) {

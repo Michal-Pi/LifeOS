@@ -147,20 +147,29 @@ export async function executeSequentialWorkflow(
   apiKeys: ProviderKeys,
   maxIterations: number = 10,
   userId?: string, // NEW
-  runId?: string   // NEW
+  runId?: string // NEW
 ): Promise<WorkflowExecutionResult> {
   for (let i = 0; i < executionCount; i++) {
     const agent = agents[i]
 
     // Build tool execution context
-    const toolContext = userId && runId ? {
-      userId,
-      agentId: agent.agentId,
-      workspaceId: workspace.workspaceId,
-      runId,
-    } : undefined
+    const toolContext =
+      userId && runId
+        ? {
+            userId,
+            agentId: agent.agentId,
+            workspaceId: workspace.workspaceId,
+            runId,
+          }
+        : undefined
 
-    const result = await executeWithProvider(agent, currentGoal, currentContext, apiKeys, toolContext)
+    const result = await executeWithProvider(
+      agent,
+      currentGoal,
+      currentContext,
+      apiKeys,
+      toolContext
+    )
   }
 }
 ```
@@ -175,15 +184,18 @@ export async function executeParallelWorkflow(
   context: Record<string, unknown> | undefined,
   apiKeys: ProviderKeys,
   userId?: string, // NEW
-  runId?: string   // NEW
+  runId?: string // NEW
 ): Promise<WorkflowExecutionResult> {
   const executionPromises = agents.map(async (agent) => {
-    const toolContext = userId && runId ? {
-      userId,
-      agentId: agent.agentId,
-      workspaceId: workspace.workspaceId,
-      runId,
-    } : undefined
+    const toolContext =
+      userId && runId
+        ? {
+            userId,
+            agentId: agent.agentId,
+            workspaceId: workspace.workspaceId,
+            runId,
+          }
+        : undefined
 
     return await executeWithProvider(agent, goal, context, apiKeys, toolContext)
   })
@@ -204,20 +216,34 @@ export async function executeSupervisorWorkflow(
   apiKeys: ProviderKeys,
   maxIterations: number = 10,
   userId?: string, // NEW
-  runId?: string   // NEW
+  runId?: string // NEW
 ): Promise<WorkflowExecutionResult> {
   // Step 1: Supervisor planning
-  const supervisorToolContext = userId && runId ? { userId, agentId: supervisorAgent.agentId, workspaceId, runId } : undefined
-  const planResult = await executeWithProvider(supervisorAgent, goal, supervisorContext, apiKeys, supervisorToolContext)
+  const supervisorToolContext =
+    userId && runId ? { userId, agentId: supervisorAgent.agentId, workspaceId, runId } : undefined
+  const planResult = await executeWithProvider(
+    supervisorAgent,
+    goal,
+    supervisorContext,
+    apiKeys,
+    supervisorToolContext
+  )
 
   // Step 2: Workers execution
   for (const worker of workerAgents) {
-    const workerToolContext = userId && runId ? { userId, agentId: worker.agentId, workspaceId, runId } : undefined
+    const workerToolContext =
+      userId && runId ? { userId, agentId: worker.agentId, workspaceId, runId } : undefined
     await executeWithProvider(worker, goal, currentContext, apiKeys, workerToolContext)
   }
 
   // Step 3: Supervisor synthesis
-  const finalResult = await executeWithProvider(supervisorAgent, goal, synthesisContext, apiKeys, supervisorToolContext)
+  const finalResult = await executeWithProvider(
+    supervisorAgent,
+    goal,
+    synthesisContext,
+    apiKeys,
+    supervisorToolContext
+  )
 }
 ```
 
@@ -234,16 +260,52 @@ export async function executeWorkflow(
 
   switch (workspace.workflowType) {
     case 'sequential':
-      return executeSequentialWorkflow(workspace, agents, run.goal, run.context, apiKeys, workspace.maxIterations, userId, run.runId)
+      return executeSequentialWorkflow(
+        workspace,
+        agents,
+        run.goal,
+        run.context,
+        apiKeys,
+        workspace.maxIterations,
+        userId,
+        run.runId
+      )
 
     case 'parallel':
-      return executeParallelWorkflow(workspace, agents, run.goal, run.context, apiKeys, userId, run.runId)
+      return executeParallelWorkflow(
+        workspace,
+        agents,
+        run.goal,
+        run.context,
+        apiKeys,
+        userId,
+        run.runId
+      )
 
     case 'supervisor':
-      return executeSupervisorWorkflow(workspace, supervisorAgent, workerAgents, run.goal, run.context, apiKeys, workspace.maxIterations, userId, run.runId)
+      return executeSupervisorWorkflow(
+        workspace,
+        supervisorAgent,
+        workerAgents,
+        run.goal,
+        run.context,
+        apiKeys,
+        workspace.maxIterations,
+        userId,
+        run.runId
+      )
 
     case 'custom':
-      return executeSequentialWorkflow(workspace, agents, run.goal, run.context, apiKeys, workspace.maxIterations, userId, run.runId)
+      return executeSequentialWorkflow(
+        workspace,
+        agents,
+        run.goal,
+        run.context,
+        apiKeys,
+        workspace.maxIterations,
+        userId,
+        run.runId
+      )
   }
 }
 ```
@@ -374,7 +436,7 @@ const result = await executeWithOpenAI(client, agent, goal, context, {
   userId: 'user-1',
   agentId: 'agent-1',
   workspaceId: 'ws-1',
-  runId: 'run-1'
+  runId: 'run-1',
 })
 ```
 
@@ -423,7 +485,7 @@ const toolCalls = message.tool_calls
   .map((tc) => ({
     toolCallId: tc.id,
     toolName: tc.type === 'function' ? tc.function.name : '',
-    parameters: tc.type === 'function' ? JSON.parse(tc.function.arguments) : {}
+    parameters: tc.type === 'function' ? JSON.parse(tc.function.arguments) : {},
   }))
 ```
 

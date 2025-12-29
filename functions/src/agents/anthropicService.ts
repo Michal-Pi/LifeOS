@@ -9,7 +9,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { AgentConfig } from '@lifeos/agents'
 
-import type { ToolExecutionContext } from './toolExecutor.js'
+import type { BaseToolExecutionContext } from './toolExecutor.js'
 import { executeTools, getAgentTools } from './toolExecutor.js'
 
 /**
@@ -89,7 +89,7 @@ export async function executeWithAnthropic(
   agent: AgentConfig,
   goal: string,
   context?: Record<string, unknown>,
-  toolContext?: ToolExecutionContext
+  toolContext?: BaseToolExecutionContext
 ): Promise<AnthropicExecutionResult> {
   try {
     // Build the prompt
@@ -161,7 +161,12 @@ export async function executeWithAnthropic(
             }
           })
 
-          const toolResults = await executeTools(toolCalls, toolContext)
+          const toolResults = await executeTools(toolCalls, {
+            ...toolContext,
+            provider: 'anthropic',
+            modelName,
+            iteration,
+          })
 
           // Add assistant's message to history (with tool_use blocks)
           messages.push({

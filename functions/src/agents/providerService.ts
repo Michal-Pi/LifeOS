@@ -12,7 +12,7 @@ import { createAnthropicClient, executeWithAnthropic } from './anthropicService.
 import { createGoogleAIClient, executeWithGoogle } from './googleService.js'
 import { createGrokClient, executeWithGrok } from './grokService.js'
 import { createOpenAIClient, executeWithOpenAI } from './openaiService.js'
-import type { ToolExecutionContext } from './toolExecutor.js'
+import type { BaseToolExecutionContext } from './toolExecutor.js'
 
 /**
  * Unified execution result from any provider
@@ -50,7 +50,7 @@ export async function executeWithProvider(
   goal: string,
   context: Record<string, unknown> | undefined,
   apiKeys: ProviderKeys,
-  toolContext?: ToolExecutionContext
+  toolContext?: BaseToolExecutionContext
 ): Promise<ProviderExecutionResult> {
   const provider = agent.modelProvider
 

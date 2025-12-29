@@ -7,6 +7,7 @@ export type WorkspaceId = Id<'workspace'>
 export type RunId = Id<'run'>
 export type MessageId = Id<'message'>
 export type ToolId = Id<'tool'>
+export type ToolCallRecordId = Id<'toolCallRecord'>
 
 // ----- Sync State -----
 
@@ -21,6 +22,8 @@ export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'xai'
 export type RunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'paused'
 
 export type MessageRole = 'user' | 'assistant' | 'system' | 'tool'
+
+export type ToolCallStatus = 'pending' | 'running' | 'completed' | 'failed'
 
 // ----- Agent Configuration -----
 
@@ -165,6 +168,44 @@ export interface ToolDefinition {
   updatedAtMs: number
 }
 
+// ----- Tool Call Record (Phase 5B: Persistence) -----
+
+export interface ToolCallRecord {
+  toolCallRecordId: ToolCallRecordId
+  runId: RunId
+  workspaceId: WorkspaceId
+  userId: string
+  agentId: AgentId
+
+  // Tool execution details
+  toolCallId: string // Provider-specific ID (e.g., OpenAI call_xyz, Anthropic toolu_xyz)
+  toolName: string
+  toolId: ToolId
+  parameters: Record<string, unknown>
+
+  // Execution status
+  status: ToolCallStatus
+  result?: unknown
+  error?: string
+
+  // Timing metrics
+  startedAtMs: number
+  completedAtMs?: number
+  durationMs?: number
+
+  // Cost tracking
+  tokensUsed?: number
+  estimatedCost?: number
+
+  // Provider context
+  provider: ModelProvider
+  modelName: string
+  iteration: number // Which iteration of agent execution (1-5)
+
+  syncState: SyncState
+  version: number
+}
+
 // ----- Input Types for Creation -----
 
 export type CreateAgentInput = Omit<
@@ -203,3 +244,8 @@ export type CreateRunInput = Omit<
 export type CreateMessageInput = Omit<Message, 'messageId' | 'timestampMs'>
 
 export type CreateToolInput = Omit<ToolDefinition, 'toolId' | 'createdAtMs' | 'updatedAtMs'>
+
+export type CreateToolCallRecordInput = Omit<
+  ToolCallRecord,
+  'toolCallRecordId' | 'syncState' | 'version' | 'completedAtMs' | 'durationMs' | 'result' | 'error'
+>
