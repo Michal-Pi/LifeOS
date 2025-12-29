@@ -77,7 +77,10 @@ export type CreateToolCallRecordInput = Omit<
 ```typescript
 export interface ToolCallRecordRepository {
   createToolCallRecord(input: CreateToolCallRecordInput): Promise<ToolCallRecord>
-  updateToolCallRecord(id: ToolCallRecordId, updates: Partial<ToolCallRecord>): Promise<ToolCallRecord>
+  updateToolCallRecord(
+    id: ToolCallRecordId,
+    updates: Partial<ToolCallRecord>
+  ): Promise<ToolCallRecord>
   getToolCallRecord(id: ToolCallRecordId): Promise<ToolCallRecord | null>
   getToolCallRecordsByRun(runId: RunId): Promise<ToolCallRecord[]>
   getToolCallRecordsByWorkspace(workspaceId: WorkspaceId): Promise<ToolCallRecord[]>

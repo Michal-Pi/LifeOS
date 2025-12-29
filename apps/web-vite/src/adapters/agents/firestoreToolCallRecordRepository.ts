@@ -61,10 +61,7 @@ export const createFirestoreToolCallRecordRepository = (): ToolCallRecordReposit
         const runsSnapshot = await getDocs(runsCol)
 
         for (const runDoc of runsSnapshot.docs) {
-          const toolCallDoc = doc(
-            db,
-            `users/${userDoc.id}/runs/${runDoc.id}/toolCalls/${id}`
-          )
+          const toolCallDoc = doc(db, `users/${userDoc.id}/runs/${runDoc.id}/toolCalls/${id}`)
           const existing = await getDoc(toolCallDoc)
 
           if (existing.exists()) {
@@ -96,10 +93,7 @@ export const createFirestoreToolCallRecordRepository = (): ToolCallRecordReposit
         const runsSnapshot = await getDocs(runsCol)
 
         for (const runDoc of runsSnapshot.docs) {
-          const toolCallDoc = doc(
-            db,
-            `users/${userDoc.id}/runs/${runDoc.id}/toolCalls/${id}`
-          )
+          const toolCallDoc = doc(db, `users/${userDoc.id}/runs/${runDoc.id}/toolCalls/${id}`)
           const snapshot = await getDoc(toolCallDoc)
 
           if (snapshot.exists()) {
@@ -152,10 +146,7 @@ export const createFirestoreToolCallRecordRepository = (): ToolCallRecordReposit
           const runData = runDoc.data()
           if (runData.workspaceId === workspaceId) {
             // This run belongs to the workspace
-            const toolCallsCol = collection(
-              db,
-              `users/${userDoc.id}/runs/${runDoc.id}/toolCalls`
-            )
+            const toolCallsCol = collection(db, `users/${userDoc.id}/runs/${runDoc.id}/toolCalls`)
             const q = query(toolCallsCol, orderBy('startedAtMs', 'asc'))
             const snapshot = await getDocs(q)
             toolCalls.push(...snapshot.docs.map((doc) => doc.data() as ToolCallRecord))
@@ -203,10 +194,7 @@ export const createFirestoreToolCallRecordRepository = (): ToolCallRecordReposit
         const runsSnapshot = await getDocs(runsCol)
 
         for (const runDoc of runsSnapshot.docs) {
-          const toolCallDoc = doc(
-            db,
-            `users/${userDoc.id}/runs/${runDoc.id}/toolCalls/${id}`
-          )
+          const toolCallDoc = doc(db, `users/${userDoc.id}/runs/${runDoc.id}/toolCalls/${id}`)
           const existing = await getDoc(toolCallDoc)
 
           if (existing.exists()) {

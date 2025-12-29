@@ -15,6 +15,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
 import { RunWorkspaceModal } from '@/components/agents/RunWorkspaceModal'
+import { RunCard } from '@/components/agents/RunCard'
 import type { WorkspaceId, RunStatus } from '@lifeos/agents'
 
 export function WorkspaceDetailPage() {
@@ -71,40 +72,6 @@ export function WorkspaceDetailPage() {
   const getAgentName = (agentId: string) => {
     const agent = agents.find((a) => a.agentId === agentId)
     return agent?.name ?? 'Unknown Agent'
-  }
-
-  const formatDate = (timestampMs: number) => {
-    return new Date(timestampMs).toLocaleString()
-  }
-
-  const formatDuration = (startMs: number, endMs?: number) => {
-    const durationMs = (endMs ?? currentTime) - startMs
-    const seconds = Math.floor(durationMs / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const hours = Math.floor(minutes / 60)
-
-    if (hours > 0) {
-      return `${hours}h ${minutes % 60}m`
-    } else if (minutes > 0) {
-      return `${minutes}m ${seconds % 60}s`
-    } else {
-      return `${seconds}s`
-    }
-  }
-
-  const getStatusBadgeClass = (status: RunStatus) => {
-    switch (status) {
-      case 'completed':
-        return 'badge-success'
-      case 'failed':
-        return 'badge-error'
-      case 'running':
-        return 'badge-info'
-      case 'paused':
-        return 'badge-warning'
-      default:
-        return 'badge'
-    }
   }
 
   // Filter runs by status
@@ -200,64 +167,12 @@ export function WorkspaceDetailPage() {
         ) : (
           <div className="runs-list">
             {filteredRuns.map((run) => (
-              <div key={run.runId} className="run-card">
-                <div className="run-header">
-                  <div>
-                    <h4>{run.goal}</h4>
-                    <span className={getStatusBadgeClass(run.status)}>{run.status}</span>
-                  </div>
-                  <div className="run-meta">
-                    <small>Started: {formatDate(run.startedAtMs)}</small>
-                    {run.completedAtMs && <small>Completed: {formatDate(run.completedAtMs)}</small>}
-                    <small>Duration: {formatDuration(run.startedAtMs, run.completedAtMs)}</small>
-                  </div>
-                </div>
-
-                <div className="run-progress">
-                  <strong>Progress:</strong> Step {run.currentStep}
-                  {run.totalSteps && ` of ${run.totalSteps}`}
-                </div>
-
-                {run.output && (
-                  <div className="run-output">
-                    <strong>Output:</strong>
-                    <p>{run.output}</p>
-                  </div>
-                )}
-
-                {run.error && (
-                  <div className="run-error">
-                    <strong>Error:</strong>
-                    <p>{run.error}</p>
-                  </div>
-                )}
-
-                {run.context && Object.keys(run.context).length > 0 && (
-                  <details className="run-context">
-                    <summary>Context</summary>
-                    <pre>{JSON.stringify(run.context, null, 2)}</pre>
-                  </details>
-                )}
-
-                <div className="run-stats">
-                  {run.tokensUsed !== undefined && (
-                    <div>
-                      <strong>Tokens:</strong> {run.tokensUsed.toLocaleString()}
-                    </div>
-                  )}
-                  {run.estimatedCost !== undefined && (
-                    <div>
-                      <strong>Cost:</strong> ${run.estimatedCost.toFixed(4)}
-                    </div>
-                  )}
-                </div>
-
-                <div className="run-actions">
-                  <button onClick={() => handleDeleteRun(run.runId)} className="btn-danger">
-                    Delete
-                  </button>
-                </div>
-              </div>
+              <RunCard
+                key={run.runId}
+                run={run}
+                currentTime={currentTime}
+                onDelete={handleDeleteRun}
+              />
             ))}
           </div>
         )}
