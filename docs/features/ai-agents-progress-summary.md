@@ -241,7 +241,7 @@ users/{userId}/
 
 ### Phase 6: Advanced Features
 
-**Not Yet Started** (removed tool marketplace per user request)
+**Not Yet Started** (no marketplace planned)
 
 #### Phase 6A: Conversation Memory
 
@@ -270,7 +270,6 @@ users/{userId}/
 - Pre-configured agent templates (researcher, writer, analyst)
 - Workspace templates (research project, content creation)
 - Import/export agent configs
-- Community sharing (optional)
 
 #### Phase 6E: Advanced Orchestration
 
@@ -386,7 +385,7 @@ LifeOS_2/
 
 1. **No conversation history**: Each run is stateless (Phase 6A will add memory)
 2. **No streaming**: Responses arrive all at once (Phase 6B will add streaming)
-3. **Tool marketplace removed**: Custom tool UI deferred to Phase 6C
+3. **No marketplace**: Custom tool UI deferred to Phase 6C
 4. **Web search**: Requires manual configuration of Google Custom Search API
 
 ### Known Bugs

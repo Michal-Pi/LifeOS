@@ -602,7 +602,7 @@ The following features were intentionally deferred to keep Phase 7 focused on pr
 
 2. **Advanced Templates**
    - User-created templates
-   - Template marketplace
+   - Template library (personal)
    - Template variables
 
 3. **AI Integration**

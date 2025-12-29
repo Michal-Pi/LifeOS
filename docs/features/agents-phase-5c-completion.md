@@ -463,8 +463,7 @@ Phase 5C is complete. Future enhancements could include:
 ### Phase 6: Tool Management UI
 
 - Create custom tools via UI
-- Tool marketplace
-- Tool permissions and sharing
+- Tool permissions (per user/workspace)
 
 ---
 

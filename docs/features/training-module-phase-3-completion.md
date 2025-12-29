@@ -474,7 +474,7 @@ Critical fix for production builds - added missing package aliases to vite.confi
 - Template scheduler
 - Plan management (weekly schedules)
 - Auto-populate sessions from templates
-- Template library (community templates)
+- Template library (personal templates)
 
 ### Phase 5: Analytics & Insights (4-6 hours)
 

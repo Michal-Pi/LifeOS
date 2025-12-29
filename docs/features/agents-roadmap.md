@@ -1,7 +1,7 @@
 # AI Agent Framework - Complete Roadmap
 
-**Last Updated**: 2025-12-28
-**Current Phase**: Phase 5A (Multi-Provider Tool Support) ✅ Complete
+**Last Updated**: 2025-12-29
+**Current Phase**: Phase 5E (Error Handling & Reliability) ✅ Complete
 
 ## Overview
 
@@ -383,18 +383,15 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 - UI for creating custom tools
 - Tool schema builder
 - Serverless function deployment for custom tools
-- Tool marketplace (share tools between users)
 - Tool versioning
 
 **Why Important**: Makes framework extensible by users without code changes.
 
-#### Phase 6D: Agent Templates & Marketplace
+#### Phase 6D: Agent Templates & Presets
 
 **Deliverables**:
 
 - Pre-configured agent templates
-- Agent sharing and import/export
-- Community agent marketplace
 - Agent versioning
 - Template categories (productivity, research, coding, etc.)
 
@@ -416,14 +413,12 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 
 **Goal**: Scale to team and organization use cases.
 
-#### Phase 7A: Team Collaboration
+#### Phase 7A: Personal Productivity Scale
 
 **Deliverables**:
 
-- Shared workspaces
-- Team agent libraries
-- Access control (role-based permissions)
-- Agent ownership and sharing
+- Multi-device workflows
+- Advanced access controls (single-user)
 - Audit logs
 
 #### Phase 7B: Cost Management
@@ -530,7 +525,7 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 - 🎯 Conversation memory reduces redundant API calls by 30%
 - 🎯 Streaming improves perceived latency by 50%
 - 🎯 At least 5 custom tools created by users
-- 🎯 Agent marketplace with 20+ templates
+- 🎯 20+ agent templates/presets
 - 🎯 Advanced orchestration used in 25% of workspaces
 
 ### Phase 7 (Enterprise)
@@ -544,35 +539,33 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 
 ### Immediate (This Week)
 
-1. ✅ Complete Phase 4E (tool-aware agents)
-2. ✅ Document all phases (this file)
-3. 🎯 Deploy Phase 4E to production
-4. 🎯 Test end-to-end with real agents
-5. 🎯 Monitor Cloud Function logs for tool execution
+1. ✅ Complete Phase 5E (error handling & reliability)
+2. ✅ Deploy Phase 5E to production
+3. 🎯 Test end-to-end with per-user provider keys
+4. 🎯 Monitor Cloud Function logs for tool execution
+5. 🎯 Collect initial feedback on run UX
 
 ### Short-term (Next 2 Weeks)
 
-1. 🎯 Implement Phase 5A (multi-provider tools)
-2. 🎯 Implement Phase 5B (tool persistence)
-3. 🎯 Implement Phase 5C (tool UI updates)
-4. 🎯 User testing with small group (5-10 users)
-5. 🎯 Bug fixes and reliability improvements
+1. 🎯 Implement Phase 6A (conversation memory)
+2. 🎯 Implement Phase 6B (streaming responses)
+3. 🎯 User testing with small group (5-10 users)
+4. 🎯 Bug fixes and UX polish
+5. 🎯 Documentation and tutorials
 
 ### Medium-term (Next Month)
 
-1. 🎯 Implement Phase 5D (advanced tools)
-2. 🎯 Implement Phase 5E (error handling)
-3. 🎯 Public beta launch
-4. 🎯 Documentation and tutorials
-5. 🎯 Community feedback integration
+1. 🎯 Implement Phase 6C (custom tools UI)
+2. 🎯 Implement Phase 6D (agent templates)
+3. 🎯 Implement Phase 6E (advanced orchestration)
+4. 🎯 Public beta launch
+5. 🎯 Feedback integration
 
 ### Long-term (Next Quarter)
 
-1. 🎯 Phase 6: Advanced features
-2. 🎯 Phase 7: Enterprise features
-3. 🎯 Scale to 100+ active users
-4. 🎯 Agent marketplace launch
-5. 🎯 Revenue model (if applicable)
+1. 🎯 Phase 7: Enterprise features
+2. 🎯 Scale to 100+ active users
+3. 🎯 Revenue model (if applicable)
 
 ## Technical Debt
 
@@ -600,26 +593,27 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 
 ### Planned Improvements
 
-1. **Tool Call Storage**: Not persisted yet (Phase 5B)
-2. **Multi-Provider Tools**: OpenAI only (Phase 5A)
-3. **Streaming Responses**: Not implemented (Phase 6B)
-4. **Conversation Memory**: Runs are stateless (Phase 6A)
-5. **Error Retry Logic**: No automatic retries (Phase 5E)
+1. **Streaming Responses**: Not implemented (Phase 6B)
+2. **Conversation Memory**: Runs are stateless (Phase 6A)
+3. **Graceful tool fallback**: No no-tool fallback on tool failures
+4. **Per-tool rate limits**: Not implemented yet
+5. **Safer math evaluation**: Replace eval() in calculate tool
 
 ## Conclusion
 
-The AI Agent Framework has successfully completed Phase 4E with minimal viable tool-aware agent support. The system now supports:
+The AI Agent Framework has successfully completed Phase 5E with production hardening. The system now supports:
 
 - ✅ Full agent lifecycle (create, edit, delete)
 - ✅ Multi-agent workspaces with 3 workflow patterns
 - ✅ 4 AI providers (OpenAI, Anthropic, Google, xAI)
-- ✅ Tool calling (OpenAI agents only)
-- ✅ 4 built-in tools (time, firestore, calculate, search placeholder)
+- ✅ Tool calling (all providers)
+- ✅ Tool call persistence + UI timeline
+- ✅ Advanced tools (calendar, notes, web search)
+- ✅ Reliability controls (retries, timeouts, rate limits, quotas)
 - ✅ End-to-end cloud execution with Firestore triggers
 
 The roadmap provides a clear path forward:
 
-- **Phase 5**: Production hardening (multi-provider tools, UI, reliability)
 - **Phase 6**: Advanced features (memory, streaming, custom tools)
 - **Phase 7**: Enterprise features (teams, cost management, compliance)
 

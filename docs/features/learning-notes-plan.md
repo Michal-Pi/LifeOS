@@ -720,7 +720,7 @@ match /users/{userId}/{collection}/{docId} {
 ## Open Questions
 
 - [ ] Should we support real-time collaborative editing (like Google Docs)?
-  - **Decision:** Phase 1 = No, Phase 2 = Read-only sharing
+  - **Decision:** No sharing planned (single-user scope)
 
 - [ ] Should we support handwriting/drawing (canvas)?
   - **Decision:** Not in MVP, revisit after Phase 8
