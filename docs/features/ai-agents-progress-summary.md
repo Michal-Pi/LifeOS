@@ -189,7 +189,8 @@ users/{userId}/
   ├── agents/{agentId}              # Agent configurations
   ├── workspaces/{workspaceId}      # Workspace definitions
   │   └── runs/{runId}              # Run instances
-  │       └── toolCalls/{toolCallRecordId}  # Tool execution records
+  │       ├── toolCalls/{toolCallRecordId}  # Tool execution records
+  │       └── messages/{messageId}          # Conversation history (Phase 6A)
   ├── events/{eventId}              # Calendar events
   └── notes/{noteId}                # Notes
 ```
@@ -245,8 +246,10 @@ users/{userId}/
 
 #### Phase 6A: Conversation Memory
 
-- Persistent message history
-- Resume conversations
+**In Progress**
+
+- Persistent message history (Firestore `messages` subcollection)
+- UI message timeline in run details
 - Context window management
 - Message pruning strategies
 

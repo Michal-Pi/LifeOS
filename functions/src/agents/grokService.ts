@@ -10,6 +10,7 @@ import type { AgentConfig } from '@lifeos/agents'
 import OpenAI from 'openai'
 
 import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
+import { recordMessage } from './messageStore.js'
 import { checkProviderRateLimit } from './rateLimiter.js'
 import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
@@ -91,6 +92,23 @@ export async function executeWithGrok(
       { role: 'user', content: userPrompt },
     ]
 
+    if (toolContext) {
+      await recordMessage({
+        userId: toolContext.userId,
+        runId: toolContext.runId,
+        agentId: toolContext.agentId,
+        role: 'system',
+        content: systemPrompt,
+      })
+      await recordMessage({
+        userId: toolContext.userId,
+        runId: toolContext.runId,
+        agentId: toolContext.agentId,
+        role: 'user',
+        content: userPrompt,
+      })
+    }
+
     // Get available tools for this agent
     const tools = toolContext ? getAgentTools(agent) : []
 
@@ -168,6 +186,22 @@ export async function executeWithGrok(
           iteration,
         })
 
+        const toolCallRecords = toolCalls.map((call) => ({
+          toolCallId: call.toolCallId,
+          toolId: `tool:${call.toolName}` as any,
+          toolName: call.toolName,
+          parameters: call.parameters,
+        }))
+
+        await recordMessage({
+          userId: toolContext.userId,
+          runId: toolContext.runId,
+          agentId: toolContext.agentId,
+          role: 'assistant',
+          content: message.content ?? '',
+          toolCalls: toolCallRecords,
+        })
+
         // Add tool results to message history
         for (const toolResult of toolResults) {
           messages.push({
@@ -177,6 +211,23 @@ export async function executeWithGrok(
               ? `Error: ${toolResult.error}`
               : JSON.stringify(toolResult.result),
           })
+
+          await recordMessage({
+            userId: toolContext.userId,
+            runId: toolContext.runId,
+            agentId: toolContext.agentId,
+            role: 'tool',
+            content: toolResult.error
+              ? `Error: ${toolResult.error}`
+              : JSON.stringify(toolResult.result),
+            toolResults: [
+              {
+                toolCallId: toolResult.toolCallId,
+                result: toolResult.result,
+                error: toolResult.error,
+              },
+            ],
+          })
         }
 
         console.log(`Executed ${toolResults.length} tools, continuing agent iteration`)
@@ -184,6 +235,15 @@ export async function executeWithGrok(
       } else {
         // No tool calls, agent provided final output
         finalOutput = message.content ?? ''
+        if (toolContext) {
+          await recordMessage({
+            userId: toolContext.userId,
+            runId: toolContext.runId,
+            agentId: toolContext.agentId,
+            role: 'assistant',
+            content: finalOutput,
+          })
+        }
         console.log(`Agent completed in ${iteration} iterations (no more tool calls)`)
         break
       }
@@ -195,6 +255,15 @@ export async function executeWithGrok(
       finalOutput =
         messages[messages.length - 1]?.content?.toString() ??
         'Agent reached max iterations without providing final output'
+      if (toolContext) {
+        await recordMessage({
+          userId: toolContext.userId,
+          runId: toolContext.runId,
+          agentId: toolContext.agentId,
+          role: 'assistant',
+          content: finalOutput,
+        })
+      }
     }
 
     // Calculate totals

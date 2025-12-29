@@ -11,6 +11,7 @@ import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai'
 import type { AgentConfig } from '@lifeos/agents'
 
 import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
+import { recordMessage } from './messageStore.js'
 import { checkProviderRateLimit } from './rateLimiter.js'
 import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
@@ -185,6 +186,22 @@ export async function executeWithGoogle(
 
     // Send initial message
     totalInputChars += userPrompt.length
+    if (toolContext) {
+      await recordMessage({
+        userId: toolContext.userId,
+        runId: toolContext.runId,
+        agentId: toolContext.agentId,
+        role: 'system',
+        content: systemPrompt,
+      })
+      await recordMessage({
+        userId: toolContext.userId,
+        runId: toolContext.runId,
+        agentId: toolContext.agentId,
+        role: 'user',
+        content: userPrompt,
+      })
+    }
 
     while (iteration < MAX_ITERATIONS) {
       iteration++
@@ -234,6 +251,22 @@ export async function executeWithGoogle(
           iteration,
         })
 
+        const toolCallRecords = toolCalls.map((call) => ({
+          toolCallId: call.toolCallId,
+          toolId: `tool:${call.toolName}` as any,
+          toolName: call.toolName,
+          parameters: call.parameters,
+        }))
+
+        await recordMessage({
+          userId: toolContext.userId,
+          runId: toolContext.runId,
+          agentId: toolContext.agentId,
+          role: 'assistant',
+          content: response.text(),
+          toolCalls: toolCallRecords,
+        })
+
         // Send tool results back to model
         const functionResponses = toolResults.map((toolResult) => ({
           name: toolResult.toolName,
@@ -252,11 +285,39 @@ export async function executeWithGoogle(
         totalInputChars += JSON.stringify(functionResponseMessage).length
         console.log(`Executed ${toolResults.length} tools, continuing agent iteration`)
 
+        for (const toolResult of toolResults) {
+          await recordMessage({
+            userId: toolContext.userId,
+            runId: toolContext.runId,
+            agentId: toolContext.agentId,
+            role: 'tool',
+            content: toolResult.error
+              ? `Error: ${toolResult.error}`
+              : JSON.stringify(toolResult.result),
+            toolResults: [
+              {
+                toolCallId: toolResult.toolCallId,
+                result: toolResult.result,
+                error: toolResult.error,
+              },
+            ],
+          })
+        }
+
         // Continue loop to get agent's response with tool results
         // Next iteration will send empty message to continue conversation
       } else {
         // No tool calls, agent provided final output
         finalOutput = response.text()
+        if (toolContext) {
+          await recordMessage({
+            userId: toolContext.userId,
+            runId: toolContext.runId,
+            agentId: toolContext.agentId,
+            role: 'assistant',
+            content: finalOutput,
+          })
+        }
         console.log(`Agent completed in ${iteration} iterations (no more tool calls)`)
         break
       }
@@ -265,6 +326,15 @@ export async function executeWithGoogle(
     if (iteration >= MAX_ITERATIONS) {
       console.warn(`Agent reached max iterations (${MAX_ITERATIONS}) with tool calls`)
       finalOutput = 'Agent reached max iterations without providing final output'
+      if (toolContext) {
+        await recordMessage({
+          userId: toolContext.userId,
+          runId: toolContext.runId,
+          agentId: toolContext.agentId,
+          role: 'assistant',
+          content: finalOutput,
+        })
+      }
     }
 
     // Estimate tokens (1 token ≈ 4 chars)

@@ -5,6 +5,7 @@
  */
 
 import { useToolCallOperations } from '@/hooks/useToolCallOperations'
+import { useRunMessages } from '@/hooks/useRunMessages'
 import { ToolCallTimeline } from './ToolCallTimeline'
 import type { Run, RunStatus } from '@lifeos/agents'
 
@@ -16,6 +17,7 @@ interface RunCardProps {
 
 export function RunCard({ run, currentTime, onDelete }: RunCardProps) {
   const { toolCalls } = useToolCallOperations(run.runId)
+  const { messages } = useRunMessages(run.runId)
 
   const formatDate = (timestampMs: number) => {
     return new Date(timestampMs).toLocaleString()
@@ -88,6 +90,25 @@ export function RunCard({ run, currentTime, onDelete }: RunCardProps) {
         <details className="run-context">
           <summary>Context</summary>
           <pre>{JSON.stringify(run.context, null, 2)}</pre>
+        </details>
+      )}
+
+      {messages.length > 0 && (
+        <details className="run-messages">
+          <summary>Messages ({messages.length})</summary>
+          <div className="run-messages-list">
+            {messages.map((message) => (
+              <div key={message.messageId} className={`run-message run-message--${message.role}`}>
+                <div className="run-message-meta">
+                  <span className="run-message-role">{message.role}</span>
+                  <span className="run-message-time">
+                    {new Date(message.timestampMs).toLocaleTimeString()}
+                  </span>
+                </div>
+                <div className="run-message-content">{message.content}</div>
+              </div>
+            ))}
+          </div>
         </details>
       )}
 

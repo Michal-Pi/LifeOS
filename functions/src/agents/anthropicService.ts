@@ -10,6 +10,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { AgentConfig } from '@lifeos/agents'
 
 import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
+import { recordMessage } from './messageStore.js'
 import { checkProviderRateLimit } from './rateLimiter.js'
 import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
@@ -118,6 +119,23 @@ export async function executeWithAnthropic(
       },
     ]
 
+    if (toolContext) {
+      await recordMessage({
+        userId: toolContext.userId,
+        runId: toolContext.runId,
+        agentId: toolContext.agentId,
+        role: 'system',
+        content: systemPrompt,
+      })
+      await recordMessage({
+        userId: toolContext.userId,
+        runId: toolContext.runId,
+        agentId: toolContext.agentId,
+        role: 'user',
+        content: userPrompt,
+      })
+    }
+
     // Track total tokens and cost across all iterations
     let totalInputTokens = 0
     let totalOutputTokens = 0
@@ -188,6 +206,27 @@ export async function executeWithAnthropic(
             iteration,
           })
 
+          const toolCallRecords = toolCalls.map((call) => ({
+            toolCallId: call.toolCallId,
+            toolId: `tool:${call.toolName}` as any,
+            toolName: call.toolName,
+            parameters: call.parameters,
+          }))
+
+          const assistantText = response.content
+            .filter((block) => block.type === 'text')
+            .map((block) => (block.type === 'text' ? block.text : ''))
+            .join('\n')
+
+          await recordMessage({
+            userId: toolContext.userId,
+            runId: toolContext.runId,
+            agentId: toolContext.agentId,
+            role: 'assistant',
+            content: assistantText,
+            toolCalls: toolCallRecords,
+          })
+
           // Add assistant's message to history (with tool_use blocks)
           messages.push({
             role: 'assistant',
@@ -210,6 +249,25 @@ export async function executeWithAnthropic(
             content: toolResultContent,
           })
 
+          for (const toolResult of toolResults) {
+            await recordMessage({
+              userId: toolContext.userId,
+              runId: toolContext.runId,
+              agentId: toolContext.agentId,
+              role: 'tool',
+              content: toolResult.error
+                ? `Error: ${toolResult.error}`
+                : JSON.stringify(toolResult.result),
+              toolResults: [
+                {
+                  toolCallId: toolResult.toolCallId,
+                  result: toolResult.result,
+                  error: toolResult.error,
+                },
+              ],
+            })
+          }
+
           console.log(`Executed ${toolResults.length} tools, continuing agent iteration`)
           // Continue loop to get agent's response with tool results
         } else {
@@ -222,6 +280,15 @@ export async function executeWithAnthropic(
         // No tool calls, agent provided final output
         finalOutput =
           response.content.find((block) => block.type === 'text')?.text ?? 'No response generated'
+        if (toolContext) {
+          await recordMessage({
+            userId: toolContext.userId,
+            runId: toolContext.runId,
+            agentId: toolContext.agentId,
+            role: 'assistant',
+            content: finalOutput,
+          })
+        }
         console.log(`Agent completed in ${iteration} iterations (no more tool calls)`)
         break
       }
@@ -240,6 +307,15 @@ export async function executeWithAnthropic(
           'Agent reached max iterations without providing final output'
       } else {
         finalOutput = 'Agent reached max iterations without providing final output'
+      }
+      if (toolContext) {
+        await recordMessage({
+          userId: toolContext.userId,
+          runId: toolContext.runId,
+          agentId: toolContext.agentId,
+          role: 'assistant',
+          content: finalOutput,
+        })
       }
     }
 

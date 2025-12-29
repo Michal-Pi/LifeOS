@@ -3063,6 +3063,47 @@ a:focus-visible {
   flex-wrap: wrap;
 }
 
+/* Run message history */
+.run-messages {
+  margin-top: 1rem;
+}
+
+.run-messages summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.run-messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.run-message {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  background: var(--card);
+}
+
+.run-message-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  margin-bottom: 0.5rem;
+}
+
+.run-message-role {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.run-message-content {
+  white-space: pre-wrap;
+}
+
 .calendar-settings__header {
   display: flex;
   justify-content: space-between;
