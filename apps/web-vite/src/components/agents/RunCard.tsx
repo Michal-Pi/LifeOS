@@ -158,9 +158,7 @@ export function RunCard({ run, currentTime, onDelete, onResume, onProvideInput }
                 </div>
                 <div className="run-message-content">
                   <strong>Node:</strong> {step.nodeId}
-                  {step.output !== undefined && (
-                    <pre>{JSON.stringify(step.output, null, 2)}</pre>
-                  )}
+                  {step.output !== undefined && <pre>{JSON.stringify(step.output, null, 2)}</pre>}
                   {step.error && (
                     <p className="run-error">
                       <strong>Error:</strong> {step.error}
@@ -232,10 +230,10 @@ export function RunCard({ run, currentTime, onDelete, onResume, onProvideInput }
           run.status !== 'running' &&
           run.status !== 'pending' &&
           run.status !== 'waiting_for_input' && (
-          <button onClick={() => onResume(run.runId)} className="btn-secondary">
-            Resume
-          </button>
-        )}
+            <button onClick={() => onResume(run.runId)} className="btn-secondary">
+              Resume
+            </button>
+          )}
         <button onClick={() => onDelete(run.runId)} className="btn-danger">
           Delete
         </button>

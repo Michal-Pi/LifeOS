@@ -41,10 +41,12 @@ embedding a heavy workflow engine while still enabling a strong UI.
 ### 1. Workflow Graph Model
 
 Introduce a `WorkflowGraph` as part of `Workspace` configuration. The graph has:
+
 - **Nodes**: agent steps, tool steps, human-input steps, and join nodes.
 - **Edges**: transitions with optional conditions. Parallel branches must converge on an explicit join node.
 
 **Node types (v1)**:
+
 - `agent`: execute a configured agent.
 - `tool`: execute a specific tool with fixed params (optional in v1; can defer).
 - `human_input`: pause run and request user input.
@@ -52,12 +54,14 @@ Introduce a `WorkflowGraph` as part of `Workspace` configuration. The graph has:
 - `end`: terminator node.
 
 **Edge conditions (v1)**:
+
 - `always`
 - `equals` (on a named result key)
 - `contains` (string contains)
 - `regex` (string match)
 
 **State input for conditions**:
+
 - `lastAgentOutput`
 - `namedOutput` (set by node metadata)
 - `toolResult`
@@ -87,6 +91,7 @@ Extend `workflowExecutor.ts` with a **graph executor**:
 ### 3. Loop Control
 
 Add loop safeguards:
+
 - `maxIterations` (existing workspace/run field)
 - `maxNodeVisits` per node (new config)
 - `maxTotalTokens` (optional)
@@ -152,12 +157,14 @@ Each step stores `nodeId`, `type`, `input`, `output`, `error`, `durationMs`.
 ## UX / UI Plan
 
 ### Phase 6E.1 (v1)
+
 - **Run Timeline**: include workflow step cards.
 - **Human Input Modal** when `run.status = waiting_for_input`.
 - **Read-only Graph View** (simple list or diagram).
 - **Join Summary Card** showing aggregated expert outputs.
 
 ### Phase 6E.2 (later)
+
 - Visual graph editor (drag/drop nodes, edges).
 - Per-node configuration UI (prompt overrides, output mapping).
 - Join node controls (aggregation mode, confidence rules).
@@ -167,22 +174,26 @@ Each step stores `nodeId`, `type`, `input`, `output`, `error`, `durationMs`.
 ## Implementation Plan
 
 ### Step 1: Domain + Model Extensions
+
 - Add `WorkflowGraph` types + validation to `packages/agents`.
 - Add new `workspace.workflowType = "graph"` option.
 
 ### Step 2: Backend Graph Executor
+
 - New executor in `functions/src/agents/workflowExecutor.ts`.
 - Step persistence under `workflowSteps`.
 - Loop safeguards + error categories.
 - Join execution with aggregation modes (`list`, `ranked`, `consensus`).
 
 ### Step 3: Frontend UI Support
+
 - Read-only graph view in workspace details.
 - Human input prompt flow (UI + Firestore update).
 - Workflow step list in run details.
 - Join summary rendering in run details.
 
 ### Step 4: Documentation + Tests
+
 - Update progress summary + roadmap.
 - Add unit tests for graph traversal and loop detection.
 

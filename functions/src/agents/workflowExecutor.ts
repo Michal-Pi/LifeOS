@@ -632,7 +632,10 @@ type JoinBufferEntry = {
   confidence?: number
 }
 
-const resolveConditionValue = (path: string | undefined, data: Record<string, unknown>): unknown => {
+const resolveConditionValue = (
+  path: string | undefined,
+  data: Record<string, unknown>
+): unknown => {
   if (!path) return undefined
   return path.split('.').reduce<unknown>((acc, key) => {
     if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
@@ -642,27 +645,18 @@ const resolveConditionValue = (path: string | undefined, data: Record<string, un
   }, data)
 }
 
-const evaluateCondition = (
-  edge: WorkflowEdge,
-  data: Record<string, unknown>
-): boolean => {
+const evaluateCondition = (edge: WorkflowEdge, data: Record<string, unknown>): boolean => {
   const { condition } = edge
   switch (condition.type) {
     case 'always':
       return true
     case 'equals':
       return Boolean(
-        jsonLogic.apply(
-          { '==': [{ var: condition.key ?? '' }, condition.value ?? '' ] },
-          data
-        )
+        jsonLogic.apply({ '==': [{ var: condition.key ?? '' }, condition.value ?? ''] }, data)
       )
     case 'contains':
       return Boolean(
-        jsonLogic.apply(
-          { in: [condition.value ?? '', { var: condition.key ?? '' }] },
-          data
-        )
+        jsonLogic.apply({ in: [condition.value ?? '', { var: condition.key ?? '' }] }, data)
       )
     case 'regex': {
       const rawValue = resolveConditionValue(condition.key, data)
@@ -678,11 +672,7 @@ const evaluateCondition = (
   }
 }
 
-const findToolInRegistry = (
-  registry: ToolRegistry,
-  toolId?: string,
-  toolName?: string
-) => {
+const findToolInRegistry = (registry: ToolRegistry, toolId?: string, toolName?: string) => {
   if (toolId) {
     for (const tool of registry.values()) {
       if (tool.toolId === toolId) {
@@ -721,7 +711,10 @@ const aggregateJoinOutputs = (
   }
 }
 
-const getHumanInputResponse = (nodeId: string, context?: Record<string, unknown>): string | null => {
+const getHumanInputResponse = (
+  nodeId: string,
+  context?: Record<string, unknown>
+): string | null => {
   const raw = context?.humanInput
   if (typeof raw === 'string') return raw
   if (raw && typeof raw === 'object') {
@@ -754,9 +747,7 @@ export async function executeGraphWorkflow(
   graphDef.nodes.forEach((node) => graph.setNode(node.id, node))
   graphDef.edges.forEach((edge) => graph.setEdge(edge.from, edge.to, edge))
 
-  const nodeById = new Map<string, WorkflowNode>(
-    graphDef.nodes.map((node) => [node.id, node])
-  )
+  const nodeById = new Map<string, WorkflowNode>(graphDef.nodes.map((node) => [node.id, node]))
 
   const agentsById = new Map<string, AgentConfig>(agents.map((agent) => [agent.agentId, agent]))
 
@@ -885,10 +876,7 @@ export async function executeGraphWorkflow(
 
         if (node.type === 'join') {
           const buffer = joinBuffers.get(nodeId) ?? []
-          const aggregation = aggregateJoinOutputs(
-            buffer,
-            node.aggregationMode ?? 'list'
-          )
+          const aggregation = aggregateJoinOutputs(buffer, node.aggregationMode ?? 'list')
           output = aggregation
           lastOutput = aggregation
           workflowState.joinOutputs![nodeId] = aggregation
@@ -1091,8 +1079,7 @@ export async function executeGraphWorkflow(
         if (targetNode.type === 'join') {
           const buffer = joinBuffers.get(edge.to) ?? []
           buffer.push({
-            agentId:
-              result.node.type === 'agent' ? (result.node.agentId ?? undefined) : undefined,
+            agentId: result.node.type === 'agent' ? (result.node.agentId ?? undefined) : undefined,
             agentName:
               result.node.type === 'agent'
                 ? agentsById.get(result.node.agentId ?? '')?.name
@@ -1101,7 +1088,8 @@ export async function executeGraphWorkflow(
               result.node.type === 'agent'
                 ? agentsById.get(result.node.agentId ?? '')?.role
                 : undefined,
-            output: typeof result.output === 'string' ? result.output : JSON.stringify(result.output),
+            output:
+              typeof result.output === 'string' ? result.output : JSON.stringify(result.output),
           })
           joinBuffers.set(edge.to, buffer)
 

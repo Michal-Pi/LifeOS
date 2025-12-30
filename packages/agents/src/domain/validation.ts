@@ -26,7 +26,13 @@ export const MessageRoleSchema = z.enum(['user', 'assistant', 'system', 'tool'])
 
 export const SyncStateSchema = z.enum(['synced', 'pending', 'conflict'])
 
-export const WorkflowTypeSchema = z.enum(['sequential', 'parallel', 'supervisor', 'custom', 'graph'])
+export const WorkflowTypeSchema = z.enum([
+  'sequential',
+  'parallel',
+  'supervisor',
+  'custom',
+  'graph',
+])
 
 export const WorkflowNodeTypeSchema = z.enum(['agent', 'tool', 'human_input', 'join', 'end'])
 
