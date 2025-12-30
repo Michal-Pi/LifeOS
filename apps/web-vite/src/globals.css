@@ -3177,6 +3177,20 @@ a:focus-visible {
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   overflow: hidden;
+  background: #f8fafc;
+}
+
+.workflow-node__title {
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 0.35rem;
+}
+
+.workflow-node__meta {
+  font-size: 0.7rem;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .calendar-settings__header {

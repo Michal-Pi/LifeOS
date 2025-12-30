@@ -73,6 +73,7 @@ Please review the summary doc first, then let me know you're ready to proceed wi
 1. [docs/features/ai-agents-progress-summary.md](./ai-agents-progress-summary.md) - Complete status
 2. [docs/features/agents-roadmap.md](./agents-roadmap.md) - Phase breakdown
 3. [docs/Agent Framework.md](../Agent%20Framework.md) - Original PRD
+4. [docs/features/agents-phase-6e-completion.md](./agents-phase-6e-completion.md) - Phase 6E completion
 
 ### File Locations
 
