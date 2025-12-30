@@ -412,47 +412,43 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 
 **Why Important**: Enables complex multi-agent behaviors and agentic workflows.
 
-### Phase 7: Enterprise Features
+### Phase 7: Pro Single-User Enhancements
 
-**Goal**: Scale to team and organization use cases.
+**Goal**: Deepen reliability, privacy, and insight for a single-user system (no teams/enterprise).
 
-#### Phase 7A: Personal Productivity Scale
+#### Phase 7A: Personal Scale & Automation
 
 **Deliverables**:
 
-- Multi-device workflows
-- Advanced access controls (single-user)
-- Audit logs
+- Multi-device continuity (state sync + offline-first strategy)
+- Run scheduling (recurring runs, reminders)
+- Audit logs for personal history
 
 #### Phase 7B: Cost Management
 
 **Deliverables**:
 
-- Usage quotas per user/team
-- Cost alerts and budgets
+- User-defined budgets (global/workspace/run)
+- Cost alerts and budgets (in-app)
 - Provider cost optimization (route to cheapest provider)
 - Token usage forecasting
-- Billing integration
 
-#### Phase 7C: Security & Compliance
-
-**Deliverables**:
-
-- Data encryption at rest
-- PII detection and redaction
-- Audit trails
-- GDPR compliance
-- SOC 2 compliance
-
-#### Phase 7D: Analytics & Insights
+#### Phase 7C: Privacy & Safety
 
 **Deliverables**:
 
-- Agent performance metrics
-- Tool usage analytics
+- Client-side encryption for sensitive notes/agent context (opt-in)
+- PII detection and redaction (local-first)
+- Per-tool permission controls (user-level)
+
+#### Phase 7D: Insights & Quality
+
+**Deliverables**:
+
+- Agent performance metrics (per-user)
+- Tool usage analytics (per workflow)
 - Cost breakdown by agent/workspace
-- Success rate tracking
-- A/B testing framework
+- Success rate tracking and run review summaries
 
 ## Deferred Items from Earlier Phases
 
@@ -498,10 +494,10 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 
 ### Low Priority (Phase 7)
 
-1. **Team Features** (Phase 7A): Multi-user support
+1. **Personal Scale** (Phase 7A): Scheduling + offline-first improvements
 2. **Cost Management** (Phase 7B): Budget controls
-3. **Security** (Phase 7C): Enterprise compliance
-4. **Analytics** (Phase 7D): Usage insights
+3. **Privacy & Safety** (Phase 7C): Local privacy tooling
+4. **Insights** (Phase 7D): Usage analytics and run review
 
 ## Success Metrics
 
@@ -531,12 +527,12 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 - 🎯 20+ agent templates/presets
 - 🎯 Advanced orchestration used in 25% of workspaces
 
-### Phase 7 (Enterprise)
+### Phase 7 (Pro Single-User)
 
-- 🎯 10+ teams using shared workspaces
+- 🎯 90% of runs stay within user-defined budgets
 - 🎯 Cost management reduces API spend by 20%
-- 🎯 SOC 2 compliance achieved
-- 🎯 Analytics dashboard used weekly by 80% of users
+- 🎯 Privacy features used by 30% of active users
+- 🎯 Insights view used weekly by 60% of users
 
 ## Next Steps
 
@@ -566,7 +562,7 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 
 ### Long-term (Next Quarter)
 
-1. 🎯 Phase 7: Enterprise features
+1. 🎯 Phase 7: Pro single-user enhancements
 2. 🎯 Scale to 100+ active users
 3. 🎯 Revenue model (if applicable)
 
@@ -618,6 +614,6 @@ The AI Agent Framework has successfully completed Phase 5E with production harde
 The roadmap provides a clear path forward:
 
 - **Phase 6**: Advanced features (memory, streaming, custom tools)
-- **Phase 7**: Enterprise features (teams, cost management, compliance)
+- **Phase 7**: Pro single-user enhancements (budgets, privacy, insights)
 
 Strategic focus remains on delivering incremental value quickly while maintaining high code quality and backward compatibility.
