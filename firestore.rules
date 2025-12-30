@@ -13,6 +13,11 @@ service cloud.firestore {
     match /users/{userId}/calendar/{docId} {
       allow read, write: if isAuthenticated(userId);
     }
+    // Agent runs workflow steps (Phase 6E) - server writes, user reads
+    match /users/{userId}/runs/{runId}/workflowSteps/{stepId} {
+      allow read: if isAuthenticated(userId);
+      allow write: if false;
+    }
     match /users/{userId}/privateIntegrations/{document=**} {
       // Only the server (Admin SDK / Cloud Functions) may read/write private integration tokens
       allow read, write: if false;
