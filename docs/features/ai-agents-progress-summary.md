@@ -246,13 +246,14 @@ users/{userId}/
 
 #### Phase 6A: Conversation Memory
 
-**In Progress**
+**Complete (v1)**
 
 - Persistent message history (Firestore `messages` subcollection)
 - UI message timeline in run details (paged, ordered)
 - Message pruning + basic compaction (auto summary of older messages)
 - Context injection (recent history appended to run context)
 - Resume conversations via `resumeRunId` in run context
+- Configurable context budget (global → workspace → run)
 
 #### Phase 6B: Streaming Responses
 
@@ -428,6 +429,19 @@ Fields: `openaiKey`, `anthropicKey`, `googleKey`, `xaiKey`
 If a user has not set a key, the backend falls back to project-level secrets
 (when configured) for OpenAI and Anthropic.
 
+### Agent Memory Settings
+
+Default context budget is stored at:
+
+```
+users/{userId}/settings/agentMemorySettings
+```
+
+Fields: `memoryMessageLimit`
+
+Workspace override: `workspace.memoryMessageLimit`  
+Run override: `run.memoryMessageLimit`
+
 ### Firebase Setup
 
 1. Firestore indexes (auto-created on first use)
@@ -529,17 +543,17 @@ Each run tracks:
 
 ## Next Steps
 
-### Immediate (Phase 6A)
-
-1. Refine pruning/compaction thresholds
-2. Add UI filters/search within messages (optional)
-3. Explore semantic memory (Phase 6A+)
-
-### Near-term (Phase 6B)
+### Immediate (Phase 6B)
 
 1. Implement streaming responses (Phase 6B)
 2. Real-time token streaming
 3. Incremental tool execution updates
+
+### Near-term (Phase 6A+ Enhancements)
+
+1. Refine pruning/compaction thresholds
+2. Add UI filters/search within messages (optional)
+3. Explore semantic memory (embeddings + retrieval)
 
 ### Long-term (Phase 6C-6E)
 
@@ -582,5 +596,5 @@ Each run tracks:
 ---
 
 **Status**: Phase 5E Complete ✅
-**Next Phase**: Phase 6A (Conversation Memory - finish context/resume)
+**Next Phase**: Phase 6B (Streaming Responses)
 **Last Updated**: December 29, 2025

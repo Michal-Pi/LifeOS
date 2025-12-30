@@ -54,6 +54,7 @@ export function WorkspaceFormModal({
   const [defaultAgentId, setDefaultAgentId] = useState<AgentId | undefined>(undefined)
   const [workflowType, setWorkflowType] = useState<WorkflowType>('sequential')
   const [maxIterations, setMaxIterations] = useState<number>(10)
+  const [memoryMessageLimitInput, setMemoryMessageLimitInput] = useState('')
 
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -76,6 +77,9 @@ export function WorkspaceFormModal({
         setDefaultAgentId(workspace.defaultAgentId)
         setWorkflowType(workspace.workflowType)
         setMaxIterations(workspace.maxIterations ?? 10)
+        setMemoryMessageLimitInput(
+          workspace.memoryMessageLimit ? String(workspace.memoryMessageLimit) : ''
+        )
       } else {
         // Create mode
         setName('')
@@ -84,6 +88,7 @@ export function WorkspaceFormModal({
         setDefaultAgentId(undefined)
         setWorkflowType('sequential')
         setMaxIterations(10)
+        setMemoryMessageLimitInput('')
       }
       setError(null)
     }
@@ -131,6 +136,18 @@ export function WorkspaceFormModal({
       return
     }
 
+    const memoryMessageLimit = memoryMessageLimitInput
+      ? Number.parseInt(memoryMessageLimitInput, 10)
+      : undefined
+
+    if (
+      memoryMessageLimitInput &&
+      (Number.isNaN(memoryMessageLimit) || memoryMessageLimit <= 0 || memoryMessageLimit > 200)
+    ) {
+      setError('Memory message limit must be between 1 and 200')
+      return
+    }
+
     setIsSaving(true)
     setError(null)
 
@@ -142,6 +159,7 @@ export function WorkspaceFormModal({
         defaultAgentId,
         workflowType,
         maxIterations,
+        memoryMessageLimit,
       }
 
       if (workspace) {
@@ -276,6 +294,20 @@ export function WorkspaceFormModal({
               onChange={(e) => setMaxIterations(parseInt(e.target.value))}
             />
             <small>Maximum number of agent interactions per run (prevents infinite loops)</small>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="memoryMessageLimit">Default Message Window (optional)</label>
+            <input
+              id="memoryMessageLimit"
+              type="number"
+              min={1}
+              max={200}
+              value={memoryMessageLimitInput}
+              onChange={(e) => setMemoryMessageLimitInput(e.target.value)}
+              placeholder="Use global default"
+            />
+            <small>Number of recent messages to include when resuming runs (1-200)</small>
           </div>
 
           <div className="modal-actions">

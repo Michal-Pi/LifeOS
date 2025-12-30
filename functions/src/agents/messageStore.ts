@@ -113,6 +113,9 @@ export async function buildConversationContext(
 ): Promise<string> {
   const db = getFirestore()
   const limitCount = options?.limit ?? HISTORY_CONTEXT_LIMIT
+  if (limitCount <= 0) {
+    return ''
+  }
   const snapshot = await db
     .collection(`users/${userId}/runs/${runId}/messages`)
     .orderBy('timestampMs', 'desc')

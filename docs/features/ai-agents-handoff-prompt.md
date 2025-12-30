@@ -44,7 +44,7 @@ CURRENT TOOLS (Phase 5D):
 
 REMAINING WORK:
 ✅ Phase 5E: Error handling & reliability (retry logic, timeouts, rate limiting)
-⏸️ Phase 6A: Conversation memory (context injection + resume pending)
+✅ Phase 6A: Conversation memory (context injection + resume shipped)
 ⏸️ Phase 6B: Streaming responses
 ⏸️ Phase 6C: Custom tool registration UI (no marketplace)
 ⏸️ Phase 6D: Agent templates
@@ -99,6 +99,7 @@ Please review the summary doc first, then let me know you're ready to proceed wi
 - `functions/src/agents/messageStore.ts` - Message persistence + pruning/compaction (Phase 6A)
 - `functions/src/agents/runExecutor.ts` - Injects `conversationHistory` when resuming runs (Phase 6A)
 - `users/{userId}/settings/aiProviderKeys` - Per-user API keys (openaiKey, anthropicKey, googleKey, xaiKey)
+- `users/{userId}/settings/agentMemorySettings` - Default context budget (memoryMessageLimit)
 
 **Frontend (Phase 2-3, 5C)**:
 
@@ -106,6 +107,7 @@ Please review the summary doc first, then let me know you're ready to proceed wi
 - `apps/web-vite/src/hooks/` - React hooks (useAgentOperations, useWorkspaceOperations, useToolCallOperations)
 - `apps/web-vite/src/hooks/useRunMessages.ts` - Run message history (paged) (Phase 6A)
 - `apps/web-vite/src/components/agents/RunCard.tsx` - Resume run button (Phase 6A)
+- `apps/web-vite/src/components/agents/RunWorkspaceModal.tsx` - Per-run context budget (Phase 6A)
 - `apps/web-vite/src/components/agents/` - UI components
 - `apps/web-vite/src/pages/` - Pages (AgentsPage, WorkspacesPage, WorkspaceDetailPage)
 

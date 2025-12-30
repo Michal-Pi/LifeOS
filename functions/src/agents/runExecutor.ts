@@ -23,6 +23,10 @@ type ProviderKeys = {
   grok?: string
 }
 
+type MemorySettings = {
+  memoryMessageLimit?: number
+}
+
 // Optional fallback secrets (only used if user has not set their own key)
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY')
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY')
@@ -89,15 +93,25 @@ export const onRunCreated = onDocumentCreated(
       }
 
       const providerKeys = await loadProviderKeys(userId)
+      const memorySettings = await loadMemorySettings(userId)
 
       const resumeRunId =
         run.context && typeof run.context === 'object'
           ? (run.context as Record<string, unknown>).resumeRunId
           : undefined
 
+      const memoryMessageLimit =
+        typeof run.memoryMessageLimit === 'number'
+          ? run.memoryMessageLimit
+          : typeof workspace.memoryMessageLimit === 'number'
+            ? workspace.memoryMessageLimit
+            : memorySettings.memoryMessageLimit
+
       const conversationHistory =
         typeof resumeRunId === 'string' && resumeRunId.length > 0
-          ? await buildConversationContext(userId, resumeRunId)
+          ? await buildConversationContext(userId, resumeRunId, {
+              limit: memoryMessageLimit,
+            })
           : ''
 
       const runWithContext: Run = {
@@ -191,5 +205,17 @@ async function loadProviderKeys(userId: string): Promise<ProviderKeys> {
     anthropic: userKeys.anthropicKey || fallbackKeys.anthropic || undefined,
     google: userKeys.googleKey || fallbackKeys.google || undefined,
     grok: userKeys.xaiKey || fallbackKeys.grok || undefined,
+  }
+}
+
+async function loadMemorySettings(userId: string): Promise<MemorySettings> {
+  const db = getFirestore()
+  const docRef = db.doc(`users/${userId}/settings/agentMemorySettings`)
+  const snapshot = await docRef.get()
+  const data = snapshot.exists ? (snapshot.data() as MemorySettings) : {}
+
+  return {
+    memoryMessageLimit:
+      typeof data.memoryMessageLimit === 'number' ? data.memoryMessageLimit : undefined,
   }
 }

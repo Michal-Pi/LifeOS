@@ -71,6 +71,9 @@ export interface Workspace {
   workflowType: 'sequential' | 'parallel' | 'supervisor' | 'custom'
   maxIterations?: number // Prevent infinite loops, default 10
 
+  // Memory configuration (Phase 6A)
+  memoryMessageLimit?: number // Optional default for conversation history window
+
   // Metadata
   archived: boolean
   createdAtMs: number
@@ -90,6 +93,7 @@ export interface Run {
   // Input
   goal: string // User's input prompt
   context?: Record<string, unknown> // Additional context data
+  memoryMessageLimit?: number // Per-run override for conversation history window
 
   // Status
   status: RunStatus

@@ -37,9 +37,13 @@ export function RunWorkspaceModal({
   const { createRun } = useWorkspaceOperations()
   const { user } = useAuth()
   const { keys } = useAiProviderKeys(user?.uid)
+  const memoryLimitPlaceholder = workspace?.memoryMessageLimit
+    ? `Workspace default: ${workspace.memoryMessageLimit}`
+    : 'Use workspace/global default'
 
   const [goal, setGoal] = useState('')
   const [contextInput, setContextInput] = useState('')
+  const [memoryMessageLimitInput, setMemoryMessageLimitInput] = useState('')
 
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -68,6 +72,7 @@ export function RunWorkspaceModal({
     if (isOpen) {
       setGoal(initialGoal ?? '')
       setContextInput(initialContext ? JSON.stringify(initialContext, null, 2) : '')
+      setMemoryMessageLimitInput('')
       setError(null)
     }
   }, [initialContext, initialGoal, isOpen])
@@ -93,6 +98,18 @@ export function RunWorkspaceModal({
       return
     }
 
+    const memoryMessageLimit = memoryMessageLimitInput
+      ? Number.parseInt(memoryMessageLimitInput, 10)
+      : undefined
+
+    if (
+      memoryMessageLimitInput &&
+      (Number.isNaN(memoryMessageLimit) || memoryMessageLimit <= 0 || memoryMessageLimit > 200)
+    ) {
+      setError('Context budget must be a number between 1 and 200.')
+      return
+    }
+
     setIsCreating(true)
     setError(null)
 
@@ -113,6 +130,7 @@ export function RunWorkspaceModal({
         workspaceId: workspace.workspaceId,
         goal: goal.trim(),
         context,
+        memoryMessageLimit,
       })
 
       onRunCreated()
@@ -170,6 +188,20 @@ export function RunWorkspaceModal({
               rows={6}
             />
             <small>Additional context as JSON (e.g., user preferences, data)</small>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="memoryMessageLimit">Context Budget (optional)</label>
+            <input
+              id="memoryMessageLimit"
+              type="number"
+              min={1}
+              max={200}
+              value={memoryMessageLimitInput}
+              onChange={(e) => setMemoryMessageLimitInput(e.target.value)}
+              placeholder={memoryLimitPlaceholder}
+            />
+            <small>Number of recent messages to include when resuming runs (1-200)</small>
           </div>
 
           <div className="modal-actions">

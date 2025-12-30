@@ -38,6 +38,7 @@ import {
 } from '@/adapters/firestoreQuoteRepository'
 import { useAuth } from '@/hooks/useAuth'
 import { useAiProviderKeys, type AiProviderKeyType } from '@/hooks/useAiProviderKeys'
+import { useAgentMemorySettings } from '@/hooks/useAgentMemorySettings'
 import { SystemStatus } from '@/components/SystemStatus'
 import { CalendarSettingsPanel } from '@/components/CalendarSettingsPanel'
 
@@ -54,6 +55,13 @@ export function SettingsPage() {
     saveKey,
     removeKey,
   } = useAiProviderKeys(user?.uid)
+  const {
+    settings: memorySettings,
+    isLoading: memoryLoading,
+    error: memoryError,
+    saveMemoryLimit,
+    clearMemoryLimit,
+  } = useAgentMemorySettings(user?.uid)
 
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [total, setTotal] = useState(0)
@@ -72,6 +80,8 @@ export function SettingsPage() {
     xai: '',
   })
   const [keySaving, setKeySaving] = useState<Partial<Record<AiProviderKeyType, boolean>>>({})
+  const [memoryLimitInput, setMemoryLimitInput] = useState('')
+  const [memorySaving, setMemorySaving] = useState(false)
 
   const handleSaveKey = useCallback(
     async (provider: AiProviderKeyType) => {
@@ -107,6 +117,43 @@ export function SettingsPage() {
     },
     [removeKey]
   )
+
+  useEffect(() => {
+    if (memorySettings.memoryMessageLimit) {
+      setMemoryLimitInput(String(memorySettings.memoryMessageLimit))
+    } else {
+      setMemoryLimitInput('')
+    }
+  }, [memorySettings.memoryMessageLimit])
+
+  const handleSaveMemoryLimit = useCallback(async () => {
+    const parsed = Number.parseInt(memoryLimitInput, 10)
+    if (Number.isNaN(parsed) || parsed <= 0 || parsed > 200) {
+      setError('Memory limit must be a number between 1 and 200.')
+      return
+    }
+
+    try {
+      setMemorySaving(true)
+      await saveMemoryLimit(parsed)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setMemorySaving(false)
+    }
+  }, [memoryLimitInput, saveMemoryLimit])
+
+  const handleClearMemoryLimit = useCallback(async () => {
+    try {
+      setMemorySaving(true)
+      await clearMemoryLimit()
+      setMemoryLimitInput('')
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setMemorySaving(false)
+    }
+  }, [clearMemoryLimit])
 
   // Load quotes for current page
   const loadQuotes = useCallback(async () => {
@@ -376,6 +423,66 @@ export function SettingsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+        <section className="settings-panel">
+          <header className="settings-panel__header">
+            <div>
+              <p className="section-label">Agent Memory</p>
+              <h2>Default Context Budget</h2>
+              <p className="settings-panel__meta">
+                Set the default number of recent messages included when resuming runs. Workspace
+                and per-run settings can override this value.
+              </p>
+            </div>
+          </header>
+
+          {memoryError && <p className="settings-panel__error">⚠ {memoryError}</p>}
+          {memoryLoading && <p className="settings-panel__meta">Loading memory settings…</p>}
+
+          <div className="ai-key-row">
+            <div className="ai-key-meta">
+              <div className="ai-key-title">
+                <strong>Message Window</strong>
+                <span
+                  className={`ai-key-status ${memorySettings.memoryMessageLimit ? 'ai-key-status--set' : 'ai-key-status--missing'}`}
+                >
+                  {memorySettings.memoryMessageLimit ? 'Set' : 'Default'}
+                </span>
+              </div>
+              <p className="ai-key-help">
+                Choose how many recent messages are injected into a resume run (1-200).
+              </p>
+            </div>
+            <div className="ai-key-actions">
+              <input
+                type="number"
+                min={1}
+                max={200}
+                value={memoryLimitInput}
+                onChange={(e) => setMemoryLimitInput(e.target.value)}
+                placeholder="e.g., 50"
+                className="ai-key-input"
+              />
+              <div className="ai-key-buttons">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => void handleClearMemoryLimit()}
+                  disabled={!memorySettings.memoryMessageLimit || memorySaving}
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => void handleSaveMemoryLimit()}
+                  disabled={memorySaving}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
           </div>
         </section>
         {loading && page === 0 ? (

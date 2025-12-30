@@ -135,6 +135,10 @@ export function WorkspaceDetailPage() {
             <strong>Max Iterations:</strong> {workspace.maxIterations ?? 10}
           </div>
           <div className="info-row">
+            <strong>Message Window:</strong>{' '}
+            {workspace.memoryMessageLimit ? `${workspace.memoryMessageLimit} msgs` : 'Default'}
+          </div>
+          <div className="info-row">
             <strong>Agents:</strong> {workspace.agentIds.length}
           </div>
         </div>
