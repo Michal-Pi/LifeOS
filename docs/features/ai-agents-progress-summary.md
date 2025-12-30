@@ -277,9 +277,13 @@ users/{userId}/
 
 #### Phase 6D: Agent Templates & Presets
 
-- Pre-configured agent templates (researcher, writer, analyst)
-- Workspace templates (research project, content creation)
-- Import/export agent configs
+**In progress (v1)**
+
+- Firestore-backed templates for agents and workspaces
+- Save templates from existing agents/workspaces
+- Use templates to prefill create modals
+- Dedicated hooks + adapters for templates
+- Import/export of configs not started yet
 
 #### Phase 6E: Advanced Orchestration
 
@@ -309,19 +313,24 @@ LifeOS_2/
 │   ├── src/
 │   │   ├── adapters/agents/       # Phase 2: Firestore adapters
 │   │   │   ├── firestoreAgentRepository.ts
+│   │   │   ├── firestoreAgentTemplateRepository.ts
 │   │   │   ├── firestoreWorkspaceRepository.ts
+│   │   │   ├── firestoreWorkspaceTemplateRepository.ts
 │   │   │   ├── firestoreRunRepository.ts
 │   │   │   ├── firestoreToolCallRecordRepository.ts
 │   │   │   └── firestoreToolRepository.ts
 │   │   ├── hooks/                 # Phase 2, 5C, 6A, 6B, 6C: React hooks
 │   │   │   ├── useAgentOperations.ts
+│   │   │   ├── useAgentTemplateOperations.ts
 │   │   │   ├── useWorkspaceOperations.ts
+│   │   │   ├── useWorkspaceTemplateOperations.ts
 │   │   │   ├── useToolCallOperations.ts
 │   │   │   ├── useRunMessages.ts
 │   │   │   ├── useRunEvents.ts
 │   │   │   └── useToolOperations.ts
 │   │   ├── components/agents/     # Phase 2, 3, 5C, 6C: UI components
 │   │   │   ├── AgentBuilderModal.tsx
+│   │   │   ├── TemplateSaveModal.tsx
 │   │   │   ├── AgentsPage.tsx
 │   │   │   ├── ToolBuilderModal.tsx
 │   │   │   ├── WorkspaceFormModal.tsx
@@ -477,6 +486,20 @@ users/{userId}/tools/{toolId}
 
 Fields: `name`, `description`, `parameters`, `implementation`, `requiresAuth`, `allowedModules`, `source`
 
+### Templates
+
+Agent and workspace templates are stored at:
+
+```
+users/{userId}/agentTemplates/{templateId}
+users/{userId}/workspaceTemplates/{templateId}
+```
+
+Fields:
+
+- Agent templates: `name`, `description`, `agentConfig`
+- Workspace templates: `name`, `description`, `workspaceConfig`
+
 ### Firebase Setup
 
 1. Firestore indexes (auto-created on first use)
@@ -511,7 +534,13 @@ Fields: `name`, `description`, `parameters`, `implementation`, `requiresAuth`, `
    - Set max iterations
 4. Save workspace
 
-### 3. Run Agent Tasks
+### 3. Save and Use Templates
+
+1. On Agents or Workspaces, click "Save Template" on a card
+2. Name the template and save
+3. Use templates to prefill the create modal
+
+### 4. Run Agent Tasks
 
 1. Open workspace detail page
 2. Click "Start Run"
@@ -580,9 +609,9 @@ Each run tracks:
 
 ### Immediate (Phase 6D)
 
-1. Agent/workspace templates (Phase 6D)
-2. Import/export agent configs
-3. Template presets for common workflows
+1. Ship template presets for common workflows
+2. Add import/export for agent/workspace configs
+3. Add template search/filters (optional)
 
 ### Near-term (Phase 6A+ Enhancements)
 
@@ -631,5 +660,5 @@ Each run tracks:
 ---
 
 **Status**: Phase 5E Complete ✅
-**Next Phase**: Phase 6D (Agent Templates & Presets)
+**Next Phase**: Phase 6D completion (presets + import/export)
 **Last Updated**: December 29, 2025

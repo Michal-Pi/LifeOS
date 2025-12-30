@@ -19,6 +19,7 @@ import type { Workspace, WorkflowType, AgentId } from '@lifeos/agents'
 
 interface WorkspaceFormModalProps {
   workspace: Workspace | null
+  prefill?: Partial<Workspace>
   isOpen: boolean
   onClose: () => void
   onSave: () => void
@@ -41,6 +42,7 @@ const WORKFLOW_OPTIONS: { value: WorkflowType; label: string; description: strin
 
 export function WorkspaceFormModal({
   workspace,
+  prefill,
   isOpen,
   onClose,
   onSave,
@@ -82,17 +84,19 @@ export function WorkspaceFormModal({
         )
       } else {
         // Create mode
-        setName('')
-        setDescription('')
-        setSelectedAgentIds([])
-        setDefaultAgentId(undefined)
-        setWorkflowType('sequential')
-        setMaxIterations(10)
-        setMemoryMessageLimitInput('')
+        setName(prefill?.name ?? '')
+        setDescription(prefill?.description ?? '')
+        setSelectedAgentIds(prefill?.agentIds ?? [])
+        setDefaultAgentId(prefill?.defaultAgentId)
+        setWorkflowType(prefill?.workflowType ?? 'sequential')
+        setMaxIterations(prefill?.maxIterations ?? 10)
+        setMemoryMessageLimitInput(
+          prefill?.memoryMessageLimit ? String(prefill.memoryMessageLimit) : ''
+        )
       }
       setError(null)
     }
-  }, [isOpen, workspace])
+  }, [isOpen, workspace, prefill])
 
   const handleAgentToggle = (agentId: AgentId) => {
     setSelectedAgentIds((prev) => {

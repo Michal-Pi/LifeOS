@@ -11,15 +11,29 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
+import { useAgentTemplateOperations } from '@/hooks/useAgentTemplateOperations'
 import { useToolOperations } from '@/hooks/useToolOperations'
 import { AgentBuilderModal } from '@/components/agents/AgentBuilderModal'
 import { ToolBuilderModal } from '@/components/agents/ToolBuilderModal'
+import { TemplateSaveModal } from '@/components/agents/TemplateSaveModal'
 import { builtinTools } from '@/agents/builtinTools'
-import type { AgentConfig, AgentRole, ModelProvider } from '@lifeos/agents'
-import type { ToolDefinition } from '@lifeos/agents'
+import type {
+  AgentConfig,
+  AgentRole,
+  ModelProvider,
+  ToolDefinition,
+  AgentTemplate,
+} from '@lifeos/agents'
 
 export function AgentsPage() {
   const { agents, isLoading, loadAgents } = useAgentOperations()
+  const {
+    templates: agentTemplates,
+    isLoading: templatesLoading,
+    loadTemplates,
+    createTemplate,
+    deleteTemplate,
+  } = useAgentTemplateOperations()
   const {
     tools,
     isLoading: toolsLoading,
@@ -30,6 +44,10 @@ export function AgentsPage() {
   } = useToolOperations()
   const [selectedAgent, setSelectedAgent] = useState<AgentConfig | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [prefillAgent, setPrefillAgent] = useState<Partial<AgentConfig> | null>(null)
+  const [templateSourceAgent, setTemplateSourceAgent] = useState<AgentConfig | null>(null)
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [templateModalKey, setTemplateModalKey] = useState(0)
   const [selectedTool, setSelectedTool] = useState<ToolDefinition | null>(null)
   const [showToolModal, setShowToolModal] = useState(false)
   const [roleFilter, setRoleFilter] = useState<AgentRole | 'all'>('all')
@@ -40,26 +58,72 @@ export function AgentsPage() {
   }, [loadAgents])
 
   useEffect(() => {
+    void loadTemplates()
+  }, [loadTemplates])
+
+  useEffect(() => {
     void loadTools()
   }, [loadTools])
 
   const handleNew = () => {
     setSelectedAgent(null)
+    setPrefillAgent(null)
     setShowModal(true)
   }
 
   const handleEdit = (agent: AgentConfig) => {
     setSelectedAgent(agent)
+    setPrefillAgent(null)
     setShowModal(true)
   }
 
   const handleModalClose = () => {
     setShowModal(false)
     setSelectedAgent(null)
+    setPrefillAgent(null)
   }
 
   const handleModalSave = () => {
     void loadAgents()
+  }
+
+  const handleSaveTemplate = (agent: AgentConfig) => {
+    setTemplateSourceAgent(agent)
+    setTemplateModalKey((prev) => prev + 1)
+    setShowTemplateModal(true)
+  }
+
+  const handleTemplateClose = () => {
+    setShowTemplateModal(false)
+    setTemplateSourceAgent(null)
+  }
+
+  const handleTemplateSave = async (name: string, description?: string) => {
+    if (!templateSourceAgent) return
+    const agentConfig = {
+      name: templateSourceAgent.name,
+      role: templateSourceAgent.role,
+      systemPrompt: templateSourceAgent.systemPrompt,
+      modelProvider: templateSourceAgent.modelProvider,
+      modelName: templateSourceAgent.modelName,
+      temperature: templateSourceAgent.temperature,
+      maxTokens: templateSourceAgent.maxTokens,
+      description: templateSourceAgent.description,
+      toolIds: templateSourceAgent.toolIds,
+    }
+    try {
+      await createTemplate({ name, description, agentConfig })
+    } catch {
+      return
+    }
+    setShowTemplateModal(false)
+    setTemplateSourceAgent(null)
+  }
+
+  const handleUseTemplate = (template: AgentTemplate) => {
+    setSelectedAgent(null)
+    setPrefillAgent(template.agentConfig)
+    setShowModal(true)
   }
 
   const handleNewTool = () => {
@@ -183,11 +247,67 @@ export function AgentsPage() {
 
               <div className="card-actions">
                 <button onClick={() => handleEdit(agent)}>Edit</button>
+                <button onClick={() => handleSaveTemplate(agent)}>Save Template</button>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <section className="settings-panel">
+        <header className="settings-panel__header">
+          <div>
+            <p className="section-label">Templates</p>
+            <h2>Agent Templates</h2>
+            <p className="settings-panel__meta">Save reusable agent setups and start faster.</p>
+          </div>
+        </header>
+
+        {templatesLoading ? (
+          <div className="loading">Loading templates...</div>
+        ) : agentTemplates.length === 0 ? (
+          <div className="empty-state">
+            <p>No templates yet</p>
+            <p>Save a template from an existing agent to reuse later.</p>
+          </div>
+        ) : (
+          <div className="agents-grid">
+            {agentTemplates.map((template) => (
+              <div key={template.templateId} className="agent-card">
+                <div className="card-header">
+                  <h3>{template.name}</h3>
+                  <span className="badge">{template.agentConfig.role}</span>
+                </div>
+                {template.description && <p className="description">{template.description}</p>}
+                <div className="card-meta">
+                  <div>
+                    <strong>Provider:</strong> {template.agentConfig.modelProvider}
+                  </div>
+                  <div>
+                    <strong>Model:</strong> {template.agentConfig.modelName}
+                  </div>
+                  <div>
+                    <strong>Tools:</strong> {template.agentConfig.toolIds?.length ?? 0}
+                  </div>
+                </div>
+                <div className="card-actions">
+                  <button onClick={() => handleUseTemplate(template)}>Use Template</button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Delete template "${template.name}"?`)) {
+                        void deleteTemplate(template.templateId)
+                      }
+                    }}
+                    className="btn-danger"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="settings-panel">
         <header className="settings-panel__header">
@@ -250,6 +370,7 @@ export function AgentsPage() {
         onClose={handleModalClose}
         onSave={handleModalSave}
         availableTools={availableTools}
+        prefill={prefillAgent ?? undefined}
       />
 
       <ToolBuilderModal
@@ -264,6 +385,16 @@ export function AgentsPage() {
           await updateTool(toolId, updates)
         }}
         existingNames={existingToolNames}
+      />
+
+      <TemplateSaveModal
+        key={templateModalKey}
+        isOpen={showTemplateModal}
+        title="Save Agent Template"
+        initialName={templateSourceAgent?.name ?? ''}
+        initialDescription={templateSourceAgent?.description}
+        onClose={handleTemplateClose}
+        onSave={handleTemplateSave}
       />
     </div>
   )

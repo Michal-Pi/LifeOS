@@ -17,6 +17,7 @@ import type { BuiltinToolMeta } from '@/agents/builtinTools'
 
 interface AgentBuilderModalProps {
   agent: AgentConfig | null
+  prefill?: Partial<AgentConfig>
   isOpen: boolean
   onClose: () => void
   onSave: () => void
@@ -64,6 +65,7 @@ const MODEL_DEFAULTS: Record<ModelProvider, string> = {
 
 export function AgentBuilderModal({
   agent,
+  prefill,
   isOpen,
   onClose,
   onSave,
@@ -100,26 +102,30 @@ export function AgentBuilderModal({
         setSelectedToolIds(agent.toolIds ?? [])
       } else {
         // Create mode
-        setName('')
-        setRole('planner')
-        setSystemPrompt('')
-        setModelProvider('openai')
-        setModelName('gpt-4')
-        setTemperature(0.7)
-        setMaxTokens(2000)
-        setDescription('')
-        setSelectedToolIds([])
+        setName(prefill?.name ?? '')
+        setRole(prefill?.role ?? 'planner')
+        setSystemPrompt(prefill?.systemPrompt ?? '')
+        setModelProvider(prefill?.modelProvider ?? 'openai')
+        setModelName(prefill?.modelName ?? MODEL_DEFAULTS[prefill?.modelProvider ?? 'openai'])
+        setTemperature(prefill?.temperature ?? 0.7)
+        setMaxTokens(prefill?.maxTokens ?? 2000)
+        setDescription(prefill?.description ?? '')
+        setSelectedToolIds(prefill?.toolIds ?? [])
       }
       setError(null)
     }
-  }, [isOpen, agent])
+  }, [isOpen, agent, prefill])
 
   // Update model name when provider changes (create mode only)
   useEffect(() => {
     if (!agent && isOpen) {
-      setModelName(MODEL_DEFAULTS[modelProvider])
+      if (prefill?.modelProvider === modelProvider && prefill?.modelName) {
+        setModelName(prefill.modelName)
+      } else {
+        setModelName(MODEL_DEFAULTS[modelProvider])
+      }
     }
-  }, [modelProvider, agent, isOpen])
+  }, [modelProvider, agent, isOpen, prefill])
 
   const handleSave = async () => {
     // Validation

@@ -9,3 +9,6 @@ export * from './runUsecases'
 
 // Tool usecases
 export * from './toolUsecases'
+
+// Template usecases
+export * from './templateUsecases'

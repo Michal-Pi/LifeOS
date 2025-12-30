@@ -45,9 +45,9 @@ CURRENT TOOLS (Phase 5D):
 REMAINING WORK:
 ✅ Phase 5E: Error handling & reliability (retry logic, timeouts, rate limiting)
 ✅ Phase 6A: Conversation memory (context injection + resume shipped)
-⏸️ Phase 6B: Streaming responses
-⏸️ Phase 6C: Custom tool registration UI (no marketplace)
-⏸️ Phase 6D: Agent templates
+✅ Phase 6B: Streaming responses
+✅ Phase 6C: Custom tool registration UI (no marketplace)
+⏸️ Phase 6D: Agent templates (in progress)
 ⏸️ Phase 6E: Advanced orchestration
 
 DEVELOPMENT WORKFLOW:
@@ -105,6 +105,8 @@ Please review the summary doc first, then let me know you're ready to proceed wi
 - `users/{userId}/settings/agentMemorySettings` - Global context budget (memoryMessageLimit); run → workspace → global → default (50)
 - `users/{userId}/runs/{runId}/events` - Streaming run events (tokens, tools, status)
 - `users/{userId}/tools/{toolId}` - Custom tool definitions (Phase 6C)
+- `users/{userId}/agentTemplates/{templateId}` - Agent templates (Phase 6D)
+- `users/{userId}/workspaceTemplates/{templateId}` - Workspace templates (Phase 6D)
 
 **Frontend (Phase 2-3, 5C)**:
 
@@ -116,6 +118,11 @@ Please review the summary doc first, then let me know you're ready to proceed wi
 - `apps/web-vite/src/components/agents/RunCard.tsx` - Resume run button (Phase 6A)
 - `apps/web-vite/src/components/agents/RunWorkspaceModal.tsx` - Per-run context budget (Phase 6A)
 - `apps/web-vite/src/components/agents/ToolBuilderModal.tsx` - Custom tool editor (Phase 6C)
+- `apps/web-vite/src/hooks/useAgentTemplateOperations.ts` - Agent templates (Phase 6D)
+- `apps/web-vite/src/hooks/useWorkspaceTemplateOperations.ts` - Workspace templates (Phase 6D)
+- `apps/web-vite/src/adapters/agents/firestoreAgentTemplateRepository.ts` - Agent templates (Phase 6D)
+- `apps/web-vite/src/adapters/agents/firestoreWorkspaceTemplateRepository.ts` - Workspace templates (Phase 6D)
+- `apps/web-vite/src/components/agents/TemplateSaveModal.tsx` - Template save modal (Phase 6D)
 - `apps/web-vite/src/components/agents/` - UI components
 - `apps/web-vite/src/pages/` - Pages (AgentsPage, WorkspacesPage, WorkspaceDetailPage)
 

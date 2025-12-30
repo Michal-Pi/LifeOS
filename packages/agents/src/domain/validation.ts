@@ -121,6 +121,42 @@ export const WorkspaceSchema = z.object({
   version: z.number().int().nonnegative(),
 })
 
+export const AgentTemplateSchema = z.object({
+  templateId: z.string(),
+  userId: z.string(),
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  agentConfig: AgentConfigSchema.omit({
+    agentId: true,
+    userId: true,
+    archived: true,
+    createdAtMs: true,
+    updatedAtMs: true,
+    syncState: true,
+    version: true,
+  }),
+  createdAtMs: z.number().int().positive(),
+  updatedAtMs: z.number().int().positive(),
+})
+
+export const WorkspaceTemplateSchema = z.object({
+  templateId: z.string(),
+  userId: z.string(),
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  workspaceConfig: WorkspaceSchema.omit({
+    workspaceId: true,
+    userId: true,
+    archived: true,
+    createdAtMs: true,
+    updatedAtMs: true,
+    syncState: true,
+    version: true,
+  }),
+  createdAtMs: z.number().int().positive(),
+  updatedAtMs: z.number().int().positive(),
+})
+
 export const CreateWorkspaceInputSchema = WorkspaceSchema.omit({
   workspaceId: true,
   userId: true,

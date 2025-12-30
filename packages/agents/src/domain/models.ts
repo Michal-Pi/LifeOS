@@ -8,6 +8,8 @@ export type RunId = Id<'run'>
 export type MessageId = Id<'message'>
 export type ToolId = Id<'tool'>
 export type ToolCallRecordId = Id<'toolCallRecord'>
+export type AgentTemplateId = Id<'agentTemplate'>
+export type WorkspaceTemplateId = Id<'workspaceTemplate'>
 
 // ----- Sync State -----
 
@@ -81,6 +83,40 @@ export interface Workspace {
 
   syncState: SyncState
   version: number
+}
+
+// ----- Templates (Phase 6D) -----
+
+export interface AgentTemplate {
+  templateId: AgentTemplateId
+  userId: string
+
+  name: string
+  description?: string
+
+  agentConfig: Omit<
+    AgentConfig,
+    'agentId' | 'userId' | 'archived' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+  >
+
+  createdAtMs: number
+  updatedAtMs: number
+}
+
+export interface WorkspaceTemplate {
+  templateId: WorkspaceTemplateId
+  userId: string
+
+  name: string
+  description?: string
+
+  workspaceConfig: Omit<
+    Workspace,
+    'workspaceId' | 'userId' | 'archived' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+  >
+
+  createdAtMs: number
+  updatedAtMs: number
 }
 
 // ----- Run (Execution Instance) -----
@@ -274,6 +310,16 @@ export type CreateRunInput = Omit<
 export type CreateMessageInput = Omit<Message, 'messageId' | 'timestampMs'>
 
 export type CreateToolInput = Omit<ToolDefinition, 'toolId' | 'createdAtMs' | 'updatedAtMs'>
+
+export type CreateAgentTemplateInput = Omit<
+  AgentTemplate,
+  'templateId' | 'createdAtMs' | 'updatedAtMs'
+>
+
+export type CreateWorkspaceTemplateInput = Omit<
+  WorkspaceTemplate,
+  'templateId' | 'createdAtMs' | 'updatedAtMs'
+>
 
 export type CreateToolCallRecordInput = Omit<
   ToolCallRecord,
