@@ -43,8 +43,8 @@ CURRENT TOOLS (Phase 5D):
 - Basic: get_current_time, calculate, query_firestore
 
 REMAINING WORK:
-⏸️ Phase 5E: Error handling & reliability (retry logic, timeouts, rate limiting)
-⏸️ Phase 6A: Conversation memory
+✅ Phase 5E: Error handling & reliability (retry logic, timeouts, rate limiting)
+⏸️ Phase 6A: Conversation memory (context injection + resume pending)
 ⏸️ Phase 6B: Streaming responses
 ⏸️ Phase 6C: Custom tool registration UI (no marketplace)
 ⏸️ Phase 6D: Agent templates
@@ -95,14 +95,14 @@ Please review the summary doc first, then let me know you're ready to proceed wi
 - `functions/src/agents/errorHandler.ts` - Error handling and timeouts (Phase 5E)
 - `functions/src/agents/rateLimiter.ts` - Rate limiting (Phase 5E)
 - `functions/src/agents/quotaManager.ts` - Quota management (Phase 5E)
-- `functions/src/agents/messageStore.ts` - Message persistence (Phase 6A)
+- `functions/src/agents/messageStore.ts` - Message persistence + pruning/compaction (Phase 6A)
 - `users/{userId}/settings/aiProviderKeys` - Per-user API keys (openaiKey, anthropicKey, googleKey, xaiKey)
 
 **Frontend (Phase 2-3, 5C)**:
 
 - `apps/web-vite/src/adapters/agents/` - Firestore adapters
 - `apps/web-vite/src/hooks/` - React hooks (useAgentOperations, useWorkspaceOperations, useToolCallOperations)
-- `apps/web-vite/src/hooks/useRunMessages.ts` - Run message history (Phase 6A)
+- `apps/web-vite/src/hooks/useRunMessages.ts` - Run message history (paged) (Phase 6A)
 - `apps/web-vite/src/components/agents/` - UI components
 - `apps/web-vite/src/pages/` - Pages (AgentsPage, WorkspacesPage, WorkspaceDetailPage)
 

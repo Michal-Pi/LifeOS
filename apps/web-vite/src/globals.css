@@ -3104,6 +3104,12 @@ a:focus-visible {
   white-space: pre-wrap;
 }
 
+.run-messages-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .calendar-settings__header {
   display: flex;
   justify-content: space-between;

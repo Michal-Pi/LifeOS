@@ -17,7 +17,7 @@ interface RunCardProps {
 
 export function RunCard({ run, currentTime, onDelete }: RunCardProps) {
   const { toolCalls } = useToolCallOperations(run.runId)
-  const { messages } = useRunMessages(run.runId)
+  const { messages, hasMore, isLoadingMore, loadMore } = useRunMessages(run.runId)
 
   const formatDate = (timestampMs: number) => {
     return new Date(timestampMs).toLocaleString()
@@ -95,7 +95,10 @@ export function RunCard({ run, currentTime, onDelete }: RunCardProps) {
 
       {messages.length > 0 && (
         <details className="run-messages">
-          <summary>Messages ({messages.length})</summary>
+          <summary>
+            Messages ({messages.length}
+            {hasMore ? '+' : ''})
+          </summary>
           <div className="run-messages-list">
             {messages.map((message) => (
               <div key={message.messageId} className={`run-message run-message--${message.role}`}>
@@ -109,6 +112,18 @@ export function RunCard({ run, currentTime, onDelete }: RunCardProps) {
               </div>
             ))}
           </div>
+          {hasMore && (
+            <div className="run-messages-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={loadMore}
+                disabled={isLoadingMore}
+              >
+                {isLoadingMore ? 'Loading...' : 'Load older messages'}
+              </button>
+            </div>
+          )}
         </details>
       )}
 

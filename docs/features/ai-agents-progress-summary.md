@@ -249,9 +249,10 @@ users/{userId}/
 **In Progress**
 
 - Persistent message history (Firestore `messages` subcollection)
-- UI message timeline in run details
-- Context window management
-- Message pruning strategies
+- UI message timeline in run details (paged, ordered)
+- Message pruning + basic compaction (auto summary of older messages)
+- Context window management (pending)
+- Resume conversations (pending)
 
 #### Phase 6B: Streaming Responses
 
@@ -305,10 +306,11 @@ LifeOS_2/
 │   │   │   ├── firestoreWorkspaceRepository.ts
 │   │   │   ├── firestoreRunRepository.ts
 │   │   │   └── firestoreToolCallRecordRepository.ts
-│   │   ├── hooks/                 # Phase 2 & 5C: React hooks
+│   │   ├── hooks/                 # Phase 2 & 5C & 6A: React hooks
 │   │   │   ├── useAgentOperations.ts
 │   │   │   ├── useWorkspaceOperations.ts
-│   │   │   └── useToolCallOperations.ts
+│   │   │   ├── useToolCallOperations.ts
+│   │   │   └── useRunMessages.ts
 │   │   ├── components/agents/     # Phase 2 & 3 & 5C: UI components
 │   │   │   ├── AgentBuilderModal.tsx
 │   │   │   ├── AgentsPage.tsx
@@ -386,7 +388,7 @@ LifeOS_2/
 
 ### Current Limitations
 
-1. **No conversation history**: Each run is stateless (Phase 6A will add memory)
+1. **Partial conversation memory**: Message history is stored and displayed, but context injection/resume are pending
 2. **No streaming**: Responses arrive all at once (Phase 6B will add streaming)
 3. **No marketplace**: Custom tool UI deferred to Phase 6C
 4. **Web search**: Requires manual configuration of Google Custom Search API
@@ -529,10 +531,9 @@ Each run tracks:
 
 ### Immediate (Phase 6A)
 
-1. Add conversation memory (Phase 6A)
-2. Resume conversations
-3. Context window management
-4. Message pruning strategies
+1. Finish conversation memory (context injection + resume)
+2. Refine pruning/compaction thresholds
+3. Add UI filters/search within messages (optional)
 
 ### Near-term (Phase 6B)
 
@@ -581,5 +582,5 @@ Each run tracks:
 ---
 
 **Status**: Phase 5E Complete ✅
-**Next Phase**: Phase 6A (Conversation Memory)
+**Next Phase**: Phase 6A (Conversation Memory - finish context/resume)
 **Last Updated**: December 29, 2025
