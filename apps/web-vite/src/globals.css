@@ -3155,6 +3155,23 @@ a:focus-visible {
   justify-content: flex-end;
 }
 
+.run-input-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.run-input-actions textarea {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: inherit;
+  resize: vertical;
+}
+
 .calendar-settings__header {
   display: flex;
   justify-content: space-between;

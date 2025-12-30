@@ -5,8 +5,18 @@
  * Supports sequential, parallel, and supervisor-based agent coordination.
  */
 
-import type { AgentConfig, Run, Workspace } from '@lifeos/agents'
+import type {
+  AgentConfig,
+  JoinAggregationMode,
+  Run,
+  Workspace,
+  WorkflowEdge,
+  WorkflowNode,
+  WorkflowState,
+} from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
+import { Graph } from 'graphlib'
+import jsonLogic from 'json-logic-js'
 
 import type { ProviderKeys } from './providerService.js'
 import { executeWithProvider, executeWithProviderStreaming } from './providerService.js'
@@ -37,6 +47,9 @@ export interface WorkflowExecutionResult {
   totalTokensUsed: number
   totalEstimatedCost: number
   totalSteps: number
+  status?: Run['status']
+  pendingInput?: Run['pendingInput']
+  workflowState?: WorkflowState
 }
 
 /**
@@ -177,6 +190,7 @@ export async function executeSequentialWorkflow(
     totalTokensUsed,
     totalEstimatedCost,
     totalSteps: steps.length,
+    status: 'completed',
   }
 }
 
@@ -302,6 +316,7 @@ export async function executeParallelWorkflow(
     totalTokensUsed,
     totalEstimatedCost,
     totalSteps: steps.length,
+    status: 'completed',
   }
 }
 
@@ -605,6 +620,513 @@ export async function executeSupervisorWorkflow(
     totalTokensUsed,
     totalEstimatedCost,
     totalSteps: steps.length,
+    status: 'completed',
+  }
+}
+
+type JoinBufferEntry = {
+  agentId?: string
+  agentName?: string
+  role?: string
+  output: string
+  confidence?: number
+}
+
+const resolveConditionValue = (path: string | undefined, data: Record<string, unknown>): unknown => {
+  if (!path) return undefined
+  return path.split('.').reduce<unknown>((acc, key) => {
+    if (acc && typeof acc === 'object' && key in (acc as Record<string, unknown>)) {
+      return (acc as Record<string, unknown>)[key]
+    }
+    return undefined
+  }, data)
+}
+
+const evaluateCondition = (
+  edge: WorkflowEdge,
+  data: Record<string, unknown>
+): boolean => {
+  const { condition } = edge
+  switch (condition.type) {
+    case 'always':
+      return true
+    case 'equals':
+      return Boolean(
+        jsonLogic.apply(
+          { '==': [{ var: condition.key ?? '' }, condition.value ?? '' ] },
+          data
+        )
+      )
+    case 'contains':
+      return Boolean(
+        jsonLogic.apply(
+          { in: [condition.value ?? '', { var: condition.key ?? '' }] },
+          data
+        )
+      )
+    case 'regex': {
+      const rawValue = resolveConditionValue(condition.key, data)
+      if (typeof condition.value !== 'string') return false
+      try {
+        return new RegExp(condition.value).test(String(rawValue ?? ''))
+      } catch {
+        return false
+      }
+    }
+    default:
+      return false
+  }
+}
+
+const findToolInRegistry = (
+  registry: ToolRegistry,
+  toolId?: string,
+  toolName?: string
+) => {
+  if (toolId) {
+    for (const tool of registry.values()) {
+      if (tool.toolId === toolId) {
+        return tool
+      }
+    }
+  }
+  if (toolName) {
+    return registry.get(toolName)
+  }
+  return undefined
+}
+
+const aggregateJoinOutputs = (
+  entries: JoinBufferEntry[],
+  mode: JoinAggregationMode = 'list'
+): Record<string, unknown> | JoinBufferEntry[] => {
+  if (mode === 'list') {
+    return entries
+  }
+
+  const sorted = [...entries].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+
+  if (mode === 'ranked') {
+    return { experts: sorted }
+  }
+
+  const consensus = sorted
+    .map((entry) => `(${entry.agentName ?? 'Expert'}) ${entry.output}`)
+    .join('\n\n')
+
+  return {
+    consensus,
+    dissent: [],
+    experts: sorted,
+  }
+}
+
+const getHumanInputResponse = (nodeId: string, context?: Record<string, unknown>): string | null => {
+  const raw = context?.humanInput
+  if (typeof raw === 'string') return raw
+  if (raw && typeof raw === 'object') {
+    const payload = raw as { nodeId?: string; response?: string }
+    if (payload.nodeId === nodeId && typeof payload.response === 'string') {
+      return payload.response
+    }
+  }
+  return null
+}
+
+export async function executeGraphWorkflow(
+  workspace: Workspace,
+  agents: AgentConfig[],
+  run: Run,
+  apiKeys: ProviderKeys,
+  userId?: string,
+  runId?: string,
+  eventWriter?: RunEventWriter,
+  toolRegistry?: ToolRegistry
+): Promise<WorkflowExecutionResult> {
+  if (!workspace.workflowGraph) {
+    throw new Error('Graph workflow configuration missing from workspace')
+  }
+
+  const db = getFirestore()
+  const graphDef = workspace.workflowGraph
+  const graph = new Graph({ directed: true })
+
+  graphDef.nodes.forEach((node) => graph.setNode(node.id, node))
+  graphDef.edges.forEach((edge) => graph.setEdge(edge.from, edge.to, edge))
+
+  const nodeById = new Map<string, WorkflowNode>(
+    graphDef.nodes.map((node) => [node.id, node])
+  )
+
+  const agentsById = new Map<string, AgentConfig>(agents.map((agent) => [agent.agentId, agent]))
+
+  const workflowState: WorkflowState = {
+    currentNodeId: run.workflowState?.currentNodeId,
+    pendingNodes: run.workflowState?.pendingNodes ?? [graphDef.startNodeId],
+    visitedCount: run.workflowState?.visitedCount ?? {},
+    edgeHistory: run.workflowState?.edgeHistory ?? [],
+    joinOutputs: run.workflowState?.joinOutputs ?? {},
+    namedOutputs: run.workflowState?.namedOutputs ?? {},
+  }
+
+  const joinBuffers = new Map<string, JoinBufferEntry[]>()
+  let stepCount = 0
+  let totalTokensUsed = 0
+  let totalEstimatedCost = 0
+  const steps: AgentExecutionStep[] = []
+  let lastOutput: unknown = run.output
+
+  const maxIterations = workspace.maxIterations ?? 10
+  const maxNodeVisits = graphDef.limits?.maxNodeVisits ?? maxIterations
+  const maxEdgeRepeats = graphDef.limits?.maxEdgeRepeats ?? maxIterations
+  const edgeRepeatCount: Record<string, number> = {}
+
+  const updateWorkflowState = async () => {
+    if (!userId || !runId) return
+    await db.doc(`users/${userId}/workspaces/${workspace.workspaceId}/runs/${runId}`).update({
+      workflowState,
+    })
+  }
+
+  const addWorkflowStep = async (params: {
+    node: WorkflowNode
+    output?: unknown
+    error?: string
+    startedAtMs: number
+    completedAtMs?: number
+  }) => {
+    if (!userId || !runId) return
+    const docRef = db
+      .collection('users')
+      .doc(userId)
+      .collection('runs')
+      .doc(runId)
+      .collection('workflowSteps')
+      .doc()
+
+    await docRef.set({
+      workflowStepId: docRef.id,
+      runId,
+      workspaceId: workspace.workspaceId,
+      userId,
+      nodeId: params.node.id,
+      nodeType: params.node.type,
+      output: params.output,
+      error: params.error,
+      startedAtMs: params.startedAtMs,
+      completedAtMs: params.completedAtMs,
+      durationMs: params.completedAtMs ? params.completedAtMs - params.startedAtMs : undefined,
+    })
+  }
+
+  while (workflowState.pendingNodes && workflowState.pendingNodes.length > 0) {
+    if (stepCount >= maxIterations) {
+      throw new Error(`Graph execution exceeded max iterations (${maxIterations})`)
+    }
+
+    const readyNodes = [...workflowState.pendingNodes]
+    const waitingNode = readyNodes.find((nodeId) => {
+      const node = nodeById.get(nodeId)
+      return node?.type === 'human_input' && !getHumanInputResponse(nodeId, run.context)
+    })
+
+    if (waitingNode) {
+      const waitingNodeDef = nodeById.get(waitingNode)
+      const prompt = waitingNodeDef?.label ?? 'Additional input required'
+      workflowState.currentNodeId = waitingNode
+      await updateWorkflowState()
+      return {
+        output: run.output ?? '',
+        steps,
+        totalTokensUsed,
+        totalEstimatedCost,
+        totalSteps: stepCount,
+        status: 'waiting_for_input',
+        pendingInput: { prompt, nodeId: waitingNode },
+        workflowState,
+      }
+    }
+
+    workflowState.pendingNodes = []
+
+    const batchResults = await Promise.all(
+      readyNodes.map(async (nodeId) => {
+        const node = nodeById.get(nodeId)
+        if (!node) {
+          throw new Error(`Workflow node ${nodeId} not found`)
+        }
+
+        workflowState.currentNodeId = nodeId
+        workflowState.visitedCount![nodeId] = (workflowState.visitedCount![nodeId] ?? 0) + 1
+        if (workflowState.visitedCount![nodeId] > maxNodeVisits) {
+          throw new Error(`Node ${nodeId} exceeded max visits (${maxNodeVisits})`)
+        }
+
+        const startedAtMs = Date.now()
+        let output: unknown = null
+
+        if (node.type === 'end') {
+          await addWorkflowStep({ node, output, startedAtMs, completedAtMs: Date.now() })
+          return { node, output }
+        }
+
+        if (node.type === 'human_input') {
+          const response = getHumanInputResponse(nodeId, run.context)
+          if (!response) {
+            await addWorkflowStep({ node, output: null, startedAtMs })
+            return { node, output: null }
+          }
+          output = response
+          lastOutput = response
+          workflowState.namedOutputs![node.outputKey ?? nodeId] = response
+          await addWorkflowStep({ node, output, startedAtMs, completedAtMs: Date.now() })
+          return { node, output }
+        }
+
+        if (node.type === 'join') {
+          const buffer = joinBuffers.get(nodeId) ?? []
+          const aggregation = aggregateJoinOutputs(
+            buffer,
+            node.aggregationMode ?? 'list'
+          )
+          output = aggregation
+          lastOutput = aggregation
+          workflowState.joinOutputs![nodeId] = aggregation
+          if (node.outputKey) {
+            workflowState.namedOutputs![node.outputKey] = aggregation
+          }
+          joinBuffers.delete(nodeId)
+          await addWorkflowStep({ node, output, startedAtMs, completedAtMs: Date.now() })
+          return { node, output }
+        }
+
+        if (node.type === 'tool') {
+          if (!toolRegistry) {
+            throw new Error('Tool registry unavailable for tool node execution')
+          }
+          const tool = findToolInRegistry(
+            toolRegistry,
+            node.toolId ? String(node.toolId) : undefined,
+            node.label ?? node.id
+          )
+          if (!tool) {
+            throw new Error(`Tool ${node.toolId ?? node.id} not found in registry`)
+          }
+          const agent =
+            (node.agentId && agentsById.get(node.agentId)) ??
+            (workspace.defaultAgentId && agentsById.get(workspace.defaultAgentId)) ??
+            agents[0]
+          if (!agent) {
+            throw new Error('No agent available for tool execution context')
+          }
+
+          const toolContext = {
+            userId: userId ?? '',
+            agentId: agent.agentId,
+            workspaceId: workspace.workspaceId,
+            runId: runId ?? '',
+            provider: agent.modelProvider,
+            modelName: agent.modelName,
+            iteration: stepCount + 1,
+            eventWriter,
+            toolRegistry,
+          }
+
+          const toolResult = await tool.execute({}, toolContext)
+          output = toolResult
+          lastOutput = toolResult
+          workflowState.namedOutputs![node.outputKey ?? nodeId] = toolResult
+          await addWorkflowStep({ node, output, startedAtMs, completedAtMs: Date.now() })
+          return { node, output }
+        }
+
+        const agent = node.agentId ? agentsById.get(node.agentId) : agents[0]
+        if (!agent) {
+          throw new Error(`Agent not found for node ${nodeId}`)
+        }
+
+        const toolContext =
+          userId && runId
+            ? {
+                userId,
+                agentId: agent.agentId,
+                workspaceId: workspace.workspaceId,
+                runId,
+                eventWriter,
+                toolRegistry,
+              }
+            : undefined
+
+        const streamContext: StreamContext | undefined =
+          eventWriter && toolContext
+            ? {
+                eventWriter,
+                agentId: agent.agentId,
+                agentName: agent.name,
+                step: stepCount + 1,
+              }
+            : undefined
+
+        if (eventWriter && toolContext) {
+          await eventWriter.writeEvent({
+            type: 'status',
+            workspaceId: workspace.workspaceId,
+            agentId: agent.agentId,
+            agentName: agent.name,
+            status: `node_start:${nodeId}`,
+          })
+        }
+
+        const nodeContext = {
+          ...run.context,
+          workflowState: {
+            namedOutputs: workflowState.namedOutputs ?? {},
+            joinOutputs: workflowState.joinOutputs ?? {},
+            lastOutput,
+          },
+        }
+
+        const result = streamContext
+          ? await executeWithProviderStreaming(
+              agent,
+              run.goal,
+              nodeContext,
+              apiKeys,
+              toolContext,
+              streamContext
+            )
+          : await executeWithProvider(agent, run.goal, nodeContext, apiKeys, toolContext)
+
+        output = result.output
+        lastOutput = result.output
+        totalTokensUsed += result.tokensUsed
+        totalEstimatedCost += result.estimatedCost
+
+        steps.push({
+          agentId: agent.agentId,
+          agentName: agent.name,
+          output: result.output,
+          tokensUsed: result.tokensUsed,
+          estimatedCost: result.estimatedCost,
+          provider: result.provider,
+          model: result.model,
+          executedAtMs: Date.now(),
+        })
+
+        if (eventWriter && toolContext) {
+          await eventWriter.flushTokens({
+            workspaceId: workspace.workspaceId,
+            agentId: agent.agentId,
+            agentName: agent.name,
+            provider: result.provider,
+            model: result.model,
+            step: stepCount + 1,
+          })
+          await eventWriter.writeEvent({
+            type: 'status',
+            workspaceId: workspace.workspaceId,
+            agentId: agent.agentId,
+            agentName: agent.name,
+            status: `node_done:${nodeId}`,
+          })
+        }
+
+        if (node.outputKey) {
+          workflowState.namedOutputs![node.outputKey] = result.output
+        }
+
+        await addWorkflowStep({
+          node,
+          output: result.output,
+          startedAtMs,
+          completedAtMs: Date.now(),
+        })
+
+        return { node, output: result.output }
+      })
+    )
+
+    stepCount += batchResults.length
+
+    const conditionData = {
+      lastAgentOutput: lastOutput,
+      namedOutput: workflowState.namedOutputs ?? {},
+      toolResult: undefined,
+      runContext: run.context ?? {},
+      joinOutputs: workflowState.joinOutputs ?? {},
+    }
+
+    const nextNodes = new Set<string>()
+
+    for (const result of batchResults) {
+      if (result.node.type === 'end') {
+        continue
+      }
+
+      const edges =
+        (graph.outEdges(result.node.id) as Array<{ v: string; w: string }> | undefined) ?? []
+      const edgeValues = edges.map((edge) => graph.edge(edge) as WorkflowEdge)
+      const matches = edgeValues.filter((edge: WorkflowEdge) =>
+        evaluateCondition(edge, conditionData)
+      )
+
+      for (const edge of matches) {
+        const edgeKey = `${edge.from}->${edge.to}`
+        edgeRepeatCount[edgeKey] = (edgeRepeatCount[edgeKey] ?? 0) + 1
+        if (edgeRepeatCount[edgeKey] > maxEdgeRepeats) {
+          throw new Error(`Edge ${edgeKey} exceeded max repeats (${maxEdgeRepeats})`)
+        }
+
+        workflowState.edgeHistory?.push({
+          from: edge.from,
+          to: edge.to,
+          atMs: Date.now(),
+        })
+
+        const targetNode = nodeById.get(edge.to)
+        if (!targetNode) {
+          throw new Error(`Workflow node ${edge.to} not found`)
+        }
+
+        if (targetNode.type === 'join') {
+          const buffer = joinBuffers.get(edge.to) ?? []
+          buffer.push({
+            agentId:
+              result.node.type === 'agent' ? (result.node.agentId ?? undefined) : undefined,
+            agentName:
+              result.node.type === 'agent'
+                ? agentsById.get(result.node.agentId ?? '')?.name
+                : result.node.label,
+            role:
+              result.node.type === 'agent'
+                ? agentsById.get(result.node.agentId ?? '')?.role
+                : undefined,
+            output: typeof result.output === 'string' ? result.output : JSON.stringify(result.output),
+          })
+          joinBuffers.set(edge.to, buffer)
+
+          const incomingCount = graph.inEdges(edge.to)?.length ?? 0
+          if (buffer.length >= incomingCount) {
+            nextNodes.add(edge.to)
+          }
+        } else {
+          nextNodes.add(edge.to)
+        }
+      }
+    }
+
+    workflowState.pendingNodes = Array.from(nextNodes)
+    await updateWorkflowState()
+  }
+
+  return {
+    output: typeof lastOutput === 'string' ? lastOutput : JSON.stringify(lastOutput ?? ''),
+    steps,
+    totalTokensUsed,
+    totalEstimatedCost,
+    totalSteps: stepCount,
+    status: 'completed',
+    workflowState,
   }
 }
 
@@ -702,6 +1224,19 @@ export async function executeWorkflow(
         run.context,
         apiKeys,
         workspace.maxIterations,
+        userId,
+        run.runId,
+        eventWriter,
+        toolRegistry
+      )
+
+    case 'graph':
+      console.log('Executing graph workflow')
+      return executeGraphWorkflow(
+        workspace,
+        agents,
+        run,
+        apiKeys,
         userId,
         run.runId,
         eventWriter,

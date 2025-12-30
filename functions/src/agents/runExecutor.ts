@@ -8,7 +8,7 @@
 import type { Run, Workspace } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
-import { onDocumentCreated } from 'firebase-functions/v2/firestore'
+import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore'
 
 import { wrapError } from './errorHandler.js'
 import { buildConversationContext } from './messageStore.js'
@@ -69,149 +69,236 @@ export const onRunCreated = onDocumentCreated(
       return
     }
 
-    const db = getFirestore()
-    const runRef = db.doc(`users/${userId}/workspaces/${workspaceId}/runs/${runId}`)
+    await executeRun({
+      run,
+      userId,
+      workspaceId,
+      runId,
+    })
+  }
+)
 
-    try {
-      const eventWriter = createRunEventWriter({ userId, runId, workspaceId })
-      // Phase 5E: Check rate limits and quotas before starting
-      await checkRunRateLimit(userId)
-      await checkQuota(userId)
+/**
+ * Firestore trigger that resumes runs waiting for user input.
+ *
+ * Document path: users/{userId}/workspaces/{workspaceId}/runs/{runId}
+ * Triggers when: status changes from waiting_for_input -> pending
+ */
+export const onRunUpdated = onDocumentUpdated(
+  {
+    ...FUNCTION_CONFIG,
+    document: 'users/{userId}/workspaces/{workspaceId}/runs/{runId}',
+    secrets: [OPENAI_API_KEY, ANTHROPIC_API_KEY],
+  },
+  async (event) => {
+    const snapshot = event.data
+    if (!snapshot?.before || !snapshot.after) {
+      return
+    }
 
-      // Update status to running
-      await runRef.update({
-        status: 'running',
-        currentStep: 0,
-      })
+    const before = snapshot.before.data() as Run
+    const after = snapshot.after.data() as Run
+    const { userId, workspaceId, runId } = event.params
 
-      await eventWriter.writeEvent({
-        type: 'status',
-        workspaceId,
-        status: 'running',
-      })
+    if (before.status !== 'waiting_for_input' || after.status !== 'pending') {
+      return
+    }
 
-      // Load workspace configuration
-      const workspaceDoc = await db.doc(`users/${userId}/workspaces/${workspaceId}`).get()
-      if (!workspaceDoc.exists) {
-        throw new Error(`Workspace ${workspaceId} not found`)
-      }
-      const workspace = workspaceDoc.data() as Workspace
+    console.log(`Resuming run ${runId} for user ${userId}`)
+    await executeRun({
+      run: after,
+      userId,
+      workspaceId,
+      runId,
+    })
+  }
+)
 
-      if (!workspace.agentIds || workspace.agentIds.length === 0) {
-        throw new Error('No agents configured in workspace')
-      }
+async function executeRun(params: {
+  run: Run
+  userId: string
+  workspaceId: string
+  runId: string
+}): Promise<void> {
+  const { run, userId, workspaceId, runId } = params
+  const db = getFirestore()
+  const runRef = db.doc(`users/${userId}/workspaces/${workspaceId}/runs/${runId}`)
 
-      const providerKeys = await loadProviderKeys(userId)
-      const memorySettings = await loadMemorySettings(userId)
-      const toolRegistry = await loadToolRegistryForUser(userId)
+  try {
+    const eventWriter = createRunEventWriter({ userId, runId, workspaceId })
+    // Phase 5E: Check rate limits and quotas before starting
+    await checkRunRateLimit(userId)
+    await checkQuota(userId)
 
-      const resumeRunId =
-        run.context && typeof run.context === 'object'
-          ? (run.context as Record<string, unknown>).resumeRunId
-          : undefined
+    // Update status to running
+    await runRef.update({
+      status: 'running',
+      currentStep: run.currentStep ?? 0,
+      pendingInput: null,
+    })
 
-      const memoryMessageLimit =
-        typeof run.memoryMessageLimit === 'number'
-          ? run.memoryMessageLimit
-          : typeof workspace.memoryMessageLimit === 'number'
-            ? workspace.memoryMessageLimit
-            : memorySettings.memoryMessageLimit
+    await eventWriter.writeEvent({
+      type: 'status',
+      workspaceId,
+      status: 'running',
+    })
 
-      const conversationHistory =
-        typeof resumeRunId === 'string' && resumeRunId.length > 0
-          ? await buildConversationContext(userId, resumeRunId, {
-              limit: memoryMessageLimit,
-            })
-          : ''
+    // Load workspace configuration
+    const workspaceDoc = await db.doc(`users/${userId}/workspaces/${workspaceId}`).get()
+    if (!workspaceDoc.exists) {
+      throw new Error(`Workspace ${workspaceId} not found`)
+    }
+    const workspace = workspaceDoc.data() as Workspace
 
-      const runWithContext: Run = {
-        ...run,
-        context: {
-          ...run.context,
-          ...(conversationHistory ? { conversationHistory } : {}),
-        },
-      }
+    if (!workspace.agentIds || workspace.agentIds.length === 0) {
+      throw new Error('No agents configured in workspace')
+    }
 
-      // Execute workflow with multi-agent orchestration
-      const result = await executeWorkflow(
-        userId,
-        workspace,
-        runWithContext,
-        {
-          openai: providerKeys.openai,
-          anthropic: providerKeys.anthropic,
-          google: providerKeys.google,
-          grok: providerKeys.grok,
-        },
-        eventWriter,
-        toolRegistry
-      )
+    const providerKeys = await loadProviderKeys(userId)
+    const memorySettings = await loadMemorySettings(userId)
+    const toolRegistry = await loadToolRegistryForUser(userId)
 
-      // Phase 5E: Record usage in rate limiter and quota manager
+    const resumeRunId =
+      run.context && typeof run.context === 'object'
+        ? (run.context as Record<string, unknown>).resumeRunId
+        : undefined
+
+    const memoryMessageLimit =
+      typeof run.memoryMessageLimit === 'number'
+        ? run.memoryMessageLimit
+        : typeof workspace.memoryMessageLimit === 'number'
+          ? workspace.memoryMessageLimit
+          : memorySettings.memoryMessageLimit
+
+    const conversationHistory =
+      typeof resumeRunId === 'string' && resumeRunId.length > 0
+        ? await buildConversationContext(userId, resumeRunId, {
+            limit: memoryMessageLimit,
+          })
+        : ''
+
+    const runWithContext: Run = {
+      ...run,
+      context: {
+        ...run.context,
+        ...(conversationHistory ? { conversationHistory } : {}),
+      },
+    }
+
+    // Execute workflow with multi-agent orchestration
+    const result = await executeWorkflow(
+      userId,
+      workspace,
+      runWithContext,
+      {
+        openai: providerKeys.openai,
+        anthropic: providerKeys.anthropic,
+        google: providerKeys.google,
+        grok: providerKeys.grok,
+      },
+      eventWriter,
+      toolRegistry
+    )
+
+    if (result.status === 'waiting_for_input') {
       await recordRunUsage(userId, result.totalTokensUsed, result.totalEstimatedCost)
 
-      // Update quota with provider-specific usage (use first agent's provider as representative)
       const firstAgent = await db.doc(`users/${userId}/agents/${workspace.agentIds[0]}`).get()
       const provider = firstAgent.exists ? (firstAgent.data() as any).modelProvider : 'openai'
       await updateQuota(userId, provider, result.totalTokensUsed, result.totalEstimatedCost)
 
-      // Check if quota alert should be sent
       const alert = await shouldSendQuotaAlert(userId)
       if (alert) {
         console.log(
           `Quota alert for user ${userId}: ${alert.type} at ${alert.threshold}% (${alert.used}/${alert.limit})`
         )
-        // TODO: Future - send in-app notification
       }
 
-      // Update run with successful result
       await runRef.update({
-        status: 'completed',
+        status: 'waiting_for_input',
+        pendingInput: result.pendingInput,
+        workflowState: result.workflowState ?? run.workflowState,
         output: result.output,
         tokensUsed: result.totalTokensUsed,
         estimatedCost: result.totalEstimatedCost,
-        completedAtMs: Date.now(),
         totalSteps: result.totalSteps,
         currentStep: result.totalSteps,
       })
 
       await eventWriter.writeEvent({
-        type: 'final',
+        type: 'status',
         workspaceId,
-        output: result.output,
-        status: 'completed',
+        status: 'waiting_for_input',
       })
 
-      console.log(
-        `Run ${runId} completed successfully. Workflow: ${workspace.workflowType}, Steps: ${result.totalSteps}, Tokens: ${result.totalTokensUsed}, Cost: $${result.totalEstimatedCost.toFixed(4)}`
-      )
-    } catch (error) {
-      console.error(`Run ${runId} failed:`, error)
-
-      // Phase 5E: Wrap error for better user messages
-      const agentError = wrapError(error, 'run_execution')
-
-      // Update run with error (including category and quota flag)
-      await runRef.update({
-        status: 'failed',
-        error: agentError.userMessage,
-        errorCategory: agentError.category,
-        errorDetails: agentError.details,
-        quotaExceeded: agentError.category === 'quota' || agentError.category === 'rate_limit',
-        completedAtMs: Date.now(),
-      })
-
-      const eventWriter = createRunEventWriter({ userId, runId, workspaceId })
-      await eventWriter.writeEvent({
-        type: 'error',
-        workspaceId,
-        errorMessage: agentError.userMessage,
-        errorCategory: agentError.category,
-        status: 'failed',
-      })
+      console.log(`Run ${runId} is waiting for user input.`)
+      return
     }
+
+    // Phase 5E: Record usage in rate limiter and quota manager
+    await recordRunUsage(userId, result.totalTokensUsed, result.totalEstimatedCost)
+
+    // Update quota with provider-specific usage (use first agent's provider as representative)
+    const firstAgent = await db.doc(`users/${userId}/agents/${workspace.agentIds[0]}`).get()
+    const provider = firstAgent.exists ? (firstAgent.data() as any).modelProvider : 'openai'
+    await updateQuota(userId, provider, result.totalTokensUsed, result.totalEstimatedCost)
+
+    // Check if quota alert should be sent
+    const alert = await shouldSendQuotaAlert(userId)
+    if (alert) {
+      console.log(
+        `Quota alert for user ${userId}: ${alert.type} at ${alert.threshold}% (${alert.used}/${alert.limit})`
+      )
+      // TODO: Future - send in-app notification
+    }
+
+    // Update run with successful result
+    await runRef.update({
+      status: 'completed',
+      output: result.output,
+      tokensUsed: result.totalTokensUsed,
+      estimatedCost: result.totalEstimatedCost,
+      completedAtMs: Date.now(),
+      totalSteps: result.totalSteps,
+      currentStep: result.totalSteps,
+    })
+
+    await eventWriter.writeEvent({
+      type: 'final',
+      workspaceId,
+      output: result.output,
+      status: 'completed',
+    })
+
+    console.log(
+      `Run ${runId} completed successfully. Workflow: ${workspace.workflowType}, Steps: ${result.totalSteps}, Tokens: ${result.totalTokensUsed}, Cost: $${result.totalEstimatedCost.toFixed(4)}`
+    )
+  } catch (error) {
+    console.error(`Run ${runId} failed:`, error)
+
+    // Phase 5E: Wrap error for better user messages
+    const agentError = wrapError(error, 'run_execution')
+
+    // Update run with error (including category and quota flag)
+    await runRef.update({
+      status: 'failed',
+      error: agentError.userMessage,
+      errorCategory: agentError.category,
+      errorDetails: agentError.details,
+      quotaExceeded: agentError.category === 'quota' || agentError.category === 'rate_limit',
+      completedAtMs: Date.now(),
+    })
+
+    const eventWriter = createRunEventWriter({ userId, runId, workspaceId })
+    await eventWriter.writeEvent({
+      type: 'error',
+      workspaceId,
+      errorMessage: agentError.userMessage,
+      errorCategory: agentError.category,
+      status: 'failed',
+    })
   }
-)
+}
 
 async function loadProviderKeys(userId: string): Promise<ProviderKeys> {
   const db = getFirestore()

@@ -190,6 +190,7 @@ users/{userId}/
   ├── workspaces/{workspaceId}      # Workspace definitions
   │   └── runs/{runId}              # Run instances
   │       ├── toolCalls/{toolCallRecordId}  # Tool execution records
+  │       ├── workflowSteps/{stepId}        # Graph workflow steps (Phase 6E)
   │       └── messages/{messageId}          # Conversation history (Phase 6A)
   ├── events/{eventId}              # Calendar events
   └── notes/{noteId}                # Notes
@@ -287,10 +288,14 @@ users/{userId}/
 
 #### Phase 6E: Advanced Orchestration
 
-- Conditional branching in workflows
-- Loop detection and prevention
-- Agent communication protocols
-- Hierarchical supervisor patterns
+**In Progress (v1)**:
+
+- Graph-based workflows with explicit join nodes
+- Conditional routing (`always`, `equals`, `contains`, `regex`)
+- Loop safeguards (max node visits + edge repeat limits)
+- Human-in-the-loop pauses (`waiting_for_input`)
+- Workflow step persistence (`workflowSteps` subcollection)
+- Join aggregation modes (`list`, `ranked`, `consensus`)
 
 ---
 
@@ -327,6 +332,7 @@ LifeOS_2/
 │   │   │   ├── useToolCallOperations.ts
 │   │   │   ├── useRunMessages.ts
 │   │   │   ├── useRunEvents.ts
+│   │   │   ├── useWorkflowSteps.ts
 │   │   │   └── useToolOperations.ts
 │   │   ├── components/agents/     # Phase 2, 3, 5C, 6C: UI components
 │   │   │   ├── AgentBuilderModal.tsx
@@ -661,6 +667,6 @@ Each run tracks:
 
 ---
 
-**Status**: Phase 5E Complete ✅
-**Next Phase**: Phase 6E (Advanced Orchestration)
-**Last Updated**: December 29, 2025
+**Status**: Phase 6E In Progress 🟡
+**Next Phase**: Finish Phase 6E (Advanced Orchestration)
+**Last Updated**: December 30, 2025

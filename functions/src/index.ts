@@ -895,4 +895,4 @@ export const getFirebaseConfig = onRequest(
  * Agent run execution trigger
  * Executes AI agent runs when they are created with 'pending' status
  */
-export { onRunCreated } from './agents/runExecutor.js'
+export { onRunCreated, onRunUpdated } from './agents/runExecutor.js'

@@ -8,6 +8,7 @@ export type RunId = Id<'run'>
 export type MessageId = Id<'message'>
 export type ToolId = Id<'tool'>
 export type ToolCallRecordId = Id<'toolCallRecord'>
+export type WorkflowStepId = Id<'workflowStep'>
 export type AgentTemplateId = Id<'agentTemplate'>
 export type WorkspaceTemplateId = Id<'workspaceTemplate'>
 
@@ -21,11 +22,23 @@ export type AgentRole = 'planner' | 'researcher' | 'critic' | 'synthesizer' | 'e
 
 export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'xai'
 
-export type RunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'paused'
+export type RunStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'paused'
+  | 'waiting_for_input'
 
 export type MessageRole = 'user' | 'assistant' | 'system' | 'tool'
 
 export type ToolCallStatus = 'pending' | 'running' | 'completed' | 'failed'
+
+export type WorkflowNodeType = 'agent' | 'tool' | 'human_input' | 'join' | 'end'
+
+export type WorkflowEdgeConditionType = 'always' | 'equals' | 'contains' | 'regex'
+
+export type JoinAggregationMode = 'list' | 'ranked' | 'consensus'
 
 // ----- Agent Configuration -----
 
@@ -70,7 +83,8 @@ export interface Workspace {
   defaultAgentId?: AgentId // Agent that starts the workflow
 
   // Workflow configuration
-  workflowType: 'sequential' | 'parallel' | 'supervisor' | 'custom'
+  workflowType: 'sequential' | 'parallel' | 'supervisor' | 'custom' | 'graph'
+  workflowGraph?: WorkflowGraph
   maxIterations?: number // Prevent infinite loops, default 10
 
   // Memory configuration (Phase 6A)
@@ -139,6 +153,12 @@ export interface Run {
   // Results
   output?: string // Final synthesized output
   error?: string // Error message if failed
+  pendingInput?: {
+    prompt: string
+    nodeId: string
+  }
+
+  workflowState?: WorkflowState
 
   // Phase 5E: Enhanced error tracking
   errorCategory?:
@@ -192,6 +212,50 @@ export interface Message {
   // Metadata
   timestampMs: number
   tokensUsed?: number
+}
+
+// ----- Workflow Graph (Phase 6E) -----
+
+export interface WorkflowEdgeCondition {
+  type: WorkflowEdgeConditionType
+  key?: string
+  value?: string
+}
+
+export interface WorkflowNode {
+  id: string
+  type: WorkflowNodeType
+  agentId?: AgentId
+  toolId?: ToolId
+  label?: string
+  outputKey?: string
+  aggregationMode?: JoinAggregationMode
+}
+
+export interface WorkflowEdge {
+  from: string
+  to: string
+  condition: WorkflowEdgeCondition
+}
+
+export interface WorkflowGraph {
+  version: 1
+  startNodeId: string
+  nodes: WorkflowNode[]
+  edges: WorkflowEdge[]
+  limits?: {
+    maxNodeVisits?: number
+    maxEdgeRepeats?: number
+  }
+}
+
+export interface WorkflowState {
+  currentNodeId?: string
+  pendingNodes?: string[]
+  visitedCount?: Record<string, number>
+  edgeHistory?: Array<{ from: string; to: string; atMs: number }>
+  joinOutputs?: Record<string, unknown>
+  namedOutputs?: Record<string, unknown>
 }
 
 // ----- Tool Definition -----
@@ -272,6 +336,23 @@ export interface ToolCallRecord {
   version: number
 }
 
+// ----- Workflow Step (Phase 6E) -----
+
+export interface WorkflowStep {
+  workflowStepId: WorkflowStepId
+  runId: RunId
+  workspaceId: WorkspaceId
+  userId: string
+  nodeId: string
+  nodeType: WorkflowNodeType
+  input?: Record<string, unknown>
+  output?: unknown
+  error?: string
+  startedAtMs: number
+  completedAtMs?: number
+  durationMs?: number
+}
+
 // ----- Input Types for Creation -----
 
 export type CreateAgentInput = Omit<
@@ -324,4 +405,9 @@ export type CreateWorkspaceTemplateInput = Omit<
 export type CreateToolCallRecordInput = Omit<
   ToolCallRecord,
   'toolCallRecordId' | 'syncState' | 'version' | 'completedAtMs' | 'durationMs' | 'result' | 'error'
+>
+
+export type CreateWorkflowStepInput = Omit<
+  WorkflowStep,
+  'workflowStepId' | 'completedAtMs' | 'durationMs'
 >

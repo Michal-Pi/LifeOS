@@ -13,13 +13,26 @@ export const AgentRoleSchema = z.enum([
 
 export const ModelProviderSchema = z.enum(['openai', 'anthropic', 'google', 'xai'])
 
-export const RunStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'paused'])
+export const RunStatusSchema = z.enum([
+  'pending',
+  'running',
+  'completed',
+  'failed',
+  'paused',
+  'waiting_for_input',
+])
 
 export const MessageRoleSchema = z.enum(['user', 'assistant', 'system', 'tool'])
 
 export const SyncStateSchema = z.enum(['synced', 'pending', 'conflict'])
 
-export const WorkflowTypeSchema = z.enum(['sequential', 'parallel', 'supervisor', 'custom'])
+export const WorkflowTypeSchema = z.enum(['sequential', 'parallel', 'supervisor', 'custom', 'graph'])
+
+export const WorkflowNodeTypeSchema = z.enum(['agent', 'tool', 'human_input', 'join', 'end'])
+
+export const WorkflowEdgeConditionTypeSchema = z.enum(['always', 'equals', 'contains', 'regex'])
+
+export const JoinAggregationModeSchema = z.enum(['list', 'ranked', 'consensus'])
 
 // ----- Tool Schemas -----
 
@@ -112,6 +125,40 @@ export const WorkspaceSchema = z.object({
   agentIds: z.array(z.string()),
   defaultAgentId: z.string().optional(),
   workflowType: WorkflowTypeSchema,
+  workflowGraph: z
+    .object({
+      version: z.literal(1),
+      startNodeId: z.string(),
+      nodes: z.array(
+        z.object({
+          id: z.string(),
+          type: WorkflowNodeTypeSchema,
+          agentId: z.string().optional(),
+          toolId: z.string().optional(),
+          label: z.string().optional(),
+          outputKey: z.string().optional(),
+          aggregationMode: JoinAggregationModeSchema.optional(),
+        })
+      ),
+      edges: z.array(
+        z.object({
+          from: z.string(),
+          to: z.string(),
+          condition: z.object({
+            type: WorkflowEdgeConditionTypeSchema,
+            key: z.string().optional(),
+            value: z.string().optional(),
+          }),
+        })
+      ),
+      limits: z
+        .object({
+          maxNodeVisits: z.number().int().positive().optional(),
+          maxEdgeRepeats: z.number().int().positive().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
   maxIterations: z.number().int().positive().max(50).optional(),
   memoryMessageLimit: z.number().int().positive().max(200).optional(),
   archived: z.boolean(),
@@ -183,6 +230,35 @@ export const RunSchema = z.object({
   totalSteps: z.number().int().positive().optional(),
   output: z.string().optional(),
   error: z.string().optional(),
+  errorCategory: z
+    .enum(['network', 'auth', 'rate_limit', 'validation', 'timeout', 'internal', 'quota'])
+    .optional(),
+  errorDetails: z.record(z.string(), z.unknown()).optional(),
+  quotaExceeded: z.boolean().optional(),
+  pendingInput: z
+    .object({
+      prompt: z.string(),
+      nodeId: z.string(),
+    })
+    .optional(),
+  workflowState: z
+    .object({
+      currentNodeId: z.string().optional(),
+      pendingNodes: z.array(z.string()).optional(),
+      visitedCount: z.record(z.string(), z.number().int().nonnegative()).optional(),
+      edgeHistory: z
+        .array(
+          z.object({
+            from: z.string(),
+            to: z.string(),
+            atMs: z.number().int().positive(),
+          })
+        )
+        .optional(),
+      joinOutputs: z.record(z.string(), z.unknown()).optional(),
+      namedOutputs: z.record(z.string(), z.unknown()).optional(),
+    })
+    .optional(),
   startedAtMs: z.number().int().positive(),
   completedAtMs: z.number().int().positive().optional(),
   tokensUsed: z.number().int().nonnegative().optional(),

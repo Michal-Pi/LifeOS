@@ -21,7 +21,8 @@ import type { WorkspaceId, RunStatus } from '@lifeos/agents'
 export function WorkspaceDetailPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const navigate = useNavigate()
-  const { workspace, runs, isLoading, getWorkspace, loadRuns, deleteRun } = useWorkspaceOperations()
+  const { workspace, runs, isLoading, getWorkspace, loadRuns, deleteRun, updateRun } =
+    useWorkspaceOperations()
   const { agents, loadAgents } = useAgentOperations()
 
   const [showRunModal, setShowRunModal] = useState(false)
@@ -82,6 +83,20 @@ export function WorkspaceDetailPage() {
       context: { resumeRunId: runToResume.runId },
     })
     setShowRunModal(true)
+  }
+
+  const handleProvideInput = async (runId: string, nodeId: string, response: string) => {
+    const run = runs.find((item) => item.runId === runId)
+    if (!run) return
+    const context = {
+      ...(run.context ?? {}),
+      humanInput: { nodeId, response },
+    }
+    await updateRun(runId, {
+      status: 'pending',
+      pendingInput: null,
+      context,
+    })
   }
 
   const getAgentName = (agentId: string) => {
@@ -145,6 +160,23 @@ export function WorkspaceDetailPage() {
           </div>
         </div>
 
+        {workspace.workflowGraph && (
+          <div className="info-card">
+            <h3>Workflow Graph</h3>
+            <div className="info-row">
+              <strong>Start Node:</strong> {workspace.workflowGraph.startNodeId}
+            </div>
+            <details className="run-context">
+              <summary>Nodes ({workspace.workflowGraph.nodes.length})</summary>
+              <pre>{JSON.stringify(workspace.workflowGraph.nodes, null, 2)}</pre>
+            </details>
+            <details className="run-context">
+              <summary>Edges ({workspace.workflowGraph.edges.length})</summary>
+              <pre>{JSON.stringify(workspace.workflowGraph.edges, null, 2)}</pre>
+            </details>
+          </div>
+        )}
+
         <div className="info-card">
           <h3>Team</h3>
           <ul className="agent-team-list">
@@ -176,6 +208,7 @@ export function WorkspaceDetailPage() {
               <option value="completed">Completed</option>
               <option value="failed">Failed</option>
               <option value="paused">Paused</option>
+              <option value="waiting_for_input">Waiting for Input</option>
             </select>
           </div>
         </div>
@@ -194,6 +227,7 @@ export function WorkspaceDetailPage() {
                 currentTime={currentTime}
                 onDelete={handleDeleteRun}
                 onResume={handleResumeRun}
+                onProvideInput={handleProvideInput}
               />
             ))}
           </div>

@@ -148,13 +148,49 @@ interface Workspace {
   description?: string
   agentIds: AgentId[]
   defaultAgentId?: AgentId
-  workflowType: 'sequential' | 'parallel' | 'supervisor' | 'custom'
+  workflowType: 'sequential' | 'parallel' | 'supervisor' | 'graph' | 'custom'
+  workflowGraph?: WorkflowGraph
   maxIterations?: number
   archived: boolean
   createdAtMs: number
   updatedAtMs: number
   syncState: 'synced' | 'pending' | 'conflict'
   version: number
+}
+```
+
+### Workflow Graph (Phase 6E)
+
+```typescript
+type WorkflowNodeType = 'agent' | 'tool' | 'human_input' | 'join' | 'end'
+type WorkflowEdgeConditionType = 'always' | 'equals' | 'contains' | 'regex'
+type JoinAggregationMode = 'list' | 'ranked' | 'consensus'
+
+interface WorkflowGraph {
+  version: number
+  startNodeId: string
+  nodes: Array<{
+    id: string
+    type: WorkflowNodeType
+    agentId?: AgentId
+    toolId?: ToolId
+    label?: string
+    outputKey?: string
+    aggregationMode?: JoinAggregationMode
+  }>
+  edges: Array<{
+    from: string
+    to: string
+    condition: {
+      type: WorkflowEdgeConditionType
+      key?: string
+      value?: string
+    }
+  }>
+  limits?: {
+    maxNodeVisits?: number
+    maxEdgeRepeats?: number
+  }
 }
 ```
 
@@ -167,11 +203,30 @@ interface Run {
   userId: string
   goal: string
   context?: Record<string, unknown>
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'paused'
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'paused' | 'waiting_for_input'
   currentStep: number
   totalSteps?: number
   output?: string
   error?: string
+  pendingInput?: { prompt: string; nodeId: string }
+  workflowState?: {
+    currentNodeId?: string
+    pendingNodes?: string[]
+    visitedCount?: Record<string, number>
+    edgeHistory?: Array<{ from: string; to: string; atMs: number }>
+    joinOutputs?: Record<string, unknown>
+    namedOutputs?: Record<string, unknown>
+  }
+  errorCategory?:
+    | 'network'
+    | 'auth'
+    | 'rate_limit'
+    | 'validation'
+    | 'timeout'
+    | 'internal'
+    | 'quota'
+  errorDetails?: Record<string, unknown>
+  quotaExceeded?: boolean
   startedAtMs: number
   completedAtMs?: number
   tokensUsed?: number

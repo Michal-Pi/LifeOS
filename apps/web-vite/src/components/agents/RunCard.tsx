@@ -4,9 +4,11 @@
  * Displays details for a single run including tool calls.
  */
 
+import { useState } from 'react'
 import { useToolCallOperations } from '@/hooks/useToolCallOperations'
 import { useRunEvents } from '@/hooks/useRunEvents'
 import { useRunMessages } from '@/hooks/useRunMessages'
+import { useWorkflowSteps } from '@/hooks/useWorkflowSteps'
 import { ToolCallTimeline } from './ToolCallTimeline'
 import type { Run, RunStatus } from '@lifeos/agents'
 
@@ -15,12 +17,16 @@ interface RunCardProps {
   currentTime: number
   onDelete: (runId: string) => void
   onResume?: (runId: string) => void
+  onProvideInput?: (runId: string, nodeId: string, response: string) => Promise<void>
 }
 
-export function RunCard({ run, currentTime, onDelete, onResume }: RunCardProps) {
+export function RunCard({ run, currentTime, onDelete, onResume, onProvideInput }: RunCardProps) {
   const { toolCalls } = useToolCallOperations(run.runId)
   const { messages, hasMore, isLoadingMore, loadMore } = useRunMessages(run.runId)
   const { events } = useRunEvents(run.runId)
+  const { steps: workflowSteps } = useWorkflowSteps(run.runId)
+  const [inputResponse, setInputResponse] = useState('')
+  const [isSubmittingInput, setIsSubmittingInput] = useState(false)
 
   const streamingOutput = events
     .filter((event) => event.type === 'token')
@@ -57,6 +63,8 @@ export function RunCard({ run, currentTime, onDelete, onResume }: RunCardProps) 
       case 'running':
         return 'badge-info'
       case 'paused':
+        return 'badge-warning'
+      case 'waiting_for_input':
         return 'badge-warning'
       default:
         return 'badge'
@@ -96,10 +104,72 @@ export function RunCard({ run, currentTime, onDelete, onResume }: RunCardProps) 
         </div>
       )}
 
+      {run.status === 'waiting_for_input' && run.pendingInput && (
+        <div className="run-output">
+          <strong>Input Needed:</strong>
+          <p>{run.pendingInput.prompt}</p>
+          {onProvideInput && (
+            <div className="run-input-actions">
+              <textarea
+                value={inputResponse}
+                onChange={(e) => setInputResponse(e.target.value)}
+                rows={3}
+                placeholder="Type your response..."
+              />
+              <button
+                className="btn-primary"
+                disabled={!inputResponse.trim() || isSubmittingInput}
+                onClick={async () => {
+                  if (!onProvideInput) return
+                  try {
+                    setIsSubmittingInput(true)
+                    await onProvideInput(run.runId, run.pendingInput.nodeId, inputResponse.trim())
+                    setInputResponse('')
+                  } finally {
+                    setIsSubmittingInput(false)
+                  }
+                }}
+              >
+                {isSubmittingInput ? 'Submitting...' : 'Submit Response'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {run.context && Object.keys(run.context).length > 0 && (
         <details className="run-context">
           <summary>Context</summary>
           <pre>{JSON.stringify(run.context, null, 2)}</pre>
+        </details>
+      )}
+
+      {workflowSteps.length > 0 && (
+        <details className="run-context">
+          <summary>Workflow Steps ({workflowSteps.length})</summary>
+          <div className="run-messages-list">
+            {workflowSteps.map((step) => (
+              <div key={step.workflowStepId} className="run-message">
+                <div className="run-message-meta">
+                  <span className="run-message-role">{step.nodeType}</span>
+                  <span className="run-message-time">
+                    {new Date(step.startedAtMs).toLocaleTimeString()}
+                  </span>
+                </div>
+                <div className="run-message-content">
+                  <strong>Node:</strong> {step.nodeId}
+                  {step.output !== undefined && (
+                    <pre>{JSON.stringify(step.output, null, 2)}</pre>
+                  )}
+                  {step.error && (
+                    <p className="run-error">
+                      <strong>Error:</strong> {step.error}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </details>
       )}
 
@@ -158,7 +228,10 @@ export function RunCard({ run, currentTime, onDelete, onResume }: RunCardProps) 
       </div>
 
       <div className="run-actions">
-        {onResume && run.status !== 'running' && run.status !== 'pending' && (
+        {onResume &&
+          run.status !== 'running' &&
+          run.status !== 'pending' &&
+          run.status !== 'waiting_for_input' && (
           <button onClick={() => onResume(run.runId)} className="btn-secondary">
             Resume
           </button>

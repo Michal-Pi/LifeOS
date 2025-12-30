@@ -37,6 +37,11 @@ const WORKFLOW_OPTIONS: { value: WorkflowType; label: string; description: strin
     label: 'Supervisor',
     description: 'One agent routes tasks to others',
   },
+  {
+    value: 'graph',
+    label: 'Graph',
+    description: 'Advanced workflow with branching and joins',
+  },
   { value: 'custom', label: 'Custom', description: 'Define your own workflow' },
 ]
 
@@ -57,6 +62,7 @@ export function WorkspaceFormModal({
   const [workflowType, setWorkflowType] = useState<WorkflowType>('sequential')
   const [maxIterations, setMaxIterations] = useState<number>(10)
   const [memoryMessageLimitInput, setMemoryMessageLimitInput] = useState('')
+  const [workflowGraphInput, setWorkflowGraphInput] = useState('')
 
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -82,6 +88,9 @@ export function WorkspaceFormModal({
         setMemoryMessageLimitInput(
           workspace.memoryMessageLimit ? String(workspace.memoryMessageLimit) : ''
         )
+        setWorkflowGraphInput(
+          workspace.workflowGraph ? JSON.stringify(workspace.workflowGraph, null, 2) : ''
+        )
       } else {
         // Create mode
         setName(prefill?.name ?? '')
@@ -92,6 +101,9 @@ export function WorkspaceFormModal({
         setMaxIterations(prefill?.maxIterations ?? 10)
         setMemoryMessageLimitInput(
           prefill?.memoryMessageLimit ? String(prefill.memoryMessageLimit) : ''
+        )
+        setWorkflowGraphInput(
+          prefill?.workflowGraph ? JSON.stringify(prefill.workflowGraph, null, 2) : ''
         )
       }
       setError(null)
@@ -152,6 +164,20 @@ export function WorkspaceFormModal({
       return
     }
 
+    let workflowGraph: Workspace['workflowGraph'] | undefined
+    if (workflowType === 'graph') {
+      if (!workflowGraphInput.trim()) {
+        setError('Workflow graph JSON is required for graph workflows')
+        return
+      }
+      try {
+        workflowGraph = JSON.parse(workflowGraphInput) as Workspace['workflowGraph']
+      } catch {
+        setError('Workflow graph JSON is invalid')
+        return
+      }
+    }
+
     setIsSaving(true)
     setError(null)
 
@@ -162,6 +188,7 @@ export function WorkspaceFormModal({
         agentIds: selectedAgentIds,
         defaultAgentId,
         workflowType,
+        workflowGraph,
         maxIterations,
         memoryMessageLimit,
       }
@@ -285,6 +312,20 @@ export function WorkspaceFormModal({
               ))}
             </select>
           </div>
+
+          {workflowType === 'graph' && (
+            <div className="form-group">
+              <label htmlFor="workflowGraph">Workflow Graph (JSON)</label>
+              <textarea
+                id="workflowGraph"
+                value={workflowGraphInput}
+                onChange={(e) => setWorkflowGraphInput(e.target.value)}
+                placeholder='{"version":1,"startNodeId":"node_1","nodes":[],"edges":[]}'
+                rows={8}
+              />
+              <small>Provide a graph definition for advanced orchestration.</small>
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="maxIterations">Max Iterations: {maxIterations}</label>
