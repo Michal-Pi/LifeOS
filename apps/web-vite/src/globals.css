@@ -3172,6 +3172,13 @@ a:focus-visible {
   resize: vertical;
 }
 
+.workflow-graph {
+  height: 360px;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
 .calendar-settings__header {
   display: flex;
   justify-content: space-between;

@@ -16,6 +16,7 @@ import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
 import { RunWorkspaceModal } from '@/components/agents/RunWorkspaceModal'
 import { RunCard } from '@/components/agents/RunCard'
+import { WorkflowGraphView } from '@/components/agents/WorkflowGraphView'
 import type { WorkspaceId, RunStatus } from '@lifeos/agents'
 
 export function WorkspaceDetailPage() {
@@ -166,6 +167,7 @@ export function WorkspaceDetailPage() {
             <div className="info-row">
               <strong>Start Node:</strong> {workspace.workflowGraph.startNodeId}
             </div>
+            <WorkflowGraphView graph={workspace.workflowGraph} />
             <details className="run-context">
               <summary>Nodes ({workspace.workflowGraph.nodes.length})</summary>
               <pre>{JSON.stringify(workspace.workflowGraph.nodes, null, 2)}</pre>
