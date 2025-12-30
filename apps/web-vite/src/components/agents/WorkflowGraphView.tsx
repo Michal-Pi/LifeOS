@@ -82,9 +82,7 @@ export function WorkflowGraphView({ graph }: WorkflowGraphViewProps) {
       const color = NODE_COLORS[node.type]
       const meta = [
         node.outputKey ? `output: ${node.outputKey}` : null,
-        node.type === 'join' && node.aggregationMode
-          ? `mode: ${node.aggregationMode}`
-          : null,
+        node.type === 'join' && node.aggregationMode ? `mode: ${node.aggregationMode}` : null,
       ]
         .filter(Boolean)
         .join(' · ')
