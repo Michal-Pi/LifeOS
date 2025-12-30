@@ -12,6 +12,7 @@ import {
   searchNotesLocally,
   getUnsyncedNotes,
   getStorageStats,
+  __resetNotesDbForTests,
 } from '../offlineStore'
 
 // Mock idb
@@ -24,6 +25,7 @@ describe('Offline Store', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    __resetNotesDbForTests()
   })
 
   describe('Note Operations', () => {
@@ -140,11 +142,11 @@ describe('Offline Store', () => {
 
       const mockDb = {
         transaction: vi.fn(() => ({
-          objectStore: vi.fn(() => ({
+          store: {
             index: vi.fn(() => ({
               getAll: vi.fn().mockResolvedValue(mockNotes),
             })),
-          })),
+          },
         })),
       }
 

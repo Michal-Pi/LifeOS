@@ -33,6 +33,13 @@ vi.mock('@/hooks/useTodoOperations', () => ({
   })),
 }))
 
+vi.mock('@/hooks/useWorkoutOperations', () => ({
+  useWorkoutOperations: vi.fn(() => ({
+    sessions: [],
+    listSessions: vi.fn().mockResolvedValue([]),
+  })),
+}))
+
 vi.mock('@/lib/priority', () => ({
   calculatePriorityScore: vi.fn((task) => task.importance * 10), // Simple mock calculation
 }))

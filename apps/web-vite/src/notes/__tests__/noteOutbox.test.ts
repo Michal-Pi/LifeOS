@@ -9,6 +9,7 @@ import {
   enqueueNoteOp,
   listReadyNoteOps,
   markNoteOpFailed,
+  __resetNoteOutboxDbForTests,
   type NoteCreatePayload,
   type NoteUpdatePayload,
 } from '../noteOutbox'
@@ -23,6 +24,7 @@ describe('Note Outbox', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    __resetNoteOutboxDbForTests()
     vi.spyOn(crypto, 'randomUUID').mockReturnValue('test-op-id')
     vi.spyOn(localStorage, 'getItem').mockReturnValue('test-device-id')
   })
@@ -56,7 +58,7 @@ describe('Note Outbox', () => {
       }
 
       const mockTx = {
-        objectStore: vi.fn(() => mockStore),
+        store: mockStore,
         done: Promise.resolve(),
       }
 
@@ -98,7 +100,7 @@ describe('Note Outbox', () => {
       }
 
       const mockTx = {
-        objectStore: vi.fn(() => mockStore),
+        store: mockStore,
         done: Promise.resolve(),
       }
 
@@ -146,7 +148,7 @@ describe('Note Outbox', () => {
       }
 
       const mockTx = {
-        objectStore: vi.fn(() => mockStore),
+        store: mockStore,
         done: Promise.resolve(),
       }
 
@@ -206,11 +208,11 @@ describe('Note Outbox', () => {
 
       const mockDb = {
         transaction: vi.fn(() => ({
-          objectStore: vi.fn(() => ({
+          store: {
             index: vi.fn(() => ({
               getAll: vi.fn().mockResolvedValue(ops),
             })),
-          })),
+          },
         })),
       }
 

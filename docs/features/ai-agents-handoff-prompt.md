@@ -55,7 +55,8 @@ DEVELOPMENT WORKFLOW:
 2. Check agents-roadmap.md for phase details
 3. Use TodoWrite to track tasks
 4. Always run typecheck and lint before committing
-5. Update phase completion docs after each phase
+5. Run tests (`pnpm --filter web-vite test`, `pnpm --filter functions test`) before committing
+6. Update phase completion docs after each phase
 
 NEXT TASK:
 [Specify what you want to work on - e.g., "Start Phase 5E: Implement retry logic" or "Add a new tool for X"]

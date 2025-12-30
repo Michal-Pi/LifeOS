@@ -58,6 +58,10 @@ async function getDb(): Promise<IDBPDatabase> {
   return dbPromise
 }
 
+export function __resetNotesDbForTests(): void {
+  dbPromise = null
+}
+
 // ============================================================================
 // Notes Operations
 // ============================================================================
@@ -137,8 +141,7 @@ export async function searchNotesLocally(userId: string, query: string): Promise
  */
 export async function getUnsyncedNotes(userId: string): Promise<Note[]> {
   const db = await getDb()
-  const tx = db.transaction(NOTES_STORE, 'readonly')
-  const store = tx.objectStore(NOTES_STORE)
+  const store = db.transaction(NOTES_STORE, 'readonly').store
   const index = store.index('userId')
   const notes = await index.getAll(userId)
 
@@ -187,8 +190,7 @@ export async function listTopicsLocally(userId: string): Promise<Topic[]> {
  */
 export async function getUnsyncedTopics(userId: string): Promise<Topic[]> {
   const db = await getDb()
-  const tx = db.transaction(TOPICS_STORE, 'readonly')
-  const store = tx.objectStore(TOPICS_STORE)
+  const store = db.transaction(TOPICS_STORE, 'readonly').store
   const index = store.index('userId')
   const topics = await index.getAll(userId)
 
@@ -249,8 +251,7 @@ export async function listSectionsLocally(userId: string): Promise<Section[]> {
  */
 export async function getUnsyncedSections(userId: string): Promise<Section[]> {
   const db = await getDb()
-  const tx = db.transaction(SECTIONS_STORE, 'readonly')
-  const store = tx.objectStore(SECTIONS_STORE)
+  const store = db.transaction(SECTIONS_STORE, 'readonly').store
   const index = store.index('userId')
   const sections = await index.getAll(userId)
 

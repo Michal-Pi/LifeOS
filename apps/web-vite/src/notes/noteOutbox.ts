@@ -248,7 +248,7 @@ export async function enqueueNoteOp(
 ): Promise<NoteOutboxOp> {
   const db = await getDb()
   const tx = db.transaction(NOTE_OUTBOX_STORE, 'readwrite')
-  const store = tx.objectStore(NOTE_OUTBOX_STORE)
+  const store = tx.store
   const index = store.index('noteId')
 
   // Find existing pending ops for this note
@@ -356,6 +356,10 @@ export async function markNoteOpFailed(
 export async function removeNoteOp(opId: string): Promise<void> {
   const db = await getDb()
   await db.delete(NOTE_OUTBOX_STORE, opId)
+}
+
+export function __resetNoteOutboxDbForTests(): void {
+  dbPromise = null
 }
 
 // ============================================================================
