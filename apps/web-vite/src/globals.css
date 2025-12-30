@@ -3016,6 +3016,13 @@ a:focus-visible {
   font-size: 0.875rem;
 }
 
+.settings-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
 .settings-panel__error {
   margin: 0;
   color: var(--destructive);

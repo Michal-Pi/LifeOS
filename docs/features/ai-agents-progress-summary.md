@@ -277,13 +277,13 @@ users/{userId}/
 
 #### Phase 6D: Agent Templates & Presets
 
-**In progress (v1)**
+**Complete (v1)**
 
 - Firestore-backed templates for agents and workspaces
 - Save templates from existing agents/workspaces
 - Use templates to prefill create modals
-- Dedicated hooks + adapters for templates
-- Import/export of configs not started yet
+- Preset templates for common workflows
+- Import/export templates as JSON
 
 #### Phase 6E: Advanced Orchestration
 
@@ -340,7 +340,8 @@ LifeOS_2/
 │   │   │   ├── ToolCallTimeline.tsx  # Phase 5C
 │   │   │   └── RunCard.tsx            # Phase 5C
 │   │   ├── agents/                # Phase 6C: Built-in tool metadata
-│   │   │   └── builtinTools.ts
+│   │   │   ├── builtinTools.ts
+│   │   │   └── templatePresets.ts # Phase 6D: Template presets
 │   │   └── pages/                 # Phase 3: Main pages
 │   │       └── WorkspaceDetailPage.tsx
 │   └── App.tsx                    # Routing integration
@@ -539,6 +540,7 @@ Fields:
 1. On Agents or Workspaces, click "Save Template" on a card
 2. Name the template and save
 3. Use templates to prefill the create modal
+4. Export templates as JSON or import JSON files to share configs
 
 ### 4. Run Agent Tasks
 
@@ -607,11 +609,11 @@ Each run tracks:
 
 ## Next Steps
 
-### Immediate (Phase 6D)
+### Immediate (Phase 6E)
 
-1. Ship template presets for common workflows
-2. Add import/export for agent/workspace configs
-3. Add template search/filters (optional)
+1. Advanced orchestration patterns (Phase 6E)
+2. Loop detection and prevention
+3. Conditional branching
 
 ### Near-term (Phase 6A+ Enhancements)
 
@@ -660,5 +662,5 @@ Each run tracks:
 ---
 
 **Status**: Phase 5E Complete ✅
-**Next Phase**: Phase 6D completion (presets + import/export)
+**Next Phase**: Phase 6E (Advanced Orchestration)
 **Last Updated**: December 29, 2025

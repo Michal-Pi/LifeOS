@@ -9,7 +9,8 @@
  * - View agent details
  */
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import type { ChangeEvent } from 'react'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
 import { useAgentTemplateOperations } from '@/hooks/useAgentTemplateOperations'
 import { useToolOperations } from '@/hooks/useToolOperations'
@@ -17,6 +18,7 @@ import { AgentBuilderModal } from '@/components/agents/AgentBuilderModal'
 import { ToolBuilderModal } from '@/components/agents/ToolBuilderModal'
 import { TemplateSaveModal } from '@/components/agents/TemplateSaveModal'
 import { builtinTools } from '@/agents/builtinTools'
+import { agentTemplatePresets } from '@/agents/templatePresets'
 import type {
   AgentConfig,
   AgentRole,
@@ -24,6 +26,26 @@ import type {
   ToolDefinition,
   AgentTemplate,
 } from '@lifeos/agents'
+
+type AgentTemplateExport = {
+  version: number
+  type: 'agentTemplates'
+  templates: Array<{
+    name: string
+    description?: string
+    agentConfig: AgentTemplate['agentConfig']
+  }>
+}
+
+const downloadJson = (filename: string, data: unknown) => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
 
 export function AgentsPage() {
   const { agents, isLoading, loadAgents } = useAgentOperations()
@@ -52,6 +74,7 @@ export function AgentsPage() {
   const [showToolModal, setShowToolModal] = useState(false)
   const [roleFilter, setRoleFilter] = useState<AgentRole | 'all'>('all')
   const [providerFilter, setProviderFilter] = useState<ModelProvider | 'all'>('all')
+  const importInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     void loadAgents()
@@ -124,6 +147,86 @@ export function AgentsPage() {
     setSelectedAgent(null)
     setPrefillAgent(template.agentConfig)
     setShowModal(true)
+  }
+
+  const handleAddPresets = async () => {
+    const existingNames = new Set(agentTemplates.map((template) => template.name.toLowerCase()))
+    let createdCount = 0
+    for (const preset of agentTemplatePresets) {
+      if (existingNames.has(preset.name.toLowerCase())) {
+        continue
+      }
+      try {
+        await createTemplate({
+          name: preset.name,
+          description: preset.description,
+          agentConfig: preset.agentConfig,
+        })
+        createdCount += 1
+      } catch {
+        // Errors are surfaced by the hook; continue with remaining presets.
+      }
+    }
+    if (createdCount === 0) {
+      window.alert('All presets already exist.')
+    }
+  }
+
+  const handleExportTemplates = () => {
+    const payload: AgentTemplateExport = {
+      version: 1,
+      type: 'agentTemplates',
+      templates: agentTemplates.map((template) => ({
+        name: template.name,
+        description: template.description,
+        agentConfig: template.agentConfig,
+      })),
+    }
+    downloadJson('agent-templates.json', payload)
+  }
+
+  const handleImportTemplates = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    try {
+      const raw = await file.text()
+      const parsed = JSON.parse(raw)
+      const templates = Array.isArray(parsed) ? parsed : parsed.templates
+      if (!Array.isArray(templates)) {
+        window.alert('Invalid template file. Expected a list of templates.')
+        return
+      }
+      const existingNames = new Set(agentTemplates.map((template) => template.name.toLowerCase()))
+      let importedCount = 0
+      let skippedCount = 0
+      for (const entry of templates) {
+        if (!entry?.name || !entry?.agentConfig) {
+          skippedCount += 1
+          continue
+        }
+        const normalizedName = String(entry.name).toLowerCase()
+        if (existingNames.has(normalizedName)) {
+          skippedCount += 1
+          continue
+        }
+        try {
+          await createTemplate({
+            name: String(entry.name),
+            description: entry.description ? String(entry.description) : undefined,
+            agentConfig: entry.agentConfig,
+          })
+          existingNames.add(normalizedName)
+          importedCount += 1
+        } catch {
+          skippedCount += 1
+        }
+      }
+      window.alert(`Imported ${importedCount} templates. Skipped ${skippedCount}.`)
+    } catch (error) {
+      console.error('Failed to import agent templates', error)
+      window.alert('Import failed. Please check the JSON format.')
+    }
   }
 
   const handleNewTool = () => {
@@ -260,6 +363,28 @@ export function AgentsPage() {
             <p className="section-label">Templates</p>
             <h2>Agent Templates</h2>
             <p className="settings-panel__meta">Save reusable agent setups and start faster.</p>
+            <div className="settings-panel__actions">
+              <button onClick={handleAddPresets} className="btn-secondary" type="button">
+                Add Presets
+              </button>
+              <button onClick={handleExportTemplates} className="btn-secondary" type="button">
+                Export
+              </button>
+              <button
+                onClick={() => importInputRef.current?.click()}
+                className="btn-secondary"
+                type="button"
+              >
+                Import
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json"
+                onChange={handleImportTemplates}
+                hidden
+              />
+            </div>
           </div>
         </header>
 

@@ -47,7 +47,7 @@ REMAINING WORK:
 ✅ Phase 6A: Conversation memory (context injection + resume shipped)
 ✅ Phase 6B: Streaming responses
 ✅ Phase 6C: Custom tool registration UI (no marketplace)
-⏸️ Phase 6D: Agent templates (in progress)
+✅ Phase 6D: Agent templates (presets + import/export)
 ⏸️ Phase 6E: Advanced orchestration
 
 DEVELOPMENT WORKFLOW:
@@ -123,6 +123,7 @@ Please review the summary doc first, then let me know you're ready to proceed wi
 - `apps/web-vite/src/adapters/agents/firestoreAgentTemplateRepository.ts` - Agent templates (Phase 6D)
 - `apps/web-vite/src/adapters/agents/firestoreWorkspaceTemplateRepository.ts` - Workspace templates (Phase 6D)
 - `apps/web-vite/src/components/agents/TemplateSaveModal.tsx` - Template save modal (Phase 6D)
+- `apps/web-vite/src/agents/templatePresets.ts` - Template presets (Phase 6D)
 - `apps/web-vite/src/components/agents/` - UI components
 - `apps/web-vite/src/pages/` - Pages (AgentsPage, WorkspacesPage, WorkspaceDetailPage)
 

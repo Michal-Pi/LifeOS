@@ -9,14 +9,36 @@
  * - Navigate to workspace detail page
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import type { ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
 import { useWorkspaceTemplateOperations } from '@/hooks/useWorkspaceTemplateOperations'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
 import { WorkspaceFormModal } from '@/components/agents/WorkspaceFormModal'
 import { TemplateSaveModal } from '@/components/agents/TemplateSaveModal'
+import { workspaceTemplatePresets } from '@/agents/templatePresets'
 import type { Workspace, WorkspaceTemplate } from '@lifeos/agents'
+
+type WorkspaceTemplateExport = {
+  version: number
+  type: 'workspaceTemplates'
+  templates: Array<{
+    name: string
+    description?: string
+    workspaceConfig: WorkspaceTemplate['workspaceConfig']
+  }>
+}
+
+const downloadJson = (filename: string, data: unknown) => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
 
 export function WorkspacesPage() {
   const navigate = useNavigate()
@@ -35,6 +57,7 @@ export function WorkspacesPage() {
   const [templateSourceWorkspace, setTemplateSourceWorkspace] = useState<Workspace | null>(null)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [templateModalKey, setTemplateModalKey] = useState(0)
+  const importInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     void loadWorkspaces()
@@ -118,6 +141,90 @@ export function WorkspacesPage() {
     setSelectedWorkspace(null)
     setPrefillWorkspace(template.workspaceConfig)
     setShowModal(true)
+  }
+
+  const handleAddPresets = async () => {
+    const existingNames = new Set(
+      workspaceTemplates.map((template) => template.name.toLowerCase())
+    )
+    let createdCount = 0
+    for (const preset of workspaceTemplatePresets) {
+      if (existingNames.has(preset.name.toLowerCase())) {
+        continue
+      }
+      try {
+        await createTemplate({
+          name: preset.name,
+          description: preset.description,
+          workspaceConfig: preset.workspaceConfig,
+        })
+        createdCount += 1
+      } catch {
+        // Errors are surfaced by the hook; continue with remaining presets.
+      }
+    }
+    if (createdCount === 0) {
+      window.alert('All presets already exist.')
+    }
+  }
+
+  const handleExportTemplates = () => {
+    const payload: WorkspaceTemplateExport = {
+      version: 1,
+      type: 'workspaceTemplates',
+      templates: workspaceTemplates.map((template) => ({
+        name: template.name,
+        description: template.description,
+        workspaceConfig: template.workspaceConfig,
+      })),
+    }
+    downloadJson('workspace-templates.json', payload)
+  }
+
+  const handleImportTemplates = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    try {
+      const raw = await file.text()
+      const parsed = JSON.parse(raw)
+      const templates = Array.isArray(parsed) ? parsed : parsed.templates
+      if (!Array.isArray(templates)) {
+        window.alert('Invalid template file. Expected a list of templates.')
+        return
+      }
+      const existingNames = new Set(
+        workspaceTemplates.map((template) => template.name.toLowerCase())
+      )
+      let importedCount = 0
+      let skippedCount = 0
+      for (const entry of templates) {
+        if (!entry?.name || !entry?.workspaceConfig) {
+          skippedCount += 1
+          continue
+        }
+        const normalizedName = String(entry.name).toLowerCase()
+        if (existingNames.has(normalizedName)) {
+          skippedCount += 1
+          continue
+        }
+        try {
+          await createTemplate({
+            name: String(entry.name),
+            description: entry.description ? String(entry.description) : undefined,
+            workspaceConfig: entry.workspaceConfig,
+          })
+          existingNames.add(normalizedName)
+          importedCount += 1
+        } catch {
+          skippedCount += 1
+        }
+      }
+      window.alert(`Imported ${importedCount} templates. Skipped ${skippedCount}.`)
+    } catch (error) {
+      console.error('Failed to import workspace templates', error)
+      window.alert('Import failed. Please check the JSON format.')
+    }
   }
 
   const handleViewWorkspace = (workspaceId: string) => {
@@ -206,6 +313,28 @@ export function WorkspacesPage() {
             <p className="section-label">Templates</p>
             <h2>Workspace Templates</h2>
             <p className="settings-panel__meta">Reuse workspace setups for repeated workflows.</p>
+            <div className="settings-panel__actions">
+              <button onClick={handleAddPresets} className="btn-secondary" type="button">
+                Add Presets
+              </button>
+              <button onClick={handleExportTemplates} className="btn-secondary" type="button">
+                Export
+              </button>
+              <button
+                onClick={() => importInputRef.current?.click()}
+                className="btn-secondary"
+                type="button"
+              >
+                Import
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json"
+                onChange={handleImportTemplates}
+                hidden
+              />
+            </div>
           </div>
         </header>
 
