@@ -144,9 +144,7 @@ export function WorkspacesPage() {
   }
 
   const handleAddPresets = async () => {
-    const existingNames = new Set(
-      workspaceTemplates.map((template) => template.name.toLowerCase())
-    )
+    const existingNames = new Set(workspaceTemplates.map((template) => template.name.toLowerCase()))
     let createdCount = 0
     for (const preset of workspaceTemplatePresets) {
       if (existingNames.has(preset.name.toLowerCase())) {

@@ -20,6 +20,7 @@ to reuse configurations across runs or accounts.
 - Firestore-backed storage per user.
 
 **Key files**:
+
 - `apps/web-vite/src/pages/AgentsPage.tsx`
 - `apps/web-vite/src/pages/WorkspacesPage.tsx`
 - `apps/web-vite/src/components/agents/TemplateSaveModal.tsx`
@@ -36,6 +37,7 @@ to reuse configurations across runs or accounts.
 - One-click add to template library.
 
 **Key file**:
+
 - `apps/web-vite/src/agents/templatePresets.ts`
 
 ---

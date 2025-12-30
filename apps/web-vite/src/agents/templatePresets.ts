@@ -14,13 +14,7 @@ type WorkspaceTemplatePreset = {
   description?: string
   workspaceConfig: Omit<
     Workspace,
-    | 'workspaceId'
-    | 'userId'
-    | 'archived'
-    | 'createdAtMs'
-    | 'updatedAtMs'
-    | 'syncState'
-    | 'version'
+    'workspaceId' | 'userId' | 'archived' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
   >
 }
 
