@@ -14,7 +14,7 @@ import { recordMessage } from './messageStore.js'
 import { checkProviderRateLimit } from './rateLimiter.js'
 import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
-import { executeTools, getAgentTools } from './toolExecutor.js'
+import { executeTools, getAgentToolsFromRegistry, getBuiltinToolRegistry } from './toolExecutor.js'
 
 /**
  * Initialize Grok client with API key from Firebase secrets
@@ -110,7 +110,9 @@ export async function executeWithGrok(
     }
 
     // Get available tools for this agent
-    const tools = toolContext ? getAgentTools(agent) : []
+    const tools = toolContext
+      ? getAgentToolsFromRegistry(agent, toolContext.toolRegistry ?? getBuiltinToolRegistry())
+      : []
 
     // Track total tokens and cost across all iterations
     let totalInputTokens = 0

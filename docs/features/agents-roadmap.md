@@ -262,9 +262,9 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 
 2. **Advanced Features Not Yet Implemented**:
    - ❌ Conversation memory (runs are stateless)
-   - ❌ Streaming responses
+   - ✅ Streaming responses (OpenAI + Anthropic)
    - ❌ Advanced tools (calendar, email, web search)
-   - ❌ Custom tool registration via UI
+   - ✅ Custom tool registration via UI
    - ❌ Tool usage analytics
 
 3. **UI Gaps**:
@@ -368,22 +368,25 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 
 **Deliverables**:
 
-- Server-Sent Events (SSE) support
-- Real-time token streaming
+**Complete (v1)**:
+
+- Firestore run events stream (`users/{userId}/runs/{runId}/events`)
+- Real-time token streaming (OpenAI + Anthropic)
 - Incremental tool execution updates
 - UI updates for streaming
-- WebSocket alternative for bidirectional communication
+- Fallback to non-streaming for unsupported providers
 
 **Why Important**: Better UX with real-time feedback.
 
 #### Phase 6C: Custom Tool Registration
 
-**Deliverables**:
+**Deliverables (Complete v1)**:
 
-- UI for creating custom tools
-- Tool schema builder
-- Serverless function deployment for custom tools
-- Tool versioning
+- Custom tool storage per user (Firestore)
+- UI for creating/editing tools (name, params, JS code)
+- Agent tool selection (built-in + custom)
+- Server-side JS execution sandbox (vm)
+- Fallback to built-in tools when custom tools are absent
 
 **Why Important**: Makes framework extensible by users without code changes.
 
@@ -489,7 +492,7 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 
 1. **Conversation Memory** (Phase 6A): Long-running sessions
 2. **Streaming** (Phase 6B): Better UX
-3. **Custom Tools** (Phase 6C): User extensibility
+3. **Custom Tools** (Phase 6C): User extensibility (v1 complete)
 4. **Agent Templates** (Phase 6D): Faster onboarding
 5. **Advanced Orchestration** (Phase 6E): Complex workflows
 
@@ -555,7 +558,7 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 
 ### Medium-term (Next Month)
 
-1. 🎯 Implement Phase 6C (custom tools UI)
+1. 🎯 Implement Phase 6D (agent/workspace templates)
 2. 🎯 Implement Phase 6D (agent templates)
 3. 🎯 Implement Phase 6E (advanced orchestration)
 4. 🎯 Public beta launch
@@ -593,7 +596,7 @@ This document provides a comprehensive roadmap for the AI Agent Framework implem
 
 ### Planned Improvements
 
-1. **Streaming Responses**: Not implemented (Phase 6B)
+1. **Streaming Responses**: Implemented (Phase 6B v1, OpenAI + Anthropic)
 2. **Conversation Memory**: Runs are stateless (Phase 6A)
 3. **Graceful tool fallback**: No no-tool fallback on tool failures
 4. **Per-tool rate limits**: Not implemented yet

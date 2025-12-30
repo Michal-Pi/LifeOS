@@ -242,7 +242,7 @@ users/{userId}/
 
 ### Phase 6: Advanced Features
 
-**Not Yet Started** (no marketplace planned)
+**In Progress** (no marketplace planned)
 
 #### Phase 6A: Conversation Memory
 
@@ -257,18 +257,23 @@ users/{userId}/
 
 #### Phase 6B: Streaming Responses
 
-- Server-Sent Events (SSE) support
-- Real-time token streaming
-- Incremental tool execution updates
-- UI updates for streaming
+**Complete (v1)**
+
+- Firestore run events stream (`users/{userId}/runs/{runId}/events`)
+- Real-time token streaming (OpenAI + Anthropic)
+- Tool call + tool result events
+- UI live output updates while runs are in progress
+- Fallback to non-streaming for unsupported providers
 
 #### Phase 6C: Custom Tool Registration
 
-- UI for creating custom tools
-- Tool parameter schema editor
-- Code execution sandbox
-- Tool versioning and updates
-- Tool permissions (per-user, per-workspace)
+**Complete (v1)**
+
+- Custom tools stored in Firestore: `users/{userId}/tools/{toolId}`
+- UI for creating/editing tools (name, description, params, JS code)
+- Agent tool selection (built-in + custom)
+- Server-side JS execution sandbox (vm) with limited context
+- Tool registry loads per-user custom tools at run time
 
 #### Phase 6D: Agent Templates & Presets
 
@@ -306,21 +311,27 @@ LifeOS_2/
 │   │   │   ├── firestoreAgentRepository.ts
 │   │   │   ├── firestoreWorkspaceRepository.ts
 │   │   │   ├── firestoreRunRepository.ts
-│   │   │   └── firestoreToolCallRecordRepository.ts
-│   │   ├── hooks/                 # Phase 2 & 5C & 6A: React hooks
+│   │   │   ├── firestoreToolCallRecordRepository.ts
+│   │   │   └── firestoreToolRepository.ts
+│   │   ├── hooks/                 # Phase 2, 5C, 6A, 6B, 6C: React hooks
 │   │   │   ├── useAgentOperations.ts
 │   │   │   ├── useWorkspaceOperations.ts
 │   │   │   ├── useToolCallOperations.ts
-│   │   │   └── useRunMessages.ts
-│   │   ├── components/agents/     # Phase 2 & 3 & 5C: UI components
+│   │   │   ├── useRunMessages.ts
+│   │   │   ├── useRunEvents.ts
+│   │   │   └── useToolOperations.ts
+│   │   ├── components/agents/     # Phase 2, 3, 5C, 6C: UI components
 │   │   │   ├── AgentBuilderModal.tsx
 │   │   │   ├── AgentsPage.tsx
+│   │   │   ├── ToolBuilderModal.tsx
 │   │   │   ├── WorkspaceFormModal.tsx
 │   │   │   ├── RunWorkspaceModal.tsx
 │   │   │   ├── WorkspacesPage.tsx
 │   │   │   ├── WorkspaceDetailPage.tsx
 │   │   │   ├── ToolCallTimeline.tsx  # Phase 5C
 │   │   │   └── RunCard.tsx            # Phase 5C
+│   │   ├── agents/                # Phase 6C: Built-in tool metadata
+│   │   │   └── builtinTools.ts
 │   │   └── pages/                 # Phase 3: Main pages
 │   │       └── WorkspaceDetailPage.tsx
 │   └── App.tsx                    # Routing integration
@@ -334,6 +345,9 @@ LifeOS_2/
 │   ├── runExecutor.ts             # Phase 4: Cloud Function
 │   ├── toolExecutor.ts            # Phase 5A-5B: Tool framework
 │   ├── advancedTools.ts           # Phase 5D: Advanced tools
+│   ├── customTools.ts             # Phase 6C: Custom tool loader
+│   ├── runEvents.ts               # Phase 6B: Streaming events
+│   ├── streamingTypes.ts          # Phase 6B: Streaming types
 │   ├── retryHelper.ts             # Phase 5E: Retry logic
 │   ├── errorHandler.ts            # Phase 5E: Error handling + timeouts
 │   ├── rateLimiter.ts             # Phase 5E: Rate limiting
@@ -390,8 +404,8 @@ LifeOS_2/
 ### Current Limitations
 
 1. **Partial conversation memory**: History is injected as a summarized text block; no semantic memory or embeddings yet
-2. **No streaming**: Responses arrive all at once (Phase 6B will add streaming)
-3. **No marketplace**: Custom tool UI deferred to Phase 6C
+2. **Streaming scope**: Live token streaming available for OpenAI + Anthropic only; other providers fall back to non-streaming
+3. **Custom tool sandbox**: JS tools run in a minimal vm context (no module imports)
 4. **Web search**: Requires manual configuration of Google Custom Search API
 
 ### Known Bugs
@@ -440,7 +454,28 @@ users/{userId}/settings/agentMemorySettings
 Fields: `memoryMessageLimit`
 
 Workspace override: `workspace.memoryMessageLimit`  
-Run override: `run.memoryMessageLimit`
+Run override: `run.memoryMessageLimit`  
+Priority: run → workspace → global → default `HISTORY_CONTEXT_LIMIT` (50)
+
+### Run Events (Streaming)
+
+Streaming events are stored at:
+
+```
+users/{userId}/runs/{runId}/events
+```
+
+Event types: `token`, `tool_call`, `tool_result`, `status`, `error`, `final`
+
+### Custom Tools
+
+Custom tools are stored at:
+
+```
+users/{userId}/tools/{toolId}
+```
+
+Fields: `name`, `description`, `parameters`, `implementation`, `requiresAuth`, `allowedModules`, `source`
 
 ### Firebase Setup
 
@@ -543,11 +578,11 @@ Each run tracks:
 
 ## Next Steps
 
-### Immediate (Phase 6B)
+### Immediate (Phase 6D)
 
-1. Implement streaming responses (Phase 6B)
-2. Real-time token streaming
-3. Incremental tool execution updates
+1. Agent/workspace templates (Phase 6D)
+2. Import/export agent configs
+3. Template presets for common workflows
 
 ### Near-term (Phase 6A+ Enhancements)
 
@@ -555,11 +590,11 @@ Each run tracks:
 2. Add UI filters/search within messages (optional)
 3. Explore semantic memory (embeddings + retrieval)
 
-### Long-term (Phase 6C-6E)
+### Long-term (Phase 6E)
 
-1. Custom tool registration UI (Phase 6C)
-2. Agent/workspace templates (Phase 6D)
-3. Advanced orchestration patterns (Phase 6E)
+1. Advanced orchestration patterns (Phase 6E)
+2. Loop detection and prevention
+3. Conditional branching
 
 ---
 
@@ -596,5 +631,5 @@ Each run tracks:
 ---
 
 **Status**: Phase 5E Complete ✅
-**Next Phase**: Phase 6B (Streaming Responses)
+**Next Phase**: Phase 6D (Agent Templates & Presets)
 **Last Updated**: December 29, 2025

@@ -167,6 +167,11 @@ export interface ToolParameter {
   properties?: Record<string, ToolParameter> // For nested objects
 }
 
+export interface ToolImplementation {
+  type: 'javascript'
+  code: string
+}
+
 export interface ToolDefinition {
   toolId: ToolId
   userId?: string // Null for global tools, set for user-specific
@@ -174,6 +179,10 @@ export interface ToolDefinition {
   name: string
   description: string
   parameters: Record<string, ToolParameter>
+
+  // Implementation for custom tools
+  implementation?: ToolImplementation
+  source?: 'builtin' | 'custom'
 
   // Security
   requiresAuth: boolean

@@ -13,8 +13,9 @@ import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
 import { recordMessage } from './messageStore.js'
 import { checkProviderRateLimit } from './rateLimiter.js'
 import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
+import type { StreamContext } from './streamingTypes.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
-import { executeTools, getAgentTools } from './toolExecutor.js'
+import { executeTools, getAgentToolsFromRegistry, getBuiltinToolRegistry } from './toolExecutor.js'
 
 /**
  * Initialize Anthropic client with API key from Firebase secrets
@@ -107,7 +108,9 @@ export async function executeWithAnthropic(
     const userPrompt = `Goal: ${goal}${contextStr}`
 
     // Get available tools for this agent
-    const toolsOpenAIFormat = toolContext ? getAgentTools(agent) : []
+    const toolsOpenAIFormat = toolContext
+      ? getAgentToolsFromRegistry(agent, toolContext.toolRegistry ?? getBuiltinToolRegistry())
+      : []
     const tools =
       toolsOpenAIFormat.length > 0 ? convertToolsToAnthropicFormat(toolsOpenAIFormat) : undefined
 
@@ -330,6 +333,144 @@ export async function executeWithAnthropic(
     }
   } catch (error) {
     console.error('Anthropic execution error:', error)
+    const agentError = wrapError(error, 'anthropic')
+    agentError.details = {
+      ...agentError.details,
+      provider: 'anthropic',
+      model: modelName,
+    }
+    throw agentError
+  }
+}
+
+/**
+ * Execute a single-agent task using Anthropic with streaming output.
+ * Falls back to non-streaming when tools are enabled.
+ */
+export async function executeWithAnthropicStreaming(
+  client: Anthropic,
+  agent: AgentConfig,
+  goal: string,
+  context: Record<string, unknown> | undefined,
+  toolContext: BaseToolExecutionContext | undefined,
+  stream: StreamContext
+): Promise<AnthropicExecutionResult> {
+  const modelName = agent.modelName ?? 'claude-3-5-haiku-20241022'
+  const toolsOpenAIFormat = toolContext
+    ? getAgentToolsFromRegistry(agent, toolContext.toolRegistry ?? getBuiltinToolRegistry())
+    : []
+  const tools =
+    toolsOpenAIFormat.length > 0 ? convertToolsToAnthropicFormat(toolsOpenAIFormat) : undefined
+
+  if (tools && tools.length > 0) {
+    return executeWithAnthropic(client, agent, goal, context, toolContext)
+  }
+
+  try {
+    const systemPrompt =
+      agent.systemPrompt ?? `You are ${agent.role}. Help the user accomplish their goal.`
+
+    const contextStr = context ? `\n\nContext:\n${JSON.stringify(context, null, 2)}` : ''
+    const userPrompt = `Goal: ${goal}${contextStr}`
+
+    const messages: Anthropic.MessageParam[] = [
+      {
+        role: 'user',
+        content: userPrompt,
+      },
+    ]
+
+    if (toolContext) {
+      await recordMessage({
+        userId: toolContext.userId,
+        runId: toolContext.runId,
+        agentId: toolContext.agentId,
+        role: 'system',
+        content: systemPrompt,
+      })
+      await recordMessage({
+        userId: toolContext.userId,
+        runId: toolContext.runId,
+        agentId: toolContext.agentId,
+        role: 'user',
+        content: userPrompt,
+      })
+    }
+
+    let finalOutput = ''
+
+    const streamResponse = await executeWithRetry(
+      async () => {
+        if (toolContext?.userId) {
+          await checkProviderRateLimit(toolContext.userId, 'anthropic')
+        }
+
+        return client.messages.stream({
+          model: modelName,
+          max_tokens: agent.maxTokens ?? 2048,
+          temperature: agent.temperature ?? 0.7,
+          system: systemPrompt,
+          messages,
+        })
+      },
+      PROVIDER_RETRY_CONFIG,
+      (attempt, error, delayMs) => {
+        console.log(
+          `Anthropic retry ${attempt}/${PROVIDER_RETRY_CONFIG.maxRetries} after ${delayMs}ms: ${(error as Error).message}`
+        )
+      }
+    )
+
+    for await (const event of streamResponse) {
+      if (event.type === 'content_block_delta') {
+        const delta = (event.delta as { text?: string })?.text ?? ''
+        if (delta) {
+          finalOutput += delta
+          await stream.eventWriter.appendToken(delta, {
+            workspaceId: toolContext?.workspaceId,
+            agentId: stream.agentId,
+            agentName: stream.agentName,
+            provider: 'anthropic',
+            model: modelName,
+            step: stream.step,
+          })
+        }
+      }
+    }
+
+    await stream.eventWriter.flushTokens({
+      workspaceId: toolContext?.workspaceId,
+      agentId: stream.agentId,
+      agentName: stream.agentName,
+      provider: 'anthropic',
+      model: modelName,
+      step: stream.step,
+    })
+
+    const finalMessage = await streamResponse.finalMessage()
+
+    if (toolContext) {
+      await recordMessage({
+        userId: toolContext.userId,
+        runId: toolContext.runId,
+        agentId: toolContext.agentId,
+        role: 'assistant',
+        content: finalOutput,
+      })
+    }
+
+    const inputTokens = finalMessage.usage?.input_tokens ?? 0
+    const outputTokens = finalMessage.usage?.output_tokens ?? 0
+    const tokensUsed = inputTokens + outputTokens
+    const estimatedCost = calculateCost(modelName, inputTokens, outputTokens)
+
+    return {
+      output: finalOutput,
+      tokensUsed,
+      estimatedCost,
+    }
+  } catch (error) {
+    console.error('Anthropic streaming execution error:', error)
     const agentError = wrapError(error, 'anthropic')
     agentError.details = {
       ...agentError.details,

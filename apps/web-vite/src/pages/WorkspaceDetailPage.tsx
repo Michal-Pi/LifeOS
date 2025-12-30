@@ -136,7 +136,9 @@ export function WorkspaceDetailPage() {
           </div>
           <div className="info-row">
             <strong>Message Window:</strong>{' '}
-            {workspace.memoryMessageLimit ? `${workspace.memoryMessageLimit} msgs` : 'Default'}
+            {workspace.memoryMessageLimit
+              ? `${workspace.memoryMessageLimit} msgs`
+              : 'Global default'}
           </div>
           <div className="info-row">
             <strong>Agents:</strong> {workspace.agentIds.length}

@@ -9,7 +9,10 @@ import type { AgentConfig, Run, Workspace } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 
 import type { ProviderKeys } from './providerService.js'
-import { executeWithProvider } from './providerService.js'
+import { executeWithProvider, executeWithProviderStreaming } from './providerService.js'
+import type { RunEventWriter } from './runEvents.js'
+import type { StreamContext } from './streamingTypes.js'
+import type { ToolRegistry } from './toolExecutor.js'
 
 /**
  * Result from a single agent execution within a workflow
@@ -58,7 +61,9 @@ export async function executeSequentialWorkflow(
   apiKeys: ProviderKeys,
   maxIterations: number = 10,
   userId?: string,
-  runId?: string
+  runId?: string,
+  eventWriter?: RunEventWriter,
+  toolRegistry?: ToolRegistry
 ): Promise<WorkflowExecutionResult> {
   const steps: AgentExecutionStep[] = []
   let currentContext = context ?? {}
@@ -83,17 +88,41 @@ export async function executeSequentialWorkflow(
             agentId: agent.agentId,
             workspaceId: workspace.workspaceId,
             runId,
+            eventWriter,
+            toolRegistry,
           }
         : undefined
 
-    // Execute agent with current goal and context
-    const result = await executeWithProvider(
-      agent,
-      currentGoal,
-      currentContext,
-      apiKeys,
-      toolContext
-    )
+    const streamContext: StreamContext | undefined =
+      eventWriter && toolContext
+        ? {
+            eventWriter,
+            agentId: agent.agentId,
+            agentName: agent.name,
+            step: i + 1,
+          }
+        : undefined
+
+    if (eventWriter && toolContext) {
+      await eventWriter.writeEvent({
+        type: 'status',
+        workspaceId: workspace.workspaceId,
+        agentId: agent.agentId,
+        agentName: agent.name,
+        status: `agent_start:${i + 1}`,
+      })
+    }
+
+    const result = streamContext
+      ? await executeWithProviderStreaming(
+          agent,
+          currentGoal,
+          currentContext,
+          apiKeys,
+          toolContext,
+          streamContext
+        )
+      : await executeWithProvider(agent, currentGoal, currentContext, apiKeys, toolContext)
 
     // Record execution step
     const step: AgentExecutionStep = {
@@ -107,6 +136,24 @@ export async function executeSequentialWorkflow(
       executedAtMs: Date.now(),
     }
     steps.push(step)
+
+    if (eventWriter && toolContext) {
+      await eventWriter.flushTokens({
+        workspaceId: workspace.workspaceId,
+        agentId: agent.agentId,
+        agentName: agent.name,
+        provider: result.provider,
+        model: result.model,
+        step: i + 1,
+      })
+      await eventWriter.writeEvent({
+        type: 'status',
+        workspaceId: workspace.workspaceId,
+        agentId: agent.agentId,
+        agentName: agent.name,
+        status: `agent_done:${i + 1}`,
+      })
+    }
 
     // Update context with previous agent's output for next iteration
     currentContext = {
@@ -153,7 +200,9 @@ export async function executeParallelWorkflow(
   context: Record<string, unknown> | undefined,
   apiKeys: ProviderKeys,
   userId?: string,
-  runId?: string
+  runId?: string,
+  eventWriter?: RunEventWriter,
+  toolRegistry?: ToolRegistry
 ): Promise<WorkflowExecutionResult> {
   console.log(`Parallel workflow: Executing ${agents.length} agents concurrently`)
 
@@ -169,10 +218,40 @@ export async function executeParallelWorkflow(
             agentId: agent.agentId,
             workspaceId: workspace.workspaceId,
             runId,
+            eventWriter,
+            toolRegistry,
           }
         : undefined
 
-    const result = await executeWithProvider(agent, goal, context, apiKeys, toolContext)
+    const streamContext: StreamContext | undefined =
+      eventWriter && toolContext
+        ? {
+            eventWriter,
+            agentId: agent.agentId,
+            agentName: agent.name,
+          }
+        : undefined
+
+    if (eventWriter && toolContext) {
+      await eventWriter.writeEvent({
+        type: 'status',
+        workspaceId: workspace.workspaceId,
+        agentId: agent.agentId,
+        agentName: agent.name,
+        status: 'agent_start',
+      })
+    }
+
+    const result = streamContext
+      ? await executeWithProviderStreaming(
+          agent,
+          goal,
+          context,
+          apiKeys,
+          toolContext,
+          streamContext
+        )
+      : await executeWithProvider(agent, goal, context, apiKeys, toolContext)
 
     const step: AgentExecutionStep = {
       agentId: agent.agentId,
@@ -186,6 +265,23 @@ export async function executeParallelWorkflow(
     }
 
     console.log(`Parallel workflow: Completed agent ${agent.agentId} (${agent.name})`)
+
+    if (eventWriter && toolContext) {
+      await eventWriter.flushTokens({
+        workspaceId: workspace.workspaceId,
+        agentId: agent.agentId,
+        agentName: agent.name,
+        provider: result.provider,
+        model: result.model,
+      })
+      await eventWriter.writeEvent({
+        type: 'status',
+        workspaceId: workspace.workspaceId,
+        agentId: agent.agentId,
+        agentName: agent.name,
+        status: 'agent_done',
+      })
+    }
     return step
   })
 
@@ -233,7 +329,9 @@ export async function executeSupervisorWorkflow(
   apiKeys: ProviderKeys,
   maxIterations: number = 10,
   userId?: string,
-  runId?: string
+  runId?: string,
+  eventWriter?: RunEventWriter,
+  toolRegistry?: ToolRegistry
 ): Promise<WorkflowExecutionResult> {
   const steps: AgentExecutionStep[] = []
   const iterationLimit = Math.min(maxIterations, workspace.maxIterations ?? 10)
@@ -260,16 +358,47 @@ export async function executeSupervisorWorkflow(
           agentId: supervisorAgent.agentId,
           workspaceId: workspace.workspaceId,
           runId,
+          eventWriter,
+          toolRegistry,
         }
       : undefined
 
-  const planResult = await executeWithProvider(
-    supervisorAgent,
-    goal,
-    supervisorContext,
-    apiKeys,
-    supervisorToolContext
-  )
+  const planStreamContext: StreamContext | undefined =
+    eventWriter && supervisorToolContext
+      ? {
+          eventWriter,
+          agentId: supervisorAgent.agentId,
+          agentName: supervisorAgent.name,
+          step: 1,
+        }
+      : undefined
+
+  if (eventWriter && supervisorToolContext) {
+    await eventWriter.writeEvent({
+      type: 'status',
+      workspaceId: workspace.workspaceId,
+      agentId: supervisorAgent.agentId,
+      agentName: supervisorAgent.name,
+      status: 'agent_start:plan',
+    })
+  }
+
+  const planResult = planStreamContext
+    ? await executeWithProviderStreaming(
+        supervisorAgent,
+        goal,
+        supervisorContext,
+        apiKeys,
+        supervisorToolContext,
+        planStreamContext
+      )
+    : await executeWithProvider(
+        supervisorAgent,
+        goal,
+        supervisorContext,
+        apiKeys,
+        supervisorToolContext
+      )
 
   steps.push({
     agentId: supervisorAgent.agentId,
@@ -281,6 +410,24 @@ export async function executeSupervisorWorkflow(
     model: planResult.model,
     executedAtMs: Date.now(),
   })
+
+  if (eventWriter && supervisorToolContext) {
+    await eventWriter.flushTokens({
+      workspaceId: workspace.workspaceId,
+      agentId: supervisorAgent.agentId,
+      agentName: supervisorAgent.name,
+      provider: planResult.provider,
+      model: planResult.model,
+      step: 1,
+    })
+    await eventWriter.writeEvent({
+      type: 'status',
+      workspaceId: workspace.workspaceId,
+      agentId: supervisorAgent.agentId,
+      agentName: supervisorAgent.name,
+      status: 'agent_done:plan',
+    })
+  }
 
   // Step 2: Execute worker agents (simplified - execute all workers in sequence)
   let currentContext = {
@@ -303,16 +450,41 @@ export async function executeSupervisorWorkflow(
             agentId: worker.agentId,
             workspaceId: workspace.workspaceId,
             runId,
+            eventWriter,
+            toolRegistry,
           }
         : undefined
 
-    const result = await executeWithProvider(
-      worker,
-      goal,
-      currentContext,
-      apiKeys,
-      workerToolContext
-    )
+    const workerStreamContext: StreamContext | undefined =
+      eventWriter && workerToolContext
+        ? {
+            eventWriter,
+            agentId: worker.agentId,
+            agentName: worker.name,
+            step: i + 2,
+          }
+        : undefined
+
+    if (eventWriter && workerToolContext) {
+      await eventWriter.writeEvent({
+        type: 'status',
+        workspaceId: workspace.workspaceId,
+        agentId: worker.agentId,
+        agentName: worker.name,
+        status: `agent_start:${i + 2}`,
+      })
+    }
+
+    const result = workerStreamContext
+      ? await executeWithProviderStreaming(
+          worker,
+          goal,
+          currentContext,
+          apiKeys,
+          workerToolContext,
+          workerStreamContext
+        )
+      : await executeWithProvider(worker, goal, currentContext, apiKeys, workerToolContext)
 
     steps.push({
       agentId: worker.agentId,
@@ -324,6 +496,24 @@ export async function executeSupervisorWorkflow(
       model: result.model,
       executedAtMs: Date.now(),
     })
+
+    if (eventWriter && workerToolContext) {
+      await eventWriter.flushTokens({
+        workspaceId: workspace.workspaceId,
+        agentId: worker.agentId,
+        agentName: worker.name,
+        provider: result.provider,
+        model: result.model,
+        step: i + 2,
+      })
+      await eventWriter.writeEvent({
+        type: 'status',
+        workspaceId: workspace.workspaceId,
+        agentId: worker.agentId,
+        agentName: worker.name,
+        status: `agent_done:${i + 2}`,
+      })
+    }
 
     currentContext = {
       ...currentContext,
@@ -339,13 +529,42 @@ export async function executeSupervisorWorkflow(
       'You are a supervisor agent. Review all worker outputs and synthesize a final comprehensive response.',
   }
 
-  const finalResult = await executeWithProvider(
-    supervisorAgent,
-    goal,
-    synthesisContext,
-    apiKeys,
-    supervisorToolContext
-  )
+  const synthesisStreamContext: StreamContext | undefined =
+    eventWriter && supervisorToolContext
+      ? {
+          eventWriter,
+          agentId: supervisorAgent.agentId,
+          agentName: supervisorAgent.name,
+          step: steps.length + 1,
+        }
+      : undefined
+
+  if (eventWriter && supervisorToolContext) {
+    await eventWriter.writeEvent({
+      type: 'status',
+      workspaceId: workspace.workspaceId,
+      agentId: supervisorAgent.agentId,
+      agentName: supervisorAgent.name,
+      status: 'agent_start:synthesis',
+    })
+  }
+
+  const finalResult = synthesisStreamContext
+    ? await executeWithProviderStreaming(
+        supervisorAgent,
+        goal,
+        synthesisContext,
+        apiKeys,
+        supervisorToolContext,
+        synthesisStreamContext
+      )
+    : await executeWithProvider(
+        supervisorAgent,
+        goal,
+        synthesisContext,
+        apiKeys,
+        supervisorToolContext
+      )
 
   steps.push({
     agentId: supervisorAgent.agentId,
@@ -357,6 +576,24 @@ export async function executeSupervisorWorkflow(
     model: finalResult.model,
     executedAtMs: Date.now(),
   })
+
+  if (eventWriter && supervisorToolContext) {
+    await eventWriter.flushTokens({
+      workspaceId: workspace.workspaceId,
+      agentId: supervisorAgent.agentId,
+      agentName: supervisorAgent.name,
+      provider: finalResult.provider,
+      model: finalResult.model,
+      step: steps.length,
+    })
+    await eventWriter.writeEvent({
+      type: 'status',
+      workspaceId: workspace.workspaceId,
+      agentId: supervisorAgent.agentId,
+      agentName: supervisorAgent.name,
+      status: 'agent_done:synthesis',
+    })
+  }
 
   // Calculate totals
   const totalTokensUsed = steps.reduce((sum, step) => sum + step.tokensUsed, 0)
@@ -384,7 +621,9 @@ export async function executeWorkflow(
   userId: string,
   workspace: Workspace,
   run: Run,
-  apiKeys: ProviderKeys
+  apiKeys: ProviderKeys,
+  eventWriter?: RunEventWriter,
+  toolRegistry?: ToolRegistry
 ): Promise<WorkflowExecutionResult> {
   const db = getFirestore()
 
@@ -411,7 +650,9 @@ export async function executeWorkflow(
         apiKeys,
         workspace.maxIterations,
         userId,
-        run.runId
+        run.runId,
+        eventWriter,
+        toolRegistry
       )
 
     case 'parallel':
@@ -423,7 +664,9 @@ export async function executeWorkflow(
         run.context,
         apiKeys,
         userId,
-        run.runId
+        run.runId,
+        eventWriter,
+        toolRegistry
       )
 
     case 'supervisor': {
@@ -443,7 +686,9 @@ export async function executeWorkflow(
         apiKeys,
         workspace.maxIterations,
         userId,
-        run.runId
+        run.runId,
+        eventWriter,
+        toolRegistry
       )
     }
 
@@ -458,7 +703,9 @@ export async function executeWorkflow(
         apiKeys,
         workspace.maxIterations,
         userId,
-        run.runId
+        run.runId,
+        eventWriter,
+        toolRegistry
       )
 
     default:

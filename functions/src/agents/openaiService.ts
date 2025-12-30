@@ -13,8 +13,9 @@ import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
 import { recordMessage } from './messageStore.js'
 import { checkProviderRateLimit } from './rateLimiter.js'
 import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
+import type { StreamContext } from './streamingTypes.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
-import { executeTools, getAgentTools } from './toolExecutor.js'
+import { executeTools, getAgentToolsFromRegistry, getBuiltinToolRegistry } from './toolExecutor.js'
 
 /**
  * Initialize OpenAI client with API key from Firebase secrets
@@ -110,7 +111,9 @@ export async function executeWithOpenAI(
     }
 
     // Get available tools for this agent
-    const tools = toolContext ? getAgentTools(agent) : []
+    const tools = toolContext
+      ? getAgentToolsFromRegistry(agent, toolContext.toolRegistry ?? getBuiltinToolRegistry())
+      : []
 
     // Track total tokens and cost across all iterations
     let totalInputTokens = 0
@@ -277,6 +280,148 @@ export async function executeWithOpenAI(
     }
   } catch (error) {
     console.error('OpenAI execution error:', error)
+    const agentError = wrapError(error, 'openai')
+    agentError.details = {
+      ...agentError.details,
+      provider: 'openai',
+      model: modelName,
+    }
+    throw agentError
+  }
+}
+
+/**
+ * Execute a single-agent task using OpenAI with streaming output.
+ * Falls back to non-streaming when tools are enabled.
+ */
+export async function executeWithOpenAIStreaming(
+  client: OpenAI,
+  agent: AgentConfig,
+  goal: string,
+  context: Record<string, unknown> | undefined,
+  toolContext: BaseToolExecutionContext | undefined,
+  stream: StreamContext
+): Promise<OpenAIExecutionResult> {
+  const modelName = agent.modelName ?? 'gpt-4o-mini'
+  const tools = toolContext
+    ? getAgentToolsFromRegistry(agent, toolContext.toolRegistry ?? getBuiltinToolRegistry())
+    : []
+
+  if (tools.length > 0) {
+    return executeWithOpenAI(client, agent, goal, context, toolContext)
+  }
+
+  try {
+    const systemPrompt =
+      agent.systemPrompt ?? `You are ${agent.role}. Help the user accomplish their goal.`
+
+    const contextStr = context ? `\n\nContext:\n${JSON.stringify(context, null, 2)}` : ''
+    const userPrompt = `Goal: ${goal}${contextStr}`
+
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ]
+
+    if (toolContext) {
+      await recordMessage({
+        userId: toolContext.userId,
+        runId: toolContext.runId,
+        agentId: toolContext.agentId,
+        role: 'system',
+        content: systemPrompt,
+      })
+      await recordMessage({
+        userId: toolContext.userId,
+        runId: toolContext.runId,
+        agentId: toolContext.agentId,
+        role: 'user',
+        content: userPrompt,
+      })
+    }
+
+    let finalOutput = ''
+    let usage: { prompt_tokens?: number; completion_tokens?: number } = {}
+
+    const response = await executeWithRetry(
+      async () => {
+        if (toolContext?.userId) {
+          await checkProviderRateLimit(toolContext.userId, 'openai')
+        }
+
+        return executeWithTimeout(
+          client.chat.completions.create({
+            model: modelName,
+            messages,
+            temperature: agent.temperature ?? 0.7,
+            max_tokens: agent.maxTokens ?? 2048,
+            stream: true,
+            stream_options: { include_usage: true },
+          }),
+          TIMEOUTS.PROVIDER,
+          'openai.chat.completions.create'
+        )
+      },
+      PROVIDER_RETRY_CONFIG,
+      (attempt, error, delayMs) => {
+        console.log(
+          `OpenAI retry ${attempt}/${PROVIDER_RETRY_CONFIG.maxRetries} after ${delayMs}ms: ${(error as Error).message}`
+        )
+      }
+    )
+
+    for await (const chunk of response) {
+      const delta = chunk.choices[0]?.delta?.content ?? ''
+      if (delta) {
+        finalOutput += delta
+        await stream.eventWriter.appendToken(delta, {
+          workspaceId: toolContext?.workspaceId,
+          agentId: stream.agentId,
+          agentName: stream.agentName,
+          provider: 'openai',
+          model: modelName,
+          step: stream.step,
+        })
+      }
+      if (chunk.usage) {
+        usage = {
+          prompt_tokens: chunk.usage.prompt_tokens ?? usage.prompt_tokens,
+          completion_tokens: chunk.usage.completion_tokens ?? usage.completion_tokens,
+        }
+      }
+    }
+
+    await stream.eventWriter.flushTokens({
+      workspaceId: toolContext?.workspaceId,
+      agentId: stream.agentId,
+      agentName: stream.agentName,
+      provider: 'openai',
+      model: modelName,
+      step: stream.step,
+    })
+
+    if (toolContext) {
+      await recordMessage({
+        userId: toolContext.userId,
+        runId: toolContext.runId,
+        agentId: toolContext.agentId,
+        role: 'assistant',
+        content: finalOutput,
+      })
+    }
+
+    const inputTokens = usage.prompt_tokens ?? 0
+    const outputTokens = usage.completion_tokens ?? 0
+    const tokensUsed = inputTokens + outputTokens
+    const estimatedCost = calculateCost(modelName, inputTokens, outputTokens)
+
+    return {
+      output: finalOutput,
+      tokensUsed,
+      estimatedCost,
+    }
+  } catch (error) {
+    console.error('OpenAI streaming execution error:', error)
     const agentError = wrapError(error, 'openai')
     agentError.details = {
       ...agentError.details,

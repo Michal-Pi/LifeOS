@@ -37,6 +37,11 @@ export const ToolParameterSchema: z.ZodType<any> = z.lazy(() =>
   })
 )
 
+export const ToolImplementationSchema = z.object({
+  type: z.literal('javascript'),
+  code: z.string().min(1),
+})
+
 export const ToolCallSchema = z.object({
   toolCallId: z.string(),
   toolId: z.string(),
@@ -56,6 +61,8 @@ export const ToolDefinitionSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().min(1).max(1000),
   parameters: z.record(z.string(), ToolParameterSchema),
+  implementation: ToolImplementationSchema.optional(),
+  source: z.enum(['builtin', 'custom']).optional(),
   requiresAuth: z.boolean(),
   allowedModules: z.array(z.string()).optional(),
   createdAtMs: z.number().int().positive(),

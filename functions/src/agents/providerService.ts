@@ -8,11 +8,20 @@
 
 import type { AgentConfig } from '@lifeos/agents'
 
-import { createAnthropicClient, executeWithAnthropic } from './anthropicService.js'
+import {
+  createAnthropicClient,
+  executeWithAnthropic,
+  executeWithAnthropicStreaming,
+} from './anthropicService.js'
 import { AgentError, ERROR_MESSAGES } from './errorHandler.js'
 import { createGoogleAIClient, executeWithGoogle } from './googleService.js'
 import { createGrokClient, executeWithGrok } from './grokService.js'
-import { createOpenAIClient, executeWithOpenAI } from './openaiService.js'
+import {
+  createOpenAIClient,
+  executeWithOpenAI,
+  executeWithOpenAIStreaming,
+} from './openaiService.js'
+import type { StreamContext } from './streamingTypes.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
 
 /**
@@ -81,6 +90,103 @@ export async function executeWithProvider(
       }
       const client = createAnthropicClient(apiKeys.anthropic)
       const result = await executeWithAnthropic(client, agent, goal, context, toolContext)
+      return {
+        ...result,
+        provider: 'anthropic',
+        model: agent.modelName ?? 'claude-3-5-haiku-20241022',
+      }
+    }
+
+    case 'google': {
+      if (!apiKeys.google) {
+        const errorMsg = ERROR_MESSAGES.PROVIDER_NOT_CONFIGURED('Google')
+        throw new AgentError(errorMsg.message, errorMsg.userMessage, 'auth', false, {
+          provider: 'google',
+        })
+      }
+      const client = createGoogleAIClient(apiKeys.google)
+      const result = await executeWithGoogle(client, agent, goal, context, toolContext)
+      return {
+        ...result,
+        provider: 'google',
+        model: agent.modelName ?? 'gemini-1.5-flash',
+      }
+    }
+
+    case 'xai': {
+      if (!apiKeys.grok) {
+        const errorMsg = ERROR_MESSAGES.PROVIDER_NOT_CONFIGURED('xAI (Grok)')
+        throw new AgentError(errorMsg.message, errorMsg.userMessage, 'auth', false, {
+          provider: 'xai',
+        })
+      }
+      const client = createGrokClient(apiKeys.grok)
+      const result = await executeWithGrok(client, agent, goal, context, toolContext)
+      return {
+        ...result,
+        provider: 'xai',
+        model: agent.modelName ?? 'grok-2-1212',
+      }
+    }
+
+    default:
+      throw new Error(`Unsupported AI provider: ${provider}`)
+  }
+}
+
+/**
+ * Execute a task with streaming output when supported by the provider.
+ */
+export async function executeWithProviderStreaming(
+  agent: AgentConfig,
+  goal: string,
+  context: Record<string, unknown> | undefined,
+  apiKeys: ProviderKeys,
+  toolContext: BaseToolExecutionContext | undefined,
+  stream: StreamContext
+): Promise<ProviderExecutionResult> {
+  const provider = agent.modelProvider
+
+  switch (provider) {
+    case 'openai': {
+      if (!apiKeys.openai) {
+        const errorMsg = ERROR_MESSAGES.PROVIDER_NOT_CONFIGURED('OpenAI')
+        throw new AgentError(errorMsg.message, errorMsg.userMessage, 'auth', false, {
+          provider: 'openai',
+        })
+      }
+      const client = createOpenAIClient(apiKeys.openai)
+      const result = await executeWithOpenAIStreaming(
+        client,
+        agent,
+        goal,
+        context,
+        toolContext,
+        stream
+      )
+      return {
+        ...result,
+        provider: 'openai',
+        model: agent.modelName ?? 'gpt-4o-mini',
+      }
+    }
+
+    case 'anthropic': {
+      if (!apiKeys.anthropic) {
+        const errorMsg = ERROR_MESSAGES.PROVIDER_NOT_CONFIGURED('Anthropic')
+        throw new AgentError(errorMsg.message, errorMsg.userMessage, 'auth', false, {
+          provider: 'anthropic',
+        })
+      }
+      const client = createAnthropicClient(apiKeys.anthropic)
+      const result = await executeWithAnthropicStreaming(
+        client,
+        agent,
+        goal,
+        context,
+        toolContext,
+        stream
+      )
       return {
         ...result,
         provider: 'anthropic',

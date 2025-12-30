@@ -15,7 +15,7 @@ import { recordMessage } from './messageStore.js'
 import { checkProviderRateLimit } from './rateLimiter.js'
 import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
-import { executeTools, getAgentTools } from './toolExecutor.js'
+import { executeTools, getAgentToolsFromRegistry, getBuiltinToolRegistry } from './toolExecutor.js'
 
 /**
  * Initialize Google AI client with API key from Firebase secrets
@@ -158,7 +158,9 @@ export async function executeWithGoogle(
     const userPrompt = `${systemPrompt}\n\nGoal: ${goal}${contextStr}`
 
     // Get available tools for this agent
-    const toolsOpenAIFormat = toolContext ? getAgentTools(agent) : []
+    const toolsOpenAIFormat = toolContext
+      ? getAgentToolsFromRegistry(agent, toolContext.toolRegistry ?? getBuiltinToolRegistry())
+      : []
     const tools =
       toolsOpenAIFormat.length > 0 ? convertToolsToGoogleFormat(toolsOpenAIFormat) : undefined
 

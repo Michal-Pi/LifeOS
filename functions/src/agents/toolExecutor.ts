@@ -8,11 +8,13 @@
  * Phase 5E: Retry logic, timeout handling, and error management.
  */
 
-import type { AgentConfig, ToolCallStatus, ModelProvider } from '@lifeos/agents'
+import type { AgentConfig, ToolCallStatus, ModelProvider, ToolId } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 import { advancedTools } from './advancedTools.js'
+import { loadCustomTools } from './customTools.js'
 import { ERROR_MESSAGES, executeWithTimeout, getToolTimeout, wrapError } from './errorHandler.js'
 import { TOOL_RETRY_CONFIG, executeWithRetry } from './retryHelper.js'
+import type { RunEventWriter } from './runEvents.js'
 
 /**
  * Tool call request from an agent
@@ -38,6 +40,7 @@ export interface ToolResult {
  * Tool definition
  */
 export interface ToolDefinition {
+  toolId?: ToolId
   name: string
   description: string
   parameters: {
@@ -48,12 +51,15 @@ export interface ToolDefinition {
         type: 'string' | 'number' | 'boolean' | 'object' | 'array'
         description: string
         required?: boolean
+        properties?: Record<string, any>
       }
     >
     required?: string[]
   }
   execute: (params: Record<string, unknown>, context: ToolExecutionContext) => Promise<unknown>
 }
+
+export type ToolRegistry = Map<string, ToolDefinition>
 
 /**
  * Base context for tool execution (provided by workflow executor)
@@ -63,6 +69,8 @@ export interface BaseToolExecutionContext {
   agentId: string
   workspaceId: string
   runId: string
+  eventWriter?: RunEventWriter
+  toolRegistry?: ToolRegistry
 }
 
 /**
@@ -77,20 +85,25 @@ export interface ToolExecutionContext extends BaseToolExecutionContext {
 /**
  * Registry of available tools
  */
-const TOOL_REGISTRY: Map<string, ToolDefinition> = new Map()
+const BUILTIN_TOOL_REGISTRY: ToolRegistry = new Map()
+
+export function getBuiltinToolRegistry(): ToolRegistry {
+  return BUILTIN_TOOL_REGISTRY
+}
 
 /**
  * Register a tool for agent use
  */
 export function registerTool(tool: ToolDefinition): void {
-  TOOL_REGISTRY.set(tool.name, tool)
+  const toolId = tool.toolId ?? (`tool:${tool.name}` as ToolId)
+  BUILTIN_TOOL_REGISTRY.set(tool.name, { ...tool, toolId })
   console.log(`Registered tool: ${tool.name}`)
 }
 
 /**
  * Get all registered tools as OpenAI-compatible function definitions
  */
-export function getToolDefinitions(): Array<{
+export function getToolDefinitions(registry: ToolRegistry = BUILTIN_TOOL_REGISTRY): Array<{
   type: 'function'
   function: {
     name: string
@@ -98,7 +111,7 @@ export function getToolDefinitions(): Array<{
     parameters: ToolDefinition['parameters']
   }
 }> {
-  return Array.from(TOOL_REGISTRY.values()).map((tool) => ({
+  return Array.from(registry.values()).map((tool) => ({
     type: 'function',
     function: {
       name: tool.name,
@@ -124,10 +137,27 @@ export function getAgentTools(agent: AgentConfig): Array<{
     return []
   }
 
-  // Filter tools based on agent's toolIds
-  // For now, we match by tool name (simplified - in production would use ToolId)
-  return Array.from(TOOL_REGISTRY.values())
-    .filter((tool) => agent.toolIds?.some((id) => id.includes(tool.name)))
+  return getAgentToolsFromRegistry(agent, BUILTIN_TOOL_REGISTRY)
+}
+
+export function getAgentToolsFromRegistry(
+  agent: AgentConfig,
+  registry: ToolRegistry
+): Array<{
+  type: 'function'
+  function: {
+    name: string
+    description: string
+    parameters: ToolDefinition['parameters']
+  }
+}> {
+  if (!agent.toolIds || agent.toolIds.length === 0) {
+    return []
+  }
+
+  const toolIds = new Set(agent.toolIds)
+  return Array.from(registry.values())
+    .filter((tool) => tool.toolId && toolIds.has(tool.toolId))
     .map((tool) => ({
       type: 'function',
       function: {
@@ -163,6 +193,18 @@ export async function executeTool(
   // Track retry attempts
   let retryAttempt = 0
 
+  const eventMeta = {
+    workspaceId: context.workspaceId,
+    agentId: context.agentId,
+    provider: context.provider,
+    model: context.modelName,
+    toolName: toolCall.toolName,
+    toolCallId: toolCall.toolCallId,
+  }
+
+  const registry = context.toolRegistry ?? BUILTIN_TOOL_REGISTRY
+  const tool = registry.get(toolCall.toolName)
+
   // Create initial tool call record (pending)
   const toolCallRecord = {
     toolCallRecordId,
@@ -173,7 +215,7 @@ export async function executeTool(
 
     toolCallId: toolCall.toolCallId,
     toolName: toolCall.toolName,
-    toolId: `tool:${toolCall.toolName}` as any, // Simplified - would use proper ToolId
+    toolId: (tool?.toolId ?? (`tool:${toolCall.toolName}` as ToolId)) as any,
 
     parameters: toolCall.parameters,
 
@@ -194,8 +236,12 @@ export async function executeTool(
   try {
     // Save pending record
     await toolCallDocRef.set(toolCallRecord)
-
-    const tool = TOOL_REGISTRY.get(toolCall.toolName)
+    if (context.eventWriter) {
+      await context.eventWriter.writeEvent({
+        type: 'tool_call',
+        ...eventMeta,
+      })
+    }
 
     if (!tool) {
       // Tool not found - use error message template
@@ -210,13 +256,21 @@ export async function executeTool(
         version: 2,
       })
 
-      return {
+      const result = {
         toolCallId: toolCall.toolCallId,
         toolName: toolCall.toolName,
         result: null,
         error: errorMsg.userMessage,
         executedAtMs: Date.now(),
       }
+      if (context.eventWriter) {
+        await context.eventWriter.writeEvent({
+          type: 'tool_result',
+          ...eventMeta,
+          toolResult: { error: errorMsg.userMessage },
+        })
+      }
+      return result
     }
 
     console.log(`Executing tool: ${toolCall.toolName} with params:`, toolCall.parameters)
@@ -271,12 +325,20 @@ export async function executeTool(
       version: 3,
     })
 
-    return {
+    const resultPayload = {
       toolCallId: toolCall.toolCallId,
       toolName: toolCall.toolName,
       result,
       executedAtMs: completedAtMs,
     }
+    if (context.eventWriter) {
+      await context.eventWriter.writeEvent({
+        type: 'tool_result',
+        ...eventMeta,
+        toolResult: result,
+      })
+    }
+    return resultPayload
   } catch (error) {
     console.error(`Tool ${toolCall.toolName} failed after retries:`, error)
 
@@ -297,13 +359,22 @@ export async function executeTool(
       version: 3,
     })
 
-    return {
+    const resultPayload = {
       toolCallId: toolCall.toolCallId,
       toolName: toolCall.toolName,
       result: null,
       error: agentError.userMessage,
       executedAtMs: completedAtMs,
     }
+    if (context.eventWriter) {
+      await context.eventWriter.writeEvent({
+        type: 'tool_result',
+        ...eventMeta,
+        errorMessage: agentError.userMessage,
+        errorCategory: agentError.category,
+      })
+    }
+    return resultPayload
   }
 }
 
@@ -323,6 +394,22 @@ export async function executeTools(
   const results = await Promise.all(toolCalls.map((call) => executeTool(call, context)))
 
   return results
+}
+
+export async function loadToolRegistryForUser(userId: string): Promise<ToolRegistry> {
+  const registry: ToolRegistry = new Map(BUILTIN_TOOL_REGISTRY)
+  const customTools = await loadCustomTools(userId)
+
+  for (const tool of customTools) {
+    if (registry.has(tool.name)) {
+      console.warn(`Skipping custom tool "${tool.name}" due to name conflict.`)
+      continue
+    }
+    const toolId = tool.toolId ?? (`tool:${tool.name}` as ToolId)
+    registry.set(tool.name, { ...tool, toolId })
+  }
+
+  return registry
 }
 
 // ==================== Built-in Tools ====================

@@ -307,7 +307,10 @@ export function WorkspaceFormModal({
               onChange={(e) => setMemoryMessageLimitInput(e.target.value)}
               placeholder="Use global default"
             />
-            <small>Number of recent messages to include when resuming runs (1-200)</small>
+            <small>
+              Number of recent messages to include when resuming runs (1-200). Overrides the global
+              default.
+            </small>
           </div>
 
           <div className="modal-actions">

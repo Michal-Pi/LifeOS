@@ -82,6 +82,8 @@ export function SettingsPage() {
   const [keySaving, setKeySaving] = useState<Partial<Record<AiProviderKeyType, boolean>>>({})
   const [memoryLimitInput, setMemoryLimitInput] = useState('')
   const [memorySaving, setMemorySaving] = useState(false)
+  const effectiveMemoryLimit = memorySettings.memoryMessageLimit ?? 50
+  const memoryLimitSource = memorySettings.memoryMessageLimit ? 'Global' : 'Built-in default'
 
   const handleSaveKey = useCallback(
     async (provider: AiProviderKeyType) => {
@@ -431,8 +433,8 @@ export function SettingsPage() {
               <p className="section-label">Agent Memory</p>
               <h2>Default Context Budget</h2>
               <p className="settings-panel__meta">
-                Set the default number of recent messages included when resuming runs. Workspace
-                and per-run settings can override this value.
+                Set the global default number of recent messages included when resuming runs.
+                Workspace settings override this, and per-run settings override both.
               </p>
             </div>
           </header>
@@ -451,7 +453,12 @@ export function SettingsPage() {
                 </span>
               </div>
               <p className="ai-key-help">
-                Choose how many recent messages are injected into a resume run (1-200).
+                Choose how many recent messages are injected into a resume run (1-200). Leave blank
+                to use the built-in default.
+              </p>
+              <p className="ai-key-help">
+                Effective default (no overrides): <strong>{effectiveMemoryLimit} msgs</strong> (
+                {memoryLimitSource}). Resolution order: run → workspace → global → built-in (50).
               </p>
             </div>
             <div className="ai-key-actions">

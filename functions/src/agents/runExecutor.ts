@@ -14,6 +14,8 @@ import { wrapError } from './errorHandler.js'
 import { buildConversationContext } from './messageStore.js'
 import { checkQuota, updateQuota, shouldSendQuotaAlert } from './quotaManager.js'
 import { checkRunRateLimit, recordRunUsage } from './rateLimiter.js'
+import { createRunEventWriter } from './runEvents.js'
+import { loadToolRegistryForUser } from './toolExecutor.js'
 import { executeWorkflow } from './workflowExecutor.js'
 
 type ProviderKeys = {
@@ -71,6 +73,7 @@ export const onRunCreated = onDocumentCreated(
     const runRef = db.doc(`users/${userId}/workspaces/${workspaceId}/runs/${runId}`)
 
     try {
+      const eventWriter = createRunEventWriter({ userId, runId, workspaceId })
       // Phase 5E: Check rate limits and quotas before starting
       await checkRunRateLimit(userId)
       await checkQuota(userId)
@@ -79,6 +82,12 @@ export const onRunCreated = onDocumentCreated(
       await runRef.update({
         status: 'running',
         currentStep: 0,
+      })
+
+      await eventWriter.writeEvent({
+        type: 'status',
+        workspaceId,
+        status: 'running',
       })
 
       // Load workspace configuration
@@ -94,6 +103,7 @@ export const onRunCreated = onDocumentCreated(
 
       const providerKeys = await loadProviderKeys(userId)
       const memorySettings = await loadMemorySettings(userId)
+      const toolRegistry = await loadToolRegistryForUser(userId)
 
       const resumeRunId =
         run.context && typeof run.context === 'object'
@@ -123,12 +133,19 @@ export const onRunCreated = onDocumentCreated(
       }
 
       // Execute workflow with multi-agent orchestration
-      const result = await executeWorkflow(userId, workspace, runWithContext, {
-        openai: providerKeys.openai,
-        anthropic: providerKeys.anthropic,
-        google: providerKeys.google,
-        grok: providerKeys.grok,
-      })
+      const result = await executeWorkflow(
+        userId,
+        workspace,
+        runWithContext,
+        {
+          openai: providerKeys.openai,
+          anthropic: providerKeys.anthropic,
+          google: providerKeys.google,
+          grok: providerKeys.grok,
+        },
+        eventWriter,
+        toolRegistry
+      )
 
       // Phase 5E: Record usage in rate limiter and quota manager
       await recordRunUsage(userId, result.totalTokensUsed, result.totalEstimatedCost)
@@ -158,6 +175,13 @@ export const onRunCreated = onDocumentCreated(
         currentStep: result.totalSteps,
       })
 
+      await eventWriter.writeEvent({
+        type: 'final',
+        workspaceId,
+        output: result.output,
+        status: 'completed',
+      })
+
       console.log(
         `Run ${runId} completed successfully. Workflow: ${workspace.workflowType}, Steps: ${result.totalSteps}, Tokens: ${result.totalTokensUsed}, Cost: $${result.totalEstimatedCost.toFixed(4)}`
       )
@@ -175,6 +199,15 @@ export const onRunCreated = onDocumentCreated(
         errorDetails: agentError.details,
         quotaExceeded: agentError.category === 'quota' || agentError.category === 'rate_limit',
         completedAtMs: Date.now(),
+      })
+
+      const eventWriter = createRunEventWriter({ userId, runId, workspaceId })
+      await eventWriter.writeEvent({
+        type: 'error',
+        workspaceId,
+        errorMessage: agentError.userMessage,
+        errorCategory: agentError.category,
+        status: 'failed',
       })
     }
   }

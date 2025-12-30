@@ -92,22 +92,30 @@ Please review the summary doc first, then let me know you're ready to proceed wi
 - `functions/src/agents/runExecutor.ts` - Cloud Function trigger
 - `functions/src/agents/toolExecutor.ts` - Tool framework
 - `functions/src/agents/advancedTools.ts` - Phase 5D tools
+- `functions/src/agents/customTools.ts` - Custom tool loader + sandbox (Phase 6C)
 - `functions/src/agents/retryHelper.ts` - Retry logic (Phase 5E)
 - `functions/src/agents/errorHandler.ts` - Error handling and timeouts (Phase 5E)
 - `functions/src/agents/rateLimiter.ts` - Rate limiting (Phase 5E)
 - `functions/src/agents/quotaManager.ts` - Quota management (Phase 5E)
 - `functions/src/agents/messageStore.ts` - Message persistence + pruning/compaction (Phase 6A)
 - `functions/src/agents/runExecutor.ts` - Injects `conversationHistory` when resuming runs (Phase 6A)
+- `functions/src/agents/runEvents.ts` - Streaming run events (Phase 6B)
+- `functions/src/agents/streamingTypes.ts` - Streaming types (Phase 6B)
 - `users/{userId}/settings/aiProviderKeys` - Per-user API keys (openaiKey, anthropicKey, googleKey, xaiKey)
-- `users/{userId}/settings/agentMemorySettings` - Default context budget (memoryMessageLimit)
+- `users/{userId}/settings/agentMemorySettings` - Global context budget (memoryMessageLimit); run → workspace → global → default (50)
+- `users/{userId}/runs/{runId}/events` - Streaming run events (tokens, tools, status)
+- `users/{userId}/tools/{toolId}` - Custom tool definitions (Phase 6C)
 
 **Frontend (Phase 2-3, 5C)**:
 
 - `apps/web-vite/src/adapters/agents/` - Firestore adapters
-- `apps/web-vite/src/hooks/` - React hooks (useAgentOperations, useWorkspaceOperations, useToolCallOperations)
+- `apps/web-vite/src/hooks/` - React hooks (useAgentOperations, useWorkspaceOperations, useToolCallOperations, useToolOperations)
 - `apps/web-vite/src/hooks/useRunMessages.ts` - Run message history (paged) (Phase 6A)
+- `apps/web-vite/src/hooks/useRunEvents.ts` - Run streaming events (Phase 6B)
+- `apps/web-vite/src/agents/builtinTools.ts` - Built-in tool metadata (Phase 6C)
 - `apps/web-vite/src/components/agents/RunCard.tsx` - Resume run button (Phase 6A)
 - `apps/web-vite/src/components/agents/RunWorkspaceModal.tsx` - Per-run context budget (Phase 6A)
+- `apps/web-vite/src/components/agents/ToolBuilderModal.tsx` - Custom tool editor (Phase 6C)
 - `apps/web-vite/src/components/agents/` - UI components
 - `apps/web-vite/src/pages/` - Pages (AgentsPage, WorkspacesPage, WorkspaceDetailPage)
 

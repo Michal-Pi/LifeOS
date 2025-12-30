@@ -12,13 +12,15 @@
 
 import { useState, useEffect } from 'react'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
-import type { AgentConfig, AgentRole, ModelProvider } from '@lifeos/agents'
+import type { AgentConfig, AgentRole, ModelProvider, ToolDefinition } from '@lifeos/agents'
+import type { BuiltinToolMeta } from '@/agents/builtinTools'
 
 interface AgentBuilderModalProps {
   agent: AgentConfig | null
   isOpen: boolean
   onClose: () => void
   onSave: () => void
+  availableTools: Array<ToolDefinition | BuiltinToolMeta>
 }
 
 const ROLE_OPTIONS: { value: AgentRole; label: string; description: string }[] = [
@@ -60,7 +62,13 @@ const MODEL_DEFAULTS: Record<ModelProvider, string> = {
   xai: 'grok-1',
 }
 
-export function AgentBuilderModal({ agent, isOpen, onClose, onSave }: AgentBuilderModalProps) {
+export function AgentBuilderModal({
+  agent,
+  isOpen,
+  onClose,
+  onSave,
+  availableTools,
+}: AgentBuilderModalProps) {
   const { createAgent, updateAgent } = useAgentOperations()
 
   const [name, setName] = useState('')
@@ -71,6 +79,7 @@ export function AgentBuilderModal({ agent, isOpen, onClose, onSave }: AgentBuild
   const [temperature, setTemperature] = useState<number>(0.7)
   const [maxTokens, setMaxTokens] = useState<number>(2000)
   const [description, setDescription] = useState('')
+  const [selectedToolIds, setSelectedToolIds] = useState<string[]>([])
 
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -88,6 +97,7 @@ export function AgentBuilderModal({ agent, isOpen, onClose, onSave }: AgentBuild
         setTemperature(agent.temperature ?? 0.7)
         setMaxTokens(agent.maxTokens ?? 2000)
         setDescription(agent.description ?? '')
+        setSelectedToolIds(agent.toolIds ?? [])
       } else {
         // Create mode
         setName('')
@@ -98,6 +108,7 @@ export function AgentBuilderModal({ agent, isOpen, onClose, onSave }: AgentBuild
         setTemperature(0.7)
         setMaxTokens(2000)
         setDescription('')
+        setSelectedToolIds([])
       }
       setError(null)
     }
@@ -150,6 +161,7 @@ export function AgentBuilderModal({ agent, isOpen, onClose, onSave }: AgentBuild
         temperature,
         maxTokens,
         description: description.trim() || undefined,
+        toolIds: selectedToolIds.length > 0 ? selectedToolIds : undefined,
       }
 
       if (agent) {
@@ -168,6 +180,12 @@ export function AgentBuilderModal({ agent, isOpen, onClose, onSave }: AgentBuild
   }
 
   if (!isOpen) return null
+
+  const toggleToolSelection = (toolId: string) => {
+    setSelectedToolIds((prev) =>
+      prev.includes(toolId) ? prev.filter((id) => id !== toolId) : [...prev, toolId]
+    )
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -227,6 +245,34 @@ export function AgentBuilderModal({ agent, isOpen, onClose, onSave }: AgentBuild
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of what this agent does"
             />
+          </div>
+
+          <div className="form-group">
+            <label>Tools (optional)</label>
+            {availableTools.length === 0 ? (
+              <p className="form-helper">No tools available yet.</p>
+            ) : (
+              <div className="tool-checkbox-list">
+                {availableTools.map((tool) => {
+                  const toolId = tool.toolId
+                  const description = tool.description
+                  return (
+                    <label key={toolId} className="tool-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedToolIds.includes(toolId)}
+                        onChange={() => toggleToolSelection(toolId)}
+                      />
+                      <span>
+                        <strong>{tool.name}</strong>
+                        {description && <span className="tool-description"> — {description}</span>}
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+            <small>Select which tools this agent can call</small>
           </div>
 
           <div className="form-row">

@@ -201,7 +201,10 @@ export function RunWorkspaceModal({
               onChange={(e) => setMemoryMessageLimitInput(e.target.value)}
               placeholder={memoryLimitPlaceholder}
             />
-            <small>Number of recent messages to include when resuming runs (1-200)</small>
+            <small>
+              Number of recent messages to include when resuming runs (1-200). Overrides workspace
+              and global defaults.
+            </small>
           </div>
 
           <div className="modal-actions">

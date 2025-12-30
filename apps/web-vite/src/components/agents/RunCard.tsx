@@ -5,6 +5,7 @@
  */
 
 import { useToolCallOperations } from '@/hooks/useToolCallOperations'
+import { useRunEvents } from '@/hooks/useRunEvents'
 import { useRunMessages } from '@/hooks/useRunMessages'
 import { ToolCallTimeline } from './ToolCallTimeline'
 import type { Run, RunStatus } from '@lifeos/agents'
@@ -19,6 +20,14 @@ interface RunCardProps {
 export function RunCard({ run, currentTime, onDelete, onResume }: RunCardProps) {
   const { toolCalls } = useToolCallOperations(run.runId)
   const { messages, hasMore, isLoadingMore, loadMore } = useRunMessages(run.runId)
+  const { events } = useRunEvents(run.runId)
+
+  const streamingOutput = events
+    .filter((event) => event.type === 'token')
+    .map((event) => event.delta ?? '')
+    .join('')
+  const finalEvent = [...events].reverse().find((event) => event.type === 'final')
+  const displayOutput = run.output ?? finalEvent?.output ?? streamingOutput
 
   const formatDate = (timestampMs: number) => {
     return new Date(timestampMs).toLocaleString()
@@ -73,10 +82,10 @@ export function RunCard({ run, currentTime, onDelete, onResume }: RunCardProps) 
         {run.totalSteps && ` of ${run.totalSteps}`}
       </div>
 
-      {run.output && (
+      {displayOutput && (
         <div className="run-output">
-          <strong>Output:</strong>
-          <p>{run.output}</p>
+          <strong>{run.status === 'running' ? 'Live Output:' : 'Output:'}</strong>
+          <p>{displayOutput}</p>
         </div>
       )}
 
