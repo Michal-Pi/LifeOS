@@ -5,7 +5,7 @@
  */
 
 import { useMemo } from 'react'
-import ReactFlow, { Background, Controls, type Edge, type Node } from '@xyflow/react'
+import { ReactFlow, Background, Controls, type Edge, type Node } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { WorkflowGraph } from '@lifeos/agents'
 
