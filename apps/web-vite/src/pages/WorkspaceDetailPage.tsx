@@ -25,6 +25,10 @@ export function WorkspaceDetailPage() {
   const { agents, loadAgents } = useAgentOperations()
 
   const [showRunModal, setShowRunModal] = useState(false)
+  const [resumeSeed, setResumeSeed] = useState<{
+    goal?: string
+    context?: Record<string, unknown>
+  } | null>(null)
   const [statusFilter, setStatusFilter] = useState<RunStatus | 'all'>('all')
   const [currentTime, setCurrentTime] = useState(() => Date.now())
 
@@ -45,6 +49,7 @@ export function WorkspaceDetailPage() {
   }, [])
 
   const handleStartRun = () => {
+    setResumeSeed(null)
     setShowRunModal(true)
   }
 
@@ -67,6 +72,16 @@ export function WorkspaceDetailPage() {
     } catch (err) {
       console.error('Failed to delete run:', err)
     }
+  }
+
+  const handleResumeRun = (runId: string) => {
+    const runToResume = runs.find((run) => run.runId === runId)
+    if (!runToResume) return
+    setResumeSeed({
+      goal: `Continue: ${runToResume.goal}`,
+      context: { resumeRunId: runToResume.runId },
+    })
+    setShowRunModal(true)
   }
 
   const getAgentName = (agentId: string) => {
@@ -172,6 +187,7 @@ export function WorkspaceDetailPage() {
                 run={run}
                 currentTime={currentTime}
                 onDelete={handleDeleteRun}
+                onResume={handleResumeRun}
               />
             ))}
           </div>
@@ -182,8 +198,13 @@ export function WorkspaceDetailPage() {
         workspace={workspace}
         agents={agents}
         isOpen={showRunModal}
-        onClose={() => setShowRunModal(false)}
+        onClose={() => {
+          setShowRunModal(false)
+          setResumeSeed(null)
+        }}
         onRunCreated={handleRunCreated}
+        initialGoal={resumeSeed?.goal}
+        initialContext={resumeSeed?.context}
       />
     </div>
   )

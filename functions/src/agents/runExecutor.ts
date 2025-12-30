@@ -11,6 +11,7 @@ import { defineSecret } from 'firebase-functions/params'
 import { onDocumentCreated } from 'firebase-functions/v2/firestore'
 
 import { wrapError } from './errorHandler.js'
+import { buildConversationContext } from './messageStore.js'
 import { checkQuota, updateQuota, shouldSendQuotaAlert } from './quotaManager.js'
 import { checkRunRateLimit, recordRunUsage } from './rateLimiter.js'
 import { executeWorkflow } from './workflowExecutor.js'
@@ -89,8 +90,26 @@ export const onRunCreated = onDocumentCreated(
 
       const providerKeys = await loadProviderKeys(userId)
 
+      const resumeRunId =
+        run.context && typeof run.context === 'object'
+          ? (run.context as Record<string, unknown>).resumeRunId
+          : undefined
+
+      const conversationHistory =
+        typeof resumeRunId === 'string' && resumeRunId.length > 0
+          ? await buildConversationContext(userId, resumeRunId)
+          : ''
+
+      const runWithContext: Run = {
+        ...run,
+        context: {
+          ...run.context,
+          ...(conversationHistory ? { conversationHistory } : {}),
+        },
+      }
+
       // Execute workflow with multi-agent orchestration
-      const result = await executeWorkflow(userId, workspace, run, {
+      const result = await executeWorkflow(userId, workspace, runWithContext, {
         openai: providerKeys.openai,
         anthropic: providerKeys.anthropic,
         google: providerKeys.google,

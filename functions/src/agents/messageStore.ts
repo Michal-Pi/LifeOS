@@ -24,6 +24,7 @@ const COMPACT_WINDOW = 60
 const MIN_COMPACT_MESSAGES = 20
 const MAX_SUMMARY_CHARS = 4000
 const SUMMARY_PREFIX = 'Summary of earlier messages (auto-generated):'
+const HISTORY_CONTEXT_LIMIT = 50
 
 export async function recordMessage(
   input: StoreMessageInput,
@@ -102,5 +103,43 @@ function formatSummaryLine(role: MessageRole, content: string): string {
     return ''
   }
   const truncated = normalized.length > 200 ? `${normalized.slice(0, 200)}…` : normalized
+  return `- ${role}: ${truncated}`
+}
+
+export async function buildConversationContext(
+  userId: string,
+  runId: string,
+  options?: { limit?: number }
+): Promise<string> {
+  const db = getFirestore()
+  const limitCount = options?.limit ?? HISTORY_CONTEXT_LIMIT
+  const snapshot = await db
+    .collection(`users/${userId}/runs/${runId}/messages`)
+    .orderBy('timestampMs', 'desc')
+    .limit(limitCount)
+    .get()
+
+  if (snapshot.empty) {
+    return ''
+  }
+
+  const messages = snapshot.docs.map((doc) => doc.data()).reverse()
+  const lines = messages
+    .map((message) => formatHistoryLine(message.role as MessageRole, message.content as string))
+    .filter((line) => line.length > 0)
+
+  if (lines.length === 0) {
+    return ''
+  }
+
+  return `Conversation history (most recent last):\n${lines.join('\n')}`
+}
+
+function formatHistoryLine(role: MessageRole, content: string): string {
+  const normalized = (content ?? '').replace(/\s+/g, ' ').trim()
+  if (!normalized) {
+    return ''
+  }
+  const truncated = normalized.length > 300 ? `${normalized.slice(0, 300)}...` : normalized
   return `- ${role}: ${truncated}`
 }

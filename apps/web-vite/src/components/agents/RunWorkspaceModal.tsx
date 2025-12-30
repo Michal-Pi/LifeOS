@@ -21,6 +21,8 @@ interface RunWorkspaceModalProps {
   isOpen: boolean
   onClose: () => void
   onRunCreated: () => void
+  initialGoal?: string
+  initialContext?: Record<string, unknown>
 }
 
 export function RunWorkspaceModal({
@@ -29,6 +31,8 @@ export function RunWorkspaceModal({
   isOpen,
   onClose,
   onRunCreated,
+  initialGoal,
+  initialContext,
 }: RunWorkspaceModalProps) {
   const { createRun } = useWorkspaceOperations()
   const { user } = useAuth()
@@ -62,11 +66,11 @@ export function RunWorkspaceModal({
   // Reset form when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      setGoal('')
-      setContextInput('')
+      setGoal(initialGoal ?? '')
+      setContextInput(initialContext ? JSON.stringify(initialContext, null, 2) : '')
       setError(null)
     }
-  }, [isOpen])
+  }, [initialContext, initialGoal, isOpen])
 
   const handleStart = async () => {
     // Validation
@@ -129,6 +133,11 @@ export function RunWorkspaceModal({
         <p className="workspace-name">
           Workspace: <strong>{workspace.name}</strong>
         </p>
+        {initialContext?.resumeRunId && (
+          <div className="info-message">
+            This run will include conversation history from run {initialContext.resumeRunId}.
+          </div>
+        )}
 
         {error && <div className="error-message">{error}</div>}
 

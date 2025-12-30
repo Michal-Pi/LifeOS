@@ -251,8 +251,8 @@ users/{userId}/
 - Persistent message history (Firestore `messages` subcollection)
 - UI message timeline in run details (paged, ordered)
 - Message pruning + basic compaction (auto summary of older messages)
-- Context window management (pending)
-- Resume conversations (pending)
+- Context injection (recent history appended to run context)
+- Resume conversations via `resumeRunId` in run context
 
 #### Phase 6B: Streaming Responses
 
@@ -388,7 +388,7 @@ LifeOS_2/
 
 ### Current Limitations
 
-1. **Partial conversation memory**: Message history is stored and displayed, but context injection/resume are pending
+1. **Partial conversation memory**: History is injected as a summarized text block; no semantic memory or embeddings yet
 2. **No streaming**: Responses arrive all at once (Phase 6B will add streaming)
 3. **No marketplace**: Custom tool UI deferred to Phase 6C
 4. **Web search**: Requires manual configuration of Google Custom Search API
@@ -531,9 +531,9 @@ Each run tracks:
 
 ### Immediate (Phase 6A)
 
-1. Finish conversation memory (context injection + resume)
-2. Refine pruning/compaction thresholds
-3. Add UI filters/search within messages (optional)
+1. Refine pruning/compaction thresholds
+2. Add UI filters/search within messages (optional)
+3. Explore semantic memory (Phase 6A+)
 
 ### Near-term (Phase 6B)
 

@@ -13,9 +13,10 @@ interface RunCardProps {
   run: Run
   currentTime: number
   onDelete: (runId: string) => void
+  onResume?: (runId: string) => void
 }
 
-export function RunCard({ run, currentTime, onDelete }: RunCardProps) {
+export function RunCard({ run, currentTime, onDelete, onResume }: RunCardProps) {
   const { toolCalls } = useToolCallOperations(run.runId)
   const { messages, hasMore, isLoadingMore, loadMore } = useRunMessages(run.runId)
 
@@ -148,6 +149,11 @@ export function RunCard({ run, currentTime, onDelete }: RunCardProps) {
       </div>
 
       <div className="run-actions">
+        {onResume && run.status !== 'running' && run.status !== 'pending' && (
+          <button onClick={() => onResume(run.runId)} className="btn-secondary">
+            Resume
+          </button>
+        )}
         <button onClick={() => onDelete(run.runId)} className="btn-danger">
           Delete
         </button>
