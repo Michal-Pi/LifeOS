@@ -1,7 +1,7 @@
 # LifeOS Manual Testing Guide & Onboarding
 
-**Version:** 1.1.0
-**Last Updated:** December 20, 2024
+**Version:** 1.2.0
+**Last Updated:** December 30, 2025
 **Application:** LifeOS Calendar & Productivity System (Vite SPA)
 
 ---
@@ -10,20 +10,21 @@
 
 1. [Overview](#1-overview)
 2. [Getting Started](#2-getting-started)
-3. [Calendar - Basic Event Management](#3-calendar---basic-event-management)
-4. [Calendar - Recurring Events](#4-calendar---recurring-events)
-5. [Attendees & RSVP](#5-attendees--rsvp)
-6. [Alerts & Notifications](#6-alerts--notifications)
-7. [Google Calendar Sync](#7-google-calendar-sync)
-8. [Offline & Outbox Functionality](#8-offline--outbox-functionality)
-9. [Today Dashboard](#9-today-dashboard)
-10. [Month View](#10-month-view)
-11. [Calendar View Toggles](#11-calendar-view-toggles)
-12. [Weekly View](#12-weekly-view)
-13. [Settings - Quote Management](#13-settings---quote-management)
-14. [Permissions & Security](#14-permissions--security)
-15. [Edge Cases & Special Scenarios](#15-edge-cases--special-scenarios)
-16. [Complete Testing Checklist](#16-complete-testing-checklist)
+3. [Ordered Onboarding & Full Feature Manual Test (Required)](#3-ordered-onboarding--full-feature-manual-test-required)
+4. [Calendar - Basic Event Management](#4-calendar---basic-event-management)
+5. [Calendar - Recurring Events](#5-calendar---recurring-events)
+6. [Attendees & RSVP](#6-attendees--rsvp)
+7. [Alerts & Notifications](#7-alerts--notifications)
+8. [Google Calendar Sync](#8-google-calendar-sync)
+9. [Offline & Outbox Functionality](#9-offline--outbox-functionality)
+10. [Today Dashboard](#10-today-dashboard)
+11. [Month View](#11-month-view)
+12. [Calendar View Toggles](#12-calendar-view-toggles)
+13. [Weekly View](#13-weekly-view)
+14. [Settings - Quote Management](#14-settings---quote-management)
+15. [Permissions & Security](#15-permissions--security)
+16. [Edge Cases & Special Scenarios](#16-edge-cases--special-scenarios)
+17. [Complete Testing Checklist](#17-complete-testing-checklist)
 
 ---
 
@@ -31,14 +32,19 @@
 
 ### What is LifeOS?
 
-LifeOS is a productivity application centered around calendar management with offline-first capabilities and Google Calendar synchronization. The application currently has four fully implemented pages:
+LifeOS is a productivity application centered around calendar management with offline-first capabilities and Google Calendar synchronization. It also includes a complete personal productivity suite (Todos, Quotes, Habits, Mind, Training) and the AI Agent Framework.
 
 - **Calendar Page** - Full-featured calendar with events, recurring events, RSVP, alerts, and sync
 - **Today Page** - Dashboard with daily stats, customizable inspirational quotes, and event previews
 - **Todo Page** - Projects, milestones, tasks, and scheduling to calendar
-- **Settings Page** - Quote management system with up to 1,000 custom quotes
+- **Notes Page** - Topics, notes, attachments, rich editor
+- **Habits Page** - Habit creation, check-ins, consistency insights
+- **Mind Page** - Interventions, sessions, summaries
+- **Training Page** - Exercise library, plans, workout sessions, analytics
+- **Agents Page** - AI agents, workspaces, runs, tool calling, workflows
+- **Settings Page** - Quote management, provider keys, system settings
 
-Notes, Habits, Mind, and Training are late beta. People and Projects remain placeholder pages.
+People and Projects remain placeholder pages.
 
 ### Key Features
 
@@ -55,6 +61,14 @@ Notes, Habits, Mind, and Training are late beta. People and Projects remain plac
 - Today dashboard with stats and customizable quotes
 - Quote management with add, edit, delete, and reset functionality
 - Deterministic daily quote selection (same quote for same date)
+- Todo projects, milestones, tasks, and scheduling to calendar
+- Notes topics, rich text editing, and attachments
+- Habit creation, check-ins, and consistency charts
+- Mind interventions with session summaries
+- Exercise plans, sessions, and workout analytics
+- AI agents, workspaces, and multi-provider runs
+- Tool calling with timeline visibility
+- Graph workflows with human-in-the-loop pauses
 
 ❌ **Not Yet Implemented:**
 
@@ -92,16 +106,143 @@ Notes, Habits, Mind, and Training are late beta. People and Projects remain plac
 ├─────────────┤
 │             │  Today      - Dashboard view
 │   Main      │  Calendar   - Full calendar (implemented)
-│   Content   │  Todos      - Placeholder
-│   Area      │  Projects   - Placeholder
-│             │  Notes      - Placeholder
+│   Content   │  Todos      - Projects, milestones, tasks
+│   Area      │  Notes      - Topics, notes, attachments
+│             │  Habits     - Check-ins and charts
+│             │  Mind       - Interventions and sessions
+│             │  Training   - Exercise plans and workouts
+│             │  Agents     - AI workspaces and runs
 │             │  People     - Placeholder
-└─────────────┘  Settings   - Placeholder
+└─────────────┘  Settings   - Quotes, provider keys
 ```
 
 ---
 
-## 3. Calendar - Basic Event Management
+## 3. Ordered Onboarding & Full Feature Manual Test (Required)
+
+**Goal:** Complete every core feature in order. Do not skip steps. Each step includes required
+verification and expected results. This path ensures all new features since Dec 24 are tested.
+
+### 3.1 Calendar (Two Synced Calendars)
+
+**Setup requirement:** Connect a Google account with at least two calendars (primary + one secondary).
+
+**Steps (must complete in order):**
+
+1. Open **Settings → Calendar** and connect Google.
+2. Ensure **two calendars are selected** in calendar list (e.g., "Primary" + "Personal").
+3. Create Event A on Calendar 1 (title: "Cal-1 Test").
+4. Create Event B on Calendar 2 (title: "Cal-2 Test").
+5. Trigger a manual sync and wait for both events to show **✓ Synced**.
+6. Create a new event in Google Calendar (web) and confirm it appears in LifeOS.
+7. Edit Event A in LifeOS and verify it updates in Google Calendar.
+8. Delete Event B in LifeOS and verify it disappears from Google Calendar.
+
+**Must verify:**
+
+- Both calendars sync independently.
+- Event metadata (title/time/location/description) round-trips.
+- Sync status badges update (syncing → synced).
+
+---
+
+### 3.2 To-do Management
+
+**Steps:**
+
+1. Create a **Project** and **Milestone**.
+2. Add three tasks (one due today, one overdue, one future).
+3. Mark one task complete and verify counters/filters update.
+4. Schedule a task to the calendar (if enabled) and verify it appears.
+
+**Must verify:**
+
+- Status filters work (All / Active / Completed).
+- Task sorting and due date badges update correctly.
+- Scheduled tasks are visible on the calendar timeline.
+
+---
+
+### 3.3 Quotes
+
+**Steps:**
+
+1. Add a custom quote.
+2. Edit the quote and verify it updates in the list.
+3. Reset quotes to defaults and confirm custom quote is removed.
+4. Reload the Today page and verify the daily quote renders.
+
+**Must verify:**
+
+- Quote list persists after reload.
+- Daily quote is deterministic for the same day.
+
+---
+
+### 3.4 Notes
+
+**Steps:**
+
+1. Create a topic.
+2. Create a note inside the topic with rich text.
+3. Add an attachment (if enabled) and verify it displays.
+4. Edit the note and verify changes persist after reload.
+
+**Must verify:**
+
+- Topic and note lists refresh in real time.
+- Rich text content saves and reloads correctly.
+
+---
+
+### 3.5 Habits, Mind, Exercise
+
+**Habits Steps:**
+
+1. Create a habit with a daily target.
+2. Log a check-in and verify streak/consistency chart updates.
+
+**Mind Steps:**
+
+1. Start an intervention session.
+2. Complete the session and verify the summary view.
+
+**Exercise Steps:**
+
+1. Create or import an exercise in the library.
+2. Build a workout plan and start a session.
+3. Log at least one set and finish the workout.
+
+**Must verify:**
+
+- Habit check-ins persist and reflect in charts.
+- Mind sessions create a completed summary record.
+- Workout stats update after session completion.
+
+---
+
+### 3.6 AI & Agent Framework
+
+**Steps:**
+
+1. Open **Settings → AI Provider Keys** and add at least one provider key.
+2. Create an agent (role + model).
+3. Create a workspace and add the agent.
+4. Run a goal (e.g., "Plan my week") and confirm completion output.
+5. Trigger a tool call (calendar or notes) and verify it appears in the tool timeline.
+6. If using graph workflows, run a workflow with a **human_input** node and resume it.
+
+**Must verify:**
+
+- Runs move through pending → running → completed.
+- Tool call records appear in UI.
+- Human input pauses and resumes correctly.
+
+---
+
+**Exit Criteria:** All steps above completed and verified.
+
+## 4. Calendar - Basic Event Management
 
 ### 3.1 Creating a New Event
 
@@ -272,7 +413,7 @@ Delete modal shows scope options:
 
 ---
 
-## 4. Calendar - Recurring Events
+## 5. Calendar - Recurring Events
 
 ### 4.1 Creating a Recurring Event
 
@@ -423,7 +564,7 @@ Delete modal shows scope options:
 
 ---
 
-## 5. Attendees & RSVP
+## 6. Attendees & RSVP
 
 ### 5.1 Viewing Attendees
 
@@ -568,7 +709,7 @@ Private focus time  ← Shows instead of attendee list
 
 ---
 
-## 6. Alerts & Notifications
+## 7. Alerts & Notifications
 
 ### 6.1 Setting Event Alerts
 
@@ -761,7 +902,7 @@ Private focus time  ← Shows instead of attendee list
 
 ---
 
-## 7. Google Calendar Sync
+## 8. Google Calendar Sync
 
 ### 7.1 Connecting Google Account
 
@@ -955,7 +1096,7 @@ Sync Status
 
 ---
 
-## 8. Offline & Outbox Functionality
+## 9. Offline & Outbox Functionality
 
 ### 8.1 Testing Offline Mode
 
@@ -1205,7 +1346,7 @@ pending → applying → applied (success)
 
 ---
 
-## 9. Today Dashboard
+## 10. Today Dashboard
 
 ### 9.1 Inspiration Card
 
@@ -1422,7 +1563,7 @@ utilization = Math.round((busyHours / 24) * 100)
 
 ---
 
-## 10. Month View
+## 11. Month View
 
 ### 10.1 Calendar Grid Display
 
@@ -1551,7 +1692,7 @@ utilization = Math.round((busyHours / 24) * 100)
 
 ---
 
-## 11. Calendar View Toggles
+## 12. Calendar View Toggles
 
 ### 13.1 Daily, Weekly, Monthly View Selection
 
@@ -1610,7 +1751,7 @@ Sun Mon Tue Wed Thu Fri Sat
 
 ---
 
-## 16. Weekly View
+## 13. Weekly View
 
 ### 16.1 Weekly Calendar Display
 
@@ -1657,7 +1798,7 @@ Sun Mon Tue Wed Thu Fri Sat
 
 ---
 
-## 13. Settings - Quote Management
+## 14. Settings - Quote Management
 
 ### 13.1 Overview
 
@@ -2205,7 +2346,7 @@ Average quote: ~150 chars text + 30 chars author + metadata = ~250 bytes
 
 ---
 
-## 16. Permissions & Security
+## 15. Permissions & Security
 
 ### 13.1 Calendar Permissions
 
@@ -2662,7 +2803,7 @@ function isDeleted(event) {
 
 ---
 
-## 16. Complete Testing Checklist
+## 17. Complete Testing Checklist
 
 ### Core Event Management
 
@@ -3120,6 +3261,12 @@ Collections: calendarEvents, calendars, syncStatus
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Calendar Page     | [apps/web-vite/src/pages/CalendarPage.tsx](apps/web-vite/src/pages/CalendarPage.tsx)                                             |
 | Today Page        | [apps/web-vite/src/pages/TodayPage.tsx](apps/web-vite/src/pages/TodayPage.tsx)                                                   |
+| Todo Page         | [apps/web-vite/src/pages/TodoPage.tsx](apps/web-vite/src/pages/TodoPage.tsx)                                                     |
+| Notes Page        | [apps/web-vite/src/pages/NotesPage.tsx](apps/web-vite/src/pages/NotesPage.tsx)                                                   |
+| Habits Page       | [apps/web-vite/src/pages/HabitsPage.tsx](apps/web-vite/src/pages/HabitsPage.tsx)                                                 |
+| Mind UI           | [apps/web-vite/src/components/mind/MindInterventionModal.tsx](apps/web-vite/src/components/mind/MindInterventionModal.tsx)       |
+| Training Page     | [apps/web-vite/src/pages/WorkoutPlanPage.tsx](apps/web-vite/src/pages/WorkoutPlanPage.tsx)                                       |
+| Agents Page       | [apps/web-vite/src/pages/AgentsPage.tsx](apps/web-vite/src/pages/AgentsPage.tsx)                                                 |
 | Event Form        | [apps/web-vite/src/components/EventFormModal.tsx](apps/web-vite/src/components/EventFormModal.tsx)                               |
 | RSVP Buttons      | [apps/web-vite/src/components/RSVPButtons.tsx](apps/web-vite/src/components/RSVPButtons.tsx)                                     |
 | Alert Selector    | [apps/web-vite/src/components/AlertSelector.tsx](apps/web-vite/src/components/AlertSelector.tsx)                                 |
@@ -3134,6 +3281,7 @@ Collections: calendarEvents, calendars, syncStatus
 
 | Version | Date         | Changes                                                |
 | ------- | ------------ | ------------------------------------------------------ |
+| 1.2.0   | Dec 30, 2025 | Added full ordered onboarding path and new modules     |
 | 1.1.0   | Dec 20, 2024 | Added Settings - Quote Management section (Section 11) |
 | 1.0.0   | Dec 20, 2024 | Initial comprehensive testing guide                    |
 
