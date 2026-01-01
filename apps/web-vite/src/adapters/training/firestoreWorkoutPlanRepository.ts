@@ -29,10 +29,18 @@ import type {
 
 const COLLECTION = 'workoutPlans'
 
+function plansCollection(db: Awaited<ReturnType<typeof getDb>>, userId: string) {
+  return collection(db, 'users', userId, COLLECTION)
+}
+
+function planDoc(db: Awaited<ReturnType<typeof getDb>>, userId: string, planId: PlanId) {
+  return doc(db, 'users', userId, COLLECTION, planId)
+}
+
 export function createFirestoreWorkoutPlanRepository(): WorkoutPlanRepository {
   return {
     async create(userId: string, input: CreatePlanInput): Promise<WorkoutPlan> {
-      const db = getDb()
+      const db = await getDb()
       const now = Date.now()
       const planId = generateId('plan') as PlanId
 
@@ -49,14 +57,14 @@ export function createFirestoreWorkoutPlanRepository(): WorkoutPlanRepository {
         version: 1,
       }
 
-      const docRef = doc(db, COLLECTION, planId)
+      const docRef = planDoc(db, userId, planId)
       await updateDoc(docRef, {
         ...plan,
         createdAt: Timestamp.fromMillis(now),
         updatedAt: Timestamp.fromMillis(now),
       }).catch(async () => {
         // Document doesn't exist, create it
-        await addDoc(collection(db, COLLECTION), {
+        await addDoc(plansCollection(db, userId), {
           ...plan,
           createdAt: Timestamp.fromMillis(now),
           updatedAt: Timestamp.fromMillis(now),
@@ -67,8 +75,8 @@ export function createFirestoreWorkoutPlanRepository(): WorkoutPlanRepository {
     },
 
     async update(userId: string, planId: PlanId, updates: UpdatePlanInput): Promise<WorkoutPlan> {
-      const db = getDb()
-      const docRef = doc(db, COLLECTION, planId)
+      const db = await getDb()
+      const docRef = planDoc(db, userId, planId)
       const docSnap = await getDoc(docRef)
 
       if (!docSnap.exists()) {
@@ -99,8 +107,8 @@ export function createFirestoreWorkoutPlanRepository(): WorkoutPlanRepository {
     },
 
     async delete(userId: string, planId: PlanId): Promise<void> {
-      const db = getDb()
-      const docRef = doc(db, COLLECTION, planId)
+      const db = await getDb()
+      const docRef = planDoc(db, userId, planId)
       const docSnap = await getDoc(docRef)
 
       if (!docSnap.exists()) {
@@ -117,8 +125,8 @@ export function createFirestoreWorkoutPlanRepository(): WorkoutPlanRepository {
     },
 
     async get(userId: string, planId: PlanId): Promise<WorkoutPlan | null> {
-      const db = getDb()
-      const docRef = doc(db, COLLECTION, planId)
+      const db = await getDb()
+      const docRef = planDoc(db, userId, planId)
       const docSnap = await getDoc(docRef)
 
       if (!docSnap.exists()) {
@@ -135,9 +143,9 @@ export function createFirestoreWorkoutPlanRepository(): WorkoutPlanRepository {
     },
 
     async getActive(userId: string): Promise<WorkoutPlan | null> {
-      const db = getDb()
+      const db = await getDb()
       const q = query(
-        collection(db, COLLECTION),
+        plansCollection(db, userId),
         where('userId', '==', userId),
         where('active', '==', true),
         orderBy('startDateKey', 'desc')
@@ -153,9 +161,9 @@ export function createFirestoreWorkoutPlanRepository(): WorkoutPlanRepository {
     },
 
     async list(userId: string): Promise<WorkoutPlan[]> {
-      const db = getDb()
+      const db = await getDb()
       const q = query(
-        collection(db, COLLECTION),
+        plansCollection(db, userId),
         where('userId', '==', userId),
         orderBy('startDateKey', 'desc')
       )

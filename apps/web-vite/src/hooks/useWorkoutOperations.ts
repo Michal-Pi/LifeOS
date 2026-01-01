@@ -61,6 +61,7 @@ export interface UseWorkoutOperationsReturn {
   deleteSession: (sessionId: SessionId) => Promise<void>
   getSession: (sessionId: SessionId) => Promise<WorkoutSession | null>
   getSessionByDate: (dateKey: string) => Promise<WorkoutSession[]>
+  listSessions: (dateKey: string) => Promise<WorkoutSession[]>
   getSessionByDateAndContext: (
     dateKey: string,
     context: WorkoutContext
@@ -318,6 +319,27 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
     [userId, usecases]
   )
 
+  const listSessions = useCallback(
+    async (dateKey: string): Promise<WorkoutSession[]> => {
+      if (!userId) throw new Error('User not authenticated')
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const sessionList = await usecases.getSessionsByDate(userId, dateKey)
+        setSessions(sessionList)
+        return sessionList
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error('Failed to list sessions')
+        setError(error)
+        throw error
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [userId, usecases]
+  )
+
   const getSessionByDateAndContext = useCallback(
     async (dateKey: string, context: WorkoutContext): Promise<WorkoutSession | null> => {
       if (!userId) throw new Error('User not authenticated')
@@ -379,6 +401,7 @@ export function useWorkoutOperations(): UseWorkoutOperationsReturn {
     deleteSession,
     getSession,
     getSessionByDate,
+    listSessions,
     getSessionByDateAndContext,
     listSessionsForDateRange,
   }

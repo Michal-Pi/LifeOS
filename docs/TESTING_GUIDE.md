@@ -1,6 +1,6 @@
 # LifeOS Manual Testing Guide & Onboarding
 
-**Version:** 1.2.1
+**Version:** 1.2.2
 **Last Updated:** January 1, 2026
 **Application:** LifeOS Calendar & Productivity System (Vite SPA)
 
@@ -221,6 +221,7 @@ verification and expected results. This path ensures all new features since Dec 
 - Habit check-ins persist and reflect in charts.
 - Mind sessions create a completed summary record.
 - Workout stats update after session completion.
+- Training data loads without permission errors after login.
 
 ---
 
@@ -3408,6 +3409,7 @@ Collections: calendarEvents, calendars, syncStatus
 
 | Version | Date         | Changes                                                |
 | ------- | ------------ | ------------------------------------------------------ |
+| 1.2.2   | Jan 1, 2026  | Updated training access assumptions and login layout   |
 | 1.2.1   | Jan 1, 2026  | Added adoption testing steps and login layout check    |
 | 1.2.0   | Dec 30, 2025 | Added full ordered onboarding path and new modules     |
 | 1.1.0   | Dec 20, 2024 | Added Settings - Quote Management section (Section 11) |

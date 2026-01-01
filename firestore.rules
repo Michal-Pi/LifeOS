@@ -99,6 +99,18 @@ service cloud.firestore {
     match /users/{userId}/interventionSessions/{sessionId} {
       allow read, write: if isAuthenticated(userId);
     }
+    // Workout Plans (Training module)
+    match /users/{userId}/workoutPlans/{planId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Workout Sessions (Training module)
+    match /users/{userId}/workoutSessions/{sessionId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Exercise Library (Training module)
+    match /users/{userId}/exerciseLibrary/{exerciseId} {
+      allow read, write: if isAuthenticated(userId);
+    }
     // System Intervention Presets (read-only for all authenticated users)
     match /systemInterventions/{interventionId} {
       allow read: if request.auth != null;
