@@ -182,7 +182,9 @@
   color: var(--muted-foreground);
   padding: 0.4rem 0.65rem;
   border-radius: 0.5rem;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .top-nav__link:hover {

@@ -54,9 +54,7 @@ export function TopNav() {
           ))}
           <NavLink
             to="/settings"
-            className={({ isActive }) =>
-              `top-nav__link${isActive ? ' top-nav__link--active' : ''}`
-            }
+            className={({ isActive }) => `top-nav__link${isActive ? ' top-nav__link--active' : ''}`}
             aria-label="Settings"
           >
             Settings

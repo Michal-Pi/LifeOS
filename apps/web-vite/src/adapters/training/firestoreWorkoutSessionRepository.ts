@@ -1,4 +1,14 @@
-import { collection, doc, getDocs, getDoc, setDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore'
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+} from 'firebase/firestore'
 import { newId } from '@lifeos/core'
 import { getFirestoreClient } from '@/lib/firestoreClient'
 import type {
