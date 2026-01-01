@@ -1,6 +1,6 @@
 # LifeOS Manual Testing Guide & Onboarding
 
-**Version:** 1.2.2
+**Version:** 1.2.3
 **Last Updated:** January 1, 2026
 **Application:** LifeOS Calendar & Productivity System (Vite SPA)
 
@@ -98,7 +98,10 @@ People and Projects remain placeholder pages.
 3. **Verify Login Layout:**
    Login screen should show only the auth form (no global nav or search).
 
-4. **Navigate to Calendar:**
+4. **Verify Top Navigation (after login):**
+   Confirm the fixed top nav shows primary sections, search, and settings.
+
+5. **Navigate to Calendar:**
    Click "Calendar" in the sidebar or visit `http://localhost:5173/calendar`
 
 ### Application Structure
@@ -3409,6 +3412,7 @@ Collections: calendarEvents, calendars, syncStatus
 
 | Version | Date         | Changes                                                |
 | ------- | ------------ | ------------------------------------------------------ |
+| 1.2.3   | Jan 1, 2026  | Added top nav verification and training access note    |
 | 1.2.2   | Jan 1, 2026  | Updated training access assumptions and login layout   |
 | 1.2.1   | Jan 1, 2026  | Added adoption testing steps and login layout check    |
 | 1.2.0   | Dec 30, 2025 | Added full ordered onboarding path and new modules     |

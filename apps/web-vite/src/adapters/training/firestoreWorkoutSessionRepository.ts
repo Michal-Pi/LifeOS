@@ -1,16 +1,6 @@
-import {
-  getFirestore,
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  setDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-} from 'firebase/firestore'
+import { collection, doc, getDocs, getDoc, setDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore'
 import { newId } from '@lifeos/core'
+import { getFirestoreClient } from '@/lib/firestoreClient'
 import type {
   WorkoutSessionRepository,
   WorkoutSession,
@@ -21,11 +11,9 @@ import type {
 } from '@lifeos/training'
 
 export const createFirestoreWorkoutSessionRepository = (): WorkoutSessionRepository => {
-  const getFirestoreClient = () => getFirestore()
-
   return {
     async create(userId: string, input: CreateSessionInput): Promise<WorkoutSession> {
-      const db = getFirestoreClient()
+      const db = await getFirestoreClient()
       const sessionId = newId('session')
 
       const session: WorkoutSession = {
@@ -49,7 +37,7 @@ export const createFirestoreWorkoutSessionRepository = (): WorkoutSessionReposit
       sessionId: SessionId,
       updates: UpdateSessionInput
     ): Promise<WorkoutSession> {
-      const db = getFirestoreClient()
+      const db = await getFirestoreClient()
       const sessionDoc = doc(db, `users/${userId}/workoutSessions/${sessionId}`)
 
       const existing = await getDoc(sessionDoc)
@@ -70,13 +58,13 @@ export const createFirestoreWorkoutSessionRepository = (): WorkoutSessionReposit
     },
 
     async delete(userId: string, sessionId: SessionId): Promise<void> {
-      const db = getFirestoreClient()
+      const db = await getFirestoreClient()
       const sessionDoc = doc(db, `users/${userId}/workoutSessions/${sessionId}`)
       await deleteDoc(sessionDoc)
     },
 
     async get(userId: string, sessionId: SessionId): Promise<WorkoutSession | null> {
-      const db = getFirestoreClient()
+      const db = await getFirestoreClient()
       const sessionDoc = doc(db, `users/${userId}/workoutSessions/${sessionId}`)
       const snapshot = await getDoc(sessionDoc)
 
@@ -85,7 +73,7 @@ export const createFirestoreWorkoutSessionRepository = (): WorkoutSessionReposit
     },
 
     async getByDate(userId: string, dateKey: string): Promise<WorkoutSession[]> {
-      const db = getFirestoreClient()
+      const db = await getFirestoreClient()
       const sessionsCol = collection(db, `users/${userId}/workoutSessions`)
       const q = query(sessionsCol, where('dateKey', '==', dateKey), orderBy('createdAtMs', 'desc'))
 
@@ -98,7 +86,7 @@ export const createFirestoreWorkoutSessionRepository = (): WorkoutSessionReposit
       dateKey: string,
       context: WorkoutContext
     ): Promise<WorkoutSession | null> {
-      const db = getFirestoreClient()
+      const db = await getFirestoreClient()
       const sessionsCol = collection(db, `users/${userId}/workoutSessions`)
       const q = query(sessionsCol, where('dateKey', '==', dateKey), where('context', '==', context))
 
@@ -112,7 +100,7 @@ export const createFirestoreWorkoutSessionRepository = (): WorkoutSessionReposit
       startDate: string,
       endDate: string
     ): Promise<WorkoutSession[]> {
-      const db = getFirestoreClient()
+      const db = await getFirestoreClient()
       const sessionsCol = collection(db, `users/${userId}/workoutSessions`)
       const q = query(
         sessionsCol,

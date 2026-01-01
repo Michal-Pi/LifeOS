@@ -109,6 +109,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "workoutSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "dateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ]
 }

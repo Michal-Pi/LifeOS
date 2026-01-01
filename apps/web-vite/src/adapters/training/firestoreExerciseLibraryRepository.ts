@@ -1,15 +1,6 @@
-import {
-  getFirestore,
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  setDoc,
-  query,
-  where,
-  orderBy,
-} from 'firebase/firestore'
+import { collection, doc, getDocs, getDoc, setDoc, query, where, orderBy } from 'firebase/firestore'
 import { newId } from '@lifeos/core'
+import { getFirestoreClient } from '@/lib/firestoreClient'
 import type {
   ExerciseLibraryRepository,
   ExerciseLibraryItem,
@@ -20,11 +11,9 @@ import type {
 } from '@lifeos/training'
 
 export const createFirestoreExerciseLibraryRepository = (): ExerciseLibraryRepository => {
-  const getFirestoreClient = () => getFirestore()
-
   return {
     async create(userId: string, input: CreateExerciseInput): Promise<ExerciseLibraryItem> {
-      const db = getFirestoreClient()
+      const db = await getFirestoreClient()
       const exerciseId = newId('exercise')
 
       const exercise: ExerciseLibraryItem = {
@@ -48,7 +37,7 @@ export const createFirestoreExerciseLibraryRepository = (): ExerciseLibraryRepos
       exerciseId: ExerciseId,
       updates: UpdateExerciseInput
     ): Promise<ExerciseLibraryItem> {
-      const db = getFirestoreClient()
+      const db = await getFirestoreClient()
       const exerciseDoc = doc(db, `users/${userId}/exerciseLibrary/${exerciseId}`)
 
       const existing = await getDoc(exerciseDoc)
@@ -69,7 +58,7 @@ export const createFirestoreExerciseLibraryRepository = (): ExerciseLibraryRepos
     },
 
     async delete(userId: string, exerciseId: ExerciseId): Promise<void> {
-      const db = getFirestoreClient()
+      const db = await getFirestoreClient()
       const exerciseDoc = doc(db, `users/${userId}/exerciseLibrary/${exerciseId}`)
 
       const existing = await getDoc(exerciseDoc)
@@ -90,7 +79,7 @@ export const createFirestoreExerciseLibraryRepository = (): ExerciseLibraryRepos
     },
 
     async get(userId: string, exerciseId: ExerciseId): Promise<ExerciseLibraryItem | null> {
-      const db = getFirestoreClient()
+      const db = await getFirestoreClient()
       const exerciseDoc = doc(db, `users/${userId}/exerciseLibrary/${exerciseId}`)
       const snapshot = await getDoc(exerciseDoc)
 
@@ -102,7 +91,7 @@ export const createFirestoreExerciseLibraryRepository = (): ExerciseLibraryRepos
       userId: string,
       options?: { category?: ExerciseCategory; activeOnly?: boolean }
     ): Promise<ExerciseLibraryItem[]> {
-      const db = getFirestoreClient()
+      const db = await getFirestoreClient()
       const exercisesCol = collection(db, `users/${userId}/exerciseLibrary`)
 
       let q = query(exercisesCol, orderBy('name', 'asc'))

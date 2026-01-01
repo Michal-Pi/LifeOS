@@ -1,5 +1,20 @@
 # Design System Changelog
 
+## January 1, 2026 - Top Navigation System
+
+### Major Changes
+
+#### 1. Persistent Top App Bar
+
+- Introduced a fixed top navigation bar with primary sections, search, and utilities
+- Added active and hover states to improve clarity and hierarchy
+- Standardized nav spacing, sizing, and background to align with design tokens
+
+#### 2. Search Integration
+
+- Embedded global search into the top bar with icon and helper placeholder
+- Standardized input styling to match system borders and spacing
+
 ## December 19, 2024 - Refined Minimalist Design System
 
 ### Major Changes

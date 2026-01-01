@@ -102,9 +102,13 @@ export function GlobalSearch() {
 
   return (
     <div className="global-search" ref={wrapperRef}>
+      <span className="global-search__icon" aria-hidden="true">
+        🔍
+      </span>
       <input
         type="text"
-        placeholder="Search..."
+        className="global-search__input"
+        placeholder="Search tasks, events, notes..."
         value={query}
         onChange={(e) => {
           setQuery(e.target.value)

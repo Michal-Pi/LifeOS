@@ -1,10 +1,10 @@
-import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { Toaster } from 'sonner'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
-import { GlobalSearch } from './components/GlobalSearch'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { TopNav } from './components/TopNav'
 
 // Global styles (if any, or import from theme.css)
 import './globals.css'
@@ -55,43 +55,16 @@ function PageLoader() {
 function AppRoutes() {
   const location = useLocation()
   const isLoginRoute = location.pathname === '/login'
+  const contentClass = isLoginRoute ? 'app-content app-content--public' : 'app-content'
 
   return (
     <>
       <Toaster position="top-right" richColors />
       <AuthProvider>
         <div className="app-container">
-          {!isLoginRoute && (
-            <nav className="main-nav">
-              <NavLink to="/today" className={({ isActive }) => (isActive ? 'active' : '')}>
-                Today
-              </NavLink>
-              <NavLink to="/calendar" className={({ isActive }) => (isActive ? 'active' : '')}>
-                Calendar
-              </NavLink>
-              <NavLink to="/todo" className={({ isActive }) => (isActive ? 'active' : '')}>
-                To-Do
-              </NavLink>
-              <NavLink to="/habits" className={({ isActive }) => (isActive ? 'active' : '')}>
-                Habits
-              </NavLink>
-              <NavLink to="/agents" className={({ isActive }) => (isActive ? 'active' : '')}>
-                Agents
-              </NavLink>
-              <NavLink to="/workspaces" className={({ isActive }) => (isActive ? 'active' : '')}>
-                Workspaces
-              </NavLink>
-              <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
-                Settings
-              </NavLink>
-              <NavLink to="/review" className={({ isActive }) => (isActive ? 'active' : '')}>
-                Review
-              </NavLink>
-              <GlobalSearch />
-            </nav>
-          )}
+          {!isLoginRoute && <TopNav />}
 
-          <div className="app-content">
+          <div className={contentClass}>
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 {/* Public Routes */}
