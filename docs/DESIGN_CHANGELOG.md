@@ -374,6 +374,13 @@ CSS features used:
 
 ## Version History
 
+### v1.2.0 - February 1, 2026
+
+- Adopted Quiet Cyberpunk tokens (high-key base + restrained accent)
+- Refined navigation, search, buttons, and modal motion system-wide
+- Restyled Today, Calendar, and Notes surfaces to match the new system
+- Normalized supporting components (training, habits, editor, task list) to the new palette
+
 ### v1.1.1 - January 1, 2026
 
 - Today page restructured into primary/secondary columns

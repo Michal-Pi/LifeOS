@@ -294,9 +294,9 @@ export function TopicSidebar({
         .btn-icon {
           width: 28px;
           height: 28px;
-          border-radius: 4px;
+          border-radius: 10px;
           border: 1px solid var(--border);
-          background: var(--background);
+          background: transparent;
           color: var(--foreground);
           cursor: pointer;
           display: flex;
@@ -306,7 +306,7 @@ export function TopicSidebar({
         }
 
         .btn-icon:hover {
-          background: var(--muted);
+          border-color: var(--border-strong);
         }
 
         .sidebar-item {
@@ -314,19 +314,25 @@ export function TopicSidebar({
           align-items: center;
           gap: 8px;
           padding: 8px 12px;
-          border-radius: 6px;
+          border-radius: 10px;
           cursor: pointer;
           user-select: none;
           position: relative;
+          border: 1px solid transparent;
+          transition:
+            border-color var(--motion-fast) var(--motion-ease),
+            box-shadow var(--motion-fast) var(--motion-ease);
         }
 
         .sidebar-item:hover {
-          background: var(--muted);
+          border-color: var(--accent);
+          box-shadow: 0 0 0 1px var(--accent-subtle);
         }
 
         .sidebar-item.active {
-          background: var(--primary);
-          color: white;
+          border-color: var(--accent);
+          color: var(--foreground);
+          box-shadow: 0 0 0 1px var(--accent-subtle);
         }
 
         .expand-icon {
@@ -358,9 +364,9 @@ export function TopicSidebar({
         .btn-icon-sm {
           width: 20px;
           height: 20px;
-          border-radius: 3px;
+          border-radius: 8px;
           border: none;
-          background: rgba(0, 0, 0, 0.1);
+          background: transparent;
           color: var(--foreground);
           cursor: pointer;
           font-size: 16px;
@@ -370,12 +376,12 @@ export function TopicSidebar({
         }
 
         .btn-icon-sm:hover {
-          background: rgba(0, 0, 0, 0.2);
+          background: var(--background-tertiary);
         }
 
         .btn-icon-sm.delete:hover {
-          background: var(--destructive);
-          color: white;
+          background: rgba(248, 113, 113, 0.12);
+          color: var(--error);
         }
 
         .topic-group {
@@ -395,8 +401,9 @@ export function TopicSidebar({
           gap: 4px;
           margin-bottom: 8px;
           padding: 8px;
-          background: var(--muted);
-          border-radius: 6px;
+          background: var(--background-secondary);
+          border-radius: 10px;
+          border: 1px solid var(--border);
         }
 
         .new-item-input.section-input {
@@ -405,26 +412,37 @@ export function TopicSidebar({
 
         .new-item-input input {
           flex: 1;
-          padding: 6px 8px;
+          padding: 0 8px;
+          height: 32px;
           border: 1px solid var(--border);
-          border-radius: 4px;
-          background: var(--background);
+          border-radius: 10px;
+          background: transparent;
           color: var(--foreground);
           font-size: 14px;
+          transition:
+            border-color var(--motion-standard) var(--motion-ease),
+            box-shadow var(--motion-standard) var(--motion-ease);
+        }
+
+        .new-item-input input:focus-visible {
+          outline: 2px solid transparent;
+          border-color: var(--accent);
+          box-shadow: 0 0 0 3px var(--accent-subtle);
         }
 
         .btn-sm {
           padding: 6px 12px;
-          border: none;
-          border-radius: 4px;
-          background: var(--primary);
-          color: white;
+          border: 1px solid var(--accent);
+          border-radius: 10px;
+          background: transparent;
+          color: var(--accent);
           cursor: pointer;
           font-size: 12px;
+          transition: box-shadow var(--motion-standard) var(--motion-ease);
         }
 
         .btn-sm:hover {
-          opacity: 0.9;
+          box-shadow: 0 0 0 3px var(--accent-subtle);
         }
 
         .loading {

@@ -16,6 +16,7 @@ const CalendarPage = lazy(() =>
   import('./pages/CalendarPage').then((m) => ({ default: m.CalendarPage }))
 )
 const TodoPage = lazy(() => import('./pages/TodoPage').then((m) => ({ default: m.TodoPage })))
+const NotesPage = lazy(() => import('./pages/NotesPage').then((m) => ({ default: m.NotesPage })))
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))
 )
@@ -107,6 +108,26 @@ function AppRoutes() {
                     <ProtectedRoute>
                       <ErrorBoundary>
                         <TodoPage />
+                      </ErrorBoundary>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/notes"
+                  element={
+                    <ProtectedRoute>
+                      <ErrorBoundary>
+                        <NotesPage />
+                      </ErrorBoundary>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/learning"
+                  element={
+                    <ProtectedRoute>
+                      <ErrorBoundary>
+                        <NotesPage />
                       </ErrorBoundary>
                     </ProtectedRoute>
                   }

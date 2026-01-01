@@ -71,16 +71,17 @@ export function SystemStatus() {
       style={{
         marginBottom: '2rem',
         padding: '1.5rem',
-        border: '1px solid var(--primary-color)',
-        boxShadow: '0 0 15px var(--glow-color)',
+        border: '1px solid var(--border)',
+        borderRadius: '16px',
+        background: 'var(--card)',
       }}
     >
       <h3
         style={{
           marginTop: 0,
-          color: 'var(--primary-color)',
+          color: 'var(--foreground)',
           textTransform: 'uppercase',
-          letterSpacing: '1px',
+          letterSpacing: '0.12em',
         }}
       >
         System Status
@@ -103,8 +104,7 @@ export function SystemStatus() {
                 width: '10px',
                 height: '10px',
                 borderRadius: '50%',
-                backgroundColor: isOnline ? 'var(--success-color)' : 'var(--error-color)',
-                boxShadow: `0 0 10px ${isOnline ? 'var(--success-color)' : 'var(--error-color)'}`,
+                backgroundColor: isOnline ? 'var(--success)' : 'var(--error)',
               }}
             />
             <span style={{ fontWeight: 'bold' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
@@ -120,8 +120,7 @@ export function SystemStatus() {
                 width: '10px',
                 height: '10px',
                 borderRadius: '50%',
-                backgroundColor: user ? 'var(--success-color)' : 'var(--text-secondary)',
-                boxShadow: user ? '0 0 10px var(--success-color)' : 'none',
+                backgroundColor: user ? 'var(--success)' : 'var(--secondary-foreground)',
               }}
             />
             <span style={{ fontWeight: 'bold' }}>{user ? 'AUTHENTICATED' : 'GUEST'}</span>
@@ -132,7 +131,7 @@ export function SystemStatus() {
             Latency
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontFamily: 'monospace', color: 'var(--primary-color)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--secondary-foreground)' }}>
               {latency ? `${latency}ms` : '...'}
             </span>
           </div>
@@ -151,7 +150,9 @@ export function SystemStatus() {
               {isTestingSpeed ? 'TESTING...' : 'TEST SPEED'}
             </button>
             {downloadSpeed && (
-              <span style={{ fontFamily: 'monospace', color: 'var(--primary-color)' }}>
+              <span
+                style={{ fontFamily: 'var(--font-mono)', color: 'var(--secondary-foreground)' }}
+              >
                 {downloadSpeed} Mbps
               </span>
             )}

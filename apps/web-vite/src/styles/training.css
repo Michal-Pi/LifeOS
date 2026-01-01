@@ -40,19 +40,19 @@
 }
 
 .training-quick-log-button {
-  background: var(--primary-color);
-  color: white;
-  border: none;
+  background: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: box-shadow var(--motion-standard) var(--motion-ease);
 }
 
 .training-quick-log-button:hover {
-  background: var(--primary-hover);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .training-quick-log-button:disabled {
@@ -102,26 +102,26 @@
 
 .context-button.active {
   border-color: var(--primary-color);
-  background: var(--primary-light);
   color: var(--primary-color);
   font-weight: 600;
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .training-submit-button {
   width: 100%;
-  background: var(--primary-color);
-  color: white;
-  border: none;
+  background: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: box-shadow var(--motion-standard) var(--motion-ease);
 }
 
 .training-submit-button:hover {
-  background: var(--primary-hover);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 /* ========== Session Status ========== */
@@ -186,8 +186,7 @@
 
 .training-completed:hover,
 .training-planned:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 2px var(--primary-light);
 }
 
 .click-to-edit {
@@ -215,7 +214,7 @@
 
 .exercise-item:hover {
   border-color: var(--primary-color);
-  background: var(--background-hover);
+  background: var(--background-tertiary);
 }
 
 .exercise-item-name {
@@ -286,19 +285,19 @@
 }
 
 .add-exercise-button {
-  background: var(--primary-color);
-  color: white;
-  border: none;
+  background: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: box-shadow var(--motion-standard) var(--motion-ease);
 }
 
 .add-exercise-button:hover {
-  background: var(--primary-hover);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .add-exercise-button:disabled {
@@ -509,7 +508,7 @@
 }
 
 .add-set-button {
-  background: var(--primary-light);
+  background: transparent;
   color: var(--primary-color);
   border: 1px solid var(--primary-color);
   border-radius: var(--radius-md);
@@ -521,8 +520,7 @@
 }
 
 .add-set-button:hover {
-  background: var(--primary-color);
-  color: white;
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .sets-list {
@@ -672,18 +670,23 @@
 
 .search-input {
   width: 100%;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 var(--space-3);
   font-size: 0.875rem;
   margin-bottom: var(--space-3);
-  background: var(--card-background);
-  color: var(--text-primary);
+  background: transparent;
+  color: var(--foreground);
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
-.search-input:focus {
-  outline: none;
-  border-color: var(--primary-color);
+.search-input:focus-visible {
+  outline: 2px solid transparent;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .category-filter {
@@ -793,13 +796,17 @@
 /* ========== Dark Mode Support ========== */
 
 [data-theme='dark'] {
-  --success-light: rgba(16, 185, 129, 0.1);
-  --info-light: rgba(59, 130, 246, 0.1);
+  --success-light: rgba(45, 212, 191, 0.12);
+  --info-light: rgba(0, 229, 255, 0.12);
+  --success-color: var(--success);
+  --info-color: var(--accent);
 }
 
 [data-theme='light'] {
-  --success-light: rgba(16, 185, 129, 0.1);
-  --info-light: rgba(59, 130, 246, 0.1);
+  --success-light: rgba(45, 212, 191, 0.12);
+  --info-light: rgba(0, 229, 255, 0.12);
+  --success-color: var(--success);
+  --info-color: var(--accent);
 }
 
 /* ========== Exercise Library Page ========== */
@@ -838,17 +845,22 @@
 
 .search-input {
   width: 100%;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   font-size: 0.875rem;
-  background: var(--card-background);
-  color: var(--text-primary);
+  background: transparent;
+  color: var(--foreground);
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
-.search-input:focus {
-  outline: none;
-  border-color: var(--primary-color);
+.search-input:focus-visible {
+  outline: 2px solid transparent;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .category-filters {
@@ -874,9 +886,9 @@
 }
 
 .category-filter-button.active {
-  background: var(--primary-color);
-  color: white;
+  color: var(--primary-color);
   border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .exercise-library-loading {
@@ -960,7 +972,7 @@
   padding: 4px 8px;
   font-size: 0.75rem;
   border-radius: var(--radius-sm);
-  border: none;
+  border: 1px solid var(--border-color);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -971,8 +983,9 @@
 }
 
 .edit-button-small:hover {
-  background: var(--primary-color);
-  color: white;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .delete-button-small {
@@ -981,8 +994,8 @@
 }
 
 .delete-button-small:hover {
-  background: var(--danger-color);
-  color: white;
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--danger-color);
 }
 
 /* ========== Exercise Form Modal ========== */
@@ -1015,14 +1028,18 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: 0.875rem;
-  background: var(--card-background);
-  color: var(--text-primary);
+  background: transparent;
+  color: var(--foreground);
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
-.form-input:focus,
-.form-select:focus {
-  outline: none;
+.form-input:focus-visible,
+.form-select:focus-visible {
+  outline: 2px solid transparent;
   border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .equipment-input-row {
@@ -1031,18 +1048,19 @@
 }
 
 .add-equipment-button {
-  background: var(--primary-color);
-  color: white;
-  border: none;
+  background: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
   font-size: 0.875rem;
   cursor: pointer;
   white-space: nowrap;
+  transition: box-shadow var(--motion-standard) var(--motion-ease);
 }
 
 .add-equipment-button:hover {
-  background: var(--primary-hover);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .add-equipment-button:disabled {
@@ -1209,9 +1227,9 @@
 }
 
 .template-context-filter-button.active {
-  background: var(--primary-color);
-  color: white;
+  color: var(--primary-color);
   border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .template-grid {
@@ -1229,8 +1247,8 @@
 }
 
 .template-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-top-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-light);
 }
 
 .template-card-header {
@@ -1249,8 +1267,9 @@
 }
 
 .template-context-badge {
-  background: var(--primary-light);
+  background: var(--background-secondary);
   color: var(--primary-color);
+  border: 1px solid var(--primary-color);
   padding: 4px 10px;
   border-radius: var(--radius-full);
   font-size: 0.75rem;
@@ -1310,14 +1329,14 @@
 }
 
 .template-edit-button:hover {
-  background: var(--primary-color);
-  color: white;
   border-color: var(--primary-color);
+  color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .template-delete-button:hover {
-  background: var(--danger-color);
-  color: white;
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--danger-color);
   border-color: var(--danger-color);
 }
 
@@ -1359,19 +1378,19 @@
 }
 
 .add-template-exercise-button {
-  background: var(--primary-color);
-  color: white;
-  border: none;
+  background: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: box-shadow var(--motion-standard) var(--motion-ease);
 }
 
 .add-template-exercise-button:hover {
-  background: var(--primary-hover);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .template-items-list {
@@ -1784,9 +1803,9 @@
 }
 
 .context-selector-button.active {
-  background: var(--primary-color);
-  color: white;
+  color: var(--primary-color);
   border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .context-icon {

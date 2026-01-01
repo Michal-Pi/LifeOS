@@ -99,7 +99,7 @@ People and Projects remain placeholder pages.
    Login screen should show only the auth form (no global nav or search).
 
 4. **Verify Top Navigation (after login):**
-   Confirm the fixed top nav shows primary sections, search, and settings.
+   Confirm the fixed top nav shows primary sections (including Notes), search, and settings, with the accent underline only on hover/active.
 
 5. **Navigate to Calendar:**
    Click "Calendar" in the sidebar or visit `http://localhost:5173/calendar`

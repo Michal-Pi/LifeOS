@@ -267,14 +267,14 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
         }
 
         .remove-btn:hover {
-          color: var(--destructive);
+          color: var(--error);
         }
 
         .add-okr-btn {
           padding: 8px 12px;
-          background: var(--background);
+          background: var(--background-secondary);
           border: 1px dashed var(--border);
-          border-radius: 6px;
+          border-radius: 10px;
           color: var(--muted-foreground);
           cursor: pointer;
           font-size: 13px;
@@ -283,18 +283,17 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
         }
 
         .add-okr-btn:hover {
-          background: var(--muted);
-          border-color: var(--primary);
-          color: var(--primary);
+          border-color: var(--accent);
+          box-shadow: 0 0 0 3px var(--accent-subtle);
+          color: var(--accent);
         }
 
         .okr-dropdown {
           position: relative;
           margin-top: 8px;
-          background: var(--background);
+          background: var(--card);
           border: 1px solid var(--border);
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          border-radius: 16px;
           max-height: 400px;
           overflow: hidden;
           display: flex;
@@ -311,17 +310,22 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
 
         .search-input {
           flex: 1;
-          padding: 6px 8px;
+          height: 32px;
+          padding: 0 8px;
           border: 1px solid var(--border);
-          border-radius: 4px;
-          background: var(--background);
+          border-radius: 10px;
+          background: transparent;
           color: var(--foreground);
           font-size: 13px;
+          transition:
+            border-color var(--motion-standard) var(--motion-ease),
+            box-shadow var(--motion-standard) var(--motion-ease);
         }
 
-        .search-input:focus {
-          outline: none;
-          border-color: var(--primary);
+        .search-input:focus-visible {
+          outline: 2px solid transparent;
+          border-color: var(--accent);
+          box-shadow: 0 0 0 3px var(--accent-subtle);
         }
 
         .close-btn {
@@ -355,16 +359,16 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
           padding: 12px;
           border-bottom: 1px solid var(--border);
           cursor: pointer;
-          transition: background 0.2s;
+          transition: background var(--motion-fast) var(--motion-ease);
         }
 
         .okr-item:hover {
-          background: var(--muted);
+          background: var(--background-tertiary);
         }
 
         .okr-item.selected {
-          background: var(--primary-foreground);
-          border-left: 3px solid var(--primary);
+          background: var(--background-secondary);
+          border-left: 3px solid var(--accent);
         }
 
         .okr-item:last-child {
@@ -398,15 +402,15 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
           display: inline-block;
           margin-top: 2px;
           padding: 2px 6px;
-          background: var(--muted);
-          border-radius: 3px;
+          background: var(--background-secondary);
+          border-radius: 8px;
           font-size: 11px;
           color: var(--muted-foreground);
           text-transform: capitalize;
         }
 
         .check-icon {
-          color: var(--primary);
+          color: var(--accent);
           font-size: 18px;
           font-weight: bold;
         }

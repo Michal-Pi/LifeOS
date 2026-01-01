@@ -21,10 +21,10 @@
 }
 
 .today-label {
-  letter-spacing: 0.4em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--muted-foreground);
-  font-size: 0.65rem;
+  font-size: 0.7rem;
 }
 
 .today-heading {
@@ -41,12 +41,14 @@
   text-align: right;
   font-size: 1.25rem;
   color: var(--muted-foreground);
+  font-family: var(--font-mono);
 }
 
 .today-time-zone {
   display: block;
   font-size: 0.8rem;
   color: var(--muted-foreground);
+  font-family: var(--font-mono);
 }
 
 .today-frog {
@@ -57,8 +59,8 @@
 }
 
 .section-label {
-  font-size: 0.65rem;
-  letter-spacing: 0.4em;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   margin: 0;
   color: var(--muted-foreground);
@@ -137,9 +139,14 @@
   left: 0;
   right: 0;
   height: 64px;
-  background: var(--card);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
   z-index: 100;
+}
+
+.dark .top-nav {
+  background: rgba(15, 20, 27, 0.92);
 }
 
 .top-nav__inner {
@@ -177,30 +184,50 @@
 }
 
 .top-nav__link {
+  position: relative;
   text-decoration: none;
   font-size: 0.9rem;
   color: var(--muted-foreground);
-  padding: 0.4rem 0.65rem;
-  border-radius: 0.5rem;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease;
+  padding: 0.4rem 0.25rem 0.55rem;
+  border-radius: 0;
+  transition: color var(--motion-standard) var(--motion-ease);
 }
 
-.top-nav__link:hover {
+.top-nav__link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform var(--motion-standard) var(--motion-ease);
+}
+
+.top-nav__link:hover,
+.top-nav__link:focus-visible {
   color: var(--foreground);
-  background: var(--muted);
+}
+
+.top-nav__link:hover::after,
+.top-nav__link:focus-visible::after {
+  transform: scaleX(1);
 }
 
 .top-nav__link:focus-visible {
-  outline: 2px solid rgba(68, 92, 71, 0.4);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 .top-nav__link--active {
   color: var(--foreground);
-  background: var(--muted);
-  border: 1px solid var(--border);
+  font-weight: 500;
+}
+
+.top-nav__link--active::after {
+  transform: scaleX(1);
 }
 
 .top-nav__search {
@@ -223,18 +250,22 @@
 
 .global-search__input {
   width: 100%;
-  padding: 0.55rem 0.75rem 0.55rem 2rem;
-  border-radius: 0.6rem;
+  height: 36px;
+  padding: 0 0.75rem 0 2rem;
+  border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--muted);
+  background: transparent;
   font-size: 0.85rem;
   color: var(--foreground);
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
-.global-search__input:focus {
+.global-search__input:focus-visible {
   outline: 2px solid transparent;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(68, 92, 71, 0.2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .stats-grid {
@@ -295,7 +326,7 @@
 
 .progress-bar {
   height: 100%;
-  background: var(--primary);
+  background: var(--success);
   border-radius: 999px;
 }
 
@@ -337,39 +368,107 @@
   border: 1px solid var(--border);
 }
 :root {
-  --background: #f6f4ef;
-  --foreground: #111218;
-  --muted: #f0efe9;
-  --muted-foreground: #4b4a49;
+  --background: #ffffff;
+  --background-secondary: #f7f8fa;
+  --background-tertiary: #eef0f3;
+  --foreground: #0f172a;
+  --secondary-foreground: #475569;
+  --muted: #f7f8fa;
+  --muted-foreground: #94a3b8;
   --card: #ffffff;
-  --card-foreground: #111218;
-  --border: #e1dfd7;
-  --primary: #445c47;
-  --primary-foreground: #f8f8f4;
-  --secondary: #8a7b70;
-  --secondary-foreground: #fdfcf8;
-  --accent: #445c47;
-  --accent-hover: #3a5040;
-  --ring: #9da5b5;
-  --radius: 18px;
+  --card-foreground: #0f172a;
+  --border: #e6e8eb;
+  --border-strong: #d1d5db;
+  --primary: #00e5ff;
+  --primary-foreground: #0f172a;
+  --secondary: #f7f8fa;
+  --secondary-foreground: #0f172a;
+  --accent: #00e5ff;
+  --accent-glow: rgba(0, 229, 255, 0.35);
+  --accent-subtle: rgba(0, 229, 255, 0.12);
+  --success: #2dd4bf;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --ring: #00e5ff;
+  --radius: 16px;
   --spacing: 24px;
+  --font-sans: 'Inter', 'SF Pro Text', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  --motion-fast: 120ms;
+  --motion-standard: 160ms;
+  --motion-slow: 200ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  --card-background: var(--card);
+  --border-color: var(--border);
+  --text-primary: var(--foreground);
+  --text-secondary: var(--secondary-foreground);
+  --text-tertiary: var(--muted-foreground);
+  --primary-color: var(--accent);
+  --primary-hover: var(--accent);
+  --primary-light: var(--accent-subtle);
+  --background-hover: var(--background-tertiary);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 48px;
+  --error-color: var(--error);
+  --danger-color: var(--error);
 }
 
 .dark {
-  --background: #0f1116;
-  --foreground: #f8fafc;
-  --muted: #16181f;
-  --muted-foreground: #a1a3ab;
-  --card: #1a1c25;
-  --card-foreground: #f8fafc;
-  --border: #2b2f3b;
-  --primary: #7aa57d;
-  --primary-foreground: #0f1116;
-  --secondary: #5c6472;
-  --secondary-foreground: #f6f7fb;
-  --accent: #7aa57d;
-  --accent-hover: #8fb892;
-  --ring: #6d94a5;
+  --background: #0b0f14;
+  --background-secondary: #11161d;
+  --background-tertiary: #151b23;
+  --foreground: #e2e8f0;
+  --secondary-foreground: #cbd5f5;
+  --muted: #11161d;
+  --muted-foreground: #94a3b8;
+  --card: #0f141b;
+  --card-foreground: #e2e8f0;
+  --border: #1f2630;
+  --border-strong: #2a3340;
+  --primary: #00e5ff;
+  --primary-foreground: #0b0f14;
+  --secondary: #11161d;
+  --secondary-foreground: #e2e8f0;
+  --accent: #00e5ff;
+  --accent-glow: rgba(0, 229, 255, 0.3);
+  --accent-subtle: rgba(0, 229, 255, 0.12);
+  --success: #2dd4bf;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --ring: #00e5ff;
+  --card-background: var(--card);
+  --border-color: var(--border);
+  --text-primary: var(--foreground);
+  --text-secondary: var(--secondary-foreground);
+  --text-tertiary: var(--muted-foreground);
+  --primary-color: var(--accent);
+  --primary-hover: var(--accent);
+  --primary-light: var(--accent-subtle);
+  --background-hover: var(--background-tertiary);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 48px;
+  --error-color: var(--error);
+  --danger-color: var(--error);
 }
 
 *,
@@ -379,7 +478,7 @@
 }
 
 body {
-  font-family: var(--font-sans, 'Inter Variable', Inter, system-ui, sans-serif);
+  font-family: var(--font-sans);
   background: var(--background);
   color: var(--foreground);
   margin: 0;
@@ -387,12 +486,12 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 a:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
@@ -437,8 +536,9 @@ a:focus-visible {
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -473,9 +573,13 @@ a:focus-visible {
   padding: 0.75rem 1rem;
   text-decoration: none;
   color: var(--muted-foreground);
-  border-radius: 1rem;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
+  border-radius: 10px;
+  transition:
+    color var(--motion-standard) var(--motion-ease),
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
+  border: 1px solid var(--border);
+  border-left: 3px solid transparent;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -490,13 +594,16 @@ a:focus-visible {
 }
 
 .nav-link.active {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  color: var(--foreground);
+  border-color: var(--accent);
+  border-left-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .nav-link:hover {
   color: var(--foreground);
+  border-left-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .main-column {
@@ -510,7 +617,7 @@ a:focus-visible {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  background: var(--muted);
+  background: var(--background-secondary);
   border-bottom: 1px solid var(--border);
 }
 
@@ -533,27 +640,26 @@ a:focus-visible {
 
 .ghost-button {
   padding: 0.65rem 1rem;
-  border-radius: 0.5rem;
+  border-radius: 10px;
   border: 1px solid var(--border);
-  background: transparent;
-  color: var(--muted-foreground);
+  background: var(--background-secondary);
+  color: var(--foreground);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.2em;
   transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    border-color 0.2s ease;
+    background var(--motion-standard) var(--motion-ease),
+    color var(--motion-standard) var(--motion-ease),
+    border-color var(--motion-standard) var(--motion-ease);
 }
 
 .ghost-button:hover:not(:disabled) {
-  color: var(--foreground);
-  background: var(--muted);
-  border-color: var(--muted-foreground);
+  background: var(--background-tertiary);
+  border-color: var(--border-strong);
 }
 
 .ghost-button:focus-visible {
-  outline: 2px solid rgba(68, 92, 71, 0.4);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -571,7 +677,7 @@ a:focus-visible {
   padding: 1.5rem;
   margin: 0 auto;
   max-width: 60rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border);
 }
 
 .module-placeholder {
@@ -627,7 +733,7 @@ a:focus-visible {
 }
 
 .module-link:hover {
-  border-color: var(--primary);
+  border-color: var(--accent);
 }
 
 .home-portal {
@@ -644,7 +750,6 @@ a:focus-visible {
   border-radius: 1.5rem;
   background: var(--card);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   text-align: center;
 }
 
@@ -710,32 +815,36 @@ a:focus-visible {
 .view-toggle {
   padding: 0.5rem 1rem;
   border: 1px solid var(--border);
-  background: var(--background);
-  border-radius: 0.5rem;
+  background: transparent;
+  border-radius: 10px;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 
 .view-toggle:hover {
-  background: var(--muted);
+  border-color: var(--border-strong);
 }
 
 .view-toggle.active {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border-color: var(--primary);
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .connection-error {
-  color: #ff6b6b;
+  color: var(--error);
   font-size: 0.8rem;
   margin: 0;
 }
 
 .sync-pill {
-  background: var(--muted);
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
   font-size: 0.75rem;
@@ -746,7 +855,7 @@ a:focus-visible {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1.5rem;
   padding: 1.5rem;
-  border-radius: 1rem;
+  border-radius: 16px;
   background: var(--card);
   border: 1px solid var(--border);
 }
@@ -754,6 +863,7 @@ a:focus-visible {
 .calendar-stats strong {
   font-size: 1.5rem;
   margin: 0.25rem 0;
+  font-family: var(--font-mono);
 }
 
 .calendar-grid {
@@ -764,7 +874,7 @@ a:focus-visible {
 
 .calendar-events {
   background: var(--card);
-  border-radius: 1rem;
+  border-radius: 16px;
   padding: 1.5rem;
   border: 1px solid var(--border);
   display: flex;
@@ -787,52 +897,47 @@ a:focus-visible {
 .event-card {
   width: 100%;
   text-align: left;
-  border-radius: 0.5rem;
-  border: 1px solid transparent;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
   padding: 1rem;
-  background: var(--muted);
+  background: var(--background-secondary);
   color: var(--foreground);
   transition:
-    border 0.2s ease,
-    transform 0.2s ease;
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
 .event-card--light {
-  background: rgba(16, 185, 129, 0.08);
+  border-left-color: var(--success);
 }
 
 .event-card--normal {
-  background: rgba(59, 130, 246, 0.12);
+  border-left-color: var(--accent);
 }
 
 .event-card--dark {
-  background: rgba(30, 64, 175, 0.2);
-  color: #eef2ff;
-}
-
-.event-card--dark .calendar-meta,
-.event-card--dark .event-time strong,
-.event-card--dark .event-body p {
-  color: rgba(238, 242, 255, 0.85);
+  border-left-color: var(--warning);
 }
 
 .event-card.selected {
-  border-color: var(--primary);
-  transform: translateY(-2px);
-  background: linear-gradient(135deg, var(--muted), rgba(0, 0, 0, 0.02));
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .event-card:hover {
-  border-color: var(--primary);
+  border-top-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .event-time strong {
   font-size: 0.9rem;
   display: block;
   color: var(--muted-foreground);
+  font-family: var(--font-mono);
 }
 
 .event-body h3 {
@@ -847,7 +952,7 @@ a:focus-visible {
 
 .calendar-detail {
   background: var(--card);
-  border-radius: 1rem;
+  border-radius: 16px;
   padding: 1.5rem;
   border: 1px solid var(--border);
   display: flex;
@@ -892,7 +997,7 @@ a:focus-visible {
   align-items: center;
   justify-content: center;
   z-index: 100;
-  animation: fadeIn 0.15s ease;
+  animation: fadeIn var(--motion-standard) var(--motion-ease);
 }
 
 @keyframes fadeIn {
@@ -906,19 +1011,19 @@ a:focus-visible {
 
 .modal-content {
   background: var(--card);
-  border-radius: 1.5rem;
+  border-radius: 16px;
   padding: 2rem;
   width: 100%;
   max-width: 28rem;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-  animation: slideUp 0.2s ease;
+  border: 1px solid var(--border);
+  animation: slideUp var(--motion-standard) var(--motion-ease);
 }
 
 @keyframes slideUp {
   from {
-    transform: translateY(20px);
+    transform: translateY(6px);
     opacity: 0;
   }
   to {
@@ -1002,19 +1107,22 @@ a:focus-visible {
 .form-group input[type='time'],
 .form-group textarea {
   padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
+  border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--background);
+  background: transparent;
   color: var(--foreground);
   font-size: 1rem;
   font-family: inherit;
-  transition: border-color 0.15s ease;
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
-.form-group input:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: var(--primary);
+.form-group input:focus-visible,
+.form-group textarea:focus-visible {
+  outline: 2px solid transparent;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .form-group textarea {
@@ -1059,7 +1167,7 @@ a:focus-visible {
 .form-checkbox input[type='checkbox'] {
   width: 1.1rem;
   height: 1.1rem;
-  accent-color: var(--primary);
+  accent-color: var(--accent);
 }
 
 .form-checkbox label {
@@ -1076,11 +1184,11 @@ a:focus-visible {
 }
 
 .form-error {
-  color: #ff6b6b;
+  color: var(--error);
   font-size: 0.85rem;
   margin: 0;
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 107, 107, 0.1);
+  background: rgba(248, 113, 113, 0.1);
   border-radius: 0.5rem;
 }
 
@@ -1092,22 +1200,48 @@ a:focus-visible {
 }
 
 /* Buttons */
-.primary-button {
+.btn-primary {
   padding: 0.75rem 1.25rem;
-  border-radius: 0.5rem;
-  border: none;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
   font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.15em;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: box-shadow var(--motion-standard) var(--motion-ease);
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primary-button {
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition:
+    box-shadow var(--motion-standard) var(--motion-ease),
+    color var(--motion-standard) var(--motion-ease),
+    border-color var(--motion-standard) var(--motion-ease);
 }
 
 .primary-button:hover {
-  opacity: 0.9;
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .primary-button:disabled {
@@ -1117,29 +1251,32 @@ a:focus-visible {
 
 .danger-button {
   padding: 0.75rem 1.25rem;
-  border-radius: 0.5rem;
-  border: none;
-  background: #ff6b6b;
-  color: #fff;
+  border-radius: 10px;
+  border: 1px solid var(--error);
+  background: transparent;
+  color: var(--error);
   font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.15em;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition:
+    box-shadow var(--motion-standard) var(--motion-ease),
+    color var(--motion-standard) var(--motion-ease),
+    border-color var(--motion-standard) var(--motion-ease);
 }
 
 .danger-button:hover {
-  opacity: 0.9;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
 }
 
 .ghost-button.danger {
-  color: #ff6b6b;
-  border-color: #ff6b6b;
+  color: var(--error);
+  border-color: var(--error);
 }
 
 .ghost-button.danger:hover {
-  background: rgba(255, 107, 107, 0.1);
+  background: rgba(248, 113, 113, 0.1);
 }
 
 /* Sync indicators */
@@ -1151,8 +1288,8 @@ a:focus-visible {
 }
 
 .status-badge.online {
-  background: rgba(72, 187, 120, 0.15);
-  color: #48bb78;
+  background: rgba(45, 212, 191, 0.15);
+  color: var(--success);
 }
 
 .status-badge.offline {
@@ -1303,7 +1440,7 @@ a:focus-visible {
 }
 
 .day-cell:hover {
-  background: var(--muted);
+  background: var(--background-tertiary);
 }
 
 .day-cell.other-month {
@@ -1311,17 +1448,17 @@ a:focus-visible {
 }
 
 .day-cell.today {
-  background: rgba(139, 92, 246, 0.1);
+  background: var(--background-secondary);
   border-color: var(--accent);
 }
 
 .day-cell.selected {
-  background: var(--accent);
-  color: white;
+  background: var(--accent-subtle);
+  color: var(--foreground);
 }
 
 .day-cell.selected .day-number {
-  color: white;
+  color: var(--foreground);
 }
 
 .day-number {
@@ -1350,15 +1487,15 @@ a:focus-visible {
 }
 
 .event-dot--light {
-  background: rgba(16, 185, 129, 0.7);
+  background: var(--success);
 }
 
 .event-dot--normal {
-  background: rgba(59, 130, 246, 0.85);
+  background: var(--accent);
 }
 
 .event-dot--dark {
-  background: rgba(30, 64, 175, 0.95);
+  background: var(--warning);
 }
 
 .event-count {
@@ -1405,8 +1542,8 @@ a:focus-visible {
 }
 
 .sync-state-badge.conflict {
-  background: rgba(246, 173, 85, 0.15);
-  color: #f6ad55;
+  background: rgba(251, 191, 36, 0.15);
+  color: var(--warning);
 }
 
 .sync-state-badge.readonly {
@@ -1422,10 +1559,10 @@ a:focus-visible {
 .writeback-error {
   margin: 0.5rem 0;
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 107, 107, 0.1);
+  background: rgba(248, 113, 113, 0.1);
   border-radius: 0.5rem;
   font-size: 0.85rem;
-  color: #ff6b6b;
+  color: var(--error);
 }
 
 .retry-button {
@@ -1433,12 +1570,12 @@ a:focus-visible {
 }
 
 .ghost-button.warning {
-  color: #f6ad55;
-  border-color: #f6ad55;
+  color: var(--warning);
+  border-color: var(--warning);
 }
 
 .ghost-button.warning:hover {
-  background: rgba(246, 173, 85, 0.1);
+  background: rgba(251, 191, 36, 0.1);
 }
 
 .local-event-badge {
@@ -1496,7 +1633,7 @@ a:focus-visible {
   padding: 0.35rem 0.6rem;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: var(--background);
+  background: transparent;
   color: var(--foreground);
   font-size: 0.8rem;
   cursor: pointer;
@@ -1504,21 +1641,23 @@ a:focus-visible {
 }
 
 .weekday-button:hover {
-  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .weekday-button.selected {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border-color: var(--primary);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 /* Edit scope picker */
 .scope-picker-section {
   margin-top: 1rem;
   padding: 1rem;
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 0.75rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
 }
 
 .scope-description {
@@ -1538,18 +1677,18 @@ a:focus-visible {
   flex-direction: column;
   padding: 0.75rem 1rem;
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .scope-option:hover {
-  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .scope-option.selected {
-  border-color: var(--primary);
-  background: rgba(var(--primary-rgb), 0.05);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .scope-option input[type='radio'] {
@@ -1701,15 +1840,15 @@ a:focus-visible {
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: transparent;
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.85rem;
   font-weight: 600;
   flex-shrink: 0;
-  border: 2px solid transparent;
+  border: 1px solid var(--accent);
 }
 
 /* Attendee info */
@@ -1748,8 +1887,9 @@ a:focus-visible {
 .you-badge {
   font-size: 0.65rem;
   padding: 0.15rem 0.4rem;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
   border-radius: 999px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1845,7 +1985,7 @@ a:focus-visible {
   padding: 0.5rem 1rem;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: var(--background);
+  background: transparent;
   color: var(--foreground);
   font-size: 0.8rem;
   font-weight: 500;
@@ -1866,8 +2006,8 @@ a:focus-visible {
 }
 
 .rsvp-button.selected {
-  border-color: var(--primary);
-  background: rgba(68, 92, 71, 0.1);
+  border-color: var(--accent);
+  background: var(--accent-subtle);
 }
 
 .rsvp-button.accept:hover,
@@ -1924,8 +2064,9 @@ a:focus-visible {
 .attendee-edit-section {
   margin-top: 1rem;
   padding: 1rem;
-  background: var(--muted);
-  border-radius: 0.75rem;
+  background: var(--background-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border);
 }
 
 .attendee-input-row {
@@ -1938,27 +2079,36 @@ a:focus-visible {
   flex: 1;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  background: var(--background);
+  border-radius: 10px;
+  background: transparent;
   color: var(--foreground);
   font-size: 0.9rem;
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
-.attendee-input:focus {
-  outline: none;
-  border-color: var(--primary);
+.attendee-input:focus-visible {
+  outline: 2px solid transparent;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .add-attendee-button {
   padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  border: none;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+  transition: box-shadow var(--motion-standard) var(--motion-ease);
+}
+
+.add-attendee-button:hover:not(:disabled) {
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .add-attendee-button:disabled {
@@ -1993,7 +2143,7 @@ a:focus-visible {
 }
 
 .send-updates-toggle input[type='checkbox'] {
-  accent-color: var(--primary);
+  accent-color: var(--accent);
 }
 
 /* ========== Phase 2.5: Alert UI Styles ========== */
@@ -2016,16 +2166,20 @@ a:focus-visible {
   flex: 1;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  background: var(--background);
+  border-radius: 10px;
+  background: transparent;
   color: var(--foreground);
   font-size: 0.9rem;
   cursor: pointer;
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
-.alert-select:focus {
-  outline: none;
-  border-color: var(--primary);
+.alert-select:focus-visible {
+  outline: 2px solid transparent;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .alert-select:disabled {
@@ -2038,7 +2192,7 @@ a:focus-visible {
 }
 
 .alert-status.enabled {
-  color: var(--primary);
+  color: var(--accent);
 }
 
 .alert-custom-row {
@@ -2052,15 +2206,19 @@ a:focus-visible {
   width: 5rem;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  background: var(--background);
+  border-radius: 10px;
+  background: transparent;
   color: var(--foreground);
   font-size: 0.9rem;
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
-.alert-custom-input:focus {
-  outline: none;
-  border-color: var(--primary);
+.alert-custom-input:focus-visible {
+  outline: 2px solid transparent;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .alert-custom-label {
@@ -2070,13 +2228,18 @@ a:focus-visible {
 
 .alert-custom-button {
   padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  border: none;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
+  transition: box-shadow var(--motion-standard) var(--motion-ease);
+}
+
+.alert-custom-button:hover:not(:disabled) {
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .alert-custom-button:disabled {
@@ -2124,9 +2287,8 @@ a:focus-visible {
   gap: 1rem;
   padding: 1rem 1.25rem;
   background: var(--card);
-  border: 1px solid var(--primary);
-  border-radius: 1rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--accent);
+  border-radius: 16px;
   pointer-events: auto;
   animation: slideDown 0.3s ease;
 }
@@ -2180,7 +2342,7 @@ a:focus-visible {
 
 .alert-countdown {
   font-size: 0.85rem;
-  color: var(--primary);
+  color: var(--accent);
   font-weight: 500;
   margin: 0.15rem 0 0;
 }
@@ -2193,28 +2355,32 @@ a:focus-visible {
 
 .alert-action-button {
   padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--background);
+  background: var(--background-secondary);
   color: var(--foreground);
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    background var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 
 .alert-action-button:hover {
-  background: var(--muted);
+  background: var(--background-tertiary);
+  border-color: var(--border-strong);
 }
 
 .alert-action-button.primary {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border-color: var(--primary);
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .alert-action-button.primary:hover {
-  opacity: 0.9;
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .alert-dismiss {
@@ -2292,8 +2458,8 @@ a:focus-visible {
 }
 
 .calendar-permission-badge.writable {
-  background: rgba(76, 175, 80, 0.1);
-  color: #4caf50;
+  background: rgba(45, 212, 191, 0.12);
+  color: var(--success);
 }
 
 /* Calendar selector */
@@ -2309,18 +2475,23 @@ a:focus-visible {
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  border: 1px solid var(--border);
+  background: transparent;
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 
 .calendar-item:hover {
-  background: var(--muted);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .calendar-item.selected {
-  background: var(--primary);
-  color: var(--primary-foreground);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .calendar-color-dot {
@@ -2454,14 +2625,17 @@ a:focus-visible {
   width: 44px;
   height: 24px;
   border-radius: 999px;
-  background: var(--muted);
-  border: none;
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
 .toggle-button.on {
-  background: var(--primary);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .toggle-button.disabled {
@@ -2483,9 +2657,9 @@ a:focus-visible {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: white;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  background: var(--card);
+  transition: transform var(--motion-standard) var(--motion-ease);
+  border: 1px solid var(--border);
 }
 
 .toggle-button.on .toggle-thumb {
@@ -2494,9 +2668,10 @@ a:focus-visible {
 
 .composite-count {
   font-size: 0.75rem;
-  color: var(--primary);
+  color: var(--accent);
   padding: 0.2rem 0.5rem;
-  background: var(--primary-muted);
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
   border-radius: 999px;
 }
 
@@ -2508,8 +2683,9 @@ a:focus-visible {
 /* Composite membership panel */
 .composite-membership-panel {
   padding: 1rem;
-  background: var(--muted);
-  border-radius: 0.75rem;
+  background: var(--background-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border);
   margin-top: 1rem;
   font-size: 0.85rem;
 }
@@ -2558,13 +2734,13 @@ a:focus-visible {
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.5rem;
-  background: var(--background);
-  border-radius: 0.5rem;
+  background: var(--background-secondary);
+  border-radius: 10px;
   border: 1px solid var(--border);
 }
 
 .member-item.primary {
-  border-color: var(--primary);
+  border-color: var(--accent);
 }
 
 .member-info {
@@ -2585,8 +2761,9 @@ a:focus-visible {
 .primary-badge {
   font-size: 0.65rem;
   padding: 0.1rem 0.4rem;
-  background: var(--primary);
-  color: white;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
   border-radius: 999px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -2825,18 +3002,17 @@ a:focus-visible {
   flex-direction: column;
   gap: 1.5rem;
   padding: 2rem;
-  border-radius: 1rem;
+  border-radius: 16px;
   background: var(--card);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition:
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
 .inspiration-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  border-top-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .inspiration-card--secondary {
@@ -2890,18 +3066,17 @@ a:focus-visible {
 /* Calendar Preview Card */
 .calendar-preview-card {
   padding: 1.5rem;
-  border-radius: 1rem;
+  border-radius: 16px;
   background: var(--card);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition:
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
 .calendar-preview-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  border-top-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .calendar-preview-card--empty {
@@ -2921,12 +3096,14 @@ a:focus-visible {
   gap: 1rem;
   padding: 0.75rem;
   border-radius: 0.5rem;
-  transition: background 0.15s ease;
+  transition:
+    background var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
   cursor: pointer;
 }
 
 .calendar-event-item:hover {
-  background: var(--muted);
+  background: var(--background-tertiary);
 }
 
 .calendar-event-time {
@@ -2935,6 +3112,7 @@ a:focus-visible {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--muted-foreground);
+  font-family: var(--font-mono);
 }
 
 .calendar-event-info {
@@ -2956,18 +3134,17 @@ a:focus-visible {
 /* Task List Card */
 .task-list-card {
   padding: 1.5rem;
-  border-radius: 1rem;
+  border-radius: 16px;
   background: var(--card);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition:
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
 .task-list-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  border-top-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .task-list-header {
@@ -3024,7 +3201,7 @@ a:focus-visible {
   justify-content: space-between;
   padding: 1rem;
   border-radius: 0.5rem;
-  transition: background 0.15s ease;
+  transition: background var(--motion-fast) var(--motion-ease);
 }
 
 .task-item--row {
@@ -3038,7 +3215,7 @@ a:focus-visible {
 }
 
 .task-item:hover {
-  background: var(--muted);
+  background: var(--background-tertiary);
 }
 
 .task-item-content {
@@ -3064,6 +3241,7 @@ a:focus-visible {
 .priority-score {
   font-size: 0.8rem;
   color: var(--muted-foreground);
+  font-family: var(--font-mono);
 }
 
 .today-empty-row {
@@ -3073,8 +3251,9 @@ a:focus-visible {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
-  background: var(--muted);
+  border-radius: 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
 }
 
 .today-empty-title {
@@ -3092,18 +3271,17 @@ a:focus-visible {
 
 .mind-intervention-card {
   padding: 1.5rem;
-  border-radius: 1rem;
+  border-radius: 16px;
   background: var(--card);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition:
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
 .mind-intervention-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  border-top-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .mind-intervention-header {
@@ -3154,18 +3332,17 @@ a:focus-visible {
 
 .stat-card {
   padding: 1.5rem;
-  border-radius: 1rem;
+  border-radius: 16px;
   background: var(--card);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition:
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  border-top-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .stat-label {
@@ -3183,6 +3360,7 @@ a:focus-visible {
   font-weight: 700;
   line-height: 1.25;
   color: var(--foreground);
+  font-family: var(--font-mono);
 }
 
 .stat-description {
@@ -3306,7 +3484,7 @@ a:focus-visible {
 
 .settings-panel__error {
   margin: 0;
-  color: var(--destructive);
+  color: var(--error);
   font-size: 0.9rem;
 }
 
@@ -3323,8 +3501,8 @@ a:focus-visible {
   gap: 1rem;
   padding: 1rem;
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  background: var(--background);
+  border-radius: 16px;
+  background: var(--card);
   flex-wrap: wrap;
 }
 
@@ -3376,10 +3554,19 @@ a:focus-visible {
 .ai-key-input {
   width: 100%;
   padding: 0.6rem 0.75rem;
-  border-radius: 0.6rem;
+  border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--background);
+  background: transparent;
   color: inherit;
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
+}
+
+.ai-key-input:focus-visible {
+  outline: 2px solid transparent;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .ai-key-buttons {
@@ -3408,7 +3595,7 @@ a:focus-visible {
 
 .run-message {
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: 12px;
   padding: 0.75rem;
   background: var(--card);
 }
@@ -3446,30 +3633,36 @@ a:focus-visible {
 .run-input-actions textarea {
   width: 100%;
   padding: 0.65rem 0.75rem;
-  border-radius: 0.65rem;
+  border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--background);
+  background: transparent;
   color: inherit;
   resize: vertical;
+}
+
+.run-input-actions textarea:focus-visible {
+  outline: 2px solid transparent;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .workflow-graph {
   height: 360px;
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: 16px;
   overflow: hidden;
-  background: #f8fafc;
+  background: var(--background-secondary);
 }
 
 .workflow-node__title {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--foreground);
   margin-bottom: 0.35rem;
 }
 
 .workflow-node__meta {
   font-size: 0.7rem;
-  color: #475569;
+  color: var(--secondary-foreground);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -3550,11 +3743,18 @@ a:focus-visible {
 
 .calendar-settings__field select,
 .calendar-settings__field input[type='text'] {
-  background: var(--background);
+  background: transparent;
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
+  border-radius: 10px;
   padding: 0.4rem 0.6rem;
   color: var(--foreground);
+}
+
+.calendar-settings__field select:focus-visible,
+.calendar-settings__field input[type='text']:focus-visible {
+  outline: 2px solid transparent;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .calendar-settings__color-picker {
@@ -3620,8 +3820,9 @@ a:focus-visible {
 .empty-state {
   text-align: center;
   padding: 4rem 2rem;
-  background: var(--muted);
-  border-radius: 1rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+  border-radius: 16px;
   color: var(--muted-foreground);
 }
 
@@ -3638,12 +3839,12 @@ a:focus-visible {
 }
 
 .quote-card:hover {
-  border-color: var(--primary);
+  border-color: var(--accent);
 }
 
 .quote-card-editing {
-  border-color: var(--primary);
-  background: linear-gradient(135deg, var(--card), rgba(68, 92, 71, 0.03));
+  border-color: var(--accent);
+  background: var(--background-secondary);
 }
 
 .quote-card-header {
@@ -3704,19 +3905,22 @@ a:focus-visible {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  background: var(--background);
+  border-radius: 10px;
+  background: transparent;
   color: var(--foreground);
   font-family: inherit;
   font-size: 1rem;
   resize: vertical;
-  transition: border-color 0.2s ease;
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
 }
 
-.quote-textarea:focus,
-.quote-input:focus {
-  outline: none;
-  border-color: var(--primary);
+.quote-textarea:focus-visible,
+.quote-input:focus-visible {
+  outline: 2px solid transparent;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .quote-textarea {
@@ -3751,7 +3955,7 @@ a:focus-visible {
 }
 
 .dark .quote-card-editing {
-  background: linear-gradient(135deg, var(--card), rgba(122, 165, 125, 0.05));
+  background: var(--background-secondary);
 }
 
 .dark .quote-textarea,
@@ -3798,14 +4002,14 @@ a:focus-visible {
 }
 
 .quotes-table th.sortable:hover {
-  background: var(--accent-hover);
+  background: var(--background-tertiary);
   color: var(--foreground);
 }
 
 .quotes-table th.sorted-asc,
 .quotes-table th.sorted-desc {
-  color: var(--primary);
-  background: var(--accent-hover);
+  color: var(--accent);
+  background: var(--accent-subtle);
 }
 
 .quotes-table .sort-indicator {
@@ -3864,17 +4068,17 @@ a:focus-visible {
 .quote-actions-cell .delete-button {
   padding: 0.5rem 1rem;
   font-size: 0.8125rem;
-  color: var(--destructive);
+  color: var(--error);
   background: transparent;
-  border: 1px solid var(--destructive);
-  border-radius: 0.5rem;
+  border: 1px solid var(--error);
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .quote-actions-cell .delete-button:hover {
-  background: var(--destructive);
-  color: white;
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--error);
 }
 
 .quote-actions-cell .delete-button:active {
@@ -3888,9 +4092,9 @@ a:focus-visible {
 
 /* Quote add form */
 .quote-add-form {
-  background: var(--muted);
+  background: var(--background-secondary);
   border: 1px solid var(--border);
-  border-radius: 1rem;
+  border-radius: 16px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
 }
@@ -3966,15 +4170,15 @@ a:focus-visible {
   padding: 1rem 1.5rem;
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 0.75rem;
+  border-radius: 16px;
   margin-bottom: 1.5rem;
-  color: var(--destructive);
+  color: var(--error);
 }
 
 .error-banner button {
   background: transparent;
   border: none;
-  color: var(--destructive);
+  color: var(--error);
   font-size: 1.25rem;
   cursor: pointer;
   padding: 0.25rem 0.5rem;
@@ -3996,22 +4200,21 @@ a:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f5f5f0 0%, #e8e8e0 100%);
+  background: var(--background-secondary);
   padding: 1rem;
 }
 
 .dark .login-page {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  background: var(--background);
 }
 
 .login-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 1.5rem;
+  border-radius: 16px;
   padding: 3rem;
   max-width: 400px;
   width: 100%;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
 }
 
 .login-header {
@@ -4073,20 +4276,20 @@ a:focus-visible {
   justify-content: center;
   gap: 0.75rem;
   padding: 0.875rem 1.5rem;
-  background: var(--accent, #445c47);
-  color: white;
-  border: none;
-  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition:
-    background 0.2s,
+    box-shadow var(--motion-standard) var(--motion-ease),
     transform 0.1s;
 }
 
 .login-button:hover {
-  background: var(--accent-hover, #3a5040);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .login-button:active {

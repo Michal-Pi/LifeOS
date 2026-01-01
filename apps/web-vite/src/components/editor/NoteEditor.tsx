@@ -205,7 +205,7 @@ export function NoteEditor({
         }
 
         .error {
-          color: var(--destructive, red);
+          color: var(--error, red);
           font-weight: 500;
         }
 

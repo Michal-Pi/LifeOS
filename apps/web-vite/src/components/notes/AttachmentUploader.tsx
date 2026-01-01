@@ -203,22 +203,24 @@ export function AttachmentUploader({
 
         .upload-area {
           border: 2px dashed var(--border);
-          border-radius: 8px;
+          border-radius: 16px;
           padding: 32px;
           text-align: center;
           cursor: pointer;
-          transition: all 0.2s;
+          background: var(--card);
+          transition:
+            border-color var(--motion-standard) var(--motion-ease),
+            box-shadow var(--motion-standard) var(--motion-ease);
         }
 
         .upload-area:hover {
-          border-color: var(--primary);
-          background: var(--muted);
+          border-color: var(--accent);
+          box-shadow: 0 0 0 3px var(--accent-subtle);
         }
 
         .upload-area.dragging {
-          border-color: var(--primary);
-          background: var(--primary);
-          opacity: 0.1;
+          border-color: var(--accent);
+          background: var(--accent-subtle);
         }
 
         .upload-icon {
@@ -248,8 +250,9 @@ export function AttachmentUploader({
           align-items: center;
           gap: 12px;
           padding: 8px 12px;
-          background: var(--muted);
-          border-radius: 6px;
+          background: var(--background-secondary);
+          border-radius: 10px;
+          border: 1px solid var(--border);
         }
 
         .file-name {
@@ -271,7 +274,7 @@ export function AttachmentUploader({
 
         .progress-fill {
           height: 100%;
-          background: var(--primary);
+          background: var(--success);
           transition: width 0.3s;
         }
 
@@ -293,8 +296,9 @@ export function AttachmentUploader({
           justify-content: space-between;
           align-items: center;
           padding: 12px;
-          background: var(--muted);
-          border-radius: 6px;
+          background: var(--background-secondary);
+          border-radius: 10px;
+          border: 1px solid var(--border);
         }
 
         .attachment-info {
@@ -307,7 +311,7 @@ export function AttachmentUploader({
         .attachment-preview {
           width: 48px;
           height: 48px;
-          border-radius: 4px;
+          border-radius: 10px;
           overflow: hidden;
           background: var(--border);
         }
@@ -325,8 +329,8 @@ export function AttachmentUploader({
           align-items: center;
           justify-content: center;
           font-size: 24px;
-          background: var(--border);
-          border-radius: 4px;
+          background: var(--background-tertiary);
+          border-radius: 10px;
         }
 
         .attachment-details {
@@ -355,7 +359,7 @@ export function AttachmentUploader({
           height: 32px;
           border-radius: 50%;
           border: none;
-          background: rgba(0, 0, 0, 0.1);
+          background: transparent;
           color: var(--foreground);
           cursor: pointer;
           font-size: 20px;
@@ -363,11 +367,12 @@ export function AttachmentUploader({
           display: flex;
           align-items: center;
           justify-content: center;
+          transition: background var(--motion-fast) var(--motion-ease);
         }
 
         .btn-delete:hover {
-          background: var(--destructive);
-          color: white;
+          background: rgba(248, 113, 113, 0.12);
+          color: var(--error);
         }
       `}</style>
     </div>

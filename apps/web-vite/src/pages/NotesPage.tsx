@@ -261,7 +261,7 @@ export function NotesPage() {
           height: 100%;
           display: flex;
           flex-direction: column;
-          padding: 20px;
+          padding: 24px;
         }
 
         .notes-header {
@@ -273,8 +273,9 @@ export function NotesPage() {
 
         .notes-header h1 {
           margin: 0;
-          font-size: 24px;
+          font-size: 32px;
           font-weight: 600;
+          letter-spacing: -0.02em;
         }
 
         .header-actions {
@@ -284,34 +285,40 @@ export function NotesPage() {
         }
 
         .search-input {
-          padding: 8px 12px;
+          height: 36px;
+          padding: 0 12px;
           border: 1px solid var(--border);
-          border-radius: 6px;
-          background: var(--background);
+          border-radius: 10px;
+          background: transparent;
           color: var(--foreground);
           font-size: 14px;
           width: 250px;
+          transition:
+            border-color var(--motion-standard) var(--motion-ease),
+            box-shadow var(--motion-standard) var(--motion-ease);
         }
 
-        .search-input:focus {
-          outline: none;
-          border-color: var(--primary);
+        .search-input:focus-visible {
+          outline: 2px solid transparent;
+          border-color: var(--accent);
+          box-shadow: 0 0 0 3px var(--accent-subtle);
         }
 
         .btn-primary {
           padding: 10px 16px;
-          background: var(--primary);
-          color: white;
-          border: none;
-          border-radius: 6px;
+          background: transparent;
+          color: var(--accent);
+          border: 1px solid var(--accent);
+          border-radius: 10px;
           cursor: pointer;
           font-size: 14px;
           font-weight: 500;
           white-space: nowrap;
+          transition: box-shadow var(--motion-standard) var(--motion-ease);
         }
 
         .btn-primary:hover:not(:disabled) {
-          opacity: 0.9;
+          box-shadow: 0 0 0 3px var(--accent-subtle);
         }
 
         .btn-primary:disabled {
@@ -322,14 +329,16 @@ export function NotesPage() {
         .notes-content {
           display: grid;
           grid-template-columns: 250px 300px 1fr;
-          gap: 0;
+          gap: 24px;
           flex: 1;
           overflow: hidden;
         }
 
         .notes-list {
-          border-right: 1px solid var(--border);
-          padding: 0 20px;
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 16px;
+          background: var(--card);
           overflow-y: auto;
         }
 
@@ -343,19 +352,24 @@ export function NotesPage() {
 
         .note-item {
           padding: 12px;
-          border-radius: 6px;
+          border-radius: 12px;
           cursor: pointer;
           margin-bottom: 8px;
-          border: 1px solid transparent;
+          border: 1px solid var(--border);
+          background: var(--background-secondary);
+          transition:
+            border-color var(--motion-fast) var(--motion-ease),
+            box-shadow var(--motion-fast) var(--motion-ease);
         }
 
         .note-item:hover {
-          background: var(--muted);
+          border-top-color: var(--accent);
+          box-shadow: 0 0 0 1px var(--accent-subtle);
         }
 
         .note-item.active {
-          background: var(--muted);
-          border-color: var(--primary);
+          border-color: var(--accent);
+          box-shadow: 0 0 0 1px var(--accent-subtle);
         }
 
         .note-item-header {
@@ -383,13 +397,18 @@ export function NotesPage() {
         .note-date {
           font-size: 12px;
           color: var(--muted-foreground);
+          font-family: var(--font-mono);
         }
 
         .notes-editor {
           overflow-y: auto;
-          padding-left: 20px;
+          padding-left: 0;
           display: flex;
           flex-direction: column;
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 16px 20px;
+          background: var(--card);
         }
 
         .editor-header {

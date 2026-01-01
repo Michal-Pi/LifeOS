@@ -1,6 +1,6 @@
 # LifeOS Design System
 
-This repo uses a refined minimalist design system defined in CSS with supporting documentation in `docs/`.
+This repo uses the Quiet Cyberpunk design system defined in CSS with supporting documentation in `docs/`.
 
 ## Documentation
 
@@ -10,7 +10,7 @@ This repo uses a refined minimalist design system defined in CSS with supporting
 
 ## Source of Truth
 
-- Tokens + theme: `apps/web-vite/src/theme.css`
+- Tokens + theme: `apps/web-vite/src/globals.css`
 - Global styles: `apps/web-vite/src/globals.css`
 - Example page: `apps/web-vite/src/pages/TodayPage.tsx`
 

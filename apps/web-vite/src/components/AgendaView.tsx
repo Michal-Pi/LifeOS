@@ -60,8 +60,8 @@ export function AgendaView({ events, onEventSelect, selectedEventId }: AgendaVie
             position: 'sticky',
             top: 0,
             zIndex: 10,
-            backgroundColor: 'var(--bg-surface)',
-            borderBottom: '1px solid var(--border-color)',
+            backgroundColor: 'var(--card)',
+            borderBottom: '1px solid var(--border)',
           }}
         >
           <button onClick={scrollToToday} className="ghost-button small">

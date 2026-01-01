@@ -22,9 +22,9 @@
 
 .incantation-item {
   padding: 1rem;
-  background: var(--muted);
-  border-left: 4px solid var(--primary);
-  border-radius: 6px;
+  background: var(--background-secondary);
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
 }
 
 .incantation-type-badge {
@@ -77,9 +77,9 @@
 .consistency-bar {
   display: flex;
   height: 32px;
-  border-radius: 6px;
+  border-radius: 10px;
   overflow: hidden;
-  background: var(--muted);
+  background: var(--background-secondary);
 }
 
 .bar-segment {
@@ -88,19 +88,19 @@
 }
 
 .bar-segment.done {
-  background: #22c55e; /* green */
+  background: var(--success);
 }
 
 .bar-segment.tiny {
-  background: #3b82f6; /* blue */
+  background: #38bdf8;
 }
 
 .bar-segment.skip {
-  background: #f59e0b; /* orange */
+  background: var(--warning);
 }
 
 .bar-segment.missed {
-  background: #e5e7eb; /* gray */
+  background: var(--border-strong);
 }
 
 .consistency-percent {
@@ -114,8 +114,8 @@
   gap: 1.5rem;
   margin-top: 1rem;
   padding: 1rem;
-  background: var(--muted);
-  border-radius: 8px;
+  background: var(--background-secondary);
+  border-radius: 12px;
   justify-content: center;
 }
 
@@ -132,19 +132,19 @@
 }
 
 .legend-color.done {
-  background: #22c55e;
+  background: var(--success);
 }
 
 .legend-color.tiny {
-  background: #3b82f6;
+  background: #38bdf8;
 }
 
 .legend-color.skip {
-  background: #f59e0b;
+  background: var(--warning);
 }
 
 .legend-color.missed {
-  background: #e5e7eb;
+  background: var(--border-strong);
 }
 
 .legend-label {
@@ -218,8 +218,8 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem;
-  background: var(--muted);
-  border-radius: 6px;
+  background: var(--background-secondary);
+  border-radius: 10px;
 }
 
 .feeling-emoji {
@@ -253,7 +253,7 @@
 
 .recommendation-card {
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--card);
 }
@@ -279,7 +279,7 @@
 
 .rec-priority-badge {
   padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  border-radius: 10px;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -313,17 +313,17 @@
 .rec-action-btn {
   margin-top: 0.75rem;
   padding: 0.5rem 1rem;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border: none;
-  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
   cursor: pointer;
   font-size: 0.875rem;
-  transition: background 0.2s;
+  transition: box-shadow var(--motion-standard) var(--motion-ease);
 }
 
 .rec-action-btn:hover {
-  opacity: 0.9;
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 /* ========== Weekly Review Step ========== */
@@ -361,7 +361,7 @@
   padding: 1rem;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
 .habit-stat-header {
@@ -412,7 +412,7 @@
   padding: 0.5rem;
   background: #fef3c7;
   color: #78350f;
-  border-radius: 6px;
+  border-radius: 10px;
   font-size: 0.875rem;
   text-align: center;
 }
@@ -431,8 +431,8 @@
   width: 100%;
   padding: 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--background);
+  border-radius: 10px;
+  background: transparent;
   color: var(--foreground);
   font-family: inherit;
   resize: vertical;
@@ -511,7 +511,7 @@
 button:focus-visible,
 .rec-action-btn:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 

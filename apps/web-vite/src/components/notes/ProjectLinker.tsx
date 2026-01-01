@@ -123,8 +123,8 @@ export function ProjectLinker({
         .project-linker {
           padding: 16px;
           border: 1px solid var(--border);
-          border-radius: 8px;
-          background: var(--background);
+          border-radius: 16px;
+          background: var(--card);
         }
 
         .linker-header {
@@ -143,17 +143,18 @@ export function ProjectLinker({
 
         .btn-add {
           padding: 6px 12px;
-          background: var(--primary);
-          color: white;
-          border: none;
-          border-radius: 4px;
+          background: transparent;
+          color: var(--accent);
+          border: 1px solid var(--accent);
+          border-radius: 10px;
           cursor: pointer;
           font-size: 12px;
           font-weight: 500;
+          transition: box-shadow var(--motion-standard) var(--motion-ease);
         }
 
         .btn-add:hover {
-          opacity: 0.9;
+          box-shadow: 0 0 0 3px var(--accent-subtle);
         }
 
         .linked-list {
@@ -167,8 +168,9 @@ export function ProjectLinker({
           justify-content: space-between;
           align-items: center;
           padding: 8px 12px;
-          background: var(--muted);
-          border-radius: 6px;
+          background: var(--background-secondary);
+          border-radius: 10px;
+          border: 1px solid var(--border);
         }
 
         .project-info {
@@ -219,8 +221,8 @@ export function ProjectLinker({
         }
 
         .btn-remove:hover {
-          background: var(--destructive);
-          color: white;
+          background: rgba(248, 113, 113, 0.12);
+          color: var(--error);
         }
 
         .empty-state {
@@ -237,10 +239,9 @@ export function ProjectLinker({
           left: 0;
           right: 0;
           margin-top: 8px;
-          background: var(--background);
+          background: var(--card);
           border: 1px solid var(--border);
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          border-radius: 16px;
           z-index: 10;
           max-height: 300px;
           overflow-y: auto;
@@ -269,7 +270,7 @@ export function ProjectLinker({
         }
 
         .btn-close:hover {
-          background: var(--muted);
+          background: var(--background-tertiary);
         }
 
         .dropdown-list {

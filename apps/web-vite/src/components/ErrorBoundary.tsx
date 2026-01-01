@@ -44,12 +44,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           style={{
             padding: '2rem',
             margin: '2rem',
-            border: '2px solid var(--destructive, #ef4444)',
-            borderRadius: '8px',
-            backgroundColor: 'var(--destructive-bg, #fef2f2)',
+            border: '2px solid var(--error, #f87171)',
+            borderRadius: '16px',
+            backgroundColor: 'rgba(248, 113, 113, 0.12)',
           }}
         >
-          <h2 style={{ color: 'var(--destructive, #ef4444)', marginBottom: '1rem' }}>
+          <h2 style={{ color: 'var(--error, #f87171)', marginBottom: '1rem' }}>
             Something went wrong
           </h2>
           <details style={{ marginBottom: '1rem' }}>
@@ -58,8 +58,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               style={{
                 marginTop: '0.5rem',
                 padding: '1rem',
-                backgroundColor: 'var(--muted, #f3f4f6)',
-                borderRadius: '4px',
+                backgroundColor: 'var(--background-secondary, #f7f8fa)',
+                borderRadius: '10px',
                 overflow: 'auto',
                 fontSize: '0.875rem',
               }}
@@ -73,10 +73,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             onClick={this.resetError}
             style={{
               padding: '0.5rem 1rem',
-              backgroundColor: 'var(--primary, #3b82f6)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
+              backgroundColor: 'transparent',
+              color: 'var(--accent, #00e5ff)',
+              border: '1px solid var(--accent, #00e5ff)',
+              borderRadius: '10px',
               cursor: 'pointer',
               fontWeight: 'bold',
             }}

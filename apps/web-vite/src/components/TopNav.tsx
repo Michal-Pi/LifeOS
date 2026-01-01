@@ -5,6 +5,7 @@ const primaryLinks = [
   { to: '/today', label: 'Today' },
   { to: '/calendar', label: 'Calendar' },
   { to: '/todo', label: 'Todos' },
+  { to: '/notes', label: 'Notes' },
   { to: '/habits', label: 'Habits' },
   { to: '/workspaces', label: 'Workspaces' },
 ]
