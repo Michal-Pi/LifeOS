@@ -374,6 +374,13 @@ CSS features used:
 
 ## Version History
 
+### v1.1.1 - January 1, 2026
+
+- Today page restructured into primary/secondary columns
+- Compact empty states with clear CTAs for calendar and todos
+- Normalized card styling and typography for Today dashboard
+- Added hover and focus states for navigation, cards, and primary actions
+
 ### v1.1.0 - December 19, 2024
 
 - Refined minimalist design system

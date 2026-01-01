@@ -85,6 +85,11 @@ export function TodayPage() {
     if (activeTasks.length === 0) return null
     return [...activeTasks].sort((a, b) => calculatePriorityScore(b) - calculatePriorityScore(a))[0]
   }, [activeTasks])
+  const todayTasksWithoutFrog = useMemo(() => {
+    if (!frogTask) return todayTasks
+    return todayTasks.filter((task) => task.id !== frogTask.id)
+  }, [frogTask, todayTasks])
+  const showTasksEmptyState = !frogTask && todayTasksWithoutFrog.length === 0
 
   const today = useMemo(() => new Date(), [])
   const todayKey = today.toISOString().split('T')[0]
@@ -138,6 +143,7 @@ export function TodayPage() {
       })),
     [events]
   )
+  const hasCalendarEvents = displayEvents.length > 0
 
   const meetingHours = useMemo(
     () =>
@@ -157,142 +163,141 @@ export function TodayPage() {
 
   return (
     <div className="today-shell-refined">
-      {/* Inspiration Card - Now with daily quotes */}
-      <section className="inspiration-card">
-        <div className="inspiration-header">
-          <div>
-            <p className="today-label">Today · {formatter.format(today)}</p>
-            <p className="today-location">Today in {timezone}</p>
-          </div>
-          <div className="today-time">
-            <span>{timeFormat.format(today)}</span>
-            <span className="today-time-zone">{timezone}</span>
-          </div>
-        </div>
-        <div className="inspiration-content">
-          {loading ? (
-            <p className="inspiration-loading">Loading quote...</p>
-          ) : quote ? (
-            <>
-              <blockquote className="inspiration-quote">&ldquo;{quote.text}&rdquo;</blockquote>
-              <p className="inspiration-author">— {quote.author}</p>
-            </>
-          ) : (
-            <p className="inspiration-loading">No quote available</p>
+      <div className="today-layout">
+        <div className="today-primary">
+          {/* Top Priority Todos */}
+          <section className="task-list-card">
+            <div className="task-list-header">
+              <p className="section-label">Top Priority To-dos</p>
+              <button className="ghost-button small" onClick={() => navigate('/review')}>
+                Weekly Review
+              </button>
+            </div>
+            {frogTask && (
+              <div className="frog-highlight">
+                <p className="section-label">The Frog</p>
+                <div className="task-item task-item--row">
+                  <span className="task-item-title">{frogTask.title}</span>
+                  <span className="priority-score">{calculatePriorityScore(frogTask)}</span>
+                </div>
+              </div>
+            )}
+            <div className="task-items">
+              {showTasksEmptyState ? (
+                <div className="today-empty-row">
+                  <div>
+                    <p className="today-empty-title">No urgent tasks for today</p>
+                    <p className="today-empty-text">Add a task to stay on top of your day.</p>
+                  </div>
+                  <button className="ghost-button small" onClick={() => navigate('/todo')}>
+                    Add task
+                  </button>
+                </div>
+              ) : (
+                todayTasksWithoutFrog.map((task) => (
+                  <div key={task.id} className="task-item task-item--row">
+                    <span className="task-item-title">{task.title}</span>
+                    <span className="priority-score">{calculatePriorityScore(task)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          {/* Calendar Preview */}
+          {hasCalendarEvents && (
+            <section className="calendar-preview-card">
+              <p className="section-label">Calendar Preview</p>
+              <div className="calendar-events-list">
+                {displayEvents.map((evt, index) => (
+                  <div key={`${evt.title}-${index}`} className="calendar-event-item">
+                    <div className="calendar-event-time">
+                      {timeFormat.format(evt.start)} - {timeFormat.format(evt.end)}
+                    </div>
+                    <div className="calendar-event-info">
+                      <div className="calendar-event-title">{evt.title}</div>
+                      {evt.guests.length > 0 && (
+                        <div className="calendar-event-meta">
+                          {evt.guests.length} {evt.guests.length === 1 ? 'guest' : 'guests'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          {!hasCalendarEvents && (
+            <section className="calendar-preview-card calendar-preview-card--empty">
+              <p className="section-label">Calendar Preview</p>
+              <div className="today-empty-row">
+                <div>
+                  <p className="today-empty-title">No events today</p>
+                  <p className="today-empty-text">Block focus time or add a meeting.</p>
+                </div>
+                <button className="ghost-button small" onClick={() => navigate('/calendar')}>
+                  Add event
+                </button>
+              </div>
+            </section>
           )}
         </div>
-      </section>
 
-      {/* Daily Incantations */}
-      <IncantationDisplay />
-
-      {/* Two-column layout for calendar and todos */}
-      <div className="today-preview-refined">
-        {/* Calendar Preview */}
-        <section className="calendar-preview-card">
-          <p className="section-label">Calendar Preview</p>
-          <div className="calendar-events-list">
-            {displayEvents.length === 0 ? (
-              <div className="empty-state">
-                <p className="empty-state-text">No events today</p>
+        <div className="today-secondary">
+          {/* Inspiration Card - Now with daily quotes */}
+          <section className="inspiration-card inspiration-card--secondary">
+            <div className="inspiration-header">
+              <div>
+                <p className="today-label">Today · {formatter.format(today)}</p>
+                <p className="today-location">Today in {timezone}</p>
               </div>
-            ) : (
-              displayEvents.map((evt, index) => (
-                <div key={`${evt.title}-${index}`} className="calendar-event-item">
-                  <div className="calendar-event-time">
-                    {timeFormat.format(evt.start)} - {timeFormat.format(evt.end)}
-                  </div>
-                  <div className="calendar-event-info">
-                    <div className="calendar-event-title">{evt.title}</div>
-                    {evt.guests.length > 0 && (
-                      <div className="calendar-event-meta">
-                        {evt.guests.length} {evt.guests.length === 1 ? 'guest' : 'guests'}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        {/* Top Priority Todos */}
-        {/* Replaced static component with real data */}
-        <section className="task-list-card">
-          <div
-            className="task-list-header"
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '1rem',
-            }}
-          >
-            <p className="section-label">Top Priority To-dos</p>
-            <button className="ghost-button small" onClick={() => navigate('/review')}>
-              Weekly Review
-            </button>
-          </div>
-          {frogTask && (
-            <div className="frog-highlight" style={{ marginBottom: '1rem' }}>
-              <p className="section-label">The Frog</p>
-              <div
-                className="task-item"
-                style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}
-              >
-                <span style={{ fontWeight: 600 }}>{frogTask.title}</span>
-                <span className="priority-score" style={{ float: 'right', fontSize: '0.8em' }}>
-                  {calculatePriorityScore(frogTask)}
-                </span>
+              <div className="today-time">
+                <span>{timeFormat.format(today)}</span>
+                <span className="today-time-zone">{timezone}</span>
               </div>
             </div>
-          )}
-          <div className="task-items">
-            {todayTasks.length === 0 ? (
-              <div className="empty-state">
-                <p className="empty-state-text">No urgent tasks for today</p>
-              </div>
-            ) : (
-              todayTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="task-item"
-                  style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}
-                >
-                  <span style={{ fontWeight: 500 }}>{task.title}</span>
-                  <span className="priority-score" style={{ float: 'right', fontSize: '0.8em' }}>
-                    {calculatePriorityScore(task)}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-      </div>
+            <div className="inspiration-content">
+              {loading ? (
+                <p className="inspiration-loading">Loading quote...</p>
+              ) : quote ? (
+                <>
+                  <blockquote className="inspiration-quote">&ldquo;{quote.text}&rdquo;</blockquote>
+                  <p className="inspiration-author">— {quote.author}</p>
+                </>
+              ) : (
+                <p className="inspiration-loading">No quote available</p>
+              )}
+            </div>
+          </section>
 
-      {/* Habits Check-In */}
-      <HabitCheckInCard userId={userId} dateKey={todayKey} />
+          {/* Daily Incantations */}
+          <IncantationDisplay />
 
-      {/* Today's Workout */}
-      <TodayWorkout userId={userId} dateKey={todayKey} />
+          {/* Habits Check-In */}
+          <HabitCheckInCard userId={userId} dateKey={todayKey} />
 
-      {/* Workout Session Tracker */}
-      <WorkoutSessionCard dateKey={todayKey} />
+          {/* Today's Workout */}
+          <TodayWorkout userId={userId} dateKey={todayKey} />
 
-      {/* Mind Engine - "I'm Activated" Button */}
-      <section className="mind-intervention-card">
-        <div className="mind-intervention-header">
-          <p className="section-label">Feeling Activated?</p>
-          <p className="section-hint">Take a moment to regulate and refocus</p>
+          {/* Workout Session Tracker */}
+          <WorkoutSessionCard dateKey={todayKey} />
+
+          {/* Mind Engine - "I'm Activated" Button */}
+          <section className="mind-intervention-card">
+            <div className="mind-intervention-header">
+              <p className="section-label">Feeling Activated?</p>
+              <p className="section-hint">Take a moment to regulate and refocus</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsMindModalOpen(true)}
+              className="btn-primary mind-intervention-trigger"
+            >
+              I'm Activated
+            </button>
+          </section>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsMindModalOpen(true)}
-          className="btn-primary mind-intervention-trigger"
-        >
-          I'm Activated
-        </button>
-      </section>
+      </div>
 
       {/* Mind Intervention Modal */}
       <MindInterventionModal

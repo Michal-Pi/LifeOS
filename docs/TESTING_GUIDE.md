@@ -1393,14 +1393,15 @@ pending → applying → applied (success)
 
 **Test Case:** View daily quote and header info
 
-**Location:** [Today Page](apps/web-vite/src/pages/TodayPage.tsx) > Top section
+**Location:** [Today Page](apps/web-vite/src/pages/TodayPage.tsx) > Right column (Inspiration card)
 
 **Expected Output:**
 
 ```
 ┌──────────────────────────────────────────────────┐
 │ Today · Friday, December 20                      │
-│ Remote · Mountain View · 2:30 PM PST             │
+│ Today in America/Los_Angeles                     │
+│ 2:30 PM PST                                      │
 ├──────────────────────────────────────────────────┤
 │                                                  │
 │ "The secret of getting ahead is getting started."│
@@ -1412,7 +1413,7 @@ pending → applying → applied (success)
 **Content:**
 
 - **Date:** Current day formatted as "Weekday, Month Day"
-- **Location:** "Remote · Mountain View" (hardcoded)
+- **Location:** Timezone label (from browser)
 - **Time:** Current time with timezone (updates live)
 - **Quote:** One of 5 inspirational quotes
 - **Author:** Quote attribution
@@ -1440,7 +1441,7 @@ Quotes change daily based on day of year:
 
 **Test Case:** View today's event schedule
 
-**Location:** Today Page > Left column
+**Location:** Today Page > Left column (Primary)
 
 **Expected Output:**
 
@@ -1475,10 +1476,10 @@ Quotes change daily based on day of year:
 - Updates dynamically when calendar changes
 - Links to calendar page for event management
 
-**Fallback Behavior:**
+**Empty State:**
 
-- Shows sample data when calendar unavailable
-- Graceful error handling for network issues
+- Shows compact empty row: "No events today"
+- CTA button: "Add event" routes to Calendar
 
 ---
 
@@ -1486,28 +1487,31 @@ Quotes change daily based on day of year:
 
 **Test Case:** View high-priority tasks
 
-**Location:** Today Page > Right column
+**Location:** Today Page > Left column (Primary)
 
 **Expected Output:**
 
 ```
 ┌─────────────────────────────────────┐
-│ Top Priority Todos                 │
-│                                     │
-│ Legend: 🔴 P1  🟠 P2  🟡 P3        │
+│ Top Priority To-dos                │
 ├─────────────────────────────────────┤
-│ ☐ Confirm executive summary    [P1]│
-│ ☐ Review async design doc       [P2]│
-│ ☐ Answer support triage         [P3]│
+│ The Frog                           │
+│ Confirm executive summary      78  │
+│ Review async design doc         64  │
+│ Answer support triage           51  │
 └─────────────────────────────────────┘
 ```
 
 **Display Elements:**
 
-- **Priority Legend:** Color dots with P1, P2, P3 labels
-- **Checkboxes:** Interactive (currently non-functional)
+- **The Frog:** Highest priority task (by score)
 - **Todo Title:** Task description
-- **Priority Badge:** Colored badge (P1=red, P2=orange, P3=yellow)
+- **Priority Score:** Numeric priority on the right
+
+**Empty State:**
+
+- Shows compact row: "No urgent tasks for today"
+- CTA button: "Add task" routes to Todos
 
 **Priority Color Coding:**
 
