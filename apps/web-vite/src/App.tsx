@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { Toaster } from 'sonner'
 import { AuthProvider } from './contexts/AuthContext'
@@ -52,40 +52,44 @@ function PageLoader() {
   )
 }
 
-function App() {
+function AppRoutes() {
+  const location = useLocation()
+  const isLoginRoute = location.pathname === '/login'
+
   return (
-    <BrowserRouter>
+    <>
       <Toaster position="top-right" richColors />
       <AuthProvider>
         <div className="app-container">
-          {/* Basic Navigation (can be moved to a separate component) */}
-          <nav className="main-nav">
-            <NavLink to="/today" className={({ isActive }) => (isActive ? 'active' : '')}>
-              Today
-            </NavLink>
-            <NavLink to="/calendar" className={({ isActive }) => (isActive ? 'active' : '')}>
-              Calendar
-            </NavLink>
-            <NavLink to="/todo" className={({ isActive }) => (isActive ? 'active' : '')}>
-              To-Do
-            </NavLink>
-            <NavLink to="/habits" className={({ isActive }) => (isActive ? 'active' : '')}>
-              Habits
-            </NavLink>
-            <NavLink to="/agents" className={({ isActive }) => (isActive ? 'active' : '')}>
-              Agents
-            </NavLink>
-            <NavLink to="/workspaces" className={({ isActive }) => (isActive ? 'active' : '')}>
-              Workspaces
-            </NavLink>
-            <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
-              Settings
-            </NavLink>
-            <NavLink to="/review" className={({ isActive }) => (isActive ? 'active' : '')}>
-              Review
-            </NavLink>
-            <GlobalSearch />
-          </nav>
+          {!isLoginRoute && (
+            <nav className="main-nav">
+              <NavLink to="/today" className={({ isActive }) => (isActive ? 'active' : '')}>
+                Today
+              </NavLink>
+              <NavLink to="/calendar" className={({ isActive }) => (isActive ? 'active' : '')}>
+                Calendar
+              </NavLink>
+              <NavLink to="/todo" className={({ isActive }) => (isActive ? 'active' : '')}>
+                To-Do
+              </NavLink>
+              <NavLink to="/habits" className={({ isActive }) => (isActive ? 'active' : '')}>
+                Habits
+              </NavLink>
+              <NavLink to="/agents" className={({ isActive }) => (isActive ? 'active' : '')}>
+                Agents
+              </NavLink>
+              <NavLink to="/workspaces" className={({ isActive }) => (isActive ? 'active' : '')}>
+                Workspaces
+              </NavLink>
+              <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
+                Settings
+              </NavLink>
+              <NavLink to="/review" className={({ isActive }) => (isActive ? 'active' : '')}>
+                Review
+              </NavLink>
+              <GlobalSearch />
+            </nav>
+          )}
 
           <div className="app-content">
             <Suspense fallback={<PageLoader />}>
@@ -241,6 +245,14 @@ function App() {
           </div>
         </div>
       </AuthProvider>
+    </>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
     </BrowserRouter>
   )
 }

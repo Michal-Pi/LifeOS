@@ -42,14 +42,6 @@ export function useIncantations(): UseIncantationsReturn {
   const userId = user?.uid
   const userIdRef = useRef(userId)
 
-  // Reload on user change
-  useEffect(() => {
-    if (userId && userIdRef.current !== userId) {
-      userIdRef.current = userId
-      loadIncantations()
-    }
-  }, [userId, loadIncantations])
-
   const loadIncantations = useCallback(
     async (options?: { activeOnly?: boolean; domain?: HabitDomain }) => {
       if (!userId) return
@@ -70,6 +62,14 @@ export function useIncantations(): UseIncantationsReturn {
     },
     [userId]
   )
+
+  // Reload on user change
+  useEffect(() => {
+    if (userId && userIdRef.current !== userId) {
+      userIdRef.current = userId
+      loadIncantations()
+    }
+  }, [userId, loadIncantations])
 
   const createIncantation = useCallback(
     async (input: Omit<CreateIncantationInput, 'userId'>): Promise<CanonicalIncantation> => {

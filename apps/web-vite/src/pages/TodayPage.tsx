@@ -15,7 +15,6 @@
  * ✅ Dynamic statistics from actual calendar
  *
  * Future Enhancements:
- * - Todo system integration
  * - Personalization options
  * - Weather integration
  * - Focus time suggestions
@@ -23,25 +22,23 @@
 
 import { isDeleted, listEvents } from '@lifeos/calendar'
 import type { CanonicalCalendarEvent } from '@lifeos/calendar'
+import { createLogger, getDefaultQuotes, getQuoteForDate } from '@lifeos/core'
 import type { Quote } from '@lifeos/core'
-import { getDefaultQuotes, getQuoteForDate } from '@lifeos/core'
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createLogger } from '@lifeos/core'
-
-const logger = createLogger('TodayPage')
-
 import { createFirestoreCalendarEventRepository } from '@/adapters/firestoreCalendarEventRepository'
 import { createFirestoreQuoteRepository } from '@/adapters/firestoreQuoteRepository'
-import { useAuth } from '@/hooks/useAuth'
-import { useTodoOperations } from '@/hooks/useTodoOperations'
-import { useAutoSync } from '@/hooks/useAutoSync'
-import { calculatePriorityScore } from '@/lib/priority'
 import { HabitCheckInCard } from '@/components/habits/HabitCheckInCard'
-import { MindInterventionModal } from '@/components/mind/MindInterventionModal'
 import { IncantationDisplay } from '@/components/habits/IncantationDisplay'
-import { WorkoutSessionCard } from '@/components/training/WorkoutSessionCard'
+import { MindInterventionModal } from '@/components/mind/MindInterventionModal'
 import { TodayWorkout } from '@/components/training/TodayWorkout'
+import { WorkoutSessionCard } from '@/components/training/WorkoutSessionCard'
+import { useAuth } from '@/hooks/useAuth'
+import { useAutoSync } from '@/hooks/useAutoSync'
+import { useTodoOperations } from '@/hooks/useTodoOperations'
+import { calculatePriorityScore } from '@/lib/priority'
+
+const logger = createLogger('TodayPage')
 
 const quoteRepository = createFirestoreQuoteRepository()
 const calendarRepository = createFirestoreCalendarEventRepository()

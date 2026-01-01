@@ -1,7 +1,7 @@
 # LifeOS Manual Testing Guide & Onboarding
 
-**Version:** 1.2.0
-**Last Updated:** December 30, 2025
+**Version:** 1.2.1
+**Last Updated:** January 1, 2026
 **Application:** LifeOS Calendar & Productivity System (Vite SPA)
 
 ---
@@ -95,7 +95,10 @@ People and Projects remain placeholder pages.
 2. **Open Browser:**
    Navigate to `http://localhost:5173`
 
-3. **Navigate to Calendar:**
+3. **Verify Login Layout:**
+   Login screen should show only the auth form (no global nav or search).
+
+4. **Navigate to Calendar:**
    Click "Calendar" in the sidebar or visit `http://localhost:5173/calendar`
 
 ### Application Structure
@@ -146,7 +149,7 @@ verification and expected results. This path ensures all new features since Dec 
 
 ---
 
-### 3.2 To-do Management
+### 3.2 Todo Management
 
 **Steps:**
 
@@ -240,11 +243,45 @@ verification and expected results. This path ensures all new features since Dec 
 
 ---
 
-**Exit Criteria:** All steps above completed and verified.
+### 3.7 Adoption Testing (Required)
+
+**Goal:** Simulate real use over a single day and a weekly review to validate cross-module flow.
+
+**Day Flow (same day):**
+
+1. Start on **Today** and review calendar preview, top priority todos, and quote.
+2. Create a new calendar event and set an alert.
+3. Create a todo and schedule it to the calendar (if enabled).
+4. Add a quick note linked to a topic (e.g., meeting notes).
+5. Log a habit check-in and complete a workout session.
+6. Run an AI agent goal that references today's calendar or notes.
+
+**Weekly Flow (same day):**
+
+1. Open **Weekly Review** from Today.
+2. Review habits consistency and mind intervention history.
+3. Review training progress and complete a plan adjustment.
+
+**Must verify:**
+
+- Changes made in one module appear where expected in another.
+- Navigation between Today, Calendar, Todos, Notes, Habits, Mind, Training, and Agents is smooth.
+- No data loss after page refresh.
+
+**Success Criteria:**
+
+- Each step completes without errors or missing UI state.
+- At least one cross-module reference works (calendar event linked to todo or note).
+- AI run completes and references a real entity created in this flow.
+- Weekly review reflects changes made earlier in the day flow.
+
+---
+
+**Exit Criteria:** All steps above completed and verified, including adoption testing flows.
 
 ## 4. Calendar - Basic Event Management
 
-### 3.1 Creating a New Event
+### 4.1 Creating a New Event
 
 **Test Case:** Create a basic calendar event
 
@@ -290,7 +327,7 @@ verification and expected results. This path ensures all new features since Dec 
 
 ---
 
-### 3.2 Viewing Event Details
+### 4.2 Viewing Event Details
 
 **Test Case:** View full event information
 
@@ -332,7 +369,7 @@ Event details panel shows:
 
 ---
 
-### 3.3 Editing an Event
+### 4.3 Editing an Event
 
 **Test Case:** Modify event details
 
@@ -376,7 +413,7 @@ If editing a recurring event, a scope selector appears:
 
 ---
 
-### 3.4 Deleting an Event
+### 4.4 Deleting an Event
 
 **Test Case:** Remove an event
 
@@ -415,7 +452,7 @@ Delete modal shows scope options:
 
 ## 5. Calendar - Recurring Events
 
-### 4.1 Creating a Recurring Event
+### 5.1 Creating a Recurring Event
 
 **Test Case:** Create weekly recurring meeting
 
@@ -462,7 +499,7 @@ Delete modal shows scope options:
 
 ---
 
-### 4.2 Editing Recurring Events
+### 5.2 Editing Recurring Events
 
 **Test Case:** Modify one instance of recurring event
 
@@ -519,7 +556,7 @@ Delete modal shows scope options:
 
 ---
 
-### 4.3 Deleting Recurring Events
+### 5.3 Deleting Recurring Events
 
 **Test Case:** Delete one occurrence
 
@@ -566,7 +603,7 @@ Delete modal shows scope options:
 
 ## 6. Attendees & RSVP
 
-### 5.1 Viewing Attendees
+### 6.1 Viewing Attendees
 
 **Test Case:** View attendee list for event with guests
 
@@ -620,7 +657,7 @@ Shows aggregate counts when multiple guests:
 
 ---
 
-### 5.2 RSVP to Events
+### 6.2 RSVP to Events
 
 **Test Case:** Respond to meeting invitation
 
@@ -685,7 +722,7 @@ Shows aggregate counts when multiple guests:
 
 ---
 
-### 5.3 Events Without Attendees
+### 6.3 Events Without Attendees
 
 **Test Case:** View private event (no guests)
 
@@ -711,7 +748,7 @@ Private focus time  ← Shows instead of attendee list
 
 ## 7. Alerts & Notifications
 
-### 6.1 Setting Event Alerts
+### 7.1 Setting Event Alerts
 
 **Test Case:** Add alert to event
 
@@ -753,7 +790,7 @@ Private focus time  ← Shows instead of attendee list
 
 ---
 
-### 6.2 Custom Alert Time
+### 7.2 Custom Alert Time
 
 **Test Case:** Set custom alert timing
 
@@ -790,7 +827,7 @@ Private focus time  ← Shows instead of attendee list
 
 ---
 
-### 6.3 Alert Notifications
+### 7.3 Alert Notifications
 
 **Test Case:** Receive alert when event starts soon
 
@@ -842,7 +879,7 @@ Private focus time  ← Shows instead of attendee list
 
 ---
 
-### 6.4 Alert Dismissal & Persistence
+### 7.4 Alert Dismissal & Persistence
 
 **Test Case:** Dismiss alert and verify persistence
 
@@ -875,7 +912,7 @@ Private focus time  ← Shows instead of attendee list
 
 ---
 
-### 6.5 Alerts for All-Day Events
+### 7.5 Alerts for All-Day Events
 
 **Test Case:** Try to set alert on all-day event
 
@@ -904,7 +941,7 @@ Private focus time  ← Shows instead of attendee list
 
 ## 8. Google Calendar Sync
 
-### 7.1 Connecting Google Account
+### 8.1 Connecting Google Account
 
 **Test Case:** Link Google Calendar account
 
@@ -955,7 +992,7 @@ Calendar Header:
 
 ---
 
-### 7.2 Sync Status Indicators
+### 8.2 Sync Status Indicators
 
 **Test Case:** Monitor sync status
 
@@ -1004,7 +1041,7 @@ Calendar Header - Sync Section:
 
 ---
 
-### 7.3 Manual Sync
+### 8.3 Manual Sync
 
 **Test Case:** Trigger immediate sync
 
@@ -1045,7 +1082,7 @@ Last synced moments ago  ← Timestamp updates
 
 ---
 
-### 7.4 Disconnecting Google Account
+### 8.4 Disconnecting Google Account
 
 **Test Case:** Unlink Google Calendar
 
@@ -1064,7 +1101,7 @@ Last synced moments ago  ← Timestamp updates
 
 ---
 
-### 7.5 Account Needs Attention
+### 8.5 Account Needs Attention
 
 **Test Case:** Handle expired or revoked credentials
 
@@ -1098,7 +1135,7 @@ Sync Status
 
 ## 9. Offline & Outbox Functionality
 
-### 8.1 Testing Offline Mode
+### 9.1 Testing Offline Mode
 
 **Test Case:** Use calendar while offline
 
@@ -1137,7 +1174,7 @@ Calendar Header:
 
 ---
 
-### 8.2 Creating Events Offline
+### 9.2 Creating Events Offline
 
 **Test Case:** Create event without internet
 
@@ -1185,7 +1222,7 @@ Sync Status
 
 ---
 
-### 8.3 Reconnecting Online
+### 9.3 Reconnecting Online
 
 **Test Case:** Sync queued changes when back online
 
@@ -1247,7 +1284,7 @@ Last synced moments ago
 
 ---
 
-### 8.4 Failed Operations
+### 9.4 Failed Operations
 
 **Test Case:** Handle sync failures
 
@@ -1297,7 +1334,7 @@ Error: Permission denied
 
 ---
 
-### 8.5 Outbox Inspection (Advanced)
+### 9.5 Outbox Inspection (Advanced)
 
 **Test Case:** View outbox operations in browser storage
 
@@ -1348,7 +1385,7 @@ pending → applying → applied (success)
 
 ## 10. Today Dashboard
 
-### 9.1 Inspiration Card
+### 10.1 Inspiration Card
 
 **Test Case:** View daily quote and header info
 
@@ -1395,7 +1432,7 @@ Quotes change daily based on day of year:
 
 ---
 
-### 9.2 Calendar Preview
+### 10.2 Calendar Preview
 
 **Test Case:** View today's event schedule
 
@@ -1441,7 +1478,7 @@ Quotes change daily based on day of year:
 
 ---
 
-### 9.3 Top Priority Todos
+### 10.3 Top Priority Todos
 
 **Test Case:** View high-priority tasks
 
@@ -1451,7 +1488,7 @@ Quotes change daily based on day of year:
 
 ```
 ┌─────────────────────────────────────┐
-│ Top Priority To-dos                 │
+│ Top Priority Todos                 │
 │                                     │
 │ Legend: 🔴 P1  🟠 P2  🟡 P3        │
 ├─────────────────────────────────────┤
@@ -1475,18 +1512,15 @@ Quotes change daily based on day of year:
 - **P3 (Normal):** 🟡 Yellow background
 
 **Current Implementation:**
-⚠️ **Note:** Todos are currently **hardcoded sample data**
+✅ **Real todo integration implemented**
 
-**Expected Future Behavior:**
-
-- Display real todos from database
-- Checkboxes toggle completion
-- Shows top 3 by priority
-- Links to todos page
+- Displays top priority tasks from the user's todo list
+- Uses priority scoring to surface urgent work
+- "Weekly Review" button routes to review flow
 
 ---
 
-### 9.4 Stats Grid
+### 10.4 Stats Grid
 
 **Test Case:** View daily calendar statistics
 
@@ -1565,7 +1599,7 @@ utilization = Math.round((busyHours / 24) * 100)
 
 ## 11. Month View
 
-### 10.1 Calendar Grid Display
+### 11.1 Calendar Grid Display
 
 **Test Case:** View monthly calendar
 
@@ -1609,7 +1643,7 @@ utilization = Math.round((busyHours / 24) * 100)
 
 ---
 
-### 10.2 Selecting Dates
+### 11.2 Selecting Dates
 
 **Test Case:** Click dates in month view
 
@@ -1652,7 +1686,7 @@ utilization = Math.round((busyHours / 24) * 100)
 
 ---
 
-### 10.3 Event Indicators
+### 11.3 Event Indicators
 
 **Test Case:** View event count per day
 
@@ -1694,7 +1728,7 @@ utilization = Math.round((busyHours / 24) * 100)
 
 ## 12. Calendar View Toggles
 
-### 13.1 Daily, Weekly, Monthly View Selection
+### 12.1 Daily, Weekly, Monthly View Selection
 
 **Test Case:** Switch between different calendar view types
 
@@ -1753,7 +1787,7 @@ Sun Mon Tue Wed Thu Fri Sat
 
 ## 13. Weekly View
 
-### 16.1 Weekly Calendar Display
+### 13.1 Weekly Calendar Display
 
 **Test Case:** View events in weekly format
 
@@ -1783,7 +1817,7 @@ Sun Mon Tue Wed Thu Fri Sat
 - ✅ Click date to filter event timeline
 - ✅ Today highlighted with special styling
 
-### 16.2 Week Navigation
+### 13.2 Week Navigation
 
 **Test Case:** Navigate between weeks
 
@@ -1800,7 +1834,7 @@ Sun Mon Tue Wed Thu Fri Sat
 
 ## 14. Settings - Quote Management
 
-### 13.1 Overview
+### 14.1 Overview
 
 The Settings page provides a comprehensive quote management system that allows users to customize the inspirational quotes shown on the Today dashboard. Users can add up to 1,000 custom quotes, and quotes are selected deterministically based on the date to ensure consistency.
 
@@ -1817,7 +1851,7 @@ The Settings page provides a comprehensive quote management system that allows u
 
 ---
 
-### 13.2 Accessing Quote Management
+### 14.2 Accessing Quote Management
 
 **Test Case:** Navigate to Settings page
 
@@ -1848,7 +1882,7 @@ The Settings page provides a comprehensive quote management system that allows u
 
 ---
 
-### 13.3 Viewing Quote List
+### 14.3 Viewing Quote List
 
 **Test Case:** View existing quotes
 
@@ -1891,7 +1925,7 @@ If no quotes exist:
 
 ---
 
-### 13.4 Adding New Quote
+### 14.4 Adding New Quote
 
 **Test Case:** Add a custom quote
 
@@ -1953,7 +1987,7 @@ Header shows: (5/1000)
 
 ---
 
-### 13.5 Editing Existing Quote
+### 14.5 Editing Existing Quote
 
 **Test Case:** Modify quote text and author
 
@@ -2007,7 +2041,7 @@ Header shows: (5/1000)
 
 ---
 
-### 13.6 Deleting Quotes
+### 14.6 Deleting Quotes
 
 **Test Case:** Remove a quote from collection
 
@@ -2045,7 +2079,7 @@ Header shows: (5/1000)
 
 ---
 
-### 13.7 Resetting to Defaults
+### 14.7 Resetting to Defaults
 
 **Test Case:** Restore default quote collection
 
@@ -2082,7 +2116,7 @@ Header shows: (5/1000)
 
 ---
 
-### 13.8 Quote Selection Algorithm
+### 14.8 Quote Selection Algorithm
 
 **Test Case:** Verify deterministic quote selection
 
@@ -2136,7 +2170,7 @@ Result: Second quote (index 1)
 
 ---
 
-### 13.9 Character Limits & Validation
+### 14.9 Character Limits & Validation
 
 **Test Case:** Test input validation
 
@@ -2168,7 +2202,7 @@ Enabled when:
 
 ---
 
-### 13.10 Error Handling
+### 14.10 Error Handling
 
 **Test Case:** Handle errors gracefully
 
@@ -2220,7 +2254,7 @@ Enabled when:
 
 ---
 
-### 13.11 Integration with Today Page
+### 14.11 Integration with Today Page
 
 **Test Case:** Verify quotes sync to Today dashboard
 
@@ -2266,7 +2300,7 @@ Today Page - Inspiration Card:
 
 ---
 
-### 13.12 Firestore Data Structure
+### 14.12 Firestore Data Structure
 
 **Test Case:** Verify data persistence
 
@@ -2313,7 +2347,7 @@ Today Page - Inspiration Card:
 
 ---
 
-### 13.13 Performance Considerations
+### 14.13 Performance Considerations
 
 **Test Case:** Handle large quote collections
 
@@ -2348,7 +2382,7 @@ Average quote: ~150 chars text + 30 chars author + metadata = ~250 bytes
 
 ## 15. Permissions & Security
 
-### 13.1 Calendar Permissions
+### 15.1 Calendar Permissions
 
 **Test Case:** View read-only calendar
 
@@ -2388,7 +2422,7 @@ Average quote: ~150 chars text + 30 chars author + metadata = ~250 bytes
 
 ---
 
-### 13.2 Event-Level Permissions
+### 15.2 Event-Level Permissions
 
 **Permission Checks:**
 
@@ -2430,7 +2464,7 @@ canInviteToEvent(event, calendarsById) returns true if:
 
 ---
 
-### 13.3 Primary Calendar Write Access
+### 15.3 Primary Calendar Write Access
 
 **Test Case:** Attempt to create event with read-only primary
 
@@ -2954,13 +2988,100 @@ function isDeleted(event) {
   - [ ] Verify priority legend shows
   - [ ] Verify top 3 todos display
   - [ ] Verify priority badges color-coded
-  - [ ] Check checkboxes (currently non-functional)
+  - [ ] Toggle a todo completion and verify update
 
 - [ ] **Stats grid**
   - [ ] Verify "Meetings" shows hours with guests
   - [ ] Verify "Free Time" calculates correctly
   - [ ] Verify "Utilization" shows percentage
   - [ ] Create/delete events and verify updates
+
+### Adoption Testing
+
+- [ ] **Day flow completion**
+  - [ ] Create calendar event and verify on Today preview
+  - [ ] Create todo and verify in Today top priority list
+  - [ ] Create note and verify persistence after reload
+  - [ ] Log habit check-in and verify streak update
+  - [ ] Complete workout and verify stats update
+  - [ ] Run AI goal referencing today’s calendar or note
+
+- [ ] **Weekly flow completion**
+  - [ ] Open Weekly Review
+  - [ ] Verify habits consistency reflects new check-in
+  - [ ] Verify mind history reflects session
+  - [ ] Verify training progress reflects workout
+  - [ ] Adjust plan and verify persisted changes
+
+### Todos
+
+- [ ] **Projects and milestones**
+  - [ ] Create a project
+  - [ ] Create a milestone inside the project
+  - [ ] Verify filters update (All / Active / Completed)
+
+- [ ] **Task lifecycle**
+  - [ ] Create task with due date (today)
+  - [ ] Create task without due date
+  - [ ] Mark complete and verify counters
+  - [ ] Archive a task and verify it disappears from active list
+
+- [ ] **Calendar scheduling**
+  - [ ] Schedule a task to calendar (if enabled)
+  - [ ] Verify it appears on Calendar page
+
+### Notes
+
+- [ ] **Topics**
+  - [ ] Create a topic
+  - [ ] Rename the topic and verify list updates
+
+- [ ] **Notes**
+  - [ ] Create a note with rich text
+  - [ ] Edit and verify persistence after reload
+  - [ ] Add attachment (if enabled) and verify it renders
+
+### Habits
+
+- [ ] **Habit creation**
+  - [ ] Create a daily habit
+  - [ ] Log a check-in and verify streak update
+  - [ ] Verify consistency chart updates
+
+### Mind
+
+- [ ] **Interventions**
+  - [ ] Start a session
+  - [ ] Complete session and verify summary card
+  - [ ] Verify history list updates
+
+### Training
+
+- [ ] **Exercise library**
+  - [ ] Create or import an exercise
+  - [ ] Verify it appears in library list
+
+- [ ] **Workout plan**
+  - [ ] Create a plan
+  - [ ] Start a session
+  - [ ] Log a set and finish workout
+  - [ ] Verify stats update
+
+### AI and Agents
+
+- [ ] **Provider keys**
+  - [ ] Add a provider key in Settings
+  - [ ] Remove the key and verify provider is unavailable
+  - [ ] Attempt to start a run without a key and verify prompt to add one
+
+- [ ] **Runs and tools**
+  - [ ] Create agent + workspace
+  - [ ] Run a goal and verify status transitions
+  - [ ] Trigger a tool call (calendar or notes) and verify timeline entry
+
+- [ ] **Workflows**
+  - [ ] Run a workflow with a human_input node
+  - [ ] Provide input and verify resume/completion
 
 ### Month View
 
@@ -3093,6 +3214,8 @@ function isDeleted(event) {
 
 **Expected:** Full daily planning flow works end-to-end
 
+**Adoption Flow Tie-in:** Matches the Day Flow in Section 3.7.
+
 ---
 
 ### Scenario 2: Offline Meeting Entry
@@ -3111,6 +3234,8 @@ function isDeleted(event) {
 
 **Expected:** Offline creation and sync works flawlessly
 
+**Adoption Flow Tie-in:** Complements Day Flow by validating offline path.
+
 ---
 
 ### Scenario 3: Meeting RSVP
@@ -3127,6 +3252,8 @@ function isDeleted(event) {
 8. Check Google Calendar - verify response updated
 
 **Expected:** RSVP flow works and syncs to Google
+
+**Adoption Flow Tie-in:** Complements Day Flow by validating attendee features.
 
 ---
 
@@ -3281,6 +3408,7 @@ Collections: calendarEvents, calendars, syncStatus
 
 | Version | Date         | Changes                                                |
 | ------- | ------------ | ------------------------------------------------------ |
+| 1.2.1   | Jan 1, 2026  | Added adoption testing steps and login layout check    |
 | 1.2.0   | Dec 30, 2025 | Added full ordered onboarding path and new modules     |
 | 1.1.0   | Dec 20, 2024 | Added Settings - Quote Management section (Section 11) |
 | 1.0.0   | Dec 20, 2024 | Initial comprehensive testing guide                    |
