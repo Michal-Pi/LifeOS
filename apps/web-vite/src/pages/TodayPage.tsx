@@ -33,6 +33,9 @@ import { IncantationDisplay } from '@/components/habits/IncantationDisplay'
 import { MindInterventionModal } from '@/components/mind/MindInterventionModal'
 import { TodayWorkout } from '@/components/training/TodayWorkout'
 import { WorkoutSessionCard } from '@/components/training/WorkoutSessionCard'
+import { StatusBar } from '@/components/StatusBar'
+import { StatusDot } from '@/components/StatusDot'
+import { TelemetryBar } from '@/components/TelemetryBar'
 import { useAuth } from '@/hooks/useAuth'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
@@ -53,6 +56,12 @@ const timeFormat = new Intl.DateTimeFormat('en-US', {
   minute: 'numeric',
   hour12: true,
 })
+const timeWithSeconds = new Intl.DateTimeFormat('en-US', {
+  hour: 'numeric',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: true,
+})
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 export function TodayPage() {
@@ -66,9 +75,12 @@ export function TodayPage() {
   const [events, setEvents] = useState<CanonicalCalendarEvent[]>([])
   const [, setEventsLoading] = useState(true)
   const [isMindModalOpen, setIsMindModalOpen] = useState(false)
+  const [energyLevel, setEnergyLevel] = useState<'low' | 'med' | 'high'>('med')
+  const [quickTaskTitle, setQuickTaskTitle] = useState('')
+  const [quickEventTitle, setQuickEventTitle] = useState('')
 
   // Load tasks
-  const { tasks, loadData: loadTasks } = useTodoOperations({ userId })
+  const { tasks, loadData: loadTasks, createTask } = useTodoOperations({ userId })
 
   const activeTasks = useMemo(() => {
     return tasks.filter((t) => !t.completed && !t.archived)
@@ -162,7 +174,15 @@ export function TodayPage() {
   const freeHours = Math.max(24 - busyHours, 0)
 
   return (
-    <div className="today-shell-refined">
+    <div className="page-container today-shell-refined">
+      <StatusBar>
+        <span className="today-status-label">System Time</span>
+        <span className="today-status-time">
+          {timeWithSeconds.format(today)} <span className="today-status-cursor">█</span>
+        </span>
+        <StatusDot status="online" label="Online" />
+      </StatusBar>
+
       <div className="today-layout">
         <div className="today-primary">
           {/* Top Priority Todos */}
@@ -189,9 +209,6 @@ export function TodayPage() {
                     <p className="today-empty-title">No urgent tasks for today</p>
                     <p className="today-empty-text">Add a task to stay on top of your day.</p>
                   </div>
-                  <button className="ghost-button small" onClick={() => navigate('/todo')}>
-                    Add task
-                  </button>
                 </div>
               ) : (
                 todayTasksWithoutFrog.map((task) => (
@@ -201,6 +218,46 @@ export function TodayPage() {
                   </div>
                 ))
               )}
+            </div>
+            <div className="inline-input-row">
+              <span className="inline-input-prefix">+</span>
+              <input
+                type="text"
+                value={quickTaskTitle}
+                onChange={(e) => setQuickTaskTitle(e.target.value)}
+                placeholder="Input new task…"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && quickTaskTitle.trim()) {
+                    void createTask({
+                      title: quickTaskTitle.trim(),
+                      domain: 'work',
+                      importance: 4,
+                      status: 'inbox',
+                      completed: false,
+                      archived: false,
+                    })
+                    setQuickTaskTitle('')
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="ghost-button small"
+                onClick={() => {
+                  if (!quickTaskTitle.trim()) return
+                  void createTask({
+                    title: quickTaskTitle.trim(),
+                    domain: 'work',
+                    importance: 4,
+                    status: 'inbox',
+                    completed: false,
+                    archived: false,
+                  })
+                  setQuickTaskTitle('')
+                }}
+              >
+                Create
+              </button>
             </div>
           </section>
 
@@ -235,8 +292,31 @@ export function TodayPage() {
                   <p className="today-empty-title">No events today</p>
                   <p className="today-empty-text">Block focus time or add a meeting.</p>
                 </div>
-                <button className="ghost-button small" onClick={() => navigate('/calendar')}>
-                  Add event
+              </div>
+              <div className="inline-input-row">
+                <span className="inline-input-prefix">+</span>
+                <input
+                  type="text"
+                  value={quickEventTitle}
+                  onChange={(e) => setQuickEventTitle(e.target.value)}
+                  placeholder="Input new event…"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && quickEventTitle.trim()) {
+                      navigate('/calendar')
+                      setQuickEventTitle('')
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="ghost-button small"
+                  onClick={() => {
+                    if (!quickEventTitle.trim()) return
+                    navigate('/calendar')
+                    setQuickEventTitle('')
+                  }}
+                >
+                  Open
                 </button>
               </div>
             </section>
@@ -285,15 +365,28 @@ export function TodayPage() {
           {/* Mind Engine - "I'm Activated" Button */}
           <section className="mind-intervention-card">
             <div className="mind-intervention-header">
-              <p className="section-label">Feeling Activated?</p>
-              <p className="section-hint">Take a moment to regulate and refocus</p>
+              <p className="section-label">Energy Level</p>
+              <p className="section-hint">Set your current level to tune your focus.</p>
+            </div>
+            <div className="energy-controls" role="group" aria-label="Energy level">
+              {(['low', 'med', 'high'] as const).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  className={`energy-toggle ${energyLevel === level ? 'active' : ''}`}
+                  aria-pressed={energyLevel === level}
+                  onClick={() => setEnergyLevel(level)}
+                >
+                  {level.toUpperCase()}
+                </button>
+              ))}
             </div>
             <button
               type="button"
               onClick={() => setIsMindModalOpen(true)}
               className="btn-primary mind-intervention-trigger"
             >
-              I'm Activated
+              Regulate
             </button>
           </section>
         </div>
@@ -308,24 +401,14 @@ export function TodayPage() {
       />
 
       {/* Stats Grid */}
-      <section className="today-stats-refined">
-        <div className="stats-grid-refined">
-          <div className="stat-card">
-            <p className="stat-label">Meetings</p>
-            <p className="stat-value">{meetingHours.toFixed(1)}h</p>
-            <p className="stat-description">Hours with guests today</p>
-          </div>
-          <div className="stat-card">
-            <p className="stat-label">Free Time</p>
-            <p className="stat-value">{freeHours.toFixed(1)}h</p>
-            <p className="stat-description">Available for focused work</p>
-          </div>
-          <div className="stat-card">
-            <p className="stat-label">Utilization</p>
-            <p className="stat-value">{Math.round((busyHours / 24) * 100)}%</p>
-            <p className="stat-description">Calendar usage today</p>
-          </div>
-        </div>
+      <section className="today-telemetry">
+        <TelemetryBar
+          items={[
+            { label: 'MTG', value: `${meetingHours.toFixed(1)}h` },
+            { label: 'FREE', value: `${freeHours.toFixed(1)}h` },
+            { label: 'UTIL', value: `${Math.round((busyHours / 24) * 100)}%` },
+          ]}
+        />
       </section>
     </div>
   )

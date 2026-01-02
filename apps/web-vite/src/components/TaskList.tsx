@@ -4,12 +4,14 @@ import type { RowComponentProps } from 'react-window'
 import type { CanonicalTask, TaskStatus } from '@/types/todo'
 import { calculatePriorityScore } from '@/lib/priority'
 import './TaskList.css'
+import { EmptyState } from '@/components/EmptyState'
 
 interface TaskListProps {
   tasks: CanonicalTask[]
   onSelectTask: (task: CanonicalTask) => void
   onToggleComplete: (task: CanonicalTask) => void
   selectedTaskId?: string
+  onCreateTask?: () => void
 }
 
 type SortField = 'priority' | 'urgency' | 'importance' | 'dueDate' | 'title'
@@ -30,6 +32,7 @@ export const TaskList = React.memo(function TaskList({
   onSelectTask,
   onToggleComplete,
   selectedTaskId,
+  onCreateTask,
 }: TaskListProps) {
   const [sortField, setSortField] = useState<SortField>('priority')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
@@ -74,9 +77,20 @@ export const TaskList = React.memo(function TaskList({
 
   if (tasks.length === 0) {
     return (
-      <div className="empty-state">
-        <p className="empty-state-text">No tasks found</p>
-      </div>
+      <EmptyState
+        label="Tasks"
+        title="System idle"
+        description="Tasks are your execution layer. Add the next action to keep momentum."
+        hint="// TASK QUEUE EMPTY"
+        actionLabel={onCreateTask ? 'Create Task' : undefined}
+        onAction={onCreateTask}
+      >
+        <div className="empty-ghost-list">
+          <span>▢ Draft quarterly plan</span>
+          <span>▢ Review weekly outcomes</span>
+          <span>▢ Block focus time</span>
+        </div>
+      </EmptyState>
     )
   }
 

@@ -116,6 +116,9 @@ export function GlobalSearch() {
         }}
         onFocus={() => setIsOpen(true)}
       />
+      <span className="global-search__hint" aria-hidden="true">
+        ⌘K
+      </span>
 
       {isOpen && results.length > 0 && (
         <ul className="search-results">

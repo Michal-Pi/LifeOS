@@ -76,8 +76,11 @@ export function LoginPage() {
         <form onSubmit={handleEmailAuth} style={{ marginBottom: '1.5rem' }}>
           <div style={{ marginBottom: '0.75rem' }}>
             <input
+              id="login-email"
+              name="email"
               type="email"
               placeholder="Email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -93,8 +96,11 @@ export function LoginPage() {
           </div>
           <div style={{ marginBottom: '0.75rem' }}>
             <input
+              id="login-password"
+              name="password"
               type="password"
               placeholder="Password"
+              autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

@@ -19,6 +19,7 @@ import { WorkspaceFormModal } from '@/components/agents/WorkspaceFormModal'
 import { TemplateSaveModal } from '@/components/agents/TemplateSaveModal'
 import { workspaceTemplatePresets } from '@/agents/templatePresets'
 import type { Workspace, WorkspaceTemplate } from '@lifeos/agents'
+import { EmptyState } from '@/components/EmptyState'
 
 type WorkspaceTemplateExport = {
   version: number
@@ -58,6 +59,7 @@ export function WorkspacesPage() {
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [templateModalKey, setTemplateModalKey] = useState(0)
   const importInputRef = useRef<HTMLInputElement | null>(null)
+  const [activeTab, setActiveTab] = useState<'workspaces' | 'templates'>('workspaces')
 
   useEffect(() => {
     void loadWorkspaces()
@@ -246,140 +248,183 @@ export function WorkspacesPage() {
         </button>
       </header>
 
-      {isLoading ? (
-        <div className="loading">Loading workspaces...</div>
-      ) : workspaces.length === 0 ? (
-        <div className="empty-state">
-          <p>No workspaces found</p>
-          <p>Create a workspace to combine multiple agents and execute complex tasks.</p>
-          <button onClick={handleNew}>Create your first workspace</button>
-        </div>
-      ) : (
-        <div className="workspaces-grid">
-          {workspaces.map((workspace) => (
-            <div key={workspace.workspaceId} className="workspace-card">
-              <div className="card-header">
-                <h3>{workspace.name}</h3>
-                <span className="badge">{workspace.workflowType}</span>
+      <div className="section-tabs">
+        <button
+          type="button"
+          className={`section-tab ${activeTab === 'workspaces' ? 'active' : ''}`}
+          onClick={() => setActiveTab('workspaces')}
+        >
+          Workspaces
+        </button>
+        <button
+          type="button"
+          className={`section-tab ${activeTab === 'templates' ? 'active' : ''}`}
+          onClick={() => setActiveTab('templates')}
+        >
+          Templates
+        </button>
+      </div>
+
+      {activeTab === 'workspaces' && (
+        <>
+          {isLoading ? (
+            <div className="loading">Loading workspaces...</div>
+          ) : workspaces.length === 0 ? (
+            <EmptyState
+              label="Workspaces"
+              title="System idle"
+              description="Workspaces orchestrate multiple agents to deliver complex outcomes."
+              hint="Capability unlocked: multi-agent orchestration + shared memory."
+              actionLabel="Create Workspace"
+              onAction={handleNew}
+            >
+              <div className="ghost-card-grid">
+                <div className="ghost-card" />
+                <div className="ghost-card" />
+                <div className="ghost-card" />
               </div>
-
-              {workspace.description && <p className="description">{workspace.description}</p>}
-
-              <div className="card-meta">
-                <div>
-                  <strong>Agents:</strong> {workspace.agentIds.length}
-                </div>
-                {workspace.maxIterations && (
-                  <div>
-                    <strong>Max Iterations:</strong> {workspace.maxIterations}
+            </EmptyState>
+          ) : (
+            <div className="workspaces-grid">
+              {workspaces.map((workspace) => (
+                <div key={workspace.workspaceId} className="workspace-card">
+                  <div className="card-header">
+                    <h3>{workspace.name}</h3>
+                    <span className="badge">{workspace.workflowType}</span>
                   </div>
-                )}
-              </div>
 
-              <div className="agent-list">
-                <strong>Team:</strong>
-                <ul>
-                  {workspace.agentIds.map((agentId) => (
-                    <li key={agentId}>
-                      {getAgentName(agentId)}
-                      {workspace.defaultAgentId === agentId && (
-                        <span className="badge-small">default</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                  {workspace.description && <p className="description">{workspace.description}</p>}
 
-              <div className="card-actions">
-                <button onClick={() => handleViewWorkspace(workspace.workspaceId)}>
-                  View Details
-                </button>
-                <button onClick={() => handleEdit(workspace)}>Edit</button>
-                <button onClick={() => handleSaveTemplate(workspace)}>Save Template</button>
-                <button onClick={() => handleDelete(workspace)} className="btn-danger">
-                  Delete
-                </button>
-              </div>
+                  <div className="card-meta">
+                    <div>
+                      <strong>Agents:</strong> {workspace.agentIds.length}
+                    </div>
+                    {workspace.maxIterations && (
+                      <div>
+                        <strong>Max Iterations:</strong> {workspace.maxIterations}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="agent-list">
+                    <strong>Team:</strong>
+                    <ul>
+                      {workspace.agentIds.map((agentId) => (
+                        <li key={agentId}>
+                          {getAgentName(agentId)}
+                          {workspace.defaultAgentId === agentId && (
+                            <span className="badge-small">default</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="card-actions">
+                    <button
+                      onClick={() => handleViewWorkspace(workspace.workspaceId)}
+                      className="btn-secondary"
+                    >
+                      View Details
+                    </button>
+                    <button onClick={() => handleEdit(workspace)} className="btn-secondary">
+                      Edit
+                    </button>
+                    <button onClick={() => handleSaveTemplate(workspace)} className="btn-secondary">
+                      Save Template
+                    </button>
+                    <button onClick={() => handleDelete(workspace)} className="btn-danger">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
-      <section className="settings-panel">
-        <header className="settings-panel__header">
-          <div>
-            <p className="section-label">Templates</p>
-            <h2>Workspace Templates</h2>
-            <p className="settings-panel__meta">Reuse workspace setups for repeated workflows.</p>
-            <div className="settings-panel__actions">
-              <button onClick={handleAddPresets} className="btn-secondary" type="button">
-                Add Presets
-              </button>
-              <button onClick={handleExportTemplates} className="btn-secondary" type="button">
-                Export
-              </button>
-              <button
-                onClick={() => importInputRef.current?.click()}
-                className="btn-secondary"
-                type="button"
-              >
-                Import
-              </button>
-              <input
-                ref={importInputRef}
-                type="file"
-                accept="application/json"
-                onChange={handleImportTemplates}
-                hidden
-              />
-            </div>
-          </div>
-        </header>
-
-        {templatesLoading ? (
-          <div className="loading">Loading templates...</div>
-        ) : workspaceTemplates.length === 0 ? (
-          <div className="empty-state">
-            <p>No templates yet</p>
-            <p>Save a template from an existing workspace to reuse later.</p>
-          </div>
-        ) : (
-          <div className="workspaces-grid">
-            {workspaceTemplates.map((template) => (
-              <div key={template.templateId} className="workspace-card">
-                <div className="card-header">
-                  <h3>{template.name}</h3>
-                  <span className="badge">{template.workspaceConfig.workflowType}</span>
-                </div>
-                {template.description && <p className="description">{template.description}</p>}
-                <div className="card-meta">
-                  <div>
-                    <strong>Agents:</strong> {template.workspaceConfig.agentIds.length}
-                  </div>
-                  {template.workspaceConfig.maxIterations && (
-                    <div>
-                      <strong>Max Iterations:</strong> {template.workspaceConfig.maxIterations}
-                    </div>
-                  )}
-                </div>
-                <div className="card-actions">
-                  <button onClick={() => handleUseTemplate(template)}>Use Template</button>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Delete template "${template.name}"?`)) {
-                        void deleteTemplate(template.templateId)
-                      }
-                    }}
-                    className="btn-danger"
-                  >
-                    Delete
-                  </button>
-                </div>
+      {activeTab === 'templates' && (
+        <section className="settings-panel">
+          <header className="settings-panel__header">
+            <div>
+              <p className="section-label">Templates</p>
+              <h2>Workspace Templates</h2>
+              <p className="settings-panel__meta">Reuse workspace setups for repeated workflows.</p>
+              <div className="settings-panel__actions">
+                <button onClick={handleAddPresets} className="btn-secondary" type="button">
+                  Add Presets
+                </button>
+                <button onClick={handleExportTemplates} className="btn-secondary" type="button">
+                  Export
+                </button>
+                <button
+                  onClick={() => importInputRef.current?.click()}
+                  className="btn-secondary"
+                  type="button"
+                >
+                  Import
+                </button>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json"
+                  onChange={handleImportTemplates}
+                  hidden
+                />
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            </div>
+          </header>
+
+          {templatesLoading ? (
+            <div className="loading">Loading templates...</div>
+          ) : workspaceTemplates.length === 0 ? (
+            <EmptyState
+              label="Templates"
+              title="System idle"
+              description="Save a template from an existing workspace to reuse later."
+            />
+          ) : (
+            <div className="workspaces-grid">
+              {workspaceTemplates.map((template) => (
+                <div key={template.templateId} className="workspace-card">
+                  <div className="template-thumb" aria-hidden="true" />
+                  <div className="card-header">
+                    <h3>{template.name}</h3>
+                    <span className="badge">{template.workspaceConfig.workflowType}</span>
+                  </div>
+                  {template.description && <p className="description">{template.description}</p>}
+                  <div className="card-meta">
+                    <div>
+                      <strong>Agents:</strong> {template.workspaceConfig.agentIds.length}
+                    </div>
+                    {template.workspaceConfig.maxIterations && (
+                      <div>
+                        <strong>Max Iterations:</strong> {template.workspaceConfig.maxIterations}
+                      </div>
+                    )}
+                  </div>
+                  <div className="card-actions">
+                    <button onClick={() => handleUseTemplate(template)} className="btn-secondary">
+                      Use Template
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Delete template "${template.name}"?`)) {
+                          void deleteTemplate(template.templateId)
+                        }
+                      }}
+                      className="btn-danger"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <WorkspaceFormModal
         workspace={selectedWorkspace}

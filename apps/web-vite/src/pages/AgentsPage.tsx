@@ -17,6 +17,7 @@ import { useToolOperations } from '@/hooks/useToolOperations'
 import { AgentBuilderModal } from '@/components/agents/AgentBuilderModal'
 import { ToolBuilderModal } from '@/components/agents/ToolBuilderModal'
 import { TemplateSaveModal } from '@/components/agents/TemplateSaveModal'
+import { EmptyState } from '@/components/EmptyState'
 import { builtinTools } from '@/agents/builtinTools'
 import { agentTemplatePresets } from '@/agents/templatePresets'
 import type {
@@ -311,10 +312,20 @@ export function AgentsPage() {
       {isLoading ? (
         <div className="loading">Loading agents...</div>
       ) : filteredAgents.length === 0 ? (
-        <div className="empty-state">
-          <p>No agents found</p>
-          <button onClick={handleNew}>Create your first agent</button>
-        </div>
+        <EmptyState
+          label="Agents"
+          title="System idle"
+          description="Agents are specialized intelligences. Create one to automate research, planning, and execution."
+          hint="Capability unlocked: reusable workflows + delegated thinking."
+          actionLabel="Create Agent"
+          onAction={handleNew}
+        >
+          <div className="ghost-card-grid">
+            <div className="ghost-card" />
+            <div className="ghost-card" />
+            <div className="ghost-card" />
+          </div>
+        </EmptyState>
       ) : (
         <div className="agents-grid">
           {filteredAgents.map((agent) => (
@@ -349,15 +360,23 @@ export function AgentsPage() {
               </div>
 
               <div className="card-actions">
-                <button onClick={() => handleEdit(agent)}>Edit</button>
-                <button onClick={() => handleSaveTemplate(agent)}>Save Template</button>
+                <button onClick={() => handleEdit(agent)} className="btn-secondary">
+                  Edit
+                </button>
+                <button onClick={() => handleSaveTemplate(agent)} className="btn-secondary">
+                  Save Template
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      <section className="settings-panel">
+      <details className="collapsible-section" open>
+        <summary className="collapsible-summary">
+          <span>Templates</span>
+        </summary>
+        <section className="settings-panel">
         <header className="settings-panel__header">
           <div>
             <p className="section-label">Templates</p>
@@ -391,10 +410,11 @@ export function AgentsPage() {
         {templatesLoading ? (
           <div className="loading">Loading templates...</div>
         ) : agentTemplates.length === 0 ? (
-          <div className="empty-state">
-            <p>No templates yet</p>
-            <p>Save a template from an existing agent to reuse later.</p>
-          </div>
+          <EmptyState
+            label="Templates"
+            title="System idle"
+            description="Save a template from an existing agent to reuse later."
+          />
         ) : (
           <div className="agents-grid">
             {agentTemplates.map((template) => (
@@ -416,7 +436,9 @@ export function AgentsPage() {
                   </div>
                 </div>
                 <div className="card-actions">
-                  <button onClick={() => handleUseTemplate(template)}>Use Template</button>
+                  <button onClick={() => handleUseTemplate(template)} className="btn-secondary">
+                    Use Template
+                  </button>
                   <button
                     onClick={() => {
                       if (confirm(`Delete template "${template.name}"?`)) {
@@ -432,27 +454,37 @@ export function AgentsPage() {
             ))}
           </div>
         )}
-      </section>
+        </section>
+      </details>
 
-      <section className="settings-panel">
+      <details className="collapsible-section">
+        <summary className="collapsible-summary">
+          <span>Modules</span>
+        </summary>
+        <section className="settings-panel">
         <header className="settings-panel__header">
           <div>
-            <p className="section-label">Custom Tools</p>
-            <h2>Custom Tools</h2>
-            <p className="settings-panel__meta">Create user-defined tools that agents can call.</p>
+            <p className="section-label">Modules</p>
+            <h2>Modules</h2>
+            <p className="settings-panel__meta">
+              Build reusable modules that agents can call during execution.
+            </p>
           </div>
           <button onClick={handleNewTool} className="btn-primary">
-            + New Tool
+            + New Module
           </button>
         </header>
 
         {toolsLoading ? (
           <div className="loading">Loading tools...</div>
         ) : tools.length === 0 ? (
-          <div className="empty-state">
-            <p>No custom tools yet</p>
-            <button onClick={handleNewTool}>Create your first tool</button>
-          </div>
+          <EmptyState
+            label="Modules"
+            title="System idle"
+            description="Create reusable modules so agents can call structured tools."
+            actionLabel="Create Module"
+            onAction={handleNewTool}
+          />
         ) : (
           <div className="agents-grid">
             {tools.map((tool) => (
@@ -471,7 +503,9 @@ export function AgentsPage() {
                   </div>
                 </div>
                 <div className="card-actions">
-                  <button onClick={() => handleEditTool(tool)}>Edit</button>
+                  <button onClick={() => handleEditTool(tool)} className="btn-secondary">
+                    Edit
+                  </button>
                   <button
                     onClick={() => {
                       if (confirm(`Delete tool "${tool.name}"?`)) {
@@ -487,7 +521,8 @@ export function AgentsPage() {
             ))}
           </div>
         )}
-      </section>
+        </section>
+      </details>
 
       <AgentBuilderModal
         agent={selectedAgent}

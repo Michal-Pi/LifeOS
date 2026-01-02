@@ -48,6 +48,35 @@ let persistenceEnabled = false
 // Cache for runtime-fetched config
 let cachedConfig: FirebaseConfig | null = null
 let configFetchPromise: Promise<FirebaseConfig> | null = null
+const CONFIG_STORAGE_KEY = 'lifeos.firebaseConfig'
+
+const loadStoredConfig = (): FirebaseConfig | null => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return null
+    }
+    const raw = window.localStorage.getItem(CONFIG_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<FirebaseConfig>
+    if (!parsed.apiKey || !parsed.authDomain || !parsed.projectId) {
+      return null
+    }
+    return parsed as FirebaseConfig
+  } catch {
+    return null
+  }
+}
+
+const persistConfig = (config: FirebaseConfig): void => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return
+    }
+    window.localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config))
+  } catch {
+    // Ignore storage errors (private mode, quota, etc).
+  }
+}
 
 /**
  * Fetches Firebase config from Cloud Function at runtime.
@@ -98,11 +127,19 @@ async function fetchFirebaseConfig(): Promise<FirebaseConfig> {
         measurementId: envConfig.measurementId
       }
       cachedConfig = config
+      persistConfig(config)
       logger.info('Config loaded from env', {
         projectId: config.projectId,
         authDomain: config.authDomain
       })
       return config
+    }
+
+    const storedConfig = loadStoredConfig()
+    if (storedConfig) {
+      logger.info('Using cached Firebase config from storage')
+      cachedConfig = storedConfig
+      return storedConfig
     }
 
     // Otherwise, fetch from Cloud Function (production)
@@ -148,6 +185,7 @@ async function fetchFirebaseConfig(): Promise<FirebaseConfig> {
       }
 
       cachedConfig = config
+      persistConfig(config)
       logger.info('Config cached successfully')
       return config
     } catch (error) {
@@ -192,6 +230,11 @@ function getFirebaseConfig(): FirebaseConfig | null {
   const missingRequired = requiredKeys.filter((key) => !config[key])
 
   if (missingRequired.length > 0) {
+    const storedConfig = loadStoredConfig()
+    if (storedConfig) {
+      cachedConfig = storedConfig
+      return storedConfig
+    }
     return null
   }
 

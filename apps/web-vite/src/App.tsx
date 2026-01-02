@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Toaster } from 'sonner'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -57,6 +57,39 @@ function AppRoutes() {
   const location = useLocation()
   const isLoginRoute = location.pathname === '/login'
   const contentClass = isLoginRoute ? 'app-content app-content--public' : 'app-content'
+
+  useEffect(() => {
+    const removeInjectedSurvey = (root: ParentNode) => {
+      const forms = root.querySelectorAll('#surveyForm')
+      forms.forEach((form) => {
+        let wrapper: HTMLElement | null = form.closest('div')
+        while (wrapper && wrapper !== document.body) {
+          if (wrapper.querySelector('style') && wrapper.contains(form)) break
+          wrapper = wrapper.parentElement
+        }
+        if (wrapper && wrapper !== document.body) {
+          wrapper.remove()
+          return
+        }
+        form.remove()
+      })
+    }
+
+    removeInjectedSurvey(document)
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (!(node instanceof HTMLElement)) return
+          if (node.id === 'surveyForm' || node.querySelector?.('#surveyForm')) {
+            removeInjectedSurvey(node)
+          }
+        })
+      })
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <>

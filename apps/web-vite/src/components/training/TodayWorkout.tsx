@@ -31,6 +31,7 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
 
   const [selectedContext, setSelectedContext] = useState<WorkoutContext>('gym')
   const [isStarting, setIsStarting] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Load plan and templates
   useEffect(() => {
@@ -38,8 +39,10 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
       if (!userId) return
       try {
         await Promise.all([getActivePlan(), listTemplates()])
+        setLoadError(null)
       } catch (err) {
         console.error('Failed to load workout data:', err)
+        setLoadError((err as Error).message)
       }
     }
     void load()
@@ -48,7 +51,16 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
   // Load today's sessions
   useEffect(() => {
     if (!userId) return
-    void listSessions(dateKey)
+    const loadSessions = async () => {
+      try {
+        await listSessions(dateKey)
+        setLoadError(null)
+      } catch (err) {
+        console.error('Failed to load workout sessions:', err)
+        setLoadError((err as Error).message)
+      }
+    }
+    void loadSessions()
   }, [userId, dateKey, listSessions])
 
   // Get today's day of week (0-6)
@@ -160,6 +172,12 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
         <div className="today-workout-header">
           <p className="section-label">Today's Workout</p>
         </div>
+        {loadError && (
+          <div className="empty-state">
+            <p className="empty-state-text">Workout data unavailable</p>
+            <p className="empty-state-hint">{loadError}</p>
+          </div>
+        )}
         <div className="empty-state">
           <p className="empty-state-text">No active workout plan</p>
           <p className="empty-state-hint">Create a plan in the Plan page to get started</p>

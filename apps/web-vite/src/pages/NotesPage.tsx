@@ -40,6 +40,7 @@ export function NotesPage() {
   const [selectedSectionId, setSelectedSectionId] = useState<SectionId | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
+  const [quickNoteTitle, setQuickNoteTitle] = useState('')
 
   // Filter notes based on selected topic/section and search query
   const filteredNotes = useMemo(() => {
@@ -83,6 +84,24 @@ export function NotesPage() {
       setShowTemplateSelector(false)
     } catch (error) {
       console.error('Failed to create note:', error)
+    }
+  }
+
+  const handleQuickCreate = async () => {
+    try {
+      const content = getTemplateContent('quick')
+      const title = quickNoteTitle.trim() || 'Quick Note'
+      const newNote = await createNote({
+        title,
+        content,
+        topicId: selectedTopicId,
+        sectionId: selectedSectionId,
+      })
+      setCurrentNote(newNote)
+      setShowEditor(true)
+      setQuickNoteTitle('')
+    } catch (error) {
+      console.error('Failed to create quick note:', error)
     }
   }
 
@@ -155,7 +174,7 @@ export function NotesPage() {
     (stats?.notes.failed || 0) + (stats?.topics.failed || 0) + (stats?.sections.failed || 0)
 
   return (
-    <div className="notes-page">
+    <div className="page-container notes-page">
       <div className="notes-header">
         <h1>Notes</h1>
         <div className="header-actions">
@@ -195,14 +214,47 @@ export function NotesPage() {
         <div className="notes-list">
           {isLoading && <p className="loading">Loading notes...</p>}
           {!isLoading && filteredNotes.length === 0 && !searchQuery && (
-            <p className="empty-state">
-              {selectedTopicId || selectedSectionId
-                ? 'No notes in this category yet.'
-                : 'No notes yet. Create your first note to get started!'}
-            </p>
+            <div className="notes-empty">
+              <div className="notes-empty-quick">
+                <p className="section-label">Quick Note</p>
+                <div className="notes-empty-input">
+                  <input
+                    type="text"
+                    placeholder="What's on your mind today?"
+                    value={quickNoteTitle}
+                    onChange={(e) => setQuickNoteTitle(e.target.value)}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={handleQuickCreate}
+                    disabled={isLoading}
+                  >
+                    Create
+                  </button>
+                </div>
+              </div>
+              <div className="notes-empty-card notes-empty-card--org">
+                <p className="section-label">Organization</p>
+                <h3>Structure your knowledge</h3>
+                <p className="notes-empty-text">
+                  Group notes by topic and section to keep research, learning, and planning aligned.
+                </p>
+              </div>
+              <div className="notes-empty-card notes-empty-card--prompt">
+                <p className="section-label">System Idle</p>
+                <h3>System idle</h3>
+                <p className="notes-empty-text">
+                  {selectedTopicId || selectedSectionId
+                    ? 'Create a note in this category to start capturing context.'
+                    : 'Create your first note to get started.'}
+                </p>
+              </div>
+            </div>
           )}
           {!isLoading && filteredNotes.length === 0 && searchQuery && (
-            <p className="empty-state">No notes found matching "{searchQuery}"</p>
+            <p className="empty-state">System idle for "{searchQuery}". No notes match yet.</p>
           )}
           {filteredNotes.map((note) => (
             <div
@@ -243,7 +295,7 @@ export function NotesPage() {
             </>
           ) : (
             <div className="editor-placeholder">
-              <p>Select a note or create a new one to start writing</p>
+              <p>Select a note or create a new one to start writing.</p>
             </div>
           )}
         </div>
@@ -288,7 +340,7 @@ export function NotesPage() {
           height: 36px;
           padding: 0 12px;
           border: 1px solid var(--border);
-          border-radius: 10px;
+          border-radius: 6px;
           background: transparent;
           color: var(--foreground);
           font-size: 14px;
@@ -306,15 +358,17 @@ export function NotesPage() {
 
         .btn-primary {
           padding: 10px 16px;
-          background: transparent;
-          color: var(--accent);
+          background: var(--accent);
+          color: var(--accent-foreground);
           border: 1px solid var(--accent);
-          border-radius: 10px;
+          border-radius: 6px;
           cursor: pointer;
           font-size: 14px;
           font-weight: 500;
           white-space: nowrap;
-          transition: box-shadow var(--motion-standard) var(--motion-ease);
+          transition:
+            box-shadow var(--motion-standard) var(--motion-ease),
+            opacity var(--motion-standard) var(--motion-ease);
         }
 
         .btn-primary:hover:not(:disabled) {
@@ -328,7 +382,7 @@ export function NotesPage() {
 
         .notes-content {
           display: grid;
-          grid-template-columns: 250px 300px 1fr;
+          grid-template-columns: 240px 320px 1fr;
           gap: 24px;
           flex: 1;
           overflow: hidden;
@@ -336,7 +390,7 @@ export function NotesPage() {
 
         .notes-list {
           border: 1px solid var(--border);
-          border-radius: 16px;
+          border-radius: 6px;
           padding: 16px;
           background: var(--card);
           overflow-y: auto;
@@ -352,7 +406,7 @@ export function NotesPage() {
 
         .note-item {
           padding: 12px;
-          border-radius: 12px;
+          border-radius: 6px;
           cursor: pointer;
           margin-bottom: 8px;
           border: 1px solid var(--border);
@@ -406,7 +460,7 @@ export function NotesPage() {
           display: flex;
           flex-direction: column;
           border: 1px solid var(--border);
-          border-radius: 16px;
+          border-radius: 6px;
           padding: 16px 20px;
           background: var(--card);
         }
@@ -433,6 +487,66 @@ export function NotesPage() {
           justify-content: center;
           height: 100%;
           color: var(--muted-foreground);
+        }
+
+        .notes-empty {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 16px;
+          padding: 12px;
+        }
+
+        .notes-empty-quick {
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          padding: 16px;
+          background: var(--card);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .notes-empty-input {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .notes-empty-input input {
+          flex: 1;
+          height: 36px;
+          padding: 0 12px;
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          background: transparent;
+          color: var(--foreground);
+        }
+
+        .notes-empty-card {
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          padding: 16px;
+          background: var(--card);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .notes-empty-card--org {
+          background: var(--background-secondary);
+        }
+
+        .notes-empty-card h3 {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 600;
+        }
+
+        .notes-empty-text {
+          margin: 0;
+          color: var(--muted-foreground);
+          font-size: 13px;
+          line-height: 1.5;
         }
       `}</style>
     </div>

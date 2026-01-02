@@ -1,7 +1,7 @@
 # LifeOS Manual Testing Guide & Onboarding
 
-**Version:** 1.2.3
-**Last Updated:** January 1, 2026
+**Version:** 1.3.1
+**Last Updated:** February 2, 2026
 **Application:** LifeOS Calendar & Productivity System (Vite SPA)
 
 ---
@@ -21,10 +21,11 @@
 11. [Month View](#11-month-view)
 12. [Calendar View Toggles](#12-calendar-view-toggles)
 13. [Weekly View](#13-weekly-view)
-14. [Settings - Quote Management](#14-settings---quote-management)
+14. [Settings - Control Center](#14-settings---control-center)
 15. [Permissions & Security](#15-permissions--security)
 16. [Edge Cases & Special Scenarios](#16-edge-cases--special-scenarios)
-17. [Complete Testing Checklist](#17-complete-testing-checklist)
+17. [Visual Spot-Check](#17-visual-spot-check)
+18. [Complete Testing Checklist](#18-complete-testing-checklist)
 
 ---
 
@@ -35,14 +36,14 @@
 LifeOS is a productivity application centered around calendar management with offline-first capabilities and Google Calendar synchronization. It also includes a complete personal productivity suite (Todos, Quotes, Habits, Mind, Training) and the AI Agent Framework.
 
 - **Calendar Page** - Full-featured calendar with events, recurring events, RSVP, alerts, and sync
-- **Today Page** - Dashboard with daily stats, customizable inspirational quotes, and event previews
+- **Today Page** - Dashboard with daily stats, quotes, workout preview, and event telemetry
 - **Todo Page** - Projects, milestones, tasks, and scheduling to calendar
 - **Notes Page** - Topics, notes, attachments, rich editor
 - **Habits Page** - Habit creation, check-ins, consistency insights
 - **Mind Page** - Interventions, sessions, summaries
 - **Training Page** - Exercise library, plans, workout sessions, analytics
 - **Agents Page** - AI agents, workspaces, runs, tool calling, workflows
-- **Settings Page** - Quote management, provider keys, system settings
+- **Settings Page** - Provider keys, memory span, quotes, system status, calendar sync
 
 People and Projects remain placeholder pages.
 
@@ -99,7 +100,7 @@ People and Projects remain placeholder pages.
    Login screen should show only the auth form (no global nav or search).
 
 4. **Verify Top Navigation (after login):**
-   Confirm the fixed top nav shows primary sections (including Notes), search, and settings, with the accent underline only on hover/active.
+   Confirm the fixed top nav shows primary sections (Today, Calendar, Todos, Notes, Habits, Workspaces), search, Agents/Review, and Settings, with the accent underline only on hover/active.
 
 5. **Navigate to Calendar:**
    Click "Calendar" in the sidebar or visit `http://localhost:5173/calendar`
@@ -108,7 +109,7 @@ People and Projects remain placeholder pages.
 
 ```
 ┌─────────────┐
-│   Sidebar   │  Navigation to all modules
+│   Top Nav   │  Navigation to all modules
 ├─────────────┤
 │             │  Today      - Dashboard view
 │   Main      │  Calendar   - Full calendar (implemented)
@@ -135,7 +136,7 @@ verification and expected results. This path ensures all new features since Dec 
 
 **Steps (must complete in order):**
 
-1. Open **Settings → Calendar** and connect Google.
+1. Open **Settings → System → Calendar** and connect Google.
 2. Ensure **two calendars are selected** in calendar list (e.g., "Primary" + "Personal").
 3. Create Event A on Calendar 1 (title: "Cal-1 Test").
 4. Create Event B on Calendar 2 (title: "Cal-2 Test").
@@ -175,8 +176,9 @@ verification and expected results. This path ensures all new features since Dec 
 
 1. Add a custom quote.
 2. Edit the quote and verify it updates in the list.
-3. Reset quotes to defaults and confirm custom quote is removed.
-4. Reload the Today page and verify the daily quote renders.
+3. Pin the quote and verify it appears in the Pinned block.
+4. Reset quotes to defaults and confirm custom quote is removed.
+5. Reload the Today page and verify the daily quote renders.
 
 **Must verify:**
 
@@ -225,6 +227,7 @@ verification and expected results. This path ensures all new features since Dec 
 - Mind sessions create a completed summary record.
 - Workout stats update after session completion.
 - Training data loads without permission errors after login.
+- Today workout card shows without a permissions toast.
 
 ---
 
@@ -1288,7 +1291,40 @@ Last synced moments ago
 
 ---
 
-### 9.4 Failed Operations
+### 9.4 Manual Offline Test Plan (App Shell + Config Cache)
+
+**Goal:** Validate the app shell and Firebase config cache when fully offline.
+
+**Steps:**
+
+1. Load the app while online and sign in.
+2. Navigate to Today, Calendar, Notes, and Habits once to warm caches.
+3. In DevTools, set Network to **Offline**.
+4. Hard refresh the page.
+5. Confirm the app shell loads and navigation works without network.
+6. Open Calendar and Notes pages; verify no crash and placeholders render.
+
+**Expected Results:**
+
+- App loads from service worker cache.
+- Firebase config reads from localStorage (no blocking fetch).
+- Navigation works for cached routes/assets.
+
+---
+
+### 9.5 Recovery Checklist (Offline/Cache Issues)
+
+**Use this checklist if offline mode fails or the app hangs on boot:**
+
+1. Go back online and reload once to refresh cached assets.
+2. Clear site data (Application > Storage > Clear site data).
+3. Remove service worker registration and reload.
+4. Clear `localStorage` entry `lifeos.firebaseConfig` if present.
+5. Reopen the app and confirm fresh config fetch.
+
+---
+
+### 9.6 Failed Operations
 
 **Test Case:** Handle sync failures
 
@@ -1338,7 +1374,7 @@ Error: Permission denied
 
 ---
 
-### 9.5 Outbox Inspection (Advanced)
+### 9.7 Outbox Inspection (Advanced)
 
 **Test Case:** View outbox operations in browser storage
 
@@ -1840,555 +1876,77 @@ Sun Mon Tue Wed Thu Fri Sat
 
 ---
 
-## 14. Settings - Quote Management
+## 14. Settings - Control Center
 
 ### 14.1 Overview
 
-The Settings page provides a comprehensive quote management system that allows users to customize the inspirational quotes shown on the Today dashboard. Users can add up to 1,000 custom quotes, and quotes are selected deterministically based on the date to ensure consistency.
+Settings are organized into **Intelligence**, **Behavior**, **Experience**, and **System** sections.
 
 **Location:** [Settings Page](apps/web-vite/src/pages/SettingsPage.tsx)
 
-**Key Features:**
+**Key Areas:**
 
-- Add up to 1,000 custom quotes
-- Edit existing quotes (text and author)
-- Delete quotes
-- Reset to default collection (5 quotes)
-- Deterministic daily selection (same date = same quote)
-- Character limits (500 for text, 100 for author)
+- Provider keys with status dots and inline save/clear actions
+- Memory Span slider + numeric control with Advanced rules
+- Quotes list with search, pin, edit, delete, reset
+- System status grid (network/auth/latency/bandwidth) and calendar sync
 
 ---
 
-### 14.2 Accessing Quote Management
-
-**Test Case:** Navigate to Settings page
+### 14.2 Provider Keys + Memory Span
 
 **Steps:**
 
-1. Click **"Settings"** in the sidebar navigation
-2. Settings page loads with "Daily Inspirational Quotes" section
+1. Open **Settings → Intelligence** and locate provider cards.
+2. Enter a test key and click **Save**.
+3. Confirm the status dot updates to Connected.
+4. Adjust Memory Span slider and save.
 
 **Expected Output:**
 
-```
-┌──────────────────────────────────────────────────────────┐
-│ SETTINGS                                                 │
-│ Daily Inspirational Quotes                               │
-│ Manage your collection of daily quotes (5/1000)          │
-│                                                          │
-│                      [Reset to Defaults]  [+ Add Quote]  │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Behavior:**
-
-- ✅ Header shows "Daily Inspirational Quotes"
-- ✅ Quote count displays current/max (e.g., "5/1000")
-- ✅ Two action buttons visible: "Reset to Defaults" and "+ Add Quote"
-- ✅ Loading state shows "Loading quotes..." initially
-- ✅ Default quotes load if no custom quotes exist
+- Provider card shows Connected and retains status after reload.
+- Memory span reflects the new value and persists.
 
 ---
 
-### 14.3 Viewing Quote List
-
-**Test Case:** View existing quotes
-
-**Expected Output:**
-
-```
-┌──────────────────────────────────────────────────────────┐
-│ "The secret of getting ahead is getting started."        │
-│ — Mark Twain                                             │
-│                                          [Edit] [Delete]  │
-├──────────────────────────────────────────────────────────┤
-│ "Focus on being productive instead of busy."             │
-│ — Tim Ferriss                                            │
-│                                          [Edit] [Delete]  │
-├──────────────────────────────────────────────────────────┤
-│ "Do the hard jobs first..."                              │
-│ — Dale Carnegie                                          │
-│                                          [Edit] [Delete]  │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Quote Card Display:**
-
-- **Quote text:** Italicized, larger font (1.125rem)
-- **Author:** Smaller, muted text with em dash (—)
-- **Action buttons:** "Edit" and "Delete" (right-aligned)
-- **Hover effect:** Border color changes to primary on hover
-
-**Empty State:**
-If no quotes exist:
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                                                          │
-│        No quotes yet. Add your first inspirational       │
-│                    quote!                                │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
-```
-
----
-
-### 14.4 Adding New Quote
-
-**Test Case:** Add a custom quote
+### 14.3 Quotes Management
 
 **Steps:**
 
-1. Click **"+ Add Quote"** button
-2. Add form appears above quote list
-3. Enter quote text (max 500 characters)
-4. Enter author name (max 100 characters)
-5. Click **"Save Quote"**
+1. Add a new quote, then edit it.
+2. Pin the quote and verify it appears in the Pinned block.
+3. Reset to defaults and confirm custom quotes are removed.
 
 **Expected Output:**
 
-**Before Adding:**
-
-```
-Header shows: (5/1000)
-"+ Add Quote" button enabled
-```
-
-**During Adding:**
-
-```
-┌──────────────────────────────────────────────────────────┐
-│ NEW QUOTE                                                │
-├──────────────────────────────────────────────────────────┤
-│ Quote Text                                               │
-│ ┌────────────────────────────────────────────────────┐  │
-│ │ Enter quote text...                                │  │
-│ │                                                    │  │
-│ │                                                    │  │
-│ └────────────────────────────────────────────────────┘  │
-│ 0/500                                                    │
-│                                                          │
-│ Author                                                   │
-│ ┌────────────────────────────────────────────────────┐  │
-│ │ Author name...                                     │  │
-│ └────────────────────────────────────────────────────┘  │
-│                                                          │
-│                               [Cancel]  [Save Quote]     │
-└──────────────────────────────────────────────────────────┘
-```
-
-**After Saving:**
-
-- ✅ Form closes
-- ✅ New quote appears in list
-- ✅ Quote count updates (e.g., 5/1000 → 6/1000)
-- ✅ Quote saved to Firestore
-- ✅ Quote available immediately on Today page
-
-**Form Validation:**
-
-- ❌ **Empty text:** "Save Quote" button disabled
-- ❌ **Empty author:** "Save Quote" button disabled
-- ❌ **Max quotes reached (1000):** Button disabled, error shows "Maximum of 1000 quotes reached"
-- ✅ **Character counter:** Shows X/500 for text, updates live
-- ✅ **Textarea auto-resizes:** Minimum 3 rows, can expand
+- Quote cards show menu actions (edit/pin/delete).
+- Search filters quotes immediately.
+- Empty state uses the system tone.
 
 ---
 
-### 14.5 Editing Existing Quote
-
-**Test Case:** Modify quote text and author
+### 14.4 System Status
 
 **Steps:**
 
-1. Click **"Edit"** button on any quote
-2. Quote card switches to edit mode
-3. Modify text and/or author
-4. Click **"Save Changes"**
+1. Open **Settings → System**.
+2. Confirm the status grid shows Network/Auth/Latency/Bandwidth.
+3. Run Test Speed and verify Mbps appears.
 
 **Expected Output:**
 
-**Edit Mode:**
-
-```
-┌──────────────────────────────────────────────────────────┐
-│ EDITING QUOTE                                            │
-├──────────────────────────────────────────────────────────┤
-│ Quote Text                                               │
-│ ┌────────────────────────────────────────────────────┐  │
-│ │ The secret of getting ahead is getting started.    │  │
-│ │                                                    │  │
-│ └────────────────────────────────────────────────────┘  │
-│ 50/500                                                   │
-│                                                          │
-│ Author                                                   │
-│ ┌────────────────────────────────────────────────────┐  │
-│ │ Mark Twain                                         │  │
-│ └────────────────────────────────────────────────────┘  │
-│                                                          │
-│                            [Cancel]  [Save Changes]      │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Behavior:**
-
-- ✅ Quote card shows green border (editing state)
-- ✅ Textarea pre-filled with current text
-- ✅ Input pre-filled with current author
-- ✅ Character counter shows current length
-- ✅ Click "Cancel" reverts to view mode without saving
-- ✅ Click "Save Changes" updates quote
-- ✅ Updated quote syncs to Firestore
-- ✅ Changes reflect immediately on Today page (after refresh)
-
-**Simultaneous Editing:**
-
-- ✅ Only one quote in edit mode at a time
-- ✅ Clicking "Edit" on another quote cancels current edit
-- ✅ Adding new quote cancels any active edit
-
----
-
-### 14.6 Deleting Quotes
-
-**Test Case:** Remove a quote from collection
-
-**Steps:**
-
-1. Click **"Delete"** button (red text) on any quote
-2. Confirmation dialog appears
-3. Confirm deletion
-
-**Expected Output:**
-
-**Confirmation Dialog:**
-
-```
-┌──────────────────────────────────────────┐
-│ Are you sure you want to delete this    │
-│ quote?                                   │
-│                                          │
-│                   [Cancel]  [OK]         │
-└──────────────────────────────────────────┘
-```
-
-**After Confirming:**
-
-- ✅ Quote removed from list immediately
-- ✅ Quote count decrements (e.g., 6/1000 → 5/1000)
-- ✅ Deletion syncs to Firestore
-- ✅ Remaining quotes reordered (order: 0, 1, 2...)
-- ✅ Today page shows different quote if deleted quote was selected for today
-
-**Canceling:**
-
-- ✅ Click "Cancel" closes dialog
-- ✅ Quote remains in list
-
----
-
-### 14.7 Resetting to Defaults
-
-**Test Case:** Restore default quote collection
-
-**Steps:**
-
-1. Click **"Reset to Defaults"** button
-2. Confirmation dialog appears
-3. Confirm reset
-
-**Expected Output:**
-
-**Confirmation Dialog:**
-
-```
-┌──────────────────────────────────────────┐
-│ Reset to default quotes? This will      │
-│ delete all your custom quotes.          │
-│                                          │
-│                   [Cancel]  [OK]         │
-└──────────────────────────────────────────┘
-```
-
-**After Confirming:**
-
-- ✅ All custom quotes deleted
-- ✅ Default quotes restored (5 quotes):
-  1. Mark Twain - "The secret of getting ahead is getting started."
-  2. Tim Ferriss - "Focus on being productive instead of busy."
-  3. Dale Carnegie - "Do the hard jobs first..."
-  4. Walt Disney - "The way to get started is to quit talking..."
-  5. Steve Jobs - "Your time is limited, so don't waste it..."
-- ✅ Quote count shows "5/1000"
-- ✅ Today page shows default quote
-
----
-
-### 14.8 Quote Selection Algorithm
-
-**Test Case:** Verify deterministic quote selection
-
-**How It Works:**
-
-```javascript
-// Date converted to seed number
-// Example: "2024-12-20" → 20241220
-const dateSeed = parseInt(date.replace(/-/g, ''), 10)
-
-// Modulo operation ensures same date = same quote
-const index = dateSeed % quotes.length
-
-return quotes[index]
-```
-
-**Testing Determinism:**
-
-1. Navigate to Today page
-2. Note which quote is displayed
-3. Refresh page multiple times
-4. Verify same quote shows
-5. Change system date to tomorrow
-6. Verify different quote shows
-7. Change date back to today
-8. Verify original quote shows again
-
-**Expected Behavior:**
-
-- ✅ Same date always returns same quote
-- ✅ Quote stays consistent throughout the day
-- ✅ Quote changes at midnight
-- ✅ Quote selection deterministic across devices (same date = same quote)
-- ✅ Works with any number of quotes (1 to 1000)
-
-**Example Calculation:**
-
-```
-Date: 2024-12-20
-Quotes count: 10
-
-Seed: 20241220
-Index: 20241220 % 10 = 0
-Result: First quote (index 0)
-
-Date: 2024-12-21
-Seed: 20241221
-Index: 20241221 % 10 = 1
-Result: Second quote (index 1)
-```
-
----
-
-### 14.9 Character Limits & Validation
-
-**Test Case:** Test input validation
-
-**Quote Text:**
-
-- **Max Length:** 500 characters
-- **Behavior:** Textarea allows up to 500 chars, blocks further input
-- **Counter:** Shows "X/500" and updates live
-- **Required:** Cannot save with empty text
-
-**Author:**
-
-- **Max Length:** 100 characters
-- **Behavior:** Input allows up to 100 chars, blocks further input
-- **Required:** Cannot save with empty author
-
-**Save Button States:**
-
-```
-Disabled when:
-- Quote text is empty
-- Author is empty
-- Text is only whitespace
-- Author is only whitespace
-
-Enabled when:
-- Both fields have non-empty trimmed content
-```
-
----
-
-### 14.10 Error Handling
-
-**Test Case:** Handle errors gracefully
-
-**Scenarios:**
-
-**1. Maximum Quotes Reached:**
-
-```
-┌──────────────────────────────────────────┐
-│ ⚠ Maximum of 1000 quotes reached        │
-│                                     ✕    │
-└──────────────────────────────────────────┘
-```
-
-- ✅ Error banner appears at top
-- ✅ "+ Add Quote" button disabled
-- ✅ Can still edit/delete existing quotes
-
-**2. Network Error:**
-
-```
-┌──────────────────────────────────────────┐
-│ ⚠ Failed to save quote: Network error   │
-│                                     ✕    │
-└──────────────────────────────────────────┘
-```
-
-- ✅ Error message shows specific failure reason
-- ✅ Quote not added to list (no optimistic update on error)
-- ✅ User can retry
-
-**3. Required Fields:**
-
-```
-┌──────────────────────────────────────────┐
-│ ⚠ Both quote text and author are        │
-│   required                          ✕    │
-└──────────────────────────────────────────┘
-```
-
-- ✅ Shows when trying to save empty fields
-- ✅ Form remains open for correction
-
-**Error Banner Features:**
-
-- **Red background:** rgba(239, 68, 68, 0.1)
-- **Close button (✕):** Dismisses error
-- **Auto-clear:** Error clears when action succeeds
-
----
-
-### 14.11 Integration with Today Page
-
-**Test Case:** Verify quotes sync to Today dashboard
-
-**Steps:**
-
-1. **In Settings:** Add new quote "Test quote" by "Test Author"
-2. **Save quote**
-3. **Navigate to Today page**
-4. **Check if quote appears** (depends on date-based selection)
-
-**Expected Behavior:**
-
-**Quote Pool Updated:**
-
-- ✅ Custom quotes immediately available for selection
-- ✅ Default quotes replaced when custom quotes exist
-- ✅ Today page loads from Firestore on mount
-- ✅ Falls back to defaults if Firestore fails
-
-**Loading State:**
-
-```
-Today Page - Inspiration Card:
-┌──────────────────────────────────────────┐
-│ Loading quote...                         │
-└──────────────────────────────────────────┘
-```
-
-**Loaded State:**
-
-```
-┌──────────────────────────────────────────┐
-│ "Test quote"                             │
-│ — Test Author                            │
-└──────────────────────────────────────────┘
-```
-
-**Refresh Behavior:**
-
-- ✅ Refresh Today page: quote stays same (deterministic)
-- ✅ Navigate away and back: quote stays same
-- ✅ Browser reload: quote reloads from Firestore
-
----
-
-### 14.12 Firestore Data Structure
-
-**Test Case:** Verify data persistence
-
-**Collection:** `quotes`
-**Document ID:** `{userId}` (e.g., "demo-user")
-
-**Document Structure:**
-
-```javascript
-{
-  userId: "demo-user",
-  quotes: [
-    {
-      id: "quote-1234567890-abc123",
-      text: "The secret of getting ahead is getting started.",
-      author: "Mark Twain",
-      createdAt: "2024-12-20T10:30:00.000Z",
-      updatedAt: "2024-12-20T10:30:00.000Z",
-      order: 0
-    },
-    {
-      id: "quote-1234567891-def456",
-      text: "Focus on being productive instead of busy.",
-      author: "Tim Ferriss",
-      createdAt: "2024-12-20T10:31:00.000Z",
-      updatedAt: "2024-12-20T10:31:00.000Z",
-      order: 1
-    }
-    // ... up to 1000 quotes
-  ],
-  updatedAt: "2024-12-20T10:31:00.000Z"
-}
-```
-
-**Field Details:**
-
-- **id:** Unique identifier `quote-{timestamp}-{random}`
-- **text:** Quote content (max 500 chars)
-- **author:** Attribution (max 100 chars)
-- **createdAt:** ISO 8601 timestamp when quote added
-- **updatedAt:** ISO 8601 timestamp when quote last modified
-- **order:** Position in list (0-999), used for deterministic selection
-- **updatedAt (document):** Last time collection was modified
-
----
-
-### 14.13 Performance Considerations
-
-**Test Case:** Handle large quote collections
-
-**Scenarios:**
-
-**1. Loading 1000 Quotes:**
-
-- ✅ Page loads within 2 seconds
-- ✅ No UI freezing during render
-- ✅ Scroll performance remains smooth
-
-**2. Adding Quote #1000:**
-
-- ✅ "+ Add Quote" button disables
-- ✅ Error shows "Maximum of 1000 quotes reached"
-- ✅ Cannot add more via form
-
-**3. Firestore Read:**
-
-- ✅ Single document read (not 1000 reads)
-- ✅ Quotes array stored in one document
-- ✅ Efficient for up to 1MB total (Firestore limit)
-
-**Estimated Size:**
-
-```
-Average quote: ~150 chars text + 30 chars author + metadata = ~250 bytes
-1000 quotes × 250 bytes = 250KB (well under 1MB limit)
-```
+- Status grid renders without layout shifts.
+- Test Speed shows a value or gracefully handles network errors.
+- No permissions toast on Settings load.
 
 ---
 
 ## 15. Permissions & Security
+
+**Coverage checklist:**
+
+- Firestore rules allow user access to incantations, workout templates, and agent/run collections.
+- Firestore indexes are deployed for incantations, workout plans/templates, interventions, agents, and runs.
 
 ### 15.1 Calendar Permissions
 
@@ -2845,7 +2403,22 @@ function isDeleted(event) {
 
 ---
 
-## 17. Complete Testing Checklist
+## 17. Visual Spot-Check
+
+**Goal:** Confirm the Quiet Cyberpunk system is applied consistently.
+
+**Pages:**
+
+1. Today: top nav, cards, buttons, and stats.
+2. Calendar: daily placeholder, event timeline, and action buttons.
+3. Notes: editor shell, topic sidebar, and empty states.
+4. Habits: filters, cards, and action buttons.
+5. Training: filters, buttons, and cards in plans/templates.
+6. Settings: form inputs, buttons, and quote cards.
+
+---
+
+## 18. Complete Testing Checklist
 
 ### Core Event Management
 
@@ -3106,45 +2679,24 @@ function isDeleted(event) {
   - [ ] Click another date - verify selection moves
   - [ ] Verify today marker remains separate
 
-### Quote Management (Settings)
+### Settings Control Center
 
-- [ ] **Access and view quotes**
-  - [ ] Navigate to Settings page
-  - [ ] Verify quote list loads
-  - [ ] Verify quote count shows (X/1000)
-  - [ ] Verify default quotes show if none exist
+- [ ] **Provider keys**
+  - [ ] Add a provider key and verify Connected status dot
+  - [ ] Clear the key and confirm status returns to Inactive
 
-- [ ] **Add new quote**
-  - [ ] Click "+ Add Quote" button
-  - [ ] Enter quote text (test max 500 chars)
-  - [ ] Enter author (test max 100 chars)
-  - [ ] Verify character counter updates
-  - [ ] Save and verify appears in list
-  - [ ] Verify count increments
-  - [ ] Test empty fields - save disabled
-  - [ ] Test max quotes (1000) - button disabled
+- [ ] **Memory span**
+  - [ ] Adjust slider and save
+  - [ ] Verify the numeric input and status label update
 
-- [ ] **Edit quote**
-  - [ ] Click "Edit" on any quote
-  - [ ] Modify text and author
-  - [ ] Verify character counter
-  - [ ] Save changes - verify updates
-  - [ ] Cancel - verify reverts without saving
-  - [ ] Test editing multiple (only one at a time)
+- [ ] **Quotes**
+  - [ ] Add a quote, edit it, and pin it
+  - [ ] Verify pinned block appears and search filters results
+  - [ ] Reset to defaults and confirm list resets
 
-- [ ] **Delete quote**
-  - [ ] Click "Delete" on any quote
-  - [ ] Confirm deletion dialog
-  - [ ] Verify quote removed from list
-  - [ ] Verify count decrements
-  - [ ] Cancel dialog - quote remains
-
-- [ ] **Reset to defaults**
-  - [ ] Click "Reset to Defaults"
-  - [ ] Confirm reset dialog
-  - [ ] Verify all custom quotes deleted
-  - [ ] Verify 5 default quotes restored
-  - [ ] Verify count shows "5/1000"
+- [ ] **System status**
+  - [ ] Verify Network/Auth/Latency/Bandwidth cells render
+  - [ ] Run Test Speed and verify result
 
 - [ ] **Quote selection algorithm**
   - [ ] Navigate to Today page
@@ -3365,6 +2917,13 @@ pnpm lint       # ESLint
 pnpm build      # Production build
 ```
 
+**Manual Spot-Checks (UI):**
+
+- Settings: provider cards show status dots, Memory Span slider updates value, Quotes search/pin/edit/delete, System status grid visible.
+- Calendar: timeline empty state reads “System idle”.
+- Notes: empty/search copy matches system tone.
+- Today: workout card loads without a permissions toast.
+
 ---
 
 ### Browser DevTools Tips
@@ -3402,6 +2961,7 @@ Collections: calendarEvents, calendars, syncStatus
 | Mind UI           | [apps/web-vite/src/components/mind/MindInterventionModal.tsx](apps/web-vite/src/components/mind/MindInterventionModal.tsx)       |
 | Training Page     | [apps/web-vite/src/pages/WorkoutPlanPage.tsx](apps/web-vite/src/pages/WorkoutPlanPage.tsx)                                       |
 | Agents Page       | [apps/web-vite/src/pages/AgentsPage.tsx](apps/web-vite/src/pages/AgentsPage.tsx)                                                 |
+| Settings Page     | [apps/web-vite/src/pages/SettingsPage.tsx](apps/web-vite/src/pages/SettingsPage.tsx)                                             |
 | Event Form        | [apps/web-vite/src/components/EventFormModal.tsx](apps/web-vite/src/components/EventFormModal.tsx)                               |
 | RSVP Buttons      | [apps/web-vite/src/components/RSVPButtons.tsx](apps/web-vite/src/components/RSVPButtons.tsx)                                     |
 | Alert Selector    | [apps/web-vite/src/components/AlertSelector.tsx](apps/web-vite/src/components/AlertSelector.tsx)                                 |
@@ -3416,6 +2976,8 @@ Collections: calendarEvents, calendars, syncStatus
 
 | Version | Date         | Changes                                                |
 | ------- | ------------ | ------------------------------------------------------ |
+| 1.3.1   | Feb 2, 2026  | Updated settings onboarding + permissions/indexes      |
+| 1.3.0   | Feb 2, 2026  | Added Settings control center checks and system tone   |
 | 1.2.3   | Jan 1, 2026  | Added top nav verification and training access note    |
 | 1.2.2   | Jan 1, 2026  | Updated training access assumptions and login layout   |
 | 1.2.1   | Jan 1, 2026  | Added adoption testing steps and login layout check    |

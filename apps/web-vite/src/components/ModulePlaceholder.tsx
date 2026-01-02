@@ -11,10 +11,10 @@ export function ModulePlaceholder({
 }) {
   return (
     <div className="module-placeholder">
-      <p className="module-placeholder-label">Placeholder</p>
+      <p className="module-placeholder-label">Module</p>
       <h2 className="module-placeholder-title">{title}</h2>
       <p className="module-placeholder-description">{description}</p>
-      <button className="ghost-button" disabled>
+      <button className="btn-secondary small" disabled>
         {primaryActionLabel ?? 'Coming soon'}
       </button>
     </div>

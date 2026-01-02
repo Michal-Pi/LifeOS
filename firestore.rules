@@ -18,6 +18,39 @@ service cloud.firestore {
       allow read: if isAuthenticated(userId);
       allow write: if false;
     }
+    // Agent runs + related activity (user-owned)
+    match /users/{userId}/runs/{runId} {
+      allow read, write: if isAuthenticated(userId);
+      match /events/{eventId} {
+        allow read, write: if isAuthenticated(userId);
+      }
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated(userId);
+      }
+      match /toolCalls/{toolCallId} {
+        allow read, write: if isAuthenticated(userId);
+      }
+    }
+    // Agents + tooling (Agents module)
+    match /users/{userId}/agents/{agentId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/agentTemplates/{templateId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/workspaceTemplates/{templateId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/tools/{toolId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    // Workspaces + runs (Agents module)
+    match /users/{userId}/workspaces/{workspaceId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/workspaces/{workspaceId}/runs/{runId} {
+      allow read, write: if isAuthenticated(userId);
+    }
     match /users/{userId}/privateIntegrations/{document=**} {
       // Only the server (Admin SDK / Cloud Functions) may read/write private integration tokens
       allow read, write: if false;
@@ -87,6 +120,10 @@ service cloud.firestore {
     match /users/{userId}/habits/{habitId} {
       allow read, write: if isAuthenticated(userId);
     }
+    // Incantations (Habits mindset module)
+    match /users/{userId}/incantations/{incantationId} {
+      allow read, write: if isAuthenticated(userId);
+    }
     // Habit Check-ins (Habits module)
     match /users/{userId}/habitCheckins/{checkinId} {
       allow read, write: if isAuthenticated(userId);
@@ -111,10 +148,21 @@ service cloud.firestore {
     match /users/{userId}/exerciseLibrary/{exerciseId} {
       allow read, write: if isAuthenticated(userId);
     }
+    // Workout Templates (Training module)
+    match /workoutTemplates/{templateId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
     // System Intervention Presets (read-only for all authenticated users)
     match /systemInterventions/{interventionId} {
       allow read: if request.auth != null;
       allow write: if false;  // Admin only
+    }
+    // Mind interventions (system presets stored at root level)
+    match /interventions/{interventionId} {
+      allow read: if request.auth != null && resource.data.userId == 'system';
+      allow write: if false; // Admin only
     }
     // Deny all other paths by default
     match /{document=**} {

@@ -365,7 +365,7 @@ export function CalendarPage() {
         onOpenEvent={handleAlertOpenEvent}
       />
 
-      <section className="calendar-page">
+      <section className="page-container calendar-page">
         <header className="calendar-header">
           <div>
             <p className="section-label">
@@ -421,23 +421,25 @@ export function CalendarPage() {
           </div>
         </section>
 
-        {/* Calendar Views and Event Timeline */}
-        <CalendarViewsContainer
-          viewType={viewType}
-          currentYear={currentYear}
-          currentMonth={currentMonth}
-          selectedMonthDate={selectedMonthDate}
-          today={today}
-          events={events}
-          instances={instances}
-          loading={loading}
-          selectedEvent={selectedEvent}
-          pendingOps={pendingOps}
-          onDateSelect={setSelectedMonthDate}
-          onEventSelect={setSelectedEvent}
-        />
+        <section className="calendar-layout">
+          <div className="calendar-timeline-panel">
+            {/* Calendar Views and Event Timeline */}
+            <CalendarViewsContainer
+              viewType={viewType}
+              currentYear={currentYear}
+              currentMonth={currentMonth}
+              selectedMonthDate={selectedMonthDate}
+              today={today}
+              events={events}
+              instances={instances}
+              loading={loading}
+              selectedEvent={selectedEvent}
+              pendingOps={pendingOps}
+              onDateSelect={setSelectedMonthDate}
+              onEventSelect={setSelectedEvent}
+            />
+          </div>
 
-        <section className="calendar-grid">
           <CalendarSidebar
             selectedEvent={selectedEvent}
             isOnline={isOnline}

@@ -16,6 +16,7 @@ import {
 import { AlertSelector } from '@/components/AlertSelector'
 import { AttendeeList } from '@/components/AttendeeList'
 import type { CalendarsById } from '@lifeos/calendar'
+import { EmptyState } from '@/components/EmptyState'
 
 interface CalendarSidebarProps {
   selectedEvent: CanonicalCalendarEvent | null
@@ -120,8 +121,12 @@ export function CalendarSidebar({
   if (!selectedEvent) {
     return (
       <aside className="calendar-detail">
-        <p className="section-label">Event details</p>
-        <p>Select an event to see more details.</p>
+        <EmptyState
+          label="Event Details"
+          title="No event selected"
+          description="Select an event from the timeline to inspect details and take action."
+          hint="Unlocks: RSVP controls, alerts, and edit history."
+        />
       </aside>
     )
   }

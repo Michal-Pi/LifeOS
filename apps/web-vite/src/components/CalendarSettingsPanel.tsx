@@ -135,7 +135,7 @@ export function CalendarSettingsPanel() {
         </div>
       ) : sortedCalendars.length === 0 ? (
         <div className="empty-state">
-          <p>No calendars found yet. Connect Google Calendar and run sync to load them.</p>
+          <p>System idle. Connect Google Calendar and run sync to load calendars.</p>
         </div>
       ) : (
         <div className="calendar-settings__list">

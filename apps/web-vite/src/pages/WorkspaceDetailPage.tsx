@@ -120,7 +120,9 @@ export function WorkspaceDetailPage() {
       <div className="page-container">
         <div className="error-state">
           <p>Workspace not found</p>
-          <button onClick={() => navigate('/workspaces')}>Back to Workspaces</button>
+          <button onClick={() => navigate('/workspaces')} className="btn-secondary">
+            Back to Workspaces
+          </button>
         </div>
       </div>
     )
@@ -217,8 +219,10 @@ export function WorkspaceDetailPage() {
 
         {filteredRuns.length === 0 ? (
           <div className="empty-state">
-            <p>No runs found</p>
-            <button onClick={handleStartRun}>Start your first run</button>
+            <p>System idle. No runs yet.</p>
+            <button onClick={handleStartRun} className="btn-primary">
+              Start your first run
+            </button>
           </div>
         ) : (
           <div className="runs-list">

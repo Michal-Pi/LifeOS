@@ -20,7 +20,7 @@ export function TopNav() {
     <header className="top-nav">
       <div className="top-nav__inner">
         <div className="top-nav__brand">
-          <span className="top-nav__logo">LifeOS</span>
+          <span className="top-nav__logo">LIFE_OS</span>
         </div>
 
         <nav className="top-nav__links">

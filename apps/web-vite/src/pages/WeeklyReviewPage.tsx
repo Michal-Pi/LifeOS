@@ -141,9 +141,11 @@ export function WeeklyReviewPage() {
   if (loading) return <div className="loading-screen">Loading review data...</div>
 
   return (
-    <div className="weekly-review-page">
+    <div className="page-container weekly-review-page">
       <header className="review-header">
+        <p className="section-label">Weekly Review</p>
         <h1>Weekly Review</h1>
+        <p className="review-subtitle">Reflect, triage, and set the next week in motion.</p>
         <div className="step-indicator">
           Step {step + 1} of {steps.length}
         </div>

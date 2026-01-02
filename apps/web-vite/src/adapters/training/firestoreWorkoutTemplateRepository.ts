@@ -47,7 +47,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
         version: 1,
       }
 
-      const db = getDb()
+      const db = await getDb()
       const docRef = doc(db, COLLECTION, templateId)
       await updateDoc(docRef, {
         ...template,
@@ -70,7 +70,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
       templateId: TemplateId,
       updates: UpdateTemplateInput
     ): Promise<WorkoutTemplate> {
-      const db = getDb()
+      const db = await getDb()
       const docRef = doc(db, COLLECTION, templateId)
       const docSnap = await getDoc(docRef)
 
@@ -102,7 +102,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
     },
 
     async delete(userId: string, templateId: TemplateId): Promise<void> {
-      const db = getDb()
+      const db = await getDb()
       const docRef = doc(db, COLLECTION, templateId)
       const docSnap = await getDoc(docRef)
 
@@ -120,7 +120,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
     },
 
     async get(userId: string, templateId: TemplateId): Promise<WorkoutTemplate | null> {
-      const db = getDb()
+      const db = await getDb()
       const docRef = doc(db, COLLECTION, templateId)
       const docSnap = await getDoc(docRef)
 
@@ -138,7 +138,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
     },
 
     async list(userId: string): Promise<WorkoutTemplate[]> {
-      const db = getDb()
+      const db = await getDb()
       const q = query(
         collection(db, COLLECTION),
         where('userId', '==', userId),
@@ -150,7 +150,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
     },
 
     async listByContext(userId: string, context: string): Promise<WorkoutTemplate[]> {
-      const db = getDb()
+      const db = await getDb()
       const q = query(
         collection(db, COLLECTION),
         where('userId', '==', userId),

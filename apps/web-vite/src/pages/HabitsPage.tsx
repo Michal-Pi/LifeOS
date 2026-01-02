@@ -17,6 +17,7 @@ import type {
 import { useAuth } from '@/hooks/useAuth'
 import { useHabitOperations } from '@/hooks/useHabitOperations'
 import { HabitFormModal } from '@/components/habits/HabitFormModal'
+import { EmptyState } from '@/components/EmptyState'
 
 export function HabitsPage() {
   const { user } = useAuth()
@@ -77,6 +78,8 @@ export function HabitsPage() {
     return habits.filter((h) => h.status === filterStatus)
   }, [habits, filterStatus])
 
+  const ghostTracker = useMemo(() => Array.from({ length: 7 }), [])
+
   const handleCreateHabit = async (habitData: Partial<CanonicalHabit>) => {
     try {
       await createHabit(habitData as Omit<CreateHabitInput, 'userId'>)
@@ -136,10 +139,10 @@ export function HabitsPage() {
   }
 
   return (
-    <div className="habits-page">
+    <div className="page-container habits-page">
       <div className="page-header">
         <h1>Habits</h1>
-        <button className="button-primary" onClick={() => setIsModalOpen(true)}>
+        <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
           + New Habit
         </button>
       </div>
@@ -170,23 +173,34 @@ export function HabitsPage() {
           <p>Loading habits...</p>
         </div>
       ) : filteredHabits.length === 0 ? (
-        <div className="empty-state">
-          <h2>No {filterStatus} habits</h2>
-          <p>
-            {filterStatus === 'active'
-              ? 'Create your first habit to get started!'
-              : `You don't have any ${filterStatus} habits.`}
-          </p>
-          {filterStatus === 'active' && (
-            <button className="button-primary" onClick={() => setIsModalOpen(true)}>
-              Create Habit
-            </button>
-          )}
+        <div className="habits-empty">
+          <div className="habits-empty-grid" aria-hidden="true" />
+          <EmptyState
+            label="Habits"
+            title={`No ${filterStatus} habits`}
+            description={
+              filterStatus === 'active'
+                ? 'Habits reinforce systems. Add one to begin streak tracking.'
+                : `You don't have any ${filterStatus} habits.`
+            }
+            hint="Unlocks: streak history + consistency signals."
+            actionLabel={filterStatus === 'active' ? 'Create Habit' : undefined}
+            onAction={filterStatus === 'active' ? () => setIsModalOpen(true) : undefined}
+          >
+            {filterStatus === 'active' && (
+              <div className="habit-ghost-tracker">
+                {ghostTracker.map((_, index) => (
+                  <span key={index} className="habit-ghost-dot" />
+                ))}
+              </div>
+            )}
+          </EmptyState>
         </div>
       ) : (
         <div className="habits-grid">
           {filteredHabits.map((habit) => {
             const habitStats = stats.get(habit.habitId)
+            const streakDots = Math.min(habitStats?.streak ?? 0, 7)
 
             return (
               <div key={habit.habitId} className="habit-card">
@@ -235,15 +249,29 @@ export function HabitsPage() {
                       </div>
                     </div>
                   )}
+
+                  {habitStats && (
+                    <div className="habit-streak">
+                      <span className="stat-label">Streak Tracker</span>
+                      <div className="streak-dots">
+                        {Array.from({ length: 7 }).map((_, index) => (
+                          <span
+                            key={index}
+                            className={`streak-dot ${index < streakDots ? 'active' : ''}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="habit-card-actions">
-                  <button className="button-secondary small" onClick={() => handleEditHabit(habit)}>
+                  <button className="btn-secondary small" onClick={() => handleEditHabit(habit)}>
                     Edit
                   </button>
                   {filterStatus === 'active' && (
                     <button
-                      className="button-secondary small"
+                      className="btn-secondary small"
                       onClick={() => handleArchiveHabit(habit.habitId)}
                     >
                       Archive
@@ -251,7 +279,7 @@ export function HabitsPage() {
                   )}
                   {filterStatus === 'archived' && (
                     <button
-                      className="button-danger small"
+                      className="btn-danger small"
                       onClick={() => handleDeleteHabit(habit.habitId)}
                     >
                       Delete

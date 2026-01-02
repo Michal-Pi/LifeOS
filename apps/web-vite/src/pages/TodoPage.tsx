@@ -152,6 +152,13 @@ export function TodoPage() {
     return filteredTasks.filter((t) => !t.archived && !t.completed)
   }, [filteredTasks])
 
+  const taskTelemetry = useMemo(() => {
+    const completed = tasks.filter((t) => t.completed && !t.archived).length
+    const pending = tasks.filter((t) => !t.completed && !t.archived).length
+    const total = tasks.filter((t) => !t.archived).length
+    return { completed, pending, total }
+  }, [tasks])
+
   const handleSelectProject = (project: CanonicalProject) => {
     setSelectedProject(project)
     setSelectedMilestone(null) // Clear milestone selection when switching projects
@@ -243,229 +250,235 @@ export function TodoPage() {
   }
 
   return (
-    <div className="todo-page">
-      <aside className="todo-sidebar">
-        <div className="sidebar-header">
-          <h2>Projects</h2>
-          <button
-            className="ghost-button small"
-            title="New Project"
-            onClick={() => setIsProjectModalOpen(true)}
-          >
-            +
-          </button>
-        </div>
-
-        {loading ? (
-          <p className="loading-text">Loading...</p>
-        ) : (
-          <ProjectList
-            projects={projects}
-            milestones={milestones}
-            tasks={tasks}
-            onSelectProject={handleSelectProject}
-            onSelectMilestone={handleSelectMilestone}
-            selectedProjectId={selectedProject?.id}
-            selectedMilestoneId={selectedMilestone?.id}
-          />
-        )}
-      </aside>
-
-      <main className="todo-main">
-        <header className="todo-header">
-          <div className="header-breadcrumbs">
-            <span
-              className="breadcrumb-item"
-              onClick={() => {
-                setSelectedProject(null)
-                setSelectedMilestone(null)
-              }}
+    <div className="page-container">
+      <div className="todo-page">
+        <aside className="todo-sidebar">
+          <div className="sidebar-header">
+            <h2>Projects</h2>
+            <button
+              className="btn-secondary"
+              title="New Project"
+              onClick={() => setIsProjectModalOpen(true)}
             >
-              All Tasks
-            </span>
-            {selectedProject && (
-              <>
-                <span className="breadcrumb-separator">/</span>
-                <span className="breadcrumb-item">{selectedProject.title}</span>
-              </>
-            )}
-            {selectedMilestone && (
-              <>
-                <span className="breadcrumb-separator">/</span>
-                <span className="breadcrumb-item">{selectedMilestone.title}</span>
-              </>
-            )}
-          </div>
-          <div className="header-actions">
-            {selectedProject && (
-              <button className="ghost-button" onClick={() => setIsMilestoneModalOpen(true)}>
-                + New Milestone
-              </button>
-            )}
-            <div className="view-toggles" style={{ marginRight: '1rem' }}>
-              <button
-                className={`view-toggle ${viewMode === 'list' ? 'active' : ''}`}
-                onClick={() => setViewMode('list')}
-              >
-                List
-              </button>
-              <button
-                className={`view-toggle ${viewMode === 'priority' ? 'active' : ''}`}
-                onClick={() => setViewMode('priority')}
-              >
-                Priority
-              </button>
-            </div>
-            <button className="primary-button" onClick={() => setIsTaskModalOpen(true)}>
-              + New Task
+              + New Project
             </button>
           </div>
-        </header>
+
+          {loading ? (
+            <p className="loading-text">Loading...</p>
+          ) : (
+            <ProjectList
+              projects={projects}
+              milestones={milestones}
+              tasks={tasks}
+              onSelectProject={handleSelectProject}
+              onSelectMilestone={handleSelectMilestone}
+              selectedProjectId={selectedProject?.id}
+              selectedMilestoneId={selectedMilestone?.id}
+            />
+          )}
+        </aside>
+
+        <main className="todo-main">
+          <header className="todo-header">
+            <div className="header-breadcrumbs">
+              <span
+                className="breadcrumb-item"
+                onClick={() => {
+                  setSelectedProject(null)
+                  setSelectedMilestone(null)
+                }}
+              >
+                Home
+              </span>
+              <span className="breadcrumb-separator">/</span>
+              <span className="breadcrumb-item">Projects</span>
+              {selectedProject && (
+                <>
+                  <span className="breadcrumb-separator">/</span>
+                  <span className="breadcrumb-item">{selectedProject.title}</span>
+                </>
+              )}
+              {selectedMilestone && (
+                <>
+                  <span className="breadcrumb-separator">/</span>
+                  <span className="breadcrumb-item">{selectedMilestone.title}</span>
+                </>
+              )}
+            </div>
+            <div className="header-actions">
+              {selectedProject && (
+                <button className="ghost-button" onClick={() => setIsMilestoneModalOpen(true)}>
+                  + New Milestone
+                </button>
+              )}
+              <div className="view-toggles" style={{ marginRight: '1rem' }}>
+                <button
+                  className={`view-toggle ${viewMode === 'list' ? 'active' : ''}`}
+                  onClick={() => setViewMode('list')}
+                >
+                  List
+                </button>
+                <button
+                  className={`view-toggle ${viewMode === 'priority' ? 'active' : ''}`}
+                  onClick={() => setViewMode('priority')}
+                >
+                  Priority
+                </button>
+              </div>
+              <button className="primary-button" onClick={() => setIsTaskModalOpen(true)}>
+                + New Task
+              </button>
+            </div>
+          </header>
+
+          {selectedProject && (
+            <div className="okr-display">
+              {selectedMilestone ? (
+                <>
+                  <h4>Milestone Objective: {selectedMilestone.objective || 'Not set'}</h4>
+                  {selectedMilestone.keyResults && selectedMilestone.keyResults.length > 0 && (
+                    <ul className="key-results-list">
+                      {selectedMilestone.keyResults.map((kr) => {
+                        const linkedTasks = tasks.filter((t) => t.keyResultId === kr.id)
+                        const completedTasks = linkedTasks.filter((t) => t.completed)
+                        const progress =
+                          linkedTasks.length > 0
+                            ? (completedTasks.length / linkedTasks.length) * 100
+                            : 0
+                        return (
+                          <li key={kr.id}>
+                            <span>{kr.text}</span>
+                            {linkedTasks.length > 0 && (
+                              <div className="kr-progress">
+                                <span className="progress-text">
+                                  {completedTasks.length}/{linkedTasks.length}
+                                </span>
+                                <div
+                                  className="mini-progress-bar"
+                                  title={`${Math.round(progress)}% complete`}
+                                >
+                                  <div
+                                    className="mini-progress-fill"
+                                    style={{ width: `${progress}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h4>Project Objective: {selectedProject.objective || 'Not set'}</h4>
+                  {selectedProject.keyResults && selectedProject.keyResults.length > 0 && (
+                    <ul className="key-results-list">
+                      {selectedProject.keyResults.map((kr) => {
+                        const linkedTasks = tasks.filter((t) => t.keyResultId === kr.id)
+                        const completedTasks = linkedTasks.filter((t) => t.completed)
+                        const progress =
+                          linkedTasks.length > 0
+                            ? (completedTasks.length / linkedTasks.length) * 100
+                            : 0
+                        return (
+                          <li key={kr.id}>
+                            <span>{kr.text}</span>
+                            {linkedTasks.length > 0 && (
+                              <div className="kr-progress">
+                                <span className="progress-text">
+                                  {completedTasks.length}/{linkedTasks.length}
+                                </span>
+                                <div
+                                  className="mini-progress-bar"
+                                  title={`${Math.round(progress)}% complete`}
+                                >
+                                  <div
+                                    className="mini-progress-fill"
+                                    style={{ width: `${progress}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {viewMode === 'list' ? (
+            <TaskList
+              tasks={activeTasks}
+              onSelectTask={setSelectedTask}
+              onToggleComplete={handleToggleComplete}
+              selectedTaskId={selectedTask?.id}
+              onCreateTask={() => setIsTaskModalOpen(true)}
+            />
+          ) : (
+            <PriorityView
+              tasks={activeTasks}
+              onSelectTask={setSelectedTask}
+              onToggleComplete={handleToggleComplete}
+              selectedTaskId={selectedTask?.id}
+              domainFilter={priorityDomainFilter}
+              onDomainFilterChange={setPriorityDomainFilter}
+            />
+          )}
+        </main>
+
+        <TaskDetailSidebar
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onUpdate={updateTask}
+          onDelete={handleDeleteTask}
+          onSchedule={handleScheduleTask}
+          onConvert={handleConvertTask}
+          telemetry={taskTelemetry}
+        />
+
+        <TaskFormModal
+          isOpen={isTaskModalOpen}
+          onClose={() => setIsTaskModalOpen(false)}
+          onSave={handleCreateTask}
+          projects={projects}
+          milestones={milestones}
+          initialTask={null} // Or pass selectedTask if editing
+        />
+
+        <ProjectFormModal
+          isOpen={isProjectModalOpen}
+          onClose={() => setIsProjectModalOpen(false)}
+          onSave={handleCreateProject}
+        />
 
         {selectedProject && (
-          <div className="okr-display">
-            {selectedMilestone ? (
-              <>
-                <h4>Milestone Objective: {selectedMilestone.objective || 'Not set'}</h4>
-                {selectedMilestone.keyResults && selectedMilestone.keyResults.length > 0 && (
-                  <ul className="key-results-list">
-                    {selectedMilestone.keyResults.map((kr) => {
-                      const linkedTasks = tasks.filter((t) => t.keyResultId === kr.id)
-                      const completedTasks = linkedTasks.filter((t) => t.completed)
-                      const progress =
-                        linkedTasks.length > 0
-                          ? (completedTasks.length / linkedTasks.length) * 100
-                          : 0
-                      return (
-                        <li key={kr.id}>
-                          <span>{kr.text}</span>
-                          {linkedTasks.length > 0 && (
-                            <div className="kr-progress">
-                              <span className="progress-text">
-                                {completedTasks.length}/{linkedTasks.length}
-                              </span>
-                              <div
-                                className="mini-progress-bar"
-                                title={`${Math.round(progress)}% complete`}
-                              >
-                                <div
-                                  className="mini-progress-fill"
-                                  style={{ width: `${progress}%` }}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </>
-            ) : (
-              <>
-                <h4>Project Objective: {selectedProject.objective || 'Not set'}</h4>
-                {selectedProject.keyResults && selectedProject.keyResults.length > 0 && (
-                  <ul className="key-results-list">
-                    {selectedProject.keyResults.map((kr) => {
-                      const linkedTasks = tasks.filter((t) => t.keyResultId === kr.id)
-                      const completedTasks = linkedTasks.filter((t) => t.completed)
-                      const progress =
-                        linkedTasks.length > 0
-                          ? (completedTasks.length / linkedTasks.length) * 100
-                          : 0
-                      return (
-                        <li key={kr.id}>
-                          <span>{kr.text}</span>
-                          {linkedTasks.length > 0 && (
-                            <div className="kr-progress">
-                              <span className="progress-text">
-                                {completedTasks.length}/{linkedTasks.length}
-                              </span>
-                              <div
-                                className="mini-progress-bar"
-                                title={`${Math.round(progress)}% complete`}
-                              >
-                                <div
-                                  className="mini-progress-fill"
-                                  style={{ width: `${progress}%` }}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {viewMode === 'list' ? (
-          <TaskList
-            tasks={activeTasks}
-            onSelectTask={setSelectedTask}
-            onToggleComplete={handleToggleComplete}
-            selectedTaskId={selectedTask?.id}
-          />
-        ) : (
-          <PriorityView
-            tasks={activeTasks}
-            onSelectTask={setSelectedTask}
-            onToggleComplete={handleToggleComplete}
-            selectedTaskId={selectedTask?.id}
-            domainFilter={priorityDomainFilter}
-            onDomainFilterChange={setPriorityDomainFilter}
+          <MilestoneFormModal
+            isOpen={isMilestoneModalOpen}
+            onClose={() => setIsMilestoneModalOpen(false)}
+            onSave={handleCreateMilestone}
+            projectId={selectedProject.id}
           />
         )}
-      </main>
 
-      <TaskDetailSidebar
-        task={selectedTask}
-        onClose={() => setSelectedTask(null)}
-        onUpdate={updateTask}
-        onDelete={handleDeleteTask}
-        onSchedule={handleScheduleTask}
-        onConvert={handleConvertTask}
-      />
-
-      <TaskFormModal
-        isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
-        onSave={handleCreateTask}
-        projects={projects}
-        milestones={milestones}
-        initialTask={null} // Or pass selectedTask if editing
-      />
-
-      <ProjectFormModal
-        isOpen={isProjectModalOpen}
-        onClose={() => setIsProjectModalOpen(false)}
-        onSave={handleCreateProject}
-      />
-
-      {selectedProject && (
-        <MilestoneFormModal
-          isOpen={isMilestoneModalOpen}
-          onClose={() => setIsMilestoneModalOpen(false)}
-          onSave={handleCreateMilestone}
-          projectId={selectedProject.id}
+        {/* Reuse EventFormModal for scheduling */}
+        <EventFormModal
+          isOpen={isScheduleModalOpen}
+          onClose={() => {
+            setIsScheduleModalOpen(false)
+            setScheduleDefaults(null)
+          }}
+          onSave={handleSaveSchedule}
+          initialFormData={scheduleDefaults?.formData}
+          defaultDurationMinutes={scheduleDefaults?.durationMinutes}
+          mode="create"
         />
-      )}
-
-      {/* Reuse EventFormModal for scheduling */}
-      <EventFormModal
-        isOpen={isScheduleModalOpen}
-        onClose={() => {
-          setIsScheduleModalOpen(false)
-          setScheduleDefaults(null)
-        }}
-        onSave={handleSaveSchedule}
-        initialFormData={scheduleDefaults?.formData}
-        defaultDurationMinutes={scheduleDefaults?.durationMinutes}
-        mode="create"
-      />
+      </div>
     </div>
   )
 }

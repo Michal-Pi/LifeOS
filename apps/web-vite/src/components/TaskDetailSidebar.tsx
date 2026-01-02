@@ -16,6 +16,11 @@ interface TaskDetailSidebarProps {
   onDelete: (taskId: string) => void
   onSchedule: (task: CanonicalTask) => void
   onConvert: (task: CanonicalTask) => void
+  telemetry?: {
+    completed: number
+    pending: number
+    total: number
+  }
 }
 
 export function TaskDetailSidebar({
@@ -25,6 +30,7 @@ export function TaskDetailSidebar({
   onDelete,
   onSchedule,
   onConvert,
+  telemetry,
 }: TaskDetailSidebarProps) {
   const totalMinutes = task?.allocatedTimeMinutes || 0
   const estimatedHours = Math.floor(totalMinutes / 60)
@@ -37,7 +43,25 @@ export function TaskDetailSidebar({
   if (!task) {
     return (
       <aside className="task-detail-sidebar placeholder">
-        <p>Select a task to see details</p>
+        <p className="section-label">Task Details</p>
+        <p>Select a task to see details.</p>
+        {telemetry && (
+          <div className="task-telemetry">
+            <p className="section-label">Telemetry</p>
+            <div className="task-telemetry-row">
+              <span>Completed</span>
+              <strong>{telemetry.completed}</strong>
+            </div>
+            <div className="task-telemetry-row">
+              <span>Pending</span>
+              <strong>{telemetry.pending}</strong>
+            </div>
+            <div className="task-telemetry-row">
+              <span>Total</span>
+              <strong>{telemetry.total}</strong>
+            </div>
+          </div>
+        )}
       </aside>
     )
   }

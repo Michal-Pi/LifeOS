@@ -123,6 +123,7 @@ export function CalendarViewsContainer({
 
       {viewType === 'daily' && (
         <div className="daily-view-placeholder">
+          <p className="section-label">Daily View</p>
           <p>Daily view shows detailed events for the selected date in the timeline below.</p>
           <p>Select a date from the month or week view to see its events.</p>
         </div>
@@ -137,7 +138,7 @@ export function CalendarViewsContainer({
       )}
 
       {/* Event Timeline */}
-      <section className="calendar-grid">
+      <section className="calendar-timeline">
         <div className="calendar-events">
           <div className="calendar-events-header">
             <p className="section-label">Event timeline</p>
@@ -150,7 +151,13 @@ export function CalendarViewsContainer({
             {loading ? (
               <p>Loading events…</p>
             ) : events.length === 0 ? (
-              <p>Nothing planned yet. Create an event or sync a calendar account to get started.</p>
+              <div className="calendar-empty-banner">
+                <p className="section-label">Event Timeline</p>
+                <p>System idle. Add an event or sync a calendar to populate this timeline.</p>
+                <p className="calendar-empty-hint">
+                  Unlocks: automatic focus windows + conflict-aware scheduling.
+                </p>
+              </div>
             ) : (
               events.map((event) => {
                 const isSelected = selectedEvent?.canonicalEventId === event.canonicalEventId
@@ -194,7 +201,7 @@ export function CalendarViewsContainer({
                           {hasPendingOp ? '↻' : eventSyncState.icon}
                         </span>
                       </h3>
-                      <p>{event.description ?? 'No description yet'}</p>
+                      <p>{event.description ?? 'No description'}</p>
                       {isRecurring && event.recurrenceV2 && (
                         <p className="calendar-meta recurrence-description">
                           {describeRecurrence(event.recurrenceV2)}

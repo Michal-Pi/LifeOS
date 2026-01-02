@@ -56,7 +56,7 @@ describe('WeeklyReviewPage', () => {
   it('renders the first step (Completed Tasks) correctly', () => {
     render(<WeeklyReviewPage />)
 
-    expect(screen.getByText('Weekly Review')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Weekly Review' })).toBeInTheDocument()
     expect(screen.getByText('Review Completed Tasks')).toBeInTheDocument()
     expect(screen.getByText('Completed Task')).toBeInTheDocument()
     expect(screen.queryByText('Pending High Priority')).not.toBeInTheDocument()

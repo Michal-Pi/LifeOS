@@ -1,5 +1,150 @@
 # Design System Changelog
 
+## January 3, 2026 - Phase 2 Page-Specific Redesigns
+
+### Major Changes
+
+#### 1. Today Dashboard
+
+- Added a monospaced status bar and telemetry strip for meeting/free/utilization data.
+- Introduced energy-level toggles with calmer, restrained action styling.
+
+#### 2. Todos & Projects
+
+- Standardized sidebar treatment with muted surfaces, new breadcrumb styling, and refined empty states.
+- Updated task empty state to a "System Idle" pattern for clearer hierarchy.
+
+#### 3. Settings (API Keys + Memory)
+
+- Shifted AI provider inputs to monospaced, bottom-border fields with LED-like status tags.
+- Renamed memory control label to "Memory Span" for clarity.
+
+#### 4. Habits
+
+- Converted filters to underline tabs and introduced a grid-backed empty state.
+
+#### 5. Workspaces & Agents
+
+- Added blueprint-style card backgrounds and renamed Custom Tools to Modules.
+
+#### 6. Calendar
+
+- Reworked layout to align timeline and detail panels, added gridline calendar styling, and promoted empty-state messaging to a banner.
+
+#### 7. Weekly Review + Notes
+
+- Centered review header/step indicator and applied gradient styling for step progress.
+- Added dual-card notes empty state to reinforce organization + creation prompts.
+
+## January 3, 2026 - Phase 3 Design System Compliance Sweep
+
+### Major Changes
+
+#### 1. Placeholder Alignment
+
+- Updated People module placeholder and daily calendar placeholder to match system labels and grid treatment.
+- Refined task detail empty state for clearer hierarchy.
+
+#### 2. Legacy UI Cleanup
+
+- Standardized sidebar breadcrumbs and project list styling on Todos for system consistency.
+
+## January 3, 2026 - Phase 3.5 Token + Empty State Completion
+
+### Major Changes
+
+#### 1. Token Source of Truth
+
+- Added `apps/web-vite/src/tokens.css` and wired globals to import tokens.
+- Exposed shared surface + nav sizing tokens for layout consistency.
+
+#### 2. Empty State Narrative Sweep
+
+- Introduced narrative empty states for Agents, Workspaces, Tasks, Calendar details, Habits, and Quotes.
+- Added quick-note creation for Notes and telemetry for the Todos detail placeholder.
+
+#### 3. Navbar + Today Quick Inputs
+
+- Updated TopNav height, logo, and search hint.
+- Added inline quick task/event inputs on Today.
+
+## January 4, 2026 - Phase 4 Calendar + Habits Redesign
+
+### Major Changes
+
+#### 1. Calendar Interactivity
+
+- Added hover affordance on month grid days and enlarged date numerals.
+- Strengthened today highlight and focus outline for interactive dates.
+
+#### 2. Calendar Empty States
+
+- Promoted timeline empty state to a narrative banner with unlock hints.
+
+#### 3. Habits Gamification
+
+- Added ghost tracker in empty state and streak dots in habit cards.
+
+## January 5, 2026 - Phase 5 Workspaces + Agents Redesign
+
+### Major Changes
+
+#### 1. Workspaces
+
+- Added Workspaces/Templates tabs and template thumbnails for a workshop feel.
+- Enhanced empty-state previews with blueprint ghost cards.
+
+#### 2. Agents
+
+- Added collapsible sections for Templates and Modules.
+- Upgraded agent empty state with ghost card previews.
+
+## January 2, 2026 - Phase 1 Design System Corrections
+
+### Major Changes
+
+#### 1. Palette + Hierarchy
+
+- Shifted base background to #F9FAFB with sharper charcoal text (#111111).
+- Restored electric cyan accent (#00E5FF) for primary CTAs and active states.
+- Updated muted/tertiary text to #666/#999 for clearer hierarchy.
+
+#### 2. Shape Language
+
+- Containers standardized to 6px radii, buttons to 2px, tables squared.
+
+#### 3. Typography
+
+- Primary font updated to Satoshi/General Sans with JetBrains Mono for metadata.
+- Base body size set to 16px, metadata to 14px.
+
+#### 4. Micro-Interactions
+
+- Focus glow via thin cyan shadow, plus optional glitch/typing utilities.
+
+## January 2, 2026 - Quiet Cyberpunk Compliance Sweep
+
+### Major Changes
+
+#### 1. Shared UI Consistency
+
+- Converted legacy buttons and filters in Habits, Agents, and Workspaces to Quiet Cyberpunk tokens.
+- Standardized card layouts, empty states, and action bars for agent/workspace pages.
+- Unified page layout to the shared `.page-container` shell across primary pages.
+
+#### 4. Accent Contrast
+
+- Deepened the cyan accent to improve contrast against muted gray surfaces.
+
+#### 2. Placeholder Alignment
+
+- Restyled module placeholders (People), daily calendar placeholder, and task detail sidebar to match system surfaces, borders, and typography.
+
+#### 3. Offline UX Support
+
+- Added a lightweight service worker shell cache for offline reloads.
+- Cached Firebase config locally to allow offline startup after a successful online session.
+
 ## January 1, 2026 - Top Navigation System
 
 ### Major Changes
@@ -373,6 +518,19 @@ CSS features used:
 ---
 
 ## Version History
+
+### v1.3.1 - February 2, 2026
+
+- Added Firestore rules for workout templates, incantations, interventions, and agent run collections
+- Added Firestore indexes for workout plans/templates, incantations, interventions, agents, and runs
+- Hardened Today workout load to avoid permission toasts on session fetch
+- Guarded against injected survey markup on resize and added login autocomplete metadata
+
+### v1.3.0 - February 2, 2026
+
+- Rebuilt Settings IA into Intelligence, Behavior, Experience, and System sections
+- Added provider cards with status dots, memory span controls, and quote cards with pin/edit flows
+- Applied microcopy sweep to core empty states for system-tone consistency
 
 ### v1.2.0 - February 1, 2026
 

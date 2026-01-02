@@ -45,7 +45,7 @@ export function ProjectsPage() {
       </header>
 
       {projects.length === 0 ? (
-        <p className="empty-state-text">No projects yet. Create one from the To-dos page.</p>
+        <p className="empty-state-text">System idle. Create a project from the Todos page.</p>
       ) : (
         <div className="project-review-grid">
           {projects.map((project) => {

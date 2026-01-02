@@ -40,7 +40,7 @@ export function ProjectList({
     <div className="project-list">
       <h3 className="section-label">Projects</h3>
       {projects.length === 0 ? (
-        <p className="empty-state-text">No projects yet</p>
+        <p className="empty-state-text">System idle. Create a project to organize tasks.</p>
       ) : (
         <ul className="project-tree">
           {projects.map((project) => {

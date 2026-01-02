@@ -2,7 +2,7 @@
 
 ## Overview
 
-The LifeOS design system now follows the **Quiet Cyberpunk** aesthetic: calm, precise, and slightly dangerous. It prioritizes clarity, restraint, and AI-native utility over decoration.
+The LifeOS design system now follows the **Scandinavian calm × Cyberpunk intelligence** aesthetic: quiet power, intentionality, and clarity. It prioritizes structured hierarchy and an accent-driven focus over decoration.
 
 **Core metaphor:** AI-native personal operating system
 **Emotional tone:** Calm, precise, slightly dangerous
@@ -12,27 +12,27 @@ The LifeOS design system now follows the **Quiet Cyberpunk** aesthetic: calm, pr
 
 1. Calm beats clever
 2. White space > borders > shadows
-3. Accent color only on interaction/indicators
+3. Accent color reserved for primary actions and active states
 4. No more than one glow per screen
 5. Empty states always include a clear action
 
 ## Design Tokens
 
-Tokens live in `apps/web-vite/src/globals.css` and are consumed across component and page styles.
+Tokens live in `apps/web-vite/src/tokens.css` and are consumed across component and page styles.
 
 ### Color Palette
 
 **Base (High-key):**
 
 ```css
---background: #ffffff;
---background-secondary: #f7f8fa;
---background-tertiary: #eef0f3;
---border: #e6e8eb;
+--background: #f9fafb;
+--background-secondary: #f3f4f6;
+--background-tertiary: #e5e7eb;
+--border: #e5e7eb;
 --border-strong: #d1d5db;
---foreground: #0f172a;
---secondary-foreground: #475569;
---muted-foreground: #94a3b8;
+--foreground: #111111;
+--secondary-foreground: #666666;
+--muted-foreground: #999999;
 ```
 
 **Accent (Cyberpunk Layer):**
@@ -48,24 +48,24 @@ Tokens live in `apps/web-vite/src/globals.css` and are consumed across component
 ```css
 --success: #2dd4bf;
 --warning: #fbbf24;
---error: #f87171;
+--error: #cc3333;
 ```
 
 ### Typography
 
 ```css
---font-sans: 'Inter', 'SF Pro Text', system-ui, sans-serif;
+--font-sans: 'Satoshi', 'General Sans', 'Inter', system-ui, sans-serif;
 --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
 ```
 
 **Type scale:**
 
-- H1: 32px / 600 / -0.02em
-- H2: 24px / 600 / -0.01em
-- H3: 18px / 500
-- Body: 14px / 400 / 1.6
-- Small: 12px / 400 (muted)
-- Mono: 12px (system data)
+- H1: 24px / 700
+- H2: 20px / 600
+- H3: 18px / 600
+- Body: 16px / 400
+- Small: 14px / 400 (muted)
+- Mono: 14px (system data)
 
 **Rules:**
 
@@ -87,11 +87,28 @@ Tokens live in `apps/web-vite/src/globals.css` and are consumed across component
 - Container: max 1200px, 24px padding
 - Section spacing: 48px
 
+**Layout containers:**
+
+- Use `.page-container` on every top-level page to enforce the global max width and padding.
+- Place page-specific grids (dashboards, sidebars) inside the container instead of replacing it.
+
+## Settings IA
+
+Settings are structured as four stacked sections to keep the control center predictable:
+
+- **Intelligence:** provider keys + memory span defaults.
+- **Behavior:** workspace defaults and baseline routines.
+- **Experience:** quotes and tone adjustments.
+- **System:** sync health, calendar connections, and status.
+
+Use provider cards with a `StatusDot`, mono inputs for keys, and inline `[Save] [Clear]` actions.
+Use a compact status grid for System health (Network/Auth/Latency/Bandwidth) and a card list for quotes with overflow menu actions.
+
 ### Radius
 
 ```css
---radius-md: 10px;
---radius-lg: 16px;
+--radius-md: 6px;
+--radius-lg: 6px;
 ```
 
 ## Component Patterns
@@ -102,7 +119,7 @@ Tokens live in `apps/web-vite/src/globals.css` and are consumed across component
 .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 6px;
   padding: 24px;
 }
 
@@ -114,16 +131,19 @@ Tokens live in `apps/web-vite/src/globals.css` and are consumed across component
 
 ### Buttons
 
+- Primary CTAs use the accent fill; secondary actions stay muted.
+- Button corners are sharper than containers (2px radius).
+
 ```css
 .btn-primary {
-  background: transparent;
+  background: var(--accent);
   border: 1px solid var(--accent);
-  color: var(--accent);
-  border-radius: 10px;
+  color: var(--accent-foreground);
+  border-radius: 2px;
 }
 
 .btn-primary:hover {
-  box-shadow: 0 0 0 3px var(--accent-subtle);
+  box-shadow: 0 0 5px var(--accent);
 }
 ```
 
@@ -149,7 +169,7 @@ Tokens live in `apps/web-vite/src/globals.css` and are consumed across component
   height: 36px;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 6px;
 }
 
 .search-input:focus-visible {
@@ -157,6 +177,12 @@ Tokens live in `apps/web-vite/src/globals.css` and are consumed across component
   box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 ```
+
+## Microcopy Tone
+
+- Prefer system language: “System idle”, “Waiting for input”, “Ready for sync”.
+- Frame actions as capabilities: “Create workspace”, “Connect provider”, “Resume run”.
+- Avoid negative phrasing like “No X found” unless paired with a next action.
 
 ## Motion
 

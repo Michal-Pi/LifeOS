@@ -66,99 +66,53 @@ export function SystemStatus() {
   }
 
   return (
-    <div
-      className="settings-content"
-      style={{
-        marginBottom: '2rem',
-        padding: '1.5rem',
-        border: '1px solid var(--border)',
-        borderRadius: '16px',
-        background: 'var(--card)',
-      }}
-    >
-      <h3
-        style={{
-          marginTop: 0,
-          color: 'var(--foreground)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.12em',
-        }}
-      >
-        System Status
-      </h3>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: '1rem',
-          marginTop: '1rem',
-        }}
-      >
+    <section className="settings-panel system-status">
+      <header className="settings-panel__header">
         <div>
-          <p className="section-label" style={{ marginBottom: '0.5rem' }}>
-            Network
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div
-              style={{
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                backgroundColor: isOnline ? 'var(--success)' : 'var(--error)',
-              }}
+          <p className="section-label">System</p>
+          <h3>Status</h3>
+          <p className="settings-panel__meta">Live network, auth, and latency checks.</p>
+        </div>
+      </header>
+      <div className="system-status__grid">
+        <div className="system-status__item">
+          <p className="section-label">Network</p>
+          <div className="system-status__row">
+            <span
+              className={`system-status__dot ${isOnline ? 'system-status__dot--online' : 'system-status__dot--offline'}`}
             />
-            <span style={{ fontWeight: 'bold' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+            <span className="system-status__value">{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
           </div>
         </div>
-        <div>
-          <p className="section-label" style={{ marginBottom: '0.5rem' }}>
-            Auth
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div
-              style={{
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                backgroundColor: user ? 'var(--success)' : 'var(--secondary-foreground)',
-              }}
+        <div className="system-status__item">
+          <p className="section-label">Auth</p>
+          <div className="system-status__row">
+            <span
+              className={`system-status__dot ${user ? 'system-status__dot--online' : 'system-status__dot--idle'}`}
             />
-            <span style={{ fontWeight: 'bold' }}>{user ? 'AUTHENTICATED' : 'GUEST'}</span>
+            <span className="system-status__value">{user ? 'AUTHENTICATED' : 'GUEST'}</span>
           </div>
         </div>
-        <div>
-          <p className="section-label" style={{ marginBottom: '0.5rem' }}>
-            Latency
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--secondary-foreground)' }}>
-              {latency ? `${latency}ms` : '...'}
-            </span>
+        <div className="system-status__item">
+          <p className="section-label">Latency</p>
+          <div className="system-status__row">
+            <span className="system-status__mono">{latency ? `${latency}ms` : '...'}</span>
           </div>
         </div>
-        <div>
-          <p className="section-label" style={{ marginBottom: '0.5rem' }}>
-            Bandwidth
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="system-status__item">
+          <p className="section-label">Bandwidth</p>
+          <div className="system-status__row">
             <button
               onClick={runSpeedTest}
               disabled={isTestingSpeed || !isOnline}
               className="ghost-button small"
-              style={{ fontSize: '0.7rem', padding: '2px 8px', minWidth: 'auto' }}
             >
               {isTestingSpeed ? 'TESTING...' : 'TEST SPEED'}
             </button>
-            {downloadSpeed && (
-              <span
-                style={{ fontFamily: 'var(--font-mono)', color: 'var(--secondary-foreground)' }}
-              >
-                {downloadSpeed} Mbps
-              </span>
-            )}
+            {downloadSpeed && <span className="system-status__mono">{downloadSpeed} Mbps</span>}
           </div>
         </div>
       </div>
-    </div>
+    </section>
   )
 }
