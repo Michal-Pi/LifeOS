@@ -118,7 +118,11 @@ export const MonthView = React.memo(function MonthView({
             title={cell.isCurrentMonth ? 'Add event' : undefined}
           >
             <span className="day-number">{cell.dayOfMonth}</span>
-            {cell.isCurrentMonth && <span className="day-hover-plus" aria-hidden="true">+</span>}
+            {cell.isCurrentMonth && (
+              <span className="day-hover-plus" aria-hidden="true">
+                +
+              </span>
+            )}
             {cell.events.length > 0 && (
               <div className="event-indicators">
                 {cell.events.slice(0, 3).map((event, i) => (

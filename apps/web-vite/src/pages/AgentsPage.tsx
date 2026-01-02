@@ -377,83 +377,83 @@ export function AgentsPage() {
           <span>Templates</span>
         </summary>
         <section className="settings-panel">
-        <header className="settings-panel__header">
-          <div>
-            <p className="section-label">Templates</p>
-            <h2>Agent Templates</h2>
-            <p className="settings-panel__meta">Save reusable agent setups and start faster.</p>
-            <div className="settings-panel__actions">
-              <button onClick={handleAddPresets} className="btn-secondary" type="button">
-                Add Presets
-              </button>
-              <button onClick={handleExportTemplates} className="btn-secondary" type="button">
-                Export
-              </button>
-              <button
-                onClick={() => importInputRef.current?.click()}
-                className="btn-secondary"
-                type="button"
-              >
-                Import
-              </button>
-              <input
-                ref={importInputRef}
-                type="file"
-                accept="application/json"
-                onChange={handleImportTemplates}
-                hidden
-              />
-            </div>
-          </div>
-        </header>
-
-        {templatesLoading ? (
-          <div className="loading">Loading templates...</div>
-        ) : agentTemplates.length === 0 ? (
-          <EmptyState
-            label="Templates"
-            title="System idle"
-            description="Save a template from an existing agent to reuse later."
-          />
-        ) : (
-          <div className="agents-grid">
-            {agentTemplates.map((template) => (
-              <div key={template.templateId} className="agent-card">
-                <div className="card-header">
-                  <h3>{template.name}</h3>
-                  <span className="badge">{template.agentConfig.role}</span>
-                </div>
-                {template.description && <p className="description">{template.description}</p>}
-                <div className="card-meta">
-                  <div>
-                    <strong>Provider:</strong> {template.agentConfig.modelProvider}
-                  </div>
-                  <div>
-                    <strong>Model:</strong> {template.agentConfig.modelName}
-                  </div>
-                  <div>
-                    <strong>Tools:</strong> {template.agentConfig.toolIds?.length ?? 0}
-                  </div>
-                </div>
-                <div className="card-actions">
-                  <button onClick={() => handleUseTemplate(template)} className="btn-secondary">
-                    Use Template
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Delete template "${template.name}"?`)) {
-                        void deleteTemplate(template.templateId)
-                      }
-                    }}
-                    className="btn-danger"
-                  >
-                    Delete
-                  </button>
-                </div>
+          <header className="settings-panel__header">
+            <div>
+              <p className="section-label">Templates</p>
+              <h2>Agent Templates</h2>
+              <p className="settings-panel__meta">Save reusable agent setups and start faster.</p>
+              <div className="settings-panel__actions">
+                <button onClick={handleAddPresets} className="btn-secondary" type="button">
+                  Add Presets
+                </button>
+                <button onClick={handleExportTemplates} className="btn-secondary" type="button">
+                  Export
+                </button>
+                <button
+                  onClick={() => importInputRef.current?.click()}
+                  className="btn-secondary"
+                  type="button"
+                >
+                  Import
+                </button>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json"
+                  onChange={handleImportTemplates}
+                  hidden
+                />
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          </header>
+
+          {templatesLoading ? (
+            <div className="loading">Loading templates...</div>
+          ) : agentTemplates.length === 0 ? (
+            <EmptyState
+              label="Templates"
+              title="System idle"
+              description="Save a template from an existing agent to reuse later."
+            />
+          ) : (
+            <div className="agents-grid">
+              {agentTemplates.map((template) => (
+                <div key={template.templateId} className="agent-card">
+                  <div className="card-header">
+                    <h3>{template.name}</h3>
+                    <span className="badge">{template.agentConfig.role}</span>
+                  </div>
+                  {template.description && <p className="description">{template.description}</p>}
+                  <div className="card-meta">
+                    <div>
+                      <strong>Provider:</strong> {template.agentConfig.modelProvider}
+                    </div>
+                    <div>
+                      <strong>Model:</strong> {template.agentConfig.modelName}
+                    </div>
+                    <div>
+                      <strong>Tools:</strong> {template.agentConfig.toolIds?.length ?? 0}
+                    </div>
+                  </div>
+                  <div className="card-actions">
+                    <button onClick={() => handleUseTemplate(template)} className="btn-secondary">
+                      Use Template
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Delete template "${template.name}"?`)) {
+                          void deleteTemplate(template.templateId)
+                        }
+                      }}
+                      className="btn-danger"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </details>
 
@@ -462,65 +462,65 @@ export function AgentsPage() {
           <span>Modules</span>
         </summary>
         <section className="settings-panel">
-        <header className="settings-panel__header">
-          <div>
-            <p className="section-label">Modules</p>
-            <h2>Modules</h2>
-            <p className="settings-panel__meta">
-              Build reusable modules that agents can call during execution.
-            </p>
-          </div>
-          <button onClick={handleNewTool} className="btn-primary">
-            + New Module
-          </button>
-        </header>
+          <header className="settings-panel__header">
+            <div>
+              <p className="section-label">Modules</p>
+              <h2>Modules</h2>
+              <p className="settings-panel__meta">
+                Build reusable modules that agents can call during execution.
+              </p>
+            </div>
+            <button onClick={handleNewTool} className="btn-primary">
+              + New Module
+            </button>
+          </header>
 
-        {toolsLoading ? (
-          <div className="loading">Loading tools...</div>
-        ) : tools.length === 0 ? (
-          <EmptyState
-            label="Modules"
-            title="System idle"
-            description="Create reusable modules so agents can call structured tools."
-            actionLabel="Create Module"
-            onAction={handleNewTool}
-          />
-        ) : (
-          <div className="agents-grid">
-            {tools.map((tool) => (
-              <div key={tool.toolId} className="agent-card">
-                <div className="card-header">
-                  <h3>{tool.name}</h3>
-                  <span className="badge">custom</span>
-                </div>
-                <p className="description">{tool.description}</p>
-                <div className="card-meta">
-                  <div>
-                    <strong>Params:</strong> {Object.keys(tool.parameters ?? {}).length}
+          {toolsLoading ? (
+            <div className="loading">Loading tools...</div>
+          ) : tools.length === 0 ? (
+            <EmptyState
+              label="Modules"
+              title="System idle"
+              description="Create reusable modules so agents can call structured tools."
+              actionLabel="Create Module"
+              onAction={handleNewTool}
+            />
+          ) : (
+            <div className="agents-grid">
+              {tools.map((tool) => (
+                <div key={tool.toolId} className="agent-card">
+                  <div className="card-header">
+                    <h3>{tool.name}</h3>
+                    <span className="badge">custom</span>
                   </div>
-                  <div>
-                    <strong>Auth:</strong> {tool.requiresAuth ? 'Required' : 'None'}
+                  <p className="description">{tool.description}</p>
+                  <div className="card-meta">
+                    <div>
+                      <strong>Params:</strong> {Object.keys(tool.parameters ?? {}).length}
+                    </div>
+                    <div>
+                      <strong>Auth:</strong> {tool.requiresAuth ? 'Required' : 'None'}
+                    </div>
+                  </div>
+                  <div className="card-actions">
+                    <button onClick={() => handleEditTool(tool)} className="btn-secondary">
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Delete tool "${tool.name}"?`)) {
+                          void deleteTool(tool.toolId)
+                        }
+                      }}
+                      className="btn-danger"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
-                <div className="card-actions">
-                  <button onClick={() => handleEditTool(tool)} className="btn-secondary">
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Delete tool "${tool.name}"?`)) {
-                        void deleteTool(tool.toolId)
-                      }
-                    }}
-                    className="btn-danger"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
         </section>
       </details>
 

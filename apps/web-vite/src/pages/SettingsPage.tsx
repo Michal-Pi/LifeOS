@@ -74,9 +74,7 @@ export function SettingsPage() {
   const [pinnedQuoteIds, setPinnedQuoteIds] = useState<string[]>([])
   const effectiveMemoryLimit = memorySettings.memoryMessageLimit ?? 50
 
-  const pinnedStorageKey = userId
-    ? `lifeos:quotes:pinned:${userId}`
-    : 'lifeos:quotes:pinned:anon'
+  const pinnedStorageKey = userId ? `lifeos:quotes:pinned:${userId}` : 'lifeos:quotes:pinned:anon'
 
   useEffect(() => {
     if (typeof window === 'undefined') return

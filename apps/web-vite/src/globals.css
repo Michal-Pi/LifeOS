@@ -74,7 +74,8 @@
 
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('/Fonts/JetBrainsMono-2.304/fonts/webfonts/JetBrainsMono-MediumItalic.woff2') format('woff2');
+  src: url('/Fonts/JetBrainsMono-2.304/fonts/webfonts/JetBrainsMono-MediumItalic.woff2')
+    format('woff2');
   font-weight: 500;
   font-style: italic;
   font-display: swap;
@@ -90,7 +91,8 @@
 
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('/Fonts/JetBrainsMono-2.304/fonts/webfonts/JetBrainsMono-BoldItalic.woff2') format('woff2');
+  src: url('/Fonts/JetBrainsMono-2.304/fonts/webfonts/JetBrainsMono-BoldItalic.woff2')
+    format('woff2');
   font-weight: 700;
   font-style: italic;
   font-display: swap;
@@ -2254,7 +2256,9 @@ a:focus-visible {
 
 .day-cell.today {
   background: var(--background-secondary);
-  box-shadow: 0 0 0 1px var(--accent), 0 0 10px var(--accent-subtle);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 10px var(--accent-subtle);
 }
 
 .day-cell.selected {
