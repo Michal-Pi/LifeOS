@@ -12,6 +12,23 @@ import {
   type Firestore,
 } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
+import { getAuthClient } from '@/lib/firebase'
+
+/**
+ * Ensures Firestore has the auth token before making queries.
+ */
+async function ensureFirestoreAuthReady(userId: string, maxWaitMs: number = 1000): Promise<void> {
+  const startTime = Date.now()
+  while (Date.now() - startTime < maxWaitMs) {
+    const auth = getAuthClient()
+    const currentUser = auth.currentUser
+    if (currentUser && currentUser.uid === userId) {
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  // If we timeout, proceed anyway - the retry logic will handle permission errors
+}
 
 /**
  * Create a Firestore-backed CalendarListRepository
@@ -25,6 +42,7 @@ export function createFirestoreCalendarListRepository(): CalendarListRepository 
 
   return {
     async listCalendars(userId: string): Promise<CanonicalCalendar[]> {
+      await ensureFirestoreAuthReady(userId)
       const db = await getDb()
       const colRef = getCollectionRef(db, userId)
       const snapshot = await getDocs(colRef)
@@ -81,13 +99,22 @@ export function createFirestoreCalendarListRepository(): CalendarListRepository 
       // Initialize lazily on first subscribe
       let unsubscribe: (() => void) | null = null
 
-      getDb().then((db) => {
+      void (async () => {
+        await ensureFirestoreAuthReady(userId)
+        const db = await getDb()
         const colRef = getCollectionRef(db, userId)
-        unsubscribe = onSnapshot(colRef, (snapshot) => {
-          const calendars = snapshot.docs.map((d) => d.data() as CanonicalCalendar)
-          callback(calendars)
-        })
-      })
+        unsubscribe = onSnapshot(
+          colRef,
+          (snapshot) => {
+            const calendars = snapshot.docs.map((d) => d.data() as CanonicalCalendar)
+            callback(calendars)
+          },
+          (error: Error) => {
+            // Log but don't throw - onSnapshot errors are handled by the error callback
+            console.error('Calendar list subscription error:', error)
+          }
+        )
+      })()
 
       return () => {
         if (unsubscribe) {

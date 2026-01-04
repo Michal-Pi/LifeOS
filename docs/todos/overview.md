@@ -1,6 +1,6 @@
-# Todos Overview
+# Planner Overview
 
-This document describes the current Todos implementation in the Vite web client.
+This document describes the current Planner implementation in the Vite web client.
 
 ## Data Model
 
@@ -27,14 +27,14 @@ users/{userId}/tasks/{taskId}
 - Tasks can be scheduled into the calendar via `calendarEventIds`.
 - Task forms use sliders for urgency/importance with live labels and auto-inference when due dates exist.
 - Scheduling defaults the event duration to the task’s estimated time (or 60 minutes).
-- Todos use Firestore offline persistence (IndexedDB). Cached writes sync when online.
+- Planner uses Firestore offline persistence (IndexedDB). Cached writes sync when online.
 - Task reloads merge by `updatedAt` (last-write-wins) and then normalize domain/urgency rules.
-- Todo views load tasks by scope (all, project, milestone) and merge into the local cache.
+- Planner views load tasks by scope (all, project, milestone) and merge into the local cache.
 - Priority scores are cached per task based on `updatedAt`, urgency, due date, and importance.
 
 ## Key Files
 
-- UI: `apps/web-vite/src/pages/TodoPage.tsx`
+- UI: `apps/web-vite/src/pages/PlannerPage.tsx`
 - Forms: `apps/web-vite/src/components/TaskFormModal.tsx`, `ProjectFormModal.tsx`, `MilestoneFormModal.tsx`
 - Repository: `apps/web-vite/src/adapters/firestoreTodoRepository.ts`
 - Hook: `apps/web-vite/src/hooks/useTodoOperations.ts`

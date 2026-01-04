@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, type ComponentType } from 'react'
 import { Toaster } from 'sonner'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -9,35 +9,69 @@ import { TopNav } from './components/TopNav'
 // Global styles (if any, or import from theme.css)
 import './globals.css'
 
+// Helper to handle chunk loading errors (e.g., after deployment when old chunks are cached)
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  importFn: () => Promise<{ default: T }>
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    importFn().catch((error) => {
+      // Check if it's a chunk loading error (usually means new deployment)
+      const isChunkError =
+        error?.message?.includes('Failed to fetch dynamically imported module') ||
+        error?.message?.includes('Loading chunk') ||
+        error?.name === 'ChunkLoadError'
+
+      if (isChunkError) {
+        // Clear service worker cache and reload
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' })
+        }
+        // Clear all caches
+        if ('caches' in window) {
+          caches.keys().then((keys) => {
+            keys.forEach((key) => caches.delete(key))
+          })
+        }
+        // Reload the page to get fresh chunks
+        window.location.reload()
+        // Return a promise that never resolves to prevent further errors
+        return new Promise(() => {})
+      }
+      // For other errors, rethrow
+      throw error
+    })
+  )
+}
+
 // Lazy-loaded pages for code splitting
-const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
-const TodayPage = lazy(() => import('./pages/TodayPage').then((m) => ({ default: m.TodayPage })))
-const CalendarPage = lazy(() =>
+const LoginPage = lazyWithRetry(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
+const TodayPage = lazyWithRetry(() => import('./pages/TodayPage').then((m) => ({ default: m.TodayPage })))
+const CalendarPage = lazyWithRetry(() =>
   import('./pages/CalendarPage').then((m) => ({ default: m.CalendarPage }))
 )
-const TodoPage = lazy(() => import('./pages/TodoPage').then((m) => ({ default: m.TodoPage })))
-const NotesPage = lazy(() => import('./pages/NotesPage').then((m) => ({ default: m.NotesPage })))
-const SettingsPage = lazy(() =>
+const PlannerPage = lazyWithRetry(() => import('./pages/PlannerPage').then((m) => ({ default: m.PlannerPage })))
+const NotesPage = lazyWithRetry(() => import('./pages/NotesPage').then((m) => ({ default: m.NotesPage })))
+const SettingsPage = lazyWithRetry(() =>
   import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))
 )
-const WeeklyReviewPage = lazy(() =>
+const WeeklyReviewPage = lazyWithRetry(() =>
   import('./pages/WeeklyReviewPage').then((m) => ({ default: m.WeeklyReviewPage }))
 )
-const HabitsPage = lazy(() => import('./pages/HabitsPage').then((m) => ({ default: m.HabitsPage })))
-const ExerciseLibraryPage = lazy(() =>
+const HabitsPage = lazyWithRetry(() => import('./pages/HabitsPage').then((m) => ({ default: m.HabitsPage })))
+const ExerciseLibraryPage = lazyWithRetry(() =>
   import('./pages/ExerciseLibraryPage').then((m) => ({ default: m.ExerciseLibraryPage }))
 )
-const WorkoutTemplatePage = lazy(() =>
+const WorkoutTemplatePage = lazyWithRetry(() =>
   import('./pages/WorkoutTemplatePage').then((m) => ({ default: m.WorkoutTemplatePage }))
 )
-const WorkoutPlanPage = lazy(() =>
+const WorkoutPlanPage = lazyWithRetry(() =>
   import('./pages/WorkoutPlanPage').then((m) => ({ default: m.WorkoutPlanPage }))
 )
-const AgentsPage = lazy(() => import('./pages/AgentsPage').then((m) => ({ default: m.AgentsPage })))
-const WorkspacesPage = lazy(() =>
+const AgentsPage = lazyWithRetry(() => import('./pages/AgentsPage').then((m) => ({ default: m.AgentsPage })))
+const WorkspacesPage = lazyWithRetry(() =>
   import('./pages/WorkspacesPage').then((m) => ({ default: m.WorkspacesPage }))
 )
-const WorkspaceDetailPage = lazy(() =>
+const WorkspaceDetailPage = lazyWithRetry(() =>
   import('./pages/WorkspaceDetailPage').then((m) => ({ default: m.WorkspaceDetailPage }))
 )
 
@@ -136,11 +170,22 @@ function AppRoutes() {
                   }
                 />
                 <Route
+                  path="/planner"
+                  element={
+                    <ProtectedRoute>
+                      <ErrorBoundary>
+                        <PlannerPage />
+                      </ErrorBoundary>
+                    </ProtectedRoute>
+                  }
+                />
+                {/* Redirect old /todo route to /planner for backward compatibility */}
+                <Route
                   path="/todo"
                   element={
                     <ProtectedRoute>
                       <ErrorBoundary>
-                        <TodoPage />
+                        <PlannerPage />
                       </ErrorBoundary>
                     </ProtectedRoute>
                   }

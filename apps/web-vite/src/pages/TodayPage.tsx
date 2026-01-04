@@ -185,7 +185,7 @@ export function TodayPage() {
 
       <div className="today-layout">
         <div className="today-primary">
-          {/* Top Priority Todos */}
+          {/* Top Priority Tasks */}
           <section className="task-list-card today-card">
             <div className="today-card-header">
               <div>

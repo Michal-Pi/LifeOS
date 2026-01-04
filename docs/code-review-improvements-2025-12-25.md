@@ -66,7 +66,7 @@ Completed comprehensive code review and implemented critical + high-priority imp
 **Integrated In:** [apps/web-vite/src/App.tsx](../apps/web-vite/src/App.tsx:40-44)
 
 - CalendarPage
-- TodoPage
+- PlannerPage
 - SettingsPage
 - TodayPage
 - WeeklyReviewPage

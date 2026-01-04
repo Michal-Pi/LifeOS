@@ -7,7 +7,7 @@ import { GlobalSearch } from './GlobalSearch'
 const modules = [
   { label: 'Today', href: '/', icon: '🌅' },
   { label: 'Calendar', href: '/calendar', icon: '🗓️' },
-  { label: 'To-dos', href: '/todos', icon: '📝' },
+  { label: 'Planner', href: '/planner', icon: '📝' },
   { label: 'Notes', href: '/notes', icon: '📓' },
   { label: 'People', href: '/people', icon: '👥' },
   { label: 'Projects', href: '/projects', icon: '📦' },

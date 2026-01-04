@@ -86,8 +86,7 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 
 **Key Components**:
 
-- [TodosPage.tsx](../apps/web-vite/src/pages/TodosPage.tsx) - Task list and management interface
-- [TodoPage.tsx](../apps/web-vite/src/pages/TodoPage.tsx) - Individual task detail view
+- [PlannerPage.tsx](../apps/web-vite/src/pages/PlannerPage.tsx) - Projects, milestones, tasks, and planning interface
 - [useTodoOperations.ts](../apps/web-vite/src/hooks/useTodoOperations.ts) - Todo CRUD operations hook
 - [TopPriorityTodos.tsx](../apps/web-vite/src/components/TopPriorityTodos.tsx) - Priority task widget
 - Todo adapters in `apps/web-vite/src/adapters/`
@@ -226,8 +225,7 @@ LifeOS_2/
 │       ├── src/
 │       │   ├── pages/               # Page components
 │       │   │   ├── CalendarPage.tsx # Calendar interface (440 lines)
-│       │   │   ├── TodosPage.tsx    # Todo list
-│       │   │   ├── TodoPage.tsx     # Todo detail
+│       │   │   ├── PlannerPage.tsx  # Planner (projects, milestones, tasks)
 │       │   │   └── TodayPage.tsx    # Daily overview
 │       │   ├── hooks/               # Custom React hooks
 │       │   │   ├── useCalendarEvents.ts

@@ -319,9 +319,10 @@ export function getFirestoreClient(): Firestore {
     })
     logger.info('Firestore initialized with multi-tab persistence')
   } catch {
-    // If already initialized (e.g., by another part of the app), use existing instance
+    // If already initialized (e.g., by another part of the app or HMR reload), use existing instance
     firestoreInstance = getFirestore(firebaseApp)
-    logger.warn('Firestore already initialized, using existing instance')
+    // This is expected in development with HMR - no need to warn
+    logger.debug('Firestore already initialized, using existing instance')
   }
 
   // Connect to emulator in development

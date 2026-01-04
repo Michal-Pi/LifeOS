@@ -25,8 +25,8 @@ Central navigation for the docs. Start here.
 - `docs/features/ai-agents-progress-summary.md` - AI Agent Framework status + roadmap
 - `docs/features/agents-roadmap.md` - AI Agent Framework phases
 - `docs/features/agents-phase-5e-completion.md` - AI Agent Framework Phase 5E completion
-- `docs/todos/overview.md` - Todos feature overview
-- `docs/todos/ui.md` - Todos UI behavior
+- `docs/todos/overview.md` - Planner feature overview
+- `docs/todos/ui.md` - Planner UI behavior
 - `docs/sync/` - Outbox + conflict strategy + overview
 - `docs/notes/sync.md` - Notes sync and local storage
 - `docs/firebase/` - OAuth, hosting, emulators, secrets

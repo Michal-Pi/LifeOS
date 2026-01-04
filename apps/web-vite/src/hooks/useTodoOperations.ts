@@ -24,7 +24,9 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
   const loadData = useCallback(
     async (options?: { includeTasks?: boolean }) => {
       // Guard against empty string or null/undefined
-      if (!userId || userId.trim() === '') return
+      if (!userId || userId.trim() === '') {
+        return
+      }
       if (lastUserIdRef.current && lastUserIdRef.current !== userId) {
         setProjects([])
         setMilestones([])
@@ -44,9 +46,10 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
           setTasks((prev) => mergeTasksForLoad(prev, loadedTasks, loadedProjects))
         }
         lastUserIdRef.current = userId
-      } catch (err) {
-        logger.error('Failed to load todo data:', err)
-        const errorMessage = (err as Error).message
+      } catch (err: unknown) {
+        const error = err as Error
+        logger.error('Failed to load todo data:', error)
+        const errorMessage = error.message
         setError(errorMessage)
         toast.error('Failed to load data', {
           description: errorMessage,

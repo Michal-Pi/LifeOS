@@ -82,6 +82,10 @@ service cloud.firestore {
     match /users/{userId}/calendarAccounts/{accountId} {
       allow read, write: if isAuthenticated(userId);
     }
+    // Calendar Sync State (sync status tracking)
+    match /users/{userId}/calendarSyncState/{key} {
+      allow read, write: if isAuthenticated(userId);
+    }
     // Calendars list (Phase 2.6)
     // Allow both collection queries and individual document access
     match /users/{userId}/calendars/{document=**} {

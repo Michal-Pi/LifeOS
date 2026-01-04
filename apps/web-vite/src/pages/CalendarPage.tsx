@@ -186,6 +186,7 @@ export function CalendarPage() {
     setEvents,
     loading,
     reload: reloadEvents,
+    syncProgress,
   } = useCalendarEvents(userId, displayDayKeys)
 
   // Event operations hook
@@ -212,14 +213,29 @@ export function CalendarPage() {
       setSelectedEvent,
     })
 
-  // Load sync status
+  // Subscribe to sync status updates
   useEffect(() => {
     if (!userId) return
+
+    // Subscribe to real-time sync status updates if available
+    if (syncRepository.subscribeToStatus) {
+      const unsubscribe = syncRepository.subscribeToStatus(userId, (remoteStatus) => {
+        setStatus(remoteStatus)
+      })
+      return unsubscribe
+    }
+
+    // Fallback: one-time load
     let active = true
     const loadStatus = async () => {
-      const remoteStatus = await syncRepository.getStatus(userId)
-      if (active) {
-        setStatus(remoteStatus)
+      try {
+        const remoteStatus = await syncRepository.getStatus(userId)
+        if (active) {
+          setStatus(remoteStatus)
+        }
+      } catch (error) {
+        logger.error('Failed to load sync status:', error)
+        // Don't set status on error - leave it as null
       }
     }
     void loadStatus()
@@ -453,6 +469,7 @@ export function CalendarPage() {
             failedOps={failedOps}
             selectedMonthDate={selectedMonthDate}
             canCreateEvents={canCreateEvents}
+            syncProgress={syncProgress}
             onRetryAll={handleRetryAll}
             onBackToToday={() => setSelectedMonthDate(null)}
             onCreateEvent={openCreateModal}

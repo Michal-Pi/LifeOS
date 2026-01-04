@@ -4,7 +4,7 @@
  * Provides event CRUD operations without UI state dependencies.
  * Use this hook when you need event operations but don't need UI state management.
  *
- * Example usage in TodoPage:
+ * Example usage in PlannerPage:
  *   const eventService = useEventService(userId)
  *   const newEvent = await eventService.createEvent(formData, { taskId: task.id })
  */

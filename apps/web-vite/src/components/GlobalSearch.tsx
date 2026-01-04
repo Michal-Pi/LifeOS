@@ -10,7 +10,7 @@ type SearchResult =
   | { type: 'task'; item: CanonicalTask; context?: string }
 
 export function GlobalSearch() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const userId = user?.uid ?? ''
   const navigate = useNavigate()
   const { projects, milestones, tasks, loadData } = useTodoOperations({ userId })
@@ -22,11 +22,11 @@ export function GlobalSearch() {
   // Load data once on mount to ensure search index is ready
   // In a real app, this might be too heavy and we'd rely on a dedicated search index or context
   useEffect(() => {
-    // Only load if we have a real userId (not empty string)
-    if (userId && userId.trim() !== '') {
+    // Wait for auth to finish loading and ensure we have a valid userId
+    if (!authLoading && userId && userId.trim() !== '') {
       void loadData()
     }
-  }, [userId, loadData])
+  }, [userId, loadData, authLoading])
 
   const results = useMemo(() => {
     if (!query.trim()) return []
@@ -90,14 +90,14 @@ export function GlobalSearch() {
     setQuery('')
 
     // Navigate based on type
-    // For now, we just go to the Todo page with a query param or state
-    // Ideally, TodoPage would read these params to open the item
+    // For now, we just go to the Planner page with a query param or state
+    // Ideally, PlannerPage would read these params to open the item
     if (result.type === 'task') {
-      navigate(`/todo?taskId=${result.item.id}`)
+      navigate(`/planner?taskId=${result.item.id}`)
     } else if (result.type === 'project') {
-      navigate(`/todo?projectId=${result.item.id}`)
+      navigate(`/planner?projectId=${result.item.id}`)
     } else if (result.type === 'milestone') {
-      navigate(`/todo?milestoneId=${result.item.id}`)
+      navigate(`/planner?milestoneId=${result.item.id}`)
     }
   }
 

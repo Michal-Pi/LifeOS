@@ -16,6 +16,8 @@ import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { generateId } from '@lifeos/core'
 import { createFirestoreCalendarEventRepository } from '@/adapters/firestoreCalendarEventRepository'
+import { createFirestoreCompositeRepository } from '@/adapters/firestoreCompositeRepository'
+import { unlinkEvent } from '@lifeos/calendar/usecases/compositeUsecases'
 import type { EventFormData } from '@/components/EventFormModal'
 import { functionUrl } from '@/lib/functionsUrl'
 import { authenticatedFetch } from '@/lib/authenticatedFetch'
@@ -25,6 +27,7 @@ import { enqueueCreate, enqueueUpdate, enqueueDelete } from '@/outbox/worker'
 
 const logger = createLogger('useEventOperations')
 const calendarRepository = createFirestoreCalendarEventRepository()
+const compositeRepository = createFirestoreCompositeRepository()
 
 interface UseEventOperationsProps {
   userId: string
@@ -333,6 +336,23 @@ export function useEventOperations({
           )
 
           if (result.deletedSeriesId) {
+            // Unlink from composite before deleting
+            try {
+              const composites = await compositeRepository.findByCanonicalEventId(userId, result.deletedSeriesId)
+              if (composites.length > 0) {
+                await unlinkEvent(
+                  { compositeRepository, eventRepository: calendarRepository },
+                  {
+                    userId,
+                    compositeEventId: composites[0].id ?? composites[0].compositeEventId ?? '',
+                    canonicalEventId: result.deletedSeriesId,
+                  }
+                )
+              }
+            } catch (err) {
+              logger.warn('Failed to unlink from composite', err)
+            }
+
             setEvents((prev) => prev.filter((e) => e.canonicalEventId !== result.deletedSeriesId))
             setSelectedEvent(null)
             await enqueueDelete(
@@ -367,6 +387,23 @@ export function useEventOperations({
           })
         }
         return
+      }
+
+      // Unlink from composite before deleting
+      try {
+        const composites = await compositeRepository.findByCanonicalEventId(userId, selectedEvent.canonicalEventId)
+        if (composites.length > 0) {
+          await unlinkEvent(
+            { compositeRepository, eventRepository: calendarRepository },
+            {
+              userId,
+              compositeEventId: composites[0].id ?? composites[0].compositeEventId ?? '',
+              canonicalEventId: selectedEvent.canonicalEventId,
+            }
+          )
+        }
+      } catch (err) {
+        logger.warn('Failed to unlink from composite', err)
       }
 
       setEvents((prev) => prev.filter((e) => e.canonicalEventId !== selectedEvent.canonicalEventId))

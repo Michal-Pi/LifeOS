@@ -18,9 +18,30 @@ self.addEventListener('activate', (event) => {
             .map((key) => caches.delete(key))
         )
       )
+      .then(() => {
+        // Clear runtime cache on activation to ensure fresh chunks
+        return caches.delete(RUNTIME_CACHE)
+      })
   )
   self.clients.claim()
 })
+
+// Listen for skip waiting message from client
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting()
+  }
+})
+
+// Check if a URL is a JavaScript chunk (has hash in filename)
+function isJavaScriptChunk(url) {
+  return /\.js$/.test(url.pathname) && /-[a-f0-9]{8,}\.js$/.test(url.pathname)
+}
+
+// Check if a URL is a static asset (images, fonts, etc.)
+function isStaticAsset(url) {
+  return /\.(jpg|jpeg|png|gif|svg|webp|ico|woff|woff2|ttf|eot)$/i.test(url.pathname)
+}
 
 self.addEventListener('fetch', (event) => {
   const { request } = event
@@ -29,6 +50,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
 
+  // Navigation requests - network first, fallback to cache
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -42,16 +64,60 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached
-      return fetch(request)
+  // JavaScript chunks - network first (they're versioned by hash, so cache can be stale)
+  if (isJavaScriptChunk(url)) {
+    event.respondWith(
+      fetch(request)
         .then((response) => {
-          const copy = response.clone()
-          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy))
+          // Only cache if response is OK (don't cache 404s)
+          if (response.ok) {
+            const copy = response.clone()
+            caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy))
+          }
           return response
         })
-        .catch(() => cached)
-    })
+        .catch((error) => {
+          // If network fails, try cache, but don't fail silently
+          return caches.match(request).then((cached) => {
+            if (cached) {
+              return cached
+            }
+            // If both fail, throw to trigger error boundary
+            throw error
+          })
+        })
+    )
+    return
+  }
+
+  // Static assets - cache first, network fallback
+  if (isStaticAsset(url)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached
+        return fetch(request)
+          .then((response) => {
+            if (response.ok) {
+              const copy = response.clone()
+              caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy))
+            }
+            return response
+          })
+      })
+    )
+    return
+  }
+
+  // Other assets (CSS, etc.) - network first with cache fallback
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
+          const copy = response.clone()
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy))
+        }
+        return response
+      })
+      .catch(() => caches.match(request))
   )
 })

@@ -98,7 +98,7 @@ export async function authenticatedFetch(
 - ✅ Added explicit rules for all collections:
   - `calendarEvents` - User read/write
   - `recurrenceInstanceMap` - User read only, server writes
-  - `projects`, `milestones`, `tasks` - Todo module
+  - `projects`, `milestones`, `tasks` - Planner module
   - `topics`, `sections`, `attachments` - Notes module
 
 **Before:**
@@ -121,7 +121,7 @@ match /users/{userId}/recurrenceInstanceMap/{docId} {
   allow read: if isAuthenticated(userId);
   allow write: if false; // Server-only writes
 }
-// Projects, Milestones, Tasks (Todo module)
+// Projects, Milestones, Tasks (Planner module)
 match /users/{userId}/projects/{projectId} {
   allow read, write: if isAuthenticated(userId);
 }
@@ -223,7 +223,7 @@ manualChunks: (id) => {
 | `calendar`           | 126.26 KB | 36.37 KB  | Medium-term (domain logic) |
 | `ui-vendor`          | 33.42 KB  | 9.49 KB   | Long-term (UI library)     |
 | `CalendarPage`       | 44.73 KB  | 12.72 KB  | Short-term (app code)      |
-| `TodoPage`           | 29.25 KB  | 7.80 KB   | Short-term (app code)      |
+| `PlannerPage`        | 29.25 KB  | 7.80 KB   | Short-term (app code)      |
 | `TodayPage`          | 5.76 KB   | 1.97 KB   | Short-term (app code)      |
 | `authenticatedFetch` | 3.61 KB   | 1.61 KB   | NEW (auth helper)          |
 

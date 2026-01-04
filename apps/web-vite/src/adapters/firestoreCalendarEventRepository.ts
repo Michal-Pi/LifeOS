@@ -18,9 +18,26 @@ import {
   type Firestore,
 } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
+import { getAuthClient } from '@/lib/firebase'
 
 const logger = createLogger('CalendarEventRepository')
 const EVENTS_LIMIT = 10
+
+/**
+ * Ensures Firestore has the auth token before making queries.
+ */
+async function ensureFirestoreAuthReady(userId: string, maxWaitMs: number = 1000): Promise<void> {
+  const startTime = Date.now()
+  while (Date.now() - startTime < maxWaitMs) {
+    const auth = getAuthClient()
+    const currentUser = auth.currentUser
+    if (currentUser && currentUser.uid === userId) {
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  // If we timeout, proceed anyway - errors will be handled
+}
 
 function canonicalCollection(db: Firestore, userId: string) {
   return collection(db, 'users', userId, 'calendarEvents')
@@ -80,6 +97,7 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
       if (!dayKeys.length) {
         return []
       }
+      await ensureFirestoreAuthReady(userId)
       const db = await getDb()
       const results: CanonicalCalendarEvent[] = []
       const chunks: string[][] = []
@@ -98,6 +116,7 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
       return results
     },
     async listByRange(userId, startMs, endMs, filters) {
+      await ensureFirestoreAuthReady(userId)
       const db = await getDb()
       const constraints: Parameters<typeof query>[2][] = [
         where('startMs', '>=', startMs),

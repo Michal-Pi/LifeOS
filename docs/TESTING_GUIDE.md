@@ -33,11 +33,11 @@
 
 ### What is LifeOS?
 
-LifeOS is a productivity application centered around calendar management with offline-first capabilities and Google Calendar synchronization. It also includes a complete personal productivity suite (Todos, Quotes, Habits, Mind, Training) and the AI Agent Framework.
+LifeOS is a productivity application centered around calendar management with offline-first capabilities and Google Calendar synchronization. It also includes a complete personal productivity suite (Planner, Quotes, Habits, Mind, Training) and the AI Agent Framework.
 
 - **Calendar Page** - Full-featured calendar with events, recurring events, RSVP, alerts, and sync
 - **Today Page** - Dashboard with daily stats, quotes, workout preview, and event telemetry
-- **Todo Page** - Projects, milestones, tasks, and scheduling to calendar
+- **Planner Page** - Projects, milestones, tasks, and scheduling to calendar
 - **Notes Page** - Topics, notes, attachments, rich editor
 - **Habits Page** - Habit creation, check-ins, consistency insights
 - **Mind Page** - Interventions, sessions, summaries
@@ -62,7 +62,7 @@ People and Projects remain placeholder pages.
 - Today dashboard with stats and customizable quotes
 - Quote management with add, edit, delete, and reset functionality
 - Deterministic daily quote selection (same quote for same date)
-- Todo projects, milestones, tasks, and scheduling to calendar
+- Planner projects, milestones, tasks, and scheduling to calendar
 - Notes topics, rich text editing, and attachments
 - Habit creation, check-ins, and consistency charts
 - Mind interventions with session summaries
@@ -100,7 +100,7 @@ People and Projects remain placeholder pages.
    Login screen should show only the auth form (no global nav or search).
 
 4. **Verify Top Navigation (after login):**
-   Confirm the fixed top nav shows primary sections (Today, Calendar, Todos, Notes, Habits, Workspaces), search, Agents/Review, and Settings, with the accent underline only on hover/active.
+   Confirm the fixed top nav shows primary sections (Today, Calendar, Planner, Notes, Habits, Workspaces), search, Agents/Review, and Settings, with the accent underline only on hover/active.
 
 5. **Navigate to Calendar:**
    Click "Calendar" in the sidebar or visit `http://localhost:5173/calendar`
@@ -113,7 +113,7 @@ People and Projects remain placeholder pages.
 ├─────────────┤
 │             │  Today      - Dashboard view
 │   Main      │  Calendar   - Full calendar (implemented)
-│   Content   │  Todos      - Projects, milestones, tasks
+│   Content   │  Planner    - Projects, milestones, tasks
 │   Area      │  Notes      - Topics, notes, attachments
 │             │  Habits     - Check-ins and charts
 │             │  Mind       - Interventions and sessions
@@ -153,7 +153,7 @@ verification and expected results. This path ensures all new features since Dec 
 
 ---
 
-### 3.2 Todo Management
+### 3.2 Planner Management
 
 **Steps:**
 
@@ -256,9 +256,9 @@ verification and expected results. This path ensures all new features since Dec 
 
 **Day Flow (same day):**
 
-1. Start on **Today** and review calendar preview, top priority todos, and quote.
+1. Start on **Today** and review calendar preview, top priority tasks, and quote.
 2. Create a new calendar event and set an alert.
-3. Create a todo and schedule it to the calendar (if enabled).
+3. Create a task and schedule it to the calendar (if enabled).
 4. Add a quick note linked to a topic (e.g., meeting notes).
 5. Log a habit check-in and complete a workout session.
 6. Run an AI agent goal that references today's calendar or notes.
@@ -278,7 +278,7 @@ verification and expected results. This path ensures all new features since Dec 
 **Success Criteria:**
 
 - Each step completes without errors or missing UI state.
-- At least one cross-module reference works (calendar event linked to todo or note).
+- At least one cross-module reference works (calendar event linked to task or note).
 - AI run completes and references a real entity created in this flow.
 - Weekly review reflects changes made earlier in the day flow.
 
@@ -1519,7 +1519,7 @@ Quotes change daily based on day of year:
 
 ---
 
-### 10.3 Top Priority Todos
+### 10.3 Top Priority Tasks
 
 **Test Case:** View high-priority tasks
 
@@ -1541,13 +1541,13 @@ Quotes change daily based on day of year:
 **Display Elements:**
 
 - **The Frog:** Highest priority task (by score)
-- **Todo Title:** Task description
+- **Task Title:** Task description
 - **Priority Score:** Numeric priority on the right
 
 **Empty State:**
 
 - Shows compact row: "No urgent tasks for today"
-- CTA button: "Add task" routes to Todos
+- CTA button: "Add task" routes to Planner
 
 **Priority Color Coding:**
 
@@ -1556,9 +1556,9 @@ Quotes change daily based on day of year:
 - **P3 (Normal):** 🟡 Yellow background
 
 **Current Implementation:**
-✅ **Real todo integration implemented**
+✅ **Real planner integration implemented**
 
-- Displays top priority tasks from the user's todo list
+- Displays top priority tasks from the user's planner
 - Uses priority scoring to surface urgent work
 - "Weekly Review" button routes to review flow
 
@@ -2565,11 +2565,11 @@ function isDeleted(event) {
   - [ ] Verify shows time ranges
   - [ ] Verify shows guest counts
 
-- [ ] **Todos section**
+- [ ] **Planner section**
   - [ ] Verify priority legend shows
-  - [ ] Verify top 3 todos display
+  - [ ] Verify top 3 tasks display
   - [ ] Verify priority badges color-coded
-  - [ ] Toggle a todo completion and verify update
+  - [ ] Toggle a task completion and verify update
 
 - [ ] **Stats grid**
   - [ ] Verify "Meetings" shows hours with guests
@@ -2594,7 +2594,7 @@ function isDeleted(event) {
   - [ ] Verify training progress reflects workout
   - [ ] Adjust plan and verify persisted changes
 
-### Todos
+### Planner
 
 - [ ] **Projects and milestones**
   - [ ] Create a project
@@ -2955,7 +2955,7 @@ Collections: calendarEvents, calendars, syncStatus
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Calendar Page     | [apps/web-vite/src/pages/CalendarPage.tsx](apps/web-vite/src/pages/CalendarPage.tsx)                                             |
 | Today Page        | [apps/web-vite/src/pages/TodayPage.tsx](apps/web-vite/src/pages/TodayPage.tsx)                                                   |
-| Todo Page         | [apps/web-vite/src/pages/TodoPage.tsx](apps/web-vite/src/pages/TodoPage.tsx)                                                     |
+| Planner Page      | [apps/web-vite/src/pages/PlannerPage.tsx](apps/web-vite/src/pages/PlannerPage.tsx)                                               |
 | Notes Page        | [apps/web-vite/src/pages/NotesPage.tsx](apps/web-vite/src/pages/NotesPage.tsx)                                                   |
 | Habits Page       | [apps/web-vite/src/pages/HabitsPage.tsx](apps/web-vite/src/pages/HabitsPage.tsx)                                                 |
 | Mind UI           | [apps/web-vite/src/components/mind/MindInterventionModal.tsx](apps/web-vite/src/components/mind/MindInterventionModal.tsx)       |

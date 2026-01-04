@@ -1048,6 +1048,317 @@ export const getFirebaseConfig = onRequest(
   }
 )
 
+// ==================== Delete All Calendar Data ====================
+
+/**
+ * Delete all calendar data for a user with granular control over linked data
+ * Provides options for handling tasks, composites, habit check-ins, and sync data
+ */
+export const deleteAllCalendarData = onRequest(
+  {
+    ...FUNCTION_CONFIG.http,
+    cors: true,
+  },
+  async (request, response) => {
+    try {
+      const uid = String(request.body.uid ?? '')
+      const options = request.body.options ?? {}
+
+      if (!uid) {
+        response.status(400).json({ error: 'Missing uid' })
+        return
+      }
+
+      // Verify authentication
+      if (!(await verifyAuth(request, response, uid))) {
+        return
+      }
+
+      // Parse options with defaults
+      const taskHandling: 'unlink' | 'delete-linked' | 'keep-orphaned' =
+        options.taskHandling ?? 'unlink'
+      const compositeHandling: 'delete' | 'keep-orphaned' = options.compositeHandling ?? 'delete'
+      const deleteHabitCheckins = options.deleteHabitCheckins === true
+      const clearSyncData = options.clearSyncData !== false // Default true
+
+      const counts = {
+        calendarsDeleted: 0,
+        eventsDeleted: 0,
+        compositesDeleted: 0,
+        tasksUpdated: 0,
+        tasksDeleted: 0,
+        habitCheckinsDeleted: 0,
+        syncDataDeleted: 0,
+      }
+
+      const maxBatchOps = 400 // Conservative limit to avoid "Transaction too big" errors
+
+      // 1. Handle Tasks
+      if (taskHandling !== 'keep-orphaned') {
+        const tasksSnapshot = await firestore
+          .collection(`users/${uid}/tasks`)
+          .where('calendarEventIds', '!=', null)
+          .get()
+
+        let taskBatch = firestore.batch()
+        let taskBatchOps = 0
+
+        for (const taskDoc of tasksSnapshot.docs) {
+          const task = taskDoc.data()
+          const calendarEventIds = task.calendarEventIds ?? []
+
+          if (calendarEventIds.length > 0) {
+            if (taskHandling === 'delete-linked') {
+              // Delete tasks that have calendar links
+              taskBatch.delete(taskDoc.ref)
+              counts.tasksDeleted += 1
+            } else if (taskHandling === 'unlink') {
+              // Remove calendar links but keep the task
+              taskBatch.update(taskDoc.ref, { calendarEventIds: [] })
+              counts.tasksUpdated += 1
+            }
+
+            taskBatchOps += 1
+            if (taskBatchOps >= maxBatchOps) {
+              await taskBatch.commit()
+              taskBatch = firestore.batch()
+              taskBatchOps = 0
+            }
+          }
+        }
+
+        if (taskBatchOps > 0) {
+          await taskBatch.commit()
+        }
+      }
+
+      // 2. Handle Habit Check-ins
+      if (deleteHabitCheckins) {
+        const checkinsSnapshot = await firestore
+          .collection(`users/${uid}/habitCheckins`)
+          .where('sourceType', '==', 'calendar')
+          .get()
+
+        let checkinBatch = firestore.batch()
+        let checkinBatchOps = 0
+
+        for (const checkinDoc of checkinsSnapshot.docs) {
+          checkinBatch.delete(checkinDoc.ref)
+          counts.habitCheckinsDeleted += 1
+          checkinBatchOps += 1
+
+          if (checkinBatchOps >= maxBatchOps) {
+            await checkinBatch.commit()
+            checkinBatch = firestore.batch()
+            checkinBatchOps = 0
+          }
+        }
+
+        if (checkinBatchOps > 0) {
+          await checkinBatch.commit()
+        }
+      }
+
+      // 3. Handle Composite Events
+      if (compositeHandling === 'delete') {
+        const compositesSnapshot = await firestore.collection(`users/${uid}/compositeEvents`).get()
+
+        let compositeBatch = firestore.batch()
+        let compositeBatchOps = 0
+
+        for (const compositeDoc of compositesSnapshot.docs) {
+          compositeBatch.delete(compositeDoc.ref)
+          counts.compositesDeleted += 1
+          compositeBatchOps += 1
+
+          if (compositeBatchOps >= maxBatchOps) {
+            await compositeBatch.commit()
+            compositeBatch = firestore.batch()
+            compositeBatchOps = 0
+          }
+        }
+
+        if (compositeBatchOps > 0) {
+          await compositeBatch.commit()
+        }
+      }
+
+      // 4. Delete Calendar Events
+      const eventsSnapshot = await firestore.collection(`users/${uid}/calendarEvents`).get()
+
+      let eventBatch = firestore.batch()
+      let eventBatchOps = 0
+
+      for (const eventDoc of eventsSnapshot.docs) {
+        eventBatch.delete(eventDoc.ref)
+        counts.eventsDeleted += 1
+        eventBatchOps += 1
+
+        if (eventBatchOps >= maxBatchOps) {
+          await eventBatch.commit()
+          eventBatch = firestore.batch()
+          eventBatchOps = 0
+        }
+      }
+
+      if (eventBatchOps > 0) {
+        await eventBatch.commit()
+      }
+
+      // 5. Delete Calendars
+      const calendarsSnapshot = await firestore.collection(`users/${uid}/calendars`).get()
+
+      let calendarBatch = firestore.batch()
+      let calendarBatchOps = 0
+
+      for (const calendarDoc of calendarsSnapshot.docs) {
+        calendarBatch.delete(calendarDoc.ref)
+        counts.calendarsDeleted += 1
+        calendarBatchOps += 1
+
+        if (calendarBatchOps >= maxBatchOps) {
+          await calendarBatch.commit()
+          calendarBatch = firestore.batch()
+          calendarBatchOps = 0
+        }
+      }
+
+      if (calendarBatchOps > 0) {
+        await calendarBatch.commit()
+      }
+
+      // 6. Delete Sync Data and Supporting Collections
+      if (clearSyncData) {
+        const collections = [
+          'calendarAccounts',
+          'calendarSyncState',
+          'calendarSyncRuns',
+          'calendarWritebackQueue',
+          'recurrenceInstanceMap',
+          'compositeRuns',
+          'freeBusyCache',
+        ]
+
+        for (const collectionName of collections) {
+          const snapshot = await firestore.collection(`users/${uid}/${collectionName}`).get()
+
+          let batch = firestore.batch()
+          let batchOps = 0
+
+          for (const doc of snapshot.docs) {
+            batch.delete(doc.ref)
+            counts.syncDataDeleted += 1
+            batchOps += 1
+
+            if (batchOps >= maxBatchOps) {
+              await batch.commit()
+              batch = firestore.batch()
+              batchOps = 0
+            }
+          }
+
+          if (batchOps > 0) {
+            await batch.commit()
+          }
+        }
+
+        // 7. Delete OAuth tokens to prevent re-syncing after deletion
+        // This is critical: without deleting tokens, auto-sync will re-import events from Google Calendar
+        const oauthTokensSnapshot = await firestore
+          .collection(`users/${uid}/privateIntegrations/google/googleAccounts`)
+          .get()
+
+        let oauthBatch = firestore.batch()
+        let oauthBatchOps = 0
+
+        for (const doc of oauthTokensSnapshot.docs) {
+          oauthBatch.delete(doc.ref)
+          counts.syncDataDeleted += 1
+          oauthBatchOps += 1
+
+          if (oauthBatchOps >= maxBatchOps) {
+            await oauthBatch.commit()
+            oauthBatch = firestore.batch()
+            oauthBatchOps = 0
+          }
+        }
+
+        if (oauthBatchOps > 0) {
+          await oauthBatch.commit()
+        }
+      }
+
+      response.json({
+        success: true,
+        counts,
+      })
+    } catch (error) {
+      console.error('Error deleting calendar data:', error)
+      response.status(500).json({ error: (error as Error).message })
+    }
+  }
+)
+
+/**
+ * Preview what would be deleted before actually deleting
+ * Returns counts of items that would be affected
+ */
+export const previewDeleteCalendarData = onRequest(
+  {
+    ...FUNCTION_CONFIG.http,
+    cors: true,
+  },
+  async (request, response) => {
+    try {
+      const uid = String(request.query.uid ?? request.body.uid ?? '')
+
+      if (!uid) {
+        response.status(400).json({ error: 'Missing uid' })
+        return
+      }
+
+      // Verify authentication
+      if (!(await verifyAuth(request, response, uid))) {
+        return
+      }
+
+      // Count items in parallel
+      const [
+        calendarsSnapshot,
+        eventsSnapshot,
+        compositesSnapshot,
+        tasksWithCalendarLinksSnapshot,
+        habitCheckinsSnapshot,
+      ] = await Promise.all([
+        firestore.collection(`users/${uid}/calendars`).count().get(),
+        firestore.collection(`users/${uid}/calendarEvents`).count().get(),
+        firestore.collection(`users/${uid}/compositeEvents`).count().get(),
+        firestore
+          .collection(`users/${uid}/tasks`)
+          .where('calendarEventIds', '!=', null)
+          .count()
+          .get(),
+        firestore
+          .collection(`users/${uid}/habitCheckins`)
+          .where('sourceType', '==', 'calendar')
+          .count()
+          .get(),
+      ])
+
+      response.json({
+        calendars: calendarsSnapshot.data().count,
+        events: eventsSnapshot.data().count,
+        composites: compositesSnapshot.data().count,
+        tasksWithCalendarLinks: tasksWithCalendarLinksSnapshot.data().count,
+        habitCheckinsFromCalendar: habitCheckinsSnapshot.data().count,
+      })
+    } catch (error) {
+      console.error('Error previewing calendar data deletion:', error)
+      response.status(500).json({ error: (error as Error).message })
+    }
+  }
+)
+
 // ==================== AI Agent Framework (Phase 4A) ====================
 
 /**

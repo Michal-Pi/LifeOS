@@ -13,7 +13,7 @@ import { TaskDetailSidebar } from '@/components/TaskDetailSidebar'
 import { EventFormModal, type EventFormData } from '@/components/EventFormModal'
 import type { CanonicalProject, CanonicalMilestone, CanonicalTask, Domain } from '@/types/todo'
 
-export function TodoPage() {
+export function PlannerPage() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const userId = user?.uid ?? ''
@@ -251,8 +251,8 @@ export function TodoPage() {
 
   return (
     <div className="page-container">
-      <div className="todo-page">
-        <aside className="todo-sidebar">
+      <div className="planner-page">
+        <aside className="planner-sidebar">
           <div className="sidebar-header">
             <h2>Projects</h2>
             <button
@@ -279,8 +279,8 @@ export function TodoPage() {
           )}
         </aside>
 
-        <main className="todo-main">
-          <header className="todo-header">
+        <main className="planner-main">
+          <header className="planner-header">
             <div className="header-breadcrumbs">
               <span
                 className="breadcrumb-item"

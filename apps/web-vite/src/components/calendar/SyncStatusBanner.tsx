@@ -26,6 +26,7 @@ interface SyncStatusBannerProps {
   // Sync state
   syncing: boolean
   status: { lastSyncAt?: string; lastSuccessAt?: string; lastError?: string } | null
+  syncProgress: { total: number; isActive: boolean } | null
 
   // Outbox state
   pendingOps: OutboxOp[]
@@ -54,6 +55,7 @@ export function SyncStatusBanner({
   isConnecting,
   syncing,
   status,
+  syncProgress,
   pendingOps,
   failedOps,
   selectedMonthDate,
@@ -76,6 +78,13 @@ export function SyncStatusBanner({
 
       {/* Pending operations */}
       {pendingOps.length > 0 && <span className="pending-badge">{pendingOps.length} syncing…</span>}
+
+      {/* Sync progress indicator (for incremental syncs) */}
+      {syncProgress?.isActive && (
+        <span className="sync-progress-badge">
+          Syncing... {syncProgress.total.toLocaleString()} events
+        </span>
+      )}
 
       {/* Failed operations with retry */}
       {failedOps.length > 0 && (

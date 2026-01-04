@@ -226,7 +226,7 @@ export function ToolBuilderModal({
                 type="text"
                 value={allowedModulesInput}
                 onChange={(e) => setAllowedModulesInput(e.target.value)}
-                placeholder="calendar, todos"
+                placeholder="calendar, planner"
               />
               <small>Optional comma-separated module list</small>
             </div>

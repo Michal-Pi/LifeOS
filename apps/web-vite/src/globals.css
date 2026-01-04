@@ -1032,28 +1032,28 @@ button[aria-busy='true'] {
   animation: typing 2s steps(30, end);
 }
 
-.todo-page {
+.planner-page {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr) 360px;
   gap: 1.5rem;
   align-items: start;
 }
 
-.todo-sidebar,
-.todo-main {
+.planner-sidebar,
+.planner-main {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.todo-sidebar {
+.planner-sidebar {
   background: var(--background-secondary);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 1rem;
 }
 
-.todo-header {
+.planner-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -1085,21 +1085,21 @@ button[aria-busy='true'] {
   color: var(--border-strong);
 }
 
-.todo-header .header-actions {
+.planner-header .header-actions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
 }
 
-.todo-sidebar .sidebar-header {
+.planner-sidebar .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
-.todo-sidebar .sidebar-header h2 {
+.planner-sidebar .sidebar-header h2 {
   margin: 0;
   font-size: 1rem;
 }
@@ -2124,6 +2124,15 @@ button[aria-busy='true'] {
   border-radius: 999px;
   background: rgba(237, 137, 54, 0.15);
   color: #ed8936;
+}
+
+.sync-progress-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(66, 153, 225, 0.15);
+  color: #4299e1;
+  font-family: var(--font-mono);
 }
 
 .sync-indicator {

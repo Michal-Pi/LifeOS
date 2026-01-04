@@ -4,6 +4,8 @@ import { createFirestoreCalendarListRepository } from '@/adapters/firestoreCalen
 import { useAuth } from '@/hooks/useAuth'
 import { functionUrl } from '@/lib/functionsUrl'
 import { authenticatedFetch } from '@/lib/authenticatedFetch'
+import { DeleteAllCalendarDataSection } from './DeleteAllCalendarDataSection'
+import { CleanupOrphanedDataSection } from './CleanupOrphanedDataSection'
 
 declare const confirm: (message: string) => boolean
 
@@ -356,6 +358,10 @@ export function CalendarSettingsPanel() {
           ))}
         </div>
       )}
+
+      <CleanupOrphanedDataSection userId={userId} />
+
+      <DeleteAllCalendarDataSection userId={userId} />
     </section>
   )
 }

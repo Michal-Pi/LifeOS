@@ -5,6 +5,14 @@ import './globals.css'
 import './styles/habits-mind.css'
 import './styles/training.css'
 
+// Global error handler to catch unhandled promise rejections
+if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (event) => {
+    const error = event.reason
+    console.error('Unhandled promise rejection:', error)
+  })
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
