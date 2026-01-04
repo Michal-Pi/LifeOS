@@ -66,6 +66,7 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
     if (!userId) return
 
     let active = true
+    let reloadTimeout: NodeJS.Timeout | null = null
 
     const setupListener = async () => {
       const db = await getDb()
@@ -83,24 +84,31 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
             return
           }
 
-          // Only reload if there were deletions or significant changes
+          // Only reload if there were deletions
+          // Ignore additions (sync operations) to prevent reload loops
           const changes = snapshot.docChanges()
-          const hasRelevantChanges = changes.some(
-            (change) => change.type === 'removed' || change.type === 'added'
-          )
+          const hasRemovals = changes.some((change) => change.type === 'removed')
 
           logger.info('Events snapshot received', {
             total: snapshot.size,
             added: changes.filter((c) => c.type === 'added').length,
             removed: changes.filter((c) => c.type === 'removed').length,
             modified: changes.filter((c) => c.type === 'modified').length,
-            hasRelevantChanges,
+            hasRemovals,
             active,
           })
 
-          if (hasRelevantChanges) {
-            logger.info('Events collection changed, reloading')
-            void loadEvents()
+          if (hasRemovals) {
+            logger.info('Events deleted, reloading')
+            // Debounce reload to handle batch deletions
+            if (reloadTimeout) {
+              clearTimeout(reloadTimeout)
+            }
+            reloadTimeout = setTimeout(() => {
+              if (active) {
+                void loadEvents()
+              }
+            }, 500)
           }
         },
         (error) => {
@@ -119,6 +127,9 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
 
     return () => {
       active = false
+      if (reloadTimeout) {
+        clearTimeout(reloadTimeout)
+      }
       if (unsubscribeRef.current) {
         unsubscribeRef.current()
         unsubscribeRef.current = null
