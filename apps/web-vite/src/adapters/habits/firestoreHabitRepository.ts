@@ -16,7 +16,7 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore'
-import { getFirestoreClient } from '@/lib/firebase'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
   CanonicalHabit,
@@ -30,9 +30,8 @@ import type {
 const COLLECTION_HABITS = 'habits'
 
 export const createFirestoreHabitRepository = (): HabitRepository => {
-  const db = getFirestoreClient()
-
   const create = async (userId: string, input: CreateHabitInput): Promise<CanonicalHabit> => {
+    const db = await getDb()
     const habitId = newId<'habit'>('habit')
     const now = Date.now()
 
@@ -57,6 +56,7 @@ export const createFirestoreHabitRepository = (): HabitRepository => {
     habitId: HabitId,
     updates: UpdateHabitInput
   ): Promise<CanonicalHabit> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_HABITS}/${habitId}`)
     const snapshot = await getDoc(ref)
 
@@ -77,11 +77,13 @@ export const createFirestoreHabitRepository = (): HabitRepository => {
   }
 
   const deleteHabit = async (userId: string, habitId: HabitId): Promise<void> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_HABITS}/${habitId}`)
     await deleteDoc(ref)
   }
 
   const get = async (userId: string, habitId: HabitId): Promise<CanonicalHabit | null> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_HABITS}/${habitId}`)
     const snapshot = await getDoc(ref)
 
@@ -96,6 +98,7 @@ export const createFirestoreHabitRepository = (): HabitRepository => {
     userId: string,
     options?: { status?: HabitStatus }
   ): Promise<CanonicalHabit[]> => {
+    const db = await getDb()
     let q = query(
       collection(db, `users/${userId}/${COLLECTION_HABITS}`),
       orderBy('createdAtMs', 'desc')
@@ -114,6 +117,7 @@ export const createFirestoreHabitRepository = (): HabitRepository => {
   }
 
   const listForDate = async (userId: string, dateKey: string): Promise<CanonicalHabit[]> => {
+    const db = await getDb()
     // Get all active habits
     const q = query(
       collection(db, `users/${userId}/${COLLECTION_HABITS}`),

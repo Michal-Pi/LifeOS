@@ -1,5 +1,4 @@
 import {
-  getFirestore,
   collection,
   doc,
   getDocs,
@@ -9,6 +8,7 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
   AgentRepository,
@@ -21,11 +21,9 @@ import type {
 } from '@lifeos/agents'
 
 export const createFirestoreAgentRepository = (): AgentRepository => {
-  const getFirestoreClient = () => getFirestore()
-
   return {
     async create(userId: string, input: CreateAgentInput): Promise<AgentConfig> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const agentId = newId('agent')
 
       const agent: AgentConfig = {
@@ -50,7 +48,7 @@ export const createFirestoreAgentRepository = (): AgentRepository => {
       agentId: AgentId,
       updates: UpdateAgentInput
     ): Promise<AgentConfig> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const agentDoc = doc(db, `users/${userId}/agents/${agentId}`)
 
       const existing = await getDoc(agentDoc)
@@ -71,7 +69,7 @@ export const createFirestoreAgentRepository = (): AgentRepository => {
     },
 
     async delete(userId: string, agentId: AgentId): Promise<void> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const agentDoc = doc(db, `users/${userId}/agents/${agentId}`)
 
       const existing = await getDoc(agentDoc)
@@ -92,7 +90,7 @@ export const createFirestoreAgentRepository = (): AgentRepository => {
     },
 
     async get(userId: string, agentId: AgentId): Promise<AgentConfig | null> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const agentDoc = doc(db, `users/${userId}/agents/${agentId}`)
       const snapshot = await getDoc(agentDoc)
 
@@ -108,7 +106,7 @@ export const createFirestoreAgentRepository = (): AgentRepository => {
         activeOnly?: boolean
       }
     ): Promise<AgentConfig[]> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const agentsCol = collection(db, `users/${userId}/agents`)
 
       let q = query(agentsCol, orderBy('name', 'asc'))

@@ -16,7 +16,7 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore'
-import { getFirestoreClient } from '@/lib/firebase'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
   CanonicalInterventionPreset,
@@ -31,12 +31,11 @@ import type {
 const COLLECTION_INTERVENTIONS = 'interventions'
 
 export const createFirestoreInterventionRepository = (): InterventionRepository => {
-  const db = getFirestoreClient()
-
   const create = async (
     userId: string,
     input: CreateInterventionInput
   ): Promise<CanonicalInterventionPreset> => {
+    const db = await getDb()
     const interventionId = newId<'intervention'>('intervention')
     const now = Date.now()
 
@@ -61,6 +60,7 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
     interventionId: InterventionId,
     updates: UpdateInterventionInput
   ): Promise<CanonicalInterventionPreset> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_INTERVENTIONS}/${interventionId}`)
     const snapshot = await getDoc(ref)
 
@@ -84,6 +84,7 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
     userId: string,
     interventionId: InterventionId
   ): Promise<void> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_INTERVENTIONS}/${interventionId}`)
     await deleteDoc(ref)
   }
@@ -91,6 +92,7 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
   const get = async (
     interventionId: InterventionId
   ): Promise<CanonicalInterventionPreset | null> => {
+    const db = await getDb()
     // Try to get from system collection first (for system presets)
     if (interventionId.startsWith('intervention:system-')) {
       const systemRef = doc(db, `${COLLECTION_INTERVENTIONS}/${interventionId}`)
@@ -108,6 +110,7 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
   }
 
   const listUserPresets = async (userId: string): Promise<CanonicalInterventionPreset[]> => {
+    const db = await getDb()
     const q = query(
       collection(db, `users/${userId}/${COLLECTION_INTERVENTIONS}`),
       orderBy('createdAtMs', 'desc')
@@ -118,6 +121,7 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
   }
 
   const listSystemPresets = async (): Promise<CanonicalInterventionPreset[]> => {
+    const db = await getDb()
     // System presets are stored at the root level with userId: 'system'
     const q = query(
       collection(db, COLLECTION_INTERVENTIONS),
@@ -130,6 +134,7 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
   }
 
   const listByType = async (type: InterventionType): Promise<CanonicalInterventionPreset[]> => {
+    const db = await getDb()
     // Query system presets by type
     const q = query(
       collection(db, COLLECTION_INTERVENTIONS),
@@ -142,6 +147,7 @@ export const createFirestoreInterventionRepository = (): InterventionRepository 
   }
 
   const listByFeeling = async (feeling: FeelingState): Promise<CanonicalInterventionPreset[]> => {
+    const db = await getDb()
     // Query system presets that include this feeling in their recommendations
     const q = query(
       collection(db, COLLECTION_INTERVENTIONS),

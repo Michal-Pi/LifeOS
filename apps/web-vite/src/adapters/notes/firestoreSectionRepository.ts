@@ -16,7 +16,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore'
-import { getFirestoreClient } from '@/lib/firebase'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
   Section,
@@ -30,9 +30,8 @@ import type {
 const COLLECTION_SECTIONS = 'sections'
 
 export const createFirestoreSectionRepository = (): SectionRepository => {
-  const db = getFirestoreClient()
-
   const create = async (userId: string, input: CreateSectionInput): Promise<Section> => {
+    const db = await getDb()
     const sectionId = newId<'section'>('section')
     const now = Date.now()
 
@@ -54,6 +53,7 @@ export const createFirestoreSectionRepository = (): SectionRepository => {
     sectionId: SectionId,
     updates: UpdateSectionInput
   ): Promise<Section> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_SECTIONS}/${sectionId}`)
     const snapshot = await getDoc(ref)
 
@@ -73,11 +73,13 @@ export const createFirestoreSectionRepository = (): SectionRepository => {
   }
 
   const deleteSection = async (userId: string, sectionId: SectionId): Promise<void> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_SECTIONS}/${sectionId}`)
     await deleteDoc(ref)
   }
 
   const get = async (userId: string, sectionId: SectionId): Promise<Section | null> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_SECTIONS}/${sectionId}`)
     const snapshot = await getDoc(ref)
 
@@ -89,6 +91,7 @@ export const createFirestoreSectionRepository = (): SectionRepository => {
   }
 
   const list = async (userId: string, filters?: SectionFilters): Promise<Section[]> => {
+    const db = await getDb()
     let q = query(collection(db, `users/${userId}/${COLLECTION_SECTIONS}`))
 
     if (filters?.topicId) {
@@ -106,6 +109,7 @@ export const createFirestoreSectionRepository = (): SectionRepository => {
     userId: string,
     sectionOrders: { sectionId: SectionId; order: number }[]
   ): Promise<void> => {
+    const db = await getDb()
     const batch = writeBatch(db)
 
     for (const { sectionId, order } of sectionOrders) {

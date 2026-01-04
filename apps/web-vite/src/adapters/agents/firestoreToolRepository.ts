@@ -1,5 +1,4 @@
 import {
-  getFirestore,
   collection,
   doc,
   getDocs,
@@ -10,18 +9,17 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type { ToolRepository, ToolDefinition, ToolId, CreateToolInput } from '@lifeos/agents'
 
 export const createFirestoreToolRepository = (): ToolRepository => {
-  const getFirestoreClient = () => getFirestore()
-
   return {
     async create(input: CreateToolInput): Promise<ToolDefinition> {
       if (!input.userId) {
         throw new Error('userId is required to create custom tools')
       }
-      const db = getFirestoreClient()
+      const db = await getDb()
       const toolId = newId('tool')
 
       const tool: ToolDefinition = {
@@ -39,11 +37,10 @@ export const createFirestoreToolRepository = (): ToolRepository => {
     },
 
     async update(toolId: ToolId, updates: Partial<CreateToolInput>): Promise<ToolDefinition> {
-      const db = getFirestoreClient()
-
       if (!updates.userId) {
         throw new Error('userId is required to update tools')
       }
+      const db = await getDb()
       const toolDoc = doc(db, `users/${updates.userId}/tools/${toolId}`)
 
       const existing = await getDoc(toolDoc)
@@ -62,7 +59,7 @@ export const createFirestoreToolRepository = (): ToolRepository => {
     },
 
     async get(userId: string, toolId: ToolId): Promise<ToolDefinition | null> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const toolDoc = doc(db, `users/${userId}/tools/${toolId}`)
       const snapshot = await getDoc(toolDoc)
       if (!snapshot.exists()) return null
@@ -70,10 +67,10 @@ export const createFirestoreToolRepository = (): ToolRepository => {
     },
 
     async list(options?: { userId?: string; module?: string }): Promise<ToolDefinition[]> {
-      const db = getFirestoreClient()
       if (!options?.userId) {
         return []
       }
+      const db = await getDb()
 
       const toolsCol = collection(db, `users/${options.userId}/tools`)
       let q = query(toolsCol, orderBy('updatedAtMs', 'desc'))
@@ -87,7 +84,7 @@ export const createFirestoreToolRepository = (): ToolRepository => {
     },
 
     async delete(userId: string, toolId: ToolId): Promise<void> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const toolDoc = doc(db, `users/${userId}/tools/${toolId}`)
       await deleteDoc(toolDoc)
     },

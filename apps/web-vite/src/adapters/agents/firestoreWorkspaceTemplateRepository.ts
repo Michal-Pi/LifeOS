@@ -1,5 +1,4 @@
 import {
-  getFirestore,
   collection,
   doc,
   getDoc,
@@ -9,6 +8,7 @@ import {
   query,
   orderBy,
 } from 'firebase/firestore'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
   WorkspaceTemplateRepository,
@@ -18,11 +18,9 @@ import type {
 } from '@lifeos/agents'
 
 export const createFirestoreWorkspaceTemplateRepository = (): WorkspaceTemplateRepository => {
-  const getFirestoreClient = () => getFirestore()
-
   return {
     async create(input: CreateWorkspaceTemplateInput): Promise<WorkspaceTemplate> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const templateId = newId('workspaceTemplate') as WorkspaceTemplateId
 
       const template: WorkspaceTemplate = {
@@ -44,7 +42,7 @@ export const createFirestoreWorkspaceTemplateRepository = (): WorkspaceTemplateR
       if (!updates.userId) {
         throw new Error('userId is required to update templates')
       }
-      const db = getFirestoreClient()
+      const db = await getDb()
       const docRef = doc(db, `users/${updates.userId}/workspaceTemplates/${templateId}`)
       const snapshot = await getDoc(docRef)
       if (!snapshot.exists()) {
@@ -62,7 +60,7 @@ export const createFirestoreWorkspaceTemplateRepository = (): WorkspaceTemplateR
     },
 
     async get(userId: string, templateId: WorkspaceTemplateId): Promise<WorkspaceTemplate | null> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const docRef = doc(db, `users/${userId}/workspaceTemplates/${templateId}`)
       const snapshot = await getDoc(docRef)
       if (!snapshot.exists()) return null
@@ -70,7 +68,7 @@ export const createFirestoreWorkspaceTemplateRepository = (): WorkspaceTemplateR
     },
 
     async list(userId: string): Promise<WorkspaceTemplate[]> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const colRef = collection(db, `users/${userId}/workspaceTemplates`)
       const q = query(colRef, orderBy('updatedAtMs', 'desc'))
       const snapshot = await getDocs(q)
@@ -78,7 +76,7 @@ export const createFirestoreWorkspaceTemplateRepository = (): WorkspaceTemplateR
     },
 
     async delete(userId: string, templateId: WorkspaceTemplateId): Promise<void> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const docRef = doc(db, `users/${userId}/workspaceTemplates/${templateId}`)
       await deleteDoc(docRef)
     },

@@ -1,5 +1,4 @@
 import {
-  getFirestore,
   collection,
   doc,
   getDocs,
@@ -11,6 +10,7 @@ import {
   orderBy,
   limit as firestoreLimit,
 } from 'firebase/firestore'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
   RunRepository,
@@ -22,11 +22,9 @@ import type {
 } from '@lifeos/agents'
 
 export const createFirestoreRunRepository = (): RunRepository => {
-  const getFirestoreClient = () => getFirestore()
-
   return {
     async create(userId: string, input: CreateRunInput): Promise<Run> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const runId = newId('run')
 
       const run: Run = {
@@ -51,7 +49,7 @@ export const createFirestoreRunRepository = (): RunRepository => {
       runId: RunId,
       updates: Partial<Omit<Run, 'runId' | 'userId' | 'workspaceId'>>
     ): Promise<Run> {
-      const db = getFirestoreClient()
+      const db = await getDb()
 
       // Find the run across all workspaces
       const workspacesCol = collection(db, `users/${userId}/workspaces`)
@@ -78,7 +76,7 @@ export const createFirestoreRunRepository = (): RunRepository => {
     },
 
     async get(userId: string, runId: RunId): Promise<Run | null> {
-      const db = getFirestoreClient()
+      const db = await getDb()
 
       // Find the run across all workspaces
       const workspacesCol = collection(db, `users/${userId}/workspaces`)
@@ -104,7 +102,7 @@ export const createFirestoreRunRepository = (): RunRepository => {
         limit?: number
       }
     ): Promise<Run[]> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const runs: Run[] = []
 
       if (options?.workspaceId) {
@@ -156,7 +154,7 @@ export const createFirestoreRunRepository = (): RunRepository => {
     },
 
     async delete(userId: string, runId: RunId): Promise<void> {
-      const db = getFirestoreClient()
+      const db = await getDb()
 
       // Find and delete the run across all workspaces
       const workspacesCol = collection(db, `users/${userId}/workspaces`)

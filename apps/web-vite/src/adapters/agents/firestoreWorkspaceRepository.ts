@@ -1,5 +1,4 @@
 import {
-  getFirestore,
   collection,
   doc,
   getDocs,
@@ -8,6 +7,7 @@ import {
   query,
   orderBy,
 } from 'firebase/firestore'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
   WorkspaceRepository,
@@ -18,11 +18,9 @@ import type {
 } from '@lifeos/agents'
 
 export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
-  const getFirestoreClient = () => getFirestore()
-
   return {
     async create(userId: string, input: CreateWorkspaceInput): Promise<Workspace> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const workspaceId = newId('workspace')
 
       const workspace: Workspace = {
@@ -47,7 +45,7 @@ export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
       workspaceId: WorkspaceId,
       updates: UpdateWorkspaceInput
     ): Promise<Workspace> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const workspaceDoc = doc(db, `users/${userId}/workspaces/${workspaceId}`)
 
       const existing = await getDoc(workspaceDoc)
@@ -68,7 +66,7 @@ export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
     },
 
     async delete(userId: string, workspaceId: WorkspaceId): Promise<void> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const workspaceDoc = doc(db, `users/${userId}/workspaces/${workspaceId}`)
 
       const existing = await getDoc(workspaceDoc)
@@ -89,7 +87,7 @@ export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
     },
 
     async get(userId: string, workspaceId: WorkspaceId): Promise<Workspace | null> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const workspaceDoc = doc(db, `users/${userId}/workspaces/${workspaceId}`)
       const snapshot = await getDoc(workspaceDoc)
 
@@ -98,7 +96,7 @@ export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
     },
 
     async list(userId: string, options?: { activeOnly?: boolean }): Promise<Workspace[]> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const workspacesCol = collection(db, `users/${userId}/workspaces`)
 
       const q = query(workspacesCol, orderBy('name', 'asc'))

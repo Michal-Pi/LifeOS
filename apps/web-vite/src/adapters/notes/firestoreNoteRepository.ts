@@ -16,7 +16,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore'
-import { getFirestoreClient } from '@/lib/firebase'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
   Note,
@@ -30,9 +30,8 @@ import type {
 const COLLECTION_NOTES = 'notes'
 
 export const createFirestoreNoteRepository = (): NoteRepository => {
-  const db = getFirestoreClient()
-
   const create = async (userId: string, input: CreateNoteInput): Promise<Note> => {
+    const db = await getDb()
     const noteId = newId<'note'>('note')
     const now = Date.now()
 
@@ -57,6 +56,7 @@ export const createFirestoreNoteRepository = (): NoteRepository => {
     noteId: NoteId,
     updates: UpdateNoteInput
   ): Promise<Note> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_NOTES}/${noteId}`)
     const snapshot = await getDoc(ref)
 
@@ -77,11 +77,13 @@ export const createFirestoreNoteRepository = (): NoteRepository => {
   }
 
   const deleteNote = async (userId: string, noteId: NoteId): Promise<void> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_NOTES}/${noteId}`)
     await deleteDoc(ref)
   }
 
   const get = async (userId: string, noteId: NoteId): Promise<Note | null> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_NOTES}/${noteId}`)
     const snapshot = await getDoc(ref)
 
@@ -93,6 +95,7 @@ export const createFirestoreNoteRepository = (): NoteRepository => {
   }
 
   const list = async (userId: string, filters?: NoteFilters): Promise<Note[]> => {
+    const db = await getDb()
     let q = query(collection(db, `users/${userId}/${COLLECTION_NOTES}`))
 
     if (filters?.topicId) {
@@ -125,6 +128,7 @@ export const createFirestoreNoteRepository = (): NoteRepository => {
   }
 
   const updateLastAccessed = async (userId: string, noteId: NoteId): Promise<void> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_NOTES}/${noteId}`)
     const snapshot = await getDoc(ref)
 
@@ -140,6 +144,7 @@ export const createFirestoreNoteRepository = (): NoteRepository => {
   }
 
   const batchUpdate = async (userId: string, notes: Note[]): Promise<void> => {
+    const db = await getDb()
     const batch = writeBatch(db)
 
     for (const note of notes) {

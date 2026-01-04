@@ -16,7 +16,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore'
-import { getFirestoreClient } from '@/lib/firebase'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
   Topic,
@@ -30,9 +30,8 @@ import type {
 const COLLECTION_TOPICS = 'topics'
 
 export const createFirestoreTopicRepository = (): TopicRepository => {
-  const db = getFirestoreClient()
-
   const create = async (userId: string, input: CreateTopicInput): Promise<Topic> => {
+    const db = await getDb()
     const topicId = newId<'topic'>('topic')
     const now = Date.now()
 
@@ -54,6 +53,7 @@ export const createFirestoreTopicRepository = (): TopicRepository => {
     topicId: TopicId,
     updates: UpdateTopicInput
   ): Promise<Topic> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_TOPICS}/${topicId}`)
     const snapshot = await getDoc(ref)
 
@@ -73,11 +73,13 @@ export const createFirestoreTopicRepository = (): TopicRepository => {
   }
 
   const deleteTopic = async (userId: string, topicId: TopicId): Promise<void> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_TOPICS}/${topicId}`)
     await deleteDoc(ref)
   }
 
   const get = async (userId: string, topicId: TopicId): Promise<Topic | null> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_TOPICS}/${topicId}`)
     const snapshot = await getDoc(ref)
 
@@ -89,6 +91,7 @@ export const createFirestoreTopicRepository = (): TopicRepository => {
   }
 
   const list = async (userId: string, filters?: TopicFilters): Promise<Topic[]> => {
+    const db = await getDb()
     let q = query(collection(db, `users/${userId}/${COLLECTION_TOPICS}`))
 
     if (filters?.parentTopicId !== undefined) {
@@ -106,6 +109,7 @@ export const createFirestoreTopicRepository = (): TopicRepository => {
     userId: string,
     topicOrders: { topicId: TopicId; order: number }[]
   ): Promise<void> => {
+    const db = await getDb()
     const batch = writeBatch(db)
 
     for (const { topicId, order } of topicOrders) {

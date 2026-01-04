@@ -1,5 +1,4 @@
 import {
-  getFirestore,
   collection,
   doc,
   getDocs,
@@ -9,6 +8,7 @@ import {
   query,
   orderBy,
 } from 'firebase/firestore'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
   ToolCallRecordRepository,
@@ -20,11 +20,9 @@ import type {
 } from '@lifeos/agents'
 
 export const createFirestoreToolCallRecordRepository = (): ToolCallRecordRepository => {
-  const getFirestoreClient = () => getFirestore()
-
   return {
     async createToolCallRecord(input: CreateToolCallRecordInput): Promise<ToolCallRecord> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const toolCallRecordId = newId('toolCallRecord')
 
       const toolCallRecord: ToolCallRecord = {
@@ -48,7 +46,7 @@ export const createFirestoreToolCallRecordRepository = (): ToolCallRecordReposit
       id: ToolCallRecordId,
       updates: Partial<ToolCallRecord>
     ): Promise<ToolCallRecord> {
-      const db = getFirestoreClient()
+      const db = await getDb()
 
       // Find the tool call record across all users and runs
       // In practice, we should have userId and runId in context, but for now we search
@@ -82,7 +80,7 @@ export const createFirestoreToolCallRecordRepository = (): ToolCallRecordReposit
     },
 
     async getToolCallRecord(id: ToolCallRecordId): Promise<ToolCallRecord | null> {
-      const db = getFirestoreClient()
+      const db = await getDb()
 
       // Find the tool call record across all users and runs
       const usersCol = collection(db, 'users')
@@ -106,7 +104,7 @@ export const createFirestoreToolCallRecordRepository = (): ToolCallRecordReposit
     },
 
     async getToolCallRecordsByRun(runId: RunId): Promise<ToolCallRecord[]> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const toolCalls: ToolCallRecord[] = []
 
       // Find the run across all users
@@ -131,7 +129,7 @@ export const createFirestoreToolCallRecordRepository = (): ToolCallRecordReposit
     },
 
     async getToolCallRecordsByWorkspace(workspaceId: WorkspaceId): Promise<ToolCallRecord[]> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const toolCalls: ToolCallRecord[] = []
 
       // Find all runs for this workspace across all users
@@ -161,7 +159,7 @@ export const createFirestoreToolCallRecordRepository = (): ToolCallRecordReposit
     },
 
     async getToolCallRecordsByUser(userId: string): Promise<ToolCallRecord[]> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const toolCalls: ToolCallRecord[] = []
 
       // Get all runs for this user
@@ -183,7 +181,7 @@ export const createFirestoreToolCallRecordRepository = (): ToolCallRecordReposit
     },
 
     async deleteToolCallRecord(id: ToolCallRecordId): Promise<void> {
-      const db = getFirestoreClient()
+      const db = await getDb()
 
       // Find and delete the tool call record across all users and runs
       const usersCol = collection(db, 'users')

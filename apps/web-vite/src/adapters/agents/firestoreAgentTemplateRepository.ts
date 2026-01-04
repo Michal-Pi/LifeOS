@@ -1,5 +1,4 @@
 import {
-  getFirestore,
   collection,
   doc,
   getDoc,
@@ -9,6 +8,7 @@ import {
   query,
   orderBy,
 } from 'firebase/firestore'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
   AgentTemplateRepository,
@@ -18,11 +18,9 @@ import type {
 } from '@lifeos/agents'
 
 export const createFirestoreAgentTemplateRepository = (): AgentTemplateRepository => {
-  const getFirestoreClient = () => getFirestore()
-
   return {
     async create(input: CreateAgentTemplateInput): Promise<AgentTemplate> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const templateId = newId('agentTemplate') as AgentTemplateId
 
       const template: AgentTemplate = {
@@ -44,7 +42,7 @@ export const createFirestoreAgentTemplateRepository = (): AgentTemplateRepositor
       if (!updates.userId) {
         throw new Error('userId is required to update templates')
       }
-      const db = getFirestoreClient()
+      const db = await getDb()
       const docRef = doc(db, `users/${updates.userId}/agentTemplates/${templateId}`)
       const snapshot = await getDoc(docRef)
       if (!snapshot.exists()) {
@@ -62,7 +60,7 @@ export const createFirestoreAgentTemplateRepository = (): AgentTemplateRepositor
     },
 
     async get(userId: string, templateId: AgentTemplateId): Promise<AgentTemplate | null> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const docRef = doc(db, `users/${userId}/agentTemplates/${templateId}`)
       const snapshot = await getDoc(docRef)
       if (!snapshot.exists()) return null
@@ -70,7 +68,7 @@ export const createFirestoreAgentTemplateRepository = (): AgentTemplateRepositor
     },
 
     async list(userId: string): Promise<AgentTemplate[]> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const colRef = collection(db, `users/${userId}/agentTemplates`)
       const q = query(colRef, orderBy('updatedAtMs', 'desc'))
       const snapshot = await getDocs(q)
@@ -78,7 +76,7 @@ export const createFirestoreAgentTemplateRepository = (): AgentTemplateRepositor
     },
 
     async delete(userId: string, templateId: AgentTemplateId): Promise<void> {
-      const db = getFirestoreClient()
+      const db = await getDb()
       const docRef = doc(db, `users/${userId}/agentTemplates/${templateId}`)
       await deleteDoc(docRef)
     },

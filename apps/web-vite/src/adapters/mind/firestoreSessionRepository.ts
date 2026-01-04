@@ -16,7 +16,7 @@ import {
   orderBy,
   limit as firestoreLimit,
 } from 'firebase/firestore'
-import { getFirestoreClient } from '@/lib/firebase'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
   CanonicalInterventionSession,
@@ -29,12 +29,11 @@ import type {
 const COLLECTION_SESSIONS = 'intervention_sessions'
 
 export const createFirestoreSessionRepository = (): SessionRepository => {
-  const db = getFirestoreClient()
-
   const create = async (
     userId: string,
     input: CreateSessionInput
   ): Promise<CanonicalInterventionSession> => {
+    const db = await getDb()
     const sessionId = newId<'session'>('session')
     const now = Date.now()
 
@@ -57,6 +56,7 @@ export const createFirestoreSessionRepository = (): SessionRepository => {
     sessionId: SessionId,
     completion: CompleteSessionInput
   ): Promise<CanonicalInterventionSession> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_SESSIONS}/${sessionId}`)
     const snapshot = await getDoc(ref)
 
@@ -87,6 +87,7 @@ export const createFirestoreSessionRepository = (): SessionRepository => {
     userId: string,
     sessionId: SessionId
   ): Promise<CanonicalInterventionSession | null> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_SESSIONS}/${sessionId}`)
     const snapshot = await getDoc(ref)
 
@@ -101,6 +102,7 @@ export const createFirestoreSessionRepository = (): SessionRepository => {
     userId: string,
     dateKey: string
   ): Promise<CanonicalInterventionSession[]> => {
+    const db = await getDb()
     const q = query(
       collection(db, `users/${userId}/${COLLECTION_SESSIONS}`),
       where('dateKey', '==', dateKey),
@@ -115,6 +117,7 @@ export const createFirestoreSessionRepository = (): SessionRepository => {
     userId: string,
     limit = 10
   ): Promise<CanonicalInterventionSession[]> => {
+    const db = await getDb()
     const q = query(
       collection(db, `users/${userId}/${COLLECTION_SESSIONS}`),
       orderBy('startedAtMs', 'desc'),
@@ -130,6 +133,7 @@ export const createFirestoreSessionRepository = (): SessionRepository => {
     startDate: string,
     endDate: string
   ): Promise<CanonicalInterventionSession[]> => {
+    const db = await getDb()
     const q = query(
       collection(db, `users/${userId}/${COLLECTION_SESSIONS}`),
       where('dateKey', '>=', startDate),

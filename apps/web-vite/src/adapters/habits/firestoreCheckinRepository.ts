@@ -16,7 +16,7 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore'
-import { getFirestoreClient } from '@/lib/firebase'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import type {
   CanonicalHabitCheckin,
   CheckinId,
@@ -36,12 +36,11 @@ function generateCheckinId(habitId: HabitId, dateKey: string): CheckinId {
 }
 
 export const createFirestoreCheckinRepository = (): CheckinRepository => {
-  const db = getFirestoreClient()
-
   const upsert = async (
     userId: string,
     input: UpsertCheckinInput
   ): Promise<CanonicalHabitCheckin> => {
+    const db = await getDb()
     const checkinId = generateCheckinId(input.habitId, input.dateKey)
     const now = Date.now()
 
@@ -89,6 +88,7 @@ export const createFirestoreCheckinRepository = (): CheckinRepository => {
     checkinId: CheckinId,
     updates: UpdateCheckinInput
   ): Promise<CanonicalHabitCheckin> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_CHECKINS}/${checkinId}`)
     const snapshot = await getDoc(ref)
 
@@ -108,6 +108,7 @@ export const createFirestoreCheckinRepository = (): CheckinRepository => {
   }
 
   const deleteCheckin = async (userId: string, checkinId: CheckinId): Promise<void> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_CHECKINS}/${checkinId}`)
     await deleteDoc(ref)
   }
@@ -116,6 +117,7 @@ export const createFirestoreCheckinRepository = (): CheckinRepository => {
     userId: string,
     checkinId: CheckinId
   ): Promise<CanonicalHabitCheckin | null> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_CHECKINS}/${checkinId}`)
     const snapshot = await getDoc(ref)
 
@@ -136,6 +138,7 @@ export const createFirestoreCheckinRepository = (): CheckinRepository => {
   }
 
   const listForDate = async (userId: string, dateKey: string): Promise<CanonicalHabitCheckin[]> => {
+    const db = await getDb()
     const q = query(
       collection(db, `users/${userId}/${COLLECTION_CHECKINS}`),
       where('dateKey', '==', dateKey)
@@ -150,6 +153,7 @@ export const createFirestoreCheckinRepository = (): CheckinRepository => {
     habitId: HabitId,
     options?: { limit?: number; startDate?: string; endDate?: string }
   ): Promise<CanonicalHabitCheckin[]> => {
+    const db = await getDb()
     const q = query(
       collection(db, `users/${userId}/${COLLECTION_CHECKINS}`),
       where('habitId', '==', habitId),
@@ -180,6 +184,7 @@ export const createFirestoreCheckinRepository = (): CheckinRepository => {
     startDate: string,
     endDate: string
   ): Promise<CanonicalHabitCheckin[]> => {
+    const db = await getDb()
     // Firestore doesn't support >= and <= on same field without composite index
     // So we fetch all and filter client-side
     const q = query(collection(db, `users/${userId}/${COLLECTION_CHECKINS}`))

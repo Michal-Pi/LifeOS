@@ -16,7 +16,8 @@ import {
   where,
 } from 'firebase/firestore'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject, getBlob } from 'firebase/storage'
-import { getFirestoreClient, getStorageClient } from '@/lib/firebase'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
+import { getStorageClient } from '@/lib/firebase'
 import { newId } from '@lifeos/core'
 import type {
   Attachment,
@@ -29,10 +30,10 @@ import type {
 const COLLECTION_ATTACHMENTS = 'attachments'
 
 export const createFirestoreAttachmentRepository = (): AttachmentRepository => {
-  const db = getFirestoreClient()
   const storage = getStorageClient()
 
   const create = async (userId: string, input: CreateAttachmentInput): Promise<Attachment> => {
+    const db = await getDb()
     const attachmentId = newId<'attachment'>('attachment')
     const now = Date.now()
 
@@ -54,6 +55,7 @@ export const createFirestoreAttachmentRepository = (): AttachmentRepository => {
   }
 
   const deleteAttachment = async (userId: string, attachmentId: AttachmentId): Promise<void> => {
+    const db = await getDb()
     // Get attachment to find storage URL
     const attachment = await get(userId, attachmentId)
 
@@ -73,6 +75,7 @@ export const createFirestoreAttachmentRepository = (): AttachmentRepository => {
   }
 
   const get = async (userId: string, attachmentId: AttachmentId): Promise<Attachment | null> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_ATTACHMENTS}/${attachmentId}`)
     const snapshot = await getDoc(ref)
 
@@ -84,6 +87,7 @@ export const createFirestoreAttachmentRepository = (): AttachmentRepository => {
   }
 
   const listByNote = async (userId: string, noteId: NoteId): Promise<Attachment[]> => {
+    const db = await getDb()
     const q = query(
       collection(db, `users/${userId}/${COLLECTION_ATTACHMENTS}`),
       where('noteId', '==', noteId)
@@ -99,6 +103,7 @@ export const createFirestoreAttachmentRepository = (): AttachmentRepository => {
     syncState: Attachment['syncState'],
     storageUrl?: string
   ): Promise<void> => {
+    const db = await getDb()
     const ref = doc(db, `users/${userId}/${COLLECTION_ATTACHMENTS}/${attachmentId}`)
     const snapshot = await getDoc(ref)
 
