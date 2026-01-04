@@ -8,6 +8,7 @@ import { getMonthGrid, isSameDay, formatDateKey, WEEKDAYS, type DayCell } from '
 
 /**
  * Adjust color brightness for light/dark variations
+ * Positive percent = lighter, negative percent = darker
  */
 function adjustColor(hex: string, percent: number): string {
   const color = hex.replace('#', '')
@@ -16,7 +17,14 @@ function adjustColor(hex: string, percent: number): string {
   const b = parseInt(color.substring(4, 6), 16)
 
   const adjust = (c: number) => {
-    const adjusted = Math.round(c + ((255 - c) * percent) / 100)
+    let adjusted: number
+    if (percent > 0) {
+      // Lighten: move toward white (255)
+      adjusted = Math.round(c + ((255 - c) * percent) / 100)
+    } else {
+      // Darken: move toward black (0)
+      adjusted = Math.round(c * (1 + percent / 100))
+    }
     return Math.min(255, Math.max(0, adjusted))
   }
 
