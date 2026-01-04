@@ -2,7 +2,7 @@
 
 ## Problem
 
-Firebase Functions v2 (Cloud Run) deployment fails with health check timeout errors:
+Firebase Functions v2 deployment fails with health check timeout errors:
 
 ```
 Container Healthcheck failed. Revision is not ready and cannot serve traffic.
@@ -12,7 +12,7 @@ by PORT=8080 within the allocated timeout.
 
 ## Root Cause
 
-Cloud Functions v2 uses Cloud Run, which has stricter health check requirements:
+Cloud Functions v2 runs on the 2nd Gen runtime, which has stricter health check requirements:
 
 1. **Default timeout**: 60 seconds (often too short for cold starts with dependencies)
 2. **Health check**: Container must respond to HTTP requests within timeout
@@ -279,11 +279,11 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
    - **Memory usage** - Right-size allocation
    - **Errors** - Track failures
 
-### Cloud Run Console
+### Google Cloud Console
 
 For more detailed metrics:
 
-1. Go to Cloud Console → Cloud Run
+1. Go to Cloud Console → Cloud Functions (2nd Gen)
 2. Find function services
 3. View:
    - Container startup time
@@ -309,7 +309,7 @@ When creating new Cloud Functions:
 
 ## Alternative: Migrate to 1st Gen Functions
 
-If Cloud Run continues to be problematic, you can migrate to 1st Gen functions:
+If Functions v2 continues to be problematic, you can migrate to 1st Gen functions:
 
 ```typescript
 import * as functions from 'firebase-functions' // v1 API
@@ -324,7 +324,7 @@ export const syncNow = functions.https.onRequest(async (request, response) => {
 - ✅ More reliable cold starts
 - ✅ Simpler deployment
 - ❌ Older architecture
-- ❌ Missing Cloud Run features
+- ❌ Missing 2nd Gen features
 - ❌ May be deprecated in future
 
 ---
@@ -332,7 +332,7 @@ export const syncNow = functions.https.onRequest(async (request, response) => {
 ## Summary
 
 **Current Status:** ✅ Functions deployed successfully
-**Root Cause:** Cloud Run health check timeout (default 60s too short for cold starts)
+**Root Cause:** 2nd Gen runtime health check timeout (default 60s too short for cold starts)
 **Solution Applied:** Simple budget-friendly configuration with extended timeout (300s HTTP, 540s scheduled)
 **Memory Allocation:** 256MiB (cost-effective for small-scale/low-traffic use)
 

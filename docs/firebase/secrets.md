@@ -18,7 +18,7 @@ Set them via Firebase CLI:
 ```bash
 firebase functions:secrets:set GOOGLE_OAUTH_CLIENT_ID="your_google_client_id"
 firebase functions:secrets:set GOOGLE_OAUTH_CLIENT_SECRET="your_google_client_secret"
-firebase functions:secrets:set GOOGLE_OAUTH_REDIRECT_URI="https://us-central1-<project>.cloudfunctions.net/googleAuthCallback"
+firebase functions:secrets:set GOOGLE_OAUTH_REDIRECT_URI="https://<project>.web.app/oauth/google/callback"
 ```
 
 ## Client Function Base URL

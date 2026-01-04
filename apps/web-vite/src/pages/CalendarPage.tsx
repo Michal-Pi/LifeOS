@@ -51,6 +51,7 @@ import type {
 import {} from '@lifeos/calendar'
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { createLogger } from '@lifeos/core'
+import { toast } from 'sonner'
 
 const logger = createLogger('CalendarPage')
 
@@ -72,7 +73,7 @@ import { useCalendarEvents } from '@/hooks/useCalendarEvents'
 import { useOutbox } from '@/hooks/useOutbox'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { useEventAlerts } from '@/hooks/useEventAlerts'
-import { fetchCalendarAccountStatus } from '@/lib/accountStatus'
+import { fetchAllCalendarAccountStatuses } from '@/lib/accountStatus'
 import { functionUrl } from '@/lib/functionsUrl'
 import { authenticatedFetch } from '@/lib/authenticatedFetch'
 
@@ -101,6 +102,7 @@ export function CalendarPage() {
     lastError?: string
   } | null>(null)
   const [syncing, setSyncing] = useState(false)
+  const [authBusy, setAuthBusy] = useState<'connect' | 'disconnect' | null>(null)
   const [accountStatus, setAccountStatus] = useState<CalendarAccountStatus | null>(null)
   const [connectionError, setConnectionError] = useState<string | null>(null)
 
@@ -212,6 +214,7 @@ export function CalendarPage() {
 
   // Load sync status
   useEffect(() => {
+    if (!userId) return
     let active = true
     const loadStatus = async () => {
       const remoteStatus = await syncRepository.getStatus(userId)
@@ -225,13 +228,22 @@ export function CalendarPage() {
     }
   }, [userId])
 
-  // Load account status
+  // Load account status - check all accounts, use first connected one
   useEffect(() => {
+    if (!userId) return
     let active = true
     const loadAccountStatus = async () => {
-      const result = await fetchCalendarAccountStatus(userId, ACCOUNT_ID)
+      const allStatuses = await fetchAllCalendarAccountStatuses(userId)
+      console.log('[CalendarPage] fetchAllCalendarAccountStatuses returned:', {
+        count: allStatuses.length,
+        accounts: allStatuses,
+        connectedCount: allStatuses.filter((s) => s.status === 'connected').length,
+      })
       if (active) {
-        setAccountStatus(result)
+        // Find first connected account, or use null if none connected
+        const connectedAccount = allStatuses.find((s) => s.status === 'connected')
+        console.log('[CalendarPage] Setting accountStatus to:', connectedAccount)
+        setAccountStatus(connectedAccount ?? null)
       }
     }
     void loadAccountStatus()
@@ -240,8 +252,30 @@ export function CalendarPage() {
     }
   }, [userId])
 
+  useEffect(() => {
+    if (!userId || typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const success = params.get('success')
+    if (success === 'true') {
+      toast.success('Google Calendar connected')
+      params.delete('success')
+      const nextQuery = params.toString()
+      const nextUrl = nextQuery
+        ? `${window.location.pathname}?${nextQuery}`
+        : window.location.pathname
+      window.history.replaceState({}, '', nextUrl)
+      // Reload all account statuses after connection
+      void fetchAllCalendarAccountStatuses(userId).then((allStatuses) => {
+        const connectedAccount = allStatuses.find((s) => s.status === 'connected')
+        setAccountStatus(connectedAccount ?? null)
+      })
+    }
+  }, [userId])
+
   // Subscribe to calendars (Phase 2.6 - real-time permission updates)
   useEffect(() => {
+    if (!userId) return
+
     // Initial load
     const loadCalendars = async () => {
       try {
@@ -270,28 +304,43 @@ export function CalendarPage() {
   }, [events, selectedEvent])
 
   const handleSyncNow = async () => {
+    // Use the connected account's ID, or fall back to 'primary'
+    const syncAccountId = accountStatus?.accountId ?? ACCOUNT_ID
+
     setSyncing(true)
+    setConnectionError(null)
     try {
       const response = await authenticatedFetch(
-        functionUrl('syncNow?uid=' + userId + '&accountId=' + ACCOUNT_ID)
+        functionUrl('syncNow?uid=' + userId + '&accountId=' + syncAccountId)
       )
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}))
-        throw new Error(payload.error ?? 'Sync failed')
+        const errorCode = payload.error ?? 'sync_failed'
+        if (errorCode === 'not_connected') {
+          throw new Error('Google account not connected. Click Connect Google to grant access.')
+        }
+        if (errorCode === 'missing_refresh_token') {
+          throw new Error(
+            'Calendar connection is incomplete. Reconnect Google to continue syncing.'
+          )
+        }
+        throw new Error(errorCode)
       }
       // Reload events after sync
       await reloadEvents()
+      // Reload status to show updated lastSyncAt
+      const remoteStatus = await syncRepository.getStatus(userId)
+      setStatus(remoteStatus)
     } catch (error) {
       setConnectionError((error as Error).message)
     } finally {
-      const remoteStatus = await syncRepository.getStatus(userId)
-      setStatus(remoteStatus)
       setSyncing(false)
     }
   }
 
   const handleConnectGoogle = async () => {
     setConnectionError(null)
+    setAuthBusy('connect')
     try {
       const response = await authenticatedFetch(
         functionUrl('googleAuthStart?uid=' + userId + '&accountId=' + ACCOUNT_ID)
@@ -310,11 +359,13 @@ export function CalendarPage() {
       }
     } catch (error) {
       setConnectionError((error as Error).message)
+      setAuthBusy(null)
     }
   }
 
   const handleDisconnectGoogle = async () => {
     setConnectionError(null)
+    setAuthBusy('disconnect')
     try {
       const response = await authenticatedFetch(
         functionUrl('googleDisconnect?uid=' + userId + '&accountId=' + ACCOUNT_ID)
@@ -326,6 +377,15 @@ export function CalendarPage() {
       setAccountStatus((prev) => ({ ...(prev ?? {}), status: 'disconnected' }))
     } catch (error) {
       setConnectionError((error as Error).message)
+    } finally {
+      setAuthBusy(null)
+    }
+  }
+
+  const handleManageAccounts = () => {
+    // Navigate to settings page with calendar section
+    if (typeof window !== 'undefined') {
+      window.location.href = '/settings#calendar'
     }
   }
 
@@ -385,6 +445,8 @@ export function CalendarPage() {
             isOnline={isOnline}
             accountStatus={accountStatus}
             connectionError={connectionError}
+            isConnecting={authBusy === 'connect'}
+            isDisconnecting={authBusy === 'disconnect'}
             syncing={syncing}
             status={status}
             pendingOps={pendingOps}
@@ -397,6 +459,7 @@ export function CalendarPage() {
             onSyncNow={handleSyncNow}
             onConnectGoogle={handleConnectGoogle}
             onDisconnectGoogle={handleDisconnectGoogle}
+            onManageAccounts={handleManageAccounts}
           />
         </header>
 
@@ -433,6 +496,7 @@ export function CalendarPage() {
               events={events}
               instances={instances}
               loading={loading}
+              calendars={calendars}
               selectedEvent={selectedEvent}
               pendingOps={pendingOps}
               onDateSelect={setSelectedMonthDate}

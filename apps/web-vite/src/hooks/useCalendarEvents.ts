@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   listEventsWithRecurrence,
   type CanonicalCalendarEvent,
@@ -6,6 +6,8 @@ import {
   createLogger,
 } from '@lifeos/calendar'
 import { createFirestoreCalendarEventRepository } from '@/adapters/firestoreCalendarEventRepository'
+import { collection, query, onSnapshot, type Unsubscribe } from 'firebase/firestore'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 
 const logger = createLogger('useCalendarEvents')
 const calendarRepository = createFirestoreCalendarEventRepository()
@@ -14,6 +16,7 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
   const [events, setEvents] = useState<CanonicalCalendarEvent[]>([])
   const [instances, setInstances] = useState<RecurrenceInstance[]>([])
   const [loading, setLoading] = useState(false)
+  const unsubscribeRef = useRef<Unsubscribe | null>(null)
 
   const getRangeFromDayKeys = useCallback(() => {
     if (dayKeys.length === 0) {
@@ -57,6 +60,63 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
       setLoading(false)
     }
   }, [userId, getRangeFromDayKeys])
+
+  // Set up real-time listener for events collection to detect deletions
+  useEffect(() => {
+    if (!userId) return
+
+    let active = true
+
+    const setupListener = async () => {
+      const db = await getDb()
+      const eventsCol = collection(db, 'users', userId, 'calendarEvents')
+
+      // Listen to all events in the collection to detect deletions
+      // We could optimize this by filtering, but for deletions we need broad coverage
+      const q = query(eventsCol)
+
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          if (!active) return
+
+          // Only reload if there were deletions or significant changes
+          const changes = snapshot.docChanges()
+          const hasRelevantChanges = changes.some(
+            (change) => change.type === 'removed' || change.type === 'added'
+          )
+
+          if (hasRelevantChanges) {
+            logger.info('Events collection changed, reloading', {
+              added: changes.filter((c) => c.type === 'added').length,
+              removed: changes.filter((c) => c.type === 'removed').length,
+              modified: changes.filter((c) => c.type === 'modified').length,
+            })
+            void loadEvents()
+          }
+        },
+        (error) => {
+          logger.error('Events listener error', error)
+        }
+      )
+
+      if (active) {
+        unsubscribeRef.current = unsubscribe
+      } else {
+        unsubscribe()
+      }
+    }
+
+    void setupListener()
+
+    return () => {
+      active = false
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current()
+        unsubscribeRef.current = null
+      }
+    }
+  }, [userId, loadEvents])
 
   // Initial load when dependencies change
   useEffect(() => {

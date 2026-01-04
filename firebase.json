@@ -4,6 +4,10 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
+        "source": "/oauth/google/callback",
+        "function": "googleAuthCallback"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

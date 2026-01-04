@@ -289,7 +289,7 @@ jobs:
 
 - **Status:** Build successful, deployment failed (health check timeout)
 - **Cause:** All 14 functions failed health checks - "Container failed to start and listen on port 8080"
-- **Root Cause:** This is a Cloud Run timeout issue, not a code issue
+- **Root Cause:** This is a Functions v2 runtime timeout issue, not a code issue
   - Functions build successfully locally
   - TypeScript compiles without errors
   - Likely caused by cold start performance
@@ -312,7 +312,7 @@ jobs:
 14. `scheduleWritebackProcessing` ⚠️
 
 **Recommended Fix:**
-The functions will likely succeed on retry as Cloud Run caches the container. Options:
+The functions will likely succeed on retry as the runtime caches the container. Options:
 
 1. **Retry deployment** - `firebase deploy --only functions`
 2. **Increase timeout** - Add `timeoutSeconds: 540` to function config (default is 60s)

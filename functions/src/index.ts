@@ -25,6 +25,7 @@ import {
   hasPendingJob,
 } from './google/writeback.js'
 import { buildWritebackPayload } from './google/writebackPayload.js'
+import { firestore } from './lib/firebase.js'
 
 // ==================== Cloud Functions Configuration ====================
 
@@ -177,22 +178,41 @@ interface AuthState {
 }
 
 // Updated scopes to include write access for Phase 2.2
+// Including profile and email scopes to match what Firebase Auth provides
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar.events.readonly',
   'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+  'openid',
 ]
 
 let _oauthClient: OAuth2Client | null = null
+let _oauthConfigLogged = false
+
+function logOAuthConfigOnce() {
+  if (_oauthConfigLogged) return
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim()
+  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI?.trim()
+  console.info('[OAuth] Config loaded', {
+    clientIdTail: clientId ? clientId.slice(-6) : 'missing',
+    clientIdLength: clientId ? clientId.length : 0,
+    redirectUri: redirectUri ?? 'missing',
+  })
+  _oauthConfigLogged = true
+}
 
 function getOAuthClient(): OAuth2Client {
   if (_oauthClient) return _oauthClient
 
-  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET
-  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim()
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim()
+  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI?.trim()
   if (!clientId || !clientSecret || !redirectUri) {
     throw new Error('Missing Google OAuth configuration')
   }
+  logOAuthConfigOnce()
   _oauthClient = new OAuth2Client(clientId, clientSecret, redirectUri)
   return _oauthClient
 }
@@ -252,6 +272,7 @@ export const googleAuthStart = onRequest(
       })
       response.json({ url })
     } catch (error) {
+      console.error('[OAuth] googleAuthStart failed', error)
       response.status(500).json({ error: (error as Error).message })
     }
   }
@@ -266,26 +287,56 @@ export const googleAuthCallback = onRequest(
     try {
       const code = String(request.query.code ?? '')
       const state = String(request.query.state ?? '')
+
+      console.info('[OAuth] googleAuthCallback invoked', {
+        hasCode: !!code,
+        hasState: !!state,
+        codeLength: code.length,
+      })
+
       if (!code || !state) {
+        console.error('[OAuth] Missing code or state parameter')
         response.status(400).json({ error: 'Missing code or state' })
         return
       }
+
       const stateDocRef = tempStateRef(state)
       const stateSnap = await stateDocRef.get()
       if (!stateSnap.exists) {
+        console.error('[OAuth] Invalid or expired state', { state })
         response.status(400).json({ error: 'Invalid or expired state' })
         return
       }
+
       const stored = stateSnap.data() as AuthState
       const { uid, accountId } = stored
+
+      console.info('[OAuth] Exchanging code for tokens', { uid, accountId })
+
+      // This is where invalid_client error happens if OAuth client config is wrong
       const { tokens } = await getOAuthClient().getToken(code)
+
+      console.info('[OAuth] Token exchange successful', {
+        hasRefreshToken: !!tokens.refresh_token,
+        hasAccessToken: !!tokens.access_token,
+        scope: tokens.scope,
+      })
+
       await storeTokens(uid, accountId, tokens)
       await stateDocRef.delete()
 
+      console.info('[OAuth] Tokens stored successfully, redirecting to app')
       // Redirect back to the app calendar page
       response.redirect('https://lifeos-pi.web.app/calendar?success=true')
     } catch (error) {
-      response.status(500).json({ error: (error as Error).message })
+      console.error('[OAuth] googleAuthCallback failed', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined,
+      })
+      response.status(500).json({
+        error: error instanceof Error ? error.message : 'OAuth callback failed',
+      })
     }
   }
 )
@@ -299,6 +350,9 @@ export const googleDisconnect = onRequest(
     try {
       const uid = String(request.query.uid ?? request.body.uid ?? '')
       const accountId = String(request.query.accountId ?? 'primary')
+      const deleteEvents =
+        request.query.deleteEvents === 'true' || request.body.deleteEvents === true
+
       if (!uid) {
         response.status(400).json({ error: 'Missing uid' })
         return
@@ -308,7 +362,11 @@ export const googleDisconnect = onRequest(
       if (!(await verifyAuth(request, response, uid))) {
         return
       }
+
+      // Delete OAuth tokens
       await privateAccountRef(uid, accountId).delete()
+
+      // Mark account as disconnected
       await accountRef(uid, accountId).set(
         {
           status: 'disconnected',
@@ -316,7 +374,65 @@ export const googleDisconnect = onRequest(
         },
         { merge: true }
       )
-      response.json({ ok: true })
+
+      // Delete all calendars from this account
+      const calendarsSnapshot = await firestore
+        .collection(`users/${uid}/calendars`)
+        .where('providerMeta.accountId', '==', accountId)
+        .get()
+
+      const maxBatchOps = 100
+      let batch = firestore.batch()
+      let batchOps = 0
+
+      for (const doc of calendarsSnapshot.docs) {
+        batch.delete(doc.ref)
+        batchOps += 1
+        if (batchOps >= maxBatchOps) {
+          await batch.commit()
+          batch = firestore.batch()
+          batchOps = 0
+        }
+      }
+
+      if (batchOps > 0) {
+        await batch.commit()
+      }
+
+      let eventsDeleted = 0
+
+      // Optionally delete events from this account
+      if (deleteEvents) {
+        const eventsSnapshot = await firestore
+          .collection(`users/${uid}/calendarEvents`)
+          .where('providerMeta.accountId', '==', accountId)
+          .get()
+
+        let eventBatch = firestore.batch()
+        let eventBatchOps = 0
+
+        for (const doc of eventsSnapshot.docs) {
+          eventBatch.delete(doc.ref)
+          eventBatchOps += 1
+          if (eventBatchOps >= maxBatchOps) {
+            await eventBatch.commit()
+            eventBatch = firestore.batch()
+            eventBatchOps = 0
+          }
+        }
+
+        if (eventBatchOps > 0) {
+          await eventBatch.commit()
+        }
+
+        eventsDeleted = eventsSnapshot.size
+      }
+
+      response.json({
+        ok: true,
+        calendarsDeleted: calendarsSnapshot.size,
+        eventsDeleted,
+      })
     } catch (error) {
       response.status(500).json({ error: (error as Error).message })
     }
@@ -333,19 +449,62 @@ export const syncNow = onRequest(
     try {
       const uid = String(request.query.uid ?? request.body.uid ?? '')
       const accountId = String(request.query.accountId ?? 'primary')
+
+      console.info('[Sync] syncNow invoked', { uid, accountId })
+
       if (!uid) {
+        console.error('[Sync] Missing uid parameter')
         response.status(400).json({ error: 'Missing uid' })
         return
       }
 
       // Verify authentication
       if (!(await verifyAuth(request, response, uid))) {
+        console.error('[Sync] Authentication verification failed', { uid })
         return
       }
 
+      const accountSnap = await accountRef(uid, accountId).get()
+      console.info('[Sync] Checking account status', {
+        uid,
+        accountId,
+        exists: accountSnap.exists,
+        status: accountSnap.exists ? accountSnap.data()?.status : 'no_document',
+        data: accountSnap.exists ? accountSnap.data() : null,
+      })
+      if (!accountSnap.exists || accountSnap.data()?.status !== 'connected') {
+        console.error('[Sync] Google account not connected', {
+          uid,
+          accountId,
+          exists: accountSnap.exists,
+        })
+        response.status(400).json({ error: 'not_connected' })
+        return
+      }
+
+      const privateAccountSnap = await privateAccountRef(uid, accountId).get()
+      const refreshToken = privateAccountSnap.exists
+        ? (privateAccountSnap.data()?.refreshToken as string | null | undefined)
+        : null
+      if (!refreshToken) {
+        console.error('[Sync] Missing refresh token', { uid, accountId })
+        response.status(400).json({ error: 'missing_refresh_token' })
+        return
+      }
+
+      console.info('[Sync] Starting calendar sync', { uid, accountId })
       const calendars = await syncAllCalendarsIncremental(uid, accountId)
+      console.info('[Sync] Sync completed successfully', {
+        uid,
+        accountId,
+        calendarCount: calendars.length,
+      })
       response.json({ ok: true, calendars })
     } catch (error) {
+      console.error('[Sync] syncNow failed', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      })
       response.status(500).json({ error: (error as Error).message })
     }
   }

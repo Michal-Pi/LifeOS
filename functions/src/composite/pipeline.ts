@@ -1,6 +1,10 @@
 import { type DocumentData } from 'firebase-admin/firestore'
 import { firestore as db } from '../lib/firebase.js'
 
+// Firestore batch write limit is 10 MB, so we use a conservative estimate
+// to commit more frequently and avoid "Transaction too big" errors
+const MAX_BATCH_OPS = 100
+
 // ==================== Types ====================
 
 interface CompositeMemberRef {
@@ -418,7 +422,8 @@ export async function recomputeComposites(
     }
 
     const processedCompositeIds = new Set<string>()
-    const batch = db.batch()
+    let batch = db.batch()
+    let pending = 0
 
     // Create/update composites
     for (const [_groupKey, groupEvents] of groups) {
@@ -443,6 +448,7 @@ export async function recomputeComposites(
 
         const compositeRef = compositesRef.doc(existingCompositeId)
         batch.set(compositeRef, updated)
+        pending += 1
         processedCompositeIds.add(existingCompositeId)
         stats.compositesUpdated++
       } else {
@@ -452,8 +458,16 @@ export async function recomputeComposites(
 
         const compositeRef = compositesRef.doc(newCompositeId)
         batch.set(compositeRef, newComposite)
+        pending += 1
         processedCompositeIds.add(newCompositeId)
         stats.compositesCreated++
+      }
+
+      // Use smaller batch size to avoid "Transaction too big" errors
+      if (pending >= MAX_BATCH_OPS) {
+        await batch.commit()
+        batch = db.batch()
+        pending = 0
       }
     }
 
@@ -462,11 +476,22 @@ export async function recomputeComposites(
       if (!processedCompositeIds.has(compositeId) && !composite.manualLock) {
         const compositeRef = compositesRef.doc(compositeId)
         batch.delete(compositeRef)
+        pending += 1
         stats.compositesDeleted++
+
+        // Use smaller batch size to avoid "Transaction too big" errors
+        if (pending >= MAX_BATCH_OPS) {
+          await batch.commit()
+          batch = db.batch()
+          pending = 0
+        }
       }
     }
 
-    await batch.commit()
+    // Commit any remaining operations
+    if (pending > 0) {
+      await batch.commit()
+    }
 
     // Update run status
     run.status = 'completed'

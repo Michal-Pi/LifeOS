@@ -186,12 +186,12 @@ export function TodayPage() {
       <div className="today-layout">
         <div className="today-primary">
           {/* Top Priority Todos */}
-          <section className="task-list-card">
-            <div className="task-list-header">
-              <p className="section-label">Top Priority To-dos</p>
-              <button className="ghost-button small" onClick={() => navigate('/review')}>
-                Weekly Review
-              </button>
+          <section className="task-list-card today-card">
+            <div className="today-card-header">
+              <div>
+                <p className="section-label">Top Priority To-Dos</p>
+                <p className="section-hint">Focus on what moves today forward.</p>
+              </div>
             </div>
             {frogTask && (
               <div className="frog-highlight">
@@ -206,8 +206,8 @@ export function TodayPage() {
               {showTasksEmptyState ? (
                 <div className="today-empty-row">
                   <div>
-                    <p className="today-empty-title">No urgent tasks for today</p>
-                    <p className="today-empty-text">Add a task to stay on top of your day.</p>
+                    <p className="today-empty-title">Inbox is clear</p>
+                    <p className="today-empty-text">Add a task to map your next move.</p>
                   </div>
                 </div>
               ) : (
@@ -256,15 +256,20 @@ export function TodayPage() {
                   setQuickTaskTitle('')
                 }}
               >
-                Create
+                Add
               </button>
             </div>
           </section>
 
           {/* Calendar Preview */}
           {hasCalendarEvents && (
-            <section className="calendar-preview-card">
-              <p className="section-label">Calendar Preview</p>
+            <section className="calendar-preview-card today-card">
+              <div className="today-card-header">
+                <div>
+                  <p className="section-label">Calendar Preview</p>
+                  <p className="section-hint">Your time blocks for today.</p>
+                </div>
+              </div>
               <div className="calendar-events-list">
                 {displayEvents.map((evt, index) => (
                   <div key={`${evt.title}-${index}`} className="calendar-event-item">
@@ -285,12 +290,17 @@ export function TodayPage() {
             </section>
           )}
           {!hasCalendarEvents && (
-            <section className="calendar-preview-card calendar-preview-card--empty">
-              <p className="section-label">Calendar Preview</p>
+            <section className="calendar-preview-card calendar-preview-card--empty today-card">
+              <div className="today-card-header">
+                <div>
+                  <p className="section-label">Calendar Preview</p>
+                  <p className="section-hint">Keep a clear window for deep work.</p>
+                </div>
+              </div>
               <div className="today-empty-row">
                 <div>
-                  <p className="today-empty-title">No events today</p>
-                  <p className="today-empty-text">Block focus time or add a meeting.</p>
+                  <p className="today-empty-title">Calendar is open</p>
+                  <p className="today-empty-text">Block focus time or schedule a meeting.</p>
                 </div>
               </div>
               <div className="inline-input-row">
@@ -316,7 +326,7 @@ export function TodayPage() {
                     setQuickEventTitle('')
                   }}
                 >
-                  Open
+                  Add
                 </button>
               </div>
             </section>
@@ -324,9 +334,17 @@ export function TodayPage() {
         </div>
 
         <div className="today-secondary">
-          {/* Inspiration Card - Now with daily quotes */}
-          <section className="inspiration-card inspiration-card--secondary">
-            <div className="inspiration-header">
+          <section className="today-card daily-state-card">
+            <div className="today-card-header">
+              <div>
+                <p className="section-label">Daily State</p>
+                <p className="section-hint">Signals that set your focus and tone.</p>
+              </div>
+              <button className="ghost-button small" onClick={() => navigate('/review')}>
+                Review week
+              </button>
+            </div>
+            <div className="daily-state-header">
               <div>
                 <p className="today-label">Today · {formatter.format(today)}</p>
                 <p className="today-location">Today in {timezone}</p>
@@ -336,7 +354,7 @@ export function TodayPage() {
                 <span className="today-time-zone">{timezone}</span>
               </div>
             </div>
-            <div className="inspiration-content">
+            <div className="daily-state-quote">
               {loading ? (
                 <p className="inspiration-loading">Loading quote...</p>
               ) : quote ? (
@@ -345,49 +363,54 @@ export function TodayPage() {
                   <p className="inspiration-author">— {quote.author}</p>
                 </>
               ) : (
-                <p className="inspiration-loading">No quote available</p>
+                <p className="inspiration-loading">Quote unavailable</p>
               )}
             </div>
+            <div className="today-subsection">
+              <div className="today-subsection-header">
+                <p className="section-label">Energy Level</p>
+                <p className="section-hint">Select your current level.</p>
+              </div>
+              <div
+                className="view-toggles today-energy-toggle"
+                role="group"
+                aria-label="Energy level"
+              >
+                {(['low', 'med', 'high'] as const).map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    className={`view-toggle ${energyLevel === level ? 'active' : ''}`}
+                    aria-pressed={energyLevel === level}
+                    onClick={() => setEnergyLevel(level)}
+                  >
+                    {level === 'med' ? 'Medium' : level.charAt(0).toUpperCase() + level.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMindModalOpen(true)}
+                className="ghost-button small"
+              >
+                Adjust focus
+              </button>
+            </div>
+            <IncantationDisplay variant="embedded" />
           </section>
 
-          {/* Daily Incantations */}
-          <IncantationDisplay />
-
-          {/* Habits Check-In */}
-          <HabitCheckInCard userId={userId} dateKey={todayKey} />
-
-          {/* Today's Workout */}
-          <TodayWorkout userId={userId} dateKey={todayKey} />
-
-          {/* Workout Session Tracker */}
-          <WorkoutSessionCard dateKey={todayKey} />
-
-          {/* Mind Engine - "I'm Activated" Button */}
-          <section className="mind-intervention-card">
-            <div className="mind-intervention-header">
-              <p className="section-label">Energy Level</p>
-              <p className="section-hint">Set your current level to tune your focus.</p>
+          <section className="today-card daily-momentum-card">
+            <div className="today-card-header">
+              <div>
+                <p className="section-label">Daily Momentum</p>
+                <p className="section-hint">Habits and training in one place.</p>
+              </div>
             </div>
-            <div className="energy-controls" role="group" aria-label="Energy level">
-              {(['low', 'med', 'high'] as const).map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  className={`energy-toggle ${energyLevel === level ? 'active' : ''}`}
-                  aria-pressed={energyLevel === level}
-                  onClick={() => setEnergyLevel(level)}
-                >
-                  {level.toUpperCase()}
-                </button>
-              ))}
+            <div className="today-card-body">
+              <HabitCheckInCard userId={userId} dateKey={todayKey} variant="embedded" />
+              <TodayWorkout userId={userId} dateKey={todayKey} variant="embedded" />
+              <WorkoutSessionCard dateKey={todayKey} variant="embedded" />
             </div>
-            <button
-              type="button"
-              onClick={() => setIsMindModalOpen(true)}
-              className="btn-primary mind-intervention-trigger"
-            >
-              Regulate
-            </button>
           </section>
         </div>
       </div>
@@ -401,7 +424,13 @@ export function TodayPage() {
       />
 
       {/* Stats Grid */}
-      <section className="today-telemetry">
+      <section className="today-card today-telemetry">
+        <div className="today-card-header">
+          <div>
+            <p className="section-label">Daily Metrics</p>
+            <p className="section-hint">Meeting load and available space.</p>
+          </div>
+        </div>
         <TelemetryBar
           items={[
             { label: 'MTG', value: `${meetingHours.toFixed(1)}h` },

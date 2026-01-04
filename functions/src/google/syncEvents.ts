@@ -9,7 +9,32 @@ import { calendarsCollection, canonicalEventRef, syncStateRef } from './paths.js
 import { syncGoogleCalendars } from './sync.js'
 import { getFullSyncTimeMin, isSyncTokenInvalid } from './syncHelpers.js'
 
-const MAX_BATCH_SIZE = 500
+// Firestore batch write limit is 10 MB, so we use a conservative estimate
+// to commit more frequently and avoid "Transaction too big" errors
+const MAX_BATCH_OPS = 100 // More conservative than 500 to account for event size
+
+/**
+ * Remove undefined fields recursively to prevent Firestore errors
+ */
+function removeUndefined(obj: any): any {
+  if (obj === null || obj === undefined) return null
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefined).filter((item) => item !== null)
+  }
+  if (typeof obj === 'object') {
+    const cleaned: any = {}
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        const cleanedValue = removeUndefined(value)
+        if (cleanedValue !== null || value === null) {
+          cleaned[key] = cleanedValue
+        }
+      }
+    }
+    return cleaned
+  }
+  return obj
+}
 
 interface CalendarSyncState {
   accountId: string
@@ -80,12 +105,15 @@ async function upsertEvents(
         normalized.status === 'cancelled' ? normalized.updatedAtMs : normalized.deletedAtMs,
     }
 
-    const ref = canonicalEventRef(uid, eventToWrite.canonicalEventId)
-    batch.set(ref, eventToWrite, { merge: true })
+    const cleanedEvent = removeUndefined(eventToWrite)
+
+    const ref = canonicalEventRef(uid, cleanedEvent.canonicalEventId)
+    batch.set(ref, cleanedEvent, { merge: true })
     pending += 1
     count += 1
 
-    if (pending >= MAX_BATCH_SIZE) {
+    // Use smaller batch size to avoid "Transaction too big" errors
+    if (pending >= MAX_BATCH_OPS) {
       await batch.commit()
       batch = firestore.batch()
       pending = 0
@@ -127,14 +155,14 @@ export async function syncCalendarEventsFull(
     }
   } while (pageToken)
 
-  await writeCalendarSyncState(uid, {
+  const syncState: CalendarSyncState = {
     accountId,
     calendarId: calendar.calendarId,
     syncToken: nextSyncToken,
     lastSyncAt: new Date().toISOString(),
     lastSuccessAt: new Date().toISOString(),
-    lastError: undefined,
-  })
+  }
+  await writeCalendarSyncState(uid, syncState)
 
   return {
     calendarId: calendar.calendarId,
@@ -173,14 +201,14 @@ async function syncCalendarEventsIncremental(
     }
   } while (pageToken)
 
-  await writeCalendarSyncState(uid, {
+  const incrementalSyncState: CalendarSyncState = {
     accountId,
     calendarId: calendar.calendarId,
     syncToken: nextSyncToken ?? syncToken,
     lastSyncAt: new Date().toISOString(),
     lastSuccessAt: new Date().toISOString(),
-    lastError: undefined,
-  })
+  }
+  await writeCalendarSyncState(uid, incrementalSyncState)
 
   return {
     calendarId: calendar.calendarId,

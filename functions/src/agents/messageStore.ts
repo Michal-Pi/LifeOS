@@ -25,6 +25,9 @@ const MIN_COMPACT_MESSAGES = 20
 const MAX_SUMMARY_CHARS = 4000
 const SUMMARY_PREFIX = 'Summary of earlier messages (auto-generated):'
 const HISTORY_CONTEXT_LIMIT = 50
+// Firestore batch write limit is 10 MB, so we use a conservative estimate
+// to commit more frequently and avoid "Transaction too big" errors
+const MAX_BATCH_OPS = 100
 
 export async function recordMessage(
   input: StoreMessageInput,
@@ -68,9 +71,22 @@ async function pruneAndCompactMessages(userId: string, runId: string): Promise<v
   const overflowDocs = snapshot.docs.slice(0, overflowCount)
 
   if (overflowDocs.length < MIN_COMPACT_MESSAGES) {
-    const batch = db.batch()
-    overflowDocs.forEach((doc) => batch.delete(doc.ref))
-    await batch.commit()
+    let batch = db.batch()
+    let pending = 0
+    for (const doc of overflowDocs) {
+      batch.delete(doc.ref)
+      pending += 1
+
+      // Use smaller batch size to avoid "Transaction too big" errors
+      if (pending >= MAX_BATCH_OPS) {
+        await batch.commit()
+        batch = db.batch()
+        pending = 0
+      }
+    }
+    if (pending > 0) {
+      await batch.commit()
+    }
     return
   }
 
@@ -85,7 +101,10 @@ async function pruneAndCompactMessages(userId: string, runId: string): Promise<v
   const summaryTimestampMs =
     typeof lastSummarized?.timestampMs === 'number' ? lastSummarized.timestampMs : Date.now()
 
-  const batch = db.batch()
+  let batch = db.batch()
+  let pending = 0
+
+  // Add summary document
   batch.set(summaryDocRef, {
     messageId: summaryDocRef.id || randomUUID(),
     runId,
@@ -93,8 +112,25 @@ async function pruneAndCompactMessages(userId: string, runId: string): Promise<v
     content: summaryContent,
     timestampMs: summaryTimestampMs,
   })
-  overflowDocs.forEach((doc) => batch.delete(doc.ref))
-  await batch.commit()
+  pending += 1
+
+  // Delete overflow documents
+  for (const doc of overflowDocs) {
+    batch.delete(doc.ref)
+    pending += 1
+
+    // Use smaller batch size to avoid "Transaction too big" errors
+    if (pending >= MAX_BATCH_OPS) {
+      await batch.commit()
+      batch = db.batch()
+      pending = 0
+    }
+  }
+
+  // Commit any remaining operations
+  if (pending > 0) {
+    await batch.commit()
+  }
 }
 
 function formatSummaryLine(role: MessageRole, content: string): string {

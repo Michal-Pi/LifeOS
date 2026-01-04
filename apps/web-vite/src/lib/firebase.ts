@@ -13,9 +13,10 @@ import {
 } from 'firebase/auth'
 import {
   connectFirestoreEmulator,
-  enableIndexedDbPersistence,
-  enableMultiTabIndexedDbPersistence,
   getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   type Firestore
 } from 'firebase/firestore'
 import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage'
@@ -43,7 +44,6 @@ let storageInstance: FirebaseStorage | null = null
 let emulatorConnected = false
 let authEmulatorConnected = false
 let storageEmulatorConnected = false
-let persistenceEnabled = false
 
 // Cache for runtime-fetched config
 let cachedConfig: FirebaseConfig | null = null
@@ -312,21 +312,16 @@ export function getFirestoreClient(): Firestore {
     )
   }
 
-  firestoreInstance = getFirestore(firebaseApp)
-  if (!persistenceEnabled) {
-    persistenceEnabled = true
-    enableMultiTabIndexedDbPersistence(firestoreInstance).catch((error: unknown) => {
-      const code = typeof error === 'object' && error !== null && 'code' in error
-        ? String((error as { code: string }).code)
-        : 'unknown'
-      if (code === 'unimplemented') {
-        enableIndexedDbPersistence(firestoreInstance).catch((fallbackError) => {
-          logger.warn('Persistence unavailable (fallback)', { error: fallbackError })
-        })
-        return
-      }
-      logger.warn('Persistence unavailable', { error })
+  // Initialize Firestore with the new cache API
+  try {
+    firestoreInstance = initializeFirestore(firebaseApp, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
     })
+    logger.info('Firestore initialized with multi-tab persistence')
+  } catch {
+    // If already initialized (e.g., by another part of the app), use existing instance
+    firestoreInstance = getFirestore(firebaseApp)
+    logger.warn('Firestore already initialized, using existing instance')
   }
 
   // Connect to emulator in development

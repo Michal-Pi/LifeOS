@@ -12,9 +12,10 @@ import type { WorkoutSession, WorkoutContext } from '@lifeos/training'
 
 interface WorkoutSessionCardProps {
   dateKey: string
+  variant?: 'card' | 'embedded'
 }
 
-export function WorkoutSessionCard({ dateKey }: WorkoutSessionCardProps) {
+export function WorkoutSessionCard({ dateKey, variant = 'card' }: WorkoutSessionCardProps) {
   const { isLoading, getSessionByDate, createSession } = useWorkoutOperations()
   const [todaySessions, setTodaySessions] = useState<WorkoutSession[]>([])
   const [showQuickLog, setShowQuickLog] = useState(false)
@@ -71,20 +72,27 @@ export function WorkoutSessionCard({ dateKey }: WorkoutSessionCardProps) {
 
   const completedSessions = todaySessions.filter((s) => s.status === 'completed')
   const plannedSessions = todaySessions.filter((s) => s.status === 'planned')
+  const actionClass = variant === 'embedded' ? 'ghost-button small' : 'training-quick-log-button'
 
   return (
-    <div className="training-session-card">
+    <div
+      className={`training-session-card ${variant === 'embedded' ? 'today-subsection training-session-card--embedded' : ''}`}
+    >
       <div className="training-session-header">
         <div className="training-session-title">
-          <span className="training-icon">💪</span>
-          <h3>Workout</h3>
+          {variant === 'embedded' ? (
+            <p className="section-label">Workout Log</p>
+          ) : (
+            <span className="training-icon">💪</span>
+          )}
+          {variant === 'embedded' ? null : <h3>Workout</h3>}
         </div>
         <button
-          className="training-quick-log-button"
+          className={actionClass}
           onClick={() => setShowQuickLog(!showQuickLog)}
           disabled={isLoading}
         >
-          {showQuickLog ? 'Cancel' : '+ Quick Log'}
+          {showQuickLog ? 'Cancel' : 'Quick log'}
         </button>
       </div>
 
@@ -114,7 +122,7 @@ export function WorkoutSessionCard({ dateKey }: WorkoutSessionCardProps) {
             </div>
           </div>
           <button className="training-submit-button" onClick={handleQuickLog}>
-            Log Workout
+            Log workout
           </button>
         </div>
       )}
@@ -162,8 +170,8 @@ export function WorkoutSessionCard({ dateKey }: WorkoutSessionCardProps) {
           <div className="training-rest">
             <span className="training-status-icon">😌</span>
             <div className="training-status-text">
-              <div className="training-status-label">Rest Day</div>
-              <div className="training-status-detail">No workout scheduled</div>
+              <div className="training-status-label">Rest day</div>
+              <div className="training-status-detail">No session logged yet</div>
             </div>
           </div>
         )}

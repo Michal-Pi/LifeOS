@@ -22,7 +22,8 @@ export function GlobalSearch() {
   // Load data once on mount to ensure search index is ready
   // In a real app, this might be too heavy and we'd rely on a dedicated search index or context
   useEffect(() => {
-    if (userId) {
+    // Only load if we have a real userId (not empty string)
+    if (userId && userId.trim() !== '') {
       void loadData()
     }
   }, [userId, loadData])

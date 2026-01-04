@@ -32,30 +32,41 @@ export async function syncGoogleCalendars(uid: string, accountId: string): Promi
       (existing.writebackVisibility as 'default' | 'private' | undefined) ?? 'default'
     const lifeosColor = (existing.lifeosColor as string | undefined) ?? normalized.color
 
-    await calRef.set(
-      {
-        calendarId: normalized.calendarId,
-        name: normalized.name,
-        description: normalized.description,
-        owner: normalized.isPrimary ? { email: entry.id, self: true } : undefined,
-        accessRole: normalized.accessRole,
-        canWrite: normalized.canWrite,
-        isPrimary: normalized.isPrimary,
-        color: normalized.color,
-        foregroundColor: normalized.foregroundColor,
-        timeZone: normalized.timeZone,
-        providerMeta: normalized.providerMeta,
-        visible: (existing.visible as boolean | undefined) ?? normalized.visible,
-        selected: (existing.selected as boolean | undefined) ?? normalized.selected,
-        syncEnabled,
-        writebackEnabled,
-        writebackVisibility,
-        lifeosColor,
-        updatedAt: now,
-        createdAt: (existing.createdAt as string | undefined) ?? now,
-      },
-      { merge: true }
-    )
+    const calendarData: Record<string, unknown> = {
+      calendarId: normalized.calendarId,
+      name: normalized.name,
+      accessRole: normalized.accessRole,
+      canWrite: normalized.canWrite,
+      isPrimary: normalized.isPrimary,
+      providerMeta: normalized.providerMeta,
+      visible: (existing.visible as boolean | undefined) ?? normalized.visible,
+      selected: (existing.selected as boolean | undefined) ?? normalized.selected,
+      syncEnabled,
+      writebackEnabled,
+      writebackVisibility,
+      lifeosColor,
+      updatedAt: now,
+      createdAt: (existing.createdAt as string | undefined) ?? now,
+    }
+
+    // Only include optional fields if they have values
+    if (normalized.description) {
+      calendarData.description = normalized.description
+    }
+    if (normalized.color) {
+      calendarData.color = normalized.color
+    }
+    if (normalized.foregroundColor) {
+      calendarData.foregroundColor = normalized.foregroundColor
+    }
+    if (normalized.timeZone) {
+      calendarData.timeZone = normalized.timeZone
+    }
+    if (normalized.isPrimary) {
+      calendarData.owner = { email: entry.id, self: true }
+    }
+
+    await calRef.set(calendarData, { merge: true })
     updated++
   }
 

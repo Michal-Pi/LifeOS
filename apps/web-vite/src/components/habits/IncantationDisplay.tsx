@@ -11,9 +11,10 @@ import type { HabitDomain } from '@lifeos/habits'
 
 interface IncantationDisplayProps {
   keystoneDomain?: HabitDomain
+  variant?: 'card' | 'embedded'
 }
 
-export function IncantationDisplay({ keystoneDomain }: IncantationDisplayProps) {
+export function IncantationDisplay({ keystoneDomain, variant = 'card' }: IncantationDisplayProps) {
   const { loadIncantations, getActiveIncantations } = useIncantations()
 
   useEffect(() => {
@@ -24,6 +25,24 @@ export function IncantationDisplay({ keystoneDomain }: IncantationDisplayProps) 
 
   if (displayIncantations.length === 0) {
     return null
+  }
+
+  if (variant === 'embedded') {
+    return (
+      <section className="today-subsection incantation-embedded">
+        <div className="today-subsection-header">
+          <p className="section-label">Incantations</p>
+        </div>
+        <div className="incantation-list incantation-list--embedded">
+          {displayIncantations.map((incantation) => (
+            <div key={incantation.incantationId} className="incantation-item">
+              <div className="incantation-type-badge">{incantation.type.replace('_', ' ')}</div>
+              <p className="incantation-text">{incantation.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
   }
 
   return (

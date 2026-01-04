@@ -28,6 +28,12 @@ Tokens are stored in `users/{uid}/privateIntegrations/googleAccounts/{accountId}
 
 Calendar account metadata is kept under `users/{uid}/calendarAccounts/{accountId}` with fields like `status`, `updatedAt`, and `lastSuccessAt`.
 
+## Redirect URI
+
+Production redirect URI is handled by Firebase Hosting and rewrites to the Cloud Function:
+
+- `https://<project>.web.app/oauth/google/callback` → `googleAuthCallback`
+
 ## Security & rules
 
 - Clients are prohibited from reading `/users/{uid}/privateIntegrations/**` — only Admin-level operations (Cloud Functions) can touch those documents.

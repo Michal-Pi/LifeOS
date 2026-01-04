@@ -16,7 +16,7 @@ Successfully resolved Cloud Functions deployment timeout issues and deployed all
 
 ### 1. Identified the Problem
 
-- Cloud Functions v2 (Cloud Run) deployment failing with health check timeouts
+- Cloud Functions v2 deployment failing with health check timeouts
 - Default 60-second timeout insufficient for container cold starts with Firebase SDK + Google APIs
 - All 14 functions failing to deploy with "Container Healthcheck failed" errors
 

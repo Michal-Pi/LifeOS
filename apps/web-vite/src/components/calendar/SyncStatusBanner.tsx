@@ -20,6 +20,8 @@ interface SyncStatusBannerProps {
   isOnline: boolean
   accountStatus: CalendarAccountStatus | null
   connectionError: string | null
+  isConnecting: boolean
+  isDisconnecting: boolean
 
   // Sync state
   syncing: boolean
@@ -42,12 +44,14 @@ interface SyncStatusBannerProps {
   onSyncNow: () => void
   onConnectGoogle: () => void
   onDisconnectGoogle: () => void
+  onManageAccounts: () => void
 }
 
 export function SyncStatusBanner({
   isOnline,
   accountStatus,
   connectionError,
+  isConnecting,
   syncing,
   status,
   pendingOps,
@@ -59,8 +63,10 @@ export function SyncStatusBanner({
   onCreateEvent,
   onSyncNow,
   onConnectGoogle,
-  onDisconnectGoogle,
+  onManageAccounts,
 }: SyncStatusBannerProps) {
+  const hasConnection = accountStatus?.status === 'connected'
+
   return (
     <div className="calendar-sync">
       {/* Online/offline indicator */}
@@ -88,9 +94,9 @@ export function SyncStatusBanner({
 
       {/* Account connection status */}
       <p className="calendar-meta">
-        {accountStatus?.status === 'connected'
-          ? 'Connected to Google Calendar'
-          : 'Google account not connected'}
+        {hasConnection
+          ? `Google Calendar connected${accountStatus?.accountId ? ` (${accountStatus.accountId})` : ''}`
+          : 'No calendar accounts connected'}
       </p>
 
       {/* Connection error message */}
@@ -113,16 +119,29 @@ export function SyncStatusBanner({
           + New Event
         </button>
 
-        <button className="ghost-button" onClick={onSyncNow} disabled={syncing || !isOnline}>
+        <button
+          className="ghost-button"
+          onClick={onSyncNow}
+          disabled={syncing || !isOnline || !hasConnection}
+          title={!hasConnection ? 'Connect Google Calendar first' : undefined}
+        >
           {syncing ? 'Syncing…' : 'Sync now'}
         </button>
 
-        <button
-          className="ghost-button"
-          onClick={accountStatus?.status === 'connected' ? onDisconnectGoogle : onConnectGoogle}
-        >
-          {accountStatus?.status === 'connected' ? 'Disconnect' : 'Connect Google'}
-        </button>
+        {hasConnection ? (
+          <button className="ghost-button" onClick={onManageAccounts}>
+            Manage Accounts
+          </button>
+        ) : (
+          <button
+            className="ghost-button"
+            onClick={onConnectGoogle}
+            disabled={isConnecting}
+            aria-busy={isConnecting}
+          >
+            {isConnecting ? 'Connecting…' : 'Connect Google'}
+          </button>
+        )}
       </div>
     </div>
   )

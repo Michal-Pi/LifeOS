@@ -12,9 +12,10 @@ import { useHabitOperations } from '@/hooks/useHabitOperations'
 interface HabitCheckInCardProps {
   userId: string
   dateKey: string
+  variant?: 'card' | 'embedded'
 }
 
-export function HabitCheckInCard({ userId, dateKey }: HabitCheckInCardProps) {
+export function HabitCheckInCard({ userId, dateKey, variant = 'card' }: HabitCheckInCardProps) {
   const { listHabitsForDate, listCheckinsForDate, upsertCheckin, getHabitStats, isLoading } =
     useHabitOperations()
 
@@ -74,8 +75,10 @@ export function HabitCheckInCard({ userId, dateKey }: HabitCheckInCardProps) {
 
   if (isLoading && habits.length === 0) {
     return (
-      <div className="habit-checkin-card">
-        <p className="section-label">Today's Habits</p>
+      <div
+        className={`habit-checkin-card ${variant === 'embedded' ? 'today-subsection habit-checkin-card--embedded' : ''}`}
+      >
+        <p className="section-label">Habits</p>
         <div className="empty-state">
           <p className="empty-state-text">Loading habits...</p>
         </div>
@@ -85,11 +88,13 @@ export function HabitCheckInCard({ userId, dateKey }: HabitCheckInCardProps) {
 
   if (habits.length === 0) {
     return (
-      <div className="habit-checkin-card">
-        <p className="section-label">Today's Habits</p>
+      <div
+        className={`habit-checkin-card ${variant === 'embedded' ? 'today-subsection habit-checkin-card--embedded' : ''}`}
+      >
+        <p className="section-label">Habits</p>
         <div className="empty-state">
-          <p className="empty-state-text">No habits scheduled for today</p>
-          <p className="empty-state-hint">Create your first habit in the Habits page</p>
+          <p className="empty-state-text">No habits queued</p>
+          <p className="empty-state-hint">Add one to build your daily rhythm.</p>
         </div>
       </div>
     )
@@ -100,9 +105,11 @@ export function HabitCheckInCard({ userId, dateKey }: HabitCheckInCardProps) {
   ).length
 
   return (
-    <div className="habit-checkin-card">
+    <div
+      className={`habit-checkin-card ${variant === 'embedded' ? 'today-subsection habit-checkin-card--embedded' : ''}`}
+    >
       <div className="habit-checkin-header">
-        <p className="section-label">Today's Habits</p>
+        <p className="section-label">Habits</p>
         <span className="habit-progress">
           {completedCount}/{habits.length}
         </span>

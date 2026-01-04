@@ -23,7 +23,8 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
 
   const loadData = useCallback(
     async (options?: { includeTasks?: boolean }) => {
-      if (!userId) return
+      // Guard against empty string or null/undefined
+      if (!userId || userId.trim() === '') return
       if (lastUserIdRef.current && lastUserIdRef.current !== userId) {
         setProjects([])
         setMilestones([])

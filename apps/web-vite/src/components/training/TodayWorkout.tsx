@@ -14,6 +14,7 @@ import type { WorkoutTemplate, WorkoutContext, SessionStatus } from '@lifeos/tra
 interface TodayWorkoutProps {
   dateKey: string
   userId: string
+  variant?: 'card' | 'embedded'
 }
 
 const CONTEXT_ICONS: Record<WorkoutContext, string> = {
@@ -24,7 +25,7 @@ const CONTEXT_ICONS: Record<WorkoutContext, string> = {
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
+export function TodayWorkout({ dateKey, userId, variant = 'card' }: TodayWorkoutProps) {
   const { activePlan, getActivePlan } = useWorkoutPlan()
   const { templates, listTemplates } = useWorkoutTemplates()
   const { sessions, listSessions, createSession, updateSession } = useWorkoutOperations()
@@ -168,9 +169,11 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
   // If no active plan
   if (!activePlan) {
     return (
-      <section className="today-workout-card">
+      <section
+        className={`today-workout-card ${variant === 'embedded' ? 'today-subsection today-workout-card--embedded' : ''}`}
+      >
         <div className="today-workout-header">
-          <p className="section-label">Today's Workout</p>
+          <p className="section-label">Training</p>
         </div>
         {loadError && (
           <div className="empty-state">
@@ -179,8 +182,8 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
           </div>
         )}
         <div className="empty-state">
-          <p className="empty-state-text">No active workout plan</p>
-          <p className="empty-state-hint">Create a plan in the Plan page to get started</p>
+          <p className="empty-state-text">No active plan yet</p>
+          <p className="empty-state-hint">Set one up to schedule workouts for the week.</p>
         </div>
       </section>
     )
@@ -189,14 +192,16 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
   // If rest day
   if (todaySchedule?.restDay) {
     return (
-      <section className="today-workout-card">
+      <section
+        className={`today-workout-card ${variant === 'embedded' ? 'today-subsection today-workout-card--embedded' : ''}`}
+      >
         <div className="today-workout-header">
           <p className="section-label">Today's Workout · {DAY_NAMES[dayOfWeek]}</p>
         </div>
         <div className="rest-day-message">
           <span className="rest-day-icon">😌</span>
-          <p className="rest-day-text">Rest Day</p>
-          <p className="rest-day-hint">Recovery is part of the process</p>
+          <p className="rest-day-text">Recovery day</p>
+          <p className="rest-day-hint">Protect the reset and come back stronger.</p>
         </div>
       </section>
     )
@@ -205,15 +210,15 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
   // If no templates assigned
   if (availableTemplates.length === 0) {
     return (
-      <section className="today-workout-card">
+      <section
+        className={`today-workout-card ${variant === 'embedded' ? 'today-subsection today-workout-card--embedded' : ''}`}
+      >
         <div className="today-workout-header">
           <p className="section-label">Today's Workout · {DAY_NAMES[dayOfWeek]}</p>
         </div>
         <div className="empty-state">
-          <p className="empty-state-text">No workout scheduled</p>
-          <p className="empty-state-hint">
-            Edit your plan to assign a template for {DAY_NAMES[dayOfWeek]}
-          </p>
+          <p className="empty-state-text">No workout assigned</p>
+          <p className="empty-state-hint">Add a template to your plan for today.</p>
         </div>
       </section>
     )
@@ -225,7 +230,9 @@ export function TodayWorkout({ dateKey, userId }: TodayWorkoutProps) {
   const isInProgress = sessionStatus === 'in_progress'
 
   return (
-    <section className="today-workout-card">
+    <section
+      className={`today-workout-card ${variant === 'embedded' ? 'today-subsection today-workout-card--embedded' : ''}`}
+    >
       <div className="today-workout-header">
         <div>
           <p className="section-label">Today's Workout · {DAY_NAMES[dayOfWeek]}</p>
