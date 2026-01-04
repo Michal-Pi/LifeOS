@@ -1,198 +1,23 @@
 {
   "indexes": [
     {
-      "collectionGroup": "calendarWritebackQueue",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "availableAtMs",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "habits",
+      "collectionGroup": "agents",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAtMs",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "habitCheckins",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "dateKey",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "habitCheckins",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "habitId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "dateKey",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "incantations",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "active",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAtMs",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "interventionPresets",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "type",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "interventionSessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "dateKey",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "interventionSessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "dateKey",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "startedAtMs",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "intervention_sessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "dateKey",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "startedAtMs",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "interventions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAtMs",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "interventions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "type",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAtMs",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "interventions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "recommendedForFeelings",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAtMs",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "exerciseLibrary",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "category",
+          "fieldPath": "modelProvider",
           "order": "ASCENDING"
         },
         {
           "fieldPath": "name",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
         }
-      ]
+      ],
+      "density": "SPARSE_ALL"
     },
     {
       "collectionGroup": "agents",
@@ -205,96 +30,13 @@
         {
           "fieldPath": "name",
           "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "agents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "modelProvider",
-          "order": "ASCENDING"
         },
         {
-          "fieldPath": "name",
+          "fieldPath": "__name__",
           "order": "ASCENDING"
         }
-      ]
-    },
-    {
-      "collectionGroup": "runs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "startedAtMs",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "workoutSessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "dateKey",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAtMs",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "workoutPlans",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "active",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "startDateKey",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "workoutPlans",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "startDateKey",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "workoutTemplates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "title",
-          "order": "ASCENDING"
-        }
-      ]
+      ],
+      "density": "SPARSE_ALL"
     },
     {
       "collectionGroup": "calendarEvents",
@@ -312,7 +54,405 @@
           "fieldPath": "__name__",
           "order": "ASCENDING"
         }
-      ]
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "calendarEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "endMs",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startMs",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "calendarWritebackQueue",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "availableAtMs",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "calendarWritebackQueue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "availableAtMs",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "exerciseLibrary",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "category",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "habitCheckins",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "habitCheckins",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "habitId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dateKey",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "habits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "incantations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "active",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "intervention_sessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "dateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startedAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "interventionPresets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "interventions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "recommendedForFeelings",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "interventions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "interventions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "interventionSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startedAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "interventionSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dateKey",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "runs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startedAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "workoutPlans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "active",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startDateKey",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "workoutPlans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startDateKey",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "workoutSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "dateKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAtMs",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "workoutTemplates",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "title",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
     }
-  ]
+  ],
+  "fieldOverrides": []
 }
