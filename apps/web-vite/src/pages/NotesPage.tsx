@@ -185,7 +185,7 @@ export function NotesPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"
           />
-          <button onClick={handleCreateNote} className="btn-primary" disabled={isLoading}>
+          <button onClick={handleCreateNote} className="primary-button" disabled={isLoading}>
             + New Note
           </button>
         </div>
@@ -227,7 +227,7 @@ export function NotesPage() {
                   />
                   <button
                     type="button"
-                    className="btn-primary"
+                    className="primary-button"
                     onClick={handleQuickCreate}
                     disabled={isLoading}
                   >
@@ -356,26 +356,27 @@ export function NotesPage() {
           box-shadow: 0 0 0 3px var(--accent-subtle);
         }
 
-        .btn-primary {
-          padding: 10px 16px;
+        .primary-button {
+          padding: 0.625rem 1.25rem;
+          min-height: 40px;
           background: var(--accent);
           color: var(--accent-foreground);
           border: 1px solid var(--accent);
-          border-radius: 6px;
+          border-radius: 8px;
           cursor: pointer;
-          font-size: 14px;
-          font-weight: 500;
+          font-size: 0.875rem;
+          font-weight: 600;
           white-space: nowrap;
           transition:
             box-shadow var(--motion-standard) var(--motion-ease),
             opacity var(--motion-standard) var(--motion-ease);
         }
 
-        .btn-primary:hover:not(:disabled) {
+        .primary-button:hover:not(:disabled) {
           box-shadow: 0 0 0 3px var(--accent-subtle);
         }
 
-        .btn-primary:disabled {
+        .primary-button:disabled {
           opacity: 0.5;
           cursor: not-allowed;
         }

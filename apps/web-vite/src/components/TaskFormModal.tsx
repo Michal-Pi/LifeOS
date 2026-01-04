@@ -174,180 +174,208 @@ export function TaskFormModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="task-title">Title</label>
-            <input
-              id="task-title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="What needs to be done?"
-              required
-              autoFocus
-            />
-          </div>
-
-          <div className="form-row">
+        <form onSubmit={handleSubmit} className="task-form">
+          {/* Basic Info Section */}
+          <div className="form-section">
             <div className="form-group">
-              <label htmlFor="task-project">Project</label>
-              <select
-                id="task-project"
-                value={projectId}
-                onChange={(e) => {
-                  setProjectId(e.target.value)
-                  setMilestoneId('') // Clear milestone and KR when project changes
-                  setKeyResultId('')
-                }}
-              >
-                <option value="">No Project</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="task-milestone">Milestone</label>
-              <select
-                id="task-milestone"
-                value={milestoneId}
-                onChange={(e) => {
-                  setMilestoneId(e.target.value)
-                  setKeyResultId('') // Clear KR when milestone changes
-                }}
-                disabled={!projectId && availableMilestones.length === 0}
-              >
-                <option value="">No Milestone</option>
-                {availableMilestones.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="task-key-result">Key Result (Optional)</label>
-              <select
-                id="task-key-result"
-                value={keyResultId}
-                onChange={(e) => setKeyResultId(e.target.value)}
-                disabled={availableKeyResults.length === 0}
-              >
-                <option value="">None</option>
-                {availableKeyResults.map((kr) => (
-                  <option key={kr.id} value={kr.id}>
-                    {kr.text}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="task-urgency">Urgency</label>
+              <label htmlFor="task-title">Title</label>
               <input
-                id="task-urgency"
-                type="range"
-                min={URGENCY_SLIDER_MIN}
-                max={URGENCY_SLIDER_MAX}
-                step={1}
-                value={urgencyToSlider(effectiveUrgency)}
-                onChange={(e) => setUrgency(urgencyFromSlider(Number(e.target.value)))}
-                disabled={Boolean(dueDate)}
-              />
-              <p className="helper-text">
-                {dueDate
-                  ? `Auto: ${urgencyLabel(effectiveUrgency)}`
-                  : `Selected: ${urgencyLabel(effectiveUrgency)}`}
-              </p>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="task-importance">Importance</label>
-              <input
-                id="task-importance"
-                type="range"
-                min={IMPORTANCE_SLIDER_MIN}
-                max={IMPORTANCE_SLIDER_MAX}
-                step={1}
-                value={importanceToSlider(importance)}
-                onChange={(e) => setImportance(importanceFromSlider(Number(e.target.value)))}
-              />
-              <p className="helper-text">
-                {importanceLabel(importance)} ({importance})
-              </p>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="task-due-date">Due Date</label>
-              <input
-                id="task-due-date"
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                id="task-title"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="What needs to be done?"
+                required
+                autoFocus
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="task-domain">Domain</label>
-              <select
-                id="task-domain"
-                value={domain}
-                onChange={(e) => setDomain(e.target.value as Domain)}
-                disabled={Boolean(projectId)}
-              >
-                {DOMAINS.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-              {projectId && <p className="helper-text">Domain is inherited from the project.</p>}
+              <label htmlFor="task-description">Description</label>
+              <textarea
+                id="task-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                placeholder="Add more details..."
+              />
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="task-estimate-hours">Estimated Time</label>
-              <div className="inline-inputs">
-                <input
-                  id="task-estimate-hours"
-                  type="number"
-                  min={0}
-                  value={allocatedHours}
-                  onChange={(e) => setAllocatedHours(Number(e.target.value))}
-                  placeholder="Hours"
-                />
-                <input
-                  id="task-estimate-minutes"
-                  type="number"
-                  min={0}
-                  max={59}
-                  value={allocatedMinutes}
-                  onChange={(e) => setAllocatedMinutes(Number(e.target.value))}
-                  placeholder="Minutes"
-                />
+          {/* Project & Organization Section */}
+          <div className="form-section">
+            <h3 className="section-label">Organization</h3>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="task-project">Project</label>
+                <select
+                  id="task-project"
+                  value={projectId}
+                  onChange={(e) => {
+                    setProjectId(e.target.value)
+                    setMilestoneId('') // Clear milestone and KR when project changes
+                    setKeyResultId('')
+                  }}
+                >
+                  <option value="">No Project</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="task-milestone">Milestone</label>
+                <select
+                  id="task-milestone"
+                  value={milestoneId}
+                  onChange={(e) => {
+                    setMilestoneId(e.target.value)
+                    setKeyResultId('') // Clear KR when milestone changes
+                  }}
+                  disabled={!projectId && availableMilestones.length === 0}
+                >
+                  <option value="">No Milestone</option>
+                  {availableMilestones.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="task-key-result">Key Result (Optional)</label>
+                <select
+                  id="task-key-result"
+                  value={keyResultId}
+                  onChange={(e) => setKeyResultId(e.target.value)}
+                  disabled={availableKeyResults.length === 0}
+                >
+                  <option value="">None</option>
+                  {availableKeyResults.map((kr) => (
+                    <option key={kr.id} value={kr.id}>
+                      {kr.text}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="task-domain">Domain</label>
+                <select
+                  id="task-domain"
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value as Domain)}
+                  disabled={Boolean(projectId)}
+                >
+                  {DOMAINS.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+                {projectId && <p className="helper-text">Inherited from project</p>}
               </div>
             </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="task-description">Description</label>
-            <textarea
-              id="task-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-            />
+          {/* Priority Section */}
+          <div className="form-section">
+            <h3 className="section-label">Priority</h3>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="task-urgency">Urgency</label>
+                <input
+                  id="task-urgency"
+                  type="range"
+                  min={URGENCY_SLIDER_MIN}
+                  max={URGENCY_SLIDER_MAX}
+                  step={1}
+                  value={urgencyToSlider(effectiveUrgency)}
+                  onChange={(e) => setUrgency(urgencyFromSlider(Number(e.target.value)))}
+                  disabled={Boolean(dueDate)}
+                />
+                <p className="helper-text">
+                  {dueDate
+                    ? `Auto: ${urgencyLabel(effectiveUrgency)}`
+                    : urgencyLabel(effectiveUrgency)}
+                </p>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="task-importance">Importance</label>
+                <input
+                  id="task-importance"
+                  type="range"
+                  min={IMPORTANCE_SLIDER_MIN}
+                  max={IMPORTANCE_SLIDER_MAX}
+                  step={1}
+                  value={importanceToSlider(importance)}
+                  onChange={(e) => setImportance(importanceFromSlider(Number(e.target.value)))}
+                />
+                <p className="helper-text">{importanceLabel(importance)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Scheduling Section */}
+          <div className="form-section">
+            <h3 className="section-label">Scheduling</h3>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="task-due-date">Due Date</label>
+                <input
+                  id="task-due-date"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="task-estimate-hours">Estimated Time (max 40 hours)</label>
+                <div className="inline-inputs">
+                  <div className="input-with-suffix">
+                    <input
+                      id="task-estimate-hours"
+                      type="number"
+                      min={0}
+                      max={40}
+                      value={allocatedHours}
+                      onChange={(e) => {
+                        const val = Math.min(40, Math.max(0, Number(e.target.value)))
+                        setAllocatedHours(val)
+                      }}
+                      placeholder="0"
+                    />
+                    <span className="input-suffix">hours</span>
+                  </div>
+                  <div className="input-with-suffix">
+                    <input
+                      id="task-estimate-minutes"
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={allocatedMinutes}
+                      onChange={(e) => {
+                        const val = Math.min(59, Math.max(0, Number(e.target.value)))
+                        setAllocatedMinutes(val)
+                      }}
+                      placeholder="0"
+                    />
+                    <span className="input-suffix">mins</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="modal-actions">

@@ -202,7 +202,7 @@ export function HabitsAndMindStep({
       </section>
 
       <div className="step-actions">
-        <button type="button" className="btn-primary" onClick={onNext}>
+        <button type="button" className="primary-button" onClick={onNext}>
           Continue to Next Week Planning →
         </button>
       </div>

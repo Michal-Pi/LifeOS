@@ -14,7 +14,7 @@ export function ModulePlaceholder({
       <p className="module-placeholder-label">Module</p>
       <h2 className="module-placeholder-title">{title}</h2>
       <p className="module-placeholder-description">{description}</p>
-      <button className="btn-secondary small" disabled>
+      <button className="ghost-button small" disabled>
         {primaryActionLabel ?? 'Coming soon'}
       </button>
     </div>

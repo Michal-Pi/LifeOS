@@ -142,7 +142,7 @@ export function HabitsPage() {
     <div className="page-container habits-page">
       <div className="page-header">
         <h1>Habits</h1>
-        <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
+        <button className="primary-button" onClick={() => setIsModalOpen(true)}>
           + New Habit
         </button>
       </div>
@@ -266,12 +266,12 @@ export function HabitsPage() {
                 </div>
 
                 <div className="habit-card-actions">
-                  <button className="btn-secondary small" onClick={() => handleEditHabit(habit)}>
+                  <button className="ghost-button small" onClick={() => handleEditHabit(habit)}>
                     Edit
                   </button>
                   {filterStatus === 'active' && (
                     <button
-                      className="btn-secondary small"
+                      className="ghost-button small"
                       onClick={() => handleArchiveHabit(habit.habitId)}
                     >
                       Archive
@@ -279,7 +279,7 @@ export function HabitsPage() {
                   )}
                   {filterStatus === 'archived' && (
                     <button
-                      className="btn-danger small"
+                      className="ghost-button danger small"
                       onClick={() => handleDeleteHabit(habit.habitId)}
                     >
                       Delete

@@ -27,7 +27,7 @@ export function EmptyState({
       {hint && <p className="empty-state-hint">{hint}</p>}
       {children && <div className="empty-state-preview">{children}</div>}
       {actionLabel && onAction && (
-        <button type="button" className="btn-primary" onClick={onAction}>
+        <button type="button" className="primary-button" onClick={onAction}>
           {actionLabel}
         </button>
       )}

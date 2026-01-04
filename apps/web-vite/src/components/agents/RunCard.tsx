@@ -117,7 +117,7 @@ export function RunCard({ run, currentTime, onDelete, onResume, onProvideInput }
                 placeholder="Type your response..."
               />
               <button
-                className="btn-primary"
+                className="primary-button"
                 disabled={!inputResponse.trim() || isSubmittingInput}
                 onClick={async () => {
                   if (!onProvideInput) return
@@ -194,7 +194,7 @@ export function RunCard({ run, currentTime, onDelete, onResume, onProvideInput }
             <div className="run-messages-actions">
               <button
                 type="button"
-                className="btn-secondary"
+                className="ghost-button"
                 onClick={loadMore}
                 disabled={isLoadingMore}
               >
@@ -230,11 +230,11 @@ export function RunCard({ run, currentTime, onDelete, onResume, onProvideInput }
           run.status !== 'running' &&
           run.status !== 'pending' &&
           run.status !== 'waiting_for_input' && (
-            <button onClick={() => onResume(run.runId)} className="btn-secondary">
+            <button onClick={() => onResume(run.runId)} className="ghost-button">
               Resume
             </button>
           )}
-        <button onClick={() => onDelete(run.runId)} className="btn-danger">
+        <button onClick={() => onDelete(run.runId)} className="ghost-button danger">
           Delete
         </button>
       </div>

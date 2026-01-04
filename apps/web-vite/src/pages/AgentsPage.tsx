@@ -266,7 +266,7 @@ export function AgentsPage() {
           <h1>AI Agents</h1>
           <p>Configure and manage your AI assistants</p>
         </div>
-        <button onClick={handleNew} className="btn-primary">
+        <button onClick={handleNew} className="primary-button">
           + New Agent
         </button>
       </header>
@@ -360,10 +360,10 @@ export function AgentsPage() {
               </div>
 
               <div className="card-actions">
-                <button onClick={() => handleEdit(agent)} className="btn-secondary">
+                <button onClick={() => handleEdit(agent)} className="ghost-button">
                   Edit
                 </button>
-                <button onClick={() => handleSaveTemplate(agent)} className="btn-secondary">
+                <button onClick={() => handleSaveTemplate(agent)} className="ghost-button">
                   Save Template
                 </button>
               </div>
@@ -383,15 +383,15 @@ export function AgentsPage() {
               <h2>Agent Templates</h2>
               <p className="settings-panel__meta">Save reusable agent setups and start faster.</p>
               <div className="settings-panel__actions">
-                <button onClick={handleAddPresets} className="btn-secondary" type="button">
+                <button onClick={handleAddPresets} className="ghost-button" type="button">
                   Add Presets
                 </button>
-                <button onClick={handleExportTemplates} className="btn-secondary" type="button">
+                <button onClick={handleExportTemplates} className="ghost-button" type="button">
                   Export
                 </button>
                 <button
                   onClick={() => importInputRef.current?.click()}
-                  className="btn-secondary"
+                  className="ghost-button"
                   type="button"
                 >
                   Import
@@ -436,7 +436,7 @@ export function AgentsPage() {
                     </div>
                   </div>
                   <div className="card-actions">
-                    <button onClick={() => handleUseTemplate(template)} className="btn-secondary">
+                    <button onClick={() => handleUseTemplate(template)} className="ghost-button">
                       Use Template
                     </button>
                     <button
@@ -445,7 +445,7 @@ export function AgentsPage() {
                           void deleteTemplate(template.templateId)
                         }
                       }}
-                      className="btn-danger"
+                      className="ghost-button danger"
                     >
                       Delete
                     </button>
@@ -470,7 +470,7 @@ export function AgentsPage() {
                 Build reusable modules that agents can call during execution.
               </p>
             </div>
-            <button onClick={handleNewTool} className="btn-primary">
+            <button onClick={handleNewTool} className="primary-button">
               + New Module
             </button>
           </header>
@@ -503,7 +503,7 @@ export function AgentsPage() {
                     </div>
                   </div>
                   <div className="card-actions">
-                    <button onClick={() => handleEditTool(tool)} className="btn-secondary">
+                    <button onClick={() => handleEditTool(tool)} className="ghost-button">
                       Edit
                     </button>
                     <button
@@ -512,7 +512,7 @@ export function AgentsPage() {
                           void deleteTool(tool.toolId)
                         }
                       }}
-                      className="btn-danger"
+                      className="ghost-button danger"
                     >
                       Delete
                     </button>

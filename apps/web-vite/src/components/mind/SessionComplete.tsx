@@ -76,11 +76,11 @@ export function SessionComplete({ onFinish }: SessionCompleteProps) {
         <button
           type="button"
           onClick={() => onFinish(feelingAfter, createTodo)}
-          className="btn-primary"
+          className="primary-button"
         >
           Finish
         </button>
-        <button type="button" onClick={() => onFinish(undefined, false)} className="btn-secondary">
+        <button type="button" onClick={() => onFinish(undefined, false)} className="ghost-button">
           Skip
         </button>
       </div>

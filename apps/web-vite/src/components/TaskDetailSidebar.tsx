@@ -96,7 +96,7 @@ export function TaskDetailSidebar({
         </button>
       </div>
       <div className="sidebar-content">
-        <h4>{task.title}</h4>
+        <h3 className="task-title">{task.title}</h3>
         <p className="task-description">{task.description || 'No description.'}</p>
 
         <div className="form-group">
@@ -155,29 +155,36 @@ export function TaskDetailSidebar({
         </div>
 
         <div className="form-group">
-          <label>Estimated Time</label>
+          <label>Estimated Time (max 40 hours)</label>
           <div className="inline-inputs">
-            <input
-              type="number"
-              min={0}
-              value={estimatedHours}
-              onChange={(e) => {
-                const next = Number(e.target.value)
-                updateEstimatedTime(next, estimatedMinutes)
-              }}
-              placeholder="Hours"
-            />
-            <input
-              type="number"
-              min={0}
-              max={59}
-              value={estimatedMinutes}
-              onChange={(e) => {
-                const next = Number(e.target.value)
-                updateEstimatedTime(estimatedHours, next)
-              }}
-              placeholder="Minutes"
-            />
+            <div className="input-with-suffix">
+              <input
+                type="number"
+                min={0}
+                max={40}
+                value={estimatedHours}
+                onChange={(e) => {
+                  const val = Math.min(40, Math.max(0, Number(e.target.value)))
+                  updateEstimatedTime(val, estimatedMinutes)
+                }}
+                placeholder="0"
+              />
+              <span className="input-suffix">hours</span>
+            </div>
+            <div className="input-with-suffix">
+              <input
+                type="number"
+                min={0}
+                max={59}
+                value={estimatedMinutes}
+                onChange={(e) => {
+                  const val = Math.min(59, Math.max(0, Number(e.target.value)))
+                  updateEstimatedTime(estimatedHours, val)
+                }}
+                placeholder="0"
+              />
+              <span className="input-suffix">mins</span>
+            </div>
           </div>
         </div>
 

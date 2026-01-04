@@ -79,7 +79,7 @@ export function InterventionRunner({
         return (
           <div className="step-content step-text">
             <p className="step-text-content">{currentStep.content}</p>
-            <button type="button" onClick={handleNext} className="btn-primary">
+            <button type="button" onClick={handleNext} className="primary-button">
               {isLastStep ? 'Complete' : 'Continue'}
             </button>
           </div>
@@ -107,7 +107,7 @@ export function InterventionRunner({
             )}
 
             {timerRemaining === null && (
-              <button type="button" onClick={handleNext} className="btn-primary">
+              <button type="button" onClick={handleNext} className="primary-button">
                 {isLastStep ? 'Complete' : 'Continue'}
               </button>
             )}
@@ -151,7 +151,7 @@ export function InterventionRunner({
               type="button"
               onClick={handleNext}
               disabled={!responses[`step_${currentStepIndex}_choice`]}
-              className="btn-primary"
+              className="primary-button"
             >
               {isLastStep ? 'Complete' : 'Continue'}
             </button>
@@ -187,7 +187,7 @@ export function InterventionRunner({
               type="button"
               onClick={handleNext}
               disabled={!responses[`step_${currentStepIndex}_input`]}
-              className="btn-primary"
+              className="primary-button"
             >
               {isLastStep ? 'Complete' : 'Continue'}
             </button>

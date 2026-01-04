@@ -37,8 +37,8 @@ export function DeleteConfirmModal({
       <div className="modal-content modal-confirm" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Delete Event</h2>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
-            ✕
+          <button type="button" className="close-button" onClick={onClose} aria-label="Close">
+            ×
           </button>
         </div>
         <div className="modal-body">
@@ -92,13 +92,13 @@ export function DeleteConfirmModal({
             </p>
           )}
         </div>
-        <div className="form-actions">
+        <div className="modal-actions">
           <button type="button" className="ghost-button" onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            className="danger-button"
+            className="ghost-button danger"
             onClick={handleConfirm}
             disabled={showScopePicker && !selectedScope}
           >

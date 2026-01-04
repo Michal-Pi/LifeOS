@@ -326,8 +326,8 @@ export const EventFormModal = React.memo(function EventFormModal({
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{mode === 'create' ? 'New Event' : 'Edit Event'}</h2>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
-            ✕
+          <button type="button" className="close-button" onClick={onClose} aria-label="Close">
+            ×
           </button>
         </div>
         <form onSubmit={handleSubmit} className="event-form">
@@ -608,7 +608,7 @@ export const EventFormModal = React.memo(function EventFormModal({
 
           {error && <p className="form-error">{error}</p>}
 
-          <div className="form-actions">
+          <div className="modal-actions">
             <button type="button" className="ghost-button" onClick={onClose}>
               Cancel
             </button>

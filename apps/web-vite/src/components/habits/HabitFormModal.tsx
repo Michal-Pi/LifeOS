@@ -310,10 +310,10 @@ export function HabitFormModal({ isOpen, onClose, onSave, existingHabit }: Habit
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={handleClose}>
+            <button type="button" className="ghost-button" onClick={handleClose}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary" disabled={isSaving}>
+            <button type="submit" className="primary-button" disabled={isSaving}>
               {isSaving ? 'Saving...' : existingHabit ? 'Update Habit' : 'Create Habit'}
             </button>
           </div>

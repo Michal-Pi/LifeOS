@@ -243,7 +243,7 @@ export function WorkspacesPage() {
           <h1>Workspaces</h1>
           <p>Orchestrate multiple agents to work together</p>
         </div>
-        <button onClick={handleNew} className="btn-primary">
+        <button onClick={handleNew} className="primary-button">
           + New Workspace
         </button>
       </header>
@@ -323,17 +323,17 @@ export function WorkspacesPage() {
                   <div className="card-actions">
                     <button
                       onClick={() => handleViewWorkspace(workspace.workspaceId)}
-                      className="btn-secondary"
+                      className="ghost-button"
                     >
                       View Details
                     </button>
-                    <button onClick={() => handleEdit(workspace)} className="btn-secondary">
+                    <button onClick={() => handleEdit(workspace)} className="ghost-button">
                       Edit
                     </button>
-                    <button onClick={() => handleSaveTemplate(workspace)} className="btn-secondary">
+                    <button onClick={() => handleSaveTemplate(workspace)} className="ghost-button">
                       Save Template
                     </button>
-                    <button onClick={() => handleDelete(workspace)} className="btn-danger">
+                    <button onClick={() => handleDelete(workspace)} className="ghost-button danger">
                       Delete
                     </button>
                   </div>
@@ -352,15 +352,15 @@ export function WorkspacesPage() {
               <h2>Workspace Templates</h2>
               <p className="settings-panel__meta">Reuse workspace setups for repeated workflows.</p>
               <div className="settings-panel__actions">
-                <button onClick={handleAddPresets} className="btn-secondary" type="button">
+                <button onClick={handleAddPresets} className="ghost-button" type="button">
                   Add Presets
                 </button>
-                <button onClick={handleExportTemplates} className="btn-secondary" type="button">
+                <button onClick={handleExportTemplates} className="ghost-button" type="button">
                   Export
                 </button>
                 <button
                   onClick={() => importInputRef.current?.click()}
-                  className="btn-secondary"
+                  className="ghost-button"
                   type="button"
                 >
                   Import
@@ -405,7 +405,7 @@ export function WorkspacesPage() {
                     )}
                   </div>
                   <div className="card-actions">
-                    <button onClick={() => handleUseTemplate(template)} className="btn-secondary">
+                    <button onClick={() => handleUseTemplate(template)} className="ghost-button">
                       Use Template
                     </button>
                     <button
@@ -414,7 +414,7 @@ export function WorkspacesPage() {
                           void deleteTemplate(template.templateId)
                         }
                       }}
-                      className="btn-danger"
+                      className="ghost-button danger"
                     >
                       Delete
                     </button>
