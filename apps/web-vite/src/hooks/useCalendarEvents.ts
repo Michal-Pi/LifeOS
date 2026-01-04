@@ -78,7 +78,10 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
       const unsubscribe = onSnapshot(
         q,
         (snapshot) => {
-          if (!active) return
+          if (!active) {
+            logger.info('Listener fired but component inactive, skipping')
+            return
+          }
 
           // Only reload if there were deletions or significant changes
           const changes = snapshot.docChanges()
@@ -86,12 +89,17 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
             (change) => change.type === 'removed' || change.type === 'added'
           )
 
+          logger.info('Events snapshot received', {
+            total: snapshot.size,
+            added: changes.filter((c) => c.type === 'added').length,
+            removed: changes.filter((c) => c.type === 'removed').length,
+            modified: changes.filter((c) => c.type === 'modified').length,
+            hasRelevantChanges,
+            active,
+          })
+
           if (hasRelevantChanges) {
-            logger.info('Events collection changed, reloading', {
-              added: changes.filter((c) => c.type === 'added').length,
-              removed: changes.filter((c) => c.type === 'removed').length,
-              modified: changes.filter((c) => c.type === 'modified').length,
-            })
+            logger.info('Events collection changed, reloading')
             void loadEvents()
           }
         },

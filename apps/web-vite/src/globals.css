@@ -1351,12 +1351,16 @@ button[aria-busy='true'] {
 }
 
 .event-card.selected {
-  border-color: var(--accent);
+  border-right-color: var(--accent);
+  border-top-color: var(--accent);
+  border-bottom-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
 .event-card:hover {
+  border-right-color: var(--accent);
   border-top-color: var(--accent);
+  border-bottom-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 

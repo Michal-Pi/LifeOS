@@ -225,6 +225,7 @@ export function CalendarViewsContainer({
           month={currentMonth}
           events={events}
           instances={instances}
+          calendars={calendars}
           onDateSelect={onDateSelect}
           selectedDate={selectedMonthDate}
           onDateClick={scrollToTimeline}

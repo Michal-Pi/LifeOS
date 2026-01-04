@@ -7,7 +7,7 @@ export interface DayCell {
     title: string
     isRecurring: boolean
     isInstance: boolean
-    colorTone?: 'light' | 'normal' | 'dark'
+    color?: string // Actual color hex value
   }>
 }
 

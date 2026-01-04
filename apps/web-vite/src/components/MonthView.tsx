@@ -1,12 +1,51 @@
-import type { CanonicalCalendarEvent, RecurrenceInstance } from '@lifeos/calendar'
+import type {
+  CanonicalCalendarEvent,
+  CanonicalCalendar,
+  RecurrenceInstance,
+} from '@lifeos/calendar'
 import React, { useMemo } from 'react'
 import { getMonthGrid, isSameDay, formatDateKey, WEEKDAYS, type DayCell } from './MonthView.utils'
+
+/**
+ * Adjust color brightness for light/dark variations
+ */
+function adjustColor(hex: string, percent: number): string {
+  const color = hex.replace('#', '')
+  const r = parseInt(color.substring(0, 2), 16)
+  const g = parseInt(color.substring(2, 4), 16)
+  const b = parseInt(color.substring(4, 6), 16)
+
+  const adjust = (c: number) => {
+    const adjusted = Math.round(c + ((255 - c) * percent) / 100)
+    return Math.min(255, Math.max(0, adjusted))
+  }
+
+  const newR = adjust(r)
+  const newG = adjust(g)
+  const newB = adjust(b)
+
+  const toHex = (n: number) => n.toString(16).padStart(2, '0')
+  return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`
+}
+
+/**
+ * Get color variations for a calendar
+ */
+function getCalendarColors(calendar: CanonicalCalendar | undefined) {
+  const baseColor = calendar?.lifeosColor ?? calendar?.color ?? '#4f46e5'
+  return {
+    light: adjustColor(baseColor, 40),
+    normal: baseColor,
+    dark: adjustColor(baseColor, -20),
+  }
+}
 
 interface MonthViewProps {
   year: number
   month: number // 0-indexed
   events: CanonicalCalendarEvent[]
   instances?: RecurrenceInstance[]
+  calendars?: CanonicalCalendar[]
   onDateSelect?: (date: Date) => void
   selectedDate?: Date | null
   onDateClick?: (date: Date) => void // For navigation to timeline
@@ -17,11 +56,19 @@ export const MonthView = React.memo(function MonthView({
   month,
   events,
   instances = [],
+  calendars = [],
   onDateSelect,
   selectedDate,
   onDateClick,
 }: MonthViewProps) {
   const today = useMemo(() => new Date(), [])
+
+  // Create calendar lookup map
+  const calendarsById = useMemo(() => {
+    const map = new Map<string, CanonicalCalendar>()
+    calendars.forEach((cal) => map.set(cal.calendarId, cal))
+    return map
+  }, [calendars])
 
   // Build event map by date
   const eventsByDate = useMemo(() => {
@@ -40,7 +87,11 @@ export const MonthView = React.memo(function MonthView({
         event.recurrence?.recurrenceRules?.length
       )
       const hasGuests = (event.attendees?.length ?? 0) > 0
-      const colorTone = hasGuests ? 'dark' : isRecurring ? 'light' : 'normal'
+
+      // Get calendar and determine color
+      const calendar = calendarsById.get(event.calendarId ?? '')
+      const colors = getCalendarColors(calendar)
+      const color = hasGuests ? colors.dark : isRecurring ? colors.light : colors.normal
 
       for (const dayKey of event.occursOn ?? []) {
         const existing = map.get(dayKey) ?? []
@@ -48,7 +99,7 @@ export const MonthView = React.memo(function MonthView({
           title: event.title ?? 'Untitled',
           isRecurring,
           isInstance: false,
-          colorTone,
+          color,
         })
         map.set(dayKey, existing)
       }
@@ -60,18 +111,23 @@ export const MonthView = React.memo(function MonthView({
       const existing = map.get(dateKey) ?? []
       const masterEvent = masterBySeriesId.get(instance.seriesId)
       const hasGuests = (masterEvent?.attendees?.length ?? 0) > 0
-      const colorTone = hasGuests ? 'dark' : 'light'
+
+      // Get calendar and determine color
+      const calendar = calendarsById.get(masterEvent?.calendarId ?? '')
+      const colors = getCalendarColors(calendar)
+      const color = hasGuests ? colors.dark : colors.light
+
       existing.push({
         title: instance.title ?? 'Untitled',
         isRecurring: true,
         isInstance: true,
-        colorTone,
+        color,
       })
       map.set(dateKey, existing)
     }
 
     return map
-  }, [events, instances])
+  }, [events, instances, calendarsById])
 
   const grid = useMemo(() => getMonthGrid(year, month), [year, month])
 
@@ -128,7 +184,8 @@ export const MonthView = React.memo(function MonthView({
                 {cell.events.slice(0, 3).map((event, i) => (
                   <div
                     key={i}
-                    className={`event-dot ${event.isRecurring ? 'recurring' : ''} ${event.colorTone ? `event-dot--${event.colorTone}` : ''}`}
+                    className="event-dot"
+                    style={{ backgroundColor: event.color }}
                     title={event.title}
                   />
                 ))}
