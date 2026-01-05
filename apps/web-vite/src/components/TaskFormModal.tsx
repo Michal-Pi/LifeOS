@@ -124,28 +124,19 @@ export function TaskFormModal({
     return milestone?.keyResults || projects.find((p) => p.id === projectId)?.keyResults || []
   }, [projectId, milestoneId, projects, milestones])
 
-  // Select options
+  // Select options (no empty string values - Radix UI doesn't support them)
   const projectOptions: SelectOption[] = useMemo(
-    () => [
-      { value: '', label: 'No Project' },
-      ...projects.map((p) => ({ value: p.id, label: p.title })),
-    ],
+    () => projects.map((p) => ({ value: p.id, label: p.title })),
     [projects]
   )
 
   const milestoneOptions: SelectOption[] = useMemo(
-    () => [
-      { value: '', label: 'No Milestone' },
-      ...availableMilestones.map((m) => ({ value: m.id, label: m.title })),
-    ],
+    () => availableMilestones.map((m) => ({ value: m.id, label: m.title })),
     [availableMilestones]
   )
 
   const keyResultOptions: SelectOption[] = useMemo(
-    () => [
-      { value: '', label: 'None' },
-      ...availableKeyResults.map((kr) => ({ value: kr.id, label: kr.text })),
-    ],
+    () => availableKeyResults.map((kr) => ({ value: kr.id, label: kr.text })),
     [availableKeyResults]
   )
 
