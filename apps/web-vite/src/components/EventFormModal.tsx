@@ -10,6 +10,7 @@ import {
   isEndAfterStart,
   isValidEmail,
 } from '@/lib/validation'
+import { Select, type SelectOption } from './Select'
 
 interface EventFormModalProps {
   isOpen: boolean
@@ -76,6 +77,20 @@ const WEEKDAY_OPTIONS: { value: Weekday; label: string }[] = [
   { value: 'FR', label: 'Fri' },
   { value: 'SA', label: 'Sat' },
   { value: 'SU', label: 'Sun' },
+]
+
+const FREQUENCY_OPTIONS: SelectOption[] = [
+  { value: 'none', label: 'Does not repeat' },
+  { value: 'DAILY', label: 'Daily' },
+  { value: 'WEEKLY', label: 'Weekly' },
+  { value: 'MONTHLY', label: 'Monthly' },
+  { value: 'YEARLY', label: 'Yearly' },
+]
+
+const END_TYPE_OPTIONS: SelectOption[] = [
+  { value: 'never', label: 'Never' },
+  { value: 'until', label: 'On date' },
+  { value: 'count', label: 'After occurrences' },
 ]
 
 export const EventFormModal = React.memo(function EventFormModal({
@@ -440,19 +455,15 @@ export const EventFormModal = React.memo(function EventFormModal({
 
               <div className="form-group">
                 <label htmlFor="repeatFrequency">Frequency</label>
-                <select
+                <Select
                   id="repeatFrequency"
                   value={repeatFrequency}
-                  onChange={(e) =>
-                    setRepeatFrequency(e.target.value as RecurrenceFrequency | 'none')
+                  onChange={(value) =>
+                    setRepeatFrequency(value as RecurrenceFrequency | 'none')
                   }
-                >
-                  <option value="none">Does not repeat</option>
-                  <option value="DAILY">Daily</option>
-                  <option value="WEEKLY">Weekly</option>
-                  <option value="MONTHLY">Monthly</option>
-                  <option value="YEARLY">Yearly</option>
-                </select>
+                  options={FREQUENCY_OPTIONS}
+                  placeholder="Select frequency"
+                />
               </div>
 
               {repeatFrequency !== 'none' && (
@@ -514,15 +525,13 @@ export const EventFormModal = React.memo(function EventFormModal({
 
                   <div className="form-group">
                     <label htmlFor="repeatEndType">Ends</label>
-                    <select
+                    <Select
                       id="repeatEndType"
                       value={repeatEndType}
-                      onChange={(e) => setRepeatEndType(e.target.value as RecurrenceEndType)}
-                    >
-                      <option value="never">Never</option>
-                      <option value="until">On date</option>
-                      <option value="count">After occurrences</option>
-                    </select>
+                      onChange={(value) => setRepeatEndType(value as RecurrenceEndType)}
+                      options={END_TYPE_OPTIONS}
+                      placeholder="Select end type"
+                    />
                   </div>
 
                   {repeatEndType === 'until' && (

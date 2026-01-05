@@ -20,6 +20,7 @@ import {
   importanceLabel,
   importanceToSlider,
 } from '@/lib/todoUi'
+import { Select, type SelectOption } from './Select'
 
 interface TaskFormModalProps {
   isOpen: boolean
@@ -35,6 +36,8 @@ const URGENCY_SLIDER_MIN = 1
 const URGENCY_SLIDER_MAX = 6
 const IMPORTANCE_SLIDER_MIN = 1
 const IMPORTANCE_SLIDER_MAX = 5
+
+const DOMAIN_OPTIONS: SelectOption[] = DOMAINS.map((d) => ({ value: d, label: d }))
 
 export function TaskFormModal({
   isOpen,
@@ -120,6 +123,31 @@ export function TaskFormModal({
     const milestone = milestones.find((m) => m.id === milestoneId)
     return milestone?.keyResults || projects.find((p) => p.id === projectId)?.keyResults || []
   }, [projectId, milestoneId, projects, milestones])
+
+  // Select options
+  const projectOptions: SelectOption[] = useMemo(
+    () => [
+      { value: '', label: 'No Project' },
+      ...projects.map((p) => ({ value: p.id, label: p.title })),
+    ],
+    [projects]
+  )
+
+  const milestoneOptions: SelectOption[] = useMemo(
+    () => [
+      { value: '', label: 'No Milestone' },
+      ...availableMilestones.map((m) => ({ value: m.id, label: m.title })),
+    ],
+    [availableMilestones]
+  )
+
+  const keyResultOptions: SelectOption[] = useMemo(
+    () => [
+      { value: '', label: 'None' },
+      ...availableKeyResults.map((kr) => ({ value: kr.id, label: kr.text })),
+    ],
+    [availableKeyResults]
+  )
 
   const effectiveUrgency = useMemo(() => {
     if (!dueDate) return urgency
@@ -209,77 +237,58 @@ export function TaskFormModal({
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="task-project">Project</label>
-                <select
+                <Select
                   id="task-project"
                   value={projectId}
-                  onChange={(e) => {
-                    setProjectId(e.target.value)
+                  onChange={(value) => {
+                    setProjectId(value)
                     setMilestoneId('') // Clear milestone and KR when project changes
                     setKeyResultId('')
                   }}
-                >
-                  <option value="">No Project</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title}
-                    </option>
-                  ))}
-                </select>
+                  options={projectOptions}
+                  placeholder="Select project"
+                />
               </div>
 
               <div className="form-group">
                 <label htmlFor="task-milestone">Milestone</label>
-                <select
+                <Select
                   id="task-milestone"
                   value={milestoneId}
-                  onChange={(e) => {
-                    setMilestoneId(e.target.value)
+                  onChange={(value) => {
+                    setMilestoneId(value)
                     setKeyResultId('') // Clear KR when milestone changes
                   }}
+                  options={milestoneOptions}
+                  placeholder="Select milestone"
                   disabled={!projectId && availableMilestones.length === 0}
-                >
-                  <option value="">No Milestone</option>
-                  {availableMilestones.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.title}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
 
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="task-key-result">Key Result (Optional)</label>
-                <select
+                <Select
                   id="task-key-result"
                   value={keyResultId}
-                  onChange={(e) => setKeyResultId(e.target.value)}
+                  onChange={(value) => setKeyResultId(value)}
+                  options={keyResultOptions}
+                  placeholder="Select key result"
                   disabled={availableKeyResults.length === 0}
-                >
-                  <option value="">None</option>
-                  {availableKeyResults.map((kr) => (
-                    <option key={kr.id} value={kr.id}>
-                      {kr.text}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div className="form-group">
                 <label htmlFor="task-domain">Domain</label>
-                <select
+                <Select
                   id="task-domain"
                   value={domain}
-                  onChange={(e) => setDomain(e.target.value as Domain)}
+                  onChange={(value) => setDomain(value as Domain)}
+                  options={DOMAIN_OPTIONS}
+                  placeholder="Select domain"
                   disabled={Boolean(projectId)}
-                >
-                  {DOMAINS.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
+                />
                 {projectId && <p className="helper-text">Inherited from project</p>}
               </div>
             </div>

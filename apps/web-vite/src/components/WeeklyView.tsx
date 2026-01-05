@@ -2,12 +2,13 @@
  * Weekly View Component - Calendar Week Display
  *
  * Displays a 7-day week view of calendar events, similar to the MonthView
- * but focused on a single week. Shows event indicators for each day and
- * supports date selection for filtering the event timeline.
+ * but focused on a single week. Shows event cards for each day stacked
+ * vertically with titles and colors.
  *
  * Features:
  * - 7-day week grid (Sunday to Saturday)
- * - Event dots with recurring event indicators
+ * - Event cards with titles (truncated to fit)
+ * - Color-coded by event type (recurring, guests, etc.)
  * - "+X more" for days with >3 events
  * - Today highlighting
  * - Date selection with callback support
@@ -38,14 +39,15 @@ interface WeeklyViewProps {
 /**
  * WeeklyView Component
  *
- * Renders a 7-day week calendar view with event indicators.
+ * Renders a 7-day week calendar view with event cards.
  * Calculates the week range from the provided date and displays
- * events distributed across the week days.
+ * events as stacked colored cards with truncated titles.
  *
  * Event Display Logic:
- * - Shows up to 3 event dots per day
+ * - Shows up to 3 event cards per day
+ * - Each card displays truncated event title
+ * - Color-coded by type (recurring, guests, normal)
  * - Displays "+X more" for additional events
- * - Recurring events get special styling
  * - Today is highlighted with distinct styling
  * - Selected date shows selection state
  */
@@ -151,16 +153,18 @@ export const WeeklyView = React.memo(function WeeklyView({
           >
             <span className="day-number">{cell.dayOfMonth}</span>
             {cell.events.length > 0 && (
-              <div className="event-indicators">
+              <div className="event-cards-stack">
                 {cell.events.slice(0, 3).map((event, i) => (
                   <div
                     key={i}
-                    className={`event-dot ${event.isRecurring ? 'recurring' : ''} ${event.colorTone ? `event-dot--${event.colorTone}` : ''}`}
+                    className={`event-card ${event.isRecurring ? 'recurring' : ''} ${event.colorTone ? `event-card--${event.colorTone}` : ''}`}
                     title={event.title}
-                  />
+                  >
+                    <span className="event-title">{event.title}</span>
+                  </div>
                 ))}
                 {cell.events.length > 3 && (
-                  <span className="event-count">+{cell.events.length - 3}</span>
+                  <span className="event-more">+{cell.events.length - 3} more</span>
                 )}
               </div>
             )}

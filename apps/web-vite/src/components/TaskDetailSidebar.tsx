@@ -8,6 +8,17 @@ import {
   urgencyLabel,
   urgencyToSlider,
 } from '@/lib/todoUi'
+import { Select, type SelectOption } from './Select'
+
+const STATUS_OPTIONS: SelectOption[] = [
+  { value: 'inbox', label: 'Inbox' },
+  { value: 'next_action', label: 'Next Action' },
+  { value: 'waiting_for', label: 'Waiting For' },
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'someday', label: 'Someday' },
+  { value: 'done', label: 'Done' },
+  { value: 'cancelled', label: 'Cancelled' },
+]
 
 interface TaskDetailSidebarProps {
   task: CanonicalTask | null
@@ -66,8 +77,8 @@ export function TaskDetailSidebar({
     )
   }
 
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onUpdate({ ...task, status: e.target.value as TaskStatus })
+  const handleStatusChange = (value: string) => {
+    onUpdate({ ...task, status: value as TaskStatus })
   }
 
   const handleUrgencyChange = (value: number) => {
@@ -101,15 +112,12 @@ export function TaskDetailSidebar({
 
         <div className="form-group">
           <label>Status</label>
-          <select value={task.status} onChange={handleStatusChange}>
-            <option value="inbox">Inbox</option>
-            <option value="next_action">Next Action</option>
-            <option value="waiting_for">Waiting For</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="someday">Someday</option>
-            <option value="done">Done</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+          <Select
+            value={task.status}
+            onChange={handleStatusChange}
+            options={STATUS_OPTIONS}
+            placeholder="Select status"
+          />
         </div>
 
         <div className="form-group">

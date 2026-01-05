@@ -2739,6 +2739,65 @@ input[type='range']:disabled {
   font-weight: 500;
 }
 
+/* Event Cards Stack (for WeeklyView) */
+.event-cards-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+  width: 100%;
+}
+
+.event-card {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  background: var(--accent-subtle);
+  border-left: 3px solid var(--accent);
+  min-height: 1.5rem;
+  overflow: hidden;
+}
+
+.event-card.recurring {
+  background: var(--accent-subtle);
+  border-left-color: var(--accent);
+}
+
+.event-card--light {
+  background: rgba(45, 212, 191, 0.12);
+  border-left-color: var(--success);
+}
+
+.event-card--normal {
+  background: var(--accent-subtle);
+  border-left-color: var(--accent);
+}
+
+.event-card--dark {
+  background: rgba(251, 191, 36, 0.12);
+  border-left-color: var(--warning);
+}
+
+.event-title {
+  font-size: 0.7rem;
+  line-height: 1.2;
+  color: var(--foreground);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.event-more {
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+  font-weight: 500;
+  padding: 0.15rem 0.4rem;
+  text-align: left;
+}
+
 /* Sync Status Section */
 .sync-status-section {
   margin-top: 1rem;
