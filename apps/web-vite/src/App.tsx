@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
-import { lazy, Suspense, useEffect, type ComponentType } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Toaster } from 'sonner'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -10,7 +10,7 @@ import { TopNav } from './components/TopNav'
 import './globals.css'
 
 // Helper to handle chunk loading errors (e.g., after deployment when old chunks are cached)
-function lazyWithRetry<T extends React.ComponentType<any>>(
+function lazyWithRetry<T extends React.ComponentType>(
   importFn: () => Promise<{ default: T }>
 ): React.LazyExoticComponent<T> {
   return lazy(() =>
@@ -44,20 +44,30 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
 }
 
 // Lazy-loaded pages for code splitting
-const LoginPage = lazyWithRetry(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })))
-const TodayPage = lazyWithRetry(() => import('./pages/TodayPage').then((m) => ({ default: m.TodayPage })))
+const LoginPage = lazyWithRetry(() =>
+  import('./pages/LoginPage').then((m) => ({ default: m.LoginPage }))
+)
+const TodayPage = lazyWithRetry(() =>
+  import('./pages/TodayPage').then((m) => ({ default: m.TodayPage }))
+)
 const CalendarPage = lazyWithRetry(() =>
   import('./pages/CalendarPage').then((m) => ({ default: m.CalendarPage }))
 )
-const PlannerPage = lazyWithRetry(() => import('./pages/PlannerPage').then((m) => ({ default: m.PlannerPage })))
-const NotesPage = lazyWithRetry(() => import('./pages/NotesPage').then((m) => ({ default: m.NotesPage })))
+const PlannerPage = lazyWithRetry(() =>
+  import('./pages/PlannerPage').then((m) => ({ default: m.PlannerPage }))
+)
+const NotesPage = lazyWithRetry(() =>
+  import('./pages/NotesPage').then((m) => ({ default: m.NotesPage }))
+)
 const SettingsPage = lazyWithRetry(() =>
   import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))
 )
 const WeeklyReviewPage = lazyWithRetry(() =>
   import('./pages/WeeklyReviewPage').then((m) => ({ default: m.WeeklyReviewPage }))
 )
-const HabitsPage = lazyWithRetry(() => import('./pages/HabitsPage').then((m) => ({ default: m.HabitsPage })))
+const HabitsPage = lazyWithRetry(() =>
+  import('./pages/HabitsPage').then((m) => ({ default: m.HabitsPage }))
+)
 const ExerciseLibraryPage = lazyWithRetry(() =>
   import('./pages/ExerciseLibraryPage').then((m) => ({ default: m.ExerciseLibraryPage }))
 )
@@ -67,7 +77,9 @@ const WorkoutTemplatePage = lazyWithRetry(() =>
 const WorkoutPlanPage = lazyWithRetry(() =>
   import('./pages/WorkoutPlanPage').then((m) => ({ default: m.WorkoutPlanPage }))
 )
-const AgentsPage = lazyWithRetry(() => import('./pages/AgentsPage').then((m) => ({ default: m.AgentsPage })))
+const AgentsPage = lazyWithRetry(() =>
+  import('./pages/AgentsPage').then((m) => ({ default: m.AgentsPage }))
+)
 const WorkspacesPage = lazyWithRetry(() =>
   import('./pages/WorkspacesPage').then((m) => ({ default: m.WorkspacesPage }))
 )

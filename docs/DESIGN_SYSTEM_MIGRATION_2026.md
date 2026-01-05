@@ -101,6 +101,7 @@ const options: SelectOption[] = [
 ```
 
 **Benefits:**
+
 - Proper positioning in modals (no displacement issues)
 - Consistent styling across browsers
 - Better accessibility (ARIA attributes)
@@ -200,6 +201,7 @@ const options: SelectOption[] = [
 ### Dropdown Menu Fix - Radix UI Select Migration
 
 **Problem**: Native `<select>` dropdowns were displaced in modals due to:
+
 - Modal's `overflow-y: auto` creating a clipping context
 - Transform animations (`translateY`) affecting positioning reference
 - Browser-native dropdown rendering outside DOM flow
@@ -209,6 +211,7 @@ const options: SelectOption[] = [
 **Solution**: Replaced all native `<select>` elements with custom Radix UI Select component
 
 **Components Migrated:**
+
 1. **TaskFormModal** (4 dropdowns): Project, Milestone, Key Result, Domain
 2. **EventFormModal** (2 dropdowns): Repeat frequency, Repeat end type
 3. **TaskDetailSidebar** (1 dropdown): Task status
@@ -229,7 +232,7 @@ export function Select({ value, onChange, options, placeholder, disabled }) {
       <RadixSelect.Portal>
         <RadixSelect.Content className="select-content" position="popper">
           <RadixSelect.Viewport>
-            {options.map(option => (
+            {options.map((option) => (
               <RadixSelect.Item key={option.value} value={option.value}>
                 <RadixSelect.ItemText>{option.label}</RadixSelect.ItemText>
               </RadixSelect.Item>
@@ -243,6 +246,7 @@ export function Select({ value, onChange, options, placeholder, disabled }) {
 ```
 
 **Benefits:**
+
 - **Fixed Positioning**: Uses portal-based rendering for proper dropdown positioning
 - **Design System Compliance**: 8px border-radius, 40px min-height, design tokens
 - **Better UX**: Keyboard navigation, ARIA attributes, consistent browser behavior
@@ -276,6 +280,7 @@ export function Select({ value, onChange, options, placeholder, disabled }) {
 **After**: Stacked event cards with visible truncated titles
 
 **Changes:**
+
 - Replaced `.event-dot` with `.event-card`
 - Display up to 3 event cards per day in a vertical stack
 - Each card shows:
@@ -285,6 +290,7 @@ export function Select({ value, onChange, options, placeholder, disabled }) {
 - Improved "+X more" indicator styling
 
 **Benefits:**
+
 - **Better Scannability**: See event titles at a glance without hovering
 - **More Information**: Quickly identify events by name, not just color
 - **Consistent Design**: Cards match the design system (8px border-radius, design tokens)

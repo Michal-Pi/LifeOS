@@ -55,7 +55,9 @@ export function useAutoSync(userId: string, accountId: string): void {
         const needsSync = !latest || Date.now() - latest > AUTO_SYNC_AGE_MS
         if (!needsSync) return
 
-        const response = await authenticatedFetch(functionUrl(`syncNow?uid=${userId}&accountId=${accountId}`))
+        const response = await authenticatedFetch(
+          functionUrl(`syncNow?uid=${userId}&accountId=${accountId}`)
+        )
 
         if (response.ok) {
           const result = await response.json()

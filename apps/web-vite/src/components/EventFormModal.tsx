@@ -458,9 +458,7 @@ export const EventFormModal = React.memo(function EventFormModal({
                 <Select
                   id="repeatFrequency"
                   value={repeatFrequency}
-                  onChange={(value) =>
-                    setRepeatFrequency(value as RecurrenceFrequency | 'none')
-                  }
+                  onChange={(value) => setRepeatFrequency(value as RecurrenceFrequency | 'none')}
                   options={FREQUENCY_OPTIONS}
                   placeholder="Select frequency"
                 />

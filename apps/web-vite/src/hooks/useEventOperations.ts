@@ -338,7 +338,10 @@ export function useEventOperations({
           if (result.deletedSeriesId) {
             // Unlink from composite before deleting
             try {
-              const composites = await compositeRepository.findByCanonicalEventId(userId, result.deletedSeriesId)
+              const composites = await compositeRepository.findByCanonicalEventId(
+                userId,
+                result.deletedSeriesId
+              )
               if (composites.length > 0) {
                 await unlinkEvent(
                   { compositeRepository, eventRepository: calendarRepository },
@@ -391,7 +394,10 @@ export function useEventOperations({
 
       // Unlink from composite before deleting
       try {
-        const composites = await compositeRepository.findByCanonicalEventId(userId, selectedEvent.canonicalEventId)
+        const composites = await compositeRepository.findByCanonicalEventId(
+          userId,
+          selectedEvent.canonicalEventId
+        )
         if (composites.length > 0) {
           await unlinkEvent(
             { compositeRepository, eventRepository: calendarRepository },

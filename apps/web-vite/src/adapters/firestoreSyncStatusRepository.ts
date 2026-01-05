@@ -55,11 +55,7 @@ function snapshotToStatus(snapshot: DocumentSnapshot<DocumentData>) {
 export function createFirestoreSyncStatusRepository(): SyncStatusRepository & {
   subscribeToStatus?: (
     userId: string,
-    callback: (status: {
-      lastSyncAt?: string
-      lastSuccessAt?: string
-      lastError?: string
-    }) => void
+    callback: (status: { lastSyncAt?: string; lastSuccessAt?: string; lastError?: string }) => void
   ) => Unsubscribe
 } {
   return {

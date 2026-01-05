@@ -287,9 +287,7 @@ export function DeleteAllCalendarDataSection({ userId }: { userId: string }) {
             <input
               type="checkbox"
               checked={options.deleteHabitCheckins}
-              onChange={(e) =>
-                setOptions({ ...options, deleteHabitCheckins: e.target.checked })
-              }
+              onChange={(e) => setOptions({ ...options, deleteHabitCheckins: e.target.checked })}
             />
             Delete habit check-ins from calendar events
           </label>
@@ -311,25 +309,16 @@ export function DeleteAllCalendarDataSection({ userId }: { userId: string }) {
           </div>
         )}
 
-        <button
-          className="danger-button"
-          onClick={handleDeleteClick}
-          disabled={loading}
-        >
+        <button className="danger-button" onClick={handleDeleteClick} disabled={loading}>
           Delete All Calendar Data
         </button>
       </section>
 
       {showConfirmDialog && (
-        <div
-          className="modal-overlay"
-          onClick={() => !isDeleting && setShowConfirmDialog(false)}
-        >
+        <div className="modal-overlay" onClick={() => !isDeleting && setShowConfirmDialog(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <header className="modal-header">
-              <h2>
-                {isDeleting ? 'Deleting Calendar Data' : 'Confirm: Delete All Calendar Data'}
-              </h2>
+              <h2>{isDeleting ? 'Deleting Calendar Data' : 'Confirm: Delete All Calendar Data'}</h2>
               {!isDeleting && (
                 <button className="modal-close" onClick={() => setShowConfirmDialog(false)}>
                   ✕
@@ -393,9 +382,7 @@ export function DeleteAllCalendarDataSection({ userId }: { userId: string }) {
                 </>
               ) : (
                 <>
-                  <p className="modal-warning">
-                    You are about to permanently delete:
-                  </p>
+                  <p className="modal-warning">You are about to permanently delete:</p>
 
                   {previewCounts && (
                     <ul className="modal-list">

@@ -118,7 +118,10 @@ export function CleanupOrphanedDataSection({ userId }: { userId: string }) {
 
           // If composite would have < 2 members after cleanup, delete it
           if (validMembers.length < 2 && members.length !== validMembers.length) {
-            await compositeRepository.delete(userId, composite.id ?? composite.compositeEventId ?? '')
+            await compositeRepository.delete(
+              userId,
+              composite.id ?? composite.compositeEventId ?? ''
+            )
             compositesCleaned++
           }
         }
@@ -189,8 +192,8 @@ export function CleanupOrphanedDataSection({ userId }: { userId: string }) {
                 {orphanedData.tasksWithOrphanedLinks.length > 0 && (
                   <div className="cleanup-issue">
                     <p>
-                      <strong>{orphanedData.tasksWithOrphanedLinks.length} tasks</strong>{' '}
-                      reference deleted calendar events
+                      <strong>{orphanedData.tasksWithOrphanedLinks.length} tasks</strong> reference
+                      deleted calendar events
                     </p>
                     <ul className="cleanup-list">
                       {orphanedData.tasksWithOrphanedLinks.slice(0, 5).map((task) => (
@@ -200,9 +203,7 @@ export function CleanupOrphanedDataSection({ userId }: { userId: string }) {
                         </li>
                       ))}
                       {orphanedData.tasksWithOrphanedLinks.length > 5 && (
-                        <li>
-                          ...and {orphanedData.tasksWithOrphanedLinks.length - 5} more
-                        </li>
+                        <li>...and {orphanedData.tasksWithOrphanedLinks.length - 5} more</li>
                       )}
                     </ul>
                   </div>
@@ -211,7 +212,9 @@ export function CleanupOrphanedDataSection({ userId }: { userId: string }) {
                 {orphanedData.compositesWithOrphanedMembers.length > 0 && (
                   <div className="cleanup-issue">
                     <p>
-                      <strong>{orphanedData.compositesWithOrphanedMembers.length} composites</strong>{' '}
+                      <strong>
+                        {orphanedData.compositesWithOrphanedMembers.length} composites
+                      </strong>{' '}
                       have invalid event members
                     </p>
                   </div>
@@ -253,8 +256,7 @@ export function CleanupOrphanedDataSection({ userId }: { userId: string }) {
                     className="primary-button"
                     onClick={cleanupOrphans}
                     disabled={
-                      cleaning ||
-                      (!cleanupOptions.cleanTasks && !cleanupOptions.cleanComposites)
+                      cleaning || (!cleanupOptions.cleanTasks && !cleanupOptions.cleanComposites)
                     }
                   >
                     {cleaning ? 'Cleaning...' : 'Clean Up Orphaned Data'}

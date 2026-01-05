@@ -21,7 +21,7 @@ const COLLECTION_TASKS = 'tasks'
 async function ensureFirestoreAuthReady(userId: string, maxWaitMs: number = 1000): Promise<void> {
   const startTime = Date.now()
   const auth = getAuthClient()
-  
+
   while (Date.now() - startTime < maxWaitMs) {
     const currentUser = auth.currentUser
     if (currentUser && currentUser.uid === userId) {
@@ -56,11 +56,11 @@ async function retryFirestoreQuery<T>(
       lastError = error
       // Check for permission errors - Firebase uses 'permission-denied' code
       // Also check error message for "Missing or insufficient permissions"
-      const isPermissionError = 
-        error?.code === 'permission-denied' || 
+      const isPermissionError =
+        error?.code === 'permission-denied' ||
         error?.code === 'PERMISSION_DENIED' ||
         (error?.message && error.message.includes('Missing or insufficient permissions'))
-      
+
       if (isPermissionError && attempt < maxRetries - 1) {
         // Wait exponentially: 100ms, 200ms, 400ms
         await new Promise((resolve) => setTimeout(resolve, 100 * Math.pow(2, attempt)))

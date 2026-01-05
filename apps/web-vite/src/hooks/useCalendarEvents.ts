@@ -17,7 +17,9 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
   const [events, setEvents] = useState<CanonicalCalendarEvent[]>([])
   const [instances, setInstances] = useState<RecurrenceInstance[]>([])
   const [loading, setLoading] = useState(false)
-  const [syncProgress, setSyncProgress] = useState<{ total: number; isActive: boolean } | null>(null)
+  const [syncProgress, setSyncProgress] = useState<{ total: number; isActive: boolean } | null>(
+    null
+  )
   const unsubscribeRef = useRef<Unsubscribe | null>(null)
 
   const getRangeFromDayKeys = useCallback(() => {

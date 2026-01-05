@@ -27,7 +27,11 @@ export function Select({
 }: SelectProps) {
   return (
     <RadixSelect.Root value={value} onValueChange={onChange} disabled={disabled}>
-      <RadixSelect.Trigger id={id} className={`select-trigger ${className}`} aria-label={placeholder}>
+      <RadixSelect.Trigger
+        id={id}
+        className={`select-trigger ${className}`}
+        aria-label={placeholder}
+      >
         <RadixSelect.Value placeholder={placeholder} />
         <RadixSelect.Icon className="select-icon">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -44,7 +48,13 @@ export function Select({
                 <RadixSelect.ItemText>{option.label}</RadixSelect.ItemText>
                 <RadixSelect.ItemIndicator className="select-item-indicator">
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M10 3L4.5 8.5L2 6"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </RadixSelect.ItemIndicator>
               </RadixSelect.Item>

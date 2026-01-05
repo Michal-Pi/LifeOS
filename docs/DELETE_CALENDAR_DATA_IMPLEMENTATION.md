@@ -62,6 +62,7 @@ This implementation provides users with flexible control over deleting calendar 
    - freeBusyCache
 
 **Client-side Cleanup**:
+
 - Clears IndexedDB outbox queue (`lifeos-outbox`)
 - Clears localStorage calendar-related keys
 - Reloads page to refresh UI
@@ -75,6 +76,7 @@ This implementation provides users with flexible control over deleting calendar 
 **Purpose**: Fix existing orphaned references without deleting calendar data
 
 **Features**:
+
 - **Scan**: Identifies tasks and composites with references to deleted events
 - **Preview**: Shows list of affected items before cleanup
 - **Selective Cleanup**: User chooses what to clean:
@@ -82,6 +84,7 @@ This implementation provides users with flexible control over deleting calendar 
   - Clean up broken composite events (deletes if <2 valid members remain)
 
 **Use Cases**:
+
 - Fixing data corruption from previous bugs
 - Cleaning up after manual calendar deletions
 - Periodic maintenance
@@ -93,16 +96,19 @@ This implementation provides users with flexible control over deleting calendar 
 **Location**: [useEventOperations.ts:316-426](../apps/web-vite/src/hooks/useEventOperations.ts#L316-L426)
 
 **Bug Fix**: Previously, deleting an event did NOT clean up:
+
 - Task references (tasks kept `calendarEventIds` pointing to deleted events)
 - Composite memberships (composites had orphaned member references)
 
 **New Behavior**:
+
 - Automatically unlinks event from composite before deletion
 - If composite would have <2 members after unlinking, deletes the composite
 - Gracefully handles errors (logs warning if unlinking fails)
 - Works for both recurring and non-recurring events
 
 **Implementation**:
+
 ```typescript
 // Before deleting the event:
 const composites = await compositeRepository.findByCanonicalEventId(userId, eventId)
@@ -145,6 +151,7 @@ Two new endpoints:
 ### Frontend (React Components)
 
 **DeleteAllCalendarDataSection.tsx**:
+
 - Dropdown selectors for each option type
 - Help text explaining each choice
 - Preview/confirmation flow:
@@ -158,6 +165,7 @@ Two new endpoints:
   8. Reloads page
 
 **CleanupOrphanedDataSection.tsx**:
+
 - "Scan for Orphaned Data" button
 - Displays scan results with counts
 - Shows first 5 affected items as preview
@@ -168,13 +176,14 @@ Two new endpoints:
 
 **Entities with Calendar Event Dependencies**:
 
-| Entity | Relationship | Field | Cleanup Strategy |
-|--------|-------------|-------|------------------|
-| Tasks | One-way reference | `calendarEventIds: string[]` | User choice: unlink/delete/keep |
-| Composite Events | Bidirectional aggregation | `members[].canonicalEventId` | User choice: delete/keep; auto-delete if <2 members |
-| Habit Check-ins | One-way reference (optional) | `sourceId` when `sourceType === 'calendar'` | User choice: delete/keep (graceful degradation) |
+| Entity           | Relationship                 | Field                                       | Cleanup Strategy                                    |
+| ---------------- | ---------------------------- | ------------------------------------------- | --------------------------------------------------- |
+| Tasks            | One-way reference            | `calendarEventIds: string[]`                | User choice: unlink/delete/keep                     |
+| Composite Events | Bidirectional aggregation    | `members[].canonicalEventId`                | User choice: delete/keep; auto-delete if <2 members |
+| Habit Check-ins  | One-way reference (optional) | `sourceId` when `sourceType === 'calendar'` | User choice: delete/keep (graceful degradation)     |
 
 **No Dependencies**:
+
 - Projects
 - Milestones
 - Notes
@@ -185,9 +194,11 @@ Two new endpoints:
 ## User Scenarios
 
 ### Scenario 1: Calendar Migration
+
 **Goal**: Switch from Google Calendar to new calendar but keep task scheduling
 
 **Steps**:
+
 1. Go to Settings → Calendar Accounts
 2. Click "Delete All Calendar Data"
 3. Select:
@@ -202,9 +213,11 @@ Two new endpoints:
 **Result**: Tasks preserved with clean slate for new calendar
 
 ### Scenario 2: Complete Reset
+
 **Goal**: Start completely fresh, delete everything calendar-related
 
 **Steps**:
+
 1. Go to Settings → Calendar Accounts
 2. Click "Delete All Calendar Data"
 3. Select:
@@ -217,9 +230,11 @@ Two new endpoints:
 **Result**: All calendar data and linked items removed
 
 ### Scenario 3: Fix Orphaned Data
+
 **Goal**: Clean up broken references from previous bugs/manual deletions
 
 **Steps**:
+
 1. Go to Settings → Calendar Accounts → Data Cleanup
 2. Click "Scan for Orphaned Data"
 3. Review results
@@ -235,23 +250,27 @@ Two new endpoints:
 ## Technical Notes
 
 ### Firestore Batch Limits
+
 - Maximum 500 operations per batch (using conservative limit)
 - Batches are committed and reset when limit reached
 - Large deletions may take several seconds
 
 ### Error Handling
+
 - Authentication verified via Firebase ID token
 - Graceful degradation if cache cleanup fails
 - Composite unlinking errors logged but don't block deletion
 - All operations wrapped in try-catch
 
 ### Performance Considerations
+
 - Preview counts run in parallel for speed
 - Batched writes for efficiency
 - Client-side cache clear is async
 - Page reload ensures clean UI state
 
 ### Security
+
 - All endpoints require authenticated user
 - `verifyAuth()` checks Firebase ID token
 - User can only delete their own data (uid verification)
@@ -262,6 +281,7 @@ Two new endpoints:
 ## Testing Checklist
 
 ### Backend Testing
+
 - [ ] `previewDeleteCalendarData` returns accurate counts
 - [ ] `deleteAllCalendarData` with `unlink` option removes task links
 - [ ] `deleteAllCalendarData` with `delete-linked` option deletes tasks
@@ -274,6 +294,7 @@ Two new endpoints:
 - [ ] Authentication is properly verified
 
 ### Frontend Testing
+
 - [ ] Preview modal shows correct counts
 - [ ] Confirmation requires "DELETE ALL" text
 - [ ] Options are properly sent to backend
@@ -286,6 +307,7 @@ Two new endpoints:
 - [ ] Orphaned data cleanup deletes invalid composites
 
 ### Integration Testing
+
 - [ ] Single event deletion unlinks from composites
 - [ ] Single event deletion doesn't break with no composite
 - [ ] Recurring event deletion handles composites
@@ -297,6 +319,7 @@ Two new endpoints:
 ## Future Enhancements
 
 ### Potential Improvements
+
 1. **Selective Calendar Deletion**: Delete specific calendars instead of all
 2. **Undo/Backup**: Create backup before deletion with restore option
 3. **Progress Indicator**: Show progress bar for large deletions
@@ -306,6 +329,7 @@ Two new endpoints:
 7. **Composite Merge**: Merge composites when deleting provider calendars
 
 ### Known Limitations
+
 1. Very large datasets (>10,000 events) may timeout - consider pagination
 2. Page reload required after deletion - could use state management
 3. No granular control over individual sync data collections
@@ -316,17 +340,20 @@ Two new endpoints:
 ## Files Modified
 
 ### Backend
+
 - [functions/src/index.ts](../functions/src/index.ts)
   - Added `deleteAllCalendarData` endpoint (lines 1057-1275)
   - Added `previewDeleteCalendarData` endpoint (lines 1281-1335)
 
 ### Frontend Components
+
 - [apps/web-vite/src/components/CalendarSettingsPanel.tsx](../apps/web-vite/src/components/CalendarSettingsPanel.tsx)
   - Added imports for new components (lines 7-8)
   - Added `CleanupOrphanedDataSection` (line 362)
   - Added `DeleteAllCalendarDataSection` (line 364)
 
 ### New Files Created
+
 - [apps/web-vite/src/components/DeleteAllCalendarDataSection.tsx](../apps/web-vite/src/components/DeleteAllCalendarDataSection.tsx)
   - Main deletion UI with options and confirmation
 
@@ -334,6 +361,7 @@ Two new endpoints:
   - Orphaned data scan and cleanup utility
 
 ### Bug Fixes
+
 - [apps/web-vite/src/hooks/useEventOperations.ts](../apps/web-vite/src/hooks/useEventOperations.ts)
   - Added composite repository import (lines 19-20)
   - Added `unlinkEvent` import (line 20)
@@ -345,7 +373,9 @@ Two new endpoints:
 ## Deployment Notes
 
 ### Required Steps
+
 1. Deploy Cloud Functions:
+
    ```bash
    cd functions
    npm run deploy
@@ -358,13 +388,17 @@ Two new endpoints:
 4. Frontend builds automatically include new components
 
 ### Rollback Plan
+
 If issues occur:
+
 1. Revert Cloud Functions to previous version
 2. Remove new component imports from CalendarSettingsPanel
 3. Revert useEventOperations changes if composite unlinking causes issues
 
 ### Monitoring
+
 Watch for:
+
 - Increased Cloud Function execution time
 - Firestore batch write errors
 - Client-side cache clearing failures
