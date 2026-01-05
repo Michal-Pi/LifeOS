@@ -168,7 +168,16 @@ export function PlannerPage() {
       maxTimeHours,
       maxTimeMinutes,
     }
-  }, [domainFilter, projectFilter, timelineFilter, completionFilter, minTimeHours, minTimeMinutes, maxTimeHours, maxTimeMinutes])
+  }, [
+    domainFilter,
+    projectFilter,
+    timelineFilter,
+    completionFilter,
+    minTimeHours,
+    minTimeMinutes,
+    maxTimeHours,
+    maxTimeMinutes,
+  ])
 
   // Filter tasks based on filters
   const filteredTasks = useMemo(() => {
@@ -475,13 +484,15 @@ export function PlannerPage() {
         <div className="stat-card stat-card-7day">
           <span className="stat-label">Created (7d)</span>
           <strong className="stat-value">
-            {stats.last7Days.tasksCreated} ({formatTimeMinutes(stats.last7Days.tasksCreatedTimeMinutes)})
+            {stats.last7Days.tasksCreated} (
+            {formatTimeMinutes(stats.last7Days.tasksCreatedTimeMinutes)})
           </strong>
         </div>
         <div className="stat-card stat-card-7day">
           <span className="stat-label">Completed (7d)</span>
           <strong className="stat-value">
-            {stats.last7Days.tasksCompleted} ({formatTimeMinutes(stats.last7Days.tasksCompletedTimeMinutes)})
+            {stats.last7Days.tasksCompleted} (
+            {formatTimeMinutes(stats.last7Days.tasksCompletedTimeMinutes)})
           </strong>
         </div>
         <div className="stat-card stat-card-wide stat-card-domains">

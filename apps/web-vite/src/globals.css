@@ -6590,11 +6590,11 @@ input[type='range']:disabled {
   .priority-toolbar {
     grid-template-columns: 1fr;
   }
-  
+
   .filter-group-time {
     grid-column: span 1;
   }
-  
+
   .time-range-inputs {
     flex-wrap: wrap;
   }

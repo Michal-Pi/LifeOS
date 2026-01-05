@@ -57,10 +57,7 @@ export function DomainBarChart({ domainSplit }: DomainBarChartProps) {
       <div className="domain-legend">
         {activeDomains.map((domain) => (
           <div key={domain} className="domain-legend-item">
-            <span
-              className="domain-color-dot"
-              style={{ backgroundColor: DOMAIN_COLORS[domain] }}
-            />
+            <span className="domain-color-dot" style={{ backgroundColor: DOMAIN_COLORS[domain] }} />
             <span className="domain-legend-label">{DOMAIN_LABELS[domain]}</span>
             <span className="domain-legend-value">{domainSplit[domain]}%</span>
           </div>

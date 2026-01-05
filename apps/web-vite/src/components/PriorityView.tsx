@@ -56,7 +56,9 @@ export function PriorityView({
                       <span className="task-title">{task.title}</span>
                     </div>
                     <div className="task-card-meta">
-                      {task.dueDate && <span className="meta-tag due-date">Due {task.dueDate}</span>}
+                      {task.dueDate && (
+                        <span className="meta-tag due-date">Due {task.dueDate}</span>
+                      )}
                       <span className="meta-tag importance">Imp: {task.importance}</span>
                       {task.allocatedTimeMinutes && task.allocatedTimeMinutes > 0 && (
                         <span className="meta-tag time-estimate">

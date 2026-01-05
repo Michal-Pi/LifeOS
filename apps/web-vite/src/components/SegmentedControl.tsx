@@ -10,7 +10,12 @@ interface SegmentedControlProps {
   className?: string
 }
 
-export function SegmentedControl({ value, onChange, options, className = '' }: SegmentedControlProps) {
+export function SegmentedControl({
+  value,
+  onChange,
+  options,
+  className = '',
+}: SegmentedControlProps) {
   return (
     <div className={`segmented-control ${className}`} role="radiogroup">
       {options.map((option) => (
