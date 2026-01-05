@@ -1042,10 +1042,11 @@ button[aria-busy='true'] {
   animation: typing 2s steps(30, end);
 }
 
-.planner-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+.page-container.planner-page {
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
 }
 
 .planner-header {
