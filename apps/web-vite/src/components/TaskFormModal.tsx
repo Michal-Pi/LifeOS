@@ -115,9 +115,10 @@ export function TaskFormModal({
   }, [projectId, projects])
 
   // Filter milestones by selected project (exclude 'none' sentinel)
-  const availableMilestones = projectId && projectId !== 'none'
-    ? milestones.filter((m) => m.projectId === projectId)
-    : milestones
+  const availableMilestones =
+    projectId && projectId !== 'none'
+      ? milestones.filter((m) => m.projectId === projectId)
+      : milestones
 
   const availableKeyResults = useMemo(() => {
     const milestone = milestones.find((m) => m.id === milestoneId)
@@ -166,22 +167,27 @@ export function TaskFormModal({
 
     setIsSubmitting(true)
     try {
-      await onSave({
+      // Build task object, only including fields with actual values (Firestore doesn't accept undefined)
+      const taskData: Omit<CanonicalTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'> = {
         title: title.trim(),
         description: description.trim(),
         domain,
-        projectId: projectId !== 'none' ? projectId : undefined,
-        milestoneId: milestoneId !== 'none' ? milestoneId : undefined,
-        keyResultId: keyResultId !== 'none' ? keyResultId : undefined,
-        urgency: dueDate ? undefined : urgency,
         importance,
-        dueDate: dueDate || undefined,
         status,
         completed: initialTask?.completed ?? false,
         archived: initialTask?.archived ?? false,
-        calendarEventIds: initialTask?.calendarEventIds,
-        allocatedTimeMinutes: allocatedTimeMinutes || undefined,
-      })
+      }
+
+      // Only add optional fields if they have values
+      if (projectId !== 'none') taskData.projectId = projectId
+      if (milestoneId !== 'none') taskData.milestoneId = milestoneId
+      if (keyResultId !== 'none') taskData.keyResultId = keyResultId
+      if (dueDate) taskData.dueDate = dueDate
+      if (!dueDate && urgency) taskData.urgency = urgency
+      if (allocatedTimeMinutes > 0) taskData.allocatedTimeMinutes = allocatedTimeMinutes
+      if (initialTask?.calendarEventIds) taskData.calendarEventIds = initialTask.calendarEventIds
+
+      await onSave(taskData)
       onClose()
     } catch (error) {
       logger.error('Failed to save task:', error)
