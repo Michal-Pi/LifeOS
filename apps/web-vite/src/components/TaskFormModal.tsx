@@ -50,9 +50,9 @@ export function TaskFormModal({
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [domain, setDomain] = useState<Domain>('work')
-  const [projectId, setProjectId] = useState<string>('')
-  const [milestoneId, setMilestoneId] = useState<string>('')
-  const [keyResultId, setKeyResultId] = useState<string>('')
+  const [projectId, setProjectId] = useState<string>('none')
+  const [milestoneId, setMilestoneId] = useState<string>('none')
+  const [keyResultId, setKeyResultId] = useState<string>('none')
   const [urgency, setUrgency] = useState<UrgencyLevel>('this_week')
   const [importance, setImportance] = useState<ImportanceLevel>(4)
   const [dueDate, setDueDate] = useState('')
@@ -68,9 +68,9 @@ export function TaskFormModal({
         setTitle(initialTask.title)
         setDescription(initialTask.description || '')
         setDomain(initialTask.domain)
-        setProjectId(initialTask.projectId || '')
-        setMilestoneId(initialTask.milestoneId || '')
-        setKeyResultId(initialTask.keyResultId || '')
+        setProjectId(initialTask.projectId || 'none')
+        setMilestoneId(initialTask.milestoneId || 'none')
+        setKeyResultId(initialTask.keyResultId || 'none')
         setUrgency(initialTask.urgency || 'this_week')
         setImportance(initialTask.importance)
         setDueDate(initialTask.dueDate || '')
@@ -83,9 +83,9 @@ export function TaskFormModal({
         setTitle('')
         setDescription('')
         setDomain('work')
-        setProjectId('')
-        setMilestoneId('')
-        setKeyResultId('')
+        setProjectId('none')
+        setMilestoneId('none')
+        setKeyResultId('none')
         setUrgency('this_week')
         setImportance(4)
         setDueDate('')
@@ -107,15 +107,15 @@ export function TaskFormModal({
   }, [milestoneId, milestones])
 
   useEffect(() => {
-    if (!projectId) return
+    if (!projectId || projectId === 'none') return
     const project = projects.find((p) => p.id === projectId)
     if (project) {
       setDomain(project.domain)
     }
   }, [projectId, projects])
 
-  // Filter milestones by selected project
-  const availableMilestones = projectId
+  // Filter milestones by selected project (exclude 'none' sentinel)
+  const availableMilestones = projectId && projectId !== 'none'
     ? milestones.filter((m) => m.projectId === projectId)
     : milestones
 
@@ -124,19 +124,28 @@ export function TaskFormModal({
     return milestone?.keyResults || projects.find((p) => p.id === projectId)?.keyResults || []
   }, [projectId, milestoneId, projects, milestones])
 
-  // Select options (no empty string values - Radix UI doesn't support them)
+  // Select options (use 'none' sentinel value instead of empty strings - Radix UI doesn't support empty strings)
   const projectOptions: SelectOption[] = useMemo(
-    () => projects.map((p) => ({ value: p.id, label: p.title })),
+    () => [
+      { value: 'none', label: 'No Project' },
+      ...projects.map((p) => ({ value: p.id, label: p.title })),
+    ],
     [projects]
   )
 
   const milestoneOptions: SelectOption[] = useMemo(
-    () => availableMilestones.map((m) => ({ value: m.id, label: m.title })),
+    () => [
+      { value: 'none', label: 'No Milestone' },
+      ...availableMilestones.map((m) => ({ value: m.id, label: m.title })),
+    ],
     [availableMilestones]
   )
 
   const keyResultOptions: SelectOption[] = useMemo(
-    () => availableKeyResults.map((kr) => ({ value: kr.id, label: kr.text })),
+    () => [
+      { value: 'none', label: 'None' },
+      ...availableKeyResults.map((kr) => ({ value: kr.id, label: kr.text })),
+    ],
     [availableKeyResults]
   )
 
@@ -161,9 +170,9 @@ export function TaskFormModal({
         title: title.trim(),
         description: description.trim(),
         domain,
-        projectId: projectId || undefined,
-        milestoneId: milestoneId || undefined,
-        keyResultId: keyResultId || undefined,
+        projectId: projectId !== 'none' ? projectId : undefined,
+        milestoneId: milestoneId !== 'none' ? milestoneId : undefined,
+        keyResultId: keyResultId !== 'none' ? keyResultId : undefined,
         urgency: dueDate ? undefined : urgency,
         importance,
         dueDate: dueDate || undefined,
@@ -233,8 +242,8 @@ export function TaskFormModal({
                   value={projectId}
                   onChange={(value) => {
                     setProjectId(value)
-                    setMilestoneId('') // Clear milestone and KR when project changes
-                    setKeyResultId('')
+                    setMilestoneId('none') // Clear milestone and KR when project changes
+                    setKeyResultId('none')
                   }}
                   options={projectOptions}
                   placeholder="Select project"
@@ -248,11 +257,11 @@ export function TaskFormModal({
                   value={milestoneId}
                   onChange={(value) => {
                     setMilestoneId(value)
-                    setKeyResultId('') // Clear KR when milestone changes
+                    setKeyResultId('none') // Clear KR when milestone changes
                   }}
                   options={milestoneOptions}
                   placeholder="Select milestone"
-                  disabled={!projectId && availableMilestones.length === 0}
+                  disabled={projectId === 'none' && availableMilestones.length === 0}
                 />
               </div>
             </div>
@@ -278,9 +287,9 @@ export function TaskFormModal({
                   onChange={(value) => setDomain(value as Domain)}
                   options={DOMAIN_OPTIONS}
                   placeholder="Select domain"
-                  disabled={Boolean(projectId)}
+                  disabled={projectId !== 'none'}
                 />
-                {projectId && <p className="helper-text">Inherited from project</p>}
+                {projectId !== 'none' && <p className="helper-text">Inherited from project</p>}
               </div>
             </div>
           </div>
