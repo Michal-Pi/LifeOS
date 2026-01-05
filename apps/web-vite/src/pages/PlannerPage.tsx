@@ -11,6 +11,10 @@ import { ProjectFormModal } from '@/components/ProjectFormModal'
 import { MilestoneFormModal } from '@/components/MilestoneFormModal'
 import { TaskDetailSidebar } from '@/components/TaskDetailSidebar'
 import { EventFormModal, type EventFormData } from '@/components/EventFormModal'
+import { Select, type SelectOption } from '@/components/Select'
+import { SegmentedControl } from '@/components/SegmentedControl'
+import { calculateTaskStatistics, formatTimeMinutes } from '@/lib/taskStats'
+import { groupTasksByBucket, type TaskFilters, type TimelineFilter } from '@/lib/priorityBuckets'
 import type { CanonicalProject, CanonicalMilestone, CanonicalTask, Domain } from '@/types/todo'
 
 export function PlannerPage() {
@@ -27,13 +31,12 @@ export function PlannerPage() {
     loadTasks,
     createProject,
     createMilestone,
-    createTask, // Will be used by Add Task button
+    createTask,
     updateTask,
     deleteTask,
     convertTaskToProject,
   } = useTodoOperations({ userId })
 
-  // Event operations for scheduling - using clean service layer
   const eventService = useEventService({ userId })
 
   const [selectedProject, setSelectedProject] = useState<CanonicalProject | null>(null)
@@ -48,7 +51,17 @@ export function PlannerPage() {
     formData: Partial<EventFormData>
   } | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'priority'>('list')
-  const [priorityDomainFilter, setPriorityDomainFilter] = useState<'all' | Domain>('all')
+  const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(true)
+
+  // Filter states
+  const [domainFilter, setDomainFilter] = useState<Domain | 'all'>('all')
+  const [projectFilter, setProjectFilter] = useState<string>('all')
+  const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>('all')
+  const [completionFilter, setCompletionFilter] = useState<'todo' | 'completed' | 'all'>('todo')
+  const [minTimeHours, setMinTimeHours] = useState<number>(0)
+  const [minTimeMinutes, setMinTimeMinutes] = useState<number>(0)
+  const [maxTimeHours, setMaxTimeHours] = useState<number>(40)
+  const [maxTimeMinutes, setMaxTimeMinutes] = useState<number>(0)
 
   // Initial load
   useEffect(() => {
@@ -94,7 +107,6 @@ export function PlannerPage() {
     if (projectId && projects.length === 0) return
     if (milestoneId && milestones.length === 0) return
 
-    // Compute all selections first to avoid cascading state updates
     let taskToSelect: CanonicalTask | null = null
     let projectToSelect: CanonicalProject | null = null
     let milestoneToSelect: CanonicalMilestone | null = null
@@ -103,7 +115,6 @@ export function PlannerPage() {
       const task = tasks.find((t) => t.id === taskId)
       if (task) {
         taskToSelect = task
-        // Also select the project/milestone to make it visible
         if (task.projectId) {
           const project = projects.find((p) => p.id === task.projectId)
           if (project) projectToSelect = project
@@ -125,49 +136,112 @@ export function PlannerPage() {
       if (project) projectToSelect = project
     }
 
-    // Batch all state updates together using startTransition
     startTransition(() => {
       if (taskToSelect) setSelectedTask(taskToSelect)
       if (projectToSelect) setSelectedProject(projectToSelect)
       if (milestoneToSelect) setSelectedMilestone(milestoneToSelect)
-      // Clean up the URL
       setSearchParams({}, { replace: true })
     })
   }, [tasks, projects, milestones, searchParams, setSearchParams])
 
-  // Filter tasks based on selection
-  const filteredTasks = useMemo(() => {
-    let filtered = tasks
+  // Build filters object
+  const filters: TaskFilters = useMemo(() => {
+    const projectOrMilestoneId = projectFilter.startsWith('milestone:')
+      ? undefined
+      : projectFilter === 'all'
+        ? undefined
+        : projectFilter
 
-    if (selectedMilestone) {
-      filtered = filtered.filter((t) => t.milestoneId === selectedMilestone.id)
-    } else if (selectedProject) {
-      filtered = filtered.filter((t) => t.projectId === selectedProject.id)
+    const milestoneId = projectFilter.startsWith('milestone:')
+      ? projectFilter.replace('milestone:', '')
+      : undefined
+
+    return {
+      domain: domainFilter,
+      projectId: projectOrMilestoneId,
+      milestoneId,
+      timeline: timelineFilter,
+      completionStatus: completionFilter,
+      minTimeHours,
+      minTimeMinutes,
+      maxTimeHours,
+      maxTimeMinutes,
     }
+  }, [domainFilter, projectFilter, timelineFilter, completionFilter, minTimeHours, minTimeMinutes, maxTimeHours, maxTimeMinutes])
 
-    return filtered
-  }, [tasks, selectedProject, selectedMilestone])
+  // Filter tasks based on filters
+  const filteredTasks = useMemo(() => {
+    if (viewMode === 'priority') {
+      // For priority view, use groupTasksByBucket which applies all filters
+      const groupedTasks = groupTasksByBucket(tasks, filters)
+      const allFilteredTasks: CanonicalTask[] = []
+      groupedTasks.forEach((bucketTasks) => {
+        allFilteredTasks.push(...bucketTasks)
+      })
+      return allFilteredTasks
+    } else {
+      // For list view, apply basic filters
+      let filtered = tasks
 
-  const activeTasks = useMemo(() => {
-    return filteredTasks.filter((t) => !t.archived && !t.completed)
-  }, [filteredTasks])
+      if (selectedMilestone) {
+        filtered = filtered.filter((t) => t.milestoneId === selectedMilestone.id)
+      } else if (selectedProject) {
+        filtered = filtered.filter((t) => t.projectId === selectedProject.id)
+      }
 
-  const taskTelemetry = useMemo(() => {
-    const completed = tasks.filter((t) => t.completed && !t.archived).length
-    const pending = tasks.filter((t) => !t.completed && !t.archived).length
-    const total = tasks.filter((t) => !t.archived).length
-    return { completed, pending, total }
-  }, [tasks])
+      return filtered
+    }
+  }, [tasks, filters, viewMode, selectedProject, selectedMilestone])
 
+  // Calculate statistics based on filtered tasks
+  const stats = useMemo(() => calculateTaskStatistics(filteredTasks), [filteredTasks])
+
+  // Prepare filter options
+  const domainOptions: SelectOption[] = [
+    { value: 'all', label: 'All' },
+    { value: 'work', label: 'Work' },
+    { value: 'projects', label: 'Projects' },
+    { value: 'life', label: 'Life' },
+    { value: 'learning', label: 'Learning' },
+    { value: 'wellbeing', label: 'Wellbeing' },
+  ]
+
+  const projectOptions: SelectOption[] = useMemo(() => {
+    const options: SelectOption[] = [{ value: 'all', label: 'All' }]
+    projects.forEach((project) => {
+      options.push({ value: project.id, label: project.title })
+      const projectMilestones = milestones.filter((m) => m.projectId === project.id)
+      projectMilestones.forEach((milestone) => {
+        options.push({ value: `milestone:${milestone.id}`, label: `  → ${milestone.title}` })
+      })
+    })
+    return options
+  }, [projects, milestones])
+
+  const timelineOptions: SelectOption[] = [
+    { value: 'all', label: 'All' },
+    { value: 'today', label: 'Today' },
+    { value: 'next_3_days', label: 'Next 3 Days' },
+    { value: 'this_week', label: 'This Week' },
+    { value: 'this_month', label: 'This Month' },
+    { value: 'later', label: 'Later' },
+  ]
+
+  const completionOptions = [
+    { value: 'todo', label: 'To-Do' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'all', label: 'All' },
+  ]
+
+  // Event handlers
   const handleSelectProject = (project: CanonicalProject) => {
     setSelectedProject(project)
-    setSelectedMilestone(null) // Clear milestone selection when switching projects
+    setSelectedMilestone(null)
     setSelectedTask(null)
   }
 
   const handleSelectMilestone = (milestone: CanonicalMilestone) => {
     setSelectedMilestone(milestone)
-    // Auto-select parent project if not already selected
     const parentProject = projects.find((p) => p.id === milestone.projectId)
     if (parentProject) {
       setSelectedProject(parentProject)
@@ -232,10 +306,8 @@ export function PlannerPage() {
   const handleSaveSchedule = async (formData: EventFormData) => {
     if (!selectedTask) return
 
-    // 1. Create the event and get the created event object back
     const newCalendarEvent = await eventService.createEvent(formData, { taskId: selectedTask.id })
 
-    // 2. Update the task
     const updatedTask: CanonicalTask = {
       ...selectedTask,
       status: 'scheduled',
@@ -249,46 +321,119 @@ export function PlannerPage() {
     setScheduleDefaults(null)
   }
 
-  // Add state for project sidebar toggle
-  const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(true)
+  const activeTasks = useMemo(() => {
+    return filteredTasks.filter((t) => !t.archived && !t.completed)
+  }, [filteredTasks])
+
+  const taskTelemetry = useMemo(() => {
+    const completed = tasks.filter((t) => t.completed && !t.archived).length
+    const pending = tasks.filter((t) => !t.completed && !t.archived).length
+    const total = tasks.filter((t) => !t.archived).length
+    return { completed, pending, total }
+  }, [tasks])
 
   return (
     <section className="page-container planner-page">
-      <header className="planner-header">
-        <div>
-          <p className="section-label">
-            Planner ·{' '}
-            {selectedMilestone
-              ? selectedMilestone.title
-              : selectedProject
-                ? selectedProject.title
-                : 'All Tasks'}
-          </p>
-          <div className="planner-header-controls">
+      {/* TIER 1: Top Bar with View Toggle, Filters, and Actions */}
+      <header className="planner-top-bar">
+        <div className="planner-top-bar-left">
+          {/* View Mode Toggle */}
+          <div className="view-toggles">
             <button
-              className="ghost-button"
-              onClick={() => setIsProjectSidebarOpen(!isProjectSidebarOpen)}
-              title={isProjectSidebarOpen ? 'Hide projects' : 'Show projects'}
+              className={`view-toggle ${viewMode === 'list' ? 'active' : ''}`}
+              onClick={() => setViewMode('list')}
             >
-              {isProjectSidebarOpen ? '‹ Hide' : '› Projects'}
+              List
             </button>
-            <div className="view-toggles">
-              <button
-                className={`view-toggle ${viewMode === 'list' ? 'active' : ''}`}
-                onClick={() => setViewMode('list')}
-              >
-                List
-              </button>
-              <button
-                className={`view-toggle ${viewMode === 'priority' ? 'active' : ''}`}
-                onClick={() => setViewMode('priority')}
-              >
-                Priority
-              </button>
-            </div>
+            <button
+              className={`view-toggle ${viewMode === 'priority' ? 'active' : ''}`}
+              onClick={() => setViewMode('priority')}
+            >
+              Priority
+            </button>
+          </div>
+
+          {/* Filter Dropdowns */}
+          <Select
+            value={domainFilter}
+            onChange={(value) => setDomainFilter(value as Domain | 'all')}
+            options={domainOptions}
+            placeholder="Domain"
+            className="filter-select"
+          />
+          <Select
+            value={projectFilter}
+            onChange={setProjectFilter}
+            options={projectOptions}
+            placeholder="Project"
+            className="filter-select"
+          />
+          <Select
+            value={timelineFilter}
+            onChange={(value) => setTimelineFilter(value as TimelineFilter)}
+            options={timelineOptions}
+            placeholder="Timeline"
+            className="filter-select"
+          />
+        </div>
+
+        <div className="planner-top-bar-center">
+          {/* Status Toggle */}
+          <SegmentedControl
+            value={completionFilter}
+            onChange={(value) => setCompletionFilter(value as 'todo' | 'completed' | 'all')}
+            options={completionOptions}
+            className="status-toggle"
+          />
+
+          {/* Time Range Inputs */}
+          <div className="time-range-filter">
+            <input
+              type="number"
+              min="0"
+              max="99"
+              value={minTimeHours}
+              onChange={(e) => setMinTimeHours(Number(e.target.value))}
+              className="time-input-small"
+              placeholder="0"
+            />
+            <span className="time-label">h</span>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              value={minTimeMinutes}
+              onChange={(e) => setMinTimeMinutes(Number(e.target.value))}
+              className="time-input-small"
+              placeholder="0"
+            />
+            <span className="time-label">m</span>
+            <span className="time-separator">to</span>
+            <input
+              type="number"
+              min="0"
+              max="99"
+              value={maxTimeHours}
+              onChange={(e) => setMaxTimeHours(Number(e.target.value))}
+              className="time-input-small"
+              placeholder="40"
+            />
+            <span className="time-label">h</span>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              value={maxTimeMinutes}
+              onChange={(e) => setMaxTimeMinutes(Number(e.target.value))}
+              className="time-input-small"
+              placeholder="0"
+            />
+            <span className="time-label">m</span>
           </div>
         </div>
-        <div className="header-actions">
+
+        <div className="planner-top-bar-right">
+          {/* Action Buttons */}
           {selectedProject && (
             <button className="ghost-button" onClick={() => setIsMilestoneModalOpen(true)}>
               + Milestone
@@ -298,41 +443,64 @@ export function PlannerPage() {
             + Project
           </button>
           <button className="primary-button" onClick={() => setIsTaskModalOpen(true)}>
-            + New Task
+            + Task
           </button>
         </div>
       </header>
 
-      <section className="planner-stats">
-        <div>
-          <p className="section-label">Active</p>
-          <strong>{taskTelemetry.pending}</strong>
-          <p>tasks remaining</p>
+      {/* TIER 2: Stats Bar */}
+      <section className="planner-stats-bar">
+        <div className="stat-card">
+          <span className="stat-label">Tasks Remaining</span>
+          <strong className="stat-value">{stats.tasksRemaining}</strong>
         </div>
-        <div>
-          <p className="section-label">Completed</p>
-          <strong>{taskTelemetry.completed}</strong>
-          <p>tasks done</p>
+        <div className="stat-card">
+          <span className="stat-label">Total Time</span>
+          <strong className="stat-value">{formatTimeMinutes(stats.totalTimeMinutes)}</strong>
         </div>
-        <div>
-          <p className="section-label">Progress</p>
-          <strong>
-            {taskTelemetry.total > 0
-              ? Math.round((taskTelemetry.completed / taskTelemetry.total) * 100)
-              : 0}
-            %
-          </strong>
-          <p className="planner-meta">
-            {taskTelemetry.completed} of {taskTelemetry.total}
-          </p>
+        <div className="stat-card stat-card-domains">
+          <span className="stat-label">Domain Split</span>
+          <div className="domain-percentages">
+            <span className="domain-percent" title="Work">
+              W: {stats.domainSplit.work}%
+            </span>
+            <span className="domain-percent" title="Projects">
+              P: {stats.domainSplit.projects}%
+            </span>
+            <span className="domain-percent" title="Life">
+              L: {stats.domainSplit.life}%
+            </span>
+            <span className="domain-percent" title="Learning">
+              Ln: {stats.domainSplit.learning}%
+            </span>
+            <span className="domain-percent" title="Wellbeing">
+              Wb: {stats.domainSplit.wellbeing}%
+            </span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Urgent</span>
+          <strong className="stat-value stat-urgent">{stats.urgentCount}</strong>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Overdue</span>
+          <strong className="stat-value stat-overdue">{stats.overdueCount}</strong>
         </div>
       </section>
 
+      {/* TIER 3: Main Content Layout */}
       <section className="planner-layout">
         {isProjectSidebarOpen && (
           <aside className="planner-sidebar">
             <div className="sidebar-header">
               <h3>Projects</h3>
+              <button
+                className="ghost-button-small"
+                onClick={() => setIsProjectSidebarOpen(false)}
+                title="Hide projects"
+              >
+                ‹
+              </button>
             </div>
 
             {loading ? (
@@ -349,6 +517,16 @@ export function PlannerPage() {
               />
             )}
           </aside>
+        )}
+
+        {!isProjectSidebarOpen && (
+          <button
+            className="sidebar-toggle-button"
+            onClick={() => setIsProjectSidebarOpen(true)}
+            title="Show projects"
+          >
+            ›
+          </button>
         )}
 
         <div className="planner-main-panel">
@@ -445,14 +623,13 @@ export function PlannerPage() {
               />
             ) : (
               <PriorityView
-                tasks={activeTasks}
+                tasks={tasks}
                 projects={projects}
                 milestones={milestones}
+                filters={filters}
                 onSelectTask={setSelectedTask}
                 onToggleComplete={handleToggleComplete}
                 selectedTaskId={selectedTask?.id}
-                domainFilter={priorityDomainFilter}
-                onDomainFilterChange={setPriorityDomainFilter}
               />
             )}
           </main>
@@ -476,7 +653,7 @@ export function PlannerPage() {
         onSave={handleCreateTask}
         projects={projects}
         milestones={milestones}
-        initialTask={null} // Or pass selectedTask if editing
+        initialTask={null}
       />
 
       <ProjectFormModal
@@ -494,7 +671,6 @@ export function PlannerPage() {
         />
       )}
 
-      {/* Reuse EventFormModal for scheduling */}
       <EventFormModal
         isOpen={isScheduleModalOpen}
         onClose={() => {

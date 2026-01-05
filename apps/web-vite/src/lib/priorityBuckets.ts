@@ -9,14 +9,17 @@ export type PriorityBucketKey =
   | 'specific_deadline'
   | 'parking_lot'
 
+export type TimelineFilter = 'today' | 'next_3_days' | 'this_week' | 'this_month' | 'later' | 'all'
+
 export interface TaskFilters {
   domain: Domain | 'all'
   projectId?: string
   milestoneId?: string
-  urgency?: UrgencyLevel | 'all'
-  dueDate?: 'today' | 'next_3_days' | 'this_week' | 'this_month' | 'later' | 'all'
+  timeline?: TimelineFilter
   completionStatus?: 'todo' | 'completed' | 'all'
+  minTimeHours?: number
   minTimeMinutes?: number
+  maxTimeHours?: number
   maxTimeMinutes?: number
 }
 
@@ -65,28 +68,29 @@ export function groupTasksByBucket(tasks: CanonicalTask[], filters: TaskFilters)
     // Milestone filter
     if (filters.milestoneId && task.milestoneId !== filters.milestoneId) return false
 
-    // Urgency filter
-    if (filters.urgency && filters.urgency !== 'all') {
-      const taskUrgency = getEffectiveUrgency(task)
-      if (taskUrgency !== filters.urgency) return false
-    }
+    // Timeline filter (merged urgency + due date)
+    // Matches tasks that have EITHER a due date OR urgency matching the timeline
+    if (filters.timeline && filters.timeline !== 'all') {
+      const effectiveUrgency = getEffectiveUrgency(task)
 
-    // Due date filter
-    if (filters.dueDate && filters.dueDate !== 'all') {
-      if (!task.dueDate && filters.dueDate !== 'later') return false
-      if (task.dueDate) {
-        const taskUrgency = calculateUrgency(task.dueDate)
-        if (filters.dueDate === 'today' && taskUrgency !== 'today') return false
-        if (filters.dueDate === 'next_3_days' && taskUrgency !== 'next_3_days') return false
-        if (filters.dueDate === 'this_week' && taskUrgency !== 'this_week') return false
-        if (filters.dueDate === 'this_month' && taskUrgency !== 'this_month') return false
+      // For 'later', match tasks with no due date OR urgency=later
+      if (filters.timeline === 'later') {
+        const hasLaterUrgency = effectiveUrgency === 'later'
+        const hasNoDueDate = !task.dueDate
+        if (!hasLaterUrgency && !hasNoDueDate) return false
+      } else {
+        // For other timelines, match if urgency matches the filter
+        if (effectiveUrgency !== filters.timeline) return false
       }
     }
 
-    // Time estimate filter
+    // Time estimate filter (now using hours + minutes)
     const taskTime = task.allocatedTimeMinutes || 0
-    if (filters.minTimeMinutes !== undefined && taskTime < filters.minTimeMinutes) return false
-    if (filters.maxTimeMinutes !== undefined && taskTime > filters.maxTimeMinutes) return false
+    const minTimeTotal = ((filters.minTimeHours || 0) * 60) + (filters.minTimeMinutes || 0)
+    const maxTimeTotal = ((filters.maxTimeHours || 0) * 60) + (filters.maxTimeMinutes || 0)
+
+    if (minTimeTotal > 0 && taskTime < minTimeTotal) return false
+    if (maxTimeTotal > 0 && taskTime > maxTimeTotal) return false
 
     return true
   })
