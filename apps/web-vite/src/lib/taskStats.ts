@@ -7,6 +7,12 @@ export interface TaskStatistics {
   domainSplit: Record<Domain, number> // percentage
   urgentCount: number
   overdueCount: number
+  last7Days: {
+    tasksCreated: number
+    tasksCreatedTimeMinutes: number
+    tasksCompleted: number
+    tasksCompletedTimeMinutes: number
+  }
 }
 
 export function calculateTaskStatistics(tasks: CanonicalTask[]): TaskStatistics {
@@ -62,12 +68,43 @@ export function calculateTaskStatistics(tasks: CanonicalTask[]): TaskStatistics 
     return dueDate < today
   }).length
 
+  // Last 7 days activity
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  sevenDaysAgo.setHours(0, 0, 0, 0)
+
+  const tasksCreatedLast7Days = tasks.filter((task) => {
+    if (!task.createdAt) return false
+    const createdDate = new Date(task.createdAt)
+    return createdDate >= sevenDaysAgo
+  })
+
+  const tasksCompletedLast7Days = tasks.filter((task) => {
+    if (!task.completedAt) return false
+    const completedDate = new Date(task.completedAt)
+    return completedDate >= sevenDaysAgo
+  })
+
+  const tasksCreatedTimeMinutes = tasksCreatedLast7Days.reduce((sum, task) => {
+    return sum + (task.allocatedTimeMinutes || 0)
+  }, 0)
+
+  const tasksCompletedTimeMinutes = tasksCompletedLast7Days.reduce((sum, task) => {
+    return sum + (task.allocatedTimeMinutes || 0)
+  }, 0)
+
   return {
     tasksRemaining,
     totalTimeMinutes,
     domainSplit,
     urgentCount,
     overdueCount,
+    last7Days: {
+      tasksCreated: tasksCreatedLast7Days.length,
+      tasksCreatedTimeMinutes,
+      tasksCompleted: tasksCompletedLast7Days.length,
+      tasksCompletedTimeMinutes,
+    },
   }
 }
 

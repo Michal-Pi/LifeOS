@@ -13,6 +13,7 @@ import { TaskDetailSidebar } from '@/components/TaskDetailSidebar'
 import { EventFormModal, type EventFormData } from '@/components/EventFormModal'
 import { Select, type SelectOption } from '@/components/Select'
 import { SegmentedControl } from '@/components/SegmentedControl'
+import { DomainBarChart } from '@/components/DomainBarChart'
 import { calculateTaskStatistics, formatTimeMinutes } from '@/lib/taskStats'
 import { groupTasksByBucket, type TaskFilters, type TimelineFilter } from '@/lib/priorityBuckets'
 import type { CanonicalProject, CanonicalMilestone, CanonicalTask, Domain } from '@/types/todo'
@@ -334,9 +335,9 @@ export function PlannerPage() {
 
   return (
     <section className="page-container planner-page">
-      {/* TIER 1: Top Bar with View Toggle, Filters, and Actions */}
-      <header className="planner-top-bar">
-        <div className="planner-top-bar-left">
+      {/* ROW 1: View Toggle and Action Buttons */}
+      <header className="planner-actions-bar">
+        <div className="planner-actions-left">
           {/* View Mode Toggle */}
           <div className="view-toggles">
             <button
@@ -352,7 +353,27 @@ export function PlannerPage() {
               Priority
             </button>
           </div>
+        </div>
 
+        <div className="planner-actions-right">
+          {/* Action Buttons */}
+          {selectedProject && (
+            <button className="ghost-button" onClick={() => setIsMilestoneModalOpen(true)}>
+              + Milestone
+            </button>
+          )}
+          <button className="ghost-button" onClick={() => setIsProjectModalOpen(true)}>
+            + Project
+          </button>
+          <button className="primary-button" onClick={() => setIsTaskModalOpen(true)}>
+            + Task
+          </button>
+        </div>
+      </header>
+
+      {/* ROW 2: Filters */}
+      <section className="planner-filters-bar">
+        <div className="filters-left">
           {/* Filter Dropdowns */}
           <Select
             value={domainFilter}
@@ -377,7 +398,7 @@ export function PlannerPage() {
           />
         </div>
 
-        <div className="planner-top-bar-center">
+        <div className="filters-right">
           {/* Status Toggle */}
           <SegmentedControl
             value={completionFilter}
@@ -431,24 +452,9 @@ export function PlannerPage() {
             <span className="time-label">m</span>
           </div>
         </div>
+      </section>
 
-        <div className="planner-top-bar-right">
-          {/* Action Buttons */}
-          {selectedProject && (
-            <button className="ghost-button" onClick={() => setIsMilestoneModalOpen(true)}>
-              + Milestone
-            </button>
-          )}
-          <button className="ghost-button" onClick={() => setIsProjectModalOpen(true)}>
-            + Project
-          </button>
-          <button className="primary-button" onClick={() => setIsTaskModalOpen(true)}>
-            + Task
-          </button>
-        </div>
-      </header>
-
-      {/* TIER 2: Stats Bar */}
+      {/* ROW 3: Stats Bar */}
       <section className="planner-stats-bar">
         <div className="stat-card">
           <span className="stat-label">Tasks Remaining</span>
@@ -458,26 +464,6 @@ export function PlannerPage() {
           <span className="stat-label">Total Time</span>
           <strong className="stat-value">{formatTimeMinutes(stats.totalTimeMinutes)}</strong>
         </div>
-        <div className="stat-card stat-card-domains">
-          <span className="stat-label">Domain Split</span>
-          <div className="domain-percentages">
-            <span className="domain-percent" title="Work">
-              W: {stats.domainSplit.work}%
-            </span>
-            <span className="domain-percent" title="Projects">
-              P: {stats.domainSplit.projects}%
-            </span>
-            <span className="domain-percent" title="Life">
-              L: {stats.domainSplit.life}%
-            </span>
-            <span className="domain-percent" title="Learning">
-              Ln: {stats.domainSplit.learning}%
-            </span>
-            <span className="domain-percent" title="Wellbeing">
-              Wb: {stats.domainSplit.wellbeing}%
-            </span>
-          </div>
-        </div>
         <div className="stat-card">
           <span className="stat-label">Urgent</span>
           <strong className="stat-value stat-urgent">{stats.urgentCount}</strong>
@@ -486,9 +472,25 @@ export function PlannerPage() {
           <span className="stat-label">Overdue</span>
           <strong className="stat-value stat-overdue">{stats.overdueCount}</strong>
         </div>
+        <div className="stat-card stat-card-7day">
+          <span className="stat-label">Created (7d)</span>
+          <strong className="stat-value">
+            {stats.last7Days.tasksCreated} ({formatTimeMinutes(stats.last7Days.tasksCreatedTimeMinutes)})
+          </strong>
+        </div>
+        <div className="stat-card stat-card-7day">
+          <span className="stat-label">Completed (7d)</span>
+          <strong className="stat-value">
+            {stats.last7Days.tasksCompleted} ({formatTimeMinutes(stats.last7Days.tasksCompletedTimeMinutes)})
+          </strong>
+        </div>
+        <div className="stat-card stat-card-wide stat-card-domains">
+          <span className="stat-label">Domain Split</span>
+          <DomainBarChart domainSplit={stats.domainSplit} />
+        </div>
       </section>
 
-      {/* TIER 3: Main Content Layout */}
+      {/* ROW 4: Main Content Layout */}
       <section className="planner-layout">
         {isProjectSidebarOpen && (
           <aside className="planner-sidebar">
