@@ -5,7 +5,8 @@
   "packageManager": "pnpm@10.26.0",
   "scripts": {
     "dev": "pnpm --filter web-vite dev",
-    "firebase:deploy": "turbo run build && firebase deploy",
+    "firebase:deploy": "turbo run build --filter web-vite && firebase deploy --only hosting",
+    "firebase:deploy:all": "turbo run build && firebase deploy",
     "firebase:deploy:functions": "turbo run build --filter functions... && firebase deploy --only functions",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
