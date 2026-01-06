@@ -6,7 +6,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 export function Button({ variant = 'default', className = '', ...props }: ButtonProps) {
   const variantClass =
-    variant === 'ghost' ? 'ghost-button' : variant === 'secondary' ? 'btn-secondary' : 'btn-primary'
+    variant === 'ghost' ? 'ghost-button' : variant === 'secondary' ? 'ghost-button' : 'primary-button'
 
   return <button className={`${variantClass} ${className}`} {...props} />
 }
