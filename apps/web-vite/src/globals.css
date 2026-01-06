@@ -1295,6 +1295,40 @@ button[aria-busy='true'] {
   font-size: 0.85rem;
 }
 
+.project-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.milestone-badge {
+  font-size: 0.7rem;
+  padding: 0.125rem 0.375rem;
+  background: var(--muted);
+  color: var(--foreground-secondary);
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.other-tasks-row {
+  background: var(--muted);
+  border-style: dashed;
+}
+
+.other-tasks-row .project-title {
+  font-style: italic;
+  color: var(--foreground-secondary);
+}
+
+.task-count {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  background: var(--background-secondary);
+  color: var(--foreground-secondary);
+  border-radius: 12px;
+  font-weight: 500;
+}
+
 .milestone-row {
   background: var(--background-secondary);
 }

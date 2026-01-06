@@ -52,11 +52,9 @@ export function PlannerPage() {
     formData: Partial<EventFormData>
   } | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'priority'>('list')
-  const [isProjectSidebarOpen, setIsProjectSidebarOpen] = useState(true)
 
   // Filter states
   const [domainFilter, setDomainFilter] = useState<Domain | 'all'>('all')
-  const [projectFilter, setProjectFilter] = useState<string>('all')
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>('all')
   const [completionFilter, setCompletionFilter] = useState<'todo' | 'completed' | 'all'>('todo')
   const [minTimeHours, setMinTimeHours] = useState<number>(0)
@@ -147,20 +145,10 @@ export function PlannerPage() {
 
   // Build filters object
   const filters: TaskFilters = useMemo(() => {
-    const projectOrMilestoneId = projectFilter.startsWith('milestone:')
-      ? undefined
-      : projectFilter === 'all'
-        ? undefined
-        : projectFilter
-
-    const milestoneId = projectFilter.startsWith('milestone:')
-      ? projectFilter.replace('milestone:', '')
-      : undefined
-
     return {
       domain: domainFilter,
-      projectId: projectOrMilestoneId,
-      milestoneId,
+      projectId: selectedProject?.id,
+      milestoneId: selectedMilestone?.id,
       timeline: timelineFilter,
       completionStatus: completionFilter,
       minTimeHours,
@@ -170,7 +158,8 @@ export function PlannerPage() {
     }
   }, [
     domainFilter,
-    projectFilter,
+    selectedProject?.id,
+    selectedMilestone?.id,
     timelineFilter,
     completionFilter,
     minTimeHours,
@@ -216,18 +205,6 @@ export function PlannerPage() {
     { value: 'wellbeing', label: 'Wellbeing' },
   ]
 
-  const projectOptions: SelectOption[] = useMemo(() => {
-    const options: SelectOption[] = [{ value: 'all', label: 'All' }]
-    projects.forEach((project) => {
-      options.push({ value: project.id, label: project.title })
-      const projectMilestones = milestones.filter((m) => m.projectId === project.id)
-      projectMilestones.forEach((milestone) => {
-        options.push({ value: `milestone:${milestone.id}`, label: `  → ${milestone.title}` })
-      })
-    })
-    return options
-  }, [projects, milestones])
-
   const timelineOptions: SelectOption[] = [
     { value: 'all', label: 'All' },
     { value: 'today', label: 'Today' },
@@ -244,18 +221,36 @@ export function PlannerPage() {
   ]
 
   // Event handlers
-  const handleSelectProject = (project: CanonicalProject) => {
-    setSelectedProject(project)
+  const handleSelectProject = (projectId: string) => {
+    const project = projects.find((p) => p.id === projectId)
+    if (project) {
+      setSelectedProject(project)
+      setSelectedMilestone(null)
+      setSelectedTask(null)
+    }
+  }
+
+  const handleSelectMilestone = (milestoneId: string) => {
+    const milestone = milestones.find((m) => m.id === milestoneId)
+    if (milestone) {
+      setSelectedMilestone(milestone)
+      const parentProject = projects.find((p) => p.id === milestone.projectId)
+      if (parentProject) {
+        setSelectedProject(parentProject)
+      }
+      setSelectedTask(null)
+    }
+  }
+
+  const handleSelectOtherTasks = () => {
+    setSelectedProject(null)
     setSelectedMilestone(null)
     setSelectedTask(null)
   }
 
-  const handleSelectMilestone = (milestone: CanonicalMilestone) => {
-    setSelectedMilestone(milestone)
-    const parentProject = projects.find((p) => p.id === milestone.projectId)
-    if (parentProject) {
-      setSelectedProject(parentProject)
-    }
+  const handleClearSelection = () => {
+    setSelectedProject(null)
+    setSelectedMilestone(null)
     setSelectedTask(null)
   }
 
@@ -392,13 +387,6 @@ export function PlannerPage() {
             className="filter-select"
           />
           <Select
-            value={projectFilter}
-            onChange={setProjectFilter}
-            options={projectOptions}
-            placeholder="Project"
-            className="filter-select"
-          />
-          <Select
             value={timelineFilter}
             onChange={(value) => setTimelineFilter(value as TimelineFilter)}
             options={timelineOptions}
@@ -503,44 +491,25 @@ export function PlannerPage() {
 
       {/* ROW 4: Main Content Layout */}
       <section className="planner-layout">
-        {isProjectSidebarOpen && (
-          <aside className="planner-sidebar">
-            <div className="sidebar-header">
-              <h3>Projects</h3>
-              <button
-                className="ghost-button-small"
-                onClick={() => setIsProjectSidebarOpen(false)}
-                title="Hide projects"
-              >
-                ‹
-              </button>
-            </div>
-
-            {loading ? (
+        <aside className="planner-sidebar">
+          {loading ? (
+            <div className="loading-container">
               <p className="loading-text">Loading...</p>
-            ) : (
-              <ProjectList
-                projects={projects}
-                milestones={milestones}
-                tasks={tasks}
-                onSelectProject={handleSelectProject}
-                onSelectMilestone={handleSelectMilestone}
-                selectedProjectId={selectedProject?.id}
-                selectedMilestoneId={selectedMilestone?.id}
-              />
-            )}
-          </aside>
-        )}
-
-        {!isProjectSidebarOpen && (
-          <button
-            className="sidebar-toggle-button"
-            onClick={() => setIsProjectSidebarOpen(true)}
-            title="Show projects"
-          >
-            ›
-          </button>
-        )}
+            </div>
+          ) : (
+            <ProjectList
+              projects={projects}
+              milestones={milestones}
+              tasks={tasks}
+              onSelectProject={handleSelectProject}
+              onSelectMilestone={handleSelectMilestone}
+              onSelectOtherTasks={handleSelectOtherTasks}
+              onClearSelection={handleClearSelection}
+              selectedProjectId={selectedProject?.id}
+              selectedMilestoneId={selectedMilestone?.id}
+            />
+          )}
+        </aside>
 
         <div className="planner-main-panel">
           <main className="planner-main">
