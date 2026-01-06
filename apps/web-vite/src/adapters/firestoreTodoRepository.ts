@@ -90,7 +90,11 @@ export const createFirestoreTodoRepository = () => {
   const saveProject = async (project: CanonicalProject): Promise<void> => {
     const db = await getDb()
     const ref = doc(db, `users/${project.userId}/${COLLECTION_PROJECTS}/${project.id}`)
-    await setDoc(ref, project)
+    // Filter out undefined fields (Firestore doesn't accept undefined values)
+    const filteredProject = Object.fromEntries(
+      Object.entries(project).filter(([, value]) => value !== undefined)
+    )
+    await setDoc(ref, filteredProject)
   }
 
   const deleteProject = async (userId: string, projectId: string): Promise<void> => {
@@ -120,7 +124,11 @@ export const createFirestoreTodoRepository = () => {
   const saveMilestone = async (milestone: CanonicalMilestone): Promise<void> => {
     const db = await getDb()
     const ref = doc(db, `users/${milestone.userId}/${COLLECTION_MILESTONES}/${milestone.id}`)
-    await setDoc(ref, milestone)
+    // Filter out undefined fields (Firestore doesn't accept undefined values)
+    const filteredMilestone = Object.fromEntries(
+      Object.entries(milestone).filter(([, value]) => value !== undefined)
+    )
+    await setDoc(ref, filteredMilestone)
   }
 
   const deleteMilestone = async (userId: string, milestoneId: string): Promise<void> => {
@@ -152,7 +160,11 @@ export const createFirestoreTodoRepository = () => {
   const saveTask = async (task: CanonicalTask): Promise<void> => {
     const db = await getDb()
     const ref = doc(db, `users/${task.userId}/${COLLECTION_TASKS}/${task.id}`)
-    await setDoc(ref, task)
+    // Filter out undefined fields (Firestore doesn't accept undefined values)
+    const filteredTask = Object.fromEntries(
+      Object.entries(task).filter(([, value]) => value !== undefined)
+    )
+    await setDoc(ref, filteredTask)
   }
 
   const deleteTask = async (userId: string, taskId: string): Promise<void> => {
