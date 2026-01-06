@@ -5,6 +5,8 @@ const logger = createLogger('ProjectFormModal')
 import type { CanonicalProject, CanonicalMilestone, Domain } from '@/types/todo'
 import { generateId } from '@/lib/idGenerator'
 import { Select, type SelectOption } from '@/components/Select'
+import { ColorPicker } from '@/components/ColorPicker'
+import { PROJECT_COLOR_PALETTE } from '@/config/domainColors'
 
 interface ProjectFormModalProps {
   isOpen: boolean
@@ -34,6 +36,7 @@ export function ProjectFormModal({
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [domain, setDomain] = useState<Domain>('projects')
+  const [color, setColor] = useState<string>('')
   const [objective, setObjective] = useState('')
   const [keyResults, setKeyResults] = useState('')
   const [milestones, setMilestones] = useState<string[]>([''])
@@ -50,6 +53,7 @@ export function ProjectFormModal({
         title: title.trim(),
         description: description.trim(),
         domain,
+        color: color || undefined,
         objective: objective.trim() || undefined,
         keyResults: keyResults.trim()
           ? keyResults
@@ -78,6 +82,7 @@ export function ProjectFormModal({
       setTitle('')
       setDescription('')
       setDomain('projects')
+      setColor('')
       setObjective('')
       setKeyResults('')
       setMilestones([''])
@@ -135,6 +140,15 @@ export function ProjectFormModal({
               onChange={(value) => setDomain(value as Domain)}
               options={DOMAIN_OPTIONS}
               placeholder="Select domain"
+            />
+          </div>
+
+          <div className="form-group">
+            <ColorPicker
+              colors={PROJECT_COLOR_PALETTE}
+              selectedColor={color}
+              onChange={setColor}
+              label="Project Color (Optional)"
             />
           </div>
 

@@ -598,6 +598,7 @@ export function PlannerPage() {
             {viewMode === 'list' ? (
               <TaskList
                 tasks={activeTasks}
+                projects={projects}
                 onSelectTask={setSelectedTask}
                 onToggleComplete={handleToggleComplete}
                 selectedTaskId={selectedTask?.id}

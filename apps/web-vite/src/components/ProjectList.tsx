@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { CanonicalProject, CanonicalMilestone, CanonicalTask } from '@/types/todo'
 import { calculateWeightedProgress } from '@/lib/progress'
+import { getProjectColor } from '@/config/domainColors'
 
 interface ProjectListProps {
   projects: CanonicalProject[]
@@ -91,12 +92,15 @@ export function ProjectList({
             tasks.filter((t) => t.projectId === project.id)
           )
 
+          const projectColor = getProjectColor(project.color, project.domain)
+
           return (
             <li key={project.id} className="project-item">
               <div
                 className={`project-row ${isSelected ? 'selected' : ''}`}
                 onClick={() => handleProjectClick(project.id)}
               >
+                <div className="project-color-indicator" style={{ backgroundColor: projectColor }} />
                 <button
                   className="expand-toggle"
                   onClick={(e) => toggleProject(project.id, e)}

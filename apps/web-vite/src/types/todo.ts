@@ -31,6 +31,7 @@ export interface CanonicalProject {
   title: string
   description?: string
   domain: Domain
+  color?: string
   objective?: string
   keyResults?: { id: string; text: string }[]
   createdAt: string

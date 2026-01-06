@@ -51,6 +51,15 @@
   transition: background-color var(--motion-fast) var(--motion-ease);
   cursor: pointer;
   box-sizing: border-box;
+  position: relative;
+}
+
+.task-color-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
 }
 
 .task-row:hover {

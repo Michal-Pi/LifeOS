@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { CanonicalTask, CanonicalProject, CanonicalMilestone } from '@/types/todo'
 import { groupTasksByBucket, PRIORITY_BUCKETS, type TaskFilters } from '@/lib/priorityBuckets'
+import { getProjectColor } from '@/config/domainColors'
 
 interface PriorityViewProps {
   tasks: CanonicalTask[]
@@ -14,6 +15,7 @@ interface PriorityViewProps {
 
 export function PriorityView({
   tasks,
+  projects,
   filters,
   onSelectTask,
   onToggleComplete,
@@ -37,24 +39,31 @@ export function PriorityView({
                 <span className="bucket-count">{bucketTasks.length}</span>
               </h3>
               <div className="bucket-tasks">
-                {bucketTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className={`task-card ${selectedTaskId === task.id ? 'selected' : ''} ${task.completed ? 'completed' : ''}`}
-                    onClick={() => onSelectTask(task)}
-                  >
-                    <div className="task-card-header">
-                      <input
-                        type="checkbox"
-                        checked={task.completed}
-                        onChange={(e) => {
-                          e.stopPropagation()
-                          onToggleComplete(task)
-                        }}
-                        className="task-checkbox"
-                      />
-                      <span className="task-title">{task.title}</span>
-                    </div>
+                {bucketTasks.map((task) => {
+                  const project = projects.find((p) => p.id === task.projectId)
+                  const taskColor = project ? getProjectColor(project.color, project.domain) : null
+
+                  return (
+                    <div
+                      key={task.id}
+                      className={`task-card ${selectedTaskId === task.id ? 'selected' : ''} ${task.completed ? 'completed' : ''}`}
+                      onClick={() => onSelectTask(task)}
+                    >
+                      {taskColor && (
+                        <div className="task-card-color-indicator" style={{ backgroundColor: taskColor }} />
+                      )}
+                      <div className="task-card-header">
+                        <input
+                          type="checkbox"
+                          checked={task.completed}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            onToggleComplete(task)
+                          }}
+                          className="task-checkbox"
+                        />
+                        <span className="task-title">{task.title}</span>
+                      </div>
                     <div className="task-card-meta">
                       {task.dueDate && (
                         <span className="meta-tag due-date">Due {task.dueDate}</span>
@@ -67,7 +76,8 @@ export function PriorityView({
                       )}
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )

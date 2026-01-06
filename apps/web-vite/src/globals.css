@@ -1289,6 +1289,13 @@ button[aria-busy='true'] {
   border-color: var(--border-strong);
 }
 
+.project-color-indicator {
+  width: 4px;
+  height: 24px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
 .project-title,
 .milestone-title {
   flex: 1;
@@ -6572,6 +6579,15 @@ input[type='range']:disabled {
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: background-color 0.15s ease;
+  position: relative;
+}
+
+.task-card-color-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
 }
 
 .bucket-tasks .task-card:last-child {

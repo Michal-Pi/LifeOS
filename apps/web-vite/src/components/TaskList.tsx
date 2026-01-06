@@ -1,13 +1,15 @@
 import React, { useState, useMemo } from 'react'
 import { List } from 'react-window'
 import type { RowComponentProps } from 'react-window'
-import type { CanonicalTask, TaskStatus } from '@/types/todo'
+import type { CanonicalTask, CanonicalProject, TaskStatus } from '@/types/todo'
 import { calculatePriorityScore } from '@/lib/priority'
+import { getProjectColor } from '@/config/domainColors'
 import './TaskList.css'
 import { EmptyState } from '@/components/EmptyState'
 
 interface TaskListProps {
   tasks: CanonicalTask[]
+  projects: CanonicalProject[]
   onSelectTask: (task: CanonicalTask) => void
   onToggleComplete: (task: CanonicalTask) => void
   selectedTaskId?: string
@@ -29,6 +31,7 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
 
 export const TaskList = React.memo(function TaskList({
   tasks,
+  projects,
   onSelectTask,
   onToggleComplete,
   selectedTaskId,
@@ -96,6 +99,7 @@ export const TaskList = React.memo(function TaskList({
 
   type RowProps = {
     tasks: CanonicalTask[]
+    projects: CanonicalProject[]
     onSelectTask: (task: CanonicalTask) => void
     onToggleComplete: (task: CanonicalTask) => void
     selectedTaskId?: string
@@ -105,17 +109,24 @@ export const TaskList = React.memo(function TaskList({
     index,
     style,
     tasks,
+    projects,
     onSelectTask,
     onToggleComplete,
     selectedTaskId,
   }: RowComponentProps<RowProps>) => {
     const task = tasks[index]
+    const project = projects.find((p) => p.id === task.projectId)
+    const taskColor = project ? getProjectColor(project.color, project.domain) : null
+
     return (
       <div
         style={style}
         className={`task-row ${selectedTaskId === task.id ? 'selected' : ''} ${task.completed ? 'completed' : ''}`}
         onClick={() => onSelectTask(task)}
       >
+        {taskColor && (
+          <div className="task-color-indicator" style={{ backgroundColor: taskColor }} />
+        )}
         <div className="task-cell checkbox-cell" onClick={(e) => e.stopPropagation()}>
           <input
             type="checkbox"
@@ -175,6 +186,7 @@ export const TaskList = React.memo(function TaskList({
           rowComponent={Row}
           rowProps={{
             tasks: sortedTasks,
+            projects,
             onSelectTask,
             onToggleComplete,
             selectedTaskId,
