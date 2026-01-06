@@ -1810,6 +1810,12 @@ button[aria-busy='true'] {
   padding: 0.75rem 1rem;
 }
 
+/* Constrain Select component width within form groups */
+.form-group .select-trigger {
+  width: 100%;
+  max-width: 100%;
+}
+
 .form-helper {
   color: var(--muted-foreground);
   font-size: 0.9rem;

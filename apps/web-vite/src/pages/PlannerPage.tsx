@@ -642,6 +642,7 @@ export function PlannerPage() {
         isOpen={isProjectModalOpen}
         onClose={() => setIsProjectModalOpen(false)}
         onSave={handleCreateProject}
+        onSaveMilestone={createMilestone}
       />
 
       {selectedProject && (

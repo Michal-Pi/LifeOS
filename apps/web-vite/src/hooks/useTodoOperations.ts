@@ -86,7 +86,9 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
 
   // --- Projects ---
   const createProject = useCallback(
-    async (projectData: Omit<CanonicalProject, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+    async (
+      projectData: Omit<CanonicalProject, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+    ): Promise<string> => {
       const now = new Date().toISOString()
       const newProject: CanonicalProject = {
         ...projectData,
@@ -101,11 +103,13 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
 
       try {
         await todoRepository.saveProject(newProject)
+        return newProject.id
       } catch (err) {
         logger.error('Failed to create project:', err)
         setError((err as Error).message)
         // Revert optimistic update
         setProjects((prev) => prev.filter((p) => p.id !== newProject.id))
+        throw err
       }
     },
     [userId]
