@@ -12,7 +12,7 @@
 .task-header-row {
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  padding: 0 var(--space-4);
   height: 40px;
   background: var(--background-secondary);
   border-bottom: 1px solid var(--border);
@@ -22,7 +22,7 @@
 }
 
 .task-header-cell {
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -45,7 +45,7 @@
 .task-row {
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  padding: 0 var(--space-4);
   border-bottom: 1px solid var(--border);
   background: var(--card);
   transition: background-color var(--motion-fast) var(--motion-ease);
@@ -71,7 +71,7 @@
 }
 
 .task-cell {
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
