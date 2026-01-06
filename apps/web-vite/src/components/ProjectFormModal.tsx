@@ -4,6 +4,7 @@ import { createLogger } from '@lifeos/core'
 const logger = createLogger('ProjectFormModal')
 import type { CanonicalProject, Domain } from '@/types/todo'
 import { generateId } from '@/lib/idGenerator'
+import { Select, type SelectOption } from '@/components/Select'
 
 interface ProjectFormModalProps {
   isOpen: boolean
@@ -13,7 +14,13 @@ interface ProjectFormModalProps {
   ) => Promise<void>
 }
 
-const DOMAINS: Domain[] = ['work', 'projects', 'life', 'learning', 'wellbeing']
+const DOMAIN_OPTIONS: SelectOption[] = [
+  { value: 'work', label: 'Work' },
+  { value: 'projects', label: 'Projects' },
+  { value: 'life', label: 'Life' },
+  { value: 'learning', label: 'Learning' },
+  { value: 'wellbeing', label: 'Wellbeing' },
+]
 
 export function ProjectFormModal({ isOpen, onClose, onSave }: ProjectFormModalProps) {
   const [title, setTitle] = useState('')
@@ -84,17 +91,12 @@ export function ProjectFormModal({ isOpen, onClose, onSave }: ProjectFormModalPr
 
           <div className="form-group">
             <label htmlFor="project-domain">Domain</label>
-            <select
-              id="project-domain"
+            <Select
               value={domain}
-              onChange={(e) => setDomain(e.target.value as Domain)}
-            >
-              {DOMAINS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setDomain(value as Domain)}
+              options={DOMAIN_OPTIONS}
+              placeholder="Select domain"
+            />
           </div>
 
           <div className="form-group">
