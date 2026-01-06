@@ -462,15 +462,15 @@
 }
 
 .recommendation-card.priority-high {
-  border-left: 4px solid #ef4444; /* red */
+  border-left: 4px solid var(--priority-high-border);
 }
 
 .recommendation-card.priority-medium {
-  border-left: 4px solid #f59e0b; /* orange */
+  border-left: 4px solid var(--priority-medium-border);
 }
 
 .recommendation-card.priority-low {
-  border-left: 4px solid #3b82f6; /* blue */
+  border-left: 4px solid var(--priority-low-border);
 }
 
 .rec-header {
@@ -489,18 +489,18 @@
 }
 
 .rec-priority-badge.high {
-  background: #fecaca;
-  color: #991b1b;
+  background: var(--priority-high-bg);
+  color: var(--priority-high-text);
 }
 
 .rec-priority-badge.medium {
-  background: #fed7aa;
-  color: #9a3412;
+  background: var(--priority-medium-bg);
+  color: var(--priority-medium-text);
 }
 
 .rec-priority-badge.low {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--priority-low-bg);
+  color: var(--priority-low-text);
 }
 
 .rec-header h4 {
