@@ -56,25 +56,16 @@ export function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-container">
-        <div className="login-header" style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <div
-            className="login-logo"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              marginBottom: '1rem',
-            }}
-          >
+        <div className="login-header">
+          <div className="login-logo">
             <img src="/images/logo.png" alt="LifeOS" style={{ height: '48px', width: 'auto' }} />
           </div>
           <h1>Welcome</h1>
           <p>Sign in to access your personal dashboard</p>
         </div>
 
-        <form onSubmit={handleEmailAuth} style={{ marginBottom: '1.5rem' }}>
-          <div style={{ marginBottom: '0.75rem' }}>
+        <form onSubmit={handleEmailAuth} className="login-form">
+          <div className="form-group">
             <input
               id="login-email"
               name="email"
@@ -84,17 +75,10 @@ export function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb',
-                fontSize: '0.875rem',
-                boxSizing: 'border-box',
-              }}
+              className="login-input"
             />
           </div>
-          <div style={{ marginBottom: '0.75rem' }}>
+          <div className="form-group">
             <input
               id="login-password"
               name="password"
@@ -104,90 +88,26 @@ export function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                borderRadius: '8px',
-                border: '1px solid #e5e7eb',
-                fontSize: '0.875rem',
-                boxSizing: 'border-box',
-              }}
+              className="login-input"
             />
           </div>
-          <button
-            type="submit"
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              background: '#445c47',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              marginBottom: '0.5rem',
-              fontWeight: 500,
-            }}
-          >
+          <button type="submit" className="login-button primary">
             {mode === 'signin' ? 'Sign In' : 'Sign Up'}
           </button>
           <button
             type="button"
             onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-            style={{
-              width: '100%',
-              padding: '0.5rem',
-              background: 'transparent',
-              border: 'none',
-              color: '#6b7280',
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-            }}
+            className="login-button ghost"
           >
             {mode === 'signin' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
           </button>
         </form>
 
-        <div style={{ position: 'relative', marginBottom: '1.5rem', textAlign: 'center' }}>
-          <div
-            style={{
-              borderTop: '1px solid #e5e7eb',
-              position: 'absolute',
-              top: '50%',
-              width: '100%',
-              zIndex: 0,
-            }}
-          />
-          <span
-            style={{
-              position: 'relative',
-              background: 'white',
-              padding: '0 0.5rem',
-              color: '#6b7280',
-              fontSize: '0.875rem',
-              zIndex: 1,
-            }}
-          >
-            or
-          </span>
+        <div className="login-divider">
+          <span>or</span>
         </div>
 
-        <button
-          onClick={handleGoogleSignIn}
-          className="google-signin-btn"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.75rem',
-            width: '100%',
-            padding: '0.75rem',
-            background: '#445c47',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-          }}
-        >
+        <button onClick={handleGoogleSignIn} className="login-button google">
           <svg className="google-icon" viewBox="0 0 24 24" width="20" height="20">
             <path
               fill="currentColor"

@@ -6291,6 +6291,110 @@ input[type='range']:disabled {
   transform: scale(0.98);
 }
 
+/* Login form components */
+.login-form {
+  margin-bottom: var(--space-5);
+}
+
+.login-form .form-group {
+  margin-bottom: var(--space-3);
+}
+
+.login-input {
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  font-size: 0.875rem;
+  background: var(--background);
+  color: var(--foreground);
+  transition: border-color var(--motion-standard);
+  box-sizing: border-box;
+}
+
+.login-input:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.login-button.primary {
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all var(--motion-standard);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  margin-bottom: var(--space-2);
+}
+
+.login-button.primary:hover {
+  background: var(--accent-hover);
+}
+
+.login-button.ghost {
+  width: 100%;
+  padding: var(--space-2);
+  background: transparent;
+  border: none;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.login-button.google {
+  width: 100%;
+  padding: var(--space-3);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.login-header {
+  margin-bottom: var(--space-6);
+  text-align: center;
+}
+
+.login-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.login-divider {
+  position: relative;
+  margin-bottom: var(--space-5);
+  text-align: center;
+}
+
+.login-divider::before {
+  content: '';
+  border-top: 1px solid var(--border);
+  position: absolute;
+  top: 50%;
+  width: 100%;
+  z-index: 0;
+}
+
+.login-divider span {
+  position: relative;
+  background: var(--card);
+  padding: 0 var(--space-2);
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  z-index: 1;
+}
+
 .google-icon {
   flex-shrink: 0;
 }
