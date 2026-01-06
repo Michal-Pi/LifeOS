@@ -2166,7 +2166,14 @@ input[type='range']:disabled {
 
 .primary-button:hover:not(:disabled) {
   background: var(--accent-hover);
+  color: var(--accent-foreground);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.primary-button:focus:not(:disabled) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  color: var(--accent-foreground);
 }
 
 .primary-button:disabled {

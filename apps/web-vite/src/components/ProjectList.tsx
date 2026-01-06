@@ -112,10 +112,7 @@ export function ProjectList({
                     </span>
                   )}
                   {tasks.some((t) => t.projectId === project.id) && (
-                    <div
-                      className="mini-progress-bar"
-                      title={`${Math.round(progress)}% complete`}
-                    >
+                    <div className="mini-progress-bar" title={`${Math.round(progress)}% complete`}>
                       <div className="mini-progress-fill" style={{ width: `${progress}%` }} />
                     </div>
                   )}
