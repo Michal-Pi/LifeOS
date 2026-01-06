@@ -793,22 +793,6 @@
   }
 }
 
-/* ========== Dark Mode Support ========== */
-
-[data-theme='dark'] {
-  --success-light: rgba(45, 212, 191, 0.12);
-  --info-light: rgba(0, 229, 255, 0.12);
-  --success-color: var(--success);
-  --info-color: var(--accent);
-}
-
-[data-theme='light'] {
-  --success-light: rgba(45, 212, 191, 0.12);
-  --info-light: rgba(0, 229, 255, 0.12);
-  --success-color: var(--success);
-  --info-color: var(--accent);
-}
-
 /* ========== Exercise Library Page ========== */
 
 .exercise-library-page {

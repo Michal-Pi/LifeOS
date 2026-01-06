@@ -58,6 +58,14 @@
   --surface-muted: var(--background-secondary);
   --nav-height: 52px;
   --container-max: 1200px;
+
+  /* Semantic color tokens for status indicators */
+  --success-light: rgba(45, 212, 191, 0.12);
+  --success-color: var(--success);
+  --info-light: rgba(0, 229, 255, 0.12);
+  --info-color: var(--accent);
+  --warning-light: rgba(251, 191, 36, 0.12);
+  --warning-color: var(--warning);
 }
 
 .dark {
@@ -112,4 +120,12 @@
   --surface-muted: var(--background-secondary);
   --nav-height: 52px;
   --container-max: 1200px;
+
+  /* Semantic color tokens for status indicators */
+  --success-light: rgba(45, 212, 191, 0.12);
+  --success-color: var(--success);
+  --info-light: rgba(0, 229, 255, 0.12);
+  --info-color: var(--accent);
+  --warning-light: rgba(251, 191, 36, 0.12);
+  --warning-color: var(--warning);
 }
