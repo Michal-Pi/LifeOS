@@ -13,7 +13,7 @@
     "./*": "./dist/*.js"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "bash build.sh",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

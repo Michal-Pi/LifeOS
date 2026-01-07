@@ -1107,6 +1107,11 @@ button[aria-busy='true'] {
   grid-template-columns: 280px minmax(0, 1.5fr) minmax(0, 1fr);
 }
 
+/* Full-width layout for List view */
+.planner-layout-list {
+  grid-template-columns: 1fr;
+}
+
 .planner-sidebar {
   background: var(--card);
   border: 1px solid var(--border);

@@ -20,7 +20,7 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "bash build.sh",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

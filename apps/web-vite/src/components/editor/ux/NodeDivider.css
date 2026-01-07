@@ -1,0 +1,104 @@
+/**
+ * NodeDivider Styles
+ */
+
+.node-divider {
+  position: relative;
+  height: 1px;
+  margin: 0.5rem 0;
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--motion-ease);
+  pointer-events: none;
+}
+
+.node-divider.is-hovered,
+.node-divider.is-dragging {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.divider-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border);
+  transform: translateY(-50%);
+}
+
+.divider-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: grab;
+  color: var(--muted-foreground);
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+  z-index: 10;
+}
+
+.divider-handle:hover {
+  background: var(--background-secondary);
+  border-color: var(--accent);
+  color: var(--foreground);
+}
+
+.divider-handle:active {
+  cursor: grabbing;
+}
+
+.node-divider.is-dragging .divider-handle {
+  cursor: grabbing;
+  background: var(--accent-subtle);
+  border-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.node-dividers-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.drag-overlay-node {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  opacity: 0.9;
+}
+
+.drag-overlay-content {
+  color: var(--foreground);
+  font-size: 0.875rem;
+}
+
+/* Dark mode adjustments */
+[data-theme='dark'] .divider-handle {
+  background: var(--background);
+}
+
+[data-theme='dark'] .divider-handle:hover {
+  background: var(--background-secondary);
+}
+
+[data-theme='dark'] .drag-overlay-node {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}

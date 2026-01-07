@@ -10,7 +10,7 @@ LifeOS helps you organize daily work and long-term goals through:
 - Project/milestone/task management
 - Daily overview + weekly review
 - Quote-based inspiration
-- Notes and knowledge capture (in progress)
+- Notes and knowledge capture with Notion-style block editor
 
 ## Quick Start
 
@@ -97,6 +97,7 @@ Start here:
 
 - Vite + React 19 + TypeScript
 - React Router
+- TipTap rich text editor (block-based, Notion-style UX)
 - Custom hooks + repository adapters
 
 **Backend**
@@ -110,6 +111,7 @@ Start here:
 - pnpm workspaces
 - Turbo
 - Vitest
+- Firebase Functions v2 with workspace dependency vendoring
 
 ## Project Structure (Top Level)
 
@@ -156,7 +158,7 @@ pnpm firebase:deploy:functions   # Build + deploy functions only
 - Calendar: production-ready
 - Todos: active and in use
 - Habits & Mind Engine: production-ready with analytics (Phase 5 complete)
-- Notes: late beta with offline support and OKR integration
+- Notes: Production-ready with Notion-style block editor, project organization, and offline support
 - Training: MVP complete with daily workout tracking (Phase 2-5 in roadmap)
 - People/Projects: placeholder UI
 

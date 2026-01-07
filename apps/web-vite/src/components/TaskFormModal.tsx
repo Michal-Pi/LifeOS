@@ -11,7 +11,7 @@ import type {
   TaskStatus,
   Domain,
 } from '@/types/todo'
-import { calculateUrgency } from '@/lib/priority'
+import { calculateUrgency, urgencyToDueDate } from '@/lib/priority'
 import {
   urgencyFromSlider,
   urgencyLabel,
@@ -56,10 +56,13 @@ export function TaskFormModal({
   const [urgency, setUrgency] = useState<UrgencyLevel>('this_week')
   const [importance, setImportance] = useState<ImportanceLevel>(4)
   const [dueDate, setDueDate] = useState('')
+  const [dueDateTime, setDueDateTime] = useState('') // For datetime-local input
   const [allocatedHours, setAllocatedHours] = useState<number | ''>('')
   const [allocatedMinutes, setAllocatedMinutes] = useState<number | ''>('')
   const [status, setStatus] = useState<TaskStatus>('inbox')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [urgencyChangedManually, setUrgencyChangedManually] = useState(false)
+  const [dueDateChangedManually, setDueDateChangedManually] = useState(false)
 
   // Reset form when opening or changing initialTask
   useEffect(() => {
@@ -73,8 +76,24 @@ export function TaskFormModal({
         setKeyResultId(initialTask.keyResultId || 'none')
         setUrgency(initialTask.urgency || 'this_week')
         setImportance(initialTask.importance)
-        setDueDate(initialTask.dueDate || '')
+        const taskDueDate = initialTask.dueDate || ''
+        setDueDate(taskDueDate)
+        // Convert date string to datetime-local format
+        if (taskDueDate) {
+          const date = new Date(taskDueDate)
+          if (!isNaN(date.getTime())) {
+            // If it's just a date (YYYY-MM-DD), set time to midnight
+            const localDateTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+            setDueDateTime(localDateTime.toISOString().slice(0, 16))
+          } else {
+            setDueDateTime('')
+          }
+        } else {
+          setDueDateTime('')
+        }
         setStatus(initialTask.status)
+        setUrgencyChangedManually(false)
+        setDueDateChangedManually(false)
         const totalMinutes = initialTask.allocatedTimeMinutes || 0
         const hours = Math.floor(totalMinutes / 60)
         const minutes = totalMinutes % 60
@@ -91,7 +110,10 @@ export function TaskFormModal({
         setUrgency('this_week')
         setImportance(4)
         setDueDate('')
+        setDueDateTime('')
         setStatus('inbox')
+        setUrgencyChangedManually(false)
+        setDueDateChangedManually(false)
         setAllocatedHours('')
         setAllocatedMinutes('')
       }
@@ -151,6 +173,35 @@ export function TaskFormModal({
     ],
     [availableKeyResults]
   )
+
+  // Sync urgency to due date when urgency changes manually
+  useEffect(() => {
+    if (urgencyChangedManually && !dueDateChangedManually) {
+      const newDueDate = urgencyToDueDate(urgency)
+      if (newDueDate) {
+        setDueDate(newDueDate)
+        // Set datetime to midnight of that date
+        const date = new Date(newDueDate)
+        const localDateTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+        setDueDateTime(localDateTime.toISOString().slice(0, 16))
+      } else {
+        setDueDate('')
+        setDueDateTime('')
+      }
+      setUrgencyChangedManually(false)
+    }
+  }, [urgency, urgencyChangedManually, dueDateChangedManually])
+
+  // Sync due date to urgency when due date changes manually
+  useEffect(() => {
+    if (dueDateChangedManually && !urgencyChangedManually) {
+      if (dueDate) {
+        const calculatedUrgency = calculateUrgency(dueDate)
+        setUrgency(calculatedUrgency)
+      }
+      setDueDateChangedManually(false)
+    }
+  }, [dueDate, dueDateChangedManually, urgencyChangedManually])
 
   const effectiveUrgency = useMemo(() => {
     if (!dueDate) return urgency
@@ -316,8 +367,10 @@ export function TaskFormModal({
                   max={URGENCY_SLIDER_MAX}
                   step={1}
                   value={urgencyToSlider(effectiveUrgency)}
-                  onChange={(e) => setUrgency(urgencyFromSlider(Number(e.target.value)))}
-                  disabled={Boolean(dueDate)}
+                  onChange={(e) => {
+                    setUrgencyChangedManually(true)
+                    setUrgency(urgencyFromSlider(Number(e.target.value)))
+                  }}
                 />
                 <p className="helper-text">
                   {dueDate
@@ -348,13 +401,29 @@ export function TaskFormModal({
 
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="task-due-date">Due Date</label>
+                <label htmlFor="task-due-datetime">Due Date & Time</label>
                 <input
-                  id="task-due-date"
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
+                  id="task-due-datetime"
+                  type="datetime-local"
+                  value={dueDateTime}
+                  onChange={(e) => {
+                    setDueDateChangedManually(true)
+                    const newDateTime = e.target.value
+                    setDueDateTime(newDateTime)
+                    if (newDateTime) {
+                      // Extract date part (YYYY-MM-DD) for dueDate field
+                      const datePart = newDateTime.split('T')[0]
+                      setDueDate(datePart)
+                    } else {
+                      setDueDate('')
+                    }
+                  }}
                 />
+                <p className="helper-text">
+                  {dueDate
+                    ? `Auto urgency: ${urgencyLabel(effectiveUrgency)}`
+                    : 'Set a due date to automatically calculate urgency'}
+                </p>
               </div>
 
               <div className="form-group">

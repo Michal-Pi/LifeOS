@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { CanonicalTask, TaskStatus } from '@/types/todo'
 import { calculateUrgency } from '@/lib/priority'
 import {
@@ -9,6 +10,9 @@ import {
   urgencyToSlider,
 } from '@/lib/todoUi'
 import { Select, type SelectOption } from './Select'
+import { CalendarTimePicker } from './CalendarTimePicker'
+import { useEventService } from '@/hooks/useEventService'
+import { useAuth } from '@/hooks/useAuth'
 
 const STATUS_OPTIONS: SelectOption[] = [
   { value: 'inbox', label: 'Inbox' },
@@ -43,6 +47,10 @@ export function TaskDetailSidebar({
   onConvert,
   telemetry,
 }: TaskDetailSidebarProps) {
+  const { user } = useAuth()
+  const eventService = useEventService({ userId: user?.uid || '' })
+  const [showTimePicker, setShowTimePicker] = useState(false)
+
   const totalMinutes = task?.allocatedTimeMinutes || 0
   const estimatedHours = Math.floor(totalMinutes / 60)
   const estimatedMinutes = totalMinutes % 60
@@ -96,6 +104,40 @@ export function TaskDetailSidebar({
     const safeMinutes = Number.isFinite(minutes) ? minutes : 0
     const totalMinutes = Math.max(safeHours, 0) * 60 + Math.min(Math.max(safeMinutes, 0), 59)
     onUpdate({ ...task, allocatedTimeMinutes: totalMinutes || undefined })
+  }
+
+  const handleTimeBlockSelect = async (startMs: number, endMs: number) => {
+    if (!task) return
+
+    try {
+      const startDate = new Date(startMs)
+      const endDate = new Date(endMs)
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+      const formData = {
+        title: task.title,
+        description: task.description,
+        allDay: false,
+        startDate: startDate.toISOString().split('T')[0],
+        startTime: startDate.toTimeString().slice(0, 5),
+        endDate: endDate.toISOString().split('T')[0],
+        endTime: endDate.toTimeString().slice(0, 5),
+        timezone,
+      }
+
+      const newEvent = await eventService.createEvent(formData, { taskId: task.id })
+
+      // Update task with new calendar event ID
+      const updatedTask: CanonicalTask = {
+        ...task,
+        status: 'scheduled',
+        calendarEventIds: [...(task.calendarEventIds || []), newEvent.canonicalEventId],
+      }
+      onUpdate(updatedTask)
+      setShowTimePicker(false)
+    } catch (error) {
+      console.error('Failed to create calendar event:', error)
+    }
   }
 
   return (
@@ -217,6 +259,13 @@ export function TaskDetailSidebar({
           </button>
           <button
             className="ghost-button"
+            onClick={() => setShowTimePicker(true)}
+            title="Manually select a time block from calendar"
+          >
+            Pick Time Block
+          </button>
+          <button
+            className="ghost-button"
             onClick={() => onConvert(task)}
             title="Convert this task into a new project"
           >
@@ -227,6 +276,15 @@ export function TaskDetailSidebar({
           </button>
         </div>
       </div>
+
+      {/* Calendar Time Picker Modal */}
+      <CalendarTimePicker
+        isOpen={showTimePicker}
+        onClose={() => setShowTimePicker(false)}
+        onSelect={handleTimeBlockSelect}
+        defaultDurationMinutes={task.allocatedTimeMinutes || 60}
+        selectedDate={task.dueDate ? new Date(task.dueDate) : undefined}
+      />
     </aside>
   )
 }

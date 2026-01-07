@@ -182,14 +182,21 @@ export function NoteEditor({
         .note-editor {
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 1.5rem;
           height: 100%;
+          width: 100%;
         }
 
         .save-status {
-          padding: 8px 16px;
-          font-size: 12px;
+          padding: 0.5rem 0;
+          font-size: 0.75rem;
           text-align: right;
+          color: var(--muted-foreground);
+          position: sticky;
+          top: 0;
+          background: var(--card);
+          z-index: 10;
+          margin-bottom: 0.5rem;
         }
 
         .saving {
@@ -197,26 +204,27 @@ export function NoteEditor({
         }
 
         .saved {
-          color: var(--success, green);
+          color: var(--success, #2dd4bf);
         }
 
         .unsaved {
-          color: var(--warning, orange);
+          color: var(--warning, #fbbf24);
         }
 
         .error {
-          color: var(--error, red);
+          color: var(--error, #cc3333);
           font-weight: 500;
         }
 
         .editor-content {
           flex: 1;
-          min-height: 300px;
+          min-height: 400px;
         }
 
         .editor-section {
           border-top: 1px solid var(--border);
-          padding-top: 16px;
+          padding-top: 1.5rem;
+          margin-top: 1.5rem;
         }
       `}</style>
     </div>

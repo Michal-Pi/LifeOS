@@ -1,0 +1,83 @@
+/**
+ * CommandMenu Styles
+ */
+
+.command-menu {
+  min-width: 280px;
+  max-width: 320px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.25rem;
+  z-index: 1000;
+  font-size: 0.875rem;
+}
+
+.command-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--motion-fast) var(--motion-ease);
+}
+
+.command-menu-item:hover,
+.command-menu-item.is-selected {
+  background: var(--background-secondary);
+}
+
+.command-icon {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+
+.command-menu-item.is-selected .command-icon {
+  background: var(--accent-subtle);
+  color: var(--accent-foreground);
+}
+
+.command-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.command-label {
+  font-weight: 500;
+  color: var(--foreground);
+  font-size: 0.875rem;
+}
+
+.command-description {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dark mode adjustments */
+[data-theme='dark'] .command-menu {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}

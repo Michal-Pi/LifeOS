@@ -51,7 +51,18 @@ export function PlannerPage() {
     durationMinutes: number
     formData: Partial<EventFormData>
   } | null>(null)
-  const [viewMode, setViewMode] = useState<'list' | 'priority'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'priority'>('priority')
+
+  // Handle view mode change - clear project filters when switching to List
+  const handleViewModeChange = (mode: 'list' | 'priority') => {
+    if (mode === 'list') {
+      // Clear project-related filters when switching to List view
+      setSelectedProject(null)
+      setSelectedMilestone(null)
+      setSelectedTask(null)
+    }
+    setViewMode(mode)
+  }
 
   // Filter states
   const [domainFilter, setDomainFilter] = useState<Domain | 'all'>('all')
@@ -345,16 +356,16 @@ export function PlannerPage() {
           {/* View Mode Toggle */}
           <div className="view-toggles">
             <button
-              className={`view-toggle ${viewMode === 'list' ? 'active' : ''}`}
-              onClick={() => setViewMode('list')}
-            >
-              List
-            </button>
-            <button
               className={`view-toggle ${viewMode === 'priority' ? 'active' : ''}`}
-              onClick={() => setViewMode('priority')}
+              onClick={() => handleViewModeChange('priority')}
             >
               Priority
+            </button>
+            <button
+              className={`view-toggle ${viewMode === 'list' ? 'active' : ''}`}
+              onClick={() => handleViewModeChange('list')}
+            >
+              List
             </button>
           </div>
         </div>
@@ -490,30 +501,32 @@ export function PlannerPage() {
       </section>
 
       {/* ROW 4: Main Content Layout */}
-      <section className="planner-layout">
-        <aside className="planner-sidebar">
-          {loading ? (
-            <div className="loading-container">
-              <p className="loading-text">Loading...</p>
-            </div>
-          ) : (
-            <ProjectList
-              projects={projects}
-              milestones={milestones}
-              tasks={tasks}
-              onSelectProject={handleSelectProject}
-              onSelectMilestone={handleSelectMilestone}
-              onSelectOtherTasks={handleSelectOtherTasks}
-              onClearSelection={handleClearSelection}
-              selectedProjectId={selectedProject?.id}
-              selectedMilestoneId={selectedMilestone?.id}
-            />
-          )}
-        </aside>
+      <section className={`planner-layout ${viewMode === 'list' ? 'planner-layout-list' : ''}`}>
+        {viewMode !== 'list' && (
+          <aside className="planner-sidebar">
+            {loading ? (
+              <div className="loading-container">
+                <p className="loading-text">Loading...</p>
+              </div>
+            ) : (
+              <ProjectList
+                projects={projects}
+                milestones={milestones}
+                tasks={tasks}
+                onSelectProject={handleSelectProject}
+                onSelectMilestone={handleSelectMilestone}
+                onSelectOtherTasks={handleSelectOtherTasks}
+                onClearSelection={handleClearSelection}
+                selectedProjectId={selectedProject?.id}
+                selectedMilestoneId={selectedMilestone?.id}
+              />
+            )}
+          </aside>
+        )}
 
         <div className="planner-main-panel">
           <main className="planner-main">
-            {selectedProject && (
+            {viewMode !== 'list' && selectedProject && (
               <div className="okr-display">
                 {selectedMilestone ? (
                   <>
@@ -618,15 +631,17 @@ export function PlannerPage() {
           </main>
         </div>
 
-        <TaskDetailSidebar
-          task={selectedTask}
-          onClose={() => setSelectedTask(null)}
-          onUpdate={updateTask}
-          onDelete={handleDeleteTask}
-          onSchedule={handleScheduleTask}
-          onConvert={handleConvertTask}
-          telemetry={taskTelemetry}
-        />
+        {viewMode !== 'list' && (
+          <TaskDetailSidebar
+            task={selectedTask}
+            onClose={() => setSelectedTask(null)}
+            onUpdate={updateTask}
+            onDelete={handleDeleteTask}
+            onSchedule={handleScheduleTask}
+            onConvert={handleConvertTask}
+            telemetry={taskTelemetry}
+          />
+        )}
       </section>
 
       {/* Modals */}
