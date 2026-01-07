@@ -4,6 +4,7 @@ import type { RowComponentProps } from 'react-window'
 import type { CanonicalTask, CanonicalProject, TaskStatus } from '@/types/todo'
 import { calculatePriorityScore } from '@/lib/priority'
 import { getProjectColor } from '@/config/domainColors'
+import { importanceLabel } from '@/lib/todoUi'
 import './TaskList.css'
 import { EmptyState } from '@/components/EmptyState'
 
@@ -148,7 +149,7 @@ export const TaskList = React.memo(function TaskList({
             '-'
           )}
         </div>
-        <div className="task-cell meta-cell w-24">{task.importance}</div>
+        <div className="task-cell meta-cell w-24">{importanceLabel(task.importance)}</div>
         <div className="task-cell meta-cell w-32">{task.dueDate || '-'}</div>
         <div className="task-cell meta-cell w-24">
           <span className={`status-pill ${task.status}`}>{STATUS_LABELS[task.status]}</span>

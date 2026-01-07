@@ -100,7 +100,10 @@ export function ProjectList({
                 className={`project-row ${isSelected ? 'selected' : ''}`}
                 onClick={() => handleProjectClick(project.id)}
               >
-                <div className="project-color-indicator" style={{ backgroundColor: projectColor }} />
+                <div
+                  className="project-color-indicator"
+                  style={{ backgroundColor: projectColor }}
+                />
                 <button
                   className="expand-toggle"
                   onClick={(e) => toggleProject(project.id, e)}

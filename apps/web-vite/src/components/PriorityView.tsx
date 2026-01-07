@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { CanonicalTask, CanonicalProject, CanonicalMilestone } from '@/types/todo'
 import { groupTasksByBucket, PRIORITY_BUCKETS, type TaskFilters } from '@/lib/priorityBuckets'
 import { getProjectColor } from '@/config/domainColors'
+import { importanceLabel } from '@/lib/todoUi'
 
 interface PriorityViewProps {
   tasks: CanonicalTask[]
@@ -50,7 +51,10 @@ export function PriorityView({
                       onClick={() => onSelectTask(task)}
                     >
                       {taskColor && (
-                        <div className="task-card-color-indicator" style={{ backgroundColor: taskColor }} />
+                        <div
+                          className="task-card-color-indicator"
+                          style={{ backgroundColor: taskColor }}
+                        />
                       )}
                       <div className="task-card-header">
                         <input
@@ -64,18 +68,20 @@ export function PriorityView({
                         />
                         <span className="task-title">{task.title}</span>
                       </div>
-                    <div className="task-card-meta">
-                      {task.dueDate && (
-                        <span className="meta-tag due-date">Due {task.dueDate}</span>
-                      )}
-                      <span className="meta-tag importance">Imp: {task.importance}</span>
-                      {task.allocatedTimeMinutes && task.allocatedTimeMinutes > 0 && (
-                        <span className="meta-tag time-estimate">
-                          {task.allocatedTimeMinutes}min
+                      <div className="task-card-meta">
+                        {task.dueDate && (
+                          <span className="meta-tag due-date">Due {task.dueDate}</span>
+                        )}
+                        <span className="meta-tag importance">
+                          Imp: {importanceLabel(task.importance)}
                         </span>
-                      )}
+                        {task.allocatedTimeMinutes && task.allocatedTimeMinutes > 0 && (
+                          <span className="meta-tag time-estimate">
+                            {task.allocatedTimeMinutes}min
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
                   )
                 })}
               </div>

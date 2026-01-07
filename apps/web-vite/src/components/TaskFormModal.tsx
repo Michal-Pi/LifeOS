@@ -56,8 +56,8 @@ export function TaskFormModal({
   const [urgency, setUrgency] = useState<UrgencyLevel>('this_week')
   const [importance, setImportance] = useState<ImportanceLevel>(4)
   const [dueDate, setDueDate] = useState('')
-  const [allocatedHours, setAllocatedHours] = useState(0)
-  const [allocatedMinutes, setAllocatedMinutes] = useState(0)
+  const [allocatedHours, setAllocatedHours] = useState<number | ''>('')
+  const [allocatedMinutes, setAllocatedMinutes] = useState<number | ''>('')
   const [status, setStatus] = useState<TaskStatus>('inbox')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -76,8 +76,10 @@ export function TaskFormModal({
         setDueDate(initialTask.dueDate || '')
         setStatus(initialTask.status)
         const totalMinutes = initialTask.allocatedTimeMinutes || 0
-        setAllocatedHours(Math.floor(totalMinutes / 60))
-        setAllocatedMinutes(totalMinutes % 60)
+        const hours = Math.floor(totalMinutes / 60)
+        const minutes = totalMinutes % 60
+        setAllocatedHours(hours > 0 ? hours : '')
+        setAllocatedMinutes(minutes > 0 ? minutes : '')
       } else {
         // Defaults for new task
         setTitle('')
@@ -90,8 +92,8 @@ export function TaskFormModal({
         setImportance(4)
         setDueDate('')
         setStatus('inbox')
-        setAllocatedHours(0)
-        setAllocatedMinutes(0)
+        setAllocatedHours('')
+        setAllocatedMinutes('')
       }
     }
   }, [isOpen, initialTask])
@@ -156,8 +158,8 @@ export function TaskFormModal({
   }, [dueDate, urgency])
 
   const allocatedTimeMinutes = useMemo(() => {
-    const hours = Number.isFinite(allocatedHours) ? allocatedHours : 0
-    const minutes = Number.isFinite(allocatedMinutes) ? allocatedMinutes : 0
+    const hours = typeof allocatedHours === 'number' ? allocatedHours : 0
+    const minutes = typeof allocatedMinutes === 'number' ? allocatedMinutes : 0
     return Math.max(hours, 0) * 60 + Math.min(Math.max(minutes, 0), 59)
   }, [allocatedHours, allocatedMinutes])
 
@@ -366,8 +368,18 @@ export function TaskFormModal({
                       max={40}
                       value={allocatedHours}
                       onChange={(e) => {
-                        const val = Math.min(40, Math.max(0, Number(e.target.value)))
-                        setAllocatedHours(val)
+                        const val = e.target.value
+                        if (val === '') {
+                          setAllocatedHours('')
+                        } else {
+                          const num = Math.min(40, Math.max(0, Number(val)))
+                          setAllocatedHours(num)
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (e.target.value === '') {
+                          setAllocatedHours('')
+                        }
                       }}
                       placeholder="0"
                     />
@@ -381,8 +393,18 @@ export function TaskFormModal({
                       max={59}
                       value={allocatedMinutes}
                       onChange={(e) => {
-                        const val = Math.min(59, Math.max(0, Number(e.target.value)))
-                        setAllocatedMinutes(val)
+                        const val = e.target.value
+                        if (val === '') {
+                          setAllocatedMinutes('')
+                        } else {
+                          const num = Math.min(59, Math.max(0, Number(val)))
+                          setAllocatedMinutes(num)
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (e.target.value === '') {
+                          setAllocatedMinutes('')
+                        }
                       }}
                       placeholder="0"
                     />
