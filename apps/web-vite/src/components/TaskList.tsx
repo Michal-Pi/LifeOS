@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { List } from 'react-window'
 import type { RowComponentProps } from 'react-window'
 import type { CanonicalTask, CanonicalProject, TaskStatus } from '@/types/todo'
-import { calculatePriorityScore } from '@/lib/priority'
+import { calculatePriorityScore, calculateUrgency } from '@/lib/priority'
 import { getProjectColor } from '@/config/domainColors'
 import { importanceLabel } from '@/lib/todoUi'
 import './TaskList.css'
@@ -59,8 +59,19 @@ export const TaskList = React.memo(function TaskList({
           comparison = calculatePriorityScore(a) - calculatePriorityScore(b)
           break
         case 'urgency':
-          // Simple string comparison for now, ideally map to numeric values
-          comparison = (a.urgency || '').localeCompare(b.urgency || '')
+          {
+            const urgencyOrder = {
+              today: 6,
+              next_3_days: 5,
+              this_week: 4,
+              this_month: 3,
+              next_month: 2,
+              later: 1,
+            } as const
+            const urgencyA = a.urgency ?? (a.dueDate ? calculateUrgency(a.dueDate) : 'later')
+            const urgencyB = b.urgency ?? (b.dueDate ? calculateUrgency(b.dueDate) : 'later')
+            comparison = urgencyOrder[urgencyA] - urgencyOrder[urgencyB]
+          }
           break
         case 'importance':
           comparison = a.importance - b.importance

@@ -978,7 +978,7 @@
 }
 
 .delete-button-small:hover {
-  background: rgba(248, 113, 113, 0.12);
+  background: var(--error-light);
   color: var(--danger-color);
 }
 
@@ -1319,7 +1319,7 @@
 }
 
 .template-delete-button:hover {
-  background: rgba(248, 113, 113, 0.12);
+  background: var(--error-light);
   color: var(--danger-color);
   border-color: var(--danger-color);
 }

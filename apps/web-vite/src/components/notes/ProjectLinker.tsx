@@ -210,7 +210,7 @@ export function ProjectLinker({
           height: 24px;
           border-radius: 50%;
           border: none;
-          background: rgba(0, 0, 0, 0.1);
+          background: var(--background-secondary);
           color: var(--foreground);
           cursor: pointer;
           font-size: 18px;
@@ -221,7 +221,7 @@ export function ProjectLinker({
         }
 
         .btn-remove:hover {
-          background: rgba(248, 113, 113, 0.12);
+          background: var(--error-light);
           color: var(--error);
         }
 

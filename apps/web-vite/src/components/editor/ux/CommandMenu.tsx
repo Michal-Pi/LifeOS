@@ -5,7 +5,7 @@
  * Appears when user types "/" at the start of a block.
  */
 
-import { useState, useLayoutEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import type { Editor } from '@tiptap/react'
 import './CommandMenu.css'
 
@@ -15,6 +15,7 @@ export interface CommandMenuProps {
   onClose: () => void
   position: { x: number; y: number }
   query?: string
+  onInsertMath?: () => void
 }
 
 export interface Command {
@@ -140,12 +141,7 @@ const commands: Command[] = [
     description: 'Insert a math equation',
     icon: '∑',
     keywords: ['math', 'equation', 'latex', 'formula', 'scientific'],
-    action: (editor) => {
-      const formula = prompt('Enter LaTeX formula:')
-      if (formula !== null) {
-        editor.chain().focus().insertContent({ type: 'mathInline', attrs: { formula } }).run()
-      }
-    },
+    action: () => {},
   },
   {
     id: 'blockquote',
@@ -169,7 +165,14 @@ const commands: Command[] = [
   },
 ]
 
-export function CommandMenu({ editor, isOpen, onClose, position, query = '' }: CommandMenuProps) {
+export function CommandMenu({
+  editor,
+  isOpen,
+  onClose,
+  position,
+  query = '',
+  onInsertMath,
+}: CommandMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Filter commands based on query
@@ -189,7 +192,7 @@ export function CommandMenu({ editor, isOpen, onClose, position, query = '' }: C
   // Use a ref to track the previous query value
   const prevQueryRef = useRef(query)
   const [selectedIndex, setSelectedIndex] = useState(0)
-  
+
   // Reset selectedIndex when query changes
   // This is necessary to reset selection when filtering changes
   // Using useLayoutEffect to synchronously reset before render
@@ -215,7 +218,12 @@ export function CommandMenu({ editor, isOpen, onClose, position, query = '' }: C
       } else if (event.key === 'Enter') {
         event.preventDefault()
         if (filteredCommands[selectedIndex]) {
-          filteredCommands[selectedIndex].action(editor)
+          const command = filteredCommands[selectedIndex]
+          if (command.id === 'math' && onInsertMath) {
+            onInsertMath()
+          } else {
+            command.action(editor)
+          }
           onClose()
         }
       } else if (event.key === 'Escape') {
@@ -228,7 +236,7 @@ export function CommandMenu({ editor, isOpen, onClose, position, query = '' }: C
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isOpen, selectedIndex, filteredCommands, editor, onClose])
+  }, [isOpen, selectedIndex, filteredCommands, editor, onClose, onInsertMath])
 
   // Scroll selected item into view
   useEffect(() => {
@@ -260,7 +268,11 @@ export function CommandMenu({ editor, isOpen, onClose, position, query = '' }: C
           type="button"
           className={`command-menu-item ${index === selectedIndex ? 'is-selected' : ''}`}
           onClick={() => {
-            command.action(editor)
+            if (command.id === 'math' && onInsertMath) {
+              onInsertMath()
+            } else {
+              command.action(editor)
+            }
             onClose()
           }}
           onMouseEnter={() => setSelectedIndex(index)}

@@ -21,7 +21,7 @@
 }
 
 .select-trigger:hover {
-  border-color: var(--muted-foreground);
+  border-color: var(--border-strong);
   background: var(--background-secondary);
 }
 
@@ -38,14 +38,14 @@
 }
 
 .select-trigger[data-placeholder] {
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }
 
 .select-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   transition: transform var(--motion-fast) var(--motion-ease);
 }
 
@@ -59,9 +59,7 @@
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 18px var(--shadow-soft);
   z-index: 1000;
   width: var(--radix-select-trigger-width);
   max-height: var(--radix-select-content-available-height);

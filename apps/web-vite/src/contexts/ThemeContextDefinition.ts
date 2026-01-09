@@ -1,6 +1,13 @@
 import { createContext } from 'react'
 
 export type Theme = 'light' | 'dark'
+export type ThemeMode = Theme | 'auto'
+export type AutoThemeMode = 'system' | 'schedule'
+
+export interface ThemeSchedule {
+  start: string
+  end: string
+}
 
 /**
  * Theme Context Value Interface
@@ -9,7 +16,12 @@ export type Theme = 'light' | 'dark'
  */
 export interface ThemeContextValue {
   theme: Theme
-  setTheme: (theme: Theme) => void
+  mode: ThemeMode
+  autoMode: AutoThemeMode
+  schedule: ThemeSchedule
+  setMode: (mode: ThemeMode) => void
+  setAutoMode: (mode: AutoThemeMode) => void
+  setSchedule: (schedule: ThemeSchedule) => void
   toggleTheme: () => void
 }
 

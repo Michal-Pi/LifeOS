@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from './useAuth'
-import { createFirestoreNoteRepository } from '@/adapters/notes/firestoreNoteRepository'
+import { newId } from '@lifeos/core'
 import type {
   Note,
   NoteId,
@@ -17,6 +17,15 @@ import type {
   AttachmentId,
 } from '@lifeos/notes'
 import type { JSONContent } from '@tiptap/core'
+import {
+  saveNoteLocally,
+  deleteNoteLocally,
+  getNoteLocally,
+  listNotesLocally,
+  searchNotesLocally,
+} from '@/notes/offlineStore'
+import { enqueueNoteOp } from '@/notes/noteOutbox'
+import { isNoteEmptyDraft, sanitizeNoteContent } from '@/notes/noteContent'
 
 export interface UseNoteOperationsReturn {
   notes: Note[]
@@ -34,9 +43,8 @@ export interface UseNoteOperationsReturn {
   updateProjectLinks: (noteId: NoteId, projectIds: string[]) => Promise<Note>
   updateOKRLinks: (noteId: NoteId, okrIds: string[]) => Promise<Note>
   updateAttachments: (noteId: NoteId, attachmentIds: AttachmentId[]) => Promise<Note>
+  updateTags: (noteId: NoteId, tags: string[]) => Promise<Note>
 }
-
-const noteRepository = createFirestoreNoteRepository()
 
 /**
  * Hook for managing note operations
@@ -61,18 +69,38 @@ export function useNoteOperations(): UseNoteOperationsReturn {
       setError(null)
 
       try {
-        const note = await noteRepository.create(userId, {
+        const now = Date.now()
+        const sanitizedContent = sanitizeNoteContent(input.content)
+        const note: Note = {
           ...input,
-          content: input.content || { type: 'doc', content: [] },
+          noteId: newId<'note'>('note'),
+          userId,
+          content: sanitizedContent || { type: 'doc', content: [] },
           topicId: input.topicId || null,
           sectionId: input.sectionId || null,
           projectIds: input.projectIds || [],
           okrIds: input.okrIds || [],
           tags: input.tags || [],
           attachmentIds: input.attachmentIds || [],
-        })
+          createdAtMs: now,
+          updatedAtMs: now,
+          lastAccessedAtMs: now,
+          syncState: 'pending',
+          version: 1,
+          archived: input.archived ?? false,
+        }
 
         setNotes((prev) => [note, ...prev])
+        await saveNoteLocally(note)
+        try {
+          await enqueueNoteOp('create', userId, note.noteId, { note })
+        } catch (err) {
+          await saveNoteLocally({ ...note, syncState: 'failed' })
+          setNotes((prev) =>
+            prev.map((n) => (n.noteId === note.noteId ? { ...note, syncState: 'failed' } : n))
+          )
+          throw err
+        }
         return note
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to create note')
@@ -96,9 +124,45 @@ export function useNoteOperations(): UseNoteOperationsReturn {
       setError(null)
 
       try {
-        const updatedNote = await noteRepository.update(userId, noteId, updates)
+        const existingNote =
+          notes.find((n) => n.noteId === noteId) ?? (await getNoteLocally(noteId))
+        if (!existingNote) {
+          throw new Error(`Note ${noteId} not found`)
+        }
+        const now = Date.now()
+        const updatePayload: UpdateNoteInput = { ...updates }
+        if (Object.prototype.hasOwnProperty.call(updates, 'content')) {
+          updatePayload.content = sanitizeNoteContent(updates.content)
+        }
+        const updatedNote: Note = {
+          ...existingNote,
+          ...updatePayload,
+          updatedAtMs: now,
+          version: existingNote.version + 1,
+          syncState: 'pending',
+        }
 
         setNotes((prev) => prev.map((n) => (n.noteId === noteId ? updatedNote : n)))
+        await saveNoteLocally(updatedNote)
+        try {
+          await enqueueNoteOp(
+            'update',
+            userId,
+            noteId,
+            {
+              noteId,
+              updates: updatePayload,
+            },
+            existingNote.version,
+            existingNote.updatedAtMs
+          )
+        } catch (err) {
+          await saveNoteLocally({ ...updatedNote, syncState: 'failed' })
+          setNotes((prev) =>
+            prev.map((n) => (n.noteId === noteId ? { ...updatedNote, syncState: 'failed' } : n))
+          )
+          throw err
+        }
 
         if (currentNote?.noteId === noteId) {
           setCurrentNote(updatedNote)
@@ -113,7 +177,7 @@ export function useNoteOperations(): UseNoteOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId, currentNote]
+    [userId, currentNote, notes]
   )
 
   // Delete a note
@@ -127,9 +191,19 @@ export function useNoteOperations(): UseNoteOperationsReturn {
       setError(null)
 
       try {
-        await noteRepository.delete(userId, noteId)
-
+        const existingNote =
+          notes.find((n) => n.noteId === noteId) ?? (await getNoteLocally(noteId))
+        await deleteNoteLocally(noteId)
         setNotes((prev) => prev.filter((n) => n.noteId !== noteId))
+        try {
+          await enqueueNoteOp('delete', userId, noteId, { noteId })
+        } catch (err) {
+          if (existingNote) {
+            await saveNoteLocally({ ...existingNote, syncState: 'failed' })
+            setNotes((prev) => [existingNote, ...prev])
+          }
+          throw err
+        }
 
         if (currentNote?.noteId === noteId) {
           setCurrentNote(null)
@@ -142,7 +216,7 @@ export function useNoteOperations(): UseNoteOperationsReturn {
         setIsLoading(false)
       }
     },
-    [userId, currentNote]
+    [userId, currentNote, notes]
   )
 
   // Get a single note
@@ -156,11 +230,11 @@ export function useNoteOperations(): UseNoteOperationsReturn {
       setError(null)
 
       try {
-        const note = await noteRepository.get(userId, noteId)
+        const note = await getNoteLocally(noteId)
 
         if (note) {
-          // Update last accessed timestamp
-          await noteRepository.updateLastAccessed(userId, noteId)
+          const updated = { ...note, lastAccessedAtMs: Date.now() }
+          await saveNoteLocally(updated)
         }
 
         return note
@@ -186,7 +260,40 @@ export function useNoteOperations(): UseNoteOperationsReturn {
       setError(null)
 
       try {
-        const fetchedNotes = await noteRepository.list(userId, filters)
+        let fetchedNotes = await listNotesLocally(userId)
+        if (filters?.topicId) {
+          fetchedNotes = fetchedNotes.filter((note) => note.topicId === filters.topicId)
+        }
+        if (filters?.sectionId) {
+          fetchedNotes = fetchedNotes.filter((note) => note.sectionId === filters.sectionId)
+        }
+        if (filters?.tags && filters.tags.length > 0) {
+          fetchedNotes = fetchedNotes.filter((note) =>
+            filters.tags!.some((tag) => note.tags.includes(tag))
+          )
+        }
+        if (filters?.projectIds && filters.projectIds.length > 0) {
+          fetchedNotes = fetchedNotes.filter((note) =>
+            filters.projectIds!.some((projectId) => note.projectIds.includes(projectId))
+          )
+        }
+        if (filters?.okrIds && filters.okrIds.length > 0) {
+          fetchedNotes = fetchedNotes.filter((note) =>
+            filters.okrIds!.some((okrId) => note.okrIds.includes(okrId))
+          )
+        }
+        if (filters?.searchQuery) {
+          const lowerQuery = filters.searchQuery.toLowerCase()
+          fetchedNotes = fetchedNotes.filter(
+            (note) =>
+              note.title.toLowerCase().includes(lowerQuery) ||
+              note.contentHtml?.toLowerCase().includes(lowerQuery) ||
+              note.tags.some((tag) => tag.toLowerCase().includes(lowerQuery))
+          )
+        }
+        if (typeof filters?.archived === 'boolean') {
+          fetchedNotes = fetchedNotes.filter((note) => note.archived === filters.archived)
+        }
         setNotes(fetchedNotes)
         return fetchedNotes
       } catch (err) {
@@ -211,7 +318,7 @@ export function useNoteOperations(): UseNoteOperationsReturn {
       setError(null)
 
       try {
-        const results = await noteRepository.search(userId, query)
+        const results = await searchNotesLocally(userId, query)
         return results
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to search notes')
@@ -231,25 +338,39 @@ export function useNoteOperations(): UseNoteOperationsReturn {
         throw new Error('User not authenticated')
       }
 
-      await noteRepository.update(userId, noteId, {
-        content,
+      const existingNote =
+        notes.find((note) => note.noteId === noteId) ?? (await getNoteLocally(noteId))
+      if (!existingNote) {
+        throw new Error(`Note ${noteId} not found`)
+      }
+
+      const sanitizedContent = sanitizeNoteContent(content)
+      const shouldSkipSync = isNoteEmptyDraft(existingNote, {
+        content: sanitizedContent,
         contentHtml: html,
       })
 
-      // Update local state
-      setNotes((prev) =>
-        prev.map((n) =>
-          n.noteId === noteId ? { ...n, content, contentHtml: html, updatedAtMs: Date.now() } : n
-        )
-      )
-
-      if (currentNote?.noteId === noteId) {
-        setCurrentNote((prev) =>
-          prev ? { ...prev, content, contentHtml: html, updatedAtMs: Date.now() } : null
-        )
+      if (shouldSkipSync) {
+        const now = Date.now()
+        const localNote: Note = {
+          ...existingNote,
+          content: sanitizedContent,
+          contentHtml: html,
+          updatedAtMs: now,
+          version: existingNote.version + 1,
+          syncState: 'synced',
+        }
+        setNotes((prev) => prev.map((note) => (note.noteId === noteId ? localNote : note)))
+        if (currentNote?.noteId === noteId) {
+          setCurrentNote(localNote)
+        }
+        await saveNoteLocally(localNote)
+        return
       }
+
+      await updateNote(noteId, { content: sanitizedContent, contentHtml: html })
     },
-    [userId, currentNote]
+    [userId, notes, currentNote, updateNote]
   )
 
   // Update project links for a note
@@ -288,6 +409,17 @@ export function useNoteOperations(): UseNoteOperationsReturn {
     [userId, updateNote]
   )
 
+  const updateTags = useCallback(
+    async (noteId: NoteId, tags: string[]): Promise<Note> => {
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
+
+      return updateNote(noteId, { tags })
+    },
+    [userId, updateNote]
+  )
+
   // Load initial notes when user is authenticated
   useEffect(() => {
     if (userId) {
@@ -311,5 +443,6 @@ export function useNoteOperations(): UseNoteOperationsReturn {
     updateProjectLinks,
     updateOKRLinks,
     updateAttachments,
+    updateTags,
   }
 }

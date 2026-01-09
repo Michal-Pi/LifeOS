@@ -18,10 +18,12 @@ import { useAuth } from '@/hooks/useAuth'
 import { useHabitOperations } from '@/hooks/useHabitOperations'
 import { HabitFormModal } from '@/components/habits/HabitFormModal'
 import { EmptyState } from '@/components/EmptyState'
+import { useDialog } from '@/contexts/useDialog'
 
 export function HabitsPage() {
   const { user } = useAuth()
   const userId = user?.uid ?? ''
+  const { confirm } = useDialog()
 
   const { habits, listHabits, createHabit, updateHabit, deleteHabit, getHabitStats, isLoading } =
     useHabitOperations()
@@ -102,7 +104,13 @@ export function HabitsPage() {
   }
 
   const handleArchiveHabit = async (habitId: string) => {
-    if (!confirm('Archive this habit? You can restore it later from the Archived tab.')) return
+    const confirmed = await confirm({
+      title: 'Archive habit',
+      description: 'Archive this habit? You can restore it later from the Archived tab.',
+      confirmLabel: 'Archive',
+      confirmVariant: 'default',
+    })
+    if (!confirmed) return
 
     try {
       await updateHabit(habitId as HabitId, { status: 'archived' })
@@ -113,12 +121,14 @@ export function HabitsPage() {
   }
 
   const handleDeleteHabit = async (habitId: string) => {
-    if (
-      !confirm(
-        'Permanently delete this habit? This will delete all check-in history. This cannot be undone.'
-      )
-    )
-      return
+    const confirmed = await confirm({
+      title: 'Delete habit',
+      description:
+        'Permanently delete this habit? This will delete all check-in history. This cannot be undone.',
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
       await deleteHabit(habitId as HabitId)

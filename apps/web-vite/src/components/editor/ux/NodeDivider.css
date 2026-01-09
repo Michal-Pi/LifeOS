@@ -17,6 +17,11 @@
   pointer-events: all;
 }
 
+/* Enable pointer events on divider controls even when divider is not hovered */
+.node-divider .divider-controls {
+  pointer-events: all;
+}
+
 .divider-line {
   position: absolute;
   top: 50%;
@@ -41,7 +46,7 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   cursor: grab;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   transition:
     background-color var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease),
@@ -81,13 +86,74 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px var(--shadow-soft);
   opacity: 0.9;
 }
 
 .drag-overlay-content {
   color: var(--foreground);
   font-size: 0.875rem;
+}
+
+/* Add button controls */
+.divider-controls {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 10;
+}
+
+.divider-add-button,
+.node-add-button {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.divider-add-button:hover,
+.node-add-button:hover {
+  background: var(--background-secondary);
+  border-color: var(--accent);
+  color: var(--foreground);
+}
+
+.node-add-button-container {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--motion-ease);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.node-dividers-container:hover .node-add-button-container,
+.editor-content-wrapper:hover .node-add-button-container {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.node-add-button-container:hover {
+  opacity: 1;
+  pointer-events: all;
 }
 
 /* Dark mode adjustments */
@@ -99,6 +165,12 @@
   background: var(--background-secondary);
 }
 
-[data-theme='dark'] .drag-overlay-node {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+[data-theme='dark'] .divider-add-button,
+[data-theme='dark'] .node-add-button {
+  background: var(--background);
+}
+
+[data-theme='dark'] .divider-add-button:hover,
+[data-theme='dark'] .node-add-button:hover {
+  background: var(--background-secondary);
 }

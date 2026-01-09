@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { useTopics } from '@/hooks/useTopics'
 import { useSections } from '@/hooks/useSections'
 import type { TopicId, SectionId } from '@lifeos/notes'
+import { useDialog } from '@/contexts/useDialog'
 
 export interface TopicSidebarProps {
   selectedTopicId?: TopicId | null
@@ -23,6 +24,7 @@ export function TopicSidebar({
   onTopicSelect,
   onSectionSelect,
 }: TopicSidebarProps) {
+  const { confirm } = useDialog()
   const { topics, isLoading: topicsLoading, createTopic, deleteTopic } = useTopics()
   const { sections, createSection, deleteSection } = useSections(selectedTopicId || undefined)
 
@@ -59,7 +61,13 @@ export function TopicSidebar({
 
   const handleDeleteTopic = async (topicId: TopicId, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!confirm('Delete this topic and all its sections?')) return
+    const confirmed = await confirm({
+      title: 'Delete topic',
+      description: 'Delete this topic and all its sections?',
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
       await deleteTopic(topicId)
@@ -89,7 +97,13 @@ export function TopicSidebar({
 
   const handleDeleteSection = async (sectionId: SectionId, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!confirm('Delete this section?')) return
+    const confirmed = await confirm({
+      title: 'Delete section',
+      description: 'Delete this section?',
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
       await deleteSection(sectionId)
@@ -380,7 +394,7 @@ export function TopicSidebar({
         }
 
         .btn-icon-sm.delete:hover {
-          background: rgba(248, 113, 113, 0.12);
+          background: var(--error-light);
           color: var(--error);
         }
 

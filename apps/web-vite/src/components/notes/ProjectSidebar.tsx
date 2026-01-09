@@ -5,7 +5,7 @@
  * Shows projects with linked notes and allows filtering/selection.
  */
 
-import React, { useMemo, useRef } from 'react'
+import React, { useMemo, useRef, useState, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
 import {
@@ -16,6 +16,8 @@ import {
   getProjectsWithNotes,
 } from '@/lib/notesOrganization'
 import type { Note } from '@lifeos/notes'
+import { NoteSyncStatus } from './NoteSyncStatus'
+import { useDialog } from '@/contexts/useDialog'
 
 export interface ProjectSidebarProps {
   notes: Note[]
@@ -24,6 +26,7 @@ export interface ProjectSidebarProps {
   searchQuery: string
   onProjectSelect: (projectId: string | null) => void
   onNoteSelect: (noteId: string) => void
+  onNoteDelete?: (noteId: string) => Promise<void>
   onCreateNote: () => void
   onSearchChange?: (query: string) => void
   searchInputRef?: React.RefObject<HTMLInputElement>
@@ -36,11 +39,13 @@ export function ProjectSidebar({
   searchQuery,
   onProjectSelect,
   onNoteSelect,
+  onNoteDelete,
   onCreateNote,
   onSearchChange,
   searchInputRef: externalSearchRef,
 }: ProjectSidebarProps) {
   const { user } = useAuth()
+  const { confirm, alert: showAlert } = useDialog()
   const { projects, loading: projectsLoading } = useTodoOperations({
     userId: user?.uid || '',
   })
@@ -48,13 +53,26 @@ export function ProjectSidebar({
   const internalSearchRef = useRef<HTMLInputElement>(null)
   const searchInputRef = externalSearchRef || internalSearchRef
 
+  // Selection state for multi-select
+  const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set())
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
+
+  const visibleNotes = useMemo(
+    () => (showArchived ? notes : notes.filter((note) => !note.archived)),
+    [notes, showArchived]
+  )
+
   // Get projects that have linked notes
-  const projectsWithNotes = useMemo(() => getProjectsWithNotes(projects, notes), [projects, notes])
+  const projectsWithNotes = useMemo(
+    () => getProjectsWithNotes(projects, visibleNotes),
+    [projects, visibleNotes]
+  )
 
   // Group notes by project
   const notesByProject = useMemo(
-    () => groupNotesByProject(notes, projectsWithNotes),
-    [notes, projectsWithNotes]
+    () => groupNotesByProject(visibleNotes, projectsWithNotes),
+    [visibleNotes, projectsWithNotes]
   )
 
   // Get notes for selected project
@@ -63,9 +81,9 @@ export function ProjectSidebar({
 
     if (selectedProjectId === 'unlinked') {
       // Special case: unlinked notes
-      projectNotes = notes.filter((note) => !note.projectIds || note.projectIds.length === 0)
+      projectNotes = visibleNotes.filter((note) => !note.projectIds || note.projectIds.length === 0)
     } else {
-      projectNotes = filterNotesByProject(notes, selectedProjectId)
+      projectNotes = filterNotesByProject(visibleNotes, selectedProjectId)
     }
 
     // Apply search if provided
@@ -75,7 +93,7 @@ export function ProjectSidebar({
 
     // Sort by last modified
     return sortNotesByModified(projectNotes)
-  }, [notes, selectedProjectId, searchQuery])
+  }, [visibleNotes, selectedProjectId, searchQuery])
 
   // Get unlinked notes count
   const unlinkedCount = useMemo(() => {
@@ -123,13 +141,106 @@ export function ProjectSidebar({
     )
   }
 
+  // Selection handlers
+  const toggleNoteSelection = useCallback((noteId: string, event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation()
+    }
+    setSelectedNoteIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(noteId)) {
+        next.delete(noteId)
+      } else {
+        next.add(noteId)
+      }
+      return next
+    })
+  }, [])
+
+  const selectAllNotes = useCallback(() => {
+    setSelectedNoteIds(new Set(filteredNotes.map((n) => n.noteId)))
+  }, [filteredNotes])
+
+  const clearSelection = useCallback(() => {
+    setSelectedNoteIds(new Set())
+    setIsSelectionMode(false)
+  }, [])
+
+  const handleDeleteSelected = useCallback(async () => {
+    if (!onNoteDelete || selectedNoteIds.size === 0) return
+
+    const confirmed = await confirm({
+      title: 'Delete notes',
+      description: `Are you sure you want to delete ${selectedNoteIds.size} note${selectedNoteIds.size > 1 ? 's' : ''}?`,
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
+
+    try {
+      await Promise.all(Array.from(selectedNoteIds).map((id) => onNoteDelete(id)))
+      clearSelection()
+    } catch (error) {
+      console.error('Failed to delete notes:', error)
+      await showAlert({
+        title: 'Delete failed',
+        description: 'Failed to delete some notes. Please try again.',
+      })
+    }
+  }, [onNoteDelete, selectedNoteIds, clearSelection, confirm, showAlert])
+
+  const handleNoteClick = useCallback(
+    (noteId: string, event: React.MouseEvent) => {
+      if (isSelectionMode) {
+        toggleNoteSelection(noteId, event)
+      } else {
+        onNoteSelect(noteId)
+      }
+    },
+    [isSelectionMode, toggleNoteSelection, onNoteSelect]
+  )
+
   return (
     <aside className="project-sidebar">
       <div className="sidebar-header">
-        <h3>Notes</h3>
-        <button className="primary-button small" onClick={onCreateNote}>
-          + New
-        </button>
+        <div className="sidebar-title">Notes</div>
+        <div className="sidebar-actions">
+          {selectedNoteIds.size > 0 && (
+            <>
+              <button
+                className="danger-button small"
+                onClick={handleDeleteSelected}
+                title={`Delete ${selectedNoteIds.size} note${selectedNoteIds.size > 1 ? 's' : ''}`}
+              >
+                Delete ({selectedNoteIds.size})
+              </button>
+              <button className="ghost-button small" onClick={clearSelection}>
+                Cancel
+              </button>
+            </>
+          )}
+          {selectedNoteIds.size === 0 && (
+            <>
+              <button
+                className="ghost-button small"
+                onClick={() => setShowArchived((prev) => !prev)}
+                title={showArchived ? 'Hide archived notes' : 'Show archived notes'}
+              >
+                {showArchived ? 'Hide Archived' : 'Show Archived'}
+              </button>
+              <button
+                className="ghost-button small"
+                onClick={() => setIsSelectionMode(!isSelectionMode)}
+                title="Select notes"
+              >
+                Select
+              </button>
+              <button className="primary-button small" onClick={onCreateNote}>
+                + New
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="sidebar-content">
@@ -157,7 +268,7 @@ export function ProjectSidebar({
           >
             <span className="project-icon">📄</span>
             <span className="project-name">All Notes</span>
-            <span className="note-count">{notes.length}</span>
+            <span className="note-count">{visibleNotes.length}</span>
           </button>
         </div>
 
@@ -244,25 +355,56 @@ export function ProjectSidebar({
               )}
             </div>
           ) : (
-            filteredNotes.map((note) => {
-              const preview = getNotePreview(note)
-              return (
-                <button
-                  key={note.noteId}
-                  type="button"
-                  className={`note-item ${selectedNoteId === note.noteId ? 'active' : ''}`}
-                  onClick={() => onNoteSelect(note.noteId)}
-                >
-                  <div className="note-title">
-                    {searchQuery ? highlightSearch(note.title, searchQuery) : note.title}
+            <>
+              {isSelectionMode && filteredNotes.length > 0 && (
+                <div className="selection-header">
+                  <button type="button" className="select-all-button" onClick={selectAllNotes}>
+                    Select All
+                  </button>
+                  <span className="selection-count">{selectedNoteIds.size} selected</span>
+                </div>
+              )}
+              {filteredNotes.map((note) => {
+                const preview = getNotePreview(note)
+                const isSelected = selectedNoteIds.has(note.noteId)
+                return (
+                  <div
+                    key={note.noteId}
+                    className={`note-item-wrapper ${selectedNoteId === note.noteId ? 'active' : ''} ${isSelected ? 'selected' : ''}`}
+                  >
+                    {isSelectionMode && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          toggleNoteSelection(note.noteId)
+                        }}
+                        className="note-checkbox"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className={`note-item ${selectedNoteId === note.noteId ? 'active' : ''}`}
+                      onClick={(e) => handleNoteClick(note.noteId, e)}
+                    >
+                      <div className="note-title">
+                        {searchQuery ? highlightSearch(note.title, searchQuery) : note.title}
+                      </div>
+                      <div className="note-preview">
+                        {searchQuery ? highlightSearch(preview, searchQuery) : preview}
+                      </div>
+                      <div className="note-meta">
+                        <span className="note-date">{formatDate(note.updatedAtMs)}</span>
+                        {note.archived && <span className="note-archived">Archived</span>}
+                        <NoteSyncStatus syncState={note.syncState} />
+                      </div>
+                    </button>
                   </div>
-                  <div className="note-preview">
-                    {searchQuery ? highlightSearch(preview, searchQuery) : preview}
-                  </div>
-                  <div className="note-date">{formatDate(note.updatedAtMs)}</div>
-                </button>
-              )
-            })
+                )
+              })}
+            </>
           )}
         </div>
       </div>
@@ -282,16 +424,26 @@ export function ProjectSidebar({
           padding: 1rem 1.25rem;
           border-bottom: 1px solid var(--border);
           display: flex;
-          align-items: center;
+          flex-direction: column;
+          align-items: flex-start;
           justify-content: space-between;
           gap: 0.75rem;
         }
 
-        .sidebar-header h3 {
+        .sidebar-title {
           margin: 0;
           font-size: 1rem;
           font-weight: 600;
           color: var(--foreground);
+        }
+
+        .sidebar-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+          justify-content: flex-start;
+          width: 100%;
         }
 
         .sidebar-content {
@@ -422,6 +574,20 @@ export function ProjectSidebar({
           font-family: var(--font-mono);
         }
 
+        .note-meta {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .note-archived {
+          font-size: 0.7rem;
+          color: var(--muted-foreground);
+          border: 1px solid var(--border);
+          padding: 0.1rem 0.35rem;
+          border-radius: 999px;
+        }
+
         .empty-notes {
           padding: 2rem 1.25rem;
           text-align: center;
@@ -489,6 +655,82 @@ export function ProjectSidebar({
 
         .search-input::placeholder {
           color: var(--muted-foreground);
+        }
+
+        /* Selection UI */
+        .selection-header {
+          padding: 0.5rem 1.25rem;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+          border-bottom: 1px solid var(--border);
+          background: var(--background-secondary);
+        }
+
+        .select-all-button {
+          background: transparent;
+          border: none;
+          color: var(--accent);
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
+          transition: background-color var(--motion-fast) var(--motion-ease);
+        }
+
+        .select-all-button:hover {
+          background: var(--accent-subtle);
+        }
+
+        .selection-count {
+          font-size: 0.75rem;
+          color: var(--muted-foreground);
+          font-weight: 500;
+        }
+
+        .note-item-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0 0.5rem;
+        }
+
+        .note-item-wrapper.selected {
+          background: var(--accent-subtle);
+        }
+
+        .note-item-wrapper.selected .note-item {
+          background: transparent;
+        }
+
+        .note-checkbox {
+          width: 18px;
+          height: 18px;
+          cursor: pointer;
+          accent-color: var(--accent);
+          flex-shrink: 0;
+        }
+
+        .danger-button.small {
+          padding: 0.4rem 0.65rem;
+          font-size: 0.7rem;
+          min-height: 30px;
+        }
+
+        .primary-button.small {
+          padding: 0.4rem 0.65rem;
+          font-size: 0.7rem;
+          min-height: 30px;
+        }
+
+        .ghost-button.small {
+          padding: 0.4rem 0.65rem;
+          font-size: 0.7rem;
+          min-height: 30px;
+          letter-spacing: 0.08em;
         }
       `}</style>
     </aside>

@@ -17,8 +17,7 @@ import { useWorkoutOperations } from '@/hooks/useWorkoutOperations'
 import { ExerciseFormModal } from '@/components/training/ExerciseFormModal'
 import type { ExerciseLibraryItem, ExerciseCategory } from '@lifeos/training'
 import { getDefaultExercises } from '@/utils/defaultExercises'
-
-declare const confirm: (message: string) => boolean
+import { useDialog } from '@/contexts/useDialog'
 
 const CATEGORY_LABELS: Record<ExerciseCategory, string> = {
   push: 'Push',
@@ -41,6 +40,7 @@ const CATEGORY_OPTIONS: ExerciseCategory[] = [
 ]
 
 export function ExerciseLibraryPage() {
+  const { confirm } = useDialog()
   const { isLoading, exercises, listExercises, createExercise, deleteExercise } =
     useWorkoutOperations()
 
@@ -103,7 +103,13 @@ export function ExerciseLibraryPage() {
 
   const handleDelete = useCallback(
     async (exerciseId: string) => {
-      if (!confirm('Delete this exercise? This cannot be undone.')) return
+      const confirmed = await confirm({
+        title: 'Delete exercise',
+        description: 'Delete this exercise? This cannot be undone.',
+        confirmLabel: 'Delete',
+        confirmVariant: 'danger',
+      })
+      if (!confirmed) return
 
       try {
         await deleteExercise(exerciseId)
@@ -112,7 +118,7 @@ export function ExerciseLibraryPage() {
         setError((err as Error).message)
       }
     },
-    [deleteExercise]
+    [confirm, deleteExercise]
   )
 
   const handleCloseModal = useCallback(() => {

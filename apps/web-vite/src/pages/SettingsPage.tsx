@@ -15,6 +15,7 @@ import {
   type SortOrder,
 } from '@/adapters/firestoreQuoteRepository'
 import { useAuth } from '@/hooks/useAuth'
+import { useTheme } from '@/contexts/useTheme'
 import { useAiProviderKeys, type AiProviderKeyType } from '@/hooks/useAiProviderKeys'
 import { useAgentMemorySettings } from '@/hooks/useAgentMemorySettings'
 import { SystemStatus } from '@/components/SystemStatus'
@@ -23,12 +24,14 @@ import { EmptyState } from '@/components/EmptyState'
 import { StatusDot } from '@/components/StatusDot'
 import { Menu, MenuItem } from '@/components/Menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { SegmentedControl } from '@/components/SegmentedControl'
 
 const quoteRepository = createFirestoreQuoteRepository()
 const QUOTES_PER_PAGE = 50
 
 export function SettingsPage() {
   const { user } = useAuth()
+  const { mode, autoMode, schedule, setMode, setAutoMode, setSchedule } = useTheme()
   const userId = user?.uid ?? ''
   const {
     keys: providerKeys,
@@ -444,6 +447,75 @@ export function SettingsPage() {
           </header>
 
           <div className="settings-section__grid">
+            <section className="settings-panel">
+              <header className="settings-panel__header">
+                <div>
+                  <p className="section-label">Appearance</p>
+                  <h3>Theme Mode</h3>
+                  <p className="settings-panel__meta">
+                    Choose a theme or follow system settings. Auto can use OS or a custom schedule.
+                  </p>
+                </div>
+              </header>
+              <div className="settings-panel__content theme-controls">
+                <div className="theme-control-row">
+                  <SegmentedControl
+                    value={mode}
+                    onChange={(value) => setMode(value as 'light' | 'dark' | 'auto')}
+                    options={[
+                      { value: 'light', label: 'Light' },
+                      { value: 'dark', label: 'Dark' },
+                      { value: 'auto', label: 'Auto' },
+                    ]}
+                  />
+                </div>
+                {mode === 'auto' && (
+                  <div className="theme-auto-controls">
+                    <div className="theme-control-row">
+                      <SegmentedControl
+                        value={autoMode}
+                        onChange={(value) => setAutoMode(value as 'system' | 'schedule')}
+                        options={[
+                          { value: 'system', label: 'Follow OS' },
+                          { value: 'schedule', label: 'Scheduled' },
+                        ]}
+                      />
+                    </div>
+                    {autoMode === 'schedule' && (
+                      <div className="theme-schedule-grid">
+                        <div className="form-group">
+                          <label htmlFor="theme-schedule-start">Dark mode starts</label>
+                          <input
+                            id="theme-schedule-start"
+                            type="time"
+                            value={schedule.start}
+                            onChange={(event) =>
+                              setSchedule({ ...schedule, start: event.target.value })
+                            }
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label htmlFor="theme-schedule-end">Dark mode ends</label>
+                          <input
+                            id="theme-schedule-end"
+                            type="time"
+                            value={schedule.end}
+                            onChange={(event) =>
+                              setSchedule({ ...schedule, end: event.target.value })
+                            }
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {autoMode === 'schedule' && (!schedule.start || !schedule.end) && (
+                      <p className="settings-panel__meta theme-schedule-hint">
+                        Set both start and end times to enable scheduled switching.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
             <section className="settings-panel">
               <header className="settings-panel__header">
                 <div>

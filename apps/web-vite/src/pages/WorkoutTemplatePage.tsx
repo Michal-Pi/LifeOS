@@ -10,8 +10,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useWorkoutTemplates } from '@/hooks/useWorkoutTemplates'
 import { TemplateFormModal } from '@/components/training/TemplateFormModal'
 import type { WorkoutTemplate, WorkoutContext } from '@lifeos/training'
-
-declare const confirm: (message: string) => boolean
+import { useDialog } from '@/contexts/useDialog'
 
 const CONTEXT_LABELS: Record<WorkoutContext, string> = {
   gym: 'Gym',
@@ -22,6 +21,7 @@ const CONTEXT_LABELS: Record<WorkoutContext, string> = {
 const CONTEXT_OPTIONS: WorkoutContext[] = ['gym', 'home', 'road']
 
 export function WorkoutTemplatePage() {
+  const { confirm } = useDialog()
   const { templates, isLoading, listTemplates, deleteTemplate } = useWorkoutTemplates()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -65,7 +65,13 @@ export function WorkoutTemplatePage() {
 
   const handleDelete = useCallback(
     async (templateId: string) => {
-      if (!confirm('Delete this template? This cannot be undone.')) return
+      const confirmed = await confirm({
+        title: 'Delete template',
+        description: 'Delete this template? This cannot be undone.',
+        confirmLabel: 'Delete',
+        confirmVariant: 'danger',
+      })
+      if (!confirmed) return
 
       try {
         await deleteTemplate(templateId as never)
@@ -74,7 +80,7 @@ export function WorkoutTemplatePage() {
         setError((err as Error).message)
       }
     },
-    [deleteTemplate]
+    [confirm, deleteTemplate]
   )
 
   const handleCloseModal = useCallback(() => {

@@ -1,0 +1,208 @@
+/**
+ * MathInlinePanel Styles
+ */
+
+.math-inline-panel {
+  width: 360px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px var(--shadow-soft);
+  z-index: 1002;
+  color: var(--foreground);
+  display: flex;
+  flex-direction: column;
+  max-height: min(80vh, 560px);
+}
+
+.math-inline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.9rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.math-inline-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.math-inline-close {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.math-inline-body {
+  padding: 0.75rem 0.9rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: auto;
+}
+
+.math-inline-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.9rem;
+}
+
+.math-inline-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.math-inline-section-header {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-label);
+}
+
+.math-inline-helpers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.math-inline-helper {
+  border: 1px solid var(--border);
+  background: var(--background-secondary);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--foreground);
+}
+
+.math-inline-helper:hover {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.math-inline-helper-label {
+  font-weight: 600;
+}
+
+.math-inline-helper-hint {
+  color: var(--text-secondary);
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+}
+
+.math-inline-matrix-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.math-inline-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.math-inline-field input,
+.math-inline-field select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.math-inline-matrix-insert {
+  grid-column: span 2;
+  border: 1px solid var(--accent);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.math-inline-matrix-insert:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.math-inline-matrix-hint {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.math-inline-preview {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  background: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 64px;
+}
+
+.math-inline-preview-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-label);
+}
+
+.math-inline-preview-value {
+  font-size: 1.1rem;
+}
+
+.math-inline-preview-placeholder {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.math-inline-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.65rem 0.9rem 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.math-inline-cancel,
+.math-inline-insert {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.math-inline-cancel {
+  background: transparent;
+  color: var(--foreground);
+}
+
+.math-inline-insert {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-foreground);
+}

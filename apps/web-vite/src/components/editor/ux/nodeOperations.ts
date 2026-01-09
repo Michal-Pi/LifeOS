@@ -20,15 +20,17 @@ export function moveNode(editor: Editor, fromPosition: number, toPosition: numbe
 
   // Get the node at fromPosition
   let fromNode: { node: ProseMirrorNode; start: number; end: number } | null = null
-  const currentPos = 1
+  let currentPos = 1
 
-  doc.forEach((node, offset) => {
-    const nodeStart = currentPos + offset
+  doc.forEach((node) => {
+    const nodeStart = currentPos
     const nodeEnd = nodeStart + node.nodeSize
 
     if (fromPosition >= nodeStart && fromPosition < nodeEnd) {
       fromNode = { node, start: nodeStart, end: nodeEnd }
     }
+    // Move to next position
+    currentPos += node.nodeSize
   })
 
   if (!fromNode) return false
@@ -79,15 +81,17 @@ export function duplicateNode(editor: Editor, position: number): boolean {
 
   // Find the node at position
   let targetNode: { node: ProseMirrorNode; start: number; end: number } | null = null
-  const currentPos = 1
+  let currentPos = 1
 
-  doc.forEach((node, offset) => {
-    const nodeStart = currentPos + offset
+  doc.forEach((node) => {
+    const nodeStart = currentPos
     const nodeEnd = nodeStart + node.nodeSize
 
     if (position >= nodeStart && position < nodeEnd) {
       targetNode = { node, start: nodeStart, end: nodeEnd }
     }
+    // Move to next position
+    currentPos += node.nodeSize
   })
 
   if (!targetNode) return false
@@ -112,15 +116,17 @@ export function deleteNode(editor: Editor, position: number): boolean {
 
   // Find the node at position
   let targetNode: { node: ProseMirrorNode; start: number; end: number } | null = null
-  const currentPos = 1
+  let currentPos = 1
 
-  doc.forEach((node, offset) => {
-    const nodeStart = currentPos + offset
+  doc.forEach((node) => {
+    const nodeStart = currentPos
     const nodeEnd = nodeStart + node.nodeSize
 
     if (position >= nodeStart && position < nodeEnd) {
       targetNode = { node, start: nodeStart, end: nodeEnd }
     }
+    // Move to next position
+    currentPos += node.nodeSize
   })
 
   if (!targetNode) return false
@@ -132,6 +138,69 @@ export function deleteNode(editor: Editor, position: number): boolean {
     return true
   } catch (error) {
     console.error('Failed to delete node:', error)
+    return false
+  }
+}
+
+/**
+ * Insert a new block at a specific position
+ */
+export function insertBlockAt(
+  editor: Editor,
+  position: number,
+  blockType:
+    | 'paragraph'
+    | 'heading'
+    | 'bulletList'
+    | 'orderedList'
+    | 'codeBlock'
+    | 'blockquote' = 'paragraph'
+): boolean {
+  const { state, view } = editor
+  const { tr, doc } = state
+
+  // Validate position
+  if (position < 1 || position > doc.content.size) {
+    // If position is out of range, append at the end
+    position = doc.content.size
+  }
+
+  try {
+    // Create the appropriate node type
+    let newNode: ProseMirrorNode
+    const schema = state.schema
+
+    switch (blockType) {
+      case 'heading':
+        newNode = schema.nodes.heading.create({ level: 1 })
+        break
+      case 'bulletList':
+        newNode = schema.nodes.bulletList.create()
+        break
+      case 'orderedList':
+        newNode = schema.nodes.orderedList.create()
+        break
+      case 'codeBlock':
+        newNode = schema.nodes.codeBlock.create()
+        break
+      case 'blockquote':
+        newNode = schema.nodes.blockquote.create()
+        break
+      default:
+        newNode = schema.nodes.paragraph.create()
+    }
+
+    // Insert the node
+    tr.insert(position, newNode)
+    view.dispatch(tr)
+
+    // Focus and position cursor in the new node
+    const newPos = position + 1
+    editor.chain().focus().setTextSelection(newPos).run()
+
+    return true
+  } catch (error) {
+    console.error('Failed to insert block:', error)
     return false
   }
 }

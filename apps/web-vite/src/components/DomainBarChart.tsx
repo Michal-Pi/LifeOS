@@ -5,11 +5,11 @@ interface DomainBarChartProps {
 }
 
 const DOMAIN_COLORS: Record<Domain, string> = {
-  work: '#3b82f6', // blue
-  projects: '#8b5cf6', // purple
-  life: '#10b981', // green
-  learning: '#f59e0b', // amber
-  wellbeing: '#ec4899', // pink
+  work: 'var(--chart-work)',
+  projects: 'var(--chart-projects)',
+  life: 'var(--chart-life)',
+  learning: 'var(--chart-learning)',
+  wellbeing: 'var(--chart-wellbeing)',
 }
 
 const DOMAIN_LABELS: Record<Domain, string> = {

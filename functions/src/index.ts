@@ -517,7 +517,156 @@ export const scheduleSync = onSchedule(
     secrets: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT_URI'],
   },
   async () => {
-    // TODO: query users with connected accounts and iterate
+    console.info('[ScheduleSync] Starting scheduled Google Calendar sync')
+
+    try {
+      // Query all users with connected Google Calendar accounts
+      const usersSnapshot = await firestore.collectionGroup('calendarAccounts').get()
+
+      if (usersSnapshot.empty) {
+        console.info('[ScheduleSync] No connected Google Calendar accounts found')
+        return
+      }
+
+      console.info(`[ScheduleSync] Found ${usersSnapshot.size} connected accounts`)
+
+      // Group accounts by user ID
+      const accountsByUser = new Map<string, string[]>()
+      for (const doc of usersSnapshot.docs) {
+        const data = doc.data()
+        const status = data.status as string | undefined
+
+        // Only process connected accounts
+        if (status === 'connected') {
+          const pathParts = doc.ref.path.split('/')
+          const uid = pathParts[1] // users/{uid}/calendarAccounts/{accountId}
+          const accountId = pathParts[3]
+
+          if (!accountsByUser.has(uid)) {
+            accountsByUser.set(uid, [])
+          }
+          accountsByUser.get(uid)!.push(accountId)
+        }
+      }
+
+      console.info(`[ScheduleSync] Processing ${accountsByUser.size} users with connected accounts`)
+
+      // Process each user's accounts with rate limiting
+      const MAX_CONCURRENT = 5 // Process 5 users at a time
+      const DELAY_BETWEEN_USERS = 2000 // 2 seconds between users
+      const DELAY_BETWEEN_ACCOUNTS = 1000 // 1 second between accounts for same user
+      const ACCOUNT_TIMEOUT_MS = 2 * 60 * 1000 // 2 minutes per account
+
+      const userIds = Array.from(accountsByUser.keys())
+      let processed = 0
+      let succeeded = 0
+      let failed = 0
+
+      for (let i = 0; i < userIds.length; i += MAX_CONCURRENT) {
+        const batch = userIds.slice(i, i + MAX_CONCURRENT)
+
+        await Promise.all(
+          batch.map(async (uid) => {
+            const accountIds = accountsByUser.get(uid) || []
+
+            for (const accountId of accountIds) {
+              try {
+                // Add delay between accounts for same user
+                if (accountIds.indexOf(accountId) > 0) {
+                  await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_ACCOUNTS))
+                }
+
+                console.info(`[ScheduleSync] Syncing account for user ${uid}, account ${accountId}`)
+
+                // Use existing incremental sync function with timeout protection
+                const { syncAllCalendarsIncremental } = await import('./google/syncEvents.js')
+
+                // Wrap sync in timeout
+                const syncWithTimeout = Promise.race([
+                  syncAllCalendarsIncremental(uid, accountId),
+                  new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error('Sync timeout')), ACCOUNT_TIMEOUT_MS)
+                  ),
+                ])
+
+                const results = await syncWithTimeout
+
+                const totalEvents = results.reduce((sum, r) => sum + r.eventsUpserted, 0)
+                console.info(
+                  `[ScheduleSync] Successfully synced account ${accountId} for user ${uid}: ${totalEvents} events processed`
+                )
+
+                succeeded++
+              } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error)
+                console.error(
+                  `[ScheduleSync] Failed to sync account ${accountId} for user ${uid}:`,
+                  errorMessage
+                )
+
+                // Handle timeout specifically
+                if (errorMessage === 'Sync timeout') {
+                  console.warn(
+                    `[ScheduleSync] Sync timeout for ${uid}/${accountId}, marking for retry`
+                  )
+                  try {
+                    await accountRef(uid, accountId).set(
+                      {
+                        lastSyncAttempt: new Date().toISOString(),
+                        syncStatus: 'timeout',
+                        lastError: 'Sync timeout - will retry in next run',
+                        updatedAt: new Date().toISOString(),
+                      },
+                      { merge: true }
+                    )
+                  } catch (updateError) {
+                    console.error(
+                      `[ScheduleSync] Failed to update account status after timeout:`,
+                      updateError
+                    )
+                  }
+                } else if (
+                  // Mark account as needs_attention if it's a token/auth error
+                  errorMessage.includes('token') ||
+                  errorMessage.includes('auth') ||
+                  errorMessage.includes('refresh')
+                ) {
+                  try {
+                    await accountRef(uid, accountId).set(
+                      {
+                        status: 'needs_attention',
+                        lastError: errorMessage,
+                        updatedAt: new Date().toISOString(),
+                      },
+                      { merge: true }
+                    )
+                  } catch (updateError) {
+                    console.error(`[ScheduleSync] Failed to update account status:`, updateError)
+                  }
+                }
+
+                failed++
+              } finally {
+                processed++
+              }
+            }
+          })
+        )
+
+        // Add delay between user batches
+        if (i + MAX_CONCURRENT < userIds.length) {
+          await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_USERS))
+        }
+      }
+
+      console.info(
+        `[ScheduleSync] Completed scheduled sync: ${processed} accounts processed, ${succeeded} succeeded, ${failed} failed`
+      )
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error('[ScheduleSync] Fatal error in scheduled sync:', errorMessage)
+      // Don't throw - scheduled functions should not throw to avoid retries
+    }
   }
 )
 

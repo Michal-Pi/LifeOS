@@ -6,7 +6,10 @@
  */
 
 import { useState, useEffect } from 'react'
-import type { CanonicalProject, CanonicalMilestone } from '@/types/todo'
+import { toast } from 'sonner'
+import { useAuth } from '@/hooks/useAuth'
+import { useTodoOperations } from '@/hooks/useTodoOperations'
+import { getUserFriendlyError } from '@/utils/errorMessages'
 
 export interface OKRLinkerProps {
   selectedOKRIds: string[]
@@ -24,34 +27,39 @@ interface OKRItem {
 }
 
 export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinkerProps) {
+  const { user } = useAuth()
+  const userId = user?.uid || ''
+  const { projects, milestones, loading: todoLoading, loadData } = useTodoOperations({ userId })
+
   const [isOpen, setIsOpen] = useState(false)
-  const [projects, setProjects] = useState<CanonicalProject[]>([])
-  const [milestones, setMilestones] = useState<CanonicalMilestone[]>([])
-  const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [initialLoadDone, setInitialLoadDone] = useState(false)
+  const [loadError, setLoadError] = useState<Error | null>(null)
 
-  // Load projects and milestones
+  // Load projects and milestones when dropdown opens
   useEffect(() => {
-    if (isOpen && projects.length === 0) {
-      loadOKRs()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen])
+    if (isOpen && !initialLoadDone && userId) {
+      const loadOKRs = async () => {
+        try {
+          setLoadError(null)
+          await loadData({ includeTasks: false })
+          setInitialLoadDone(true)
+        } catch (error) {
+          console.error('Failed to load OKRs:', error)
+          const err =
+            error instanceof Error ? error : new Error('Failed to load projects and milestones')
+          setLoadError(err)
 
-  const loadOKRs = async () => {
-    setLoading(true)
-    try {
-      // In a real implementation, these would be fetched from Firestore
-      // For now, we'll use empty arrays as placeholders
-      // TODO: Integrate with actual project/milestone repositories
-      setProjects([])
-      setMilestones([])
-    } catch (error) {
-      console.error('Failed to load OKRs:', error)
-    } finally {
-      setLoading(false)
+          // Show user-friendly error toast
+          const friendlyError = getUserFriendlyError(err)
+          toast.error(friendlyError.title, {
+            description: friendlyError.description,
+          })
+        }
+      }
+      void loadOKRs()
     }
-  }
+  }, [isOpen, initialLoadDone, userId, loadData])
 
   const buildOKRList = (): OKRItem[] => {
     const items: OKRItem[] = []
@@ -162,9 +170,25 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
           </div>
 
           <div className="okr-list">
-            {loading && <p className="loading">Loading OKRs...</p>}
+            {todoLoading && <p className="loading">Loading OKRs...</p>}
 
-            {!loading && filteredOKRs.length === 0 && (
+            {loadError && (
+              <div className="okr-error">
+                <p className="error-message">Failed to load projects and milestones</p>
+                <button
+                  type="button"
+                  className="retry-button"
+                  onClick={() => {
+                    setInitialLoadDone(false)
+                    setLoadError(null)
+                  }}
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!todoLoading && !loadError && filteredOKRs.length === 0 && (
               <p className="empty-state">
                 {searchQuery
                   ? 'No OKRs found matching your search'
@@ -172,7 +196,7 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
               </p>
             )}
 
-            {!loading &&
+            {!todoLoading &&
               filteredOKRs.map((okr) => (
                 <div
                   key={okr.id}
@@ -210,6 +234,23 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
                 </div>
               ))}
           </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {loadError && (
+        <div className="okr-error">
+          <p className="error-message">Failed to load projects and milestones</p>
+          <button
+            type="button"
+            className="retry-button"
+            onClick={() => {
+              setInitialLoadDone(false)
+              setLoadError(null)
+            }}
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -449,6 +490,35 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
         .okr-key-results li.more {
           font-style: italic;
           color: var(--muted-foreground);
+        }
+
+        .okr-error {
+          padding: 12px;
+          margin: 8px 0;
+          background: var(--destructive-subtle);
+          border: 1px solid var(--destructive);
+          border-radius: 6px;
+          color: var(--destructive-foreground);
+        }
+
+        .error-message {
+          margin: 0 0 8px 0;
+          font-size: 14px;
+        }
+
+        .retry-button {
+          padding: 6px 12px;
+          background: var(--destructive);
+          color: var(--destructive-foreground);
+          border: none;
+          border-radius: 4px;
+          font-size: 13px;
+          cursor: pointer;
+          transition: background-color var(--motion-fast) var(--motion-ease);
+        }
+
+        .retry-button:hover {
+          background: var(--destructive-hover);
         }
       `}</style>
     </div>

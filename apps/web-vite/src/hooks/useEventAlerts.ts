@@ -99,7 +99,7 @@ export function useEventAlerts({
 
       // Persist via outbox
       try {
-        await enqueueUpdate(userId, updatedEvent, event.updatedAtMs)
+        await enqueueUpdate(userId, updatedEvent, event.rev)
       } catch (error) {
         logger.error('Failed to persist alert dismissal', error)
       }
@@ -138,7 +138,7 @@ export function useEventAlerts({
 
       // Persist via outbox
       try {
-        await enqueueUpdate(userId, updatedEvent, selectedEvent.updatedAtMs)
+        await enqueueUpdate(userId, updatedEvent, selectedEvent.rev)
       } catch (error) {
         logger.error('Failed to persist alert change', error)
         // Revert on error

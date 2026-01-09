@@ -181,27 +181,13 @@ export function PlannerPage() {
 
   // Filter tasks based on filters
   const filteredTasks = useMemo(() => {
-    if (viewMode === 'priority') {
-      // For priority view, use groupTasksByBucket which applies all filters
-      const groupedTasks = groupTasksByBucket(tasks, filters)
-      const allFilteredTasks: CanonicalTask[] = []
-      groupedTasks.forEach((bucketTasks) => {
-        allFilteredTasks.push(...bucketTasks)
-      })
-      return allFilteredTasks
-    } else {
-      // For list view, apply basic filters
-      let filtered = tasks
-
-      if (selectedMilestone) {
-        filtered = filtered.filter((t) => t.milestoneId === selectedMilestone.id)
-      } else if (selectedProject) {
-        filtered = filtered.filter((t) => t.projectId === selectedProject.id)
-      }
-
-      return filtered
-    }
-  }, [tasks, filters, viewMode, selectedProject, selectedMilestone])
+    const groupedTasks = groupTasksByBucket(tasks, filters)
+    const allFilteredTasks: CanonicalTask[] = []
+    groupedTasks.forEach((bucketTasks) => {
+      allFilteredTasks.push(...bucketTasks)
+    })
+    return allFilteredTasks
+  }, [tasks, filters])
 
   // Calculate statistics based on filtered tasks
   const stats = useMemo(() => calculateTaskStatistics(filteredTasks), [filteredTasks])

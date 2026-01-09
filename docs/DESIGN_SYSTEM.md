@@ -2,11 +2,11 @@
 
 ## Overview
 
-The LifeOS design system now follows the **Scandinavian calm × Cyberpunk intelligence** aesthetic: quiet power, intentionality, and clarity. It prioritizes structured hierarchy and an accent-driven focus over decoration.
+The LifeOS design system now follows a **retro-futurist cyber + terminal** aesthetic: focused, technical, and intentional. It prioritizes clarity, grounded surfaces, and high-contrast accents that signal action and system state.
 
 **Core metaphor:** AI-native personal operating system
-**Emotional tone:** Calm, precise, slightly dangerous
-**Anti-goals:** Playful, decorative, loud, gamer, neon-heavy
+**Emotional tone:** Precise, tactical, slightly electric
+**Anti-goals:** Playful, decorative, noisy, neon-heavy everywhere
 
 ## Design Principles
 
@@ -22,40 +22,84 @@ Tokens live in `apps/web-vite/src/tokens.css` and are consumed across component 
 
 ### Color Palette
 
-**Base (High-key):**
+**Core Brand Anchors:**
 
 ```css
---background: #f9fafb;
---background-secondary: #f3f4f6;
---background-tertiary: #e5e7eb;
---border: #e5e7eb;
---border-strong: #d1d5db;
---foreground: #111111;
---secondary-foreground: #666666;
---muted-foreground: #999999;
+--core-obsidian-black: #070f34;
+--core-electric-navy: #0313a6;
+--core-neon-violet: #9201cb;
+--core-hot-magenta: #f715ab;
+--core-cyber-teal: #34e5c3;
+--core-terminal-green: #39ff14;
 ```
 
-**Accent (Cyberpunk Layer):**
+**Light Mode Foundations:**
 
 ```css
---accent: #00e5ff;
---accent-glow: rgba(0, 229, 255, 0.35);
---accent-subtle: rgba(0, 229, 255, 0.12);
+--background: #f6f7ff;
+--background-secondary: #e8ebff;
+--background-tertiary: #d2d7ff;
+--foreground: #070f34;
+--secondary-foreground: #313a6f;
+--muted-foreground: #9aa1c7;
+--border: #d2d7ff;
 ```
 
-**Semantic (Muted):**
+**Dark Mode Foundations:**
 
 ```css
---success: #2dd4bf;
---warning: #fbbf24;
---error: #cc3333;
+--background: #070f34;
+--background-secondary: #0c154a;
+--background-tertiary: #111c66;
+--foreground: #e6ebff;
+--secondary-foreground: #a9b1ff;
+--muted-foreground: #5c6699;
+--border: #1b2a7a;
+```
+
+**Accents & Semantics (mode-specific):**
+
+```css
+--accent: #9201cb; /* Primary action in dark mode */
+--accent-secondary: #f715ab;
+--accent-tertiary: #34e5c3;
+--success: #39ff14;
+--warning: #ffd60a;
+--error: #ff3b3b;
+--info: #34e5c3;
+--focus-ring: #39ff14;
+```
+
+**Optional Glows (use sparingly):**
+
+```css
+--glow-violet: 0 0 12px rgba(146, 1, 203, 0.6);
+--glow-magenta: 0 0 12px rgba(247, 21, 171, 0.6);
+--glow-green: 0 0 10px rgba(57, 255, 20, 0.7);
+```
+
+**Overlays & Shadows:**
+
+```css
+--overlay: rgba(7, 15, 52, 0.6);
+--shadow-soft: rgba(7, 15, 52, 0.12);
+```
+
+**Charts:**
+
+```css
+--chart-work: #0313a6;
+--chart-projects: #9201cb;
+--chart-life: #34e5c3;
+--chart-learning: #ffd60a;
+--chart-wellbeing: #f715ab;
 ```
 
 ### Typography
 
 ```css
---font-sans: 'Satoshi', 'General Sans', 'Inter', system-ui, sans-serif;
---font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+--font-sans: 'Inter', 'SF Pro Text', system-ui, sans-serif;
+--font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'Space Mono', monospace;
 ```
 
 **Type scale:**
@@ -162,6 +206,12 @@ Use a compact status grid for System health (Network/Auth/Latency/Bandwidth) and
 }
 ```
 
+### Dialogs & Alerts
+
+- Never use `alert`, `confirm`, or `prompt` in UI flows.
+- Use the dialog system via `useDialog` for confirmations and alerts.
+- Dialog overlays use `--overlay`.
+
 ### Search
 
 ```css
@@ -203,7 +253,7 @@ Use a compact status grid for System health (Network/Auth/Latency/Bandwidth) and
 ## Non-Negotiables
 
 - Accent color never appears without interaction/indicator intent
-- No filled accent buttons by default
+- Primary CTA uses neon violet, secondary CTA uses electric navy
 - One glow per screen max
 - Empty states include a clear action
 - Borders preferred over shadows

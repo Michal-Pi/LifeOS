@@ -149,8 +149,12 @@
   height: 180px;
   border-radius: 8px;
   background-image:
-    linear-gradient(90deg, rgba(15, 23, 42, 0.06) 1px, transparent 1px),
-    linear-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px);
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--foreground) 6%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(color-mix(in srgb, var(--foreground) 6%, transparent) 1px, transparent 1px);
   background-size: 18px 18px;
   background-color: var(--background-secondary);
   border: 1px solid var(--border);
@@ -234,7 +238,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--muted-foreground);
+  color: var(--text-label);
   margin-bottom: 0.5rem;
   letter-spacing: 0.05em;
 }
@@ -260,7 +264,7 @@
 .consistency-chart-empty {
   padding: 2rem;
   text-align: center;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }
 
 .consistency-bar-container {
@@ -295,7 +299,7 @@
 }
 
 .bar-segment.tiny {
-  background: #38bdf8;
+  background: var(--info);
 }
 
 .bar-segment.skip {
@@ -339,7 +343,7 @@
 }
 
 .legend-color.tiny {
-  background: #38bdf8;
+  background: var(--info);
 }
 
 .legend-color.skip {
@@ -364,7 +368,7 @@
 .intervention-summary-empty {
   padding: 2rem;
   text-align: center;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }
 
 .intervention-summary-empty .hint {
@@ -398,7 +402,7 @@
 
 .stat-label {
   font-size: 0.875rem;
-  color: var(--muted-foreground);
+  color: var(--text-label);
   text-align: center;
 }
 
@@ -436,7 +440,7 @@
 
 .feeling-count {
   font-weight: 600;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }
 
 /* ========== Habit Recommendations ========== */
@@ -450,7 +454,7 @@
 .no-recommendations {
   padding: 2rem;
   text-align: center;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   font-size: 1.125rem;
 }
 
@@ -540,7 +544,7 @@
 }
 
 .step-subtitle {
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   margin-bottom: 2rem;
 }
 
@@ -580,8 +584,8 @@
 
 .streak-badge {
   padding: 0.25rem 0.75rem;
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--warning-light);
+  color: var(--warning);
   border-radius: 999px;
   font-size: 0.875rem;
   font-weight: 600;
@@ -601,7 +605,7 @@
 
 .metric-label {
   font-size: 0.75rem;
-  color: var(--muted-foreground);
+  color: var(--text-label);
   margin-bottom: 0.25rem;
 }
 
@@ -613,8 +617,8 @@
 .streak-message {
   margin-top: 0.75rem;
   padding: 0.5rem;
-  background: #fef3c7;
-  color: #78350f;
+  background: var(--warning-light);
+  color: var(--warning);
   border-radius: 8px;
   font-size: 0.875rem;
   text-align: center;

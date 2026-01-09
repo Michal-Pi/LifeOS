@@ -11,7 +11,6 @@
 import { useEditor, EditorContent, type JSONContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
-import CharacterCount from '@tiptap/extension-character-count'
 import Highlight from '@tiptap/extension-highlight'
 import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
@@ -26,11 +25,13 @@ import Subscript from '@tiptap/extension-subscript'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { FontFamily } from './extensions/FontFamily'
 import { FontSize } from './extensions/FontSize'
+import { TextColor } from './extensions/TextColor'
 import { useEffect, useState } from 'react'
 import { TipTapMenuBar } from './TipTapMenuBar'
 import { DragDropContext } from './ux/DragDropContext'
 import { NodeDividerContainer } from './ux/NodeDividerContainer'
 import { CommandMenu } from './ux/CommandMenu'
+import { MathInlinePanel } from './ux/MathInlinePanel'
 import { VirtualizedEditor } from './ux/VirtualizedEditor'
 import 'katex/dist/katex.min.css'
 import './TipTapEditor.css'
@@ -46,7 +47,7 @@ export interface TipTapEditorProps {
 
 export function TipTapEditor({
   content,
-  placeholder = 'Start writing...',
+  placeholder = 'Type "/" for commands, or click + to add a block',
   editable = true,
   onChange,
   onUpdate,
@@ -57,12 +58,16 @@ export function TipTapEditor({
     query: string
     position: { x: number; y: number }
   } | null>(null)
+  const [mathPanelState, setMathPanelState] = useState<{
+    isOpen: boolean
+    position: { x: number; y: number }
+  } | null>(null)
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: {
-          levels: [1, 2, 3, 4, 5, 6],
+          levels: [1, 2, 3, 4],
         },
         codeBlock: {
           HTMLAttributes: {
@@ -73,7 +78,6 @@ export function TipTapEditor({
       Placeholder.configure({
         placeholder,
       }),
-      CharacterCount,
       Highlight.configure({
         multicolor: true,
       }),
@@ -101,6 +105,7 @@ export function TipTapEditor({
         },
       }),
       TextStyle,
+      TextColor,
       FontFamily.configure({
         types: ['paragraph', 'heading'],
       }),
@@ -212,77 +217,15 @@ export function TipTapEditor({
           }
         }
 
-        // Enter key override: Create new top-level node instead of line break
+        // Enter key: Close command menu if open, otherwise let default behavior (line break)
         if (event.key === 'Enter' && !event.shiftKey) {
           // Close command menu if open
           if (commandMenuState?.isOpen) {
             setCommandMenuState(null)
+            // Don't prevent default - let Enter work normally
           }
-          const { state } = view
-          const { selection } = state
-          const { $from } = selection
-
-          // Don't override in these contexts:
-          // 1. Inside code blocks (Enter should create new line)
-          if (editor.isActive('codeBlock')) {
-            return false
-          }
-
-          // 2. Inside tables (Enter should move to next cell)
-          if (editor.isActive('table')) {
-            return false
-          }
-
-          // 3. Inside lists (Enter should create new list item - keep default behavior)
-          if (
-            editor.isActive('bulletList') ||
-            editor.isActive('orderedList') ||
-            editor.isActive('taskList')
-          ) {
-            // Only override if we're at the end of an empty list item
-            const isListItem = $from.parent.type.name === 'listItem'
-            const isAtEnd = $from.parentOffset === $from.parent.content.size
-            const isEmpty = $from.parent.content.size === 0
-
-            // If empty list item at end, create new paragraph instead
-            if (isListItem && isAtEnd && isEmpty) {
-              event.preventDefault()
-              editor
-                .chain()
-                .focus()
-                .liftListItem('listItem')
-                .insertContent({ type: 'paragraph' })
-                .run()
-              return true
-            }
-            // Otherwise, let default list behavior handle it
-            return false
-          }
-
-          // Check if we're at the end of a top-level node
-          const isTopLevel = $from.depth === 1
-          const isAtEnd = $from.parentOffset === $from.parent.content.size
-          const isEmpty = $from.parent.content.size === 0
-
-          // If at end of top-level node (or empty), create new paragraph
-          if (isTopLevel && (isAtEnd || isEmpty)) {
-            event.preventDefault()
-
-            // Calculate position after current node
-            const currentNodeStart = $from.start($from.depth)
-            const currentNodeSize = $from.parent.nodeSize
-            const nextNodePos = currentNodeStart + currentNodeSize
-
-            // Insert new paragraph after current node
-            editor
-              .chain()
-              .focus()
-              .insertContentAt(nextNodePos, { type: 'paragraph' })
-              .setTextSelection(nextNodePos + 1) // Position cursor in new paragraph
-              .run()
-
-            return true
-          }
+          // Let TipTap handle Enter normally (creates line breaks)
+          return false
         }
 
         // Tab key for nesting lists
@@ -397,9 +340,25 @@ export function TipTapEditor({
     }
   }
 
+  const openMathPanel = (position?: { x: number; y: number }) => {
+    const fallbackPosition = position ?? {
+      x: Math.max(16, window.innerWidth / 2 - 180),
+      y: Math.max(16, window.innerHeight / 2 - 120),
+    }
+    setMathPanelState({ isOpen: true, position: fallbackPosition })
+  }
+
+  const handleInsertMathFromCommand = () => {
+    const position = commandMenuState?.position
+    handleCommandMenuClose()
+    openMathPanel(position ? { x: position.x, y: position.y + 4 } : undefined)
+  }
+
   return (
     <div className={`tiptap-wrapper ${className}`}>
-      {editor && editable && <TipTapMenuBar editor={editor} />}
+      {editor && editable && (
+        <TipTapMenuBar editor={editor} onOpenMathPanel={(position) => openMathPanel(position)} />
+      )}
       {editor ? (
         <VirtualizedEditor editor={editor}>
           <DragDropContext editor={editor}>
@@ -419,14 +378,16 @@ export function TipTapEditor({
           onClose={handleCommandMenuClose}
           position={commandMenuState.position}
           query={commandMenuState.query}
+          onInsertMath={handleInsertMathFromCommand}
         />
       )}
-      {editor && (
-        <div className="editor-footer">
-          <span className="character-count" aria-live="polite" aria-atomic="true">
-            {editor.storage.characterCount.characters()} characters
-          </span>
-        </div>
+      {mathPanelState && editor && (
+        <MathInlinePanel
+          editor={editor}
+          isOpen={mathPanelState.isOpen}
+          position={mathPanelState.position}
+          onClose={() => setMathPanelState(null)}
+        />
       )}
     </div>
   )

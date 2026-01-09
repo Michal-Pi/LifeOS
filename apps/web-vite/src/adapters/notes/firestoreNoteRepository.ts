@@ -116,7 +116,8 @@ export const createFirestoreNoteRepository = (): NoteRepository => {
 
   const search = async (userId: string, searchQuery: string): Promise<Note[]> => {
     // For now, fetch all notes and filter client-side
-    // TODO: Implement proper full-text search with Algolia or similar
+    // TODO: Implement vectorized text search with BM25 + semantic search
+    // Plan: Vectorize note content, use BM25 for keyword matching and semantic search for meaning-based queries
     const allNotes = await list(userId)
 
     const lowerQuery = searchQuery.toLowerCase()

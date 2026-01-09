@@ -14,6 +14,7 @@ import {
 } from '@lifeos/calendar'
 import { useCallback } from 'react'
 import { toast } from 'sonner'
+import { getUserFriendlyError } from '@/utils/errorMessages'
 import { generateId } from '@lifeos/core'
 import { createFirestoreCalendarEventRepository } from '@/adapters/firestoreCalendarEventRepository'
 import { createFirestoreCompositeRepository } from '@/adapters/firestoreCompositeRepository'
@@ -24,6 +25,7 @@ import { authenticatedFetch } from '@/lib/authenticatedFetch'
 import type { OutboxOp } from '@/outbox/types'
 import { listPending } from '@/outbox/store'
 import { enqueueCreate, enqueueUpdate, enqueueDelete } from '@/outbox/worker'
+import { getDefaultCalendarId } from '@/utils/calendarHelpers'
 
 const logger = createLogger('useEventOperations')
 const calendarRepository = createFirestoreCalendarEventRepository()
@@ -100,6 +102,10 @@ export function useEventOperations({
       const recurrenceV2 = buildRecurrenceV2(data)
       const isRecurring = Boolean(recurrenceV2)
 
+      // Get default calendar ID (from metadata, or fetch user's default)
+      const calendarId =
+        (metadata?.calendarId as string | undefined) || (await getDefaultCalendarId(userId))
+
       const attendees = data.attendees?.map((email) => ({
         email,
         responseStatus: 'needsAction' as const,
@@ -122,6 +128,7 @@ export function useEventOperations({
         canonicalUpdatedAtMs: nowMs,
         syncState: 'pending_writeback',
         source: { type: 'local' },
+        calendarId, // Set calendar ID for permission lookups and color mapping
         startMs,
         endMs,
         startIso: new Date(startMs).toISOString(),
@@ -218,13 +225,8 @@ export function useEventOperations({
               scope === 'this'
                 ? { isInstanceEdit: true, occurrenceStartMs: selectedEvent.startMs }
                 : undefined
-            await enqueueUpdate(
-              userId,
-              result.updatedMaster,
-              selectedEvent.updatedAtMs,
-              'update',
-              writebackMeta
-            )
+            const baseRev = result.updatedMaster.rev ?? selectedEvent.rev
+            await enqueueUpdate(userId, result.updatedMaster, baseRev, 'update', writebackMeta)
           }
           if (result.newSeries) {
             await enqueueCreate(userId, result.newSeries)
@@ -236,8 +238,9 @@ export function useEventOperations({
         } catch (error) {
           const errorMessage = (error as Error).message
           setConnectionError(errorMessage)
-          toast.error('Failed to update event', {
-            description: errorMessage,
+          const friendlyError = getUserFriendlyError(error as Error)
+          toast.error(friendlyError.title, {
+            description: friendlyError.description,
           })
         }
         return
@@ -294,7 +297,7 @@ export function useEventOperations({
       await enqueueUpdate(
         userId,
         updatedEvent,
-        selectedEvent.updatedAtMs,
+        selectedEvent.rev,
         attendeesChanged ? 'update_attendees' : undefined
       )
       const ops = await listPending(userId)
@@ -375,7 +378,11 @@ export function useEventOperations({
                 .sort((a, b) => a.startMs - b.startMs)
             )
             setSelectedEvent(result.updatedMaster)
-            await enqueueUpdate(userId, result.updatedMaster, selectedEvent.updatedAtMs)
+            await enqueueUpdate(
+              userId,
+              result.updatedMaster,
+              result.updatedMaster.rev ?? selectedEvent.rev
+            )
           }
 
           setDeleteModalOpen(false)
@@ -385,8 +392,9 @@ export function useEventOperations({
         } catch (error) {
           const errorMessage = (error as Error).message
           setConnectionError(errorMessage)
-          toast.error('Failed to delete event', {
-            description: errorMessage,
+          const friendlyError = getUserFriendlyError(error as Error)
+          toast.error(friendlyError.title, {
+            description: friendlyError.description,
           })
         }
         return
@@ -416,7 +424,12 @@ export function useEventOperations({
       setDeleteModalOpen(false)
       setSelectedEvent(null)
 
-      await enqueueDelete(userId, selectedEvent.canonicalEventId, selectedEvent.updatedAtMs)
+      await enqueueDelete(
+        userId,
+        selectedEvent.canonicalEventId,
+        selectedEvent.rev,
+        selectedEvent.updatedAtMs
+      )
       const ops = await listPending(userId)
       setPendingOps(ops)
     },
@@ -456,8 +469,9 @@ export function useEventOperations({
     } catch (error) {
       const errorMessage = (error as Error).message
       setConnectionError(errorMessage)
-      toast.error('Failed to retry writeback', {
-        description: errorMessage,
+      const friendlyError = getUserFriendlyError(error as Error)
+      toast.error(friendlyError.title, {
+        description: friendlyError.description,
       })
     }
   }, [selectedEvent, userId, setEvents, setSelectedEvent, setConnectionError])
@@ -495,7 +509,7 @@ export function useEventOperations({
       }
 
       try {
-        await enqueueUpdate(userId, updatedEvent, event.updatedAtMs, 'rsvp')
+        await enqueueUpdate(userId, updatedEvent, event.rev, 'rsvp')
         toast.success('RSVP updated successfully')
       } catch (error) {
         logger.error('Failed to enqueue RSVP update', error)
@@ -503,8 +517,9 @@ export function useEventOperations({
         if (selectedEvent?.canonicalEventId === eventId) {
           setSelectedEvent(event)
         }
-        toast.error('Failed to update RSVP', {
-          description: (error as Error).message,
+        const friendlyError = getUserFriendlyError(error as Error)
+        toast.error(friendlyError.title, {
+          description: friendlyError.description,
         })
       }
     },

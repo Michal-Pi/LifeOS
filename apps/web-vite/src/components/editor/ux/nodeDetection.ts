@@ -19,14 +19,16 @@ export interface TopLevelNodeInfo {
 export function getTopLevelNodes(editor: Editor): TopLevelNodeInfo[] {
   const { doc } = editor.state
   const nodes: TopLevelNodeInfo[] = []
-  const position = 1 // Start after document node
+  let currentPos = 1 // Start after document node
 
-  doc.forEach((node, offset) => {
+  doc.forEach((node) => {
     nodes.push({
       node,
-      position: position + offset,
-      id: `node-${position + offset}`, // Generate unique ID
+      position: currentPos,
+      id: `node-${currentPos}`, // Generate unique ID
     })
+    // Move to next position (accounting for current node size)
+    currentPos += node.nodeSize
   })
 
   return nodes
@@ -37,19 +39,21 @@ export function getTopLevelNodes(editor: Editor): TopLevelNodeInfo[] {
  */
 export function getTopLevelNodeAt(editor: Editor, position: number): TopLevelNodeInfo | null {
   const { doc } = editor.state
-  const currentPos = 1
+  let currentPos = 1
 
   let foundNode: ProseMirrorNode | null = null
   let foundOffset = 0
 
-  doc.forEach((node, offset) => {
-    const nodeStart = currentPos + offset
+  doc.forEach((node) => {
+    const nodeStart = currentPos
     const nodeEnd = nodeStart + node.nodeSize
 
     if (position >= nodeStart && position < nodeEnd) {
       foundNode = node
       foundOffset = nodeStart
     }
+    // Move to next position
+    currentPos += node.nodeSize
   })
 
   if (!foundNode) return null
@@ -66,18 +70,20 @@ export function getTopLevelNodeAt(editor: Editor, position: number): TopLevelNod
  */
 export function isTopLevelNodeBoundary(editor: Editor, position: number): boolean {
   const { doc } = editor.state
-  const currentPos = 1
+  let currentPos = 1
 
   let isBoundary = false
 
-  doc.forEach((node, offset) => {
-    const nodeStart = currentPos + offset
+  doc.forEach((node) => {
+    const nodeStart = currentPos
     const nodeEnd = nodeStart + node.nodeSize
 
     // Check if position is at the start or end of a top-level node
     if (position === nodeStart || position === nodeEnd) {
       isBoundary = true
     }
+    // Move to next position
+    currentPos += node.nodeSize
   })
 
   return isBoundary

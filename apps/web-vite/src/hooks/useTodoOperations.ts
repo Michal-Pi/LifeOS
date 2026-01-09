@@ -217,11 +217,23 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
 
   const updateTask = useCallback(
     async (task: CanonicalTask) => {
+      const now = new Date().toISOString()
       const updatedTask = {
         ...task,
-        updatedAt: new Date().toISOString(),
+        updatedAt: now,
       }
-      const normalizedTask = normalizeTaskForSave(updatedTask, projects)
+      let normalizedTask = normalizeTaskForSave(updatedTask, projects)
+      if (normalizedTask.completed) {
+        normalizedTask = {
+          ...normalizedTask,
+          completedAt: normalizedTask.completedAt ?? now,
+        }
+      } else if (normalizedTask.completedAt) {
+        normalizedTask = {
+          ...normalizedTask,
+          completedAt: undefined,
+        }
+      }
 
       // Optimistic update
       setTasks((prev) => prev.map((t) => (t.id === task.id ? normalizedTask : t)))

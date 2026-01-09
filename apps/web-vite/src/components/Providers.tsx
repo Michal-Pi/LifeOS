@@ -7,6 +7,7 @@
 import type { ReactNode } from 'react'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
+import { DialogProvider } from '@/contexts/DialogContext'
 
 interface ProvidersProps {
   children: ReactNode
@@ -14,8 +15,10 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <ThemeProvider defaultTheme="light">
-      <AuthProvider>{children}</AuthProvider>
+    <ThemeProvider defaultTheme="auto">
+      <DialogProvider>
+        <AuthProvider>{children}</AuthProvider>
+      </DialogProvider>
     </ThemeProvider>
   )
 }

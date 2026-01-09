@@ -56,13 +56,8 @@ import {
 
 ## Implementation Status
 
-- ✅ Phase 1: Data models and repository interfaces
-- ⬜ Phase 2: TipTap editor integration
-- ⬜ Phase 3: Organization UI
-- ⬜ Phase 4: Project integration
-- ⬜ Phase 5: Attachments & media
-- ⬜ Phase 6: Offline sync
-- ⬜ Phase 7: Advanced features
-- ⬜ Phase 8: Polish & testing
+- ✅ Domain models + repository interfaces (this package)
+- ✅ App integration (editor, organization UI, project linking, attachments, offline sync)
+- ✅ Export + templates + sync status UI
 
-See `docs/features/learning-notes-plan.md` for full implementation plan.
+See `docs/features/learning-notes-plan.md` for the full plan and `docs/features/notes-phase-7-completion.md` for app-level status.

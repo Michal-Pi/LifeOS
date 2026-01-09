@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide provides step-by-step instructions for applying the refined minimalist design system to existing and new pages.
+This guide provides step-by-step instructions for applying the retro-futurist design system to existing and new pages. Use the tokens in `apps/web-vite/src/tokens.css` for every color, surface, and glow.
 
 ## Quick Start Checklist
 
@@ -15,6 +15,11 @@ For each page/component you're updating:
 - [ ] Apply consistent typography from the scale
 - [ ] Ensure dark mode support
 - [ ] Test accessibility (color contrast, keyboard nav)
+- [ ] Use tokens for all colors, shadows, and overlays (no hard-coded hex/rgba)
+- [ ] Replace `alert/confirm/prompt` with the dialog system (`useDialog`)
+- [ ] Use semantic tokens for status/badges (`--success`, `--warning`, `--error`, `--info`)
+- [ ] Charts use `--chart-*` tokens only
+- [ ] Defaults (e.g., calendar colors) resolve from theme tokens, not hard-coded values
 
 ## Component Migration Patterns
 

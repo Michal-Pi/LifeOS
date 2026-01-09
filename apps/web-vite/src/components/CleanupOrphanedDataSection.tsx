@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { createFirestoreTodoRepository } from '@/adapters/firestoreTodoRepository'
 import { createFirestoreCalendarEventRepository } from '@/adapters/firestoreCalendarEventRepository'
 import { createFirestoreCompositeRepository } from '@/adapters/firestoreCompositeRepository'
+import { useDialog } from '@/contexts/useDialog'
 
 interface OrphanedData {
   tasksWithOrphanedLinks: Array<{ id: string; title: string; orphanedEventIds: string[] }>
@@ -9,6 +10,7 @@ interface OrphanedData {
 }
 
 export function CleanupOrphanedDataSection({ userId }: { userId: string }) {
+  const { alert: showAlert } = useDialog()
   const [scanning, setScanning] = useState(false)
   const [cleaning, setCleaning] = useState(false)
   const [orphanedData, setOrphanedData] = useState<OrphanedData | null>(null)
@@ -127,11 +129,13 @@ export function CleanupOrphanedDataSection({ userId }: { userId: string }) {
         }
       }
 
-      alert(
-        `Cleanup complete!\n\n` +
+      await showAlert({
+        title: 'Cleanup complete',
+        description:
+          `Cleanup complete!\n\n` +
           `Tasks cleaned: ${tasksCleaned}\n` +
-          `Composites cleaned: ${compositesCleaned}`
-      )
+          `Composites cleaned: ${compositesCleaned}`,
+      })
 
       // Rescan to show updated state
       await scanForOrphans()
@@ -146,6 +150,7 @@ export function CleanupOrphanedDataSection({ userId }: { userId: string }) {
     userId,
     todoRepository,
     calendarRepository,
+    showAlert,
     compositeRepository,
     scanForOrphans,
   ])

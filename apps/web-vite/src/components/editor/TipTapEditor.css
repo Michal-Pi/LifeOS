@@ -9,8 +9,8 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   height: 100%;
   min-height: 100%;
 }
@@ -38,12 +38,12 @@
 
 .tiptap-editor {
   flex: 1;
-  padding: 1.5rem 0;
+  padding: 1.5rem 0 2.5rem 2rem;
   outline: none;
   color: var(--foreground);
   font-size: 16px;
   line-height: 1.6;
-  min-height: auto;
+  min-height: 100%;
   overflow-y: visible;
   /* Optimize rendering performance */
   contain: layout style paint;
@@ -176,7 +176,7 @@
   top: 0.5rem;
   right: 0.75rem;
   font-size: 0.75rem;
-  color: var(--muted-foreground);
+  color: var(--text-label);
   text-transform: uppercase;
   font-weight: 500;
   opacity: 0.6;
@@ -207,7 +207,7 @@
   border-left: 3px solid var(--accent);
   padding-left: 1.25rem;
   margin: 1.5em 0;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   font-style: italic;
   background: var(--background-secondary);
   border-radius: 0 8px 8px 0;
@@ -223,7 +223,7 @@
 
 /* Highlight */
 .tiptap-editor mark {
-  background-color: #fef3c7;
+  background-color: var(--warning-light);
   color: inherit;
   padding: 0.1em 0.2em;
   border-radius: 2px;
@@ -300,24 +300,10 @@
 /* Placeholder */
 .tiptap-editor p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   pointer-events: none;
   float: left;
   height: 0;
-}
-
-/* Footer */
-.editor-footer {
-  border-top: 1px solid var(--border);
-  padding: 8px 16px;
-  display: flex;
-  justify-content: flex-end;
-  font-size: 12px;
-  color: var(--muted-foreground);
-}
-
-.character-count {
-  opacity: 0.7;
 }
 
 /* Focus state - Notion-like (minimal) */
@@ -344,8 +330,35 @@
   background-color: var(--accent-subtle);
   border-radius: 4px;
 }
+/* Hover affordance for block actions */
+.tiptap-editor > * {
+  position: relative;
+}
 
-/* Dark mode adjustments */
-[data-theme='dark'] .tiptap-editor mark {
-  background-color: #78350f;
+.tiptap-editor > *:not(ul):not(ol)::before {
+  content: '+';
+  position: absolute;
+  left: -1.5rem;
+  top: 0.2rem;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--background-secondary);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  opacity: 0;
+  transition:
+    opacity var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+}
+
+.tiptap-editor > *:not(ul):not(ol):hover::before {
+  opacity: 1;
+  border-color: var(--accent);
+  color: var(--foreground);
 }

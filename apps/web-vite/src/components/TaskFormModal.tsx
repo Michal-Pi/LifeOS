@@ -367,6 +367,7 @@ export function TaskFormModal({
                   max={URGENCY_SLIDER_MAX}
                   step={1}
                   value={urgencyToSlider(effectiveUrgency)}
+                  disabled={Boolean(dueDate)}
                   onChange={(e) => {
                     setUrgencyChangedManually(true)
                     setUrgency(urgencyFromSlider(Number(e.target.value)))

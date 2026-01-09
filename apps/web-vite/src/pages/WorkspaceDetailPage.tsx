@@ -18,8 +18,10 @@ import { RunWorkspaceModal } from '@/components/agents/RunWorkspaceModal'
 import { RunCard } from '@/components/agents/RunCard'
 import { WorkflowGraphView } from '@/components/agents/WorkflowGraphView'
 import type { WorkspaceId, RunStatus } from '@lifeos/agents'
+import { useDialog } from '@/contexts/useDialog'
 
 export function WorkspaceDetailPage() {
+  const { confirm } = useDialog()
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const navigate = useNavigate()
   const { workspace, runs, isLoading, getWorkspace, loadRuns, deleteRun, updateRun } =
@@ -62,9 +64,13 @@ export function WorkspaceDetailPage() {
   }
 
   const handleDeleteRun = async (runId: string) => {
-    if (!window.confirm('Are you sure you want to delete this run? This cannot be undone.')) {
-      return
-    }
+    const confirmed = await confirm({
+      title: 'Delete run',
+      description: 'Are you sure you want to delete this run? This cannot be undone.',
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
       await deleteRun(runId)

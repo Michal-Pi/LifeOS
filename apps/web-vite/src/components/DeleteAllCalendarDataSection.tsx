@@ -4,6 +4,7 @@ import { authenticatedFetch } from '@/lib/authenticatedFetch'
 import { openDB } from 'idb'
 import { collection, onSnapshot, type Unsubscribe } from 'firebase/firestore'
 import { getFirestoreClient } from '@/lib/firebase'
+import { useDialog } from '@/contexts/useDialog'
 
 interface DeleteOptions {
   taskHandling: 'unlink' | 'delete-linked' | 'keep-orphaned'
@@ -36,6 +37,7 @@ interface ProgressCounts {
 }
 
 export function DeleteAllCalendarDataSection({ userId }: { userId: string }) {
+  const { alert: showAlert } = useDialog()
   const [options, setOptions] = useState<DeleteOptions>({
     taskHandling: 'unlink',
     compositeHandling: 'delete',
@@ -185,7 +187,10 @@ export function DeleteAllCalendarDataSection({ userId }: { userId: string }) {
         messages.push(`Cleared ${result.counts.syncDataDeleted} sync data items`)
       }
 
-      alert(`Calendar data deleted successfully!\n\n${messages.join('\n')}`)
+      await showAlert({
+        title: 'Delete complete',
+        description: `Calendar data deleted successfully!\n\n${messages.join('\n')}`,
+      })
 
       setShowConfirmDialog(false)
       setConfirmText('')

@@ -4,6 +4,8 @@ interface ConfirmDialogProps {
   description: string
   confirmLabel?: string
   cancelLabel?: string
+  showCancel?: boolean
+  confirmVariant?: 'default' | 'danger' | 'primary'
   onConfirm: () => void
   onCancel: () => void
 }
@@ -14,10 +16,19 @@ export function ConfirmDialog({
   description,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
+  showCancel = true,
+  confirmVariant = 'danger',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
   if (!isOpen) return null
+
+  const confirmClass =
+    confirmVariant === 'primary'
+      ? 'primary-button'
+      : confirmVariant === 'danger'
+        ? 'ghost-button danger'
+        : 'ghost-button'
 
   return (
     <div className="modal-overlay" onClick={onCancel}>
@@ -29,13 +40,15 @@ export function ConfirmDialog({
           </button>
         </div>
         <div className="modal-body">
-          <p>{description}</p>
+          <p className="modal-description">{description}</p>
         </div>
         <div className="modal-actions">
-          <button type="button" className="ghost-button" onClick={onCancel}>
-            {cancelLabel}
-          </button>
-          <button type="button" className="ghost-button danger" onClick={onConfirm}>
+          {showCancel && (
+            <button type="button" className="ghost-button" onClick={onCancel}>
+              {cancelLabel}
+            </button>
+          )}
+          <button type="button" className={confirmClass} onClick={onConfirm}>
             {confirmLabel}
           </button>
         </div>

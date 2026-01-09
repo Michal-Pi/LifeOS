@@ -371,7 +371,7 @@ export function AttachmentUploader({
         }
 
         .btn-delete:hover {
-          background: rgba(248, 113, 113, 0.12);
+          background: var(--error-light);
           color: var(--error);
         }
       `}</style>

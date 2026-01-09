@@ -1,0 +1,171 @@
+/* Tool Call Timeline */
+
+.tool-call-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tool-call-timeline__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.tool-call-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tool-call-card {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--card);
+  box-shadow: 0 4px 12px var(--shadow-soft);
+  overflow: hidden;
+}
+
+.tool-call-header {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--motion-standard) var(--motion-ease);
+}
+
+.tool-call-header:hover {
+  background: var(--background-secondary);
+}
+
+.tool-call-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.tool-call-name {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.tool-call-duration {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.tool-call-iteration {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.tool-call-badge {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tool-call-badge--completed {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.tool-call-badge--failed {
+  background: var(--error-light);
+  color: var(--error);
+}
+
+.tool-call-badge--running {
+  background: var(--info-light);
+  color: var(--info);
+}
+
+.tool-call-badge--pending {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.tool-call-badge--unknown {
+  background: var(--background-secondary);
+  color: var(--text-secondary);
+}
+
+.tool-call-chevron {
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
+  transition: transform var(--motion-standard) var(--motion-ease);
+}
+
+.tool-call-chevron.is-expanded {
+  transform: rotate(180deg);
+}
+
+.tool-call-details {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.tool-call-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.tool-call-label {
+  color: var(--text-label);
+  margin-right: 0.4rem;
+}
+
+.tool-call-provider {
+  color: var(--foreground);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.tool-call-model {
+  color: var(--text-secondary);
+  margin-left: 0.4rem;
+}
+
+.tool-call-section-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 0 0 0.35rem;
+}
+
+.tool-call-pre {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  overflow-x: auto;
+  color: var(--foreground);
+  max-height: 16rem;
+}
+
+.tool-call-error {
+  background: var(--error-light);
+  border: 1px solid color-mix(in srgb, var(--error) 30%, transparent);
+  color: var(--error);
+}

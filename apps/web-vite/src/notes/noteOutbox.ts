@@ -106,6 +106,7 @@ export interface NoteUpdatePayload {
     okrIds?: string[]
     tags?: string[]
     attachmentIds?: string[]
+    archived?: boolean
   }
 }
 
@@ -280,7 +281,16 @@ export async function enqueueNoteOp(
     // If there's a pending create, update that instead
     const existingCreate = pendingOps.find((op) => op.type === 'create')
     if (existingCreate) {
-      existingCreate.payload = payload
+      const updatePayload = payload as NoteUpdatePayload
+      const existingPayload = existingCreate.payload as NoteCreatePayload
+      existingPayload.note = {
+        ...existingPayload.note,
+        ...updatePayload.updates,
+        updatedAtMs: Date.now(),
+        version: existingPayload.note.version + 1,
+        syncState: 'pending',
+      }
+      existingCreate.payload = existingPayload
       await store.put(existingCreate)
       await tx.done
       return existingCreate

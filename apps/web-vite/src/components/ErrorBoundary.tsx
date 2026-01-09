@@ -39,48 +39,17 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div
-          className="error-boundary-fallback"
-          style={{
-            padding: '2rem',
-            margin: '2rem',
-            border: '2px solid var(--error, #f87171)',
-            borderRadius: '16px',
-            backgroundColor: 'rgba(248, 113, 113, 0.12)',
-          }}
-        >
-          <h2 style={{ color: 'var(--error, #f87171)', marginBottom: '1rem' }}>
-            Something went wrong
-          </h2>
-          <details style={{ marginBottom: '1rem' }}>
-            <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>Error details</summary>
-            <pre
-              style={{
-                marginTop: '0.5rem',
-                padding: '1rem',
-                backgroundColor: 'var(--background-secondary, #f7f8fa)',
-                borderRadius: '10px',
-                overflow: 'auto',
-                fontSize: '0.875rem',
-              }}
-            >
+        <div className="error-boundary">
+          <h2 className="error-boundary__title">Something went wrong</h2>
+          <details className="error-boundary__details">
+            <summary className="error-boundary__summary">Error details</summary>
+            <pre className="error-boundary__stack">
               {this.state.error.message}
               {'\n\n'}
               {this.state.error.stack}
             </pre>
           </details>
-          <button
-            onClick={this.resetError}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: 'transparent',
-              color: 'var(--accent, #00e5ff)',
-              border: '1px solid var(--accent, #00e5ff)',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-            }}
-          >
+          <button onClick={this.resetError} className="error-boundary__button">
             Try again
           </button>
         </div>

@@ -15,6 +15,9 @@ import { NoteTitleEditor } from '@/components/notes/NoteTitleEditor'
 import { SyncStatusBanner } from '@/components/notes/NoteSyncStatus'
 import { ExportMenu } from '@/components/notes/ExportMenu'
 import { TemplateSelector } from '@/components/notes/TemplateSelector'
+import { ProjectLinker } from '@/components/notes/ProjectLinker'
+import { OKRLinker } from '@/components/notes/OKRLinker'
+import { TagEditor } from '@/components/notes/TagEditor'
 import { useNoteOperations } from '@/hooks/useNoteOperations'
 import { useNoteSync } from '@/hooks/useNoteSync'
 import { getTemplateContent } from '@/lib/noteTemplates'
@@ -29,9 +32,12 @@ export function NotesPage() {
     setCurrentNote,
     saveNoteContent,
     updateNote,
+    deleteNote,
+    listNotes,
     updateProjectLinks,
     updateOKRLinks,
     updateAttachments,
+    updateTags,
   } = useNoteOperations()
 
   const { isOnline, lastSyncMs, stats, triggerSync } = useNoteSync()
@@ -40,7 +46,18 @@ export function NotesPage() {
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
+  const [showProjectLinker, setShowProjectLinker] = useState(false)
+  const [showOKRLinker, setShowOKRLinker] = useState(false)
+  const [showTags, setShowTags] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (lastSyncMs) {
+      listNotes().catch((error) => {
+        console.error('Failed to refresh notes after sync:', error)
+      })
+    }
+  }, [lastSyncMs, listNotes])
 
   // Set current note when selectedNoteId changes
   useEffect(() => {
@@ -130,6 +147,17 @@ export function NotesPage() {
     }
   }
 
+  const handleTagsChange = async (tags: string[]) => {
+    if (!currentNote) return
+
+    try {
+      await updateTags(currentNote.noteId, tags)
+    } catch (error) {
+      console.error('Failed to update tags:', error)
+      throw error
+    }
+  }
+
   const handleTitleChange = useCallback(
     async (newTitle: string) => {
       if (!currentNote) return
@@ -142,6 +170,15 @@ export function NotesPage() {
     },
     [currentNote, updateNote]
   )
+
+  const handleArchiveToggle = useCallback(async () => {
+    if (!currentNote) return
+    try {
+      await updateNote(currentNote.noteId, { archived: !currentNote.archived })
+    } catch (error) {
+      console.error('Failed to update archive status:', error)
+    }
+  }, [currentNote, updateNote])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -196,6 +233,7 @@ export function NotesPage() {
           searchQuery={searchQuery}
           onProjectSelect={handleProjectSelect}
           onNoteSelect={handleSelectNote}
+          onNoteDelete={deleteNote}
           onCreateNote={handleCreateNote}
           onSearchChange={setSearchQuery}
           searchInputRef={searchInputRef}
@@ -213,9 +251,65 @@ export function NotesPage() {
                     placeholder="Untitled"
                   />
                   <div className="editor-actions">
-                    <ExportMenu note={currentNote} />
+                    <div className="editor-linker-actions">
+                      <button
+                        className="ghost-button small"
+                        onClick={() => setShowProjectLinker((prev) => !prev)}
+                        type="button"
+                      >
+                        Link project
+                      </button>
+                      <button
+                        className="ghost-button small"
+                        onClick={() => setShowOKRLinker((prev) => !prev)}
+                        type="button"
+                      >
+                        Link OKR
+                      </button>
+                      <button
+                        className="ghost-button small"
+                        onClick={() => setShowTags((prev) => !prev)}
+                        type="button"
+                      >
+                        Tags
+                      </button>
+                    </div>
+                    <div className="editor-actions-stack">
+                      <div className="editor-actions-row">
+                        <button
+                          className="ghost-button"
+                          onClick={handleArchiveToggle}
+                          type="button"
+                        >
+                          {currentNote.archived ? 'Unarchive' : 'Archive'}
+                        </button>
+                        <ExportMenu note={currentNote} />
+                      </div>
+                      <div className="editor-status" id="note-status-anchor" />
+                    </div>
                   </div>
                 </div>
+                {showProjectLinker && (
+                  <div className="editor-linker-panel">
+                    <ProjectLinker
+                      linkedProjectIds={currentNote.projectIds || []}
+                      onProjectsChange={handleProjectsChange}
+                    />
+                  </div>
+                )}
+                {showOKRLinker && (
+                  <div className="editor-linker-panel">
+                    <OKRLinker
+                      selectedOKRIds={currentNote.okrIds || []}
+                      onChange={handleOKRsChange}
+                    />
+                  </div>
+                )}
+                {showTags && (
+                  <div className="editor-linker-panel">
+                    <TagEditor tags={currentNote.tags || []} onChange={handleTagsChange} />
+                  </div>
+                )}
               </div>
               <div className="editor-wrapper">
                 <NoteEditor
@@ -224,11 +318,14 @@ export function NotesPage() {
                   onProjectsChange={handleProjectsChange}
                   onOKRsChange={handleOKRsChange}
                   onAttachmentsChange={handleAttachmentsChange}
+                  onTagsChange={handleTagsChange}
                   placeholder="Start writing your note..."
                   autoSaveDelay={2000}
                   showProjectLinker={false}
-                  showOKRLinker={true}
-                  showAttachments={true}
+                  showOKRLinker={false}
+                  showAttachments={false}
+                  showTags={false}
+                  statusContainerId="note-status-anchor"
                 />
               </div>
             </>
@@ -275,6 +372,9 @@ export function NotesPage() {
           flex-direction: column;
           overflow: hidden;
           background: var(--background);
+          background-image: var(--background-texture);
+          background-size: auto;
+          background-position: top center;
         }
 
         .sync-banner {
@@ -293,6 +393,7 @@ export function NotesPage() {
           flex-direction: column;
           overflow: hidden;
           background: var(--background);
+          min-height: 0;
         }
 
         .editor-header {
@@ -303,12 +404,11 @@ export function NotesPage() {
         }
 
         .editor-header-content {
-          max-width: 900px;
-          margin: 0 auto;
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
           gap: 1rem;
+          width: 100%;
         }
 
         .editor-header-content > :first-child {
@@ -318,16 +418,57 @@ export function NotesPage() {
 
         .editor-actions {
           display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
+        .editor-linker-actions {
+          display: flex;
           align-items: center;
           gap: 0.5rem;
         }
 
+        .editor-actions-stack {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 0.25rem;
+        }
+
+        .editor-actions-row {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .editor-status {
+          min-height: 0.9rem;
+          font-size: 0.7rem;
+          color: var(--text-secondary);
+          line-height: 1;
+        }
+
         .editor-wrapper {
           flex: 1;
-          overflow-y: visible;
+          overflow: hidden;
           padding: 2rem 3rem;
           background: var(--card);
-          min-height: 100%;
+          min-height: 0;
+          display: flex;
+          position: relative;
+        }
+
+        .editor-linker-panel {
+          margin-top: 1rem;
+          padding: 1rem 1.25rem;
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          background: var(--background-secondary);
+          box-shadow: 0 8px 20px var(--shadow-soft);
+          max-width: 720px;
+          width: 100%;
         }
 
         .editor-placeholder {

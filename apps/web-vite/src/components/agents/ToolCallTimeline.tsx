@@ -7,6 +7,7 @@
 
 import { useState } from 'react'
 import type { ToolCallRecord } from '@lifeos/agents'
+import './ToolCallTimeline.css'
 
 interface ToolCallTimelineProps {
   toolCalls: ToolCallRecord[]
@@ -34,15 +35,15 @@ export function ToolCallTimeline({ toolCalls }: ToolCallTimelineProps) {
   const getStatusBadgeClass = (status: ToolCallRecord['status']) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800'
+        return 'tool-call-badge tool-call-badge--completed'
       case 'failed':
-        return 'bg-red-100 text-red-800'
+        return 'tool-call-badge tool-call-badge--failed'
       case 'running':
-        return 'bg-blue-100 text-blue-800'
+        return 'tool-call-badge tool-call-badge--running'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'tool-call-badge tool-call-badge--pending'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'tool-call-badge tool-call-badge--unknown'
     }
   }
 
@@ -57,47 +58,36 @@ export function ToolCallTimeline({ toolCalls }: ToolCallTimelineProps) {
   }
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-lg font-semibold text-gray-900">Tool Calls ({toolCalls.length})</h3>
-      <div className="space-y-2">
+    <div className="tool-call-timeline">
+      <h3 className="tool-call-timeline__title">Tool Calls ({toolCalls.length})</h3>
+      <div className="tool-call-list">
         {toolCalls.map((toolCall) => {
           const isExpanded = expandedCalls.has(toolCall.toolCallRecordId)
 
           return (
-            <div
-              key={toolCall.toolCallRecordId}
-              className="border border-gray-200 rounded-lg bg-white shadow-sm"
-            >
+            <div key={toolCall.toolCallRecordId} className="tool-call-card">
               {/* Header - Always Visible */}
               <button
                 onClick={() => toggleExpanded(toolCall.toolCallRecordId)}
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                className="tool-call-header"
               >
-                <div className="flex items-center gap-3 flex-1">
+                <div className="tool-call-header__meta">
                   {/* Tool Name */}
-                  <span className="font-mono text-sm font-medium text-gray-900">
-                    {toolCall.toolName}
-                  </span>
+                  <span className="tool-call-name">{toolCall.toolName}</span>
 
                   {/* Status Badge */}
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(toolCall.status)}`}
-                  >
-                    {toolCall.status}
-                  </span>
+                  <span className={getStatusBadgeClass(toolCall.status)}>{toolCall.status}</span>
 
                   {/* Duration */}
-                  <span className="text-sm text-gray-500">
-                    {formatDuration(toolCall.durationMs)}
-                  </span>
+                  <span className="tool-call-duration">{formatDuration(toolCall.durationMs)}</span>
 
                   {/* Iteration */}
-                  <span className="text-xs text-gray-400">Iteration {toolCall.iteration}</span>
+                  <span className="tool-call-iteration">Iteration {toolCall.iteration}</span>
                 </div>
 
                 {/* Expand/Collapse Icon */}
                 <svg
-                  className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                  className={`tool-call-chevron ${isExpanded ? 'is-expanded' : ''}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -113,34 +103,32 @@ export function ToolCallTimeline({ toolCalls }: ToolCallTimelineProps) {
 
               {/* Details - Collapsible */}
               {isExpanded && (
-                <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 space-y-3">
+                <div className="tool-call-details">
                   {/* Timing Info */}
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="tool-call-grid">
                     <div>
-                      <span className="text-gray-500">Started:</span>{' '}
-                      <span className="text-gray-900">{formatTimestamp(toolCall.startedAtMs)}</span>
+                      <span className="tool-call-label">Started:</span>
+                      <span>{formatTimestamp(toolCall.startedAtMs)}</span>
                     </div>
                     {toolCall.completedAtMs && (
                       <div>
-                        <span className="text-gray-500">Completed:</span>{' '}
-                        <span className="text-gray-900">
-                          {formatTimestamp(toolCall.completedAtMs)}
-                        </span>
+                        <span className="tool-call-label">Completed:</span>
+                        <span>{formatTimestamp(toolCall.completedAtMs)}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Provider Info */}
-                  <div className="text-sm">
-                    <span className="text-gray-500">Provider:</span>{' '}
-                    <span className="text-gray-900 capitalize">{toolCall.provider}</span>
-                    <span className="text-gray-400 ml-2">({toolCall.modelName})</span>
+                  <div>
+                    <span className="tool-call-label">Provider:</span>
+                    <span className="tool-call-provider">{toolCall.provider}</span>
+                    <span className="tool-call-model">({toolCall.modelName})</span>
                   </div>
 
                   {/* Parameters */}
                   <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">Parameters:</div>
-                    <pre className="bg-white border border-gray-200 rounded p-2 text-xs overflow-x-auto">
+                    <div className="tool-call-section-title">Parameters:</div>
+                    <pre className="tool-call-pre">
                       {JSON.stringify(toolCall.parameters, null, 2)}
                     </pre>
                   </div>
@@ -148,8 +136,8 @@ export function ToolCallTimeline({ toolCalls }: ToolCallTimelineProps) {
                   {/* Result */}
                   {toolCall.result && (
                     <div>
-                      <div className="text-sm font-medium text-gray-700 mb-1">Result:</div>
-                      <pre className="bg-white border border-gray-200 rounded p-2 text-xs overflow-x-auto max-h-64 overflow-y-auto">
+                      <div className="tool-call-section-title">Result:</div>
+                      <pre className="tool-call-pre">
                         {JSON.stringify(toolCall.result, null, 2)}
                       </pre>
                     </div>
@@ -158,10 +146,8 @@ export function ToolCallTimeline({ toolCalls }: ToolCallTimelineProps) {
                   {/* Error */}
                   {toolCall.error && (
                     <div>
-                      <div className="text-sm font-medium text-red-700 mb-1">Error:</div>
-                      <pre className="bg-red-50 border border-red-200 rounded p-2 text-xs text-red-900">
-                        {toolCall.error}
-                      </pre>
+                      <div className="tool-call-section-title">Error:</div>
+                      <pre className="tool-call-pre tool-call-error">{toolCall.error}</pre>
                     </div>
                   )}
                 </div>

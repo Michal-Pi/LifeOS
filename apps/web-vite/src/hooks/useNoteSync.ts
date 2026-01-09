@@ -139,6 +139,10 @@ export function useNoteSync(): UseNoteSyncReturn {
       if (status.lastSyncMs) {
         setLastSyncMs(status.lastSyncMs)
       }
+      // Log if sync is paused (for debugging)
+      if (status.isPaused && status.retryCount > 0) {
+        console.debug(`Sync paused, retry count: ${status.retryCount}`)
+      }
     }, 1000)
 
     return () => clearInterval(interval)

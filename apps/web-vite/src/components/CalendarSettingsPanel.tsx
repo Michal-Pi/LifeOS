@@ -6,8 +6,9 @@ import { functionUrl } from '@/lib/functionsUrl'
 import { authenticatedFetch } from '@/lib/authenticatedFetch'
 import { DeleteAllCalendarDataSection } from './DeleteAllCalendarDataSection'
 import { CleanupOrphanedDataSection } from './CleanupOrphanedDataSection'
-
-declare const confirm: (message: string) => boolean
+import { useDialog } from '@/contexts/useDialog'
+import { getDefaultCalendarHex } from '@/components/calendar/calendarColors'
+import { useTheme } from '@/contexts/useTheme'
 
 const calendarListRepository = createFirestoreCalendarListRepository()
 
@@ -15,10 +16,16 @@ type WritebackVisibility = 'default' | 'private'
 
 export function CalendarSettingsPanel() {
   const { user } = useAuth()
+  const { confirm, alert: showAlert } = useDialog()
+  const { theme } = useTheme()
   const userId = user?.uid ?? ''
   const [calendars, setCalendars] = useState<CanonicalCalendar[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const defaultColor = useMemo(() => {
+    void theme
+    return getDefaultCalendarHex()
+  }, [theme])
 
   const sortedCalendars = useMemo(() => {
     return [...calendars].sort((a, b) => {
@@ -88,13 +95,16 @@ export function CalendarSettingsPanel() {
     async (calendarId: string) => {
       const calendar = calendars.find((c) => c.calendarId === calendarId)
       if (!calendar) return
-      const confirmed = confirm(
-        `Remove "${calendar.name}" from LifeOS? This will stop syncing its events.`
-      )
+      const confirmed = await confirm({
+        title: 'Remove calendar',
+        description: `Remove "${calendar.name}" from LifeOS? This will stop syncing its events.`,
+        confirmLabel: 'Remove',
+        confirmVariant: 'danger',
+      })
       if (!confirmed) return
       await updateCalendar(calendarId, { syncEnabled: false, visible: false })
     },
-    [calendars, updateCalendar]
+    [calendars, updateCalendar, confirm]
   )
 
   const handleRestore = useCallback(
@@ -131,14 +141,24 @@ export function CalendarSettingsPanel() {
 
     const disconnectMessage = `Disconnect this Google account?\n\nThis will:\n• Delete ${accountCalendars.length} calendar${accountCalendars.length !== 1 ? 's' : ''} from LifeOS\n• Stop syncing events from this account\n\nDo you want to proceed?`
 
-    const confirmed = confirm(disconnectMessage)
+    const confirmed = await confirm({
+      title: 'Disconnect account',
+      description: disconnectMessage,
+      confirmLabel: 'Disconnect',
+      confirmVariant: 'danger',
+    })
     if (!confirmed) return
 
-    const deleteEvents = confirm(
-      `Do you also want to delete all events from this account?\n\n` +
-        `• Select "OK" to delete events (they will be removed from LifeOS but remain in Google Calendar)\n` +
-        `• Select "Cancel" to keep events in LifeOS (they will become read-only)`
-    )
+    const deleteEvents = await confirm({
+      title: 'Delete events from LifeOS',
+      description:
+        `Do you also want to delete all events from this account?\n\n` +
+        `• Select "Delete events" to remove them from LifeOS (they remain in Google Calendar)\n` +
+        `• Select "Keep events" to keep them in LifeOS (they become read-only)`,
+      confirmLabel: 'Delete events',
+      cancelLabel: 'Keep events',
+      confirmVariant: 'danger',
+    })
 
     try {
       setLoading(true)
@@ -157,7 +177,10 @@ export function CalendarSettingsPanel() {
         ? `Disconnected account. Deleted ${result.calendarsDeleted} calendars and ${result.eventsDeleted} events.`
         : `Disconnected account. Deleted ${result.calendarsDeleted} calendars. Events retained.`
 
-      alert(message)
+      await showAlert({
+        title: 'Account disconnected',
+        description: message,
+      })
 
       // Reload calendars after disconnect
       await loadCalendars()
@@ -247,7 +270,7 @@ export function CalendarSettingsPanel() {
                 const writebackEnabled = calendar.writebackEnabled ?? true
                 const writebackVisibility = (calendar.writebackVisibility ??
                   'default') as WritebackVisibility
-                const lifeosColor = calendar.lifeosColor ?? calendar.color ?? '#4f46e5'
+                const lifeosColor = calendar.lifeosColor ?? calendar.color ?? defaultColor
                 const canWrite = calendar.canWrite ?? false
                 const isVisible = calendar.visible ?? true
 

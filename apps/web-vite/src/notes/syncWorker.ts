@@ -17,11 +17,14 @@ import {
   saveNoteLocally,
   deleteNoteLocally,
   listNotesLocally,
+  getNoteLocally,
   saveTopicLocally,
   deleteTopicLocally,
   saveSectionLocally,
   deleteSectionLocally,
 } from './offlineStore'
+import { isRecoverableFirestoreError } from '@/lib/firestoreErrorHandler'
+import { isNoteEmptyDraft, sanitizeNoteContent } from './noteContent'
 
 import {
   listReadyNoteOps,
@@ -54,14 +57,19 @@ interface SyncWorkerState {
   isRunning: boolean
   lastSyncMs: number | null
   syncIntervalId: number | null
+  isPaused: boolean
+  retryCount: number
   onSyncComplete?: () => void
   onSyncError?: (error: Error) => void
+  cleanup?: () => void
 }
 
 const state: SyncWorkerState = {
   isRunning: false,
   lastSyncMs: null,
   syncIntervalId: null,
+  isPaused: false,
+  retryCount: 0,
 }
 
 // Repositories
@@ -76,19 +84,36 @@ const sectionRepository = createFirestoreSectionRepository()
 async function processNoteOp(userId: string, op: NoteOutboxOp): Promise<void> {
   try {
     await markNoteOpApplying(op.opId)
+    const existingNote = await getNoteLocally(op.noteId)
+    if (existingNote) {
+      await saveNoteLocally({ ...existingNote, syncState: 'syncing' })
+    }
 
     switch (op.type) {
       case 'create': {
         const payload = op.payload as NoteCreatePayload
+        const baseNote = payload.note ?? existingNote
+        if (!baseNote) {
+          await markNoteOpFailed(op.opId, 'Invalid note create payload')
+          await removeNoteOp(op.opId)
+          return
+        }
+        const sanitizedContent = sanitizeNoteContent(baseNote.content)
+        if (isNoteEmptyDraft(baseNote, { content: sanitizedContent })) {
+          await saveNoteLocally({ ...baseNote, content: sanitizedContent, syncState: 'synced' })
+          await markNoteOpApplied(op.opId)
+          await removeNoteOp(op.opId)
+          return
+        }
         const created = await noteRepository.create(userId, {
-          title: payload.note.title,
-          content: payload.note.content,
-          topicId: payload.note.topicId,
-          sectionId: payload.note.sectionId,
-          projectIds: payload.note.projectIds,
-          okrIds: payload.note.okrIds,
-          tags: payload.note.tags,
-          attachmentIds: payload.note.attachmentIds,
+          title: baseNote.title?.trim() || 'Untitled',
+          content: sanitizedContent ?? { type: 'doc', content: [] },
+          topicId: baseNote.topicId,
+          sectionId: baseNote.sectionId,
+          projectIds: baseNote.projectIds,
+          okrIds: baseNote.okrIds,
+          tags: baseNote.tags,
+          attachmentIds: baseNote.attachmentIds,
         })
 
         // Update local store with server version
@@ -98,7 +123,49 @@ async function processNoteOp(userId: string, op: NoteOutboxOp): Promise<void> {
 
       case 'update': {
         const payload = op.payload as NoteUpdatePayload
-        const updated = await noteRepository.update(userId, op.noteId, payload.updates)
+        const nextNote = existingNote ? { ...existingNote, ...payload.updates } : null
+        const sanitizedContent = sanitizeNoteContent(nextNote?.content)
+        if (nextNote && isNoteEmptyDraft(nextNote, { content: sanitizedContent })) {
+          await saveNoteLocally({ ...nextNote, content: sanitizedContent, syncState: 'synced' })
+          await markNoteOpApplied(op.opId)
+          await removeNoteOp(op.opId)
+          return
+        }
+
+        if (!nextNote) {
+          await markNoteOpApplied(op.opId)
+          await removeNoteOp(op.opId)
+          return
+        }
+
+        let updated: Awaited<ReturnType<typeof noteRepository.update>>
+        try {
+          const updatePayload: NoteUpdatePayload['updates'] = { ...payload.updates }
+          if (Object.prototype.hasOwnProperty.call(payload.updates, 'content')) {
+            updatePayload.content = sanitizedContent
+          }
+          updated = await noteRepository.update(userId, op.noteId, updatePayload)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : ''
+          const isNotFound = message.toLowerCase().includes('not found')
+          if (!isNotFound) {
+            throw error
+          }
+          const created = await noteRepository.create(userId, {
+            title: nextNote.title?.trim() || 'Untitled',
+            content: sanitizedContent ?? { type: 'doc', content: [] },
+            topicId: nextNote.topicId,
+            sectionId: nextNote.sectionId,
+            projectIds: nextNote.projectIds,
+            okrIds: nextNote.okrIds,
+            tags: nextNote.tags,
+            attachmentIds: nextNote.attachmentIds,
+          })
+          await saveNoteLocally({ ...created, syncState: 'synced' })
+          await markNoteOpApplied(op.opId)
+          await removeNoteOp(op.opId)
+          return
+        }
 
         // Update local store
         await saveNoteLocally({ ...updated, syncState: 'synced' })
@@ -119,6 +186,10 @@ async function processNoteOp(userId: string, op: NoteOutboxOp): Promise<void> {
   } catch (error) {
     const err = error instanceof Error ? error : new Error('Unknown error')
     await markNoteOpFailed(op.opId, err)
+    const localNote = await getNoteLocally(op.noteId)
+    if (localNote) {
+      await saveNoteLocally({ ...localNote, syncState: 'failed' })
+    }
     throw err
   }
 }
@@ -321,8 +392,18 @@ async function pullRemoteSections(userId: string, topicIds: TopicId[]): Promise<
  * Run a complete sync cycle
  */
 export async function syncNotes(userId: string): Promise<void> {
-  if (state.isRunning) {
-    console.log('Sync already running, skipping')
+  if (state.isRunning || state.isPaused) {
+    if (state.isPaused) {
+      console.log('Sync paused (page hidden), skipping')
+    } else {
+      console.log('Sync already running, skipping')
+    }
+    return
+  }
+
+  // Don't sync if offline
+  if (!navigator.onLine) {
+    console.log('Sync skipped - offline')
     return
   }
 
@@ -344,18 +425,31 @@ export async function syncNotes(userId: string): Promise<void> {
     )
 
     state.lastSyncMs = Date.now()
+    state.retryCount = 0 // Reset retry count on success
 
     if (state.onSyncComplete) {
       state.onSyncComplete()
     }
   } catch (error) {
-    console.error('Sync failed:', error)
+    const err = error instanceof Error ? error : new Error('Unknown sync error')
+    console.error('Sync failed:', err)
 
-    if (state.onSyncError) {
-      state.onSyncError(error instanceof Error ? error : new Error('Unknown sync error'))
+    // Only retry if error is recoverable
+    if (isRecoverableFirestoreError(error)) {
+      state.retryCount++
+      console.warn(`Sync error (recoverable), retry count: ${state.retryCount}`)
+    } else {
+      state.retryCount = 0 // Reset on non-recoverable errors
     }
 
-    throw error
+    if (state.onSyncError) {
+      state.onSyncError(err)
+    }
+
+    // Don't throw recoverable errors - let the worker continue
+    if (!isRecoverableFirestoreError(error)) {
+      throw error
+    }
   } finally {
     state.isRunning = false
   }
@@ -383,6 +477,46 @@ export function startNoteSyncWorker(
 
   state.onSyncComplete = callbacks?.onSyncComplete
   state.onSyncError = callbacks?.onSyncError
+  state.isPaused = false
+
+  // Handle page visibility changes
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      console.log('Page hidden - pausing sync worker')
+      state.isPaused = true
+    } else {
+      console.log('Page visible - resuming sync worker')
+      state.isPaused = false
+      state.retryCount = 0 // Reset retry count on resume
+      // Trigger immediate sync when page becomes visible
+      if (navigator.onLine) {
+        syncNotes(userId).catch((error) => {
+          console.error('Resume sync failed:', error)
+        })
+      }
+    }
+  }
+
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+
+  // Handle network connection changes
+  const handleOnline = () => {
+    console.log('Connection restored - resuming sync worker')
+    state.isPaused = false
+    state.retryCount = 0
+    // Trigger immediate sync when connection is restored
+    syncNotes(userId).catch((error) => {
+      console.error('Post-online sync failed:', error)
+    })
+  }
+
+  const handleOffline = () => {
+    console.log('Connection lost - pausing sync worker')
+    state.isPaused = true
+  }
+
+  window.addEventListener('online', handleOnline)
+  window.addEventListener('offline', handleOffline)
 
   // Initial sync
   syncNotes(userId).catch((error) => {
@@ -391,12 +525,19 @@ export function startNoteSyncWorker(
 
   // Set up interval
   state.syncIntervalId = window.setInterval(() => {
-    syncNotes(userId).catch((error) => {
-      console.error('Periodic sync failed:', error)
+    syncNotes(userId).catch(() => {
+      // Errors are already logged in syncNotes
     })
   }, intervalMs)
 
   console.log(`Note sync worker started (interval: ${intervalMs}ms)`)
+
+  // Store cleanup function
+  state.cleanup = () => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+    window.removeEventListener('online', handleOnline)
+    window.removeEventListener('offline', handleOffline)
+  }
 }
 
 /**
@@ -408,6 +549,15 @@ export function stopNoteSyncWorker(): void {
     state.syncIntervalId = null
     console.log('Note sync worker stopped')
   }
+
+  // Clean up event listeners
+  if (state.cleanup) {
+    state.cleanup()
+    state.cleanup = undefined
+  }
+
+  state.isPaused = false
+  state.retryCount = 0
 }
 
 /**
@@ -416,10 +566,14 @@ export function stopNoteSyncWorker(): void {
 export function getSyncStatus(): {
   isRunning: boolean
   lastSyncMs: number | null
+  isPaused: boolean
+  retryCount: number
 } {
   return {
     isRunning: state.isRunning,
     lastSyncMs: state.lastSyncMs,
+    isPaused: state.isPaused,
+    retryCount: state.retryCount,
   }
 }
 

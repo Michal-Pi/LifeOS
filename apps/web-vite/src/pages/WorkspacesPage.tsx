@@ -20,6 +20,7 @@ import { TemplateSaveModal } from '@/components/agents/TemplateSaveModal'
 import { workspaceTemplatePresets } from '@/agents/templatePresets'
 import type { Workspace, WorkspaceTemplate } from '@lifeos/agents'
 import { EmptyState } from '@/components/EmptyState'
+import { useDialog } from '@/contexts/useDialog'
 
 type WorkspaceTemplateExport = {
   version: number
@@ -42,6 +43,7 @@ const downloadJson = (filename: string, data: unknown) => {
 }
 
 export function WorkspacesPage() {
+  const { confirm, alert: showAlert } = useDialog()
   const navigate = useNavigate()
   const { workspaces, isLoading, loadWorkspaces, deleteWorkspace } = useWorkspaceOperations()
   const {
@@ -83,13 +85,13 @@ export function WorkspacesPage() {
   }
 
   const handleDelete = async (workspace: Workspace) => {
-    if (
-      !window.confirm(
-        `Are you sure you want to delete workspace "${workspace.name}"? This cannot be undone.`
-      )
-    ) {
-      return
-    }
+    const confirmed = await confirm({
+      title: 'Delete workspace',
+      description: `Are you sure you want to delete workspace "${workspace.name}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
       await deleteWorkspace(workspace.workspaceId)
@@ -164,7 +166,10 @@ export function WorkspacesPage() {
       }
     }
     if (createdCount === 0) {
-      window.alert('All presets already exist.')
+      await showAlert({
+        title: 'Presets already added',
+        description: 'All presets already exist.',
+      })
     }
   }
 
@@ -190,7 +195,10 @@ export function WorkspacesPage() {
       const parsed = JSON.parse(raw)
       const templates = Array.isArray(parsed) ? parsed : parsed.templates
       if (!Array.isArray(templates)) {
-        window.alert('Invalid template file. Expected a list of templates.')
+        await showAlert({
+          title: 'Import failed',
+          description: 'Invalid template file. Expected a list of templates.',
+        })
         return
       }
       const existingNames = new Set(
@@ -220,10 +228,16 @@ export function WorkspacesPage() {
           skippedCount += 1
         }
       }
-      window.alert(`Imported ${importedCount} templates. Skipped ${skippedCount}.`)
+      await showAlert({
+        title: 'Import complete',
+        description: `Imported ${importedCount} templates. Skipped ${skippedCount}.`,
+      })
     } catch (error) {
       console.error('Failed to import workspace templates', error)
-      window.alert('Import failed. Please check the JSON format.')
+      await showAlert({
+        title: 'Import failed',
+        description: 'Import failed. Please check the JSON format.',
+      })
     }
   }
 
@@ -409,8 +423,14 @@ export function WorkspacesPage() {
                       Use Template
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm(`Delete template "${template.name}"?`)) {
+                      onClick={async () => {
+                        const confirmed = await confirm({
+                          title: 'Delete template',
+                          description: `Delete template "${template.name}"?`,
+                          confirmLabel: 'Delete',
+                          confirmVariant: 'danger',
+                        })
+                        if (confirmed) {
                           void deleteTemplate(template.templateId)
                         }
                       }}

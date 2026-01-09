@@ -9,7 +9,7 @@ export type AttachmentId = Id<'attachment'>
 
 // ----- Sync State -----
 
-export type SyncState = 'synced' | 'pending' | 'conflict'
+export type SyncState = 'synced' | 'pending' | 'syncing' | 'failed' | 'conflict'
 export type AttachmentSyncState = 'local' | 'uploading' | 'synced' | 'error'
 
 // ----- Note Document -----
@@ -39,6 +39,7 @@ export interface Note {
   createdAtMs: number
   updatedAtMs: number
   lastAccessedAtMs: number
+  archived: boolean
 
   // Offline sync
   syncState: SyncState
@@ -123,6 +124,7 @@ export interface NoteFilters {
   okrIds?: string[]
   tags?: string[]
   searchQuery?: string // Full-text search
+  archived?: boolean
 }
 
 export interface TopicFilters {

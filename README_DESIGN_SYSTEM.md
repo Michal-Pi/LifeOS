@@ -10,7 +10,7 @@ This repo uses the Quiet Cyberpunk design system defined in CSS with supporting 
 
 ## Source of Truth
 
-- Tokens + theme: `apps/web-vite/src/globals.css`
+- Tokens + theme: `apps/web-vite/src/tokens.css`
 - Global styles: `apps/web-vite/src/globals.css`
 - Example page: `apps/web-vite/src/pages/TodayPage.tsx`
 

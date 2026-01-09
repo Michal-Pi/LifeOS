@@ -74,78 +74,62 @@ export function ExportMenu({ note, className = '' }: ExportMenuProps) {
   }
 
   return (
-    <div className={`relative ${className}`} ref={menuRef}>
+    <div className={`export-menu ${className}`} ref={menuRef}>
       {/* Export Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 transition-colors"
+        className="export-button"
         aria-label="Export note"
         aria-expanded={isOpen}
       >
-        <span className="flex items-center gap-2">
+        <span className="export-button__content">
           <span>↓</span>
           <span>Export</span>
         </span>
       </button>
 
       {/* Copy Status Toast */}
-      {copyStatus && (
-        <div className="absolute top-full mt-2 left-0 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-900 dark:text-green-100 whitespace-nowrap z-50">
-          {copyStatus}
-        </div>
-      )}
+      {copyStatus && <div className="export-toast">{copyStatus}</div>}
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute top-full mt-1 right-0 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
-          <div className="py-1">
+        <div className="export-dropdown">
+          <div className="export-dropdown__list">
             {/* Download as Markdown */}
-            <button
-              onClick={handleDownloadMarkdown}
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
-            >
-              <span className="text-lg">📄</span>
-              <div>
-                <p className="font-medium">Download as Markdown</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Save as .md file</p>
+            <button onClick={handleDownloadMarkdown} className="export-item">
+              <span className="export-item-icon">📄</span>
+              <div className="export-item-meta">
+                <p className="export-item-title">Download as Markdown</p>
+                <span>Save as .md file</span>
               </div>
             </button>
 
             {/* Download as Text */}
-            <button
-              onClick={handleDownloadText}
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
-            >
-              <span className="text-lg">📝</span>
-              <div>
-                <p className="font-medium">Download as Text</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Save as .txt file</p>
+            <button onClick={handleDownloadText} className="export-item">
+              <span className="export-item-icon">📝</span>
+              <div className="export-item-meta">
+                <p className="export-item-title">Download as Text</p>
+                <span>Save as .txt file</span>
               </div>
             </button>
 
-            <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+            <div className="export-divider"></div>
 
             {/* Copy as Markdown */}
-            <button
-              onClick={handleCopyMarkdown}
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
-            >
-              <span className="text-lg">📋</span>
-              <div>
-                <p className="font-medium">Copy as Markdown</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Copy to clipboard</p>
+            <button onClick={handleCopyMarkdown} className="export-item">
+              <span className="export-item-icon">📋</span>
+              <div className="export-item-meta">
+                <p className="export-item-title">Copy as Markdown</p>
+                <span>Copy to clipboard</span>
               </div>
             </button>
 
             {/* Copy as Text */}
-            <button
-              onClick={handleCopyText}
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3"
-            >
-              <span className="text-lg">📄</span>
-              <div>
-                <p className="font-medium">Copy as Text</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Plain text to clipboard</p>
+            <button onClick={handleCopyText} className="export-item">
+              <span className="export-item-icon">📄</span>
+              <div className="export-item-meta">
+                <p className="export-item-title">Copy as Text</p>
+                <span>Plain text to clipboard</span>
               </div>
             </button>
           </div>

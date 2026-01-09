@@ -7,6 +7,9 @@ service cloud.firestore {
     match /users/{userId}/settings/{docId} {
       allow read, write: if isAuthenticated(userId);
     }
+    match /users/{userId}/notifications/{notificationId} {
+      allow read, write: if isAuthenticated(userId);
+    }
     match /users/{userId}/notes/{noteId} {
       allow read, write: if isAuthenticated(userId);
     }

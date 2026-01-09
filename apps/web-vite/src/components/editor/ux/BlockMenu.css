@@ -7,7 +7,7 @@
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px var(--shadow-soft);
   padding: 0.25rem;
   z-index: 1000;
   font-size: 0.875rem;
@@ -50,16 +50,16 @@
 }
 
 .block-menu-item-danger {
-  color: var(--error, #ef4444);
+  color: var(--error);
 }
 
 .block-menu-item-danger:hover:not(:disabled) {
-  background: var(--error-subtle, rgba(239, 68, 68, 0.1));
+  background: var(--error-light);
 }
 
 .block-menu-item-header {
   font-weight: 600;
-  color: var(--muted-foreground);
+  color: var(--text-label);
   cursor: default;
   padding: 0.375rem 0.75rem;
   font-size: 0.75rem;
@@ -84,12 +84,7 @@
 
 .menu-item-shortcut {
   font-size: 0.75rem;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   opacity: 0.7;
-}
-
-/* Dark mode adjustments */
-[data-theme='dark'] .block-menu {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }

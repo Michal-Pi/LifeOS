@@ -93,7 +93,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               left: 0,
               right: 0,
               bottom: 0,
-              background: 'rgba(0, 0, 0, 0.5)',
+              background: 'var(--overlay)',
               zIndex: 1000,
               display: 'flex',
               alignItems: 'start',

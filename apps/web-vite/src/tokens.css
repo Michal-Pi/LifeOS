@@ -1,28 +1,55 @@
 :root {
-  --background: #f9fafb;
-  --background-secondary: #f3f4f6;
-  --background-tertiary: #e5e7eb;
-  --foreground: #111111;
-  --secondary-foreground: #666666;
-  --muted: #f3f4f6;
-  --muted-foreground: #999999;
+  --core-obsidian-black: #070f34;
+  --core-electric-navy: #0313a6;
+  --core-neon-violet: #9201cb;
+  --core-hot-magenta: #f715ab;
+  --core-cyber-teal: #34e5c3;
+  --core-terminal-green: #39ff14;
+
+  --background: #f4f6ff;
+  --background-secondary: #ffffff;
+  --background-tertiary: #e8ebff;
+  --foreground: #070f34;
+  --secondary-foreground: #2f3768;
+  --muted: #e8ebff;
+  --muted-foreground: #6e77a6;
   --card: #ffffff;
-  --card-foreground: #111111;
-  --border: #e5e7eb;
-  --border-strong: #d1d5db;
-  --primary: #00daff;
+  --card-foreground: #070f34;
+  --border: #d2d7ff;
+  --border-strong: #bcc3f0;
+  --primary: #0313a6;
   --primary-foreground: #ffffff;
-  --secondary: #f3f4f6;
-  --secondary-foreground: #111111;
-  --accent: #00daff;
+  --secondary: #e8ebff;
+  --secondary-foreground: #070f34;
+  --accent: #0313a6;
+  --accent-secondary: #9201cb;
+  --accent-tertiary: #f715ab;
   --accent-foreground: #ffffff;
-  --accent-hover: #00c4e6;
-  --accent-glow: rgba(0, 218, 255, 0.35);
-  --accent-subtle: rgba(0, 218, 255, 0.12);
-  --success: #2dd4bf;
-  --warning: #fbbf24;
-  --error: #cc3333;
-  --ring: #00e5ff;
+  --accent-hover: #020f88;
+  --accent-glow: rgba(3, 19, 166, 0.25);
+  --accent-subtle: rgba(3, 19, 166, 0.12);
+  --success: #0fbf4a;
+  --warning: #ffd60a;
+  --error: #ff3b3b;
+  --info: #34e5c3;
+  --ring: #0313a6;
+  --focus-ring: #0313a6;
+  --cta-primary: #9201cb;
+  --cta-secondary: #0313a6;
+  --destructive: #f715ab;
+  --terminal-green: #39ff14;
+  --glow-violet: 0 0 12px rgba(146, 1, 203, 0.4);
+  --glow-magenta: 0 0 12px rgba(247, 21, 171, 0.35);
+  --glow-green: 0 0 10px rgba(57, 255, 20, 0.4);
+  --shadow-soft: rgba(7, 15, 52, 0.12);
+  --overlay: rgba(7, 15, 52, 0.6);
+  --panel-edge: rgba(3, 19, 166, 0.14);
+  --panel-shadow: 0 10px 24px rgba(3, 19, 166, 0.08);
+  --panel-sheen: linear-gradient(180deg, rgba(3, 19, 166, 0.06), transparent 45%);
+  --background-texture:
+    linear-gradient(180deg, rgba(3, 19, 166, 0.05), transparent 42%),
+    linear-gradient(90deg, rgba(3, 19, 166, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(3, 19, 166, 0.05) 1px, transparent 1px);
   --radius: 8px;
   --spacing: 24px;
   --font-sans: 'Satoshi', 'General Sans', 'Inter', system-ui, sans-serif;
@@ -36,6 +63,7 @@
   --text-primary: var(--foreground);
   --text-secondary: var(--secondary-foreground);
   --text-tertiary: var(--muted-foreground);
+  --text-label: #7a83b2;
   --primary-color: var(--accent);
   --primary-hover: var(--accent);
   --primary-light: var(--accent-subtle);
@@ -60,12 +88,21 @@
   --container-max: 1200px;
 
   /* Semantic color tokens for status indicators */
-  --success-light: rgba(45, 212, 191, 0.12);
+  --success-light: rgba(15, 191, 74, 0.12);
   --success-color: var(--success);
-  --info-light: rgba(0, 229, 255, 0.12);
-  --info-color: var(--accent);
-  --warning-light: rgba(251, 191, 36, 0.12);
+  --info-light: rgba(52, 229, 195, 0.12);
+  --info-color: var(--info);
+  --warning-light: rgba(255, 214, 10, 0.16);
   --warning-color: var(--warning);
+  --error-light: rgba(255, 59, 59, 0.12);
+  --error-color: var(--error);
+
+  /* Chart + domain colors */
+  --chart-work: #0313a6;
+  --chart-projects: #9201cb;
+  --chart-life: #34e5c3;
+  --chart-learning: #ffd60a;
+  --chart-wellbeing: #f715ab;
 
   /* Priority badge tokens */
   --priority-high-bg: #fecaca;
@@ -80,35 +117,53 @@
 }
 
 .dark {
-  --background: #0b0f14;
-  --background-secondary: #11161d;
-  --background-tertiary: #151b23;
-  --foreground: #e2e8f0;
-  --secondary-foreground: #94a3b8;
-  --muted: #11161d;
-  --muted-foreground: #94a3b8;
-  --card: #0f141b;
-  --card-foreground: #e2e8f0;
-  --border: #1f2630;
-  --border-strong: #2a3340;
-  --primary: #00daff;
+  --background: #050814;
+  --background-secondary: #0d1340;
+  --background-tertiary: #141c66;
+  --foreground: #f2f4ff;
+  --secondary-foreground: #c4cbff;
+  --muted: #0d1340;
+  --muted-foreground: #8f98d9;
+  --card: #0d1340;
+  --card-foreground: #f2f4ff;
+  --border: #1b257a;
+  --border-strong: #2a36a3;
+  --primary: #0313a6;
   --primary-foreground: #ffffff;
-  --secondary: #11161d;
-  --secondary-foreground: #e2e8f0;
-  --accent: #00daff;
+  --secondary: #1b257a;
+  --secondary-foreground: #f2f4ff;
+  --accent: #9201cb;
+  --accent-secondary: #f715ab;
+  --accent-tertiary: #34e5c3;
   --accent-foreground: #ffffff;
-  --accent-hover: #00c4e6;
-  --accent-glow: rgba(0, 218, 255, 0.28);
-  --accent-subtle: rgba(0, 218, 255, 0.12);
-  --success: #2dd4bf;
-  --warning: #fbbf24;
-  --error: #cc3333;
-  --ring: #00e5ff;
+  --accent-hover: #7b01af;
+  --accent-glow: rgba(146, 1, 203, 0.6);
+  --accent-subtle: rgba(146, 1, 203, 0.18);
+  --success: #39ff14;
+  --warning: #ffd60a;
+  --error: #ff3b3b;
+  --info: #34e5c3;
+  --ring: #39ff14;
+  --focus-ring: #39ff14;
+  --cta-primary: #9201cb;
+  --cta-secondary: #0313a6;
+  --destructive: #f715ab;
+  --terminal-green: #39ff14;
+  --glow-violet: 0 0 12px rgba(146, 1, 203, 0.6);
+  --glow-magenta: 0 0 12px rgba(247, 21, 171, 0.6);
+  --glow-green: 0 0 10px rgba(57, 255, 20, 0.7);
+  --shadow-soft: rgba(0, 0, 0, 0.45);
+  --overlay: rgba(2, 6, 23, 0.72);
+  --panel-edge: rgba(255, 255, 255, 0.08);
+  --panel-shadow: 0 12px 28px rgba(2, 6, 23, 0.5);
+  --panel-sheen: none;
+  --background-texture: none;
   --card-background: var(--card);
   --border-color: var(--border);
   --text-primary: var(--foreground);
   --text-secondary: var(--secondary-foreground);
   --text-tertiary: var(--muted-foreground);
+  --text-label: #9aa3e1;
   --primary-color: var(--accent);
   --primary-hover: var(--accent);
   --primary-light: var(--accent-subtle);
@@ -133,12 +188,21 @@
   --container-max: 1200px;
 
   /* Semantic color tokens for status indicators */
-  --success-light: rgba(45, 212, 191, 0.12);
+  --success-light: rgba(57, 255, 20, 0.16);
   --success-color: var(--success);
-  --info-light: rgba(0, 229, 255, 0.12);
-  --info-color: var(--accent);
-  --warning-light: rgba(251, 191, 36, 0.12);
+  --info-light: rgba(52, 229, 195, 0.18);
+  --info-color: var(--info);
+  --warning-light: rgba(255, 214, 10, 0.18);
   --warning-color: var(--warning);
+  --error-light: rgba(255, 59, 59, 0.18);
+  --error-color: var(--error);
+
+  /* Chart + domain colors */
+  --chart-work: #34e5c3;
+  --chart-projects: #9201cb;
+  --chart-life: #39ff14;
+  --chart-learning: #ffd60a;
+  --chart-wellbeing: #f715ab;
 
   /* Priority badge tokens - adjusted for dark mode */
   --priority-high-bg: rgba(254, 202, 202, 0.2);

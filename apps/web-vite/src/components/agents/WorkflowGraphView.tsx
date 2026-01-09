@@ -5,6 +5,7 @@
  */
 
 import { useMemo } from 'react'
+import { useTheme } from '@/contexts/useTheme'
 import { ReactFlow, Background, Controls, type Edge, type Node } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { WorkflowGraph, WorkflowNodeType } from '@lifeos/agents'
@@ -19,14 +20,15 @@ const COLUMN_GAP = 60
 const ROW_GAP = 40
 
 const NODE_COLORS: Record<WorkflowNodeType, { background: string; border: string }> = {
-  agent: { background: '#e0f2fe', border: '#0ea5e9' },
-  tool: { background: '#fef9c3', border: '#eab308' },
-  human_input: { background: '#fee2e2', border: '#ef4444' },
-  join: { background: '#ede9fe', border: '#8b5cf6' },
-  end: { background: '#f3f4f6', border: '#9ca3af' },
+  agent: { background: 'var(--info-light)', border: 'var(--info)' },
+  tool: { background: 'var(--warning-light)', border: 'var(--warning)' },
+  human_input: { background: 'var(--error-light)', border: 'var(--error)' },
+  join: { background: 'var(--accent-subtle)', border: 'var(--accent-secondary)' },
+  end: { background: 'var(--background-secondary)', border: 'var(--border-strong)' },
 }
 
 export function WorkflowGraphView({ graph }: WorkflowGraphViewProps) {
+  const { theme } = useTheme()
   const { nodes, edges } = useMemo(() => {
     const nodeById = new Map(graph.nodes.map((node) => [node.id, node]))
     const depths = new Map<string, number>()
@@ -109,7 +111,7 @@ export function WorkflowGraphView({ graph }: WorkflowGraphViewProps) {
           padding: '10px 12px',
           fontSize: 12,
           background: color.background,
-          boxShadow: '0 6px 18px rgba(15, 23, 42, 0.08)',
+          boxShadow: '0 6px 18px var(--shadow-soft)',
         },
       }
     })
@@ -128,13 +130,20 @@ export function WorkflowGraphView({ graph }: WorkflowGraphViewProps) {
         target: edge.to,
         label: conditionLabel,
         animated: edge.condition.type === 'always',
-        style: { stroke: '#64748b' },
-        labelStyle: { fill: '#6b7280', fontSize: 11 },
+        style: { stroke: 'var(--border-strong)' },
+        labelStyle: { fill: 'var(--muted-foreground)', fontSize: 11 },
       }
     })
 
     return { nodes, edges }
   }, [graph])
+
+  const gridColor = useMemo(() => {
+    void theme
+    if (typeof window === 'undefined') return 'var(--border)'
+    const value = getComputedStyle(document.documentElement).getPropertyValue('--border').trim()
+    return value || 'var(--border)'
+  }, [theme])
 
   return (
     <div className="workflow-graph">
@@ -148,7 +157,7 @@ export function WorkflowGraphView({ graph }: WorkflowGraphViewProps) {
         zoomOnScroll
         panOnDrag
       >
-        <Background gap={24} size={1} color="#e5e7eb" />
+        <Background gap={24} size={1} color={gridColor} />
         <Controls showInteractive={false} />
       </ReactFlow>
     </div>

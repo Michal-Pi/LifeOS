@@ -9,6 +9,7 @@ import type { Editor } from '@tiptap/react'
 import { duplicateNode, deleteNode } from './nodeOperations'
 import { getTopLevelNodeAt } from './nodeDetection'
 import './BlockMenu.css'
+import { useDialog } from '@/contexts/useDialog'
 
 export interface BlockMenuProps {
   editor: Editor
@@ -19,6 +20,7 @@ export interface BlockMenuProps {
 }
 
 export function BlockMenu({ editor, nodePosition, isOpen, onClose, position }: BlockMenuProps) {
+  const { confirm } = useDialog()
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Compute node info during render instead of in effect
@@ -60,8 +62,14 @@ export function BlockMenu({ editor, nodePosition, isOpen, onClose, position }: B
     onClose()
   }
 
-  const handleDelete = () => {
-    if (confirm('Delete this block?')) {
+  const handleDelete = async () => {
+    const confirmed = await confirm({
+      title: 'Delete block',
+      description: 'Delete this block?',
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (confirmed) {
       deleteNode(editor, nodePosition)
       onClose()
     }

@@ -13,9 +13,10 @@ export interface NodeDividerProps {
   nodePosition: number
   nodeId: string
   onMenuOpen?: (position: number, event?: MouseEvent) => void
+  onInsertBlock?: (position: number) => void
 }
 
-export function NodeDivider({ nodePosition, nodeId, onMenuOpen }: NodeDividerProps) {
+export function NodeDivider({ nodePosition, nodeId, onMenuOpen, onInsertBlock }: NodeDividerProps) {
   const [isHovered, setIsHovered] = useState(false)
   const dividerRef = useRef<HTMLDivElement>(null)
 
@@ -45,39 +46,61 @@ export function NodeDivider({ nodePosition, nodeId, onMenuOpen }: NodeDividerPro
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="divider-line" />
-      <div
-        className="divider-handle"
-        {...attributes}
-        {...listeners}
-        onClick={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-          onMenuOpen?.(nodePosition, e.nativeEvent)
-        }}
-        onContextMenu={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          onMenuOpen?.(nodePosition, e.nativeEvent)
-        }}
-        title="Drag to reorder or click for menu"
-      >
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 12 12"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+      <div className="divider-controls">
+        <button
+          className="divider-add-button"
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            onInsertBlock?.(nodePosition)
+          }}
+          title="Add block"
+          type="button"
         >
-          <circle cx="2" cy="2" r="1" fill="currentColor" />
-          <circle cx="6" cy="2" r="1" fill="currentColor" />
-          <circle cx="10" cy="2" r="1" fill="currentColor" />
-          <circle cx="2" cy="6" r="1" fill="currentColor" />
-          <circle cx="6" cy="6" r="1" fill="currentColor" />
-          <circle cx="10" cy="6" r="1" fill="currentColor" />
-          <circle cx="2" cy="10" r="1" fill="currentColor" />
-          <circle cx="6" cy="10" r="1" fill="currentColor" />
-          <circle cx="10" cy="10" r="1" fill="currentColor" />
-        </svg>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+        <div
+          className="divider-handle"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            onMenuOpen?.(nodePosition, e.nativeEvent)
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onMenuOpen?.(nodePosition, e.nativeEvent)
+          }}
+          title="Drag to reorder or click for menu"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle cx="2" cy="2" r="1" fill="currentColor" />
+            <circle cx="6" cy="2" r="1" fill="currentColor" />
+            <circle cx="10" cy="2" r="1" fill="currentColor" />
+            <circle cx="2" cy="6" r="1" fill="currentColor" />
+            <circle cx="6" cy="6" r="1" fill="currentColor" />
+            <circle cx="10" cy="6" r="1" fill="currentColor" />
+            <circle cx="2" cy="10" r="1" fill="currentColor" />
+            <circle cx="6" cy="10" r="1" fill="currentColor" />
+            <circle cx="10" cy="10" r="1" fill="currentColor" />
+          </svg>
+        </div>
       </div>
     </div>
   )

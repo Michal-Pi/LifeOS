@@ -10,7 +10,7 @@
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px var(--shadow-soft);
   padding: 0.25rem;
   z-index: 1000;
   font-size: 0.875rem;
@@ -47,7 +47,7 @@
   font-size: 1rem;
   font-weight: 600;
   flex-shrink: 0;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }
 
 .command-menu-item.is-selected .command-icon {
@@ -71,13 +71,8 @@
 
 .command-description {
   font-size: 0.75rem;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* Dark mode adjustments */
-[data-theme='dark'] .command-menu {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }

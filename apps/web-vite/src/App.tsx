@@ -1,10 +1,11 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { lazy, Suspense, useEffect } from 'react'
 import { Toaster } from 'sonner'
-import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { TopNav } from './components/TopNav'
+import { useNotifications } from './hooks/useNotifications'
+import { Providers } from './components/Providers'
 
 // Global styles (if any, or import from theme.css)
 import './globals.css'
@@ -90,13 +91,22 @@ const WorkspaceDetailPage = lazyWithRetry(() =>
 // Loading fallback component
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-        <p className="mt-2 text-sm text-gray-600">Loading...</p>
+    <div className="page-loader">
+      <div className="page-loader__content">
+        <div className="page-loader__spinner" />
+        <p className="page-loader__label">Loading...</p>
       </div>
     </div>
   )
+}
+
+/**
+ * Notification Listener Component
+ * Listens for and displays notifications when user is authenticated
+ */
+function NotificationListener() {
+  useNotifications()
+  return null
 }
 
 function AppRoutes() {
@@ -140,204 +150,205 @@ function AppRoutes() {
   return (
     <>
       <Toaster position="top-right" richColors />
-      <AuthProvider>
-        <div className="app-container">
-          {!isLoginRoute && <TopNav />}
+      <NotificationListener />
+      <div className="app-container">
+        {!isLoginRoute && <TopNav />}
 
-          <div className={contentClass}>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/login" element={<LoginPage />} />
+        <div className={contentClass}>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<LoginPage />} />
 
-                {/* Protected Routes */}
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <TodayPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/today"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <TodayPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/calendar"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <CalendarPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/planner"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <PlannerPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                {/* Redirect old /todo route to /planner for backward compatibility */}
-                <Route
-                  path="/todo"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <PlannerPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/notes"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <NotesPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/learning"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <NotesPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/habits"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <HabitsPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/agents"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <AgentsPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/workspaces"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <WorkspacesPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/workspaces/:workspaceId"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <WorkspaceDetailPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/exercises"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <ExerciseLibraryPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/templates"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <WorkoutTemplatePage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/plan"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <WorkoutPlanPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <SettingsPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/review"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <WeeklyReviewPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Protected Routes */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <TodayPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/today"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <TodayPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/calendar"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <CalendarPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/planner"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <PlannerPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              {/* Redirect old /todo route to /planner for backward compatibility */}
+              <Route
+                path="/todo"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <PlannerPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notes"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <NotesPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/learning"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <NotesPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/habits"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <HabitsPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/agents"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <AgentsPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/workspaces"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <WorkspacesPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/workspaces/:workspaceId"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <WorkspaceDetailPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/exercises"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <ExerciseLibraryPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/templates"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <WorkoutTemplatePage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/plan"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <WorkoutPlanPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <SettingsPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/review"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <WeeklyReviewPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* Fallback for unknown routes */}
-                <Route
-                  path="*"
-                  element={
-                    <ProtectedRoute>
-                      <ErrorBoundary>
-                        <TodayPage />
-                      </ErrorBoundary>
-                    </ProtectedRoute>
-                  }
-                />
-              </Routes>
-            </Suspense>
-          </div>
+              {/* Fallback for unknown routes */}
+              <Route
+                path="*"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <TodayPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </Suspense>
         </div>
-      </AuthProvider>
+      </div>
     </>
   )
 }
 
 function App() {
   return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
+    <Providers>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </Providers>
   )
 }
 

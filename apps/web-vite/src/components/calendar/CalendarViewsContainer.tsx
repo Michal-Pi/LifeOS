@@ -22,6 +22,8 @@ import { useMemo } from 'react'
 import { MonthView } from '@/components/MonthView'
 import { WeeklyView } from '@/components/WeeklyView'
 import { AgendaView } from '@/components/AgendaView'
+import { DailyView } from '@/components/DailyView'
+import { getCalendarColors } from '@/components/calendar/calendarColors'
 
 type ViewType = 'daily' | 'weekly' | 'monthly' | 'agenda'
 
@@ -75,53 +77,6 @@ function getSyncStateDisplay(syncState?: SyncState): {
       return { label: 'Read-only', className: 'readonly', icon: '◎' }
     default:
       return { label: 'Local', className: 'local', icon: '○' }
-  }
-}
-
-/**
- * Adjust color brightness for light/dark variations
- * Positive percent = lighter, negative percent = darker
- */
-function adjustColor(hex: string, percent: number): string {
-  // Remove # if present
-  const color = hex.replace('#', '')
-
-  // Parse RGB
-  const r = parseInt(color.substring(0, 2), 16)
-  const g = parseInt(color.substring(2, 4), 16)
-  const b = parseInt(color.substring(4, 6), 16)
-
-  // Adjust brightness
-  const adjust = (c: number) => {
-    let adjusted: number
-    if (percent > 0) {
-      // Lighten: move toward white (255)
-      adjusted = Math.round(c + ((255 - c) * percent) / 100)
-    } else {
-      // Darken: move toward black (0)
-      adjusted = Math.round(c * (1 + percent / 100))
-    }
-    return Math.min(255, Math.max(0, adjusted))
-  }
-
-  const newR = adjust(r)
-  const newG = adjust(g)
-  const newB = adjust(b)
-
-  // Convert back to hex
-  const toHex = (n: number) => n.toString(16).padStart(2, '0')
-  return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`
-}
-
-/**
- * Get color variations for a calendar
- */
-function getCalendarColors(calendar: CanonicalCalendar | undefined) {
-  const baseColor = calendar?.lifeosColor ?? calendar?.color ?? '#4f46e5'
-  return {
-    light: adjustColor(baseColor, 40), // Lighter version
-    normal: baseColor, // Base color
-    dark: adjustColor(baseColor, -20), // Darker version
   }
 }
 
@@ -252,11 +207,14 @@ export function CalendarViewsContainer({
       )}
 
       {viewType === 'daily' && (
-        <div className="daily-view-placeholder">
-          <p className="section-label">Daily View</p>
-          <p>Daily view shows detailed events for the selected date in the timeline below.</p>
-          <p>Select a date from the month or week view to see its events.</p>
-        </div>
+        <DailyView
+          date={selectedMonthDate || today}
+          events={events}
+          instances={instances}
+          onEventSelect={onEventSelect}
+          selectedEventId={selectedEvent?.canonicalEventId}
+          calendarsById={calendarsById}
+        />
       )}
 
       {viewType === 'agenda' && (

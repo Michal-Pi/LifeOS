@@ -8,6 +8,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Note } from '@lifeos/notes'
 import type { JSONContent } from '@tiptap/core'
+import { sanitizeNoteContent } from '@/notes/noteContent'
 
 export interface UseNoteEditorOptions {
   note?: Note
@@ -38,7 +39,9 @@ export function useNoteEditor({
   onSave,
   onChange,
 }: UseNoteEditorOptions): UseNoteEditorReturn {
-  const [content, setContent] = useState<JSONContent | undefined>(note?.content as JSONContent)
+  const [content, setContent] = useState<JSONContent | undefined>(() =>
+    sanitizeNoteContent(note?.content as JSONContent)
+  )
   const [html, setHtml] = useState<string>(note?.contentHtml || '')
   const [isDirty, setIsDirty] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -123,10 +126,11 @@ export function useNoteEditor({
 
   // Update when note changes
   useEffect(() => {
-    setContent(note?.content)
+    const sanitized = sanitizeNoteContent(note?.content as JSONContent)
+    setContent(sanitized)
     setHtml(note?.contentHtml || '')
     setIsDirty(false)
-    initialContent.current = note?.content
+    initialContent.current = sanitized
 
     if (note?.updatedAtMs) {
       setLastSaved(new Date(note.updatedAtMs))

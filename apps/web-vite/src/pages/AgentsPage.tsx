@@ -18,6 +18,7 @@ import { AgentBuilderModal } from '@/components/agents/AgentBuilderModal'
 import { ToolBuilderModal } from '@/components/agents/ToolBuilderModal'
 import { TemplateSaveModal } from '@/components/agents/TemplateSaveModal'
 import { EmptyState } from '@/components/EmptyState'
+import { useDialog } from '@/contexts/useDialog'
 import { builtinTools } from '@/agents/builtinTools'
 import { agentTemplatePresets } from '@/agents/templatePresets'
 import type {
@@ -49,6 +50,7 @@ const downloadJson = (filename: string, data: unknown) => {
 }
 
 export function AgentsPage() {
+  const { confirm, alert: showAlert } = useDialog()
   const { agents, isLoading, loadAgents } = useAgentOperations()
   const {
     templates: agentTemplates,
@@ -169,7 +171,10 @@ export function AgentsPage() {
       }
     }
     if (createdCount === 0) {
-      window.alert('All presets already exist.')
+      await showAlert({
+        title: 'Presets already added',
+        description: 'All presets already exist.',
+      })
     }
   }
 
@@ -195,7 +200,10 @@ export function AgentsPage() {
       const parsed = JSON.parse(raw)
       const templates = Array.isArray(parsed) ? parsed : parsed.templates
       if (!Array.isArray(templates)) {
-        window.alert('Invalid template file. Expected a list of templates.')
+        await showAlert({
+          title: 'Import failed',
+          description: 'Invalid template file. Expected a list of templates.',
+        })
         return
       }
       const existingNames = new Set(agentTemplates.map((template) => template.name.toLowerCase()))
@@ -223,10 +231,16 @@ export function AgentsPage() {
           skippedCount += 1
         }
       }
-      window.alert(`Imported ${importedCount} templates. Skipped ${skippedCount}.`)
+      await showAlert({
+        title: 'Import complete',
+        description: `Imported ${importedCount} templates. Skipped ${skippedCount}.`,
+      })
     } catch (error) {
       console.error('Failed to import agent templates', error)
-      window.alert('Import failed. Please check the JSON format.')
+      await showAlert({
+        title: 'Import failed',
+        description: 'Import failed. Please check the JSON format.',
+      })
     }
   }
 
@@ -440,8 +454,14 @@ export function AgentsPage() {
                       Use Template
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm(`Delete template "${template.name}"?`)) {
+                      onClick={async () => {
+                        const confirmed = await confirm({
+                          title: 'Delete template',
+                          description: `Delete template "${template.name}"?`,
+                          confirmLabel: 'Delete',
+                          confirmVariant: 'danger',
+                        })
+                        if (confirmed) {
                           void deleteTemplate(template.templateId)
                         }
                       }}
@@ -507,8 +527,14 @@ export function AgentsPage() {
                       Edit
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm(`Delete tool "${tool.name}"?`)) {
+                      onClick={async () => {
+                        const confirmed = await confirm({
+                          title: 'Delete tool',
+                          description: `Delete tool "${tool.name}"?`,
+                          confirmLabel: 'Delete',
+                          confirmVariant: 'danger',
+                        })
+                        if (confirmed) {
                           void deleteTool(tool.toolId)
                         }
                       }}

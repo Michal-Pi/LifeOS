@@ -7,8 +7,10 @@ import { calculateWeightedProgress } from '@/lib/progress'
 import { HabitsAndMindStep } from '@/components/weeklyReview/HabitsAndMindStep'
 import { WorkoutStats } from '@/components/training/WorkoutStats'
 import { startOfWeek, endOfWeek, format } from 'date-fns'
+import { useDialog } from '@/contexts/useDialog'
 
 export function WeeklyReviewPage() {
+  const { alert: showAlert } = useDialog()
   const { user } = useAuth()
   const userId = user?.uid ?? ''
   const { tasks, projects, loading, loadData } = useTodoOperations({ userId })
@@ -170,7 +172,15 @@ export function WeeklyReviewPage() {
             Next
           </button>
         ) : (
-          <button className="primary-button success" onClick={() => alert('Review Complete!')}>
+          <button
+            className="primary-button success"
+            onClick={async () => {
+              await showAlert({
+                title: 'Review complete',
+                description: 'Review Complete!',
+              })
+            }}
+          >
             Finish Review
           </button>
         )}

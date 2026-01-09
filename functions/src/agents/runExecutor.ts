@@ -249,7 +249,32 @@ async function executeRun(params: {
       console.log(
         `Quota alert for user ${userId}: ${alert.type} at ${alert.threshold}% (${alert.used}/${alert.limit})`
       )
-      // TODO: Future - send in-app notification
+
+      // Create in-app notification
+      try {
+        const notificationRef = db.collection('users').doc(userId).collection('notifications').doc()
+
+        const notification = {
+          type: 'quota_alert',
+          title: `Quota Alert: ${alert.type === 'runs' ? 'Runs' : alert.type === 'tokens' ? 'Tokens' : 'Cost'} at ${alert.threshold}%`,
+          message: `You've used ${alert.used} of ${alert.limit} ${alert.type === 'runs' ? 'runs' : alert.type === 'tokens' ? 'tokens' : 'dollars'} (${alert.threshold}% of your daily limit).`,
+          data: {
+            alertType: alert.type,
+            threshold: alert.threshold,
+            used: alert.used,
+            limit: alert.limit,
+          },
+          read: false,
+          createdAtMs: Date.now(),
+          createdAt: new Date().toISOString(),
+        }
+
+        await notificationRef.set(notification)
+        console.log(`Created quota alert notification for user ${userId}`)
+      } catch (error) {
+        console.error(`Failed to create quota alert notification:`, error)
+        // Don't throw - notification failure shouldn't break the run
+      }
     }
 
     // Update run with successful result

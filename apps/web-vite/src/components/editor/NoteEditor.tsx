@@ -10,12 +10,14 @@
  */
 
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { TipTapEditor } from './TipTapEditor'
 import { useNoteEditor } from '@/hooks/useNoteEditor'
 import { useAttachments } from '@/hooks/useAttachments'
 import { ProjectLinker } from '@/components/notes/ProjectLinker'
 import { OKRLinker } from '@/components/notes/OKRLinker'
 import { AttachmentUploader } from '@/components/notes/AttachmentUploader'
+import { TagEditor } from '@/components/notes/TagEditor'
 import type { Note, AttachmentId } from '@lifeos/notes'
 
 export interface NoteEditorProps {
@@ -28,10 +30,13 @@ export interface NoteEditorProps {
   onProjectsChange?: (projectIds: string[]) => Promise<void>
   onOKRsChange?: (okrIds: string[]) => Promise<void>
   onAttachmentsChange?: (attachmentIds: AttachmentId[]) => Promise<void>
+  onTagsChange?: (tags: string[]) => Promise<void>
   showProjectLinker?: boolean
   showOKRLinker?: boolean
   showAttachments?: boolean
+  showTags?: boolean
   className?: string
+  statusContainerId?: string
 }
 
 export function NoteEditor({
@@ -44,10 +49,13 @@ export function NoteEditor({
   onProjectsChange,
   onOKRsChange,
   onAttachmentsChange,
+  onTagsChange,
   showProjectLinker = true,
   showOKRLinker = true,
   showAttachments = true,
+  showTags = true,
   className = '',
+  statusContainerId,
 }: NoteEditorProps) {
   const { content, isDirty, isSaving, lastSaved, error, handleContentChange, handleHtmlChange } =
     useNoteEditor({
@@ -65,12 +73,22 @@ export function NoteEditor({
     loadAttachments,
   } = useAttachments()
 
+  const [statusContainer, setStatusContainer] = React.useState<HTMLElement | null>(null)
+
+  React.useEffect(() => {
+    if (!statusContainerId) {
+      setStatusContainer(null)
+      return
+    }
+    setStatusContainer(document.getElementById(statusContainerId))
+  }, [statusContainerId])
+
   // Load attachments when note changes
   React.useEffect(() => {
-    if (note?.noteId) {
+    if (showAttachments && note?.noteId) {
       loadAttachments(note.noteId)
     }
-  }, [note?.noteId, loadAttachments])
+  }, [note?.noteId, loadAttachments, showAttachments])
 
   // Handle project changes
   const handleProjectsChange = async (projectIds: string[]) => {
@@ -83,6 +101,12 @@ export function NoteEditor({
   const handleOKRsChange = async (okrIds: string[]) => {
     if (onOKRsChange) {
       await onOKRsChange(okrIds)
+    }
+  }
+
+  const handleTagsChange = async (tags: string[]) => {
+    if (onTagsChange) {
+      await onTagsChange(tags)
     }
   }
 
@@ -114,19 +138,28 @@ export function NoteEditor({
 
   return (
     <div className={`note-editor ${className}`}>
-      {/* Save status indicator */}
-      <div className="save-status" aria-live="polite" aria-atomic="true">
-        {isSaving && <span className="saving">Saving...</span>}
-        {error && (
-          <span className="error" role="alert">
-            Save failed: {error.message}
-          </span>
-        )}
-        {!isSaving && !error && isDirty && <span className="unsaved">Unsaved changes</span>}
-        {!isSaving && !error && !isDirty && lastSaved && (
-          <span className="saved">Saved {formatLastSaved(lastSaved)}</span>
-        )}
-      </div>
+      {(() => {
+        const statusNode = (
+          <div className="save-status" aria-live="polite" aria-atomic="true">
+            {isSaving && <span className="saving">Saving...</span>}
+            {error && (
+              <span className="error" role="alert">
+                Save failed: {error.message}
+              </span>
+            )}
+            {!isSaving && !error && isDirty && <span className="unsaved">Unsaved changes</span>}
+            {!isSaving && !error && !isDirty && lastSaved && (
+              <span className="saved">Saved {formatLastSaved(lastSaved)}</span>
+            )}
+          </div>
+        )
+
+        if (statusContainer) {
+          return createPortal(statusNode, statusContainer)
+        }
+
+        return statusNode
+      })()}
 
       {/* Editor */}
       <TipTapEditor
@@ -178,6 +211,13 @@ export function NoteEditor({
         </div>
       )}
 
+      {/* Tags */}
+      {showTags && note && editable && (
+        <div className="editor-section">
+          <TagEditor tags={note.tags || []} onChange={handleTagsChange} />
+        </div>
+      )}
+
       <style>{`
         .note-editor {
           display: flex;
@@ -185,18 +225,16 @@ export function NoteEditor({
           gap: 1.5rem;
           height: 100%;
           width: 100%;
+          min-height: 0;
+          position: relative;
         }
 
         .save-status {
-          padding: 0.5rem 0;
-          font-size: 0.75rem;
+          font-size: 0.7rem;
           text-align: right;
-          color: var(--muted-foreground);
-          position: sticky;
-          top: 0;
-          background: var(--card);
-          z-index: 10;
-          margin-bottom: 0.5rem;
+          color: var(--text-secondary);
+          margin: 0;
+          pointer-events: none;
         }
 
         .saving {
@@ -204,21 +242,21 @@ export function NoteEditor({
         }
 
         .saved {
-          color: var(--success, #2dd4bf);
+          color: var(--success);
         }
 
         .unsaved {
-          color: var(--warning, #fbbf24);
+          color: var(--warning);
         }
 
         .error {
-          color: var(--error, #cc3333);
+          color: var(--error);
           font-weight: 500;
         }
 
         .editor-content {
           flex: 1;
-          min-height: 400px;
+          min-height: 0;
         }
 
         .editor-section {
