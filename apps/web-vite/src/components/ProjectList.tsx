@@ -1,34 +1,34 @@
 import { useState } from 'react'
-import type { CanonicalProject, CanonicalMilestone, CanonicalTask } from '@/types/todo'
+import type { CanonicalProject, CanonicalChapter, CanonicalTask } from '@/types/todo'
 import { calculateWeightedProgress } from '@/lib/progress'
 import { getProjectColor } from '@/config/domainColors'
 
 interface ProjectListProps {
   projects: CanonicalProject[]
-  milestones: CanonicalMilestone[]
+  chapters: CanonicalChapter[]
   tasks: CanonicalTask[]
   onSelectProject: (projectId: string) => void
-  onSelectMilestone: (milestoneId: string) => void
+  onSelectChapter: (chapterId: string) => void
   onSelectOtherTasks: () => void
   onClearSelection: () => void
   selectedProjectId?: string
-  selectedMilestoneId?: string
+  selectedChapterId?: string
 }
 
 export function ProjectList({
   projects,
-  milestones,
+  chapters,
   tasks,
   onSelectProject,
-  onSelectMilestone,
+  onSelectChapter,
   onSelectOtherTasks,
   onClearSelection,
   selectedProjectId,
-  selectedMilestoneId,
+  selectedChapterId,
 }: ProjectListProps) {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
 
-  const isOtherTasksSelected = !selectedProjectId && !selectedMilestoneId
+  const isOtherTasksSelected = !selectedProjectId && !selectedChapterId
 
   const toggleProject = (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -54,110 +54,121 @@ export function ProjectList({
     })
   }
 
-  // Calculate milestone completion stats
-  const getMilestoneStats = (projectId: string) => {
-    const projectMilestones = milestones.filter((m) => m.projectId === projectId)
-    const completedMilestones = projectMilestones.filter((milestone) => {
-      const milestoneTasks = tasks.filter((t) => t.milestoneId === milestone.id)
-      if (milestoneTasks.length === 0) return false
-      const hasCompletedTask = milestoneTasks.some((t) => t.completed)
-      const hasOpenTask = milestoneTasks.some((t) => !t.completed)
+  // Calculate chapter completion stats
+  const getChapterStats = (projectId: string) => {
+    const projectChapters = chapters.filter((m) => m.projectId === projectId)
+    const completedChapters = projectChapters.filter((chapter) => {
+      const chapterTasks = tasks.filter((t) => t.chapterId === chapter.id)
+      if (chapterTasks.length === 0) return false
+      const hasCompletedTask = chapterTasks.some((t) => t.completed)
+      const hasOpenTask = chapterTasks.some((t) => !t.completed)
       return hasCompletedTask && !hasOpenTask
     })
     return {
-      completed: completedMilestones.length,
-      total: projectMilestones.length,
+      completed: completedChapters.length,
+      total: projectChapters.length,
     }
   }
 
   return (
-    <div className="project-list">
-      <div className="sidebar-header">
-        <h3>Projects</h3>
-        {(selectedProjectId || selectedMilestoneId) && (
-          <button className="ghost-button-small" onClick={onClearSelection} title="Clear selection">
-            Clear
-          </button>
-        )}
-      </div>
-
-      <ul className="project-tree">
-        {projects.map((project) => {
-          const projectMilestones = milestones.filter((m) => m.projectId === project.id)
-          const isExpanded = expandedProjects.has(project.id)
-          const isSelected = selectedProjectId === project.id
-          const milestoneStats = getMilestoneStats(project.id)
-
-          const { progress } = calculateWeightedProgress(
-            tasks.filter((t) => t.projectId === project.id)
-          )
-
-          const projectColor = getProjectColor(project.color, project.domain)
-
-          return (
-            <li key={project.id} className="project-item">
-              <div
-                className={`project-row ${isSelected ? 'selected' : ''}`}
-                onClick={() => handleProjectClick(project.id)}
+    <>
+      <div className="project-list">
+        <div className="sidebar-header">
+          <h3>Projects</h3>
+          <div className="header-actions">
+            {(selectedProjectId || selectedChapterId) && (
+              <button
+                className="ghost-button-small"
+                onClick={onClearSelection}
+                title="Clear selection"
               >
-                <div
-                  className="project-color-indicator"
-                  style={{ backgroundColor: projectColor }}
-                />
-                <button
-                  className="expand-toggle"
-                  onClick={(e) => toggleProject(project.id, e)}
-                  style={{ visibility: projectMilestones.length > 0 ? 'visible' : 'hidden' }}
-                >
-                  {isExpanded ? '▼' : '▶'}
-                </button>
-                <span className="project-title">{project.title}</span>
-                <div className="project-badges">
-                  {projectMilestones.length > 0 && (
-                    <span className="milestone-badge" title="Milestones: completed/total">
-                      {milestoneStats.completed}/{milestoneStats.total}
-                    </span>
-                  )}
-                  {tasks.some((t) => t.projectId === project.id) && (
-                    <div className="mini-progress-bar" title={`${Math.round(progress)}% complete`}>
-                      <div className="mini-progress-fill" style={{ width: `${progress}%` }} />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {isExpanded && projectMilestones.length > 0 && (
-                <ul className="milestone-list">
-                  {projectMilestones.map((milestone) => (
-                    <li key={milestone.id}>
-                      <button
-                        className={`milestone-row ${selectedMilestoneId === milestone.id ? 'selected' : ''}`}
-                        onClick={() => onSelectMilestone(milestone.id)}
-                      >
-                        <span className="milestone-icon">◆</span>
-                        <span className="milestone-title">{milestone.title}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          )
-        })}
-
-        {/* Other tasks item at the bottom */}
-        <li className="project-item">
-          <div
-            className={`project-row other-tasks-row ${isOtherTasksSelected ? 'selected' : ''}`}
-            onClick={onSelectOtherTasks}
-          >
-            <span className="project-title">Other tasks</span>
-            <span className="task-count">
-              {tasks.filter((t) => !t.projectId && !t.archived).length}
-            </span>
+                Clear
+              </button>
+            )}
           </div>
-        </li>
-      </ul>
-    </div>
+        </div>
+
+        <ul className="project-tree">
+          {projects.map((project) => {
+            const projectChapters = chapters.filter((m) => m.projectId === project.id)
+            const isExpanded = expandedProjects.has(project.id)
+            const isSelected = selectedProjectId === project.id
+            const chapterStats = getChapterStats(project.id)
+
+            const { progress } = calculateWeightedProgress(
+              tasks.filter((t) => t.projectId === project.id)
+            )
+
+            const projectColor = getProjectColor(project.color, project.domain)
+
+            return (
+              <li key={project.id} className="project-item">
+                <div
+                  className={`project-row ${isSelected ? 'selected' : ''}`}
+                  onClick={() => handleProjectClick(project.id)}
+                >
+                  <div
+                    className="project-color-indicator"
+                    style={{ backgroundColor: projectColor }}
+                  />
+                  <button
+                    className="expand-toggle"
+                    onClick={(e) => toggleProject(project.id, e)}
+                    style={{ visibility: projectChapters.length > 0 ? 'visible' : 'hidden' }}
+                  >
+                    {isExpanded ? '▼' : '▶'}
+                  </button>
+                  <span className="project-title">{project.title}</span>
+                  <div className="project-badges">
+                    {projectChapters.length > 0 && (
+                      <span className="chapter-badge" title="Chapters: completed/total">
+                        {chapterStats.completed}/{chapterStats.total}
+                      </span>
+                    )}
+                    {tasks.some((t) => t.projectId === project.id) && (
+                      <div
+                        className="mini-progress-bar"
+                        title={`${Math.round(progress)}% complete`}
+                      >
+                        <div className="mini-progress-fill" style={{ width: `${progress}%` }} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {isExpanded && projectChapters.length > 0 && (
+                  <ul className="chapter-list">
+                    {projectChapters.map((chapter) => (
+                      <li key={chapter.id}>
+                        <button
+                          className={`chapter-row ${selectedChapterId === chapter.id ? 'selected' : ''}`}
+                          onClick={() => onSelectChapter(chapter.id)}
+                        >
+                          <span className="chapter-icon">◆</span>
+                          <span className="chapter-title">{chapter.title}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            )
+          })}
+
+          {/* Other tasks item at the bottom */}
+          <li className="project-item">
+            <div
+              className={`project-row other-tasks-row ${isOtherTasksSelected ? 'selected' : ''}`}
+              onClick={onSelectOtherTasks}
+            >
+              <span className="project-title">Other tasks</span>
+              <span className="task-count">
+                {tasks.filter((t) => !t.projectId && !t.archived).length}
+              </span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </>
   )
 }

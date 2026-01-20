@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { createLogger } from '@lifeos/core'
 
 const logger = createLogger('ProjectFormModal')
-import type { CanonicalProject, CanonicalMilestone, Domain } from '@/types/todo'
+import type { CanonicalProject, CanonicalChapter, Domain } from '@/types/todo'
 import { generateId } from '@/lib/idGenerator'
 import { Select, type SelectOption } from '@/components/Select'
 import { ColorPicker } from '@/components/ColorPicker'
 import { PROJECT_COLOR_PALETTE } from '@/config/domainColors'
+import { MarkdownImportModal } from './MarkdownImportModal'
 
 interface ProjectFormModalProps {
   isOpen: boolean
@@ -14,9 +15,11 @@ interface ProjectFormModalProps {
   onSave: (
     project: Omit<CanonicalProject, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ) => Promise<string>
-  onSaveMilestone?: (
-    milestone: Omit<CanonicalMilestone, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  onSaveChapter?: (
+    chapter: Omit<CanonicalChapter, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ) => Promise<void>
+  onImportProjects?: () => void
+  onImportComplete?: () => void
 }
 
 const DOMAIN_OPTIONS: SelectOption[] = [
@@ -31,7 +34,9 @@ export function ProjectFormModal({
   isOpen,
   onClose,
   onSave,
-  onSaveMilestone,
+  onSaveChapter,
+  onImportProjects,
+  onImportComplete,
 }: ProjectFormModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -39,8 +44,18 @@ export function ProjectFormModal({
   const [color, setColor] = useState<string>('')
   const [objective, setObjective] = useState('')
   const [keyResults, setKeyResults] = useState('')
-  const [milestones, setMilestones] = useState<string[]>([''])
+  const [chapters, setChapters] = useState<string[]>([''])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showBulkImport, setShowBulkImport] = useState(false)
+
+  // Single import handler that calls onImportProjects when provided, otherwise opens internal modal
+  const handleImportClick = () => {
+    if (onImportProjects) {
+      onImportProjects()
+    } else {
+      setShowBulkImport(true)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,7 +63,7 @@ export function ProjectFormModal({
 
     setIsSubmitting(true)
     try {
-      // Create project first (returns project ID for milestone association)
+      // Create project first (returns project ID for chapter association)
       const projectId = await onSave({
         title: title.trim(),
         description: description.trim(),
@@ -64,12 +79,12 @@ export function ProjectFormModal({
         archived: false,
       })
 
-      // Create milestones if any are provided
-      if (onSaveMilestone && projectId) {
-        const validMilestones = milestones.filter((m) => m.trim())
-        for (const milestoneTitle of validMilestones) {
-          await onSaveMilestone({
-            title: milestoneTitle.trim(),
+      // Create chapters if any are provided
+      if (onSaveChapter && projectId) {
+        const validChapters = chapters.filter((m) => m.trim())
+        for (const chapterTitle of validChapters) {
+          await onSaveChapter({
+            title: chapterTitle.trim(),
             projectId,
             description: '',
             archived: false,
@@ -85,7 +100,7 @@ export function ProjectFormModal({
       setColor('')
       setObjective('')
       setKeyResults('')
-      setMilestones([''])
+      setChapters([''])
     } catch (error) {
       logger.error('Failed to create project:', error)
     } finally {
@@ -93,18 +108,18 @@ export function ProjectFormModal({
     }
   }
 
-  const addMilestone = () => {
-    setMilestones([...milestones, ''])
+  const addChapter = () => {
+    setChapters([...chapters, ''])
   }
 
-  const removeMilestone = (index: number) => {
-    setMilestones(milestones.filter((_, i) => i !== index))
+  const removeChapter = (index: number) => {
+    setChapters(chapters.filter((_, i) => i !== index))
   }
 
-  const updateMilestone = (index: number, value: string) => {
-    const updated = [...milestones]
+  const updateChapter = (index: number, value: string) => {
+    const updated = [...chapters]
     updated[index] = value
-    setMilestones(updated)
+    setChapters(updated)
   }
 
   if (!isOpen) return null
@@ -113,7 +128,16 @@ export function ProjectFormModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content project-form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>New Project</h2>
+          <div>
+            <h2>New Project</h2>
+            <button
+              type="button"
+              className="import-projects-link"
+              onClick={handleImportClick}
+            >
+              Import Projects
+            </button>
+          </div>
           <button className="close-button" onClick={onClose}>
             ×
           </button>
@@ -176,30 +200,30 @@ export function ProjectFormModal({
 
           <div className="form-group">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label>Milestones (Optional)</label>
+              <label>Chapters (Optional)</label>
               <button
                 type="button"
                 className="ghost-button-small"
-                onClick={addMilestone}
+                onClick={addChapter}
                 style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
               >
                 + Add
               </button>
             </div>
-            {milestones.map((milestone, index) => (
+            {chapters.map((chapter, index) => (
               <div key={index} style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                 <input
                   type="text"
-                  value={milestone}
-                  onChange={(e) => updateMilestone(index, e.target.value)}
-                  placeholder={`Milestone ${index + 1}`}
+                  value={chapter}
+                  onChange={(e) => updateChapter(index, e.target.value)}
+                  placeholder={`Chapter ${index + 1}`}
                   style={{ flex: 1 }}
                 />
-                {milestones.length > 1 && (
+                {chapters.length > 1 && (
                   <button
                     type="button"
                     className="ghost-button-small"
-                    onClick={() => removeMilestone(index)}
+                    onClick={() => removeChapter(index)}
                     style={{ padding: '0.5rem' }}
                   >
                     ×
@@ -218,7 +242,46 @@ export function ProjectFormModal({
             </button>
           </div>
         </form>
+
+        <style>{`
+          .project-form-modal .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+          }
+
+          .project-form-modal .modal-header > div {
+            flex: 1;
+          }
+
+          .import-projects-link {
+            margin-top: 0.25rem;
+            padding: 0;
+            background: none;
+            border: none;
+            font-size: 0.875rem;
+            color: var(--accent);
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color var(--motion-fast) var(--motion-ease);
+          }
+
+          .import-projects-link:hover {
+            color: var(--accent-hover);
+          }
+        `}</style>
       </div>
+
+      <MarkdownImportModal
+        isOpen={showBulkImport}
+        onClose={() => setShowBulkImport(false)}
+        onImportComplete={() => {
+          setShowBulkImport(false)
+          if (onImportComplete) {
+            onImportComplete()
+          }
+        }}
+      />
     </div>
   )
 }
