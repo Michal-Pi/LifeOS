@@ -13,6 +13,7 @@ import type {
   RunId,
   Workspace,
   WorkspaceId,
+  WorkflowState,
 } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore'
@@ -329,10 +330,16 @@ async function executeRun(params: {
         synthesizedFindings?: string
         integratedAtMs?: number
       } | null => {
-        const requestId = workflowState?.pendingResearchRequestId
-        const outputKey = workflowState?.pendingResearchOutputKey
+        const workflowWithResearch = workflowState as
+          | (WorkflowState & {
+              pendingResearchRequestId?: string
+              pendingResearchOutputKey?: string
+            })
+          | undefined
+        const requestId = workflowWithResearch?.pendingResearchRequestId
+        const outputKey = workflowWithResearch?.pendingResearchOutputKey
         if (!requestId || !outputKey) return null
-        const output = workflowState.namedOutputs?.[outputKey]
+        const output = workflowWithResearch?.namedOutputs?.[outputKey]
         if (!output || typeof output !== 'object' || !('requestId' in output)) {
           return null
         }

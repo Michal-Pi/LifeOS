@@ -744,6 +744,15 @@ const getDeepResearchRequestId = (
   return null
 }
 
+type WorkflowStateWithResearch = WorkflowState & {
+  pendingResearchRequestId?: string
+  pendingResearchOutputKey?: string
+}
+
+type ResearchRequestConfig = NonNullable<WorkflowNode['requestConfig']> & {
+  context?: Record<string, unknown>
+}
+
 export async function executeGraphWorkflow(
   workspace: Workspace,
   agents: AgentConfig[],
@@ -769,7 +778,7 @@ export async function executeGraphWorkflow(
 
   const agentsById = new Map<string, AgentConfig>(agents.map((agent) => [agent.agentId, agent]))
 
-  const workflowState: WorkflowState = {
+  const workflowState: WorkflowStateWithResearch = {
     currentNodeId: run.workflowState?.currentNodeId,
     pendingNodes: run.workflowState?.pendingNodes ?? [graphDef.startNodeId],
     visitedCount: run.workflowState?.visitedCount ?? {},
@@ -907,20 +916,20 @@ export async function executeGraphWorkflow(
             throw new Error(`Research request node ${nodeId} is missing requestConfig`)
           }
 
-          const topic = node.requestConfig.topic.trim()
-          const questions = normalizeResearchQuestions(node.requestConfig.questions ?? [])
-          const priorityInput = node.requestConfig.priority ?? 'medium'
+          const requestConfig = node.requestConfig as ResearchRequestConfig
+          const topic = requestConfig.topic.trim()
+          const questions = normalizeResearchQuestions(requestConfig.questions ?? [])
+          const priorityInput = requestConfig.priority ?? 'medium'
           const priority = ['low', 'medium', 'high', 'critical'].includes(priorityInput)
             ? (priorityInput as DeepResearchRequest['priority'])
             : 'medium'
           const estimatedTime =
-            typeof node.requestConfig.estimatedTime === 'string' &&
-            node.requestConfig.estimatedTime.trim()
-              ? node.requestConfig.estimatedTime.trim()
+            typeof requestConfig.estimatedTime === 'string' && requestConfig.estimatedTime.trim()
+              ? requestConfig.estimatedTime.trim()
               : undefined
           const extraContext =
-            node.requestConfig.context && typeof node.requestConfig.context === 'object'
-              ? node.requestConfig.context
+            requestConfig.context && typeof requestConfig.context === 'object'
+              ? requestConfig.context
               : undefined
 
           if (!topic) {
@@ -985,7 +994,7 @@ export async function executeGraphWorkflow(
           workflowState.namedOutputs![outputKey] = request
           await addWorkflowStep({ node, output, startedAtMs, completedAtMs: Date.now() })
 
-          if (node.requestConfig.waitForCompletion && request.status !== 'completed') {
+          if (requestConfig.waitForCompletion && request.status !== 'completed') {
             workflowState.currentNodeId = nodeId
             workflowState.pendingNodes = [nodeId]
             workflowState.pendingResearchRequestId = request.requestId
