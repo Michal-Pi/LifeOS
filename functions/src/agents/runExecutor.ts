@@ -5,33 +5,35 @@
  * Supports both single-agent execution and multi-agent workflows.
  */
 
-import type { Run, Workspace } from '@lifeos/agents'
+import { executeExpertCouncilUsecase } from '@lifeos/agents'
+import type {
+  DeepResearchRequest,
+  ExecutionMode,
+  Run,
+  RunId,
+  Workspace,
+  WorkspaceId,
+} from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
-import { defineSecret } from 'firebase-functions/params'
 import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore'
 
 import { wrapError } from './errorHandler.js'
+import {
+  buildExpertCouncilContextHash,
+  createExpertCouncilPipeline,
+  createExpertCouncilRepository,
+} from './expertCouncil.js'
 import { buildConversationContext } from './messageStore.js'
+import { loadProviderKeys, OPENAI_API_KEY, ANTHROPIC_API_KEY } from './providerKeys.js'
 import { checkQuota, updateQuota, shouldSendQuotaAlert } from './quotaManager.js'
 import { checkRunRateLimit, recordRunUsage } from './rateLimiter.js'
 import { createRunEventWriter } from './runEvents.js'
 import { loadToolRegistryForUser } from './toolExecutor.js'
 import { executeWorkflow } from './workflowExecutor.js'
 
-type ProviderKeys = {
-  openai?: string
-  anthropic?: string
-  google?: string
-  grok?: string
-}
-
 type MemorySettings = {
   memoryMessageLimit?: number
 }
-
-// Optional fallback secrets (only used if user has not set their own key)
-const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY')
-const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY')
 
 // Function configuration (matching existing patterns)
 const FUNCTION_CONFIG = {
@@ -100,7 +102,8 @@ export const onRunUpdated = onDocumentUpdated(
     const after = snapshot.after.data() as Run
     const { userId, workspaceId, runId } = event.params
 
-    if (before.status !== 'waiting_for_input' || after.status !== 'pending') {
+    const resumableStatuses = new Set<Run['status']>(['waiting_for_input', 'paused'])
+    if (!resumableStatuses.has(before.status) || after.status !== 'pending') {
       return
     }
 
@@ -150,10 +153,6 @@ async function executeRun(params: {
     }
     const workspace = workspaceDoc.data() as Workspace
 
-    if (!workspace.agentIds || workspace.agentIds.length === 0) {
-      throw new Error('No agents configured in workspace')
-    }
-
     const providerKeys = await loadProviderKeys(userId)
     const memorySettings = await loadMemorySettings(userId)
     const toolRegistry = await loadToolRegistryForUser(userId)
@@ -183,6 +182,92 @@ async function executeRun(params: {
         ...run.context,
         ...(conversationHistory ? { conversationHistory } : {}),
       },
+    }
+    const contextHash = buildExpertCouncilContextHash(
+      runWithContext.context as Record<string, unknown>
+    )
+
+    const expertCouncilConfig = workspace.expertCouncilConfig
+    if (expertCouncilConfig?.enabled) {
+      try {
+        const modeCandidate =
+          runWithContext.context &&
+          typeof runWithContext.context === 'object' &&
+          typeof (runWithContext.context as Record<string, unknown>).expertCouncilMode === 'string'
+            ? ((runWithContext.context as Record<string, unknown>).expertCouncilMode as string)
+            : undefined
+        const modeOverride =
+          modeCandidate && ['full', 'quick', 'single', 'custom'].includes(modeCandidate)
+            ? (modeCandidate as ExecutionMode)
+            : undefined
+
+        const repository = createExpertCouncilRepository()
+        const pipeline = createExpertCouncilPipeline({
+          apiKeys: providerKeys,
+          context: runWithContext.context,
+          eventWriter,
+          workspaceId,
+        })
+
+        const executeCouncil = executeExpertCouncilUsecase(repository, pipeline)
+        const turn = await executeCouncil(
+          userId,
+          runId as RunId,
+          runWithContext.goal,
+          expertCouncilConfig,
+          modeOverride,
+          workspaceId as WorkspaceId,
+          contextHash
+        )
+
+        const totalTokensUsed =
+          turn.stage1.responses.reduce((sum, response) => sum + (response.tokensUsed ?? 0), 0) +
+          turn.stage2.reviews.reduce((sum, review) => sum + (review.tokensUsed ?? 0), 0) +
+          (turn.stage3.tokensUsed ?? 0)
+
+        await recordRunUsage(userId, totalTokensUsed, turn.totalCost)
+
+        const firstProvider = turn.stage1.responses[0]?.provider ?? 'openai'
+        await updateQuota(userId, firstProvider, totalTokensUsed, turn.totalCost)
+
+        const alert = await shouldSendQuotaAlert(userId)
+        if (alert) {
+          console.log(
+            `Quota alert for user ${userId}: ${alert.type} at ${alert.threshold}% (${alert.used}/${alert.limit})`
+          )
+        }
+
+        await runRef.update({
+          status: 'completed',
+          output: turn.stage3.finalResponse,
+          tokensUsed: totalTokensUsed,
+          estimatedCost: turn.totalCost,
+          totalSteps: 3,
+          currentStep: 3,
+          completedAtMs: Date.now(),
+        })
+
+        await eventWriter.writeEvent({
+          type: 'final',
+          workspaceId,
+          output: turn.stage3.finalResponse,
+          status: 'completed',
+        })
+
+        console.log(`Expert Council completed for run ${runId}`)
+        return
+      } catch (error) {
+        console.error(`Expert Council failed for run ${runId}, falling back to workflow:`, error)
+        await eventWriter.writeEvent({
+          type: 'status',
+          workspaceId,
+          status: 'expert_council_failed_fallback',
+        })
+      }
+    }
+
+    if (!workspace.agentIds || workspace.agentIds.length === 0) {
+      throw new Error('No agents configured in workspace')
     }
 
     // Execute workflow with multi-agent orchestration
@@ -232,6 +317,83 @@ async function executeRun(params: {
       })
 
       console.log(`Run ${runId} is waiting for user input.`)
+      return
+    }
+
+    if (result.status === 'paused') {
+      const extractDeepResearchContext = (
+        workflowState?: Run['workflowState']
+      ): {
+        requestId: string
+        status: string
+        synthesizedFindings?: string
+        integratedAtMs?: number
+      } | null => {
+        const requestId = workflowState?.pendingResearchRequestId
+        const outputKey = workflowState?.pendingResearchOutputKey
+        if (!requestId || !outputKey) return null
+        const output = workflowState.namedOutputs?.[outputKey]
+        if (!output || typeof output !== 'object' || !('requestId' in output)) {
+          return null
+        }
+        const maybeRequest = output as DeepResearchRequest
+        if (maybeRequest.requestId !== requestId) return null
+
+        return {
+          requestId: maybeRequest.requestId,
+          status: maybeRequest.status,
+          synthesizedFindings: maybeRequest.synthesizedFindings,
+          integratedAtMs: maybeRequest.integratedAtMs,
+        }
+      }
+
+      const deepResearchContext = extractDeepResearchContext(
+        result.workflowState ?? run.workflowState
+      )
+      const nextContext =
+        deepResearchContext && typeof run.context === 'object'
+          ? { ...run.context, deepResearch: deepResearchContext }
+          : deepResearchContext
+            ? { deepResearch: deepResearchContext }
+            : undefined
+
+      await recordRunUsage(userId, result.totalTokensUsed, result.totalEstimatedCost)
+
+      const firstAgent = await db.doc(`users/${userId}/agents/${workspace.agentIds[0]}`).get()
+      const provider = firstAgent.exists ? (firstAgent.data() as any).modelProvider : 'openai'
+      await updateQuota(userId, provider, result.totalTokensUsed, result.totalEstimatedCost)
+
+      const alert = await shouldSendQuotaAlert(userId)
+      if (alert) {
+        console.log(
+          `Quota alert for user ${userId}: ${alert.type} at ${alert.threshold}% (${alert.used}/${alert.limit})`
+        )
+      }
+
+      const runUpdates: Record<string, unknown> = {
+        status: 'paused',
+        pendingInput: null,
+        workflowState: result.workflowState ?? run.workflowState,
+        output: result.output,
+        tokensUsed: result.totalTokensUsed,
+        estimatedCost: result.totalEstimatedCost,
+        totalSteps: result.totalSteps,
+        currentStep: result.totalSteps,
+      }
+
+      if (nextContext) {
+        runUpdates.context = nextContext
+      }
+
+      await runRef.update(runUpdates)
+
+      await eventWriter.writeEvent({
+        type: 'status',
+        workspaceId,
+        status: 'paused',
+      })
+
+      console.log(`Run ${runId} paused for research delegation.`)
       return
     }
 
@@ -322,34 +484,6 @@ async function executeRun(params: {
       errorCategory: agentError.category,
       status: 'failed',
     })
-  }
-}
-
-async function loadProviderKeys(userId: string): Promise<ProviderKeys> {
-  const db = getFirestore()
-  const docRef = db.doc(`users/${userId}/settings/aiProviderKeys`)
-  const snapshot = await docRef.get()
-  const userKeys = snapshot.exists
-    ? (snapshot.data() as {
-        openaiKey?: string
-        anthropicKey?: string
-        googleKey?: string
-        xaiKey?: string
-      })
-    : {}
-
-  const fallbackKeys: ProviderKeys = {
-    openai: OPENAI_API_KEY.value() || process.env.OPENAI_API_KEY,
-    anthropic: ANTHROPIC_API_KEY.value() || process.env.ANTHROPIC_API_KEY,
-    google: process.env.GOOGLE_AI_API_KEY,
-    grok: process.env.XAI_API_KEY,
-  }
-
-  return {
-    openai: userKeys.openaiKey || fallbackKeys.openai || undefined,
-    anthropic: userKeys.anthropicKey || fallbackKeys.anthropic || undefined,
-    google: userKeys.googleKey || fallbackKeys.google || undefined,
-    grok: userKeys.xaiKey || fallbackKeys.grok || undefined,
   }
 }
 

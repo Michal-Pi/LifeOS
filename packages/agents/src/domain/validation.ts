@@ -1,5 +1,17 @@
 import { z } from 'zod'
 
+const MAX_CONTEXT_BYTES = 100 * 1024
+
+const isJsonSerializableWithinLimit = (value: unknown) => {
+  try {
+    const serialized = JSON.stringify(value)
+    if (typeof serialized !== 'string') return false
+    return new TextEncoder().encode(serialized).length <= MAX_CONTEXT_BYTES
+  } catch {
+    return false
+  }
+}
+
 // ----- Enums -----
 
 export const AgentRoleSchema = z.enum([
@@ -34,11 +46,60 @@ export const WorkflowTypeSchema = z.enum([
   'graph',
 ])
 
-export const WorkflowNodeTypeSchema = z.enum(['agent', 'tool', 'human_input', 'join', 'end'])
+export const WorkflowNodeTypeSchema = z.enum([
+  'agent',
+  'tool',
+  'human_input',
+  'join',
+  'end',
+  'research_request',
+])
 
 export const WorkflowEdgeConditionTypeSchema = z.enum(['always', 'equals', 'contains', 'regex'])
 
 export const JoinAggregationModeSchema = z.enum(['list', 'ranked', 'consensus'])
+
+export const ExecutionModeSchema = z.enum(['full', 'quick', 'single', 'custom'])
+
+export const DeepResearchPrioritySchema = z.enum(['low', 'medium', 'high', 'critical'])
+export const DeepResearchStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'cancelled'])
+export const DeepResearchSourceSchema = z.enum(['claude', 'chatgpt', 'gemini', 'other'])
+
+// ----- Expert Council Schemas -----
+
+export const ExpertCouncilModelSchema = z.object({
+  modelId: z.string().min(1),
+  provider: ModelProviderSchema,
+  modelName: z.string().min(1),
+  temperature: z.number().min(0).max(2).optional(),
+  maxTokens: z.number().int().positive().optional(),
+  systemPrompt: z.string().optional(),
+})
+
+export const ExpertCouncilConfigSchema = z.object({
+  enabled: z.boolean(),
+  defaultMode: ExecutionModeSchema,
+  allowModeOverride: z.boolean(),
+  councilModels: z.array(ExpertCouncilModelSchema).min(1),
+  chairmanModel: ExpertCouncilModelSchema.omit({ systemPrompt: true }),
+  judgeModels: z
+    .array(
+      z.object({
+        modelId: z.string().min(1),
+        provider: ModelProviderSchema,
+        modelName: z.string().min(1),
+      })
+    )
+    .optional(),
+  selfExclusionEnabled: z.boolean(),
+  minCouncilSize: z.number().int().min(2),
+  maxCouncilSize: z.number().int().min(2).max(10),
+  requireConsensusThreshold: z.number().min(0).max(100).optional(),
+  estimatedCostPerTurn: z.number().nonnegative().optional(),
+  maxCostPerTurn: z.number().nonnegative().optional(),
+  enableCaching: z.boolean(),
+  cacheExpirationHours: z.number().int().positive(),
+})
 
 // ----- Tool Schemas -----
 
@@ -53,6 +114,7 @@ export const ToolParameterSchema: z.ZodType<any> = z.lazy(() =>
         z.lazy(() => ToolParameterSchema)
       )
       .optional(),
+    items: z.lazy(() => ToolParameterSchema).optional(),
   })
 )
 
@@ -130,6 +192,7 @@ export const WorkspaceSchema = z.object({
   description: z.string().max(1000).optional(),
   agentIds: z.array(z.string()),
   defaultAgentId: z.string().optional(),
+  expertCouncilConfig: ExpertCouncilConfigSchema.optional(),
   workflowType: WorkflowTypeSchema,
   workflowGraph: z
     .object({
@@ -144,6 +207,16 @@ export const WorkspaceSchema = z.object({
           label: z.string().optional(),
           outputKey: z.string().optional(),
           aggregationMode: JoinAggregationModeSchema.optional(),
+          requestConfig: z
+            .object({
+              topic: z.string().min(1),
+              questions: z.array(z.string().min(1)),
+              priority: z.enum(['low', 'medium', 'high', 'critical']),
+              waitForCompletion: z.boolean(),
+              estimatedTime: z.string().optional(),
+              context: z.record(z.string(), z.unknown()).optional(),
+            })
+            .optional(),
         })
       ),
       edges: z.array(
@@ -263,6 +336,8 @@ export const RunSchema = z.object({
         .optional(),
       joinOutputs: z.record(z.string(), z.unknown()).optional(),
       namedOutputs: z.record(z.string(), z.unknown()).optional(),
+      pendingResearchRequestId: z.string().optional(),
+      pendingResearchOutputKey: z.string().optional(),
     })
     .optional(),
   startedAtMs: z.number().int().positive(),
@@ -282,6 +357,49 @@ export const CreateRunInputSchema = RunSchema.omit({
   completedAtMs: true,
   syncState: true,
   version: true,
+})
+
+// ----- Deep Research -----
+
+export const DeepResearchResultSchema = z.object({
+  source: DeepResearchSourceSchema,
+  model: z.string().min(1),
+  content: z.string().min(1),
+  uploadedAtMs: z.number().int().positive(),
+  uploadedBy: z.string().min(1),
+})
+
+export const DeepResearchRequestSchema = z.object({
+  requestId: z.string(),
+  workspaceId: z.string(),
+  runId: z.string(),
+  userId: z.string(),
+  topic: z.string().min(1),
+  questions: z.array(z.string().min(1)),
+  context: z
+    .record(z.string(), z.unknown())
+    .refine(isJsonSerializableWithinLimit, {
+      message: 'Research request context must be JSON-serializable and under 100KB',
+    })
+    .optional(),
+  priority: DeepResearchPrioritySchema,
+  estimatedTime: z.string().optional(),
+  createdBy: z.string(),
+  createdAtMs: z.number().int().positive(),
+  status: DeepResearchStatusSchema,
+  results: z.array(DeepResearchResultSchema).optional(),
+  synthesizedFindings: z.string().optional(),
+  integratedAtMs: z.number().int().positive().optional(),
+})
+
+export const CreateDeepResearchRequestInputSchema = DeepResearchRequestSchema.omit({
+  requestId: true,
+  userId: true,
+  createdAtMs: true,
+  status: true,
+  results: true,
+  synthesizedFindings: true,
+  integratedAtMs: true,
 })
 
 // ----- Message -----

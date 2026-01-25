@@ -8,11 +8,27 @@
  * Phase 5E: Retry logic, timeout handling, and error management.
  */
 
-import type { AgentConfig, ToolCallStatus, ModelProvider, ToolId } from '@lifeos/agents'
+import type {
+  AgentConfig,
+  RunId,
+  WorkspaceId,
+  ToolCallStatus,
+  ModelProvider,
+  ToolId,
+  ExpertCouncilConfig,
+  ExecutionMode,
+} from '@lifeos/agents'
+import { executeExpertCouncilUsecase } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 import { advancedTools } from './advancedTools.js'
 import { loadCustomTools } from './customTools.js'
 import { ERROR_MESSAGES, executeWithTimeout, getToolTimeout, wrapError } from './errorHandler.js'
+import {
+  buildExpertCouncilContextHash,
+  createExpertCouncilPipeline,
+  createExpertCouncilRepository,
+} from './expertCouncil.js'
+import { loadProviderKeys } from './providerKeys.js'
 import { TOOL_RETRY_CONFIG, executeWithRetry } from './retryHelper.js'
 import type { RunEventWriter } from './runEvents.js'
 
@@ -52,6 +68,13 @@ export interface ToolDefinition {
         description: string
         required?: boolean
         properties?: Record<string, any>
+        items?: {
+          type: 'string' | 'number' | 'boolean' | 'object' | 'array'
+          description: string
+          required?: boolean
+          properties?: Record<string, any>
+          items?: unknown
+        }
       }
     >
     required?: string[]
@@ -556,6 +579,87 @@ registerTool({
       }
     } catch (error) {
       throw new Error(`Failed to evaluate expression: ${(error as Error).message}`)
+    }
+  },
+})
+
+/**
+ * Built-in tool: Expert Council execution
+ */
+registerTool({
+  name: 'expert_council_execute',
+  description: 'Run the Expert Council multi-model consensus pipeline',
+  parameters: {
+    type: 'object',
+    properties: {
+      prompt: {
+        type: 'string',
+        description: 'User prompt to run through the Expert Council pipeline',
+      },
+      context: {
+        type: 'object',
+        description: 'Optional additional context to include in the council execution',
+      },
+      mode: {
+        type: 'string',
+        description: 'Execution mode: full, quick, or single (optional)',
+      },
+    },
+    required: ['prompt'],
+  },
+  execute: async (params, context) => {
+    const prompt = params.prompt as string
+    const mode = params.mode as ExecutionMode | undefined
+    const extraContext = params.context as Record<string, unknown> | undefined
+    const contextHash = buildExpertCouncilContextHash(extraContext)
+
+    if (!prompt || !prompt.trim()) {
+      throw new Error('Expert Council prompt is required.')
+    }
+
+    const db = getFirestore()
+    const workspaceDoc = await db
+      .doc(`users/${context.userId}/workspaces/${context.workspaceId}`)
+      .get()
+
+    if (!workspaceDoc.exists) {
+      throw new Error('Workspace not found.')
+    }
+
+    const workspaceData = workspaceDoc.data() as { expertCouncilConfig?: ExpertCouncilConfig }
+    const councilConfig = workspaceData.expertCouncilConfig
+
+    if (!councilConfig?.enabled) {
+      throw new Error('Expert Council is not enabled for this workspace.')
+    }
+
+    const apiKeys = await loadProviderKeys(context.userId)
+    const repository = createExpertCouncilRepository()
+    const pipeline = createExpertCouncilPipeline({
+      apiKeys,
+      context: extraContext,
+      eventWriter: context.eventWriter,
+      workspaceId: context.workspaceId,
+    })
+
+    const executeCouncil = executeExpertCouncilUsecase(repository, pipeline)
+    const turn = await executeCouncil(
+      context.userId,
+      context.runId as RunId,
+      prompt.trim(),
+      councilConfig,
+      mode,
+      context.workspaceId as WorkspaceId,
+      contextHash
+    )
+
+    return {
+      finalResponse: turn.stage3.finalResponse,
+      stage1Responses: turn.stage1.responses,
+      stage2Reviews: turn.stage2.reviews,
+      executionMode: turn.executionMode,
+      cacheHit: turn.cacheHit,
+      turnId: turn.turnId,
     }
   },
 })

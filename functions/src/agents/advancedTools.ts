@@ -11,6 +11,7 @@
 
 import { randomUUID } from 'crypto'
 import { getFirestore } from 'firebase-admin/firestore'
+import { assertValidResearchContext, normalizeResearchQuestions } from './deepResearchValidation.js'
 import type { ToolDefinition, ToolExecutionContext } from './toolExecutor.js'
 
 const generateId = () => randomUUID()
@@ -373,6 +374,223 @@ export const readNoteTool: ToolDefinition = {
 }
 
 /**
+ * Notes Tool: Analyze note content and identify key paragraphs/ideas
+ */
+export const analyzeNoteParagraphsTool: ToolDefinition = {
+  name: 'analyze_note_paragraphs',
+  description:
+    'Analyze a note and identify key paragraphs, ideas, or sections that could be tagged or linked to other notes/topics. Returns structured data about each identified paragraph.',
+  parameters: {
+    type: 'object',
+    properties: {
+      noteId: {
+        type: 'string',
+        description: 'The ID of the note to analyze (required)',
+      },
+      minParagraphLength: {
+        type: 'number',
+        description: 'Minimum character length for a paragraph to be considered (default: 50)',
+      },
+    },
+    required: ['noteId'],
+  },
+  execute: async (params, context: ToolExecutionContext) => {
+    const noteId = params.noteId as string
+    const minLength = (params.minParagraphLength as number) || 50
+
+    const db = getFirestore()
+    const noteDoc = await db.collection(`users/${context.userId}/notes`).doc(noteId).get()
+
+    if (!noteDoc.exists) {
+      throw new Error(`Note with ID "${noteId}" not found`)
+    }
+
+    const data = noteDoc.data()!
+    const content = data.content as { type: string; content?: unknown[] }
+
+    // Extract paragraphs from ProseMirror JSON
+    const extractParagraphs = (
+      node: unknown,
+      path: string[] = []
+    ): Array<{
+      path: string
+      text: string
+      type: string
+      position: number
+    }> => {
+      const paragraphs: Array<{ path: string; text: string; type: string; position: number }> = []
+      let position = 0
+
+      if (typeof node === 'object' && node !== null) {
+        const nodeObj = node as Record<string, unknown>
+        const nodeType = nodeObj.type as string
+
+        if (nodeType === 'paragraph' || nodeType === 'heading') {
+          const text = extractText(nodeObj)
+          if (text.length >= minLength) {
+            paragraphs.push({
+              path: path.join('.'),
+              text,
+              type: nodeType,
+              position,
+            })
+            position++
+          }
+        }
+
+        if (nodeObj.content && Array.isArray(nodeObj.content)) {
+          nodeObj.content.forEach((child, index) => {
+            const childParagraphs = extractParagraphs(child, [...path, index.toString()])
+            paragraphs.push(...childParagraphs)
+          })
+        }
+      }
+
+      return paragraphs
+    }
+
+    const extractText = (node: Record<string, unknown>): string => {
+      if (node.type === 'text' && typeof node.text === 'string') {
+        return node.text
+      }
+      if (node.content && Array.isArray(node.content)) {
+        return node.content.map((child) => extractText(child as Record<string, unknown>)).join(' ')
+      }
+      return ''
+    }
+
+    const paragraphs = extractParagraphs(content, [])
+
+    return {
+      noteId,
+      title: data.title,
+      paragraphCount: paragraphs.length,
+      paragraphs: paragraphs.map((p) => ({
+        path: p.path,
+        text: p.text.substring(0, 200) + (p.text.length > 200 ? '...' : ''), // Preview
+        fullText: p.text,
+        type: p.type,
+        position: p.position,
+      })),
+      message: `Identified ${paragraphs.length} key paragraphs/ideas in note "${data.title}"`,
+    }
+  },
+}
+
+/**
+ * Notes Tool: Tag a paragraph with a note or topic
+ */
+export const tagParagraphTool: ToolDefinition = {
+  name: 'tag_paragraph_with_note',
+  description:
+    'Tag a specific paragraph in a note with another note or topic. This creates a relationship in the knowledge graph.',
+  parameters: {
+    type: 'object',
+    properties: {
+      noteId: {
+        type: 'string',
+        description: 'The ID of the note containing the paragraph to tag (required)',
+      },
+      paragraphPath: {
+        type: 'string',
+        description:
+          'The path to the paragraph (e.g., "0.1" for second paragraph in first section) (required)',
+      },
+      targetNoteId: {
+        type: 'string',
+        description:
+          'The ID of the note to tag this paragraph with (optional, if tagging with note)',
+      },
+      targetTopicId: {
+        type: 'string',
+        description:
+          'The ID of the topic to tag this paragraph with (optional, if tagging with topic)',
+      },
+    },
+    required: ['noteId', 'paragraphPath'],
+  },
+  execute: async (params, context: ToolExecutionContext) => {
+    const noteId = params.noteId as string
+    const paragraphPath = params.paragraphPath as string
+    const targetNoteId = params.targetNoteId as string | undefined
+    const targetTopicId = params.targetTopicId as string | undefined
+
+    if (!targetNoteId && !targetTopicId) {
+      throw new Error('Either targetNoteId or targetTopicId must be provided')
+    }
+
+    const db = getFirestore()
+    const noteDoc = await db.collection(`users/${context.userId}/notes`).doc(noteId).get()
+
+    if (!noteDoc.exists) {
+      throw new Error(`Note with ID "${noteId}" not found`)
+    }
+
+    const data = noteDoc.data()!
+    const paragraphLinks =
+      (data.paragraphLinks as Record<
+        string,
+        {
+          noteIds?: string[]
+          topicIds?: string[]
+        }
+      >) || {}
+
+    // Initialize paragraph links if not exists
+    if (!paragraphLinks[paragraphPath]) {
+      paragraphLinks[paragraphPath] = {}
+    }
+
+    // Add the tag
+    if (targetNoteId) {
+      if (!paragraphLinks[paragraphPath].noteIds) {
+        paragraphLinks[paragraphPath].noteIds = []
+      }
+      if (!paragraphLinks[paragraphPath].noteIds!.includes(targetNoteId)) {
+        paragraphLinks[paragraphPath].noteIds!.push(targetNoteId)
+      }
+    }
+
+    if (targetTopicId) {
+      if (!paragraphLinks[paragraphPath].topicIds) {
+        paragraphLinks[paragraphPath].topicIds = []
+      }
+      if (!paragraphLinks[paragraphPath].topicIds!.includes(targetTopicId)) {
+        paragraphLinks[paragraphPath].topicIds!.push(targetTopicId)
+      }
+    }
+
+    // Update the note
+    await db.collection(`users/${context.userId}/notes`).doc(noteId).update({
+      paragraphLinks,
+      updatedAtMs: Date.now(),
+    })
+
+    // Also update linkedNoteIds if tagging with a note
+    if (targetNoteId) {
+      const linkedNoteIds = (data.linkedNoteIds as string[]) || []
+      if (!linkedNoteIds.includes(targetNoteId)) {
+        await db
+          .collection(`users/${context.userId}/notes`)
+          .doc(noteId)
+          .update({
+            linkedNoteIds: [...linkedNoteIds, targetNoteId],
+          })
+      }
+    }
+
+    return {
+      success: true,
+      noteId,
+      paragraphPath,
+      targetNoteId,
+      targetTopicId,
+      message: `Tagged paragraph at path "${paragraphPath}" successfully`,
+    }
+  },
+}
+
+/**
  * Web Search Tool: Perform real web search using Google Custom Search API
  * Requires GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_ENGINE_ID environment variables
  */
@@ -462,6 +680,104 @@ export const webSearchTool: ToolDefinition = {
 }
 
 /**
+ * Deep Research Tool: Create a research delegation request
+ */
+export const createDeepResearchRequestTool: ToolDefinition = {
+  name: 'create_deep_research_request',
+  description: 'Create a research request for external delegation and queue it for user review.',
+  parameters: {
+    type: 'object',
+    properties: {
+      topic: {
+        type: 'string',
+        description: 'Research topic (required)',
+      },
+      questions: {
+        type: 'array',
+        description: 'List of research questions (required)',
+        items: {
+          type: 'string',
+          description: 'Research question',
+        },
+      },
+      context: {
+        type: 'object',
+        description: 'Optional context to help guide external research',
+      },
+      priority: {
+        type: 'string',
+        description: 'Priority: low, medium, high, critical (default: medium)',
+      },
+      estimatedTime: {
+        type: 'string',
+        description: 'Estimated time for research (optional)',
+      },
+    },
+    required: ['topic', 'questions'],
+  },
+  execute: async (params, context: ToolExecutionContext) => {
+    const topic = typeof params.topic === 'string' ? params.topic.trim() : ''
+    const questions = Array.isArray(params.questions)
+      ? normalizeResearchQuestions(params.questions.map((question) => String(question)))
+      : []
+    const priorityInput = typeof params.priority === 'string' ? params.priority : 'medium'
+    const priority = ['low', 'medium', 'high', 'critical'].includes(priorityInput)
+      ? (priorityInput as 'low' | 'medium' | 'high' | 'critical')
+      : 'medium'
+    const estimatedTime =
+      typeof params.estimatedTime === 'string' && params.estimatedTime.trim()
+        ? params.estimatedTime.trim()
+        : undefined
+    const extraContext =
+      params.context && typeof params.context === 'object'
+        ? (params.context as Record<string, unknown>)
+        : undefined
+
+    if (!topic) {
+      throw new Error('Research topic is required')
+    }
+    if (questions.length === 0) {
+      throw new Error('At least one research question is required')
+    }
+    assertValidResearchContext(extraContext)
+
+    const db = getFirestore()
+    const requestId = `research:${generateId()}`
+
+    const request = {
+      requestId,
+      workspaceId: context.workspaceId,
+      runId: context.runId,
+      userId: context.userId,
+      topic,
+      questions,
+      context: extraContext,
+      priority,
+      estimatedTime,
+      createdBy: context.agentId,
+      createdAtMs: Date.now(),
+      status: 'pending',
+      results: [],
+    }
+
+    await db
+      .collection(`users/${context.userId}/workspaces/${context.workspaceId}/deepResearchRequests`)
+      .doc(requestId)
+      .set(request)
+
+    return {
+      requestId,
+      topic,
+      questions,
+      priority,
+      estimatedTime,
+      status: 'pending',
+      message: 'Deep research request created and queued for user delegation.',
+    }
+  },
+}
+
+/**
  * Export all advanced tools for registration
  */
 export const advancedTools: ToolDefinition[] = [
@@ -470,5 +786,8 @@ export const advancedTools: ToolDefinition[] = [
   listNotesTool,
   createNoteTool,
   readNoteTool,
+  analyzeNoteParagraphsTool,
+  tagParagraphTool,
+  createDeepResearchRequestTool,
   webSearchTool,
 ]

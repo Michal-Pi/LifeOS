@@ -11,6 +11,7 @@
 
 import React from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import { TipTapEditor } from './TipTapEditor'
 import { useNoteEditor } from '@/hooks/useNoteEditor'
 import { useAttachments } from '@/hooks/useAttachments'
@@ -18,7 +19,11 @@ import { ProjectLinker } from '@/components/notes/ProjectLinker'
 import { OKRLinker } from '@/components/notes/OKRLinker'
 import { AttachmentUploader } from '@/components/notes/AttachmentUploader'
 import { TagEditor } from '@/components/notes/TagEditor'
-import type { Note, AttachmentId } from '@lifeos/notes'
+import { BacklinksPanel } from '@/components/notes/BacklinksPanel'
+import { AIAnalysisPanel } from '@/components/notes/AIAnalysisPanel'
+import { useTopics } from '@/hooks/useTopics'
+import { useState } from 'react'
+import type { Note, AttachmentId, NoteId } from '@lifeos/notes'
 
 export interface NoteEditorProps {
   note?: Note
@@ -37,6 +42,8 @@ export interface NoteEditorProps {
   showTags?: boolean
   className?: string
   statusContainerId?: string
+  availableNotes?: Note[]
+  onNoteClick?: (noteId: NoteId) => void
 }
 
 export function NoteEditor({
@@ -56,7 +63,12 @@ export function NoteEditor({
   showTags = true,
   className = '',
   statusContainerId,
+  availableNotes = [],
+  onNoteClick,
 }: NoteEditorProps) {
+  const navigate = useNavigate()
+  const { topics } = useTopics()
+  const [showAIAnalysis, setShowAIAnalysis] = useState(false)
   const { content, isDirty, isSaving, lastSaved, error, handleContentChange, handleHtmlChange } =
     useNoteEditor({
       note,
@@ -169,7 +181,44 @@ export function NoteEditor({
         onChange={handleContentChange}
         onUpdate={handleHtmlChange}
         className="editor-content"
+        availableNotes={availableNotes}
+        availableTopics={topics.map((t) => ({ topicId: t.topicId, name: t.name }))}
+        onNoteLinkClick={(noteId) => {
+          if (onNoteClick) {
+            onNoteClick(noteId as NoteId)
+          } else {
+            navigate(`/notes?noteId=${noteId}`)
+          }
+        }}
+        onParagraphTag={(tagType, id) => {
+          // Handle paragraph tagging - this will be synced when content changes
+          console.log('Paragraph tagged:', tagType, id)
+        }}
       />
+
+      {/* View in Graph Button & AI Analysis */}
+      {note && (
+        <div className="editor-section">
+          <div className="editor-actions-row">
+            <button
+              onClick={() => navigate('/notes/graph')}
+              className="view-in-graph-button"
+              type="button"
+            >
+              View in Graph
+            </button>
+            {editable && (
+              <button
+                onClick={() => setShowAIAnalysis(true)}
+                className="ai-analysis-button"
+                type="button"
+              >
+                Analyze with AI
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Project Linker */}
       {showProjectLinker && note && editable && (
@@ -218,6 +267,36 @@ export function NoteEditor({
         </div>
       )}
 
+      {/* Backlinks */}
+      {note && (
+        <BacklinksPanel
+          noteId={note.noteId}
+          onNoteClick={(noteId) => {
+            if (onNoteClick) {
+              onNoteClick(noteId)
+            } else {
+              navigate(`/notes?noteId=${noteId}`)
+            }
+          }}
+        />
+      )}
+
+      {/* AI Analysis Panel */}
+      {showAIAnalysis && note && (
+        <AIAnalysisPanel
+          note={note}
+          availableNotes={availableNotes}
+          availableTopics={topics.map((t) => ({ topicId: t.topicId, name: t.name }))}
+          onClose={() => setShowAIAnalysis(false)}
+          onTagged={() => {
+            // Refresh note content after tagging
+            if (onChange) {
+              onChange(content, '')
+            }
+          }}
+        />
+      )}
+
       <style>{`
         .note-editor {
           display: flex;
@@ -263,6 +342,43 @@ export function NoteEditor({
           border-top: 1px solid var(--border);
           padding-top: 1.5rem;
           margin-top: 1.5rem;
+        }
+
+        .view-in-graph-button {
+          padding: 0.5rem 1rem;
+          background: var(--accent);
+          color: var(--accent-foreground);
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 500;
+          transition: opacity 0.2s;
+        }
+
+        .view-in-graph-button:hover {
+          opacity: 0.9;
+        }
+
+        .editor-actions-row {
+          display: flex;
+          gap: 0.75rem;
+        }
+
+        .ai-analysis-button {
+          padding: 0.5rem 1rem;
+          background: var(--primary);
+          color: var(--primary-foreground);
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 500;
+          transition: opacity 0.2s;
+        }
+
+        .ai-analysis-button:hover {
+          opacity: 0.9;
         }
       `}</style>
     </div>

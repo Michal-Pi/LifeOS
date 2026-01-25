@@ -11,6 +11,7 @@ export type ToolCallRecordId = Id<'toolCallRecord'>
 export type WorkflowStepId = Id<'workflowStep'>
 export type AgentTemplateId = Id<'agentTemplate'>
 export type WorkspaceTemplateId = Id<'workspaceTemplate'>
+export type DeepResearchRequestId = Id<'research'>
 
 // ----- Sync State -----
 
@@ -34,11 +35,23 @@ export type MessageRole = 'user' | 'assistant' | 'system' | 'tool'
 
 export type ToolCallStatus = 'pending' | 'running' | 'completed' | 'failed'
 
-export type WorkflowNodeType = 'agent' | 'tool' | 'human_input' | 'join' | 'end'
+export type WorkflowNodeType =
+  | 'agent'
+  | 'tool'
+  | 'human_input'
+  | 'join'
+  | 'end'
+  | 'research_request'
 
 export type WorkflowEdgeConditionType = 'always' | 'equals' | 'contains' | 'regex'
 
 export type JoinAggregationMode = 'list' | 'ranked' | 'consensus'
+
+export type ExecutionMode = 'full' | 'quick' | 'single' | 'custom'
+
+export type DeepResearchPriority = 'low' | 'medium' | 'high' | 'critical'
+export type DeepResearchStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
+export type DeepResearchSource = 'claude' | 'chatgpt' | 'gemini' | 'other'
 
 // ----- Agent Configuration -----
 
@@ -81,6 +94,9 @@ export interface Workspace {
   // Agent configuration
   agentIds: AgentId[] // Agents available in this workspace
   defaultAgentId?: AgentId // Agent that starts the workflow
+
+  // Expert Council configuration (optional)
+  expertCouncilConfig?: ExpertCouncilConfig
 
   // Workflow configuration
   workflowType: 'sequential' | 'parallel' | 'supervisor' | 'custom' | 'graph'
@@ -182,6 +198,34 @@ export interface Run {
   version: number
 }
 
+// ----- Deep Research Requests -----
+
+export interface DeepResearchResult {
+  source: DeepResearchSource
+  model: string
+  content: string
+  uploadedAtMs: number
+  uploadedBy: string
+}
+
+export interface DeepResearchRequest {
+  requestId: DeepResearchRequestId
+  workspaceId: WorkspaceId
+  runId: RunId
+  userId: string
+  topic: string
+  questions: string[]
+  context?: Record<string, unknown>
+  priority: DeepResearchPriority
+  estimatedTime?: string
+  createdBy: AgentId
+  createdAtMs: number
+  status: DeepResearchStatus
+  results?: DeepResearchResult[]
+  synthesizedFindings?: string
+  integratedAtMs?: number
+}
+
 // ----- Message (Agent Interaction) -----
 
 export interface ToolCall {
@@ -230,6 +274,14 @@ export interface WorkflowNode {
   label?: string
   outputKey?: string
   aggregationMode?: JoinAggregationMode
+  requestConfig?: {
+    topic: string
+    questions: string[]
+    priority: DeepResearchPriority
+    waitForCompletion: boolean
+    estimatedTime?: string
+    context?: Record<string, unknown>
+  }
 }
 
 export interface WorkflowEdge {
@@ -256,6 +308,8 @@ export interface WorkflowState {
   edgeHistory?: Array<{ from: string; to: string; atMs: number }>
   joinOutputs?: Record<string, unknown>
   namedOutputs?: Record<string, unknown>
+  pendingResearchRequestId?: string
+  pendingResearchOutputKey?: string
 }
 
 // ----- Tool Definition -----
@@ -265,6 +319,7 @@ export interface ToolParameter {
   description: string
   required?: boolean
   properties?: Record<string, ToolParameter> // For nested objects
+  items?: ToolParameter // For array item definitions
 }
 
 export interface ToolImplementation {
@@ -334,6 +389,164 @@ export interface ToolCallRecord {
 
   syncState: SyncState
   version: number
+}
+
+// ----- Expert Council -----
+
+export interface ExpertCouncilConfig {
+  enabled: boolean
+
+  // Execution settings
+  defaultMode: ExecutionMode
+  allowModeOverride: boolean
+
+  // Model configuration
+  councilModels: Array<{
+    modelId: string
+    provider: ModelProvider
+    modelName: string
+    temperature?: number
+    maxTokens?: number
+    systemPrompt?: string
+  }>
+
+  chairmanModel: {
+    modelId: string
+    provider: ModelProvider
+    modelName: string
+    temperature?: number
+    maxTokens?: number
+  }
+
+  // Judges are same as council by default, or can be overridden
+  judgeModels?: Array<{
+    modelId: string
+    provider: ModelProvider
+    modelName: string
+  }>
+
+  // Advanced settings
+  selfExclusionEnabled: boolean
+  minCouncilSize: number
+  maxCouncilSize: number
+  requireConsensusThreshold?: number
+
+  // Cost controls
+  estimatedCostPerTurn?: number
+  maxCostPerTurn?: number
+  enableCaching: boolean
+  cacheExpirationHours: number
+}
+
+export interface ExpertCouncilTurn {
+  turnId: string
+  sourceTurnId?: string
+  runId: RunId
+  userPrompt: string
+
+  stage1: {
+    responses: Array<{
+      modelId: string
+      provider: ModelProvider
+      modelName: string
+      answerText: string
+      status: 'completed' | 'failed'
+      error?: string
+      latency: number
+      tokensUsed?: number
+      estimatedCost?: number
+      timestampMs: number
+    }>
+  }
+
+  stage2: {
+    anonymizationMap: Record<string, string>
+    reviews: Array<{
+      judgeModelId: string
+      critiques: Record<string, string>
+      ranking: string[]
+      confidenceScore?: number
+      timestampMs: number
+      tokensUsed?: number
+      estimatedCost?: number
+    }>
+    aggregateRanking: Array<{
+      label: string
+      modelId: string
+      bordaScore: number
+      averageRank: number
+      individualRanks: number[]
+      standardDeviation: number
+    }>
+    consensusMetrics: {
+      kendallTau: number
+      consensusScore: number
+      topRankedLabel: string
+      controversialResponses: string[]
+    }
+  }
+
+  stage3: {
+    chairmanModelId: string
+    finalResponse: string
+    tokensUsed?: number
+    estimatedCost?: number
+    timestampMs: number
+  }
+
+  totalDurationMs: number
+  totalCost: number
+  createdAtMs: number
+
+  executionMode: ExecutionMode
+  cacheHit: boolean
+  retryCount: number
+
+  qualityScore?: number
+  userFeedback?: {
+    rating: 1 | 2 | 3 | 4 | 5
+    helpful: boolean
+    comment?: string
+    submittedAtMs: number
+  }
+}
+
+export interface CouncilAnalytics {
+  userId: string
+  workspaceId: WorkspaceId
+
+  totalTurns: number
+  turnsByMode: Record<ExecutionMode, number>
+  cacheHitRate: number
+
+  totalCost: number
+  averageCostPerTurn: number
+  costByMode: Record<ExecutionMode, number>
+
+  averageConsensusScore: number
+  averageQualityScore: number
+  userSatisfactionRate: number
+
+  averageDuration: number
+  failureRate: number
+  partialFailureRate: number
+
+  modelStats: Record<
+    string,
+    {
+      timesUsed: number
+      averageRank: number
+      averageLatency: number
+      failureRate: number
+    }
+  >
+
+  dailyUsage: Array<{
+    date: string
+    turns: number
+    cost: number
+    avgConsensus: number
+  }>
 }
 
 // ----- Workflow Step (Phase 6E) -----
@@ -410,4 +623,15 @@ export type CreateToolCallRecordInput = Omit<
 export type CreateWorkflowStepInput = Omit<
   WorkflowStep,
   'workflowStepId' | 'completedAtMs' | 'durationMs'
+>
+
+export type CreateDeepResearchRequestInput = Omit<
+  DeepResearchRequest,
+  | 'requestId'
+  | 'userId'
+  | 'createdAtMs'
+  | 'status'
+  | 'results'
+  | 'synthesizedFindings'
+  | 'integratedAtMs'
 >

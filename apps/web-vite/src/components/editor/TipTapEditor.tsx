@@ -23,15 +23,21 @@ import { Mathematics } from '@tiptap/extension-mathematics'
 import Superscript from '@tiptap/extension-superscript'
 import Subscript from '@tiptap/extension-subscript'
 import { TextStyle } from '@tiptap/extension-text-style'
+import { Link } from '@tiptap/extension-link'
 import { FontFamily } from './extensions/FontFamily'
 import { FontSize } from './extensions/FontSize'
 import { TextColor } from './extensions/TextColor'
-import { useEffect, useState } from 'react'
+import { NoteLink } from './extensions/NoteLink'
+import { ParagraphTag } from './extensions/ParagraphTag'
+import { useEffect, useState, useRef } from 'react'
+import type { Note, TopicId } from '@lifeos/notes'
 import { TipTapMenuBar } from './TipTapMenuBar'
 import { DragDropContext } from './ux/DragDropContext'
 import { NodeDividerContainer } from './ux/NodeDividerContainer'
 import { CommandMenu } from './ux/CommandMenu'
 import { MathInlinePanel } from './ux/MathInlinePanel'
+import { NoteLinkAutocomplete } from './ux/NoteLinkAutocomplete'
+import { ParagraphTagMenu } from './ux/ParagraphTagMenu'
 import { VirtualizedEditor } from './ux/VirtualizedEditor'
 import 'katex/dist/katex.min.css'
 import './TipTapEditor.css'
@@ -43,6 +49,10 @@ export interface TipTapEditorProps {
   onChange?: (content: JSONContent) => void
   onUpdate?: (html: string) => void
   className?: string
+  availableNotes?: Note[]
+  availableTopics?: Array<{ topicId: TopicId; name: string }>
+  onNoteLinkClick?: (noteId: string) => void
+  onParagraphTag?: (tagType: 'note' | 'topic', id: string) => void
 }
 
 export function TipTapEditor({
@@ -52,6 +62,10 @@ export function TipTapEditor({
   onChange,
   onUpdate,
   className = '',
+  availableNotes = [],
+  availableTopics = [],
+  onNoteLinkClick,
+  onParagraphTag,
 }: TipTapEditorProps) {
   const [commandMenuState, setCommandMenuState] = useState<{
     isOpen: boolean
@@ -62,6 +76,17 @@ export function TipTapEditor({
     isOpen: boolean
     position: { x: number; y: number }
   } | null>(null)
+  const [noteLinkAutocompleteState, setNoteLinkAutocompleteState] = useState<{
+    isOpen: boolean
+    query: string
+    position: { x: number; y: number }
+    startPos: number // Position where [[ starts
+  } | null>(null)
+  const [paragraphTagMenuState, setParagraphTagMenuState] = useState<{
+    isOpen: boolean
+    position: { x: number; y: number }
+  } | null>(null)
+  const lastCharRef = useRef<string>('') // Track last character for [[ detection
 
   const editor = useEditor({
     extensions: [
@@ -74,6 +99,22 @@ export function TipTapEditor({
             class: 'code-block',
           },
         },
+        link: false, // Disable StarterKit's Link, we'll add our own
+      }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: 'tiptap-link',
+        },
+      }),
+      NoteLink.configure({
+        availableNotes,
+        onNoteClick: onNoteLinkClick,
+      }),
+      ParagraphTag.configure({
+        availableNotes,
+        availableTopics,
+        onTagClick: onParagraphTag,
       }),
       Placeholder.configure({
         placeholder,
@@ -144,8 +185,114 @@ export function TipTapEditor({
         const { selection } = state
         const { $from } = selection
 
+        // Note link autocomplete: Detect [[ typing
+        if (
+          event.key === '[' &&
+          lastCharRef.current === '[' &&
+          !noteLinkAutocompleteState?.isOpen &&
+          !commandMenuState?.isOpen &&
+          availableNotes.length > 0
+        ) {
+          // Don't prevent default - let the second [ be inserted
+          // Get cursor position for menu placement after insertion
+          setTimeout(() => {
+            const newState = editor.view.state
+            const newFrom = newState.selection.$from
+            const coords = editor.view.coordsAtPos(newFrom.pos)
+            const startPos = newFrom.pos - 2 // Position of first [
+            setNoteLinkAutocompleteState({
+              isOpen: true,
+              query: '',
+              position: { x: coords.left, y: coords.bottom + 8 },
+              startPos,
+            })
+          }, 0)
+          lastCharRef.current = ''
+          return false // Let the character be inserted
+        }
+
+        // Update last character for [[ detection
+        if (event.key === '[' && !commandMenuState?.isOpen && !noteLinkAutocompleteState?.isOpen) {
+          lastCharRef.current = '['
+          return false // Let the character be inserted
+        } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+          lastCharRef.current = event.key
+        } else {
+          lastCharRef.current = ''
+        }
+
+        // Handle note link autocomplete when open
+        if (noteLinkAutocompleteState?.isOpen) {
+          // Close on Escape
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            handleNoteLinkAutocompleteClose()
+            return true
+          }
+
+          // Don't intercept arrow keys, Enter - let NoteLinkAutocomplete handle them
+          if (['ArrowUp', 'ArrowDown', 'Enter'].includes(event.key)) {
+            return false
+          }
+
+          // Update query as user types
+          if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            if (event.key === ']') {
+              // If ] is typed, close autocomplete
+              event.preventDefault()
+              handleNoteLinkAutocompleteClose()
+              return true
+            }
+
+            // Update query and let character be inserted
+            const newQuery = noteLinkAutocompleteState.query + event.key
+            setNoteLinkAutocompleteState((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    query: newQuery,
+                  }
+                : null
+            )
+            return false // Let character be inserted
+          }
+
+          // Handle backspace in query
+          if (event.key === 'Backspace') {
+            if (noteLinkAutocompleteState.query.length > 0) {
+              // Update query and let backspace happen
+              setNoteLinkAutocompleteState((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      query: prev.query.slice(0, -1),
+                    }
+                  : null
+              )
+              return false // Let backspace happen
+            } else {
+              // If query is empty, close autocomplete
+              event.preventDefault()
+              handleNoteLinkAutocompleteClose()
+              // Remove the [[ from editor
+              if (editor) {
+                const { state } = editor.view
+                const { $from } = state.selection
+                if ($from.pos >= noteLinkAutocompleteState.startPos + 2) {
+                  editor
+                    .chain()
+                    .focus()
+                    .deleteRange({ from: noteLinkAutocompleteState.startPos, to: $from.pos })
+                    .run()
+                }
+              }
+              return true
+            }
+          }
+        }
+
         // Slash command menu
-        if (event.key === '/' && !commandMenuState?.isOpen) {
+        if (event.key === '/' && !commandMenuState?.isOpen && !noteLinkAutocompleteState?.isOpen) {
           // Check if we're at the start of a paragraph or empty paragraph
           const isAtStart = $from.parentOffset === 0
           const isEmpty = $from.parent.content.size === 0
@@ -245,6 +392,59 @@ export function TipTapEditor({
             editor.chain().focus().liftListItem('listItem').run()
             return true
           }
+        }
+
+        // Cmd/Ctrl+T: Open paragraph tag menu
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          event.key === 't' &&
+          !event.shiftKey &&
+          (availableNotes.length > 0 || availableTopics.length > 0)
+        ) {
+          event.preventDefault()
+          const coords = view.coordsAtPos($from.pos)
+          setParagraphTagMenuState({
+            isOpen: true,
+            position: { x: coords.left, y: coords.bottom + 8 },
+          })
+          return true
+        }
+
+        // Cmd/Ctrl+K: Open note link autocomplete (if available notes provided)
+        if ((event.metaKey || event.ctrlKey) && event.key === 'k' && availableNotes.length > 0) {
+          event.preventDefault()
+          const { from, to } = editor.state.selection
+          const text = editor.state.doc.textBetween(from, to)
+
+          if (text) {
+            // If text is selected, insert [[text and open autocomplete
+            editor.chain().focus().deleteRange({ from, to }).insertContent(`[[${text}`).run()
+            // Wait for editor to update, then open autocomplete
+            setTimeout(() => {
+              const newPos = editor.state.selection.$from.pos
+              const newCoords = editor.view.coordsAtPos(newPos)
+              setNoteLinkAutocompleteState({
+                isOpen: true,
+                query: text,
+                position: { x: newCoords.left, y: newCoords.bottom + 8 },
+                startPos: newPos - text.length - 2, // Position of first [
+              })
+            }, 0)
+          } else {
+            // Otherwise insert [[ and open autocomplete
+            editor.chain().focus().insertContent('[[').run()
+            setTimeout(() => {
+              const newPos = editor.state.selection.$from.pos
+              const newCoords = editor.view.coordsAtPos(newPos)
+              setNoteLinkAutocompleteState({
+                isOpen: true,
+                query: '',
+                position: { x: newCoords.left, y: newCoords.bottom + 8 },
+                startPos: newPos - 2, // Position of first [
+              })
+            }, 0)
+          }
+          return true
         }
 
         return false
@@ -354,6 +554,48 @@ export function TipTapEditor({
     openMathPanel(position ? { x: position.x, y: position.y + 4 } : undefined)
   }
 
+  const handleNoteLinkAutocompleteClose = () => {
+    setNoteLinkAutocompleteState(null)
+    lastCharRef.current = ''
+    // Note: We don't remove the [[ text from the editor - user can continue typing or delete it manually
+  }
+
+  const handleNoteLinkSelect = (noteId: string, noteTitle: string) => {
+    if (!editor || !noteLinkAutocompleteState) return
+
+    const { state } = editor.view
+    const { $from } = state.selection
+    const startPos = noteLinkAutocompleteState.startPos
+    const currentPos = $from.pos
+
+    // Replace [[query with note title and convert to note link
+    // Delete everything from startPos (first [) to currentPos
+    editor
+      .chain()
+      .focus()
+      .deleteRange({ from: startPos, to: currentPos })
+      .insertContent(noteTitle) // Insert just the title text
+      .run()
+
+    // Convert the inserted text to a note link after a short delay
+    setTimeout(() => {
+      const newState = editor.view.state
+      const { $from: newFrom } = newState.selection
+      const textStart = newFrom.pos - noteTitle.length
+      const textEnd = newFrom.pos
+
+      // Select the text and convert it to a note link
+      editor
+        .chain()
+        .focus()
+        .setTextSelection({ from: textStart, to: textEnd })
+        .setNoteLink({ href: `note://${noteId}`, noteId })
+        .run()
+    }, 10)
+
+    handleNoteLinkAutocompleteClose()
+  }
+
   return (
     <div className={`tiptap-wrapper ${className}`}>
       {editor && editable && (
@@ -389,6 +631,30 @@ export function TipTapEditor({
           onClose={() => setMathPanelState(null)}
         />
       )}
+      {noteLinkAutocompleteState && editor && availableNotes.length > 0 && (
+        <NoteLinkAutocomplete
+          editor={editor}
+          isOpen={noteLinkAutocompleteState.isOpen}
+          onClose={handleNoteLinkAutocompleteClose}
+          position={noteLinkAutocompleteState.position}
+          query={noteLinkAutocompleteState.query}
+          availableNotes={availableNotes}
+          onSelectNote={handleNoteLinkSelect}
+        />
+      )}
+      {paragraphTagMenuState &&
+        editor &&
+        (availableNotes.length > 0 || availableTopics.length > 0) && (
+          <ParagraphTagMenu
+            editor={editor}
+            isOpen={paragraphTagMenuState.isOpen}
+            onClose={() => setParagraphTagMenuState(null)}
+            position={paragraphTagMenuState.position}
+            availableNotes={availableNotes}
+            availableTopics={availableTopics}
+            onTagSelect={handleParagraphTagSelect}
+          />
+        )}
     </div>
   )
 }

@@ -5,8 +5,10 @@
  * Supports sequential, parallel, and supervisor-based agent coordination.
  */
 
+import { randomUUID } from 'crypto'
 import type {
   AgentConfig,
+  DeepResearchRequest,
   JoinAggregationMode,
   Run,
   Workspace,
@@ -18,6 +20,7 @@ import { getFirestore } from 'firebase-admin/firestore'
 import { Graph } from 'graphlib'
 import jsonLogic from 'json-logic-js'
 
+import { assertValidResearchContext, normalizeResearchQuestions } from './deepResearchValidation.js'
 import type { ProviderKeys } from './providerService.js'
 import { executeWithProvider, executeWithProviderStreaming } from './providerService.js'
 import type { RunEventWriter } from './runEvents.js'
@@ -726,6 +729,21 @@ const getHumanInputResponse = (
   return null
 }
 
+const getDeepResearchRequestId = (
+  node: WorkflowNode,
+  workflowState: WorkflowState
+): string | null => {
+  const outputKey = node.outputKey ?? node.id
+  const existing = workflowState.namedOutputs?.[outputKey]
+  if (typeof existing === 'string' && existing.startsWith('research:')) {
+    return existing
+  }
+  if (existing && typeof existing === 'object' && 'requestId' in existing) {
+    return (existing as DeepResearchRequest).requestId
+  }
+  return null
+}
+
 export async function executeGraphWorkflow(
   workspace: Workspace,
   agents: AgentConfig[],
@@ -758,6 +776,12 @@ export async function executeGraphWorkflow(
     edgeHistory: run.workflowState?.edgeHistory ?? [],
     joinOutputs: run.workflowState?.joinOutputs ?? {},
     namedOutputs: run.workflowState?.namedOutputs ?? {},
+    pendingResearchRequestId: run.workflowState?.pendingResearchRequestId,
+    pendingResearchOutputKey: run.workflowState?.pendingResearchOutputKey,
+  }
+  if (run.status !== 'paused') {
+    delete workflowState.pendingResearchRequestId
+    delete workflowState.pendingResearchOutputKey
   }
 
   const joinBuffers = new Map<string, JoinBufferEntry[]>()
@@ -840,7 +864,8 @@ export async function executeGraphWorkflow(
 
     workflowState.pendingNodes = []
 
-    const batchResults = await Promise.all(
+    type NodeResult = { node: WorkflowNode; output: unknown }
+    const batchResults: Array<NodeResult | WorkflowExecutionResult> = await Promise.all(
       readyNodes.map(async (nodeId) => {
         const node = nodeById.get(nodeId)
         if (!node) {
@@ -871,6 +896,114 @@ export async function executeGraphWorkflow(
           lastOutput = response
           workflowState.namedOutputs![node.outputKey ?? nodeId] = response
           await addWorkflowStep({ node, output, startedAtMs, completedAtMs: Date.now() })
+          return { node, output }
+        }
+
+        if (node.type === 'research_request') {
+          if (!userId || !runId) {
+            throw new Error('Research request nodes require userId and runId')
+          }
+          if (!node.requestConfig) {
+            throw new Error(`Research request node ${nodeId} is missing requestConfig`)
+          }
+
+          const topic = node.requestConfig.topic.trim()
+          const questions = normalizeResearchQuestions(node.requestConfig.questions ?? [])
+          const priorityInput = node.requestConfig.priority ?? 'medium'
+          const priority = ['low', 'medium', 'high', 'critical'].includes(priorityInput)
+            ? (priorityInput as DeepResearchRequest['priority'])
+            : 'medium'
+          const estimatedTime =
+            typeof node.requestConfig.estimatedTime === 'string' &&
+            node.requestConfig.estimatedTime.trim()
+              ? node.requestConfig.estimatedTime.trim()
+              : undefined
+          const extraContext =
+            node.requestConfig.context && typeof node.requestConfig.context === 'object'
+              ? node.requestConfig.context
+              : undefined
+
+          if (!topic) {
+            throw new Error('Research topic is required')
+          }
+          if (questions.length === 0) {
+            throw new Error('At least one research question is required')
+          }
+          assertValidResearchContext(extraContext)
+
+          const outputKey = node.outputKey ?? nodeId
+          const existingRequestId = getDeepResearchRequestId(node, workflowState)
+          let request: DeepResearchRequest | null = null
+
+          if (existingRequestId) {
+            const requestDoc = await db
+              .doc(
+                `users/${userId}/workspaces/${workspace.workspaceId}/deepResearchRequests/${existingRequestId}`
+              )
+              .get()
+            if (requestDoc.exists) {
+              request = requestDoc.data() as DeepResearchRequest
+            }
+          }
+
+          if (!request) {
+            const createdBy = node.agentId ?? agents[0]?.agentId
+            if (!createdBy) {
+              throw new Error('No agent available to attribute research request')
+            }
+            const requestId = `research:${randomUUID()}` as DeepResearchRequest['requestId']
+            const createdRequest: DeepResearchRequest = {
+              requestId,
+              workspaceId: workspace.workspaceId,
+              runId: run.runId,
+              userId,
+              topic,
+              questions,
+              context: extraContext,
+              priority,
+              estimatedTime,
+              createdBy,
+              createdAtMs: Date.now(),
+              status: 'pending',
+              results: [],
+            }
+
+            await db
+              .doc(
+                `users/${userId}/workspaces/${workspace.workspaceId}/deepResearchRequests/${requestId}`
+              )
+              .set(createdRequest)
+            request = createdRequest
+          }
+
+          if (!request) {
+            throw new Error('Research request unavailable after creation')
+          }
+
+          output = request
+          lastOutput = request
+          workflowState.namedOutputs![outputKey] = request
+          await addWorkflowStep({ node, output, startedAtMs, completedAtMs: Date.now() })
+
+          if (node.requestConfig.waitForCompletion && request.status !== 'completed') {
+            workflowState.currentNodeId = nodeId
+            workflowState.pendingNodes = [nodeId]
+            workflowState.pendingResearchRequestId = request.requestId
+            workflowState.pendingResearchOutputKey = outputKey
+            await updateWorkflowState()
+            return {
+              output: run.output ?? '',
+              steps,
+              totalTokensUsed,
+              totalEstimatedCost,
+              totalSteps: stepCount,
+              status: 'paused',
+              workflowState,
+            }
+          }
+
+          delete workflowState.pendingResearchRequestId
+          delete workflowState.pendingResearchOutputKey
           return { node, output }
         }
 
@@ -1034,7 +1167,16 @@ export async function executeGraphWorkflow(
       })
     )
 
-    stepCount += batchResults.length
+    const pausedResult = batchResults.find(
+      (result): result is WorkflowExecutionResult => !('node' in result)
+    )
+    if (pausedResult) {
+      return pausedResult
+    }
+
+    const nodeResults = batchResults as NodeResult[]
+
+    stepCount += nodeResults.length
 
     const conditionData = {
       lastAgentOutput: lastOutput,
@@ -1046,7 +1188,7 @@ export async function executeGraphWorkflow(
 
     const nextNodes = new Set<string>()
 
-    for (const result of batchResults) {
+    for (const result of nodeResults) {
       if (result.node.type === 'end') {
         continue
       }
