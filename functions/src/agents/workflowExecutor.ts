@@ -778,15 +778,16 @@ export async function executeGraphWorkflow(
 
   const agentsById = new Map<string, AgentConfig>(agents.map((agent) => [agent.agentId, agent]))
 
+  const runWorkflowState = run.workflowState as WorkflowStateWithResearch | undefined
   const workflowState: WorkflowStateWithResearch = {
-    currentNodeId: run.workflowState?.currentNodeId,
-    pendingNodes: run.workflowState?.pendingNodes ?? [graphDef.startNodeId],
-    visitedCount: run.workflowState?.visitedCount ?? {},
-    edgeHistory: run.workflowState?.edgeHistory ?? [],
-    joinOutputs: run.workflowState?.joinOutputs ?? {},
-    namedOutputs: run.workflowState?.namedOutputs ?? {},
-    pendingResearchRequestId: run.workflowState?.pendingResearchRequestId,
-    pendingResearchOutputKey: run.workflowState?.pendingResearchOutputKey,
+    currentNodeId: runWorkflowState?.currentNodeId,
+    pendingNodes: runWorkflowState?.pendingNodes ?? [graphDef.startNodeId],
+    visitedCount: runWorkflowState?.visitedCount ?? {},
+    edgeHistory: runWorkflowState?.edgeHistory ?? [],
+    joinOutputs: runWorkflowState?.joinOutputs ?? {},
+    namedOutputs: runWorkflowState?.namedOutputs ?? {},
+    pendingResearchRequestId: runWorkflowState?.pendingResearchRequestId,
+    pendingResearchOutputKey: runWorkflowState?.pendingResearchOutputKey,
   }
   if (run.status !== 'paused') {
     delete workflowState.pendingResearchRequestId
