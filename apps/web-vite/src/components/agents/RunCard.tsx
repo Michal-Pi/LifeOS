@@ -152,12 +152,18 @@ export function RunCard({
         <div>
           <h4>{run.goal}</h4>
           <span className={getStatusBadgeClass(run.status)}>{run.status}</span>
-          {latestTurn ? <span className="badge">Expert Council</span> : <span className="badge">Workflow</span>}
+          {latestTurn ? (
+            <span className="badge">Expert Council</span>
+          ) : (
+            <span className="badge">Workflow</span>
+          )}
           {pendingResearch.length > 0 && (
             <button
               type="button"
               className="run-research-indicator"
-              onClick={() => navigate(`/agents/research?workspaceId=${workspaceId}&runId=${run.runId}`)}
+              onClick={() =>
+                navigate(`/agents/research?workspaceId=${workspaceId}&runId=${run.runId}`)
+              }
             >
               🔬 {pendingResearch.length} pending
             </button>
@@ -317,7 +323,9 @@ export function RunCard({
             onResolveConflict={(conflict) => {
               void addTurn(`Resolved conflict: ${conflict.description}`, 'Conflict resolved.')
             }}
-            onRequestExpertCouncil={() => void addTurn('Request Expert Council', 'Expert Council requested.')}
+            onRequestExpertCouncil={() =>
+              void addTurn('Request Expert Council', 'Expert Council requested.')
+            }
             onRecordInteraction={(interaction) => void recordInteraction(interaction)}
           />
         </details>

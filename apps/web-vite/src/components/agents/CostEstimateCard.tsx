@@ -8,7 +8,11 @@ interface CostEstimateCardProps {
 export function CostEstimateCard({ estimate, budget }: CostEstimateCardProps) {
   const budgetPercent = budget ? (estimate.totalCost / budget) * 100 : 0
   const budgetClass =
-    budgetPercent > 90 ? 'budget-fill danger' : budgetPercent > 70 ? 'budget-fill warning' : 'budget-fill'
+    budgetPercent > 90
+      ? 'budget-fill danger'
+      : budgetPercent > 70
+        ? 'budget-fill warning'
+        : 'budget-fill'
 
   return (
     <div className="cost-card">

@@ -163,7 +163,11 @@ export function ProjectManagerChat({
                   {rating} Star{rating === 1 ? '' : 's'}
                 </button>
               ))}
-              <button type="button" className="ghost-button" onClick={() => void recordInteraction()}>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => void recordInteraction()}
+              >
                 Skip
               </button>
             </div>

@@ -17,7 +17,9 @@ const formatElapsed = (ms: number) => {
 export function ProgressIndicator({ turn }: ProgressIndicatorProps) {
   const [elapsedMs, setElapsedMs] = useState(0)
   const stage1Responses = turn.stage1.responses ?? []
-  const completedCount = stage1Responses.filter((response) => response.status === 'completed').length
+  const completedCount = stage1Responses.filter(
+    (response) => response.status === 'completed'
+  ).length
   const failedCount = stage1Responses.filter((response) => response.status === 'failed').length
   const totalCount = stage1Responses.length
   const progressPercent = totalCount > 0 ? ((completedCount + failedCount) / totalCount) * 100 : 0

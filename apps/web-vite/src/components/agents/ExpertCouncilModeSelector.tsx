@@ -17,19 +17,20 @@ export function ExpertCouncilModeSelector({
   onSelect,
   initialMode,
 }: ExpertCouncilModeSelectorProps) {
-  const [selectedMode, setSelectedMode] = useState<ExecutionMode>(
-    initialMode ?? config.defaultMode
-  )
+  const [selectedMode, setSelectedMode] = useState<ExecutionMode>(initialMode ?? config.defaultMode)
 
   useEffect(() => {
     onSelect(selectedMode)
   }, [onSelect, selectedMode])
 
   const estimates = useMemo(() => {
-    return MODES.reduce((acc, mode) => {
-      acc[mode] = calculateCostEstimate(config, mode)
-      return acc
-    }, {} as Record<ExecutionMode, ReturnType<typeof calculateCostEstimate>>)
+    return MODES.reduce(
+      (acc, mode) => {
+        acc[mode] = calculateCostEstimate(config, mode)
+        return acc
+      },
+      {} as Record<ExecutionMode, ReturnType<typeof calculateCostEstimate>>
+    )
   }, [config])
 
   const selectedEstimate = estimates[selectedMode]

@@ -108,9 +108,7 @@ ${context.decisions
   .map((decision) => `- ${decision.question} → ${decision.selectedOption ?? 'pending'}`)
   .join('\n')}
 CONFLICTS (${openConflicts.length}):
-${openConflicts
-  .map((conflict) => `- [${conflict.severity}] ${conflict.description}`)
-  .join('\n')}
+${openConflicts.map((conflict) => `- [${conflict.severity}] ${conflict.description}`).join('\n')}
 `.trim()
     },
   }

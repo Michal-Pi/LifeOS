@@ -22,13 +22,15 @@ export function AgreementMatrix({ rankings, controversial }: AgreementMatrixProp
   return (
     <div className="agreement-matrix">
       <div className="matrix-title">Model Agreement</div>
-      <div className="matrix-grid" style={{ gridTemplateColumns: `repeat(${rankings.length}, 1fr)` }}>
+      <div
+        className="matrix-grid"
+        style={{ gridTemplateColumns: `repeat(${rankings.length}, 1fr)` }}
+      >
         {rankings.map((row, rowIndex) =>
           rankings.map((column, colIndex) => {
             const cellKey = `${row.label}-${column.label}`
             const status = matrix[rowIndex][colIndex]
-            const isControversial =
-              status === 'self' && controversial.includes(row.label)
+            const isControversial = status === 'self' && controversial.includes(row.label)
             const className = [
               'matrix-cell',
               status === 'agree' ? 'agree' : '',

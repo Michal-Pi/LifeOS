@@ -17,10 +17,7 @@ export interface ProjectManagerRepository {
     runId?: RunId
   ): Promise<ConversationContext>
   getContext(userId: string, contextId: ConversationContextId): Promise<ConversationContext | null>
-  getActiveContext(
-    userId: string,
-    workspaceId?: WorkspaceId
-  ): Promise<ConversationContext | null>
+  getActiveContext(userId: string, workspaceId?: WorkspaceId): Promise<ConversationContext | null>
   updateContext(
     userId: string,
     contextId: ConversationContextId,

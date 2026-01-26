@@ -17,7 +17,11 @@ type TemplateSelectorProps = {
 
 type SelectedContentTypes = Record<string, string>
 
-const toId = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+const toId = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
 
 export function TemplateSelector({
   templates,
@@ -79,7 +83,9 @@ export function TemplateSelector({
               )}
 
               <div className="template-card__meta">
-                <span className="template-card__badge">{template.workspaceConfig.workflowType}</span>
+                <span className="template-card__badge">
+                  {template.workspaceConfig.workflowType}
+                </span>
                 {(template.featureBadges ?? []).map((badge) => (
                   <span key={badge} className="template-card__badge">
                     {badge}
@@ -114,7 +120,10 @@ export function TemplateSelector({
                 type="button"
                 disabled={isBusy}
                 onClick={() =>
-                  onUseTemplate(template, template.supportsContentTypes ? { contentType } : undefined)
+                  onUseTemplate(
+                    template,
+                    template.supportsContentTypes ? { contentType } : undefined
+                  )
                 }
               >
                 Use Template

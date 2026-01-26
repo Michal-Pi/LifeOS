@@ -55,7 +55,7 @@ export function RunWorkspaceModal({
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { requests } = useDeepResearch(isOpen ? workspace?.workspaceId ?? null : null)
+  const { requests } = useDeepResearch(isOpen ? (workspace?.workspaceId ?? null) : null)
   const resumeRunId =
     initialContext && typeof initialContext === 'object'
       ? (initialContext as { resumeRunId?: string }).resumeRunId

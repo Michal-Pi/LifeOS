@@ -29,7 +29,9 @@ export function ExpertCouncilInspector({ turn }: ExpertCouncilInspectorProps) {
   const excludedResponses = turn.stage2?.consensusMetrics?.excludedResponses ?? []
   const stage1Complete =
     stage1Responses.length > 0 &&
-    stage1Responses.every((response) => response.status === 'completed' || response.status === 'failed')
+    stage1Responses.every(
+      (response) => response.status === 'completed' || response.status === 'failed'
+    )
   const isExecuting =
     turn.executionMode === 'single' ? !stage1Complete : !turn.stage3?.finalResponse
 

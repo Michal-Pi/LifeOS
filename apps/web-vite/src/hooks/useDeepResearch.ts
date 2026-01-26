@@ -133,8 +133,7 @@ export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResear
       const completeness = validateResearchCompleteness(updatedRequest, combinedContent)
       const shouldComplete = updatedRequest.status === 'completed' || completeness.isComplete
       const nextStatus = shouldComplete ? 'completed' : 'in_progress'
-      const shouldSynthesize =
-        updatedResults.length >= 2 && !updatedRequest.synthesizedFindings
+      const shouldSynthesize = updatedResults.length >= 2 && !updatedRequest.synthesizedFindings
       let synthesizedFindings = updatedRequest.synthesizedFindings
 
       if (shouldSynthesize) {

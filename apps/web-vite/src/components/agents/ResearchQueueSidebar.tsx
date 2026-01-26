@@ -32,7 +32,9 @@ export function ResearchQueueSidebar({
         <span className="research-sidebar__count">{runRequests.length}</span>
       </div>
       <div className="research-sidebar__list">
-        {runRequests.length === 0 && <div className="research-sidebar__empty">No requests yet.</div>}
+        {runRequests.length === 0 && (
+          <div className="research-sidebar__empty">No requests yet.</div>
+        )}
         {runRequests.map((request) => (
           <button
             key={request.requestId}

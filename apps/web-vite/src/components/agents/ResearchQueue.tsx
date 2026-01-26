@@ -99,10 +99,10 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
     const synthesizedFindings =
       selectedRequest.results && selectedRequest.results.length > 1
         ? await synthesizeResearchFindingsWithAI(selectedRequest)
-        : selectedRequest.synthesizedFindings ??
+        : (selectedRequest.synthesizedFindings ??
           (selectedRequest.results && selectedRequest.results.length === 1
             ? synthesizeResearchFindings(selectedRequest)
-            : undefined)
+            : undefined))
     await updateRequest(selectedRequest, {
       status: 'completed',
       synthesizedFindings,
@@ -212,9 +212,7 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
                     className="ghost-button"
                     type="button"
                     onClick={handleSynthesize}
-                    disabled={
-                      isSynthesizing || (selectedRequest?.results?.length ?? 0) < 2
-                    }
+                    disabled={isSynthesizing || (selectedRequest?.results?.length ?? 0) < 2}
                   >
                     {isSynthesizing ? 'Synthesizing...' : 'Synthesize'}
                   </button>
@@ -263,26 +261,26 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
             </div>
 
             <div className={styles['research-section']}>
-                <div className={styles['research-section__header']}>
-                  <h4>Results</h4>
-                  <div className={styles['research-action-buttons']}>
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      onClick={() =>
-                        void updateRequest(selectedRequest, {
-                          status: 'cancelled',
-                          integratedAtMs: Date.now(),
-                        })
-                      }
-                      disabled={selectedRequest.status === 'cancelled'}
-                    >
-                      Cancel request
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      onClick={handleMarkComplete}
+              <div className={styles['research-section__header']}>
+                <h4>Results</h4>
+                <div className={styles['research-action-buttons']}>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() =>
+                      void updateRequest(selectedRequest, {
+                        status: 'cancelled',
+                        integratedAtMs: Date.now(),
+                      })
+                    }
+                    disabled={selectedRequest.status === 'cancelled'}
+                  >
+                    Cancel request
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={handleMarkComplete}
                     disabled={selectedRequest.status === 'completed'}
                   >
                     Mark complete

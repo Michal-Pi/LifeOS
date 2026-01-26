@@ -525,7 +525,9 @@ export function WorkspacesPage() {
               <div>
                 <p className="section-label">Templates</p>
                 <h2>Workspace Templates</h2>
-                <p className="settings-panel__meta">Reuse workspace setups for repeated workflows.</p>
+                <p className="settings-panel__meta">
+                  Reuse workspace setups for repeated workflows.
+                </p>
                 <div className="settings-panel__actions">
                   <button onClick={handleAddPresets} className="ghost-button" type="button">
                     Add Presets

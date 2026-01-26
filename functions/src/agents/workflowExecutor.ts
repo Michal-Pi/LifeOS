@@ -1374,7 +1374,7 @@ export async function executeWorkflow(
               agentName: agent.name,
               agentId: agent.agentId,
             })
-          : agent.systemPrompt ?? ''
+          : (agent.systemPrompt ?? '')
         const mergedPrompt = tonePrompt
           ? `${resolvedPrompt}\n\nTONE OF VOICE:\n${tonePrompt}`
           : resolvedPrompt

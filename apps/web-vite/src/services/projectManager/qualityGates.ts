@@ -42,9 +42,7 @@ const checkCompleteness = (
   const issues: QualityIssue[] = []
 
   if (type === 'plan') {
-    const unaddressedReqs = context.requirements.filter(
-      (req) => !outputMentions(output, req.text)
-    )
+    const unaddressedReqs = context.requirements.filter((req) => !outputMentions(output, req.text))
     if (unaddressedReqs.length > 0) {
       issues.push({
         severity: 'major',
@@ -86,10 +84,7 @@ const checkClarity = (
   return { score: scorePenalty(issues), issues }
 }
 
-const checkConsistency = (
-  output: unknown,
-  context: ConversationContext
-): QualityCheckResult => {
+const checkConsistency = (output: unknown, context: ConversationContext): QualityCheckResult => {
   void output
   void context
   return { score: 100, issues: [] }

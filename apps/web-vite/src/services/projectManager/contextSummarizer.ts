@@ -9,10 +9,7 @@ const buildSummaryPrompt = (turns: ConversationContext['fullHistory']): string =
   return `
 Summarize this conversation history concisely:
 ${turns
-  .map(
-    (turn) =>
-      `Turn ${turn.turnNumber}:\nUser: ${turn.userMessage}\nPM: ${turn.pmResponse}`
-  )
+  .map((turn) => `Turn ${turn.turnNumber}:\nUser: ${turn.userMessage}\nPM: ${turn.pmResponse}`)
   .join('\n---\n')}
 Provide concise summary (max 500 words) covering:
 1. Main goals and objectives

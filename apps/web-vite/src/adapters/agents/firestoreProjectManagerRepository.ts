@@ -30,10 +30,7 @@ import type { ProjectManagerRepository } from '@lifeos/agents'
 
 const PROFILE_DOC_ID = 'profile'
 
-const loadSubcollection = async <T>(
-  contextRef: DocumentReference,
-  name: string
-): Promise<T[]> => {
+const loadSubcollection = async <T>(contextRef: DocumentReference, name: string): Promise<T[]> => {
   const colRef = collection(contextRef, name)
   const snapshot = await getDocs(query(colRef, orderBy('createdAtMs', 'asc')))
   return snapshot.docs.map((docSnap) => docSnap.data() as T)

@@ -30,7 +30,9 @@ export function ProjectManagerConfig({ value, onChange }: ProjectManagerConfigPr
             id="pm-questioning-depth"
             value={value.questioningDepth}
             onChange={(event) =>
-              onChange({ questioningDepth: event.target.value as ProjectManagerConfig['questioningDepth'] })
+              onChange({
+                questioningDepth: event.target.value as ProjectManagerConfig['questioningDepth'],
+              })
             }
             disabled={!value.enabled}
           >

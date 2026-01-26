@@ -14,8 +14,7 @@ export interface CostEstimate {
   qualityScore: number
 }
 
-const getModelCost = (modelName: string) =>
-  MODEL_PRICING[modelName] ?? MODEL_PRICING.default
+const getModelCost = (modelName: string) => MODEL_PRICING[modelName] ?? MODEL_PRICING.default
 
 const getQualityScore = (mode: ExecutionMode) => {
   if (mode === 'full') return 95

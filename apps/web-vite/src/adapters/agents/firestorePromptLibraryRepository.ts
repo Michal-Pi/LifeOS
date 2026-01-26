@@ -217,12 +217,17 @@ export const createFirestorePromptLibraryRepository = (): PromptLibraryRepositor
       })
     },
 
-    async getUsageStats(userId: string): Promise<
-      Array<{ templateId: PromptTemplateId; name: string; usageCount: number }>
-    > {
+    async getUsageStats(
+      userId: string
+    ): Promise<Array<{ templateId: PromptTemplateId; name: string; usageCount: number }>> {
       const db = await getDb()
       const colRef = collection(db, `users/${userId}/promptLibrary`)
-      const q = query(colRef, orderBy('usageCount', 'desc'), orderBy('updatedAtMs', 'desc'), limit(50))
+      const q = query(
+        colRef,
+        orderBy('usageCount', 'desc'),
+        orderBy('updatedAtMs', 'desc'),
+        limit(50)
+      )
       const snapshot = await getDocs(q)
       return snapshot.docs.map((doc) => {
         const data = doc.data() as PromptTemplate

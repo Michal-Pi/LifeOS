@@ -494,7 +494,8 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
   },
   {
     name: 'Project Plan Builder',
-    description: 'Multi-agent workspace for collaborative project planning with chapters, tasks, and risk assessment.',
+    description:
+      'Multi-agent workspace for collaborative project planning with chapters, tasks, and risk assessment.',
     category: 'planning',
     tags: ['project-management', 'planning', 'collaboration'],
     icon: 'PLAN',
@@ -527,9 +528,19 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
             modelName: 'claude-3-5-sonnet-20241022',
             temperature: 0.7,
           },
-          { modelId: 'gemini-pro', provider: 'google', modelName: 'gemini-1.5-pro', temperature: 0.7 },
+          {
+            modelId: 'gemini-pro',
+            provider: 'google',
+            modelName: 'gemini-1.5-pro',
+            temperature: 0.7,
+          },
         ],
-        chairmanModel: { modelId: 'chairman', provider: 'openai', modelName: 'gpt-4', temperature: 0.3 },
+        chairmanModel: {
+          modelId: 'chairman',
+          provider: 'openai',
+          modelName: 'gpt-4',
+          temperature: 0.3,
+        },
         selfExclusionEnabled: true,
         minCouncilSize: 2,
         maxCouncilSize: 10,
@@ -550,7 +561,8 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
   },
   {
     name: 'Thought Leadership Writer',
-    description: 'Multi-agent content creation with strategy, research, writing, editing, and SEO optimization.',
+    description:
+      'Multi-agent content creation with strategy, research, writing, editing, and SEO optimization.',
     category: 'content',
     tags: ['writing', 'content', 'thought-leadership', 'collaboration'],
     icon: 'WRITE',
@@ -569,8 +581,18 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
       version: 1,
       startNodeId: 'strategy',
       nodes: [
-        { id: 'strategy', type: 'agent', label: 'Strategy', agentTemplateName: 'Content Strategist' },
-        { id: 'research', type: 'agent', label: 'Research', agentTemplateName: 'Research Analyst - Content' },
+        {
+          id: 'strategy',
+          type: 'agent',
+          label: 'Strategy',
+          agentTemplateName: 'Content Strategist',
+        },
+        {
+          id: 'research',
+          type: 'agent',
+          label: 'Research',
+          agentTemplateName: 'Research Analyst - Content',
+        },
         {
           id: 'draft',
           type: 'agent',
@@ -580,7 +602,12 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
         { id: 'edit', type: 'agent', label: 'Edit', agentTemplateName: 'Editor - Content Polish' },
         { id: 'seo', type: 'agent', label: 'SEO', agentTemplateName: 'SEO Specialist' },
         { id: 'fact-check', type: 'agent', label: 'Fact Check', agentTemplateName: 'Fact Checker' },
-        { id: 'final', type: 'agent', label: 'Final Review', agentTemplateName: 'Content Strategist' },
+        {
+          id: 'final',
+          type: 'agent',
+          label: 'Final Review',
+          agentTemplateName: 'Content Strategist',
+        },
       ],
       edges: [
         { from: 'strategy', to: 'research', condition: { type: 'always' } },
@@ -594,7 +621,8 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
     },
     workspaceConfig: {
       name: 'Thought Leadership Writer',
-      description: 'Create, debate, and refine thought leadership content with multiple expert agents.',
+      description:
+        'Create, debate, and refine thought leadership content with multiple expert agents.',
       agentIds: [],
       defaultAgentId: undefined,
       workflowType: 'graph',
@@ -612,7 +640,12 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
             modelName: 'claude-3-5-sonnet-20241022',
             temperature: 0.7,
           },
-          { modelId: 'gemini-pro', provider: 'google', modelName: 'gemini-1.5-pro', temperature: 0.7 },
+          {
+            modelId: 'gemini-pro',
+            provider: 'google',
+            modelName: 'gemini-1.5-pro',
+            temperature: 0.7,
+          },
         ],
         chairmanModel: {
           modelId: 'chairman',

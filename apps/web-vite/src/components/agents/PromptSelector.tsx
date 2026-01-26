@@ -17,7 +17,7 @@ export function PromptSelector({ type, value, onChange, onEditTemplate }: Prompt
     [templates, type]
   )
 
-  const selectedValue = value.type === 'shared' ? value.templateId ?? 'custom' : 'custom'
+  const selectedValue = value.type === 'shared' ? (value.templateId ?? 'custom') : 'custom'
 
   return (
     <div className="prompt-selector">

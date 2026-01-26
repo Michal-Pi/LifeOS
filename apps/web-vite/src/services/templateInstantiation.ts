@@ -88,15 +88,13 @@ export async function instantiateTemplate({
           `'${template.name}': ${missingTools.join(', ')}`
       )
     }
-    const shouldCustomize =
-      baseCustomization && Boolean(template.supportsContentTypeCustomization)
-    const systemPrompt =
-      shouldCustomize
-        ? applyContentTypeCustomization(
-            template.agentConfig.systemPrompt,
-            customization?.contentType ?? ''
-          )
-        : template.agentConfig.systemPrompt
+    const shouldCustomize = baseCustomization && Boolean(template.supportsContentTypeCustomization)
+    const systemPrompt = shouldCustomize
+      ? applyContentTypeCustomization(
+          template.agentConfig.systemPrompt,
+          customization?.contentType ?? ''
+        )
+      : template.agentConfig.systemPrompt
 
     const agentInput: CreateAgentInput = {
       ...template.agentConfig,

@@ -217,7 +217,12 @@ export function PromptEditor({
                 {isDeleting ? 'Deleting...' : 'Delete'}
               </button>
             )}
-            <button type="button" className="primary-button" onClick={handleSave} disabled={isSaving}>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
               {isCreateMode ? 'Create' : 'Save'}
             </button>
           </div>
@@ -273,7 +278,11 @@ export function PromptEditor({
         <div className="prompt-editor__variables">
           <div className="prompt-editor__variables-header">
             <h4>Variables</h4>
-            <button type="button" className="ghost-button" onClick={() => setVariables((prev) => [...prev, emptyVariable()])}>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => setVariables((prev) => [...prev, emptyVariable()])}
+            >
               + Add Variable
             </button>
           </div>
@@ -289,13 +298,17 @@ export function PromptEditor({
                 type="text"
                 placeholder="Description"
                 value={variable.description}
-                onChange={(event) => handleVariableChange(index, { description: event.target.value })}
+                onChange={(event) =>
+                  handleVariableChange(index, { description: event.target.value })
+                }
               />
               <label>
                 <input
                   type="checkbox"
                   checked={variable.required}
-                  onChange={(event) => handleVariableChange(index, { required: event.target.checked })}
+                  onChange={(event) =>
+                    handleVariableChange(index, { required: event.target.checked })
+                  }
                 />
                 Required
               </label>
@@ -303,13 +316,17 @@ export function PromptEditor({
                 type="text"
                 placeholder="Default value"
                 value={variable.defaultValue ?? ''}
-                onChange={(event) => handleVariableChange(index, { defaultValue: event.target.value })}
+                onChange={(event) =>
+                  handleVariableChange(index, { defaultValue: event.target.value })
+                }
               />
               <input
                 type="text"
                 placeholder="Example value"
                 value={variable.exampleValue ?? ''}
-                onChange={(event) => handleVariableChange(index, { exampleValue: event.target.value })}
+                onChange={(event) =>
+                  handleVariableChange(index, { exampleValue: event.target.value })
+                }
               />
               <button
                 type="button"
