@@ -37,6 +37,7 @@ export const createFirestoreSectionRepository = (): SectionRepository => {
 
     const section: Section = {
       ...input,
+      userId,
       sectionId,
       createdAtMs: now,
       updatedAtMs: now,
@@ -65,6 +66,7 @@ export const createFirestoreSectionRepository = (): SectionRepository => {
     const updatedSection: Section = {
       ...existingSection,
       ...updates,
+      userId: existingSection.userId ?? userId,
       updatedAtMs: Date.now(),
     }
 
@@ -99,7 +101,22 @@ export const createFirestoreSectionRepository = (): SectionRepository => {
     }
 
     const snapshot = await getDocs(q)
-    const sections = snapshot.docs.map((doc) => doc.data() as Section)
+    const batch = writeBatch(db)
+    const sections: Section[] = []
+    let needsBackfill = false
+
+    for (const docSnapshot of snapshot.docs) {
+      const data = docSnapshot.data() as Section
+      if (!data.userId) {
+        needsBackfill = true
+        batch.set(docSnapshot.ref, { userId }, { merge: true })
+      }
+      sections.push({ ...data, userId: data.userId ?? userId })
+    }
+
+    if (needsBackfill) {
+      await batch.commit()
+    }
 
     // Sort by order
     return sections.sort((a, b) => a.order - b.order)

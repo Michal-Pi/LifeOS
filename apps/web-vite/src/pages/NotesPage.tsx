@@ -9,6 +9,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { NoteEditor } from '@/components/editor'
 import { ProjectSidebar } from '@/components/notes/ProjectSidebar'
 import { NoteTitleEditor } from '@/components/notes/NoteTitleEditor'
@@ -23,8 +24,12 @@ import { useNoteSync } from '@/hooks/useNoteSync'
 import { getTemplateContent } from '@/lib/noteTemplates'
 import type { AttachmentId } from '@lifeos/notes'
 import type { JSONContent } from '@tiptap/core'
+import { useNoteMetadataCache } from '@/hooks/useNoteMetadataCache'
 
 export function NotesPage() {
+  // Initialize cache hook (refreshes cache on mount and user changes)
+  useNoteMetadataCache()
+  const navigate = useNavigate()
   const {
     notes,
     currentNote,
@@ -42,7 +47,8 @@ export function NotesPage() {
 
   const { isOnline, lastSyncMs, stats, triggerSync } = useNoteSync()
 
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
@@ -79,8 +85,8 @@ export function NotesPage() {
       const newNote = await createNote({
         title: 'Untitled Note',
         content,
-        topicId: null,
-        sectionId: null,
+        topicId: selectedTopicId || null,
+        sectionId: selectedSectionId || null,
       })
       setCurrentNote(newNote)
       setSelectedNoteId(newNote.noteId)
@@ -95,12 +101,22 @@ export function NotesPage() {
   }
 
   const handleSelectNote = (noteId: string) => {
+    const note = notes.find((n) => n.noteId === noteId)
     setSelectedNoteId(noteId)
+    if (note) {
+      setSelectedTopicId(note.topicId || null)
+      setSelectedSectionId(note.sectionId || null)
+    }
   }
 
-  const handleProjectSelect = (projectId: string | null) => {
-    setSelectedProjectId(projectId)
-    // Keep note selected if it's still in the filtered list
+  const handleTopicSelect = (topicId: string | null) => {
+    setSelectedTopicId(topicId)
+    setSelectedSectionId(null)
+  }
+
+  const handleSectionSelect = (sectionId: string | null, topicId: string | null) => {
+    setSelectedTopicId(topicId)
+    setSelectedSectionId(sectionId)
   }
 
   const handleSaveNote = async (content: JSONContent, html: string) => {
@@ -228,12 +244,33 @@ export function NotesPage() {
         {/* Project Sidebar */}
         <ProjectSidebar
           notes={notes}
-          selectedProjectId={selectedProjectId}
+          selectedTopicId={selectedTopicId}
+          selectedSectionId={selectedSectionId}
           selectedNoteId={selectedNoteId}
           searchQuery={searchQuery}
-          onProjectSelect={handleProjectSelect}
+          onTopicSelect={handleTopicSelect}
+          onSectionSelect={handleSectionSelect}
           onNoteSelect={handleSelectNote}
           onNoteDelete={deleteNote}
+          onNoteDuplicate={async (noteId) => {
+            const source = notes.find((note) => note.noteId === noteId)
+            if (!source) return
+            const duplicated = await createNote({
+              title: `${source.title} Copy`,
+              content: source.content,
+              topicId: source.topicId,
+              sectionId: source.sectionId,
+              projectIds: source.projectIds || [],
+              okrIds: source.okrIds || [],
+              tags: source.tags || [],
+              attachmentIds: source.attachmentIds || [],
+              archived: source.archived,
+            })
+            setSelectedNoteId(duplicated.noteId)
+            setSelectedTopicId(duplicated.topicId || null)
+            setSelectedSectionId(duplicated.sectionId || null)
+            setCurrentNote(duplicated)
+          }}
           onCreateNote={handleCreateNote}
           onSearchChange={setSearchQuery}
           searchInputRef={searchInputRef}
@@ -253,21 +290,21 @@ export function NotesPage() {
                   <div className="editor-actions">
                     <div className="editor-linker-actions">
                       <button
-                        className="ghost-button small"
+                        className="ghost-button notes-header-button"
                         onClick={() => setShowProjectLinker((prev) => !prev)}
                         type="button"
                       >
                         Link project
                       </button>
                       <button
-                        className="ghost-button small"
+                        className="ghost-button notes-header-button"
                         onClick={() => setShowOKRLinker((prev) => !prev)}
                         type="button"
                       >
                         Link OKR
                       </button>
                       <button
-                        className="ghost-button small"
+                        className="ghost-button notes-header-button"
                         onClick={() => setShowTags((prev) => !prev)}
                         type="button"
                       >
@@ -277,13 +314,20 @@ export function NotesPage() {
                     <div className="editor-actions-stack">
                       <div className="editor-actions-row">
                         <button
-                          className="ghost-button"
+                          className="ghost-button notes-header-button"
+                          onClick={() => navigate('/notes/graph')}
+                          type="button"
+                        >
+                          Graph View
+                        </button>
+                        <button
+                          className="ghost-button notes-header-button"
                           onClick={handleArchiveToggle}
                           type="button"
                         >
                           {currentNote.archived ? 'Unarchive' : 'Archive'}
                         </button>
-                        <ExportMenu note={currentNote} />
+                        <ExportMenu note={currentNote} className="notes-header-export" />
                       </div>
                       <div className="editor-status" id="note-status-anchor" />
                     </div>
@@ -326,6 +370,14 @@ export function NotesPage() {
                   showAttachments={false}
                   showTags={false}
                   statusContainerId="note-status-anchor"
+                  availableNotes={notes}
+                  onNoteClick={(noteId) => {
+                    const note = notes.find((n) => n.noteId === noteId)
+                    if (note) {
+                      setCurrentNote(note)
+                      setSelectedNoteId(noteId)
+                    }
+                  }}
                 />
               </div>
             </>
@@ -428,6 +480,7 @@ export function NotesPage() {
           display: flex;
           align-items: center;
           gap: 0.5rem;
+          flex-wrap: wrap;
         }
 
         .editor-actions-stack {
@@ -448,6 +501,15 @@ export function NotesPage() {
           font-size: 0.7rem;
           color: var(--text-secondary);
           line-height: 1;
+        }
+
+        .notes-header-button,
+        .notes-header-export .export-button {
+          min-height: 32px;
+          padding: 0.45rem 0.85rem;
+          font-size: 0.8rem;
+          border-radius: 8px;
+          letter-spacing: 0.04em;
         }
 
         .editor-wrapper {

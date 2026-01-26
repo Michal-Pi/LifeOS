@@ -10,10 +10,14 @@
  */
 
 import { useMemo, useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAiProviderKeys } from '@/hooks/useAiProviderKeys'
 import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
-import type { AgentConfig, Workspace } from '@lifeos/agents'
+import type { AgentConfig, ExecutionMode, Workspace } from '@lifeos/agents'
 import { useAuth } from '@/hooks/useAuth'
+import { useDeepResearch } from '@/hooks/useDeepResearch'
+import { ExpertCouncilModeSelector } from './ExpertCouncilModeSelector'
+import { ResearchQueueSidebar } from './ResearchQueueSidebar'
 
 interface RunWorkspaceModalProps {
   workspace: Workspace | null
@@ -36,6 +40,7 @@ export function RunWorkspaceModal({
 }: RunWorkspaceModalProps) {
   const { createRun } = useWorkspaceOperations()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { keys } = useAiProviderKeys(user?.uid)
   const memoryLimitPlaceholder = workspace?.memoryMessageLimit
     ? `Workspace default: ${workspace.memoryMessageLimit}`
@@ -44,17 +49,35 @@ export function RunWorkspaceModal({
   const [goal, setGoal] = useState('')
   const [contextInput, setContextInput] = useState('')
   const [memoryMessageLimitInput, setMemoryMessageLimitInput] = useState('')
+  const [expertCouncilMode, setExpertCouncilMode] = useState<ExecutionMode>('full')
+  const [showResearchQueue, setShowResearchQueue] = useState(false)
 
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const { requests } = useDeepResearch(isOpen ? workspace?.workspaceId ?? null : null)
+  const resumeRunId =
+    initialContext && typeof initialContext === 'object'
+      ? (initialContext as { resumeRunId?: string }).resumeRunId
+      : undefined
+  const runRequests = useMemo(() => {
+    if (!resumeRunId) return []
+    return requests.filter((request) => request.runId === resumeRunId)
+  }, [requests, resumeRunId])
+
   const missingProviders = useMemo(() => {
     if (!workspace) return []
-    const providers = new Set(
+    const providers = new Set<string>()
+
+    if (workspace.expertCouncilConfig?.enabled) {
+      workspace.expertCouncilConfig.councilModels.forEach((model) => providers.add(model.provider))
+      workspace.expertCouncilConfig.judgeModels?.forEach((model) => providers.add(model.provider))
+      providers.add(workspace.expertCouncilConfig.chairmanModel.provider)
+    } else {
       agents
         .filter((agent) => workspace.agentIds.includes(agent.agentId))
-        .map((agent) => agent.modelProvider)
-    )
+        .forEach((agent) => providers.add(agent.modelProvider))
+    }
 
     const missing: string[] = []
     providers.forEach((provider) => {
@@ -73,9 +96,10 @@ export function RunWorkspaceModal({
       setGoal(initialGoal ?? '')
       setContextInput(initialContext ? JSON.stringify(initialContext, null, 2) : '')
       setMemoryMessageLimitInput('')
+      setExpertCouncilMode(workspace?.expertCouncilConfig?.defaultMode ?? 'full')
       setError(null)
     }
-  }, [initialContext, initialGoal, isOpen])
+  }, [initialContext, initialGoal, isOpen, workspace])
 
   const handleStart = async () => {
     // Validation
@@ -126,6 +150,11 @@ export function RunWorkspaceModal({
         }
       }
 
+      const councilConfig = workspace.expertCouncilConfig
+      if (councilConfig?.enabled && councilConfig.allowModeOverride) {
+        context = { ...(context ?? {}), expertCouncilMode }
+      }
+
       await createRun({
         workspaceId: workspace.workspaceId,
         goal: goal.trim(),
@@ -147,75 +176,111 @@ export function RunWorkspaceModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>Start New Run</h2>
-        <p className="workspace-name">
-          Workspace: <strong>{workspace.name}</strong>
-        </p>
-        {initialContext?.resumeRunId && (
-          <div className="info-message">
-            This run will include conversation history from run {initialContext.resumeRunId}.
+        <div className="run-modal-layout">
+          <div className="run-modal-main">
+            <div className="modal-header">
+              <div>
+                <h2>Start New Run</h2>
+                <p className="workspace-name">
+                  Workspace: <strong>{workspace.name}</strong>
+                </p>
+              </div>
+              {resumeRunId && runRequests.length > 0 && (
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setShowResearchQueue((prev) => !prev)}
+                >
+                  {showResearchQueue ? 'Hide' : 'Show'} Research ({runRequests.length})
+                </button>
+              )}
+            </div>
+
+            {resumeRunId && (
+              <div className="info-message">
+                This run will include conversation history from run {resumeRunId}.
+              </div>
+            )}
+
+            {error && <div className="error-message">{error}</div>}
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                void handleStart()
+              }}
+            >
+              {workspace.expertCouncilConfig?.enabled &&
+                workspace.expertCouncilConfig.allowModeOverride && (
+                  <ExpertCouncilModeSelector
+                    config={workspace.expertCouncilConfig}
+                    initialMode={expertCouncilMode}
+                    onSelect={setExpertCouncilMode}
+                  />
+                )}
+              <div className="form-group">
+                <label htmlFor="goal">Goal *</label>
+                <textarea
+                  id="goal"
+                  value={goal}
+                  onChange={(e) => setGoal(e.target.value)}
+                  placeholder="What do you want the workspace to accomplish?"
+                  rows={4}
+                  required
+                />
+                <small>Describe the task or goal for this run</small>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="context">Context (optional)</label>
+                <textarea
+                  id="context"
+                  value={contextInput}
+                  onChange={(e) => setContextInput(e.target.value)}
+                  placeholder='{"key": "value"}'
+                  rows={6}
+                />
+                <small>Additional context as JSON (e.g., user preferences, data)</small>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="memoryMessageLimit">Context Budget (optional)</label>
+                <input
+                  id="memoryMessageLimit"
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={memoryMessageLimitInput}
+                  onChange={(e) => setMemoryMessageLimitInput(e.target.value)}
+                  placeholder={memoryLimitPlaceholder}
+                />
+                <small>
+                  Number of recent messages to include when resuming runs (1-200). Overrides
+                  workspace and global defaults.
+                </small>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" onClick={onClose} disabled={isCreating}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={isCreating}>
+                  {isCreating ? 'Starting...' : 'Start Run'}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
 
-        {error && <div className="error-message">{error}</div>}
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            void handleStart()
-          }}
-        >
-          <div className="form-group">
-            <label htmlFor="goal">Goal *</label>
-            <textarea
-              id="goal"
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              placeholder="What do you want the workspace to accomplish?"
-              rows={4}
-              required
+          {showResearchQueue && resumeRunId && (
+            <ResearchQueueSidebar
+              workspaceId={workspace.workspaceId}
+              runId={resumeRunId}
+              onOpenFullQueue={() => {
+                navigate(`/agents/research?workspaceId=${workspace.workspaceId}`)
+              }}
             />
-            <small>Describe the task or goal for this run</small>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="context">Context (optional)</label>
-            <textarea
-              id="context"
-              value={contextInput}
-              onChange={(e) => setContextInput(e.target.value)}
-              placeholder='{"key": "value"}'
-              rows={6}
-            />
-            <small>Additional context as JSON (e.g., user preferences, data)</small>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="memoryMessageLimit">Context Budget (optional)</label>
-            <input
-              id="memoryMessageLimit"
-              type="number"
-              min={1}
-              max={200}
-              value={memoryMessageLimitInput}
-              onChange={(e) => setMemoryMessageLimitInput(e.target.value)}
-              placeholder={memoryLimitPlaceholder}
-            />
-            <small>
-              Number of recent messages to include when resuming runs (1-200). Overrides workspace
-              and global defaults.
-            </small>
-          </div>
-
-          <div className="modal-actions">
-            <button type="button" onClick={onClose} disabled={isCreating}>
-              Cancel
-            </button>
-            <button type="submit" disabled={isCreating}>
-              {isCreating ? 'Starting...' : 'Start Run'}
-            </button>
-          </div>
-        </form>
+          )}
+        </div>
       </div>
     </div>
   )

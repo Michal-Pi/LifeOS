@@ -16,7 +16,7 @@ export const WorkoutContextSchema = z.enum(['gym', 'home', 'road'])
 
 export const SessionStatusSchema = z.enum(['planned', 'in_progress', 'completed', 'skipped'])
 
-export const SyncStateSchema = z.enum(['synced', 'pending', 'conflict'])
+export const SyncStateSchema = z.enum(['synced', 'pending', 'syncing', 'failed', 'conflict'])
 
 // ----- Target Types -----
 

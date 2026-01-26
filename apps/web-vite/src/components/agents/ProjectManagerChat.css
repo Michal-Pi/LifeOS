@@ -1,0 +1,72 @@
+.pm-chat {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  gap: 16px;
+}
+
+.pm-chat__main {
+  display: grid;
+  gap: 16px;
+}
+
+.pm-chat__sidebar {
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  padding: 16px;
+  background: #fafafa;
+}
+
+.pm-section {
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  padding: 16px;
+  background: #fff;
+  display: grid;
+  gap: 12px;
+}
+
+.pm-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pm-questions,
+.pm-options {
+  display: grid;
+  gap: 12px;
+}
+
+.pm-question-card,
+.pm-option-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #f0f0f0;
+  background: #fafafa;
+  text-align: left;
+}
+
+.pm-option-card {
+  cursor: pointer;
+}
+
+.pm-option-card:hover {
+  border-color: #d9d9d9;
+}
+
+.pm-section pre {
+  white-space: pre-wrap;
+  font-size: 12px;
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+@media (max-width: 960px) {
+  .pm-chat {
+    grid-template-columns: 1fr;
+  }
+}

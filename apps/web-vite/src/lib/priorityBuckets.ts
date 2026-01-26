@@ -14,7 +14,7 @@ export type TimelineFilter = 'today' | 'next_3_days' | 'this_week' | 'this_month
 export interface TaskFilters {
   domain: Domain | 'all'
   projectId?: string
-  milestoneId?: string
+  chapterId?: string
   timeline?: TimelineFilter
   completionStatus?: 'todo' | 'completed' | 'all'
   minTimeHours?: number
@@ -65,8 +65,8 @@ export function groupTasksByBucket(tasks: CanonicalTask[], filters: TaskFilters)
     // Project filter
     if (filters.projectId && task.projectId !== filters.projectId) return false
 
-    // Milestone filter
-    if (filters.milestoneId && task.milestoneId !== filters.milestoneId) return false
+    // Chapter filter
+    if (filters.chapterId && task.chapterId !== filters.chapterId) return false
 
     // Timeline filter (merged urgency + due date)
     // Matches tasks that have EITHER a due date OR urgency matching the timeline

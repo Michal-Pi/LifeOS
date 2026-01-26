@@ -9,7 +9,7 @@ export type SessionId = Id<'session'>
 
 // ----- Sync State -----
 
-export type SyncState = 'synced' | 'pending' | 'conflict'
+export type SyncState = 'synced' | 'pending' | 'syncing' | 'failed' | 'conflict'
 
 // ----- Enums -----
 

@@ -11,10 +11,9 @@
 import { useState, useCallback } from 'react'
 import { useAuth } from './useAuth'
 import { getStorageClient } from '@/lib/firebase'
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { createFirestoreAttachmentRepository } from '@/adapters/notes/firestoreAttachmentRepository'
 import type { Attachment, NoteId, AttachmentId } from '@lifeos/notes'
-import { generateId } from '@/lib/idGenerator'
 
 const attachmentRepository = createFirestoreAttachmentRepository()
 
@@ -42,12 +41,21 @@ export function useAttachments(): UseAttachmentsReturn {
       setIsLoading(true)
       setError(null)
 
-      try {
-        const storage = getStorageClient()
-        const attachmentId = generateId() as AttachmentId
+      let createdAttachment: Attachment | null = null
 
-        // Create storage path: users/{userId}/notes/{noteId}/attachments/{attachmentId}/{filename}
-        const storagePath = `users/${user.uid}/notes/${noteId}/attachments/${attachmentId}/${file.name}`
+      try {
+        createdAttachment = await attachmentRepository.create(user.uid, {
+          userId: user.uid,
+          noteId,
+          fileName: file.name,
+          fileType: file.type,
+          fileSizeBytes: file.size,
+        })
+
+        const storage = getStorageClient()
+
+        // Create storage path: users/{userId}/attachments/{attachmentId}
+        const storagePath = `users/${user.uid}/attachments/${createdAttachment.attachmentId}`
         const storageRef = ref(storage, storagePath)
 
         // Upload file
@@ -75,27 +83,30 @@ export function useAttachments(): UseAttachmentsReturn {
         // Get download URL
         const downloadURL = await getDownloadURL(storageRef)
 
-        // Create attachment record
+        // Update Firestore metadata with storage URL
+        await attachmentRepository.updateSyncState(
+          user.uid,
+          createdAttachment.attachmentId,
+          'synced',
+          downloadURL
+        )
+
         const attachment: Attachment = {
-          attachmentId,
-          userId: user.uid,
-          noteId,
-          fileName: file.name,
-          fileType: file.type,
-          fileSizeBytes: file.size,
+          ...createdAttachment,
           storageUrl: downloadURL,
-          uploadedAtMs: Date.now(),
           syncState: 'synced',
         }
-
-        // Save to Firestore
-        await attachmentRepository.create(user.uid, attachment)
 
         // Update local state
         setAttachments((prev) => [...prev, attachment])
 
         return attachment
       } catch (err) {
+        if (createdAttachment) {
+          await attachmentRepository
+            .updateSyncState(user.uid, createdAttachment.attachmentId, 'error')
+            .catch(console.error)
+        }
         const error = err instanceof Error ? err : new Error('Failed to upload file')
         setError(error)
         throw error
@@ -122,20 +133,8 @@ export function useAttachments(): UseAttachmentsReturn {
           throw new Error('Attachment not found')
         }
 
-        // Delete from Storage
-        if (attachment.storageUrl) {
-          const storage = getStorageClient()
-          const storageRef = ref(storage, attachment.storageUrl)
-          await deleteObject(storageRef).catch((error) => {
-            // Ignore if file doesn't exist
-            if (error.code !== 'storage/object-not-found') {
-              throw error
-            }
-          })
-        }
-
         // Delete from Firestore
-        await attachmentRepository.delete(user.uid, attachment.noteId, attachmentId)
+        await attachmentRepository.delete(user.uid, attachmentId)
 
         // Update local state
         setAttachments((prev) => prev.filter((a) => a.attachmentId !== attachmentId))

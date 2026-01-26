@@ -25,6 +25,7 @@ const PROCESS_INTERVAL_MS = 5 * 1000 // Check every 5 seconds
 let drainTimer: ReturnType<typeof globalThis.setTimeout> | null = null
 let activeUser: string | null = null
 let isDraining = false
+let onlineListener: (() => void) | null = null
 
 /** Event listeners for outbox state changes */
 type OutboxListener = (stats: { pending: number; failed: number }) => void
@@ -200,10 +201,14 @@ export function startOutboxWorker(userId: string): void {
   scheduleDrain()
 
   if (typeof globalThis !== 'undefined') {
-    globalThis.addEventListener('online', () => {
+    if (onlineListener) {
+      globalThis.removeEventListener('online', onlineListener)
+    }
+    onlineListener = () => {
       logger.info('Back online, draining queue')
       void drainQueue()
-    })
+    }
+    globalThis.addEventListener('online', onlineListener)
   }
 
   logger.info('Worker started', { userId })
@@ -216,6 +221,10 @@ export function stopOutboxWorker(): void {
   if (drainTimer) {
     globalThis.clearTimeout(drainTimer)
     drainTimer = null
+  }
+  if (onlineListener && typeof globalThis !== 'undefined') {
+    globalThis.removeEventListener('online', onlineListener)
+    onlineListener = null
   }
   activeUser = null
   logger.info('Worker stopped')

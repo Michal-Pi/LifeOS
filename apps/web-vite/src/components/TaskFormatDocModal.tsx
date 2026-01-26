@@ -58,18 +58,10 @@ export function TaskFormatDocModal({ isOpen, onClose }: TaskFormatDocModalProps)
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content task-format-doc-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="modal-content task-format-doc-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Task Import Format</h2>
-          <button
-            type="button"
-            className="close-button"
-            onClick={onClose}
-            aria-label="Close"
-          >
+          <button type="button" className="close-button" onClick={onClose} aria-label="Close">
             ×
           </button>
         </div>
@@ -195,10 +187,12 @@ export function TaskFormatDocModal({ isOpen, onClose }: TaskFormatDocModalProps)
               <div className="field-group">
                 <h4>Domain</h4>
                 <p>
-                  One of: <code>work</code>, <code>projects</code>, <code>life</code>, <code>learning</code>, <code>wellbeing</code>
+                  One of: <code>work</code>, <code>projects</code>, <code>life</code>,{' '}
+                  <code>learning</code>, <code>wellbeing</code>
                 </p>
                 <p className="field-note">
-                  Required if task is not assigned to a project. If assigned to a project, the project's domain will be used.
+                  Required if task is not assigned to a project. If assigned to a project, the
+                  project's domain will be used.
                 </p>
               </div>
               <div className="field-group">
@@ -207,23 +201,26 @@ export function TaskFormatDocModal({ isOpen, onClose }: TaskFormatDocModalProps)
                   Use <code>[project:Name]</code> to assign task to an existing project.
                 </p>
                 <p>
-                  Use <code>[chapter:Name]</code> to assign task to a chapter within a project. The chapter must belong to the specified project.
+                  Use <code>[chapter:Name]</code> to assign task to a chapter within a project. The
+                  chapter must belong to the specified project.
                 </p>
                 <p className="field-note">
-                  Project and chapter names must match exactly (case-sensitive).
+                  Project and chapter names are matched case-insensitively.
                 </p>
               </div>
               <div className="field-group">
                 <h4>Importance</h4>
                 <p>
-                  One of: <code>1</code> (low), <code>2</code>, <code>4</code>, <code>7</code>, <code>10</code> (critical)
+                  One of: <code>1</code> (low), <code>2</code>, <code>4</code>, <code>7</code>,{' '}
+                  <code>10</code> (critical)
                 </p>
                 <p className="field-note">Default: 4 if not specified</p>
               </div>
               <div className="field-group">
                 <h4>Urgency</h4>
                 <p>
-                  One of: <code>today</code>, <code>next_3_days</code>, <code>this_week</code>, <code>this_month</code>, <code>next_month</code>, <code>later</code>
+                  One of: <code>today</code>, <code>next_3_days</code>, <code>this_week</code>,{' '}
+                  <code>this_month</code>, <code>next_month</code>, <code>later</code>
                 </p>
                 <p className="field-note">
                   Can be automatically calculated from due date if not specified.
@@ -240,12 +237,16 @@ export function TaskFormatDocModal({ isOpen, onClose }: TaskFormatDocModalProps)
               </div>
               <div className="field-group">
                 <h4>Estimate</h4>
-                <p>Positive integer representing minutes (e.g., <code>60</code> for 1 hour, <code>120</code> for 2 hours)</p>
+                <p>
+                  Positive integer representing minutes (e.g., <code>60</code> for 1 hour,{' '}
+                  <code>120</code> for 2 hours)
+                </p>
               </div>
               <div className="field-group">
                 <h4>Description</h4>
                 <p>
-                  Multi-line description text. Start with <code>Description:</code> on a new line after the task title.
+                  Multi-line description text. Start with <code>Description:</code> on a new line
+                  after the task title.
                 </p>
                 <p className="field-note">
                   Indent description lines with 2 spaces for proper formatting.
@@ -361,14 +362,18 @@ export function TaskFormatDocModal({ isOpen, onClose }: TaskFormatDocModalProps)
           <section className="doc-section">
             <h3>Tips & Best Practices</h3>
             <ul className="tips-list">
-              <li>Each task must start with a dash (<code>-</code>)</li>
+              <li>
+                Each task must start with a dash (<code>-</code>)
+              </li>
               <li>Metadata tags can be in any order</li>
               <li>Project and chapter names are case-sensitive</li>
               <li>If a project/chapter doesn't exist, the task will fail to import</li>
               <li>You can mix tasks with and without projects in the same import</li>
               <li>Descriptions can span multiple lines if indented</li>
               <li>Empty lines separate tasks</li>
-              <li>Comments (lines starting with <code>#</code>) are ignored</li>
+              <li>
+                Comments (lines starting with <code>#</code>) are ignored
+              </li>
             </ul>
           </section>
         </div>

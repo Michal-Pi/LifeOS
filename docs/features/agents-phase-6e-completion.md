@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Status**: ✅ Complete (v1)  
+**Status**: ✅ Backend Complete, ⚠️ UI Integration Pending  
 **Date**: December 30, 2025  
 **Objective**: Deliver graph-based workflows with conditional routing, joins, and human-in-the-loop
 pauses, plus observability for every workflow step.
@@ -97,3 +97,11 @@ users/{userId}/runs/{runId}/workflowSteps/{workflowStepId}
 - Graph layout is currently a deterministic depth-based layout; visual editing is deferred.
 - Join aggregation supports `list`, `ranked`, and `consensus` modes (with placeholders for future
   scoring).
+- Execution precedence: Expert Council (if enabled) runs first; workflow execution is the fallback.
+
+## Known Limitations
+
+- Project Manager UI components exist but are not integrated into user-facing workflows. Users
+  cannot currently interact with clarification questions, conflict resolution, or decision options.
+- Prompt resolution failures fall back to default prompts when custom templates cannot be resolved.
+  Users should verify shared prompt templates are accessible before saving prompt configurations.

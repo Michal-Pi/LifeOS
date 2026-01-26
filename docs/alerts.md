@@ -13,6 +13,13 @@ LifeOS provides a **best-effort, in-app alert system** that notifies users when 
 - **Canonical storage**: Alert settings sync across devices via canonical event data
 - **Dismissal syncing**: Dismissed alerts stay dismissed across sessions and devices
 
+### Current UX Scope
+
+- Calendar alerts are the only user-facing notification banners today.
+- Agent runs and background workflows report status in their UIs (Run cards, tool timelines) but do
+  not emit user-facing notifications.
+- Push notifications and background alerts are not implemented.
+
 ## Alert Configuration
 
 ### Preset Options

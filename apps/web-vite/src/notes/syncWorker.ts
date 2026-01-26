@@ -20,6 +20,8 @@ import {
   getNoteLocally,
   saveTopicLocally,
   deleteTopicLocally,
+  listTopicsLocally,
+  listSectionsByTopicLocally,
   saveSectionLocally,
   deleteSectionLocally,
 } from './offlineStore'
@@ -356,9 +358,23 @@ async function pullRemoteNotes(userId: string): Promise<void> {
 async function pullRemoteTopics(userId: string): Promise<void> {
   try {
     const remoteTopics = await topicRepository.list(userId)
+    const localTopics = await listTopicsLocally(userId)
+    const remoteTopicIds = new Set(remoteTopics.map((topic) => topic.topicId))
 
     for (const topic of remoteTopics) {
       await saveTopicLocally({ ...topic, syncState: 'synced' })
+    }
+
+    for (const localTopic of localTopics) {
+      if (!remoteTopicIds.has(localTopic.topicId) && localTopic.syncState === 'synced') {
+        await deleteTopicLocally(localTopic.topicId)
+        const localSections = await listSectionsByTopicLocally(userId, localTopic.topicId)
+        for (const section of localSections) {
+          if (section.syncState === 'synced') {
+            await deleteSectionLocally(section.sectionId)
+          }
+        }
+      }
     }
   } catch (error) {
     console.error('Failed to pull remote topics:', error)
@@ -373,9 +389,17 @@ async function pullRemoteSections(userId: string, topicIds: TopicId[]): Promise<
   try {
     for (const topicId of topicIds) {
       const remoteSections = await sectionRepository.listByTopic(userId, topicId)
+      const localSections = await listSectionsByTopicLocally(userId, topicId)
+      const remoteSectionIds = new Set(remoteSections.map((section) => section.sectionId))
 
       for (const section of remoteSections) {
         await saveSectionLocally({ ...section, syncState: 'synced' })
+      }
+
+      for (const section of localSections) {
+        if (!remoteSectionIds.has(section.sectionId) && section.syncState === 'synced') {
+          await deleteSectionLocally(section.sectionId)
+        }
       }
     }
   } catch (error) {

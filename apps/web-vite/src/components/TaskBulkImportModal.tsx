@@ -191,31 +191,22 @@ export function TaskBulkImportModal({
   if (!isOpen) return null
 
   return (
-    <div className="modal-overlay" onClick={(e) => {
-      e.stopPropagation() // Prevent bubbling to parent modal overlay
-      handleClose()
-    }}>
-      <div
-        className="modal-content task-bulk-import-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div
+      className="modal-overlay"
+      onClick={(e) => {
+        e.stopPropagation() // Prevent bubbling to parent modal overlay
+        handleClose()
+      }}
+    >
+      <div className="modal-content task-bulk-import-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div>
             <h2>Import Tasks from Markdown</h2>
-            <button
-              type="button"
-              className="help-link"
-              onClick={() => setShowDocModal(true)}
-            >
+            <button type="button" className="help-link" onClick={() => setShowDocModal(true)}>
               View format documentation
             </button>
           </div>
-          <button
-            type="button"
-            className="close-button"
-            onClick={handleClose}
-            aria-label="Close"
-          >
+          <button type="button" className="close-button" onClick={handleClose} aria-label="Close">
             ×
           </button>
         </div>
@@ -333,9 +324,29 @@ export function TaskBulkImportModal({
                 ✓ Import completed successfully! Created {taskImportResult.successCount} task
                 {taskImportResult.successCount !== 1 ? 's' : ''}.
                 {taskImportResult.failureCount > 0 && (
-                  <span> {taskImportResult.failureCount} task{taskImportResult.failureCount !== 1 ? 's' : ''} failed.</span>
+                  <span>
+                    {' '}
+                    {taskImportResult.failureCount} task
+                    {taskImportResult.failureCount !== 1 ? 's' : ''} failed.
+                  </span>
                 )}
               </p>
+              {taskImportResult.failureCount > 0 && (
+                <div className="validation-errors import-failures">
+                  <h3>Failed Tasks</h3>
+                  <ul>
+                    {taskImportResult.errors.map((error, index) => {
+                      const lineNumber = parsedTasks[error.taskIndex]?.lineNumber
+                      return (
+                        <li key={`${error.taskIndex}-${index}`}>
+                          {lineNumber && <span className="error-line">Line {lineNumber}: </span>}
+                          <span className="error-field">{error.taskTitle}:</span> {error.error}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -360,11 +371,7 @@ export function TaskBulkImportModal({
               <button type="button" className="ghost-button" onClick={reset}>
                 Edit
               </button>
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={handleClose}
-              >
+              <button type="button" className="ghost-button" onClick={handleClose}>
                 Cancel
               </button>
               <button

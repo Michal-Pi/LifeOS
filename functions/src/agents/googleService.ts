@@ -9,6 +9,7 @@
 import type { Tool, Schema } from '@google/generative-ai'
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai'
 import type { AgentConfig } from '@lifeos/agents'
+import { MODEL_PRICING } from '@lifeos/agents'
 
 import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
 import { recordMessage } from './messageStore.js'
@@ -34,22 +35,10 @@ export interface GoogleExecutionResult {
 }
 
 /**
- * Google Gemini pricing per 1M tokens (as of Dec 2024)
- * Source: https://ai.google.dev/pricing
- */
-const GOOGLE_PRICING: Record<string, { input: number; output: number }> = {
-  'gemini-1.5-pro': { input: 1.25, output: 5.0 },
-  'gemini-1.5-flash': { input: 0.075, output: 0.3 },
-  'gemini-1.0-pro': { input: 0.5, output: 1.5 },
-  // Default fallback
-  default: { input: 0.5, output: 1.5 },
-}
-
-/**
  * Calculate cost based on token usage
  */
 function calculateCost(modelName: string, inputTokens: number, outputTokens: number): number {
-  const pricing = GOOGLE_PRICING[modelName] ?? GOOGLE_PRICING['default']
+  const pricing = MODEL_PRICING[modelName] ?? MODEL_PRICING.default
   const inputCost = (inputTokens / 1_000_000) * pricing.input
   const outputCost = (outputTokens / 1_000_000) * pricing.output
   return inputCost + outputCost

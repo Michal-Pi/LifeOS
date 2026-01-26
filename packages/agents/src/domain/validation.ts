@@ -56,6 +56,54 @@ export const WorkflowNodeTypeSchema = z.enum([
 ])
 
 export const WorkflowEdgeConditionTypeSchema = z.enum(['always', 'equals', 'contains', 'regex'])
+export const PromptTypeSchema = z.enum(['agent', 'tone-of-voice', 'workflow', 'tool', 'synthesis'])
+export const PromptCategorySchema = z.enum([
+  'project-management',
+  'content-creation',
+  'research',
+  'review',
+  'coordination',
+  'general',
+])
+export const PromptVariableSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  required: z.boolean(),
+  defaultValue: z.string().optional(),
+  exampleValue: z.string().optional(),
+})
+export const PromptReferenceSchema = z.object({
+  type: z.enum(['shared', 'custom']),
+  templateId: z.string().optional(),
+  customContent: z.string().optional(),
+  variables: z.record(z.string(), z.string()).optional(),
+})
+
+export const PromptVersionSchema = z.object({
+  version: z.number().int().positive(),
+  content: z.string(),
+  changeDescription: z.string(),
+  createdAtMs: z.number().int().positive(),
+  createdBy: z.string(),
+})
+
+export const PromptTemplateSchema = z.object({
+  templateId: z.string(),
+  userId: z.string(),
+  name: z.string().min(1).max(200),
+  description: z.string().max(1000),
+  type: PromptTypeSchema,
+  category: PromptCategorySchema,
+  tags: z.array(z.string()),
+  content: z.string(),
+  version: z.number().int().positive(),
+  variables: z.array(PromptVariableSchema),
+  usageCount: z.number().int().nonnegative(),
+  lastUsedAtMs: z.number().int().positive().optional(),
+  createdAtMs: z.number().int().positive(),
+  updatedAtMs: z.number().int().positive(),
+  versions: z.array(PromptVersionSchema).optional(),
+})
 
 export const JoinAggregationModeSchema = z.enum(['list', 'ranked', 'consensus'])
 
@@ -81,7 +129,7 @@ export const ExpertCouncilConfigSchema = z.object({
   defaultMode: ExecutionModeSchema,
   allowModeOverride: z.boolean(),
   councilModels: z.array(ExpertCouncilModelSchema).min(1),
-  chairmanModel: ExpertCouncilModelSchema.omit({ systemPrompt: true }),
+  chairmanModel: ExpertCouncilModelSchema,
   judgeModels: z
     .array(
       z.object({
@@ -193,6 +241,27 @@ export const WorkspaceSchema = z.object({
   agentIds: z.array(z.string()),
   defaultAgentId: z.string().optional(),
   expertCouncilConfig: ExpertCouncilConfigSchema.optional(),
+  projectManagerConfig: z
+    .object({
+      enabled: z.boolean(),
+      questioningDepth: z.enum(['minimal', 'standard', 'thorough']),
+      autoUseExpertCouncil: z.boolean(),
+      expertCouncilThreshold: z.number().int().min(0).max(100),
+      qualityGateThreshold: z.number().int().min(0).max(100),
+      requireAssumptionValidation: z.boolean(),
+      enableConflictDetection: z.boolean(),
+      enableUserProfiling: z.boolean(),
+    })
+    .optional(),
+  promptConfig: z
+    .object({
+      agentPrompts: z.record(z.string(), PromptReferenceSchema).optional(),
+      toneOfVoicePrompt: PromptReferenceSchema.optional(),
+      workflowPrompts: z.record(z.string(), PromptReferenceSchema).optional(),
+      toolPrompts: z.record(z.string(), PromptReferenceSchema).optional(),
+      synthesisPrompts: z.record(z.string(), PromptReferenceSchema).optional(),
+    })
+    .optional(),
   workflowType: WorkflowTypeSchema,
   workflowGraph: z
     .object({

@@ -6,10 +6,16 @@ The LifeOS web client is the primary UI for calendar, tasks, and daily review. I
 
 - Calendar month/week/agenda views
 - Google Calendar sync + writeback
-- Projects → milestones → tasks
+- Projects → chapters → tasks
 - Task scheduling into calendar
+- Project insights dashboard
 - Daily quote + settings management
 - Weekly review workflow
+- Notes editor + note graph
+- Habits + mind interventions
+- Training module (exercise library, templates, plans)
+- Agents (workspaces, runs, prompt library, research)
+- Global search for tasks/projects/chapters
 
 ## Tech Stack
 

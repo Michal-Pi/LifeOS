@@ -7,8 +7,9 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { useAuth } from './useAuth'
-import { createFirestoreExerciseLibraryRepository } from '@/adapters/training/firestoreExerciseLibraryRepository'
-import { createFirestoreWorkoutSessionRepository } from '@/adapters/training/firestoreWorkoutSessionRepository'
+import { useTrainingSync } from './useTrainingSync'
+import { createIndexedDbExerciseLibraryRepository } from '@/adapters/training/indexedDbExerciseLibraryRepository'
+import { createIndexedDbWorkoutSessionRepository } from '@/adapters/training/indexedDbWorkoutSessionRepository'
 import {
   createExerciseUsecase,
   updateExerciseUsecase,
@@ -69,8 +70,8 @@ export interface UseWorkoutOperationsReturn {
   listSessionsForDateRange: (startDate: string, endDate: string) => Promise<WorkoutSession[]>
 }
 
-const exerciseRepository = createFirestoreExerciseLibraryRepository()
-const sessionRepository = createFirestoreWorkoutSessionRepository()
+const exerciseRepository = createIndexedDbExerciseLibraryRepository()
+const sessionRepository = createIndexedDbWorkoutSessionRepository()
 
 /**
  * Hook for managing workout sessions and exercise library
@@ -78,6 +79,7 @@ const sessionRepository = createFirestoreWorkoutSessionRepository()
  */
 export function useWorkoutOperations(): UseWorkoutOperationsReturn {
   const { user } = useAuth()
+  useTrainingSync()
   const [exercises, setExercises] = useState<ExerciseLibraryItem[]>([])
   const [sessions, setSessions] = useState<WorkoutSession[]>([])
   const [isLoading, setIsLoading] = useState(false)

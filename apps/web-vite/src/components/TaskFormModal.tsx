@@ -5,7 +5,7 @@ const logger = createLogger('TaskFormModal')
 import type {
   CanonicalTask,
   CanonicalProject,
-  CanonicalMilestone,
+  CanonicalChapter,
   UrgencyLevel,
   ImportanceLevel,
   TaskStatus,
@@ -21,6 +21,7 @@ import {
   importanceToSlider,
 } from '@/lib/todoUi'
 import { Select, type SelectOption } from './Select'
+import { TaskBulkImportModal } from './TaskBulkImportModal'
 
 interface TaskFormModalProps {
   isOpen: boolean
@@ -28,7 +29,9 @@ interface TaskFormModalProps {
   onSave: (task: Omit<CanonicalTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>
   initialTask?: CanonicalTask | null
   projects: CanonicalProject[]
-  milestones: CanonicalMilestone[]
+  chapters: CanonicalChapter[]
+  onImportTasks?: () => void
+  onImportComplete?: () => void
 }
 
 const DOMAINS: Domain[] = ['work', 'projects', 'life', 'learning', 'wellbeing']
@@ -45,13 +48,15 @@ export function TaskFormModal({
   onSave,
   initialTask,
   projects,
-  milestones,
+  chapters,
+  onImportTasks,
+  onImportComplete,
 }: TaskFormModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [domain, setDomain] = useState<Domain>('work')
   const [projectId, setProjectId] = useState<string>('none')
-  const [milestoneId, setMilestoneId] = useState<string>('none')
+  const [chapterId, setChapterId] = useState<string>('none')
   const [keyResultId, setKeyResultId] = useState<string>('none')
   const [urgency, setUrgency] = useState<UrgencyLevel>('this_week')
   const [importance, setImportance] = useState<ImportanceLevel>(4)
@@ -63,6 +68,16 @@ export function TaskFormModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [urgencyChangedManually, setUrgencyChangedManually] = useState(false)
   const [dueDateChangedManually, setDueDateChangedManually] = useState(false)
+  const [showBulkImport, setShowBulkImport] = useState(false)
+
+  // Single import handler that calls onImportTasks when provided, otherwise opens internal modal
+  const handleImportClick = () => {
+    if (onImportTasks) {
+      onImportTasks()
+    } else {
+      setShowBulkImport(true)
+    }
+  }
 
   // Reset form when opening or changing initialTask
   useEffect(() => {
@@ -72,7 +87,7 @@ export function TaskFormModal({
         setDescription(initialTask.description || '')
         setDomain(initialTask.domain)
         setProjectId(initialTask.projectId || 'none')
-        setMilestoneId(initialTask.milestoneId || 'none')
+        setChapterId(initialTask.chapterId || 'none')
         setKeyResultId(initialTask.keyResultId || 'none')
         setUrgency(initialTask.urgency || 'this_week')
         setImportance(initialTask.importance)
@@ -105,7 +120,7 @@ export function TaskFormModal({
         setDescription('')
         setDomain('work')
         setProjectId('none')
-        setMilestoneId('none')
+        setChapterId('none')
         setKeyResultId('none')
         setUrgency('this_week')
         setImportance(4)
@@ -120,15 +135,15 @@ export function TaskFormModal({
     }
   }, [isOpen, initialTask])
 
-  // Auto-select project when milestone is selected
+  // Auto-select project when chapter is selected
   useEffect(() => {
-    if (milestoneId) {
-      const milestone = milestones.find((m) => m.id === milestoneId)
-      if (milestone) {
-        setProjectId(milestone.projectId)
+    if (chapterId && chapterId !== 'none') {
+      const chapter = chapters.find((m) => m.id === chapterId)
+      if (chapter) {
+        setProjectId(chapter.projectId)
       }
     }
-  }, [milestoneId, milestones])
+  }, [chapterId, chapters])
 
   useEffect(() => {
     if (!projectId || projectId === 'none') return
@@ -138,16 +153,14 @@ export function TaskFormModal({
     }
   }, [projectId, projects])
 
-  // Filter milestones by selected project (exclude 'none' sentinel)
-  const availableMilestones =
-    projectId && projectId !== 'none'
-      ? milestones.filter((m) => m.projectId === projectId)
-      : milestones
+  // Filter chapters by selected project (exclude 'none' sentinel)
+  const availableChapters =
+    projectId && projectId !== 'none' ? chapters.filter((m) => m.projectId === projectId) : chapters
 
   const availableKeyResults = useMemo(() => {
-    const milestone = milestones.find((m) => m.id === milestoneId)
-    return milestone?.keyResults || projects.find((p) => p.id === projectId)?.keyResults || []
-  }, [projectId, milestoneId, projects, milestones])
+    const chapter = chapters.find((m) => m.id === chapterId)
+    return chapter?.keyResults || projects.find((p) => p.id === projectId)?.keyResults || []
+  }, [projectId, chapterId, projects, chapters])
 
   // Select options (use 'none' sentinel value instead of empty strings - Radix UI doesn't support empty strings)
   const projectOptions: SelectOption[] = useMemo(
@@ -158,12 +171,12 @@ export function TaskFormModal({
     [projects]
   )
 
-  const milestoneOptions: SelectOption[] = useMemo(
+  const chapterOptions: SelectOption[] = useMemo(
     () => [
-      { value: 'none', label: 'No Milestone' },
-      ...availableMilestones.map((m) => ({ value: m.id, label: m.title })),
+      { value: 'none', label: 'No Chapter' },
+      ...availableChapters.map((m) => ({ value: m.id, label: m.title })),
     ],
-    [availableMilestones]
+    [availableChapters]
   )
 
   const keyResultOptions: SelectOption[] = useMemo(
@@ -185,6 +198,7 @@ export function TaskFormModal({
         const localDateTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
         setDueDateTime(localDateTime.toISOString().slice(0, 16))
       } else {
+        // If urgency is 'later', clear the due date to allow flexibility
         setDueDate('')
         setDueDateTime('')
       }
@@ -233,7 +247,7 @@ export function TaskFormModal({
 
       // Only add optional fields if they have values
       if (projectId !== 'none') taskData.projectId = projectId
-      if (milestoneId !== 'none') taskData.milestoneId = milestoneId
+      if (chapterId !== 'none') taskData.chapterId = chapterId
       if (keyResultId !== 'none') taskData.keyResultId = keyResultId
       if (dueDate) taskData.dueDate = dueDate
       if (!dueDate && urgency) taskData.urgency = urgency
@@ -241,9 +255,13 @@ export function TaskFormModal({
       if (initialTask?.calendarEventIds) taskData.calendarEventIds = initialTask.calendarEventIds
 
       await onSave(taskData)
+      // Close modal on success
       onClose()
     } catch (error) {
       logger.error('Failed to save task:', error)
+      // Close modal even on error - error is already shown via toast in useTodoOperations
+      // This prevents the modal from staying open when offline or when there's a network error
+      onClose()
     } finally {
       setIsSubmitting(false)
     }
@@ -255,7 +273,14 @@ export function TaskFormModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content task-form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{initialTask ? 'Edit Task' : 'New Task'}</h2>
+          <div>
+            <h2>{initialTask ? 'Edit Task' : 'New Task'}</h2>
+            {!initialTask && (
+              <button type="button" className="import-tasks-link" onClick={handleImportClick}>
+                Import Tasks
+              </button>
+            )}
+          </div>
           <button className="close-button" onClick={onClose}>
             ×
           </button>
@@ -301,7 +326,7 @@ export function TaskFormModal({
                   value={projectId}
                   onChange={(value) => {
                     setProjectId(value)
-                    setMilestoneId('none') // Clear milestone and KR when project changes
+                    setChapterId('none') // Clear chapter and KR when project changes
                     setKeyResultId('none')
                   }}
                   options={projectOptions}
@@ -310,17 +335,17 @@ export function TaskFormModal({
               </div>
 
               <div className="form-group">
-                <label htmlFor="task-milestone">Milestone</label>
+                <label htmlFor="task-chapter">Chapter</label>
                 <Select
-                  id="task-milestone"
-                  value={milestoneId}
+                  id="task-chapter"
+                  value={chapterId}
                   onChange={(value) => {
-                    setMilestoneId(value)
-                    setKeyResultId('none') // Clear KR when milestone changes
+                    setChapterId(value)
+                    setKeyResultId('none') // Clear KR when chapter changes
                   }}
-                  options={milestoneOptions}
-                  placeholder="Select milestone"
-                  disabled={projectId === 'none' && availableMilestones.length === 0}
+                  options={chapterOptions}
+                  placeholder="Select chapter"
+                  disabled={projectId === 'none' && availableChapters.length === 0}
                 />
               </div>
             </div>
@@ -367,15 +392,21 @@ export function TaskFormModal({
                   max={URGENCY_SLIDER_MAX}
                   step={1}
                   value={urgencyToSlider(effectiveUrgency)}
-                  disabled={Boolean(dueDate)}
                   onChange={(e) => {
+                    const newUrgency = urgencyFromSlider(Number(e.target.value))
                     setUrgencyChangedManually(true)
-                    setUrgency(urgencyFromSlider(Number(e.target.value)))
+                    setUrgency(newUrgency)
+                    // If changing to 'later', clear due date to allow flexibility
+                    if (newUrgency === 'later') {
+                      setDueDate('')
+                      setDueDateTime('')
+                      setDueDateChangedManually(false)
+                    }
                   }}
                 />
                 <p className="helper-text">
                   {dueDate
-                    ? `Auto: ${urgencyLabel(effectiveUrgency)}`
+                    ? `Auto: ${urgencyLabel(effectiveUrgency)} (change urgency to override)`
                     : urgencyLabel(effectiveUrgency)}
                 </p>
               </div>
@@ -403,27 +434,43 @@ export function TaskFormModal({
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="task-due-datetime">Due Date & Time</label>
-                <input
-                  id="task-due-datetime"
-                  type="datetime-local"
-                  value={dueDateTime}
-                  onChange={(e) => {
-                    setDueDateChangedManually(true)
-                    const newDateTime = e.target.value
-                    setDueDateTime(newDateTime)
-                    if (newDateTime) {
-                      // Extract date part (YYYY-MM-DD) for dueDate field
-                      const datePart = newDateTime.split('T')[0]
-                      setDueDate(datePart)
-                    } else {
-                      setDueDate('')
-                    }
-                  }}
-                />
+                <div className="due-date-input-group">
+                  <input
+                    id="task-due-datetime"
+                    type="datetime-local"
+                    value={dueDateTime}
+                    onChange={(e) => {
+                      setDueDateChangedManually(true)
+                      const newDateTime = e.target.value
+                      setDueDateTime(newDateTime)
+                      if (newDateTime) {
+                        // Extract date part (YYYY-MM-DD) for dueDate field
+                        const datePart = newDateTime.split('T')[0]
+                        setDueDate(datePart)
+                      } else {
+                        setDueDate('')
+                      }
+                    }}
+                  />
+                  {dueDate && (
+                    <button
+                      type="button"
+                      className="clear-due-date-button"
+                      onClick={() => {
+                        setDueDate('')
+                        setDueDateTime('')
+                        setDueDateChangedManually(true)
+                      }}
+                      aria-label="Clear due date"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
                 <p className="helper-text">
                   {dueDate
                     ? `Auto urgency: ${urgencyLabel(effectiveUrgency)}`
-                    : 'Set a due date to automatically calculate urgency'}
+                    : 'Set a due date to automatically calculate urgency, or use urgency slider'}
                 </p>
               </div>
 
@@ -486,15 +533,83 @@ export function TaskFormModal({
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="ghost-button" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="primary-button" disabled={isSubmitting}>
-              {initialTask ? 'Save Changes' : 'Create Task'}
-            </button>
+            {!initialTask && (
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={handleImportClick}
+                aria-label="Import Tasks"
+              >
+                <span className="import-icon">📄</span>
+                Import Tasks
+              </button>
+            )}
+            <div className="modal-actions-right">
+              <button type="button" className="ghost-button" onClick={onClose}>
+                Cancel
+              </button>
+              <button type="submit" className="primary-button" disabled={isSubmitting}>
+                {initialTask ? 'Save Changes' : 'Create Task'}
+              </button>
+            </div>
           </div>
         </form>
+
+        <style>{`
+          .task-form-modal .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+          }
+
+          .task-form-modal .modal-header > div {
+            flex: 1;
+          }
+
+          .import-tasks-link {
+            margin-top: 0.25rem;
+            padding: 0;
+            background: none;
+            border: none;
+            font-size: 0.875rem;
+            color: var(--accent);
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color var(--motion-fast) var(--motion-ease);
+          }
+
+          .import-tasks-link:hover {
+            color: var(--accent-hover);
+          }
+
+          .import-icon {
+            margin-right: 0.5rem;
+            font-size: 1rem;
+          }
+
+          .task-form-modal .modal-actions {
+            justify-content: space-between;
+          }
+
+          .modal-actions-right {
+            display: flex;
+            gap: 0.75rem;
+          }
+        `}</style>
       </div>
+
+      <TaskBulkImportModal
+        isOpen={showBulkImport}
+        onClose={() => setShowBulkImport(false)}
+        onImportComplete={() => {
+          setShowBulkImport(false)
+          if (onImportComplete) {
+            onImportComplete()
+          }
+        }}
+        projects={projects}
+        chapters={chapters}
+      />
     </div>
   )
 }

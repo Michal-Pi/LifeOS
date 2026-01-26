@@ -1,0 +1,116 @@
+.prompt-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  gap: 1.5rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.prompt-editor--loading {
+  padding: 2rem;
+}
+
+.prompt-editor__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.prompt-editor__header input,
+.prompt-editor__header textarea {
+  width: 100%;
+}
+
+.prompt-editor__actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.prompt-editor__content {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.prompt-editor__meta-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.prompt-editor__meta-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.prompt-editor__variables {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.prompt-editor__variables-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.prompt-editor__variable-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.prompt-editor__sidebar {
+  border-left: 1px solid var(--border);
+  padding-left: 1.5rem;
+}
+
+.version-history ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.version-history li {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.version-history li div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 900px) {
+  .prompt-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .prompt-editor__meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .prompt-editor__sidebar {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+}

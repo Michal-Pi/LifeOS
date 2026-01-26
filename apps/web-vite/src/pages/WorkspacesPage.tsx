@@ -15,10 +15,18 @@ import { useNavigate } from 'react-router-dom'
 import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
 import { useWorkspaceTemplateOperations } from '@/hooks/useWorkspaceTemplateOperations'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
+import { useToolOperations } from '@/hooks/useToolOperations'
+import { usePromptLibrary } from '@/hooks/usePromptLibrary'
+import { useAuth } from '@/hooks/useAuth'
 import { WorkspaceFormModal } from '@/components/agents/WorkspaceFormModal'
 import { TemplateSaveModal } from '@/components/agents/TemplateSaveModal'
+import { TemplateSelector } from '@/components/agents/TemplateSelector'
+import { PromptEditor } from '@/components/agents/PromptEditor'
 import { workspaceTemplatePresets } from '@/agents/templatePresets'
-import type { Workspace, WorkspaceTemplate } from '@lifeos/agents'
+import { contentTypePresets } from '@/agents/contentTypePresets'
+import { builtinTools } from '@/agents/builtinTools'
+import { instantiateTemplate } from '@/services/templateInstantiation'
+import type { Workspace, WorkspaceTemplate, PromptTemplate } from '@lifeos/agents'
 import { EmptyState } from '@/components/EmptyState'
 import { useDialog } from '@/contexts/useDialog'
 
@@ -44,8 +52,10 @@ const downloadJson = (filename: string, data: unknown) => {
 
 export function WorkspacesPage() {
   const { confirm, alert: showAlert } = useDialog()
+  const { user } = useAuth()
   const navigate = useNavigate()
-  const { workspaces, isLoading, loadWorkspaces, deleteWorkspace } = useWorkspaceOperations()
+  const { workspaces, isLoading, loadWorkspaces, deleteWorkspace, createWorkspace } =
+    useWorkspaceOperations()
   const {
     templates: workspaceTemplates,
     isLoading: templatesLoading,
@@ -53,7 +63,13 @@ export function WorkspacesPage() {
     createTemplate,
     deleteTemplate,
   } = useWorkspaceTemplateOperations()
-  const { agents, loadAgents } = useAgentOperations()
+  const { agents, loadAgents, createAgent } = useAgentOperations()
+  const { tools, loadTools } = useToolOperations()
+  const {
+    templates: promptTemplates,
+    loading: promptLoading,
+    createTemplate: createPromptTemplate,
+  } = usePromptLibrary()
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [prefillWorkspace, setPrefillWorkspace] = useState<Partial<Workspace> | null>(null)
@@ -62,11 +78,14 @@ export function WorkspacesPage() {
   const [templateModalKey, setTemplateModalKey] = useState(0)
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const [activeTab, setActiveTab] = useState<'workspaces' | 'templates'>('workspaces')
+  const [isTemplateInstantiating, setIsTemplateInstantiating] = useState(false)
+  const [promptEditorTemplate, setPromptEditorTemplate] = useState<PromptTemplate | null>(null)
 
   useEffect(() => {
     void loadWorkspaces()
     void loadAgents()
-  }, [loadWorkspaces, loadAgents])
+    void loadTools()
+  }, [loadWorkspaces, loadAgents, loadTools])
 
   useEffect(() => {
     void loadTemplates()
@@ -142,16 +161,69 @@ export function WorkspacesPage() {
   }
 
   const handleUseTemplate = (template: WorkspaceTemplate) => {
+    if (
+      template.workspaceConfig.workflowType === 'graph' &&
+      template.workspaceConfig.workflowGraph?.nodes.some(
+        (node) => node.type === 'agent' && !node.agentId
+      )
+    ) {
+      void showAlert({
+        title: 'Template needs agents',
+        description:
+          'This template uses a graph workflow without agent bindings. Use a preset blueprint to create it instead.',
+      })
+      return
+    }
     setSelectedWorkspace(null)
     setPrefillWorkspace(template.workspaceConfig)
     setShowModal(true)
   }
 
+  const handleInstantiatePreset = async (
+    preset: (typeof workspaceTemplatePresets)[number],
+    options?: { contentType?: string }
+  ) => {
+    if (isTemplateInstantiating) return
+    setIsTemplateInstantiating(true)
+    try {
+      const availableTools = [
+        ...builtinTools,
+        ...tools.map((tool) => ({
+          toolId: tool.toolId,
+          name: tool.name,
+          description: tool.description ?? '',
+        })),
+      ]
+      const { workspace } = await instantiateTemplate({
+        preset,
+        customization: { contentType: options?.contentType },
+        createAgent,
+        createWorkspace,
+        availableTools,
+      })
+      await loadWorkspaces()
+      navigate(`/workspaces/${workspace.workspaceId}`)
+    } catch (error) {
+      console.error('Failed to instantiate template', error)
+      await showAlert({
+        title: 'Template failed',
+        description: 'Unable to create workspace from template. Check logs for details.',
+      })
+    } finally {
+      setIsTemplateInstantiating(false)
+    }
+  }
+
   const handleAddPresets = async () => {
     const existingNames = new Set(workspaceTemplates.map((template) => template.name.toLowerCase()))
     let createdCount = 0
+    let skippedCount = 0
     for (const preset of workspaceTemplatePresets) {
       if (existingNames.has(preset.name.toLowerCase())) {
+        continue
+      }
+      if (preset.workflowGraphTemplate) {
+        skippedCount += 1
         continue
       }
       try {
@@ -165,11 +237,33 @@ export function WorkspacesPage() {
         // Errors are surfaced by the hook; continue with remaining presets.
       }
     }
-    if (createdCount === 0) {
+    if (createdCount === 0 && skippedCount === 0) {
       await showAlert({
         title: 'Presets already added',
         description: 'All presets already exist.',
       })
+      return
+    }
+    if (skippedCount > 0) {
+      await showAlert({
+        title: 'Presets added',
+        description: `Added ${createdCount} presets. ${skippedCount} blueprint presets are available via the template selector.`,
+      })
+    }
+  }
+
+  const handleCreatePrompt = async () => {
+    if (!user) return
+    const template = await createPromptTemplate({
+      name: 'New Prompt',
+      description: 'Describe this prompt',
+      type: 'agent',
+      category: 'general',
+      tags: [],
+      content: 'Describe the prompt here.',
+    })
+    if (template) {
+      setPromptEditorTemplate(template)
     }
   }
 
@@ -359,91 +453,159 @@ export function WorkspacesPage() {
       )}
 
       {activeTab === 'templates' && (
-        <section className="settings-panel">
-          <header className="settings-panel__header">
-            <div>
-              <p className="section-label">Templates</p>
-              <h2>Workspace Templates</h2>
-              <p className="settings-panel__meta">Reuse workspace setups for repeated workflows.</p>
-              <div className="settings-panel__actions">
-                <button onClick={handleAddPresets} className="ghost-button" type="button">
-                  Add Presets
-                </button>
-                <button onClick={handleExportTemplates} className="ghost-button" type="button">
-                  Export
-                </button>
-                <button
-                  onClick={() => importInputRef.current?.click()}
-                  className="ghost-button"
-                  type="button"
-                >
-                  Import
-                </button>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept="application/json"
-                  onChange={handleImportTemplates}
-                  hidden
-                />
-              </div>
-            </div>
-          </header>
+        <>
+          <TemplateSelector
+            templates={workspaceTemplatePresets}
+            contentTypes={contentTypePresets}
+            onUseTemplate={handleInstantiatePreset}
+            isBusy={isTemplateInstantiating}
+          />
+          <div className="template-selector__notice">
+            Graph-based blueprints are only available through the selector so we can bind agent IDs
+            before creating the workspace.
+          </div>
 
-          {templatesLoading ? (
-            <div className="loading">Loading templates...</div>
-          ) : workspaceTemplates.length === 0 ? (
-            <EmptyState
-              label="Templates"
-              title="System idle"
-              description="Save a template from an existing workspace to reuse later."
-            />
-          ) : (
-            <div className="workspaces-grid">
-              {workspaceTemplates.map((template) => (
-                <div key={template.templateId} className="workspace-card">
-                  <div className="template-thumb" aria-hidden="true" />
-                  <div className="card-header">
-                    <h3>{template.name}</h3>
-                    <span className="badge">{template.workspaceConfig.workflowType}</span>
-                  </div>
-                  {template.description && <p className="description">{template.description}</p>}
-                  <div className="card-meta">
-                    <div>
-                      <strong>Agents:</strong> {template.workspaceConfig.agentIds.length}
-                    </div>
-                    {template.workspaceConfig.maxIterations && (
-                      <div>
-                        <strong>Max Iterations:</strong> {template.workspaceConfig.maxIterations}
-                      </div>
-                    )}
-                  </div>
-                  <div className="card-actions">
-                    <button onClick={() => handleUseTemplate(template)} className="ghost-button">
-                      Use Template
-                    </button>
-                    <button
-                      onClick={async () => {
-                        const confirmed = await confirm({
-                          title: 'Delete template',
-                          description: `Delete template "${template.name}"?`,
-                          confirmLabel: 'Delete',
-                          confirmVariant: 'danger',
-                        })
-                        if (confirmed) {
-                          void deleteTemplate(template.templateId)
-                        }
-                      }}
-                      className="ghost-button danger"
-                    >
-                      Delete
-                    </button>
-                  </div>
+          <section className="settings-panel">
+            <header className="settings-panel__header">
+              <div>
+                <p className="section-label">Prompt Library</p>
+                <h2>Shared Prompts</h2>
+                <p className="settings-panel__meta">
+                  Manage reusable prompts with version history across workspaces.
+                </p>
+                <div className="settings-panel__actions">
+                  <button onClick={handleCreatePrompt} className="ghost-button" type="button">
+                    New Prompt
+                  </button>
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
+              </div>
+            </header>
+
+            {promptLoading ? (
+              <div className="loading">Loading prompts...</div>
+            ) : promptTemplates.length === 0 ? (
+              <EmptyState
+                label="Prompts"
+                title="Prompt library empty"
+                description="Create a prompt to start sharing across workspaces."
+              />
+            ) : (
+              <div className="workspaces-grid">
+                {promptTemplates.map((template) => (
+                  <div key={template.templateId} className="workspace-card">
+                    <div className="card-header">
+                      <h3>{template.name}</h3>
+                      <span className="badge">{template.type}</span>
+                    </div>
+                    <p className="description">{template.description}</p>
+                    <div className="card-meta">
+                      <div>
+                        <strong>Category:</strong> {template.category}
+                      </div>
+                      <div>
+                        <strong>Version:</strong> v{template.version}
+                      </div>
+                    </div>
+                    <div className="card-actions">
+                      <button
+                        onClick={() => setPromptEditorTemplate(template)}
+                        className="ghost-button"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="settings-panel">
+            <header className="settings-panel__header">
+              <div>
+                <p className="section-label">Templates</p>
+                <h2>Workspace Templates</h2>
+                <p className="settings-panel__meta">Reuse workspace setups for repeated workflows.</p>
+                <div className="settings-panel__actions">
+                  <button onClick={handleAddPresets} className="ghost-button" type="button">
+                    Add Presets
+                  </button>
+                  <button onClick={handleExportTemplates} className="ghost-button" type="button">
+                    Export
+                  </button>
+                  <button
+                    onClick={() => importInputRef.current?.click()}
+                    className="ghost-button"
+                    type="button"
+                  >
+                    Import
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json"
+                    onChange={handleImportTemplates}
+                    hidden
+                  />
+                </div>
+              </div>
+            </header>
+
+            {templatesLoading ? (
+              <div className="loading">Loading templates...</div>
+            ) : workspaceTemplates.length === 0 ? (
+              <EmptyState
+                label="Templates"
+                title="System idle"
+                description="Save a template from an existing workspace to reuse later."
+              />
+            ) : (
+              <div className="workspaces-grid">
+                {workspaceTemplates.map((template) => (
+                  <div key={template.templateId} className="workspace-card">
+                    <div className="template-thumb" aria-hidden="true" />
+                    <div className="card-header">
+                      <h3>{template.name}</h3>
+                      <span className="badge">{template.workspaceConfig.workflowType}</span>
+                    </div>
+                    {template.description && <p className="description">{template.description}</p>}
+                    <div className="card-meta">
+                      <div>
+                        <strong>Agents:</strong> {template.workspaceConfig.agentIds.length}
+                      </div>
+                      {template.workspaceConfig.maxIterations && (
+                        <div>
+                          <strong>Max Iterations:</strong> {template.workspaceConfig.maxIterations}
+                        </div>
+                      )}
+                    </div>
+                    <div className="card-actions">
+                      <button onClick={() => handleUseTemplate(template)} className="ghost-button">
+                        Use Template
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const confirmed = await confirm({
+                            title: 'Delete template',
+                            description: `Delete template "${template.name}"?`,
+                            confirmLabel: 'Delete',
+                            confirmVariant: 'danger',
+                          })
+                          if (confirmed) {
+                            void deleteTemplate(template.templateId)
+                          }
+                        }}
+                        className="ghost-button danger"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
       )}
 
       <WorkspaceFormModal
@@ -463,6 +625,18 @@ export function WorkspacesPage() {
         onClose={handleTemplateClose}
         onSave={handleTemplateSave}
       />
+
+      {promptEditorTemplate && user?.uid && (
+        <div className="modal-overlay" onClick={() => setPromptEditorTemplate(null)}>
+          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
+            <PromptEditor
+              userId={user.uid}
+              templateId={promptEditorTemplate.templateId}
+              onClose={() => setPromptEditorTemplate(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

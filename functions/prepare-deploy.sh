@@ -116,6 +116,10 @@ fi
 # Install vendored dependencies
 # Use --ignore-scripts to skip native compilation (not needed for Firebase Functions)
 echo "Installing vendored dependencies..."
+if [[ -f package-lock.json ]] && grep -q '\.pnpm' package-lock.json; then
+  echo "Detected pnpm-derived package-lock. Rebuilding npm lockfile..."
+  rm -rf node_modules package-lock.json
+fi
 npm install --ignore-scripts
 
 # Verify critical dependencies are installed

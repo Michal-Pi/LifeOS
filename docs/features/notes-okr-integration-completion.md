@@ -7,13 +7,13 @@
 
 ## Overview
 
-Successfully implemented OKR (Objectives and Key Results) integration for the Notes feature, enabling users to link notes to project and milestone objectives for learning tracking and goal alignment.
+Successfully implemented OKR (Objectives and Key Results) integration for the Notes feature, enabling users to link notes to project and chapter objectives for learning tracking and goal alignment.
 
 ## Objectives Achieved
 
-- ✅ Link notes to OKRs from projects and milestones
+- ✅ Link notes to OKRs from projects and chapters
 - ✅ Multi-select dropdown with search functionality
-- ✅ Visual distinction between project and milestone OKRs
+- ✅ Visual distinction between project and chapter OKRs
 - ✅ Integration with existing note editor workflow
 - ✅ Deployed to production
 
@@ -27,8 +27,8 @@ Successfully implemented OKR (Objectives and Key Results) integration for the No
 
 - **Features:**
   - Multi-select dropdown with search filter
-  - Filters projects/milestones that have objectives or key results
-  - Visual distinction: 📊 for projects, 🎯 for milestones
+  - Filters projects/chapters that have objectives or key results
+  - Visual distinction: 📊 for projects, 🎯 for chapters
   - Domain badges (work, learning, health, etc.)
   - Displays objective and first 2 key results
   - Selected OKRs shown as chips with remove buttons
@@ -85,7 +85,7 @@ interface Note {
 }
 ```
 
-OKR sources from existing Project/Milestone types:
+OKR sources from existing Project/Chapter types:
 
 ```typescript
 interface CanonicalProject {
@@ -96,7 +96,7 @@ interface CanonicalProject {
   keyResults?: { id: string; text: string }[]
 }
 
-interface CanonicalMilestone {
+interface CanonicalChapter {
   id: string
   projectId: string
   title: string
@@ -111,7 +111,7 @@ interface CanonicalMilestone {
 
 1. Open any note in the editor
 2. Scroll to the "Link to OKRs" section (after project links)
-3. Click the dropdown to see all projects/milestones with OKRs
+3. Click the dropdown to see all projects/chapters with OKRs
 4. Search by title, objective, or key result text
 5. Select one or more OKRs to link
 6. Selected OKRs appear as chips with domain badges
@@ -121,7 +121,7 @@ interface CanonicalMilestone {
 ### Visual Design
 
 - **Project OKRs:** 📊 icon + project title + domain badge
-- **Milestone OKRs:** 🎯 icon + "Project > Milestone" path + domain badge
+- **Chapter OKRs:** 🎯 icon + "Project > Chapter" path + domain badge
 - **Dropdown:** Shows objective and up to 2 key results per OKR
 - **Domain Badges:** Color-coded (blue for work, green for learning, etc.)
 
@@ -186,7 +186,7 @@ These can be added in future phases based on user feedback and usage patterns.
 - ✅ Remove button deletes OKR links
 - ✅ Auto-save triggers on OKR changes
 - ✅ Domain badges render correctly
-- ✅ Project and milestone icons display properly
+- ✅ Project and chapter icons display properly
 - ✅ Responsive layout works on different screen sizes
 
 ### Integration Points Verified
@@ -202,13 +202,13 @@ These can be added in future phases based on user feedback and usage patterns.
 1. **Domain Model Advantage:** The `okrIds` field already existed in the Note model, making integration seamless
 2. **Component Reusability:** Following the ProjectLinker pattern made OKRLinker straightforward
 3. **Type Safety:** TypeScript caught several potential bugs during implementation
-4. **Visual Clarity:** Icons (📊 vs 🎯) and paths ("Project > Milestone") help distinguish OKR sources
+4. **Visual Clarity:** Icons (📊 vs 🎯) and paths ("Project > Chapter") help distinguish OKR sources
 
 ## Conclusion
 
 The OKR Integration feature is **production-ready** and **deployed**. Users can now:
 
-- Link notes to project and milestone objectives
+- Link notes to project and chapter objectives
 - Track learning progress against goals
 - Organize knowledge by strategic outcomes
 - Build a connected knowledge base aligned with OKRs

@@ -212,7 +212,7 @@ const options: SelectOption[] = [
 
 **Components Migrated:**
 
-1. **TaskFormModal** (4 dropdowns): Project, Milestone, Key Result, Domain
+1. **TaskFormModal** (4 dropdowns): Project, Chapter, Key Result, Domain
 2. **EventFormModal** (2 dropdowns): Repeat frequency, Repeat end type
 3. **TaskDetailSidebar** (1 dropdown): Task status
 

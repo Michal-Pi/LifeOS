@@ -9,7 +9,7 @@ import {
   doc,
   getDoc,
   getDocs,
-  addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -18,7 +18,7 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
-import { generateId } from '@lifeos/core'
+import { newId } from '@lifeos/core'
 import type {
   WorkoutTemplate,
   WorkoutTemplateRepository,
@@ -29,11 +29,23 @@ import type {
 
 const COLLECTION = 'workoutTemplates'
 
+function templatesCollection(db: Awaited<ReturnType<typeof getDb>>, userId: string) {
+  return collection(db, 'users', userId, COLLECTION)
+}
+
+function templateDoc(
+  db: Awaited<ReturnType<typeof getDb>>,
+  userId: string,
+  templateId: TemplateId
+) {
+  return doc(db, 'users', userId, COLLECTION, templateId)
+}
+
 export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepository {
   return {
     async create(userId: string, input: CreateTemplateInput): Promise<WorkoutTemplate> {
       const now = Date.now()
-      const templateId = generateId('template') as TemplateId
+      const templateId = newId('template') as TemplateId
 
       const template: WorkoutTemplate = {
         templateId,
@@ -48,18 +60,11 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
       }
 
       const db = await getDb()
-      const docRef = doc(db, COLLECTION, templateId)
-      await updateDoc(docRef, {
+      const docRef = templateDoc(db, userId, templateId)
+      await setDoc(docRef, {
         ...template,
         createdAt: Timestamp.fromMillis(now),
         updatedAt: Timestamp.fromMillis(now),
-      }).catch(async () => {
-        // Document doesn't exist, create it
-        await addDoc(collection(db, COLLECTION), {
-          ...template,
-          createdAt: Timestamp.fromMillis(now),
-          updatedAt: Timestamp.fromMillis(now),
-        })
       })
 
       return template
@@ -71,7 +76,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
       updates: UpdateTemplateInput
     ): Promise<WorkoutTemplate> {
       const db = await getDb()
-      const docRef = doc(db, COLLECTION, templateId)
+      const docRef = templateDoc(db, userId, templateId)
       const docSnap = await getDoc(docRef)
 
       if (!docSnap.exists()) {
@@ -103,7 +108,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
 
     async delete(userId: string, templateId: TemplateId): Promise<void> {
       const db = await getDb()
-      const docRef = doc(db, COLLECTION, templateId)
+      const docRef = templateDoc(db, userId, templateId)
       const docSnap = await getDoc(docRef)
 
       if (!docSnap.exists()) {
@@ -121,7 +126,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
 
     async get(userId: string, templateId: TemplateId): Promise<WorkoutTemplate | null> {
       const db = await getDb()
-      const docRef = doc(db, COLLECTION, templateId)
+      const docRef = templateDoc(db, userId, templateId)
       const docSnap = await getDoc(docRef)
 
       if (!docSnap.exists()) {
@@ -139,11 +144,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
 
     async list(userId: string): Promise<WorkoutTemplate[]> {
       const db = await getDb()
-      const q = query(
-        collection(db, COLLECTION),
-        where('userId', '==', userId),
-        orderBy('title', 'asc')
-      )
+      const q = query(templatesCollection(db, userId), orderBy('title', 'asc'))
 
       const snapshot = await getDocs(q)
       return snapshot.docs.map((doc) => doc.data() as WorkoutTemplate)
@@ -152,8 +153,7 @@ export function createFirestoreWorkoutTemplateRepository(): WorkoutTemplateRepos
     async listByContext(userId: string, context: string): Promise<WorkoutTemplate[]> {
       const db = await getDb()
       const q = query(
-        collection(db, COLLECTION),
-        where('userId', '==', userId),
+        templatesCollection(db, userId),
         where('context', '==', context),
         orderBy('title', 'asc')
       )

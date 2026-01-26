@@ -8,6 +8,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import type { AgentConfig } from '@lifeos/agents'
+import { MODEL_PRICING } from '@lifeos/agents'
 
 import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
 import { recordMessage } from './messageStore.js'
@@ -36,24 +37,10 @@ export interface AnthropicExecutionResult {
 }
 
 /**
- * Anthropic pricing per 1M tokens (as of Dec 2024)
- * Source: https://www.anthropic.com/pricing
- */
-const ANTHROPIC_PRICING: Record<string, { input: number; output: number }> = {
-  'claude-3-5-sonnet-20241022': { input: 3.0, output: 15.0 },
-  'claude-3-5-haiku-20241022': { input: 1.0, output: 5.0 },
-  'claude-3-opus-20240229': { input: 15.0, output: 75.0 },
-  'claude-3-sonnet-20240229': { input: 3.0, output: 15.0 },
-  'claude-3-haiku-20240307': { input: 0.25, output: 1.25 },
-  // Default fallback
-  default: { input: 3.0, output: 15.0 },
-}
-
-/**
  * Calculate cost based on token usage
  */
 function calculateCost(modelName: string, inputTokens: number, outputTokens: number): number {
-  const pricing = ANTHROPIC_PRICING[modelName] ?? ANTHROPIC_PRICING['default']
+  const pricing = MODEL_PRICING[modelName] ?? MODEL_PRICING.default
   const inputCost = (inputTokens / 1_000_000) * pricing.input
   const outputCost = (outputTokens / 1_000_000) * pricing.output
   return inputCost + outputCost

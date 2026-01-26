@@ -3,7 +3,7 @@
  *
  * Defines the core data models for the hierarchical to-do system:
  * - Projects (Top level)
- * - Milestones (Mid level)
+ * - Chapters (Mid level)
  * - Tasks (Atomic level)
  */
 
@@ -39,7 +39,7 @@ export interface CanonicalProject {
   archived: boolean
 }
 
-export interface CanonicalMilestone {
+export interface CanonicalChapter {
   id: string
   projectId: string
   userId: string
@@ -57,7 +57,7 @@ export interface CanonicalTask {
   id: string
   userId: string
   projectId?: string
-  milestoneId?: string
+  chapterId?: string
   keyResultId?: string
   title: string
   description?: string

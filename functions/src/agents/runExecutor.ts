@@ -258,11 +258,21 @@ async function executeRun(params: {
         console.log(`Expert Council completed for run ${runId}`)
         return
       } catch (error) {
-        console.error(`Expert Council failed for run ${runId}, falling back to workflow:`, error)
+        console.error('Expert Council failed; falling back to workflow.', {
+          runId,
+          workspaceId,
+          userId,
+          error: error instanceof Error ? error.message : String(error),
+          expertCouncilConfig,
+        })
         await eventWriter.writeEvent({
           type: 'status',
           workspaceId,
           status: 'expert_council_failed_fallback',
+          details: {
+            reason: error instanceof Error ? error.message : String(error),
+            fallback: 'workflow',
+          },
         })
       }
     }

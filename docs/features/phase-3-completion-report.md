@@ -547,8 +547,8 @@ Components are composable and reusable:
 ### Gamification
 
 - Achievement badges
-- Milestone celebrations
-- Streak milestones (7, 30, 100 days)
+- Chapter celebrations
+- Streak chapters (7, 30, 100 days)
 - Leaderboards (opt-in)
 
 ### Integration with Mind Engine

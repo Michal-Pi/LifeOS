@@ -7,6 +7,7 @@
  */
 
 import type { AgentConfig } from '@lifeos/agents'
+import { MODEL_PRICING } from '@lifeos/agents'
 import OpenAI from 'openai'
 
 import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
@@ -37,22 +38,10 @@ export interface GrokExecutionResult {
 }
 
 /**
- * Grok pricing per 1M tokens (as of Dec 2024)
- * Source: https://x.ai/api
- * Note: Pricing may change; verify at https://x.ai/pricing
- */
-const GROK_PRICING: Record<string, { input: number; output: number }> = {
-  'grok-beta': { input: 5.0, output: 15.0 },
-  'grok-2-1212': { input: 2.0, output: 10.0 },
-  // Default fallback
-  default: { input: 5.0, output: 15.0 },
-}
-
-/**
  * Calculate cost based on token usage
  */
 function calculateCost(modelName: string, inputTokens: number, outputTokens: number): number {
-  const pricing = GROK_PRICING[modelName] ?? GROK_PRICING['default']
+  const pricing = MODEL_PRICING[modelName] ?? MODEL_PRICING.default
   const inputCost = (inputTokens / 1_000_000) * pricing.input
   const outputCost = (outputTokens / 1_000_000) * pricing.output
   return inputCost + outputCost

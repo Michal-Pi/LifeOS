@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { WeeklyReviewPage } from '@/pages/WeeklyReviewPage'
+import { DialogProvider } from '@/contexts/DialogContext'
 
 // Mocks
 vi.mock('@/hooks/useAuth', () => ({
@@ -54,7 +55,11 @@ describe('WeeklyReviewPage', () => {
   })
 
   it('renders the first step (Completed Tasks) correctly', () => {
-    render(<WeeklyReviewPage />)
+    render(
+      <DialogProvider>
+        <WeeklyReviewPage />
+      </DialogProvider>
+    )
 
     expect(screen.getByRole('heading', { name: 'Weekly Review' })).toBeInTheDocument()
     expect(screen.getByText('Review Completed Tasks')).toBeInTheDocument()
@@ -63,7 +68,11 @@ describe('WeeklyReviewPage', () => {
   })
 
   it('renders the second step (Pending Priorities) correctly', async () => {
-    render(<WeeklyReviewPage />)
+    render(
+      <DialogProvider>
+        <WeeklyReviewPage />
+      </DialogProvider>
+    )
     const user = userEvent.setup()
 
     // Click Next
@@ -75,7 +84,11 @@ describe('WeeklyReviewPage', () => {
   })
 
   it('renders the third step (Project Progress) correctly', async () => {
-    render(<WeeklyReviewPage />)
+    render(
+      <DialogProvider>
+        <WeeklyReviewPage />
+      </DialogProvider>
+    )
     const user = userEvent.setup()
 
     // Click Next twice

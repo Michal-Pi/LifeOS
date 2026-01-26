@@ -6,7 +6,8 @@
 
 import { useState, useCallback } from 'react'
 import { useAuth } from './useAuth'
-import { createFirestoreWorkoutTemplateRepository } from '@/adapters/training/firestoreWorkoutTemplateRepository'
+import { useTrainingSync } from './useTrainingSync'
+import { createIndexedDbWorkoutTemplateRepository } from '@/adapters/training/indexedDbWorkoutTemplateRepository'
 import type {
   WorkoutTemplate,
   TemplateId,
@@ -15,7 +16,7 @@ import type {
   WorkoutContext,
 } from '@lifeos/training'
 
-const templateRepository = createFirestoreWorkoutTemplateRepository()
+const templateRepository = createIndexedDbWorkoutTemplateRepository()
 
 export interface UseWorkoutTemplatesReturn {
   templates: WorkoutTemplate[]
@@ -32,6 +33,7 @@ export interface UseWorkoutTemplatesReturn {
 
 export function useWorkoutTemplates(): UseWorkoutTemplatesReturn {
   const { user } = useAuth()
+  useTrainingSync()
   const userId = user?.uid ?? ''
 
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])

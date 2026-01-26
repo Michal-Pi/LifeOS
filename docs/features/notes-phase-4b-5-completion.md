@@ -242,7 +242,7 @@ The following items were deferred to later phases:
 1. **OKR Linking** - Link notes to specific OKRs
 2. **Linked Notes Panel** - Show linked notes in project detail views
 3. **Learning Project Template** - Special project type for learning
-4. **Learning Milestones** - Integration with Key Results
+4. **Learning Chapters** - Integration with Key Results
 
 ### Phase 5 Deferred (to Phase 6):
 

@@ -460,7 +460,7 @@ try {
 
 ## 📋 Testing Checklist
 
-- [ ] Test OKR Linker with empty projects/milestones
+- [ ] Test OKR Linker with empty projects/chapters
 - [ ] Test Event Service with missing eventId
 - [ ] Test Conflict Resolution with all field types
 - [ ] Test Daily View with 0, 1, and many events

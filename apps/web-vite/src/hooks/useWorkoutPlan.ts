@@ -6,10 +6,11 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from './useAuth'
-import { createFirestoreWorkoutPlanRepository } from '@/adapters/training/firestoreWorkoutPlanRepository'
+import { useTrainingSync } from './useTrainingSync'
+import { createIndexedDbWorkoutPlanRepository } from '@/adapters/training/indexedDbWorkoutPlanRepository'
 import type { WorkoutPlan, PlanId, CreatePlanInput, UpdatePlanInput } from '@lifeos/training'
 
-const planRepository = createFirestoreWorkoutPlanRepository()
+const planRepository = createIndexedDbWorkoutPlanRepository()
 
 export interface UseWorkoutPlanReturn {
   activePlan: WorkoutPlan | null
@@ -28,6 +29,7 @@ export interface UseWorkoutPlanReturn {
 
 export function useWorkoutPlan(): UseWorkoutPlanReturn {
   const { user } = useAuth()
+  useTrainingSync()
   const userId = user?.uid ?? ''
 
   const [activePlan, setActivePlan] = useState<WorkoutPlan | null>(null)

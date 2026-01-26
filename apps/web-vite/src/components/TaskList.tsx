@@ -4,7 +4,7 @@ import type { RowComponentProps } from 'react-window'
 import type { CanonicalTask, CanonicalProject, TaskStatus } from '@/types/todo'
 import { calculatePriorityScore, calculateUrgency } from '@/lib/priority'
 import { getProjectColor } from '@/config/domainColors'
-import { importanceLabel } from '@/lib/todoUi'
+import { importanceLabel, urgencyLabel } from '@/lib/todoUi'
 import './TaskList.css'
 import { EmptyState } from '@/components/EmptyState'
 
@@ -130,10 +130,22 @@ export const TaskList = React.memo(function TaskList({
     const project = projects.find((p) => p.id === task.projectId)
     const taskColor = project ? getProjectColor(project.color, project.domain) : null
 
+    // Determine effective urgency (from task or calculated from due date)
+    const effectiveUrgency =
+      task.urgency ?? (task.dueDate ? calculateUrgency(task.dueDate) : 'later')
+    const isTodayOrOverdue = effectiveUrgency === 'today'
+
+    // Check if previous task was today/overdue to add spacing
+    const prevTask = index > 0 ? tasks[index - 1] : null
+    const prevUrgency =
+      prevTask?.urgency ?? (prevTask?.dueDate ? calculateUrgency(prevTask.dueDate) : 'later')
+    const prevIsTodayOrOverdue = prevUrgency === 'today'
+    const showSpacing = !prevIsTodayOrOverdue && isTodayOrOverdue
+
     return (
       <div
         style={style}
-        className={`task-row ${selectedTaskId === task.id ? 'selected' : ''} ${task.completed ? 'completed' : ''}`}
+        className={`task-row ${selectedTaskId === task.id ? 'selected' : ''} ${task.completed ? 'completed' : ''} ${showSpacing ? 'spacing-top' : ''}`}
         onClick={() => onSelectTask(task)}
       >
         {taskColor && (
@@ -153,15 +165,19 @@ export const TaskList = React.memo(function TaskList({
         </div>
         <div className="task-cell meta-cell w-32">
           {task.urgency ? (
-            <span className={`urgency-badge ${task.urgency}`}>
-              {task.urgency.replace(/_/g, ' ')}
+            <span className={`urgency-badge ${effectiveUrgency}`}>
+              {urgencyLabel(task.urgency)}
             </span>
+          ) : task.dueDate ? (
+            <span className={`urgency-badge ${effectiveUrgency}`}>{task.dueDate}</span>
           ) : (
             '-'
           )}
         </div>
         <div className="task-cell meta-cell w-24">{importanceLabel(task.importance)}</div>
-        <div className="task-cell meta-cell w-32">{task.dueDate || '-'}</div>
+        <div className="task-cell meta-cell w-24">
+          <span className={`domain-badge domain-badge-${task.domain}`}>{task.domain}</span>
+        </div>
         <div className="task-cell meta-cell w-24">
           <span className={`status-pill ${task.status}`}>{STATUS_LABELS[task.status]}</span>
         </div>
@@ -185,9 +201,7 @@ export const TaskList = React.memo(function TaskList({
         <div className="task-header-cell sortable w-24" onClick={() => handleSort('importance')}>
           Imp. {sortField === 'importance' && (sortDirection === 'asc' ? '↑' : '↓')}
         </div>
-        <div className="task-header-cell sortable w-32" onClick={() => handleSort('dueDate')}>
-          Due {sortField === 'dueDate' && (sortDirection === 'asc' ? '↑' : '↓')}
-        </div>
+        <div className="task-header-cell w-24">Domain</div>
         <div className="task-header-cell w-24">Status</div>
       </div>
 

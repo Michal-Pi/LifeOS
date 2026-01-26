@@ -20,11 +20,11 @@ Generated: 2026-01-08
 **File:** `apps/web-vite/src/components/notes/OKRLinker.tsx:46`
 
 ```typescript
-// TODO: Integrate with actual project/milestone repositories
+// TODO: Integrate with actual project/chapter repositories
 // For now, we'll use empty arrays as placeholders
 ```
 
-**Status:** OKR linker shows empty arrays. Needs integration with project/milestone repositories.
+**Status:** OKR linker shows empty arrays. Needs integration with project/chapter repositories.
 
 ### 3. Event Service CRUD Operations
 
@@ -55,6 +55,16 @@ Generated: 2026-01-08
 ```
 
 **Status:** Quota alerts logged but no in-app notifications sent.
+
+### 6. Project Manager UI Integration
+
+**File:** `apps/web-vite/src/components/agents/ProjectManagerChat.tsx`
+
+```typescript
+// TODO: Integrate Project Manager UI into workspace workflows and run views
+```
+
+**Status:** Project Manager UI components exist but are not wired into user-facing workflows.
 
 ## 🟡 Placeholders & Incomplete Features
 
@@ -132,7 +142,7 @@ Merge Manually (Coming Soon)
 
 ## Summary
 
-**Total TODOs:** 5 critical items
+**Total TODOs:** 6 critical items
 **Total Placeholders:** 5 incomplete features
 **Total Stubs:** 2 (intentional for testing)
 

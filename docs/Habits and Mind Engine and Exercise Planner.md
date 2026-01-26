@@ -9,7 +9,7 @@ Target: Add the next “Habits \+ Mind” section to LifeOS using existing Calen
 
 LifeOS already has:  
 \- Production-ready \*\*Calendar\*\* (canonical model, recurrence, alerts, Google sync, offline-first/outbox)  
-\- Production-ready \*\*Todos\*\* (projects/milestones/tasks, calendar integration)  
+\- Production-ready \*\*Todos\*\* (projects/chapters/tasks, calendar integration)  
 \- \*\*Today view\*\* and \*\*Weekly Review\*\*  
 \- A planned \*\*Notes/Learning\*\* system (not yet implemented)
 
@@ -348,7 +348,7 @@ Todo fields:
 
 \#\# 13\) Development Plan (Step-by-step tasks for agents)
 
-\#\#\# Milestone A — Domain packages scaffolding  
+\#\#\# Chapter A — Domain packages scaffolding  
 1\. Create \`packages/habits\`  
  \- Domain models \+ validation:  
  \- habit recipe validity  
@@ -383,7 +383,7 @@ Acceptance criteria:
 
 \---
 
-\#\#\# Milestone B — Adapters (Firestore \+ IndexedDB \+ outbox)  
+\#\#\# Chapter B — Adapters (Firestore \+ IndexedDB \+ outbox)  
 1\. Implement adapters under \`apps/web-vite/src/adapters/\`  
  \- Firestore: CRUD for each collection  
  \- IndexedDB: local cache tables  
@@ -396,7 +396,7 @@ Acceptance criteria:
 
 \---
 
-\#\#\# Milestone C — Hooks \+ minimal UI  
+\#\#\# Chapter C — Hooks \+ minimal UI  
 1\. Hooks:  
  \- \`useHabits()\` (list/create/update/pause)  
  \- \`useHabitCheckins(dateKey)\` (day view)  
@@ -413,7 +413,7 @@ Acceptance criteria:
 
 \---
 
-\#\#\# Milestone D — Today integration (core flow)  
+\#\#\# Chapter D — Today integration (core flow)  
 1\. Update \`TodayPage.tsx\`:  
  \- Morning module:  
  \- show incantation  
@@ -433,7 +433,7 @@ Acceptance criteria:
 
 \---
 
-\#\#\# Milestone E — Weekly Review integration (system tuning)  
+\#\#\# Chapter E — Weekly Review integration (system tuning)  
 1\. Extend Weekly Review:  
  \- Show weekly consistency per habit  
  \- Show count of intervention sessions  
@@ -447,7 +447,7 @@ Acceptance criteria:
 
 \---
 
-\#\#\# Milestone F — Calendar projection (internal-only)  
+\#\#\# Chapter F — Calendar projection (internal-only)  
 1\. Implement habit → recurring internal \`CanonicalCalendarEvent\` generator  
 2\. Ensure Google sync ignores these events (Phase 1\)  
 3\. Optional: attach calendar alerts to trigger “I’m activated” entry point (Phase 2\)
@@ -776,7 +776,7 @@ Conflict policy:
 
 \#\# 10\) Dev Plan (Agent Tasks)
 
-\#\#\# Milestone T1 — Training domain package  
+\#\#\# Chapter T1 — Training domain package  
 1\. Create \`packages/training\`  
 2\. Domain models \+ validation:  
  \- template item target shapes  
@@ -798,7 +798,7 @@ Conflict policy:
 Acceptance:  
 \- Unit tests for target schema validation and session generation
 
-\#\#\# Milestone T2 — Adapters \+ Hooks  
+\#\#\# Chapter T2 — Adapters \+ Hooks  
 1\. Firestore adapters for new collections  
 2\. IndexedDB caches \+ outbox  
 3\. Hooks:  
@@ -809,7 +809,7 @@ Acceptance:
 Acceptance:  
 \- Offline: start and complete workout session with sets, then sync
 
-\#\#\# Milestone T3 — UI  
+\#\#\# Chapter T3 — UI  
 1\. Today Training module:  
  \- show three variant cards  
  \- start/continue buttons  
@@ -824,7 +824,7 @@ Acceptance:
 Acceptance:  
 \- User can plan day variants and log: bench press 5x8x50kg
 
-\#\#\# Milestone T4 — Integration with Habits \+ Weekly Review  
+\#\#\# Chapter T4 — Integration with Habits \+ Weekly Review  
 1\. Auto-upsert exercise habit check-in on completed session  
 2\. Weekly Review training summary  
 3\. Optional: calendar projection of workouts (internal-only)

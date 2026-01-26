@@ -460,7 +460,8 @@ export function createExpertCouncilPipeline(params: {
             }
           })
 
-          aggregateRanking = buildAggregateRanking(filledReviews, allLabels, anonymizationMap)
+          const aggregateResult = buildAggregateRanking(filledReviews, allLabels, anonymizationMap)
+          aggregateRanking = aggregateResult.ranking
 
           const kendallTau = calculateAverageKendallTau(filledReviews)
           const consensusScore = calculateConsensusScore(filledReviews)
@@ -472,6 +473,8 @@ export function createExpertCouncilPipeline(params: {
             consensusScore,
             topRankedLabel,
             controversialResponses,
+            rankingCompleteness: aggregateResult.completeness,
+            excludedResponses: aggregateResult.excludedLabels,
           }
 
           if (
@@ -485,6 +488,8 @@ export function createExpertCouncilPipeline(params: {
               consensusScore,
               topRankedLabel: '',
               controversialResponses: [],
+              rankingCompleteness: aggregateResult.completeness,
+              excludedResponses: aggregateResult.excludedLabels,
             }
             await writeStatus('expert_council_consensus_below_threshold')
           }
@@ -683,8 +688,9 @@ export function createExpertCouncilRepository(): ExpertCouncilRepository {
       return snapshot.docs.map((doc) => doc.data() as ExpertCouncilTurn)
     },
 
-    async getCachedTurn(cacheKey: string): Promise<ExpertCouncilTurn | null> {
-      const cacheDoc = await db.collection('councilCache').doc(cacheKey).get()
+    async getCachedTurn(userId: string, cacheKey: string): Promise<ExpertCouncilTurn | null> {
+      // User-scoped caching ensures isolation while enabling reuse across runs per user.
+      const cacheDoc = await db.collection(`users/${userId}/councilCache`).doc(cacheKey).get()
       if (!cacheDoc.exists) {
         return null
       }
@@ -700,12 +706,13 @@ export function createExpertCouncilRepository(): ExpertCouncilRepository {
     },
 
     async setCachedTurn(
+      userId: string,
       cacheKey: string,
       turn: ExpertCouncilTurn,
       ttlHours: number
     ): Promise<void> {
       const expiresAtMs = Date.now() + ttlHours * 60 * 60 * 1000
-      await db.collection('councilCache').doc(cacheKey).set({
+      await db.collection(`users/${userId}/councilCache`).doc(cacheKey).set({
         cacheKey,
         turn,
         expiresAtMs,
@@ -713,8 +720,8 @@ export function createExpertCouncilRepository(): ExpertCouncilRepository {
       })
     },
 
-    async invalidateCache(cacheKey: string): Promise<void> {
-      await db.collection('councilCache').doc(cacheKey).delete()
+    async invalidateCache(userId: string, cacheKey: string): Promise<void> {
+      await db.collection(`users/${userId}/councilCache`).doc(cacheKey).delete()
     },
 
     async getAnalytics(userId: string, workspaceId: WorkspaceId): Promise<CouncilAnalytics> {

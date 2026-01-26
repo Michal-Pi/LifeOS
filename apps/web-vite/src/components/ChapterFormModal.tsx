@@ -1,25 +1,20 @@
 import { useState, useEffect } from 'react'
 import { createLogger } from '@lifeos/core'
 
-const logger = createLogger('MilestoneFormModal')
-import type { CanonicalMilestone } from '@/types/todo'
+const logger = createLogger('ChapterFormModal')
+import type { CanonicalChapter } from '@/types/todo'
 import { generateId } from '@/lib/idGenerator'
 
-interface MilestoneFormModalProps {
+interface ChapterFormModalProps {
   isOpen: boolean
   onClose: () => void
   onSave: (
-    milestone: Omit<CanonicalMilestone, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+    chapter: Omit<CanonicalChapter, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
   ) => Promise<void>
   projectId: string
 }
 
-export function MilestoneFormModal({
-  isOpen,
-  onClose,
-  onSave,
-  projectId,
-}: MilestoneFormModalProps) {
+export function ChapterFormModal({ isOpen, onClose, onSave, projectId }: ChapterFormModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [deadline, setDeadline] = useState('')
@@ -60,7 +55,7 @@ export function MilestoneFormModal({
       })
       onClose()
     } catch (error) {
-      logger.error('Failed to create milestone:', error)
+      logger.error('Failed to create chapter:', error)
     } finally {
       setIsSubmitting(false)
     }
@@ -70,9 +65,9 @@ export function MilestoneFormModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content milestone-form-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content chapter-form-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>New Milestone</h2>
+          <h2>New Chapter</h2>
           <button className="close-button" onClick={onClose}>
             ×
           </button>
@@ -80,22 +75,22 @@ export function MilestoneFormModal({
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="milestone-title">Title</label>
+            <label htmlFor="chapter-title">Title</label>
             <input
-              id="milestone-title"
+              id="chapter-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Milestone Name"
+              placeholder="Chapter Name"
               required
               autoFocus
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="milestone-deadline">Deadline (Optional)</label>
+            <label htmlFor="chapter-deadline">Deadline (Optional)</label>
             <input
-              id="milestone-deadline"
+              id="chapter-deadline"
               type="date"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
@@ -103,20 +98,20 @@ export function MilestoneFormModal({
           </div>
 
           <div className="form-group">
-            <label htmlFor="milestone-objective">Objective (Optional)</label>
+            <label htmlFor="chapter-objective">Objective (Optional)</label>
             <input
-              id="milestone-objective"
+              id="chapter-objective"
               type="text"
               value={objective}
               onChange={(e) => setObjective(e.target.value)}
-              placeholder="What is the goal of this milestone?"
+              placeholder="What is the goal of this chapter?"
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="milestone-key-results">Key Results (Optional, one per line)</label>
+            <label htmlFor="chapter-key-results">Key Results (Optional, one per line)</label>
             <textarea
-              id="milestone-key-results"
+              id="chapter-key-results"
               value={keyResults}
               onChange={(e) => setKeyResults(e.target.value)}
               placeholder="e.g., Launch beta to 100 users"
@@ -129,7 +124,7 @@ export function MilestoneFormModal({
               Cancel
             </button>
             <button type="submit" className="primary-button" disabled={isSubmitting}>
-              Create Milestone
+              Create Chapter
             </button>
           </div>
         </form>

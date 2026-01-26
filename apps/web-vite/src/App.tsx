@@ -60,6 +60,9 @@ const PlannerPage = lazyWithRetry(() =>
 const NotesPage = lazyWithRetry(() =>
   import('./pages/NotesPage').then((m) => ({ default: m.NotesPage }))
 )
+const NoteGraphPage = lazyWithRetry(() =>
+  import('./pages/NoteGraphPage').then((m) => ({ default: m.NoteGraphPage }))
+)
 const SettingsPage = lazyWithRetry(() =>
   import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))
 )
@@ -86,6 +89,12 @@ const WorkspacesPage = lazyWithRetry(() =>
 )
 const WorkspaceDetailPage = lazyWithRetry(() =>
   import('./pages/WorkspaceDetailPage').then((m) => ({ default: m.WorkspaceDetailPage }))
+)
+const ResearchPage = lazyWithRetry(() =>
+  import('./pages/ResearchPage').then((m) => ({ default: m.ResearchPage }))
+)
+const PromptLibraryPage = lazyWithRetry(() =>
+  import('./pages/PromptLibraryPage').then((m) => ({ default: m.PromptLibraryPage }))
 )
 
 // Loading fallback component
@@ -223,6 +232,16 @@ function AppRoutes() {
                 }
               />
               <Route
+                path="/notes/graph"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <NoteGraphPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/learning"
                 element={
                   <ProtectedRoute>
@@ -253,6 +272,16 @@ function AppRoutes() {
                 }
               />
               <Route
+                path="/agents/prompts"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <PromptLibraryPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/workspaces"
                 element={
                   <ProtectedRoute>
@@ -268,6 +297,26 @@ function AppRoutes() {
                   <ProtectedRoute>
                     <ErrorBoundary>
                       <WorkspaceDetailPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/research"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <ResearchPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/agents/research"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <ResearchPage />
                     </ErrorBoundary>
                   </ProtectedRoute>
                 }

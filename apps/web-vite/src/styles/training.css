@@ -1571,6 +1571,72 @@
   margin: var(--space-2) 0;
 }
 
+/* ========== Planner Training View ========== */
+
+.planner-training {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.planner-training-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.1fr) minmax(320px, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.planner-training-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.planner-training-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.planner-training-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.planner-training-meta {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.planner-plan-grid {
+  margin-top: var(--space-2);
+}
+
+.planner-plan-empty {
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  color: var(--text-secondary);
+  background: var(--card-background);
+}
+
+.planner-training-review {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  background: var(--card-background);
+}
+
+@media (max-width: 1100px) {
+  .planner-training-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ========== Plan Form Modal ========== */
 
 .plan-form-modal {

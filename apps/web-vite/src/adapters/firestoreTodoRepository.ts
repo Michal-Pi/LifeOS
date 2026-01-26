@@ -1,17 +1,17 @@
 /**
  * Firestore Todo Repository
  *
- * Implements data access for Projects, Milestones, and Tasks using Firestore.
+ * Implements data access for Projects, Chapters, and Tasks using Firestore.
  * Follows the Repository pattern to abstract database specifics from the UI.
  */
 
 import { collection, doc, getDocs, query, setDoc, where, deleteDoc } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { getAuthClient } from '@/lib/firebase'
-import type { CanonicalProject, CanonicalMilestone, CanonicalTask } from '@/types/todo'
+import type { CanonicalProject, CanonicalChapter, CanonicalTask } from '@/types/todo'
 
 const COLLECTION_PROJECTS = 'projects'
-const COLLECTION_MILESTONES = 'milestones'
+const COLLECTION_CHAPTERS = 'chapters'
 const COLLECTION_TASKS = 'tasks'
 
 /**
@@ -103,51 +103,48 @@ export const createFirestoreTodoRepository = () => {
     await deleteDoc(ref)
   }
 
-  // --- Milestones ---
-  const getMilestones = async (
-    userId: string,
-    projectId?: string
-  ): Promise<CanonicalMilestone[]> => {
+  // --- Chapters ---
+  const getChapters = async (userId: string, projectId?: string): Promise<CanonicalChapter[]> => {
     // Ensure Firestore auth is ready before making queries
     await ensureFirestoreAuthReady(userId)
     const db = await getDb()
-    let q = query(collection(db, `users/${userId}/${COLLECTION_MILESTONES}`))
+    let q = query(collection(db, `users/${userId}/${COLLECTION_CHAPTERS}`))
     if (projectId) {
       q = query(q, where('projectId', '==', projectId))
     }
     return retryFirestoreQuery(async () => {
       const snapshot = await getDocs(q)
-      return snapshot.docs.map((doc) => doc.data() as CanonicalMilestone)
+      return snapshot.docs.map((doc) => doc.data() as CanonicalChapter)
     })
   }
 
-  const saveMilestone = async (milestone: CanonicalMilestone): Promise<void> => {
+  const saveChapter = async (chapter: CanonicalChapter): Promise<void> => {
     const db = await getDb()
-    const ref = doc(db, `users/${milestone.userId}/${COLLECTION_MILESTONES}/${milestone.id}`)
+    const ref = doc(db, `users/${chapter.userId}/${COLLECTION_CHAPTERS}/${chapter.id}`)
     // Filter out undefined fields (Firestore doesn't accept undefined values)
-    const filteredMilestone = Object.fromEntries(
-      Object.entries(milestone).filter(([, value]) => value !== undefined)
+    const filteredChapter = Object.fromEntries(
+      Object.entries(chapter).filter(([, value]) => value !== undefined)
     )
-    await setDoc(ref, filteredMilestone)
+    await setDoc(ref, filteredChapter)
   }
 
-  const deleteMilestone = async (userId: string, milestoneId: string): Promise<void> => {
+  const deleteChapter = async (userId: string, chapterId: string): Promise<void> => {
     const db = await getDb()
-    const ref = doc(db, `users/${userId}/${COLLECTION_MILESTONES}/${milestoneId}`)
+    const ref = doc(db, `users/${userId}/${COLLECTION_CHAPTERS}/${chapterId}`)
     await deleteDoc(ref)
   }
 
   // --- Tasks ---
   const getTasks = async (
     userId: string,
-    options?: { projectId?: string; milestoneId?: string }
+    options?: { projectId?: string; chapterId?: string }
   ): Promise<CanonicalTask[]> => {
     // Ensure Firestore auth is ready before making queries
     await ensureFirestoreAuthReady(userId)
     const db = await getDb()
     let q = query(collection(db, `users/${userId}/${COLLECTION_TASKS}`))
-    if (options?.milestoneId) {
-      q = query(q, where('milestoneId', '==', options.milestoneId))
+    if (options?.chapterId) {
+      q = query(q, where('chapterId', '==', options.chapterId))
     } else if (options?.projectId) {
       q = query(q, where('projectId', '==', options.projectId))
     }
@@ -177,9 +174,9 @@ export const createFirestoreTodoRepository = () => {
     getProjects,
     saveProject,
     deleteProject,
-    getMilestones,
-    saveMilestone,
-    deleteMilestone,
+    getChapters,
+    saveChapter,
+    deleteChapter,
     getTasks,
     saveTask,
     deleteTask,

@@ -89,7 +89,9 @@ export function useEventService({ userId }: UseEventServiceProps) {
 
       // Get default calendar ID (from metadata, or fetch user's default)
       const calendarId =
-        (metadata?.calendarId as string | undefined) || (await getDefaultCalendarId(userId))
+        (metadata?.calendarId as string | undefined) ||
+        (await getDefaultCalendarId(userId)) ||
+        'local:primary'
 
       const newEvent: CanonicalCalendarEvent = {
         canonicalEventId: `local:${generateId()}`,
@@ -231,6 +233,7 @@ export function useEventService({ userId }: UseEventServiceProps) {
 
       const updatedEvent: CanonicalCalendarEvent = {
         ...existingEvent,
+        rev: (existingEvent.rev ?? 0) + 1,
         updatedAt: new Date(nowMs).toISOString(),
         updatedAtMs: nowMs,
         canonicalUpdatedAtMs: nowMs,

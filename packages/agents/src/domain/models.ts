@@ -1,4 +1,7 @@
 import type { Id } from '@lifeos/core'
+import type { ProjectManagerConfig } from './projectManager'
+import type { PromptReference } from './promptLibrary'
+export type { ProjectManagerConfig } from './projectManager'
 
 // ----- IDs -----
 
@@ -97,6 +100,14 @@ export interface Workspace {
 
   // Expert Council configuration (optional)
   expertCouncilConfig?: ExpertCouncilConfig
+  projectManagerConfig?: ProjectManagerConfig
+  promptConfig?: {
+    agentPrompts?: Record<string, PromptReference>
+    toneOfVoicePrompt?: PromptReference
+    workflowPrompts?: Record<string, PromptReference>
+    toolPrompts?: Record<string, PromptReference>
+    synthesisPrompts?: Record<string, PromptReference>
+  }
 
   // Workflow configuration
   workflowType: 'sequential' | 'parallel' | 'supervisor' | 'custom' | 'graph'
@@ -187,6 +198,11 @@ export interface Run {
     | 'quota'
   errorDetails?: Record<string, unknown> // Technical details for debugging
   quotaExceeded?: boolean // True if run failed due to quota limits
+  promptResolutionErrors?: Array<{
+    agentId: string
+    promptType: string
+    error: string
+  }>
 
   // Metrics
   startedAtMs: number
@@ -416,6 +432,7 @@ export interface ExpertCouncilConfig {
     modelName: string
     temperature?: number
     maxTokens?: number
+    systemPrompt?: string
   }
 
   // Judges are same as council by default, or can be overridden
@@ -483,6 +500,8 @@ export interface ExpertCouncilTurn {
       consensusScore: number
       topRankedLabel: string
       controversialResponses: string[]
+      rankingCompleteness?: number
+      excludedResponses?: string[]
     }
   }
 

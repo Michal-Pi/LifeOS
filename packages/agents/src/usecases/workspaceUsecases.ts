@@ -12,7 +12,42 @@ import type {
   WorkspaceId,
   CreateWorkspaceInput,
   UpdateWorkspaceInput,
+  ExpertCouncilConfig,
+  ProjectManagerConfig,
 } from '../domain/models'
+
+const validateExpertCouncilConfig = (config: ExpertCouncilConfig): void => {
+  if (!config.enabled) return
+
+  if (config.minCouncilSize < 2) {
+    throw new Error('Expert Council minimum council size must be at least 2')
+  }
+
+  if (config.maxCouncilSize < config.minCouncilSize) {
+    throw new Error('Expert Council maximum council size must be >= minimum council size')
+  }
+
+  if (config.councilModels.length < config.minCouncilSize) {
+    throw new Error('Expert Council must include at least the minimum number of council models')
+  }
+
+  if (config.councilModels.length > config.maxCouncilSize) {
+    throw new Error('Expert Council exceeds the maximum number of council models')
+  }
+
+  if (config.cacheExpirationHours <= 0) {
+    throw new Error('Expert Council cache expiration must be positive')
+  }
+}
+
+const validateProjectManagerConfig = (config: ProjectManagerConfig): void => {
+  if (config.expertCouncilThreshold < 0 || config.expertCouncilThreshold > 100) {
+    throw new Error('Project Manager Expert Council threshold must be between 0 and 100')
+  }
+  if (config.qualityGateThreshold < 0 || config.qualityGateThreshold > 100) {
+    throw new Error('Project Manager quality gate threshold must be between 0 and 100')
+  }
+}
 
 /**
  * Create a new workspace with validation
@@ -40,6 +75,13 @@ export function createWorkspaceUsecase(workspaceRepo: WorkspaceRepository) {
       (input.maxIterations < 1 || input.maxIterations > 50)
     ) {
       throw new Error('Max iterations must be between 1 and 50')
+    }
+
+    if (input.expertCouncilConfig) {
+      validateExpertCouncilConfig(input.expertCouncilConfig)
+    }
+    if (input.projectManagerConfig) {
+      validateProjectManagerConfig(input.projectManagerConfig)
     }
 
     return await workspaceRepo.create(userId, input)
@@ -80,6 +122,13 @@ export function updateWorkspaceUsecase(workspaceRepo: WorkspaceRepository) {
       (updates.maxIterations < 1 || updates.maxIterations > 50)
     ) {
       throw new Error('Max iterations must be between 1 and 50')
+    }
+
+    if (updates.expertCouncilConfig) {
+      validateExpertCouncilConfig(updates.expertCouncilConfig)
+    }
+    if (updates.projectManagerConfig) {
+      validateProjectManagerConfig(updates.projectManagerConfig)
     }
 
     return await workspaceRepo.update(userId, workspaceId, updates)

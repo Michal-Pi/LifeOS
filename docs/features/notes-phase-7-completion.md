@@ -138,7 +138,7 @@ Successfully completed Phase 7 of the Notes feature implementation, bringing it 
 4. **Project Notes Template**
    - Project Overview (name, status, start date)
    - Goals & Objectives (bullet list)
-   - Key Milestones (task list)
+   - Key Chapters (task list)
    - Resources & Links (bullet list)
    - Notes & Updates section
    - Icon: 📋

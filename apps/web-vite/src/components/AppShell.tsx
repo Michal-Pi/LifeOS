@@ -14,6 +14,7 @@ const modules = [
   { label: 'Exercises', href: '/exercises', icon: '💪' },
   { label: 'Templates', href: '/templates', icon: '📋' },
   { label: 'Plan', href: '/plan', icon: '📅' },
+  { label: 'Research', href: '/research', icon: '🔬' },
 ]
 const settingsItem = { label: 'Settings', href: '/settings', icon: '⚙️' }
 

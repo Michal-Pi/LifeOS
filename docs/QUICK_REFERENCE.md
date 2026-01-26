@@ -3,9 +3,13 @@
 ## Current Status
 
 - Calendar: production-ready (sync + writeback)
-- Todos: active (projects/milestones/tasks)
+- Todos: active (projects/chapters/tasks)
+- Notes: active (late beta)
+- Habits + Mind: active
+- Training: active
+- Agents: active (workspaces, runs, prompt library)
 - Quotes: active
-- Notes/People/Projects: placeholder UI
+- People: placeholder UI
 
 ## Commands
 
@@ -24,6 +28,37 @@ pnpm firebase:deploy:functions   # Build + deploy functions only
 - Calendar domain: `packages/calendar/src`
 - Todos domain: `packages/todos/src`
 
+## Key Routes
+
+- `/today` - daily dashboard
+- `/calendar` - calendar UI
+- `/planner` - projects/chapters/tasks
+- `/projects` - project insights
+- `/notes` - notes editor
+- `/notes/graph` - note graph
+- `/habits` - habits dashboard
+- `/exercises` - exercise library
+- `/templates` - workout templates
+- `/plan` - workout plan
+- `/agents` - agents + tools
+- `/agents/prompts` - prompt library
+- `/workspaces` - workspaces and runs
+- `/agents/research` - deep research queue
+- `/settings` - system settings
+
+## Global Search
+
+- Current scope: projects, chapters, and tasks
+- Accessed from top nav or the sidebar search overlay
+- Planned: notes, calendar events, and agent runs
+
+## Settings Highlights
+
+- Provider keys (OpenAI, Anthropic, Google, xAI)
+- Agent memory defaults
+- Quote library management and pinning
+- Calendar sync and status panels
+
 ## Firestore Collections (high-level)
 
 - `quotes/{userId}`
@@ -32,7 +67,7 @@ pnpm firebase:deploy:functions   # Build + deploy functions only
 - `users/{userId}/calendarSyncState`
 - `users/{userId}/compositeEvents`
 - `users/{userId}/projects`
-- `users/{userId}/milestones`
+- `users/{userId}/chapters`
 - `users/{userId}/tasks`
 
 See `docs/DATA_MODELS.md` for details.

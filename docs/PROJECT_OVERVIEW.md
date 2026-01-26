@@ -69,11 +69,11 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 
 **Core Features**:
 
-- **Hierarchical Task Management**: Projects → Milestones → Tasks
+- **Hierarchical Task Management**: Projects → Chapters → Tasks
 - **Priority Levels**: Top, high, medium, low priority categorization
 - **Due Date Management**: Date-based task scheduling
 - **Calendar Integration**: Schedule tasks to calendar slots
-- **Project Associations**: Link tasks to projects and milestones
+- **Project Associations**: Link tasks to projects and chapters
 - **Completion Tracking**: Mark tasks complete with timestamps
 - **Offline-First**: Firestore + IndexedDB with real-time sync
 
@@ -86,7 +86,7 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 
 **Key Components**:
 
-- [PlannerPage.tsx](../apps/web-vite/src/pages/PlannerPage.tsx) - Projects, milestones, tasks, and planning interface
+- [PlannerPage.tsx](../apps/web-vite/src/pages/PlannerPage.tsx) - Projects, chapters, tasks, and planning interface
 - [useTodoOperations.ts](../apps/web-vite/src/hooks/useTodoOperations.ts) - Todo CRUD operations hook
 - [TopPriorityTodos.tsx](../apps/web-vite/src/components/TopPriorityTodos.tsx) - Priority task widget
 - Todo adapters in `apps/web-vite/src/adapters/`
@@ -97,10 +97,10 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
   - Priority levels (top, high, medium, low)
   - Due dates and timestamps
   - Completion state
-  - Project/milestone associations
+  - Project/chapter associations
   - Tags and metadata
 - `Project` - Project container for organizing tasks
-- `Milestone` - Project milestone with associated tasks
+- `Chapter` - Project chapter with associated tasks
 
 **Domain Logic** (in `@lifeos/todos` package):
 
@@ -138,6 +138,36 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 - Progress tracking
 - Goal review
 
+**Habits & Mind Engine**:
+
+- Habit tracking with streaks and check-ins
+- Guided interventions and incantations
+- Weekly habit analytics integration
+
+**Training**:
+
+- Exercise library management
+- Workout templates and plans
+- Daily sessions and workout stats
+
+**AI Agents**:
+
+- Agent/workspace management
+- Workflow runs with tool calling
+- Expert Council, Prompt Library, Deep Research
+
+**Project Insights**:
+
+- Project progress cards and time allocation summaries
+- Markdown import entry point
+
+**Settings**:
+
+- Provider keys and system status
+- Agent memory defaults
+- Quote management and pinning
+- Calendar sync configuration
+
 **Auth & Infrastructure**:
 
 - Firebase Authentication
@@ -162,7 +192,7 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 - Images and tables
 - Hierarchical organization: Topics → Sections → Notes
 - Project and OKR integration
-- Learning projects with milestones
+- Learning projects with chapters
 - Offline-first with IndexedDB + outbox
 
 **Documentation**:
@@ -175,7 +205,7 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 
 ---
 
-#### People / Projects (CRM-style)
+#### People (CRM-style)
 
 **Status**: 🔲 Placeholder UI only
 
@@ -185,6 +215,22 @@ LifeOS is a comprehensive personal productivity platform that unifies calendar m
 - Relationship tracking
 - Project collaboration
 - Meeting notes and follow-ups
+
+---
+
+#### Global Search
+
+**Status**: 🟡 Limited scope (current)
+
+**Current Scope**:
+
+- Searches projects, chapters, and tasks
+- Navigates to Planner with context params
+
+**Planned Expansion**:
+
+- Notes, calendar events, and agent runs
+- Dedicated search index for scale
 
 ---
 
@@ -225,7 +271,7 @@ LifeOS_2/
 │       ├── src/
 │       │   ├── pages/               # Page components
 │       │   │   ├── CalendarPage.tsx # Calendar interface (440 lines)
-│       │   │   ├── PlannerPage.tsx  # Planner (projects, milestones, tasks)
+│       │   │   ├── PlannerPage.tsx  # Planner (projects, chapters, tasks)
 │       │   │   └── TodayPage.tsx    # Daily overview
 │       │   ├── hooks/               # Custom React hooks
 │       │   │   ├── useCalendarEvents.ts
@@ -346,7 +392,7 @@ LifeOS_2/
 ```
 /users/{userId}/todos/{todoId}
 /users/{userId}/projects/{projectId}
-/users/{userId}/milestones/{milestoneId}
+/users/{userId}/chapters/{chapterId}
 ```
 
 ### Notes Data (planned)

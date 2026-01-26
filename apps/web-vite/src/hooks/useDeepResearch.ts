@@ -21,6 +21,7 @@ import type { DeepResearchRequest, DeepResearchSource, Run, WorkspaceId } from '
 import {
   createResearchResult,
   synthesizeResearchFindings,
+  synthesizeResearchFindingsWithAI,
   validateResearchCompleteness,
 } from '@/services/deepResearch/resultProcessor'
 
@@ -36,6 +37,7 @@ export type UseDeepResearchReturn = {
   isLoading: boolean
   error: Error | null
   uploadResults: (payload: UploadPayload) => Promise<void>
+  synthesizeRequest: (request: DeepResearchRequest) => Promise<void>
   updateRequest: (
     request: DeepResearchRequest,
     updates: Partial<Omit<DeepResearchRequest, 'requestId' | 'workspaceId' | 'userId'>>
@@ -131,13 +133,25 @@ export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResear
       const completeness = validateResearchCompleteness(updatedRequest, combinedContent)
       const shouldComplete = updatedRequest.status === 'completed' || completeness.isComplete
       const nextStatus = shouldComplete ? 'completed' : 'in_progress'
-      const synthesizedFindings = shouldComplete
-        ? synthesizeResearchFindings({ ...updatedRequest, results: updatedResults })
-        : updatedRequest.synthesizedFindings
+      const shouldSynthesize =
+        updatedResults.length >= 2 && !updatedRequest.synthesizedFindings
+      let synthesizedFindings = updatedRequest.synthesizedFindings
+
+      if (shouldSynthesize) {
+        synthesizedFindings = await synthesizeResearchFindingsWithAI({
+          ...updatedRequest,
+          results: updatedResults,
+        })
+      } else if (shouldComplete) {
+        synthesizedFindings = synthesizeResearchFindings({
+          ...updatedRequest,
+          results: updatedResults,
+        })
+      }
 
       await updateDoc(requestDoc, {
         status: nextStatus,
-        synthesizedFindings,
+        synthesizedFindings: synthesizedFindings ?? updatedRequest.synthesizedFindings,
         integratedAtMs: shouldComplete ? Date.now() : updatedRequest.integratedAtMs,
       })
 
@@ -223,6 +237,24 @@ export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResear
     [user]
   )
 
+  const synthesizeRequest = useCallback(
+    async (request: DeepResearchRequest) => {
+      if (!user) return
+      const synthesizedFindings = await synthesizeResearchFindingsWithAI(request)
+      const db = getFirestore()
+      const docRef = doc(
+        db,
+        `users/${user.uid}/workspaces/${request.workspaceId}/deepResearchRequests/${request.requestId}`
+      )
+      await updateDoc(docRef, {
+        synthesizedFindings,
+        status: 'completed',
+        integratedAtMs: Date.now(),
+      })
+    },
+    [user]
+  )
+
   const scopedRequests = activeKey && requestState.key === activeKey ? requestState.requests : []
   const scopedError = activeKey && requestState.key === activeKey ? error : null
   const isLoading = Boolean(activeKey && requestState.key !== activeKey)
@@ -232,6 +264,7 @@ export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResear
     isLoading,
     error: scopedError,
     uploadResults,
+    synthesizeRequest,
     updateRequest,
   }
 }

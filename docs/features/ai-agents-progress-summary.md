@@ -1,7 +1,7 @@
 # AI Agent Framework - Progress Summary
 
-**Last Updated**: December 29, 2025
-**Current Status**: Phase 5D Complete
+**Last Updated**: January 20, 2026
+**Current Status**: Phase 6E Partially Complete
 
 ---
 
@@ -17,6 +17,8 @@ The AI Agent Framework is a multi-AI provider collaboration system integrated in
 ✅ **Tool Calling**: Agents can invoke server-side functions with full tracking
 ✅ **Real-time UI**: Live updates, tool call timeline, status tracking
 ✅ **Advanced Tools**: Calendar, notes, web search integration
+✅ **Prompt Library**: Shared prompt templates with version history
+✅ **Custom Modules**: User-defined tools available to agents
 
 ---
 
@@ -165,6 +167,27 @@ Broken into sub-phases for each provider:
 - `functions/src/agents/advancedTools.ts` (Phase 5D tools)
 - `apps/web-vite/src/hooks/useToolCallOperations.ts` (UI hook)
 - `apps/web-vite/src/components/agents/ToolCallTimeline.tsx` (UI)
+
+---
+
+### Phase 6E: Graph Workflows + Human-in-the-Loop (⚠️ Partially Complete)
+
+**Deliverables**:
+
+- Graph workflow models, validation, and executor
+- Human-in-the-loop pauses with run resumption
+- Workflow graph visualization in workspace details
+- Project Manager backend (UI integration deferred)
+
+**Deferred**:
+
+- Project Manager UI integration (tracked in Phase 6F)
+
+**Location**:
+
+- `functions/src/agents/workflowExecutor.ts`
+- `apps/web-vite/src/pages/WorkspaceDetailPage.tsx`
+- `apps/web-vite/src/components/agents/WorkflowGraphView.tsx`
 
 ---
 

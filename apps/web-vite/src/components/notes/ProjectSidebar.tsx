@@ -1,250 +1,243 @@
 /**
  * ProjectSidebar Component
  *
- * Sidebar for Notes page that organizes notes by projects.
- * Shows projects with linked notes and allows filtering/selection.
+ * Single-column navigation for Notes:
+ * - New Note, Search, Show Archived
+ * - Projects (topics) -> Chapters (sections) -> Notes
+ * - Hover menus for delete/duplicate actions
  */
 
-import React, { useMemo, useRef, useState, useCallback } from 'react'
-import { useAuth } from '@/hooks/useAuth'
-import { useTodoOperations } from '@/hooks/useTodoOperations'
-import {
-  groupNotesByProject,
-  filterNotesByProject,
-  sortNotesByModified,
-  searchNotes,
-  getProjectsWithNotes,
-} from '@/lib/notesOrganization'
-import type { Note } from '@lifeos/notes'
-import { NoteSyncStatus } from './NoteSyncStatus'
+import { useMemo, useRef, useState, useEffect } from 'react'
+import type { Note, SectionId, TopicId } from '@lifeos/notes'
+import { useTopics } from '@/hooks/useTopics'
+import { useSections } from '@/hooks/useSections'
 import { useDialog } from '@/contexts/useDialog'
+import { Menu, MenuItem } from '@/components/Menu'
 
 export interface ProjectSidebarProps {
   notes: Note[]
-  selectedProjectId: string | null
+  selectedTopicId: string | null
+  selectedSectionId: string | null
   selectedNoteId: string | null
   searchQuery: string
-  onProjectSelect: (projectId: string | null) => void
+  onTopicSelect: (topicId: string | null) => void
+  onSectionSelect: (sectionId: string | null, topicId: string | null) => void
   onNoteSelect: (noteId: string) => void
   onNoteDelete?: (noteId: string) => Promise<void>
+  onNoteDuplicate?: (noteId: string) => Promise<void>
   onCreateNote: () => void
   onSearchChange?: (query: string) => void
   searchInputRef?: React.RefObject<HTMLInputElement>
 }
 
+type MenuState = {
+  type: 'project' | 'chapter' | 'note'
+  id: string
+  x: number
+  y: number
+}
+
 export function ProjectSidebar({
   notes,
-  selectedProjectId,
+  selectedTopicId,
+  selectedSectionId,
   selectedNoteId,
   searchQuery,
-  onProjectSelect,
+  onTopicSelect,
+  onSectionSelect,
   onNoteSelect,
   onNoteDelete,
+  onNoteDuplicate,
   onCreateNote,
   onSearchChange,
-  searchInputRef: externalSearchRef,
+  searchInputRef,
 }: ProjectSidebarProps) {
-  const { user } = useAuth()
-  const { confirm, alert: showAlert } = useDialog()
-  const { projects, loading: projectsLoading } = useTodoOperations({
-    userId: user?.uid || '',
-  })
-
-  const internalSearchRef = useRef<HTMLInputElement>(null)
-  const searchInputRef = externalSearchRef || internalSearchRef
-
-  // Selection state for multi-select
-  const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set())
-  const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const { confirm } = useDialog()
+  const { topics, createTopic, deleteTopic } = useTopics()
+  const { sections, createSection, deleteSection } = useSections()
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set())
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
   const [showArchived, setShowArchived] = useState(false)
+  const [menuState, setMenuState] = useState<MenuState | null>(null)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
-  const visibleNotes = useMemo(
-    () => (showArchived ? notes : notes.filter((note) => !note.archived)),
-    [notes, showArchived]
-  )
+  useEffect(() => {
+    const handleOutside = (event: MouseEvent) => {
+      if (!menuState) return
+      const target = event.target as Node
+      if (menuRef.current?.contains(target)) return
+      setMenuState(null)
+    }
 
-  // Get projects that have linked notes
-  const projectsWithNotes = useMemo(
-    () => getProjectsWithNotes(projects, visibleNotes),
-    [projects, visibleNotes]
-  )
+    window.addEventListener('mousedown', handleOutside)
+    return () => window.removeEventListener('mousedown', handleOutside)
+  }, [menuState])
 
-  // Group notes by project
-  const notesByProject = useMemo(
-    () => groupNotesByProject(visibleNotes, projectsWithNotes),
-    [visibleNotes, projectsWithNotes]
-  )
-
-  // Get notes for selected project
   const filteredNotes = useMemo(() => {
-    let projectNotes: Note[]
-
-    if (selectedProjectId === 'unlinked') {
-      // Special case: unlinked notes
-      projectNotes = visibleNotes.filter((note) => !note.projectIds || note.projectIds.length === 0)
-    } else {
-      projectNotes = filterNotesByProject(visibleNotes, selectedProjectId)
-    }
-
-    // Apply search if provided
+    let result = showArchived ? notes : notes.filter((note) => !note.archived)
     if (searchQuery.trim()) {
-      projectNotes = searchNotes(projectNotes, searchQuery)
-    }
-
-    // Sort by last modified
-    return sortNotesByModified(projectNotes)
-  }, [visibleNotes, selectedProjectId, searchQuery])
-
-  // Get unlinked notes count
-  const unlinkedCount = useMemo(() => {
-    return notesByProject.get(null)?.length || 0
-  }, [notesByProject])
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-    if (diffDays === 0) return 'Today'
-    if (diffDays === 1) return 'Yesterday'
-    if (diffDays < 7) return `${diffDays} days ago`
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
-
-  const getNotePreview = (note: Note): string => {
-    if (note.contentHtml) {
-      // Strip HTML tags and get first line
-      const text = note.contentHtml.replace(/<[^>]*>/g, '').trim()
-      const firstLine = text.split('\n')[0]
-      return firstLine.length > 60 ? firstLine.substring(0, 60) + '...' : firstLine
-    }
-    return 'Empty note'
-  }
-
-  // Highlight search query in text
-  const highlightSearch = (text: string, query: string): React.ReactNode => {
-    if (!query.trim()) return text
-
-    // Escape special regex characters in query
-    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const parts = text.split(new RegExp(`(${escapedQuery})`, 'gi'))
-    return parts.map((part, index) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <mark key={index} className="search-highlight">
-          {part}
-        </mark>
-      ) : (
-        <span key={index}>{part}</span>
+      const lowerQuery = searchQuery.toLowerCase()
+      result = result.filter(
+        (note) =>
+          note.title.toLowerCase().includes(lowerQuery) ||
+          note.contentHtml?.toLowerCase().includes(lowerQuery)
       )
-    )
-  }
-
-  // Selection handlers
-  const toggleNoteSelection = useCallback((noteId: string, event?: React.MouseEvent) => {
-    if (event) {
-      event.stopPropagation()
     }
-    setSelectedNoteIds((prev) => {
+    return result
+  }, [notes, searchQuery, showArchived])
+
+  const notesBySection = useMemo(() => {
+    const map = new Map<SectionId, Note[]>()
+    for (const note of filteredNotes) {
+      if (!note.sectionId) continue
+      const current = map.get(note.sectionId) || []
+      current.push(note)
+      map.set(note.sectionId, current)
+    }
+    return map
+  }, [filteredNotes])
+
+  const notesByTopic = useMemo(() => {
+    const map = new Map<TopicId, Note[]>()
+    for (const note of filteredNotes) {
+      if (!note.topicId) continue
+      const current = map.get(note.topicId) || []
+      current.push(note)
+      map.set(note.topicId, current)
+    }
+    return map
+  }, [filteredNotes])
+
+  const unassignedNotes = useMemo(
+    () => filteredNotes.filter((note) => !note.topicId),
+    [filteredNotes]
+  )
+
+  const sortedTopics = useMemo(() => [...topics].sort((a, b) => a.order - b.order), [topics])
+
+  const sectionsByTopic = useMemo(() => {
+    const map = new Map<TopicId, typeof sections>()
+    for (const section of sections) {
+      const current = map.get(section.topicId) || []
+      current.push(section)
+      map.set(section.topicId, current)
+    }
+    for (const [topicId, list] of map.entries()) {
+      list.sort((a, b) => a.order - b.order)
+      map.set(topicId, list)
+    }
+    return map
+  }, [sections])
+
+  const toggleTopic = (topicId: TopicId) => {
+    setExpandedTopics((prev) => {
       const next = new Set(prev)
-      if (next.has(noteId)) {
-        next.delete(noteId)
+      if (next.has(topicId)) {
+        next.delete(topicId)
       } else {
-        next.add(noteId)
+        next.add(topicId)
       }
       return next
     })
-  }, [])
+  }
 
-  const selectAllNotes = useCallback(() => {
-    setSelectedNoteIds(new Set(filteredNotes.map((n) => n.noteId)))
-  }, [filteredNotes])
+  const toggleSection = (sectionId: SectionId) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev)
+      if (next.has(sectionId)) {
+        next.delete(sectionId)
+      } else {
+        next.add(sectionId)
+      }
+      return next
+    })
+  }
 
-  const clearSelection = useCallback(() => {
-    setSelectedNoteIds(new Set())
-    setIsSelectionMode(false)
-  }, [])
+  const openMenu = (type: MenuState['type'], id: string, event: React.MouseEvent) => {
+    event.stopPropagation()
+    if (!sidebarRef.current) return
+    const sidebarRect = sidebarRef.current.getBoundingClientRect()
+    const buttonRect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+    const x = Math.min(buttonRect.right - sidebarRect.left + 8, sidebarRect.width - 180)
+    const y = buttonRect.top - sidebarRect.top
+    setMenuState({ type, id, x, y })
+  }
 
-  const handleDeleteSelected = useCallback(async () => {
-    if (!onNoteDelete || selectedNoteIds.size === 0) return
+  const duplicateProject = async (topicId: TopicId) => {
+    const topic = topics.find((t) => t.topicId === topicId)
+    if (!topic) return
+    await createTopic({
+      name: `${topic.name} Copy`,
+      description: topic.description || undefined,
+      order: topics.length,
+      color: topic.color || undefined,
+    })
+  }
 
+  const deleteProject = async (topicId: TopicId) => {
     const confirmed = await confirm({
-      title: 'Delete notes',
-      description: `Are you sure you want to delete ${selectedNoteIds.size} note${selectedNoteIds.size > 1 ? 's' : ''}?`,
+      title: 'Delete project',
+      description: 'Delete this project and its chapters?',
       confirmLabel: 'Delete',
       confirmVariant: 'danger',
     })
     if (!confirmed) return
-
-    try {
-      await Promise.all(Array.from(selectedNoteIds).map((id) => onNoteDelete(id)))
-      clearSelection()
-    } catch (error) {
-      console.error('Failed to delete notes:', error)
-      await showAlert({
-        title: 'Delete failed',
-        description: 'Failed to delete some notes. Please try again.',
-      })
+    await deleteTopic(topicId)
+    if (selectedTopicId === topicId) {
+      onTopicSelect(null)
+      onSectionSelect(null, null)
     }
-  }, [onNoteDelete, selectedNoteIds, clearSelection, confirm, showAlert])
+  }
 
-  const handleNoteClick = useCallback(
-    (noteId: string, event: React.MouseEvent) => {
-      if (isSelectionMode) {
-        toggleNoteSelection(noteId, event)
-      } else {
-        onNoteSelect(noteId)
-      }
-    },
-    [isSelectionMode, toggleNoteSelection, onNoteSelect]
-  )
+  const duplicateChapter = async (sectionId: SectionId) => {
+    const section = sections.find((s) => s.sectionId === sectionId)
+    if (!section) return
+    const siblings = sectionsByTopic.get(section.topicId) || []
+    await createSection({
+      topicId: section.topicId,
+      name: `${section.name} Copy`,
+      order: siblings.length,
+    })
+  }
+
+  const deleteChapter = async (sectionId: SectionId) => {
+    const confirmed = await confirm({
+      title: 'Delete chapter',
+      description: 'Delete this chapter?',
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
+    await deleteSection(sectionId)
+    if (selectedSectionId === sectionId) {
+      onSectionSelect(null, null)
+    }
+  }
+
+  const deleteNote = async (noteId: string) => {
+    if (!onNoteDelete) return
+    const confirmed = await confirm({
+      title: 'Delete note',
+      description: 'Delete this note?',
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
+    await onNoteDelete(noteId)
+  }
+
+  const duplicateNote = async (noteId: string) => {
+    if (!onNoteDuplicate) return
+    await onNoteDuplicate(noteId)
+  }
 
   return (
-    <aside className="project-sidebar">
-      <div className="sidebar-header">
-        <div className="sidebar-title">Notes</div>
-        <div className="sidebar-actions">
-          {selectedNoteIds.size > 0 && (
-            <>
-              <button
-                className="danger-button small"
-                onClick={handleDeleteSelected}
-                title={`Delete ${selectedNoteIds.size} note${selectedNoteIds.size > 1 ? 's' : ''}`}
-              >
-                Delete ({selectedNoteIds.size})
-              </button>
-              <button className="ghost-button small" onClick={clearSelection}>
-                Cancel
-              </button>
-            </>
-          )}
-          {selectedNoteIds.size === 0 && (
-            <>
-              <button
-                className="ghost-button small"
-                onClick={() => setShowArchived((prev) => !prev)}
-                title={showArchived ? 'Hide archived notes' : 'Show archived notes'}
-              >
-                {showArchived ? 'Hide Archived' : 'Show Archived'}
-              </button>
-              <button
-                className="ghost-button small"
-                onClick={() => setIsSelectionMode(!isSelectionMode)}
-                title="Select notes"
-              >
-                Select
-              </button>
-              <button className="primary-button small" onClick={onCreateNote}>
-                + New
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="sidebar-content">
-        {/* Search */}
+    <aside className="notes-sidebar" ref={sidebarRef}>
+      <div className="sidebar-segment">
+        <button className="primary-button full-width" onClick={onCreateNote} type="button">
+          + New Note
+        </button>
         {onSearchChange && (
           <div className="sidebar-search">
             <input
@@ -258,159 +251,249 @@ export function ProjectSidebar({
             />
           </div>
         )}
+        <button
+          className="ghost-button full-width"
+          onClick={() => setShowArchived((prev) => !prev)}
+          type="button"
+        >
+          {showArchived ? 'Hide archived' : 'Show archived'}
+        </button>
+      </div>
 
-        {/* All Notes */}
-        <div className="project-section">
-          <button
-            type="button"
-            className={`project-header ${selectedProjectId === null ? 'active' : ''}`}
-            onClick={() => onProjectSelect(null)}
-          >
-            <span className="project-icon">📄</span>
-            <span className="project-name">All Notes</span>
-            <span className="note-count">{visibleNotes.length}</span>
-          </button>
-        </div>
+      <div className="sidebar-divider" />
 
-        {/* Projects with Notes */}
-        {projectsLoading ? (
-          <div className="loading-text">Loading projects...</div>
-        ) : (
-          <>
-            {projectsWithNotes.length > 0 && (
-              <div className="projects-section">
-                <div className="section-label">Projects</div>
-                {projectsWithNotes.map((project) => {
-                  const projectNotes = notesByProject.get(project.id) || []
-                  const isSelected = selectedProjectId === project.id
+      <div className="sidebar-tree">
+        {sortedTopics.map((topic) => {
+          const topicNotes = notesByTopic.get(topic.topicId) || []
+          const topicSections = sectionsByTopic.get(topic.topicId) || []
+          const directNotes = topicNotes.filter((note) => !note.sectionId)
+          const hasMatches =
+            topicNotes.length > 0 ||
+            topicSections.some(
+              (section) => (notesBySection.get(section.sectionId) || []).length > 0
+            )
 
-                  return (
-                    <div key={project.id} className="project-section">
-                      <button
-                        type="button"
-                        className={`project-header ${isSelected ? 'active' : ''}`}
-                        onClick={() => onProjectSelect(project.id)}
-                      >
-                        <span className="project-icon">📁</span>
-                        <span className="project-name">{project.title}</span>
-                        <span className="note-count">{projectNotes.length}</span>
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+          if (searchQuery.trim() && !hasMatches) {
+            return null
+          }
 
-            {/* Unlinked Notes */}
-            {unlinkedCount > 0 && (
-              <div className="project-section">
+          const isExpanded = expandedTopics.has(topic.topicId) || selectedTopicId === topic.topicId
+
+          return (
+            <div key={topic.topicId} className="sidebar-group">
+              <div
+                className={`sidebar-row ${selectedTopicId === topic.topicId && !selectedSectionId ? 'active' : ''}`}
+                onClick={() => {
+                  onTopicSelect(topic.topicId)
+                  onSectionSelect(null, topic.topicId)
+                  if (!isExpanded) {
+                    toggleTopic(topic.topicId)
+                  }
+                }}
+              >
                 <button
+                  className="chevron"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    toggleTopic(topic.topicId)
+                  }}
                   type="button"
-                  className={`project-header ${selectedProjectId === 'unlinked' ? 'active' : ''}`}
-                  onClick={() => onProjectSelect('unlinked')}
+                  aria-label={isExpanded ? 'Collapse project' : 'Expand project'}
                 >
-                  <span className="project-icon">📋</span>
-                  <span className="project-name">Unlinked</span>
-                  <span className="note-count">{unlinkedCount}</span>
+                  {isExpanded ? '▾' : '▸'}
+                </button>
+                <span className="row-label">{topic.name}</span>
+                <button
+                  className="row-menu"
+                  type="button"
+                  onClick={(event) => openMenu('project', topic.topicId, event)}
+                >
+                  …
                 </button>
               </div>
-            )}
-          </>
-        )}
 
-        {/* Notes List */}
-        <div className="notes-list-main">
-          {filteredNotes.length === 0 ? (
-            <div className="empty-notes">
-              {searchQuery ? (
-                <div className="empty-state-content">
-                  <p className="empty-state-title">No notes match your search</p>
-                  <p className="empty-state-subtitle">Try a different search term</p>
-                </div>
-              ) : selectedProjectId === 'unlinked' ? (
-                <div className="empty-state-content">
-                  <p className="empty-state-title">No unlinked notes</p>
-                  <p className="empty-state-subtitle">All notes are linked to projects</p>
-                </div>
-              ) : selectedProjectId === null ? (
-                <div className="empty-state-content">
-                  <p className="empty-state-title">No notes yet</p>
-                  <p className="empty-state-subtitle">Create your first note to get started</p>
-                  <button
-                    type="button"
-                    className="primary-button small"
-                    onClick={onCreateNote}
-                    style={{ marginTop: '1rem' }}
-                  >
-                    + New Note
-                  </button>
-                </div>
-              ) : (
-                <div className="empty-state-content">
-                  <p className="empty-state-title">No notes in this project</p>
-                  <p className="empty-state-subtitle">
-                    Link notes to this project to see them here
-                  </p>
+              {isExpanded && (
+                <div className="sidebar-children">
+                  {topicSections.map((section) => {
+                    const sectionNotes = notesBySection.get(section.sectionId) || []
+                    if (searchQuery.trim() && sectionNotes.length === 0) {
+                      return null
+                    }
+                    const isSectionExpanded =
+                      expandedSections.has(section.sectionId) ||
+                      selectedSectionId === section.sectionId
+                    return (
+                      <div key={section.sectionId} className="sidebar-group">
+                        <div
+                          className={`sidebar-row chapter ${selectedSectionId === section.sectionId ? 'active' : ''}`}
+                          onClick={() => onSectionSelect(section.sectionId, topic.topicId)}
+                        >
+                          <button
+                            className="chevron"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              toggleSection(section.sectionId)
+                            }}
+                            type="button"
+                            aria-label={isSectionExpanded ? 'Collapse chapter' : 'Expand chapter'}
+                          >
+                            {isSectionExpanded ? '▾' : '▸'}
+                          </button>
+                          <span className="row-label">{section.name}</span>
+                          <button
+                            className="row-menu"
+                            type="button"
+                            onClick={(event) => openMenu('chapter', section.sectionId, event)}
+                          >
+                            …
+                          </button>
+                        </div>
+                        {isSectionExpanded && (
+                          <div className="sidebar-children notes">
+                            {sectionNotes.map((note) => (
+                              <div
+                                key={note.noteId}
+                                className={`sidebar-row note ${selectedNoteId === note.noteId ? 'active' : ''}`}
+                                onClick={() => onNoteSelect(note.noteId)}
+                              >
+                                <span className="row-label">{note.title}</span>
+                                <button
+                                  className="row-menu"
+                                  type="button"
+                                  onClick={(event) => openMenu('note', note.noteId, event)}
+                                >
+                                  …
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {directNotes.length > 0 && (
+                    <div className="sidebar-group">
+                      <div className="sidebar-row chapter muted">General</div>
+                      <div className="sidebar-children notes">
+                        {directNotes.map((note) => (
+                          <div
+                            key={note.noteId}
+                            className={`sidebar-row note ${selectedNoteId === note.noteId ? 'active' : ''}`}
+                            onClick={() => onNoteSelect(note.noteId)}
+                          >
+                            <span className="row-label">{note.title}</span>
+                            <button
+                              className="row-menu"
+                              type="button"
+                              onClick={(event) => openMenu('note', note.noteId, event)}
+                            >
+                              …
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          ) : (
-            <>
-              {isSelectionMode && filteredNotes.length > 0 && (
-                <div className="selection-header">
-                  <button type="button" className="select-all-button" onClick={selectAllNotes}>
-                    Select All
-                  </button>
-                  <span className="selection-count">{selectedNoteIds.size} selected</span>
-                </div>
-              )}
-              {filteredNotes.map((note) => {
-                const preview = getNotePreview(note)
-                const isSelected = selectedNoteIds.has(note.noteId)
-                return (
-                  <div
-                    key={note.noteId}
-                    className={`note-item-wrapper ${selectedNoteId === note.noteId ? 'active' : ''} ${isSelected ? 'selected' : ''}`}
+          )
+        })}
+
+        {unassignedNotes.length > 0 && (
+          <div className="sidebar-group">
+            <div className="sidebar-row muted">Unassigned</div>
+            <div className="sidebar-children notes">
+              {unassignedNotes.map((note) => (
+                <div
+                  key={note.noteId}
+                  className={`sidebar-row note ${selectedNoteId === note.noteId ? 'active' : ''}`}
+                  onClick={() => onNoteSelect(note.noteId)}
+                >
+                  <span className="row-label">{note.title}</span>
+                  <button
+                    className="row-menu"
+                    type="button"
+                    onClick={(event) => openMenu('note', note.noteId, event)}
                   >
-                    {isSelectionMode && (
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={(e) => {
-                          e.stopPropagation()
-                          toggleNoteSelection(note.noteId)
-                        }}
-                        className="note-checkbox"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    )}
-                    <button
-                      type="button"
-                      className={`note-item ${selectedNoteId === note.noteId ? 'active' : ''}`}
-                      onClick={(e) => handleNoteClick(note.noteId, e)}
-                    >
-                      <div className="note-title">
-                        {searchQuery ? highlightSearch(note.title, searchQuery) : note.title}
-                      </div>
-                      <div className="note-preview">
-                        {searchQuery ? highlightSearch(preview, searchQuery) : preview}
-                      </div>
-                      <div className="note-meta">
-                        <span className="note-date">{formatDate(note.updatedAtMs)}</span>
-                        {note.archived && <span className="note-archived">Archived</span>}
-                        <NoteSyncStatus syncState={note.syncState} />
-                      </div>
-                    </button>
-                  </div>
-                )
-              })}
-            </>
-          )}
-        </div>
+                    …
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
+      {menuState && (
+        <div className="sidebar-menu" style={{ top: menuState.y, left: menuState.x }} ref={menuRef}>
+          <Menu>
+            {menuState.type === 'project' && (
+              <>
+                <MenuItem
+                  onSelect={() => {
+                    duplicateProject(menuState.id as TopicId)
+                    setMenuState(null)
+                  }}
+                >
+                  Duplicate project
+                </MenuItem>
+                <MenuItem
+                  onSelect={() => {
+                    deleteProject(menuState.id as TopicId)
+                    setMenuState(null)
+                  }}
+                >
+                  Delete project
+                </MenuItem>
+              </>
+            )}
+            {menuState.type === 'chapter' && (
+              <>
+                <MenuItem
+                  onSelect={() => {
+                    duplicateChapter(menuState.id as SectionId)
+                    setMenuState(null)
+                  }}
+                >
+                  Duplicate chapter
+                </MenuItem>
+                <MenuItem
+                  onSelect={() => {
+                    deleteChapter(menuState.id as SectionId)
+                    setMenuState(null)
+                  }}
+                >
+                  Delete chapter
+                </MenuItem>
+              </>
+            )}
+            {menuState.type === 'note' && (
+              <>
+                <MenuItem
+                  onSelect={() => {
+                    duplicateNote(menuState.id)
+                    setMenuState(null)
+                  }}
+                >
+                  Duplicate note
+                </MenuItem>
+                <MenuItem
+                  onSelect={() => {
+                    deleteNote(menuState.id)
+                    setMenuState(null)
+                  }}
+                >
+                  Delete note
+                </MenuItem>
+              </>
+            )}
+          </Menu>
+        </div>
+      )}
+
       <style>{`
-        .project-sidebar {
+        .notes-sidebar {
           width: 280px;
           height: 100%;
           display: flex;
@@ -418,319 +501,132 @@ export function ProjectSidebar({
           background: var(--card);
           border-right: 1px solid var(--border);
           overflow: hidden;
+          position: relative;
         }
 
-        .sidebar-header {
-          padding: 1rem 1.25rem;
-          border-bottom: 1px solid var(--border);
+        .sidebar-segment {
+          padding: 1rem 1rem 0.85rem;
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 0.75rem;
+          gap: 0.65rem;
         }
 
-        .sidebar-title {
-          margin: 0;
-          font-size: 1rem;
-          font-weight: 600;
-          color: var(--foreground);
-        }
-
-        .sidebar-actions {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-          justify-content: flex-start;
+        .full-width {
           width: 100%;
+          justify-content: center;
         }
 
-        .sidebar-content {
+        .sidebar-search .search-input {
+          width: 100%;
+          border-radius: 10px;
+          border: 1px solid var(--border);
+          background: var(--background-secondary);
+          color: var(--foreground);
+          padding: 0.5rem 0.75rem;
+          font-size: 0.85rem;
+        }
+
+        .sidebar-divider {
+          border-top: 1px solid var(--border);
+        }
+
+        .sidebar-tree {
           flex: 1;
           overflow-y: auto;
-          padding: 0.5rem 0;
+          padding: 0.75rem 0.5rem 1rem;
         }
 
-        .projects-section {
-          padding: 0.5rem 0;
-          border-bottom: 1px solid var(--border);
-          margin-bottom: 0.5rem;
-        }
-
-        .section-label {
-          padding: 0.5rem 1.25rem;
-          font-size: 0.7rem;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: var(--muted-foreground);
-          font-weight: 600;
-        }
-
-        .project-section {
-          margin-bottom: 0.25rem;
-        }
-
-        .project-header {
-          width: 100%;
-          padding: 0.625rem 1.25rem;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          text-align: left;
-          transition: background-color var(--motion-fast) var(--motion-ease);
-        }
-
-        .project-header:hover {
-          background: var(--background-secondary);
-        }
-
-        .project-header.active {
-          background: var(--accent-subtle);
-          border-left: 3px solid var(--accent);
-        }
-
-        .project-icon {
-          font-size: 1.125rem;
-          flex-shrink: 0;
-        }
-
-        .project-name {
-          flex: 1;
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: var(--foreground);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .note-count {
-          font-size: 0.75rem;
-          color: var(--muted-foreground);
-          background: var(--background-secondary);
-          padding: 0.125rem 0.5rem;
-          border-radius: 12px;
-          font-weight: 500;
-        }
-
-        .notes-list-main {
-          padding: 0.5rem 0;
-        }
-
-        .notes-list {
-          padding-left: 0.5rem;
-        }
-
-        .note-item {
-          width: 100%;
-          padding: 0.75rem 1.25rem;
+        .sidebar-group {
           display: flex;
           flex-direction: column;
           gap: 0.25rem;
-          background: transparent;
-          border: none;
-          border-left: 3px solid transparent;
-          cursor: pointer;
-          text-align: left;
-          transition:
-            background-color var(--motion-fast) var(--motion-ease),
-            border-color var(--motion-fast) var(--motion-ease);
         }
 
-        .note-item:hover {
-          background: var(--background-secondary);
-        }
-
-        .note-item.active {
-          background: var(--accent-subtle);
-          border-left-color: var(--accent);
-        }
-
-        .note-title {
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: var(--foreground);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .note-preview {
-          font-size: 0.8125rem;
-          color: var(--muted-foreground);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          line-height: 1.4;
-        }
-
-        .note-date {
-          font-size: 0.75rem;
-          color: var(--muted-foreground);
-          font-family: var(--font-mono);
-        }
-
-        .note-meta {
+        .sidebar-row {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-        }
-
-        .note-archived {
-          font-size: 0.7rem;
-          color: var(--muted-foreground);
-          border: 1px solid var(--border);
-          padding: 0.1rem 0.35rem;
-          border-radius: 999px;
-        }
-
-        .empty-notes {
-          padding: 2rem 1.25rem;
-          text-align: center;
-        }
-
-        .empty-state-content {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .empty-state-title {
-          margin: 0;
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: var(--foreground);
-        }
-
-        .empty-state-subtitle {
-          margin: 0;
-          font-size: 0.8125rem;
-          color: var(--muted-foreground);
-        }
-
-        .search-highlight {
-          background-color: var(--accent-subtle);
-          color: var(--foreground);
-          padding: 0.125em 0.25em;
-          border-radius: 3px;
-          font-weight: 500;
-        }
-
-        .loading-text {
-          padding: 1rem 1.25rem;
-          text-align: center;
-          color: var(--muted-foreground);
-          font-size: 0.875rem;
-        }
-
-        .sidebar-search {
-          padding: 0.75rem 1.25rem;
-          border-bottom: 1px solid var(--border);
-        }
-
-        .search-input {
-          width: 100%;
-          min-height: 36px;
-          padding: 0.5rem 0.75rem;
-          border: 1px solid var(--border);
-          border-radius: 6px;
-          background: var(--background-secondary);
-          color: var(--foreground);
-          font-size: 0.875rem;
-          transition:
-            border-color var(--motion-standard) var(--motion-ease),
-            box-shadow var(--motion-standard) var(--motion-ease);
-        }
-
-        .search-input:focus-visible {
-          outline: 2px solid transparent;
-          border-color: var(--accent);
-          box-shadow: 0 0 0 3px var(--accent-subtle);
-        }
-
-        .search-input::placeholder {
-          color: var(--muted-foreground);
-        }
-
-        /* Selection UI */
-        .selection-header {
-          padding: 0.5rem 1.25rem;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 0.75rem;
-          border-bottom: 1px solid var(--border);
-          background: var(--background-secondary);
-        }
-
-        .select-all-button {
-          background: transparent;
-          border: none;
-          color: var(--accent);
-          font-size: 0.875rem;
-          font-weight: 500;
+          padding: 0.4rem 0.6rem;
+          border-radius: 10px;
           cursor: pointer;
-          padding: 0.25rem 0.5rem;
-          border-radius: 4px;
-          transition: background-color var(--motion-fast) var(--motion-ease);
-        }
-
-        .select-all-button:hover {
-          background: var(--accent-subtle);
-        }
-
-        .selection-count {
-          font-size: 0.75rem;
-          color: var(--muted-foreground);
-          font-weight: 500;
-        }
-
-        .note-item-wrapper {
           position: relative;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0 0.5rem;
         }
 
-        .note-item-wrapper.selected {
+        .sidebar-row:hover {
+          background: var(--background-secondary);
+        }
+
+        .sidebar-row.active {
           background: var(--accent-subtle);
+          color: var(--foreground);
         }
 
-        .note-item-wrapper.selected .note-item {
-          background: transparent;
+        .sidebar-row.chapter {
+          padding-left: 1.4rem;
         }
 
-        .note-checkbox {
+        .sidebar-row.note {
+          padding-left: 2.6rem;
+          font-size: 0.85rem;
+          color: var(--text-secondary);
+        }
+
+        .sidebar-row.note.active {
+          color: var(--foreground);
+        }
+
+        .sidebar-row.muted {
+          cursor: default;
+          color: var(--text-secondary);
+        }
+
+        .chevron {
           width: 18px;
           height: 18px;
+          border: none;
+          background: transparent;
+          color: var(--text-secondary);
           cursor: pointer;
-          accent-color: var(--accent);
-          flex-shrink: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.7rem;
         }
 
-        .danger-button.small {
-          padding: 0.4rem 0.65rem;
-          font-size: 0.7rem;
-          min-height: 30px;
+        .row-label {
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
-        .primary-button.small {
-          padding: 0.4rem 0.65rem;
-          font-size: 0.7rem;
-          min-height: 30px;
+        .row-menu {
+          border: none;
+          background: transparent;
+          color: var(--text-secondary);
+          cursor: pointer;
+          opacity: 0;
+          transition: opacity var(--motion-fast) var(--motion-ease);
+          font-size: 1rem;
         }
 
-        .ghost-button.small {
-          padding: 0.4rem 0.65rem;
-          font-size: 0.7rem;
-          min-height: 30px;
-          letter-spacing: 0.08em;
+        .sidebar-row:hover .row-menu {
+          opacity: 1;
+        }
+
+        .sidebar-children {
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+        }
+
+        .sidebar-children.notes {
+          margin-bottom: 0.4rem;
+        }
+
+        .sidebar-menu {
+          position: absolute;
+          z-index: 20;
         }
       `}</style>
     </aside>

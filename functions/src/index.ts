@@ -26,6 +26,12 @@ import {
 } from './google/writeback.js'
 import { buildWritebackPayload } from './google/writebackPayload.js'
 import { firestore } from './lib/firebase.js'
+export { synthesizeResearch } from './agents/researchSynthesis.js'
+export {
+  extractProjectManagerContext,
+  summarizeProjectManagerContext,
+  detectProjectManagerConflicts,
+} from './agents/projectManagerFunctions.js'
 
 // ==================== Cloud Functions Configuration ====================
 

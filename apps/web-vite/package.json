@@ -28,6 +28,7 @@
     "@tiptap/extension-character-count": "^3.15.2",
     "@tiptap/extension-highlight": "^3.15.2",
     "@tiptap/extension-image": "^3.15.2",
+    "@tiptap/extension-link": "^3.15.2",
     "@tiptap/extension-mathematics": "^3.15.2",
     "@tiptap/extension-placeholder": "^3.15.2",
     "@tiptap/extension-subscript": "3.14.0",

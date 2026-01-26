@@ -1,4 +1,6 @@
 import type { DeepResearchRequest, DeepResearchResult, DeepResearchSource } from '@lifeos/agents'
+import { httpsCallable } from 'firebase/functions'
+import { getFunctionsClient } from '@/lib/firebase'
 
 const formatContextKey = (key: string): string => {
   const withSpaces = key
@@ -167,4 +169,29 @@ export const synthesizeResearchFindings = (request: DeepResearchRequest): string
     .join('\n\n---\n\n')
 
   return `${summaryHeader}\n\n${combined}`
+}
+
+type ResearchSynthesisResponse = {
+  synthesizedFindings?: string
+}
+
+export const synthesizeResearchFindingsWithAI = async (
+  request: DeepResearchRequest
+): Promise<string> => {
+  try {
+    const functions = getFunctionsClient()
+    const synthesize = httpsCallable(functions, 'synthesizeResearch')
+    const response = await synthesize({ requestId: request.requestId })
+    const payload = response.data as ResearchSynthesisResponse | string
+    if (typeof payload === 'string') {
+      return payload
+    }
+    if (payload?.synthesizedFindings) {
+      return payload.synthesizedFindings
+    }
+  } catch (error) {
+    console.error('AI synthesis failed, falling back to concatenation:', error)
+  }
+
+  return synthesizeResearchFindings(request)
 }

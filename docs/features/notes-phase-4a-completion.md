@@ -217,7 +217,7 @@ Planned features:
 - Link notes to OKRs
 - Show linked notes in project detail views
 - "Learning Project" template
-- Learning milestones integration
+- Learning chapters integration
 
 ### Phase 5: Attachments & Media
 

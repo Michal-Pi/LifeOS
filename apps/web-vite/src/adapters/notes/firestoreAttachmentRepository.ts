@@ -28,9 +28,71 @@ import type {
 } from '@lifeos/notes'
 
 const COLLECTION_ATTACHMENTS = 'attachments'
+const LEGACY_PATH_SEGMENT = '/notes/'
+
+const getStoragePathFromUrl = (storageUrl: string): string | null => {
+  try {
+    return ref(getStorageClient(), storageUrl).fullPath
+  } catch (error) {
+    console.warn('Failed to parse storage URL:', error)
+    return null
+  }
+}
+
+const extractLegacyAttachmentId = (storagePath: string): AttachmentId | null => {
+  const parts = storagePath.split('/')
+  const attachmentsIndex = parts.indexOf('attachments')
+  if (attachmentsIndex === -1 || attachmentsIndex + 1 >= parts.length) {
+    return null
+  }
+  return parts[attachmentsIndex + 1] as AttachmentId
+}
 
 export const createFirestoreAttachmentRepository = (): AttachmentRepository => {
   const storage = getStorageClient()
+
+  const normalizeLegacyAttachment = async (
+    userId: string,
+    docId: string,
+    attachment: Attachment
+  ): Promise<Attachment> => {
+    if (!attachment.storageUrl) {
+      return attachment
+    }
+
+    const storagePath = getStoragePathFromUrl(attachment.storageUrl)
+    if (!storagePath || !storagePath.includes(LEGACY_PATH_SEGMENT)) {
+      return attachment
+    }
+
+    const legacyAttachmentId = extractLegacyAttachmentId(storagePath)
+    if (!legacyAttachmentId) {
+      return attachment
+    }
+
+    if (legacyAttachmentId === attachment.attachmentId && legacyAttachmentId === docId) {
+      return attachment
+    }
+
+    const db = await getDb()
+    const normalizedAttachment: Attachment = {
+      ...attachment,
+      attachmentId: legacyAttachmentId,
+    }
+    const normalizedRef = doc(db, `users/${userId}/${COLLECTION_ATTACHMENTS}/${legacyAttachmentId}`)
+
+    await setDoc(normalizedRef, {
+      ...normalizedAttachment,
+      localBlob: undefined,
+    })
+
+    if (docId !== legacyAttachmentId) {
+      const legacyRef = doc(db, `users/${userId}/${COLLECTION_ATTACHMENTS}/${docId}`)
+      await deleteDoc(legacyRef)
+    }
+
+    return normalizedAttachment
+  }
 
   const create = async (userId: string, input: CreateAttachmentInput): Promise<Attachment> => {
     const db = await getDb()
@@ -61,6 +123,13 @@ export const createFirestoreAttachmentRepository = (): AttachmentRepository => {
 
     if (attachment?.storageUrl) {
       // Delete file from storage
+      try {
+        const storageRef = ref(storage, attachment.storageUrl)
+        await deleteObject(storageRef)
+      } catch (error) {
+        console.warn('Failed to delete attachment from storage:', error)
+      }
+    } else {
       try {
         const storageRef = ref(storage, `users/${userId}/attachments/${attachmentId}`)
         await deleteObject(storageRef)
@@ -94,7 +163,13 @@ export const createFirestoreAttachmentRepository = (): AttachmentRepository => {
     )
 
     const snapshot = await getDocs(q)
-    return snapshot.docs.map((doc) => doc.data() as Attachment)
+    const attachments = await Promise.all(
+      snapshot.docs.map(async (docSnapshot) => {
+        const attachment = docSnapshot.data() as Attachment
+        return await normalizeLegacyAttachment(userId, docSnapshot.id, attachment)
+      })
+    )
+    return attachments
   }
 
   const updateSyncState = async (
@@ -181,7 +256,7 @@ export const createFirestoreAttachmentRepository = (): AttachmentRepository => {
       throw new Error(`Attachment ${attachmentId} has no storage URL`)
     }
 
-    const storageRef = ref(storage, `users/${userId}/attachments/${attachmentId}`)
+    const storageRef = ref(storage, attachment.storageUrl)
     return await getBlob(storageRef)
   }
 

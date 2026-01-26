@@ -1,4 +1,5 @@
 export * from './noteRepository'
+export * from './graphRepository'
 export * from './topicRepository'
 export * from './sectionRepository'
 export * from './attachmentRepository'

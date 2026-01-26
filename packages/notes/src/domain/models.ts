@@ -35,6 +35,21 @@ export interface Note {
   okrIds: string[] // Linked OKRs
   tags: string[] // User tags
 
+  // Note-to-note relationships
+  linkedNoteIds: NoteId[] // Explicit forward links to other notes
+  backlinkNoteIds: NoteId[] // Computed backlinks (notes that link to this note)
+  mentionedNoteIds: NoteId[] // Notes mentioned in content (extracted from ProseMirror JSON)
+
+  // Paragraph-level links (like tags for paragraphs)
+  // Maps paragraph position (stringified JSON path) to array of linked note/topic IDs
+  paragraphLinks?: Record<
+    string,
+    {
+      noteIds?: NoteId[]
+      topicIds?: TopicId[]
+    }
+  >
+
   // Metadata
   createdAtMs: number
   updatedAtMs: number
@@ -125,6 +140,8 @@ export interface NoteFilters {
   tags?: string[]
   searchQuery?: string // Full-text search
   archived?: boolean
+  linkedToNoteId?: NoteId // Filter notes that link to a specific note
+  hasBacklinks?: boolean // Filter notes that have backlinks
 }
 
 export interface TopicFilters {

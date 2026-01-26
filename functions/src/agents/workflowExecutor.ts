@@ -21,6 +21,7 @@ import { Graph } from 'graphlib'
 import jsonLogic from 'json-logic-js'
 
 import { assertValidResearchContext, normalizeResearchQuestions } from './deepResearchValidation.js'
+import { resolvePrompt } from './promptResolver.js'
 import type { ProviderKeys } from './providerService.js'
 import { executeWithProvider, executeWithProviderStreaming } from './providerService.js'
 import type { RunEventWriter } from './runEvents.js'
@@ -133,12 +134,18 @@ export async function executeSequentialWorkflow(
       ? await executeWithProviderStreaming(
           agent,
           currentGoal,
-          currentContext,
+          { ...currentContext, ...buildProjectManagerContext(workspace, currentContext) },
           apiKeys,
           toolContext,
           streamContext
         )
-      : await executeWithProvider(agent, currentGoal, currentContext, apiKeys, toolContext)
+      : await executeWithProvider(
+          agent,
+          currentGoal,
+          { ...currentContext, ...buildProjectManagerContext(workspace, currentContext) },
+          apiKeys,
+          toolContext
+        )
 
     // Record execution step
     const step: AgentExecutionStep = {
@@ -753,6 +760,27 @@ type ResearchRequestConfig = NonNullable<WorkflowNode['requestConfig']> & {
   context?: Record<string, unknown>
 }
 
+type WorkspaceWithProjectManager = Workspace & {
+  projectManagerConfig?: {
+    enabled?: boolean
+  }
+}
+
+const buildProjectManagerContext = (
+  workspace: Workspace,
+  context?: Record<string, unknown>
+): Record<string, unknown> => {
+  const workspaceWithPm = workspace as WorkspaceWithProjectManager
+  if (!workspaceWithPm.projectManagerConfig?.enabled) return {}
+  const existing = context?.projectManagerContext ?? context?.projectManager
+  return {
+    projectManager: {
+      config: workspaceWithPm.projectManagerConfig,
+      context: existing,
+    },
+  }
+}
+
 export async function executeGraphWorkflow(
   workspace: Workspace,
   agents: AgentConfig[],
@@ -1110,6 +1138,7 @@ export async function executeGraphWorkflow(
 
         const nodeContext = {
           ...run.context,
+          ...buildProjectManagerContext(workspace, run.context),
           workflowState: {
             namedOutputs: workflowState.namedOutputs ?? {},
             joinOutputs: workflowState.joinOutputs ?? {},
@@ -1300,13 +1329,89 @@ export async function executeWorkflow(
     throw new Error('No agents found in workspace')
   }
 
+  const promptConfig = workspace.promptConfig
+  const promptResolutionErrors: Run['promptResolutionErrors'] = []
+  const runRef = db.doc(`users/${userId}/workspaces/${workspace.workspaceId}/runs/${run.runId}`)
+  let tonePrompt: string | undefined
+  if (promptConfig?.toneOfVoicePrompt) {
+    try {
+      tonePrompt = await resolvePrompt(userId, promptConfig.toneOfVoicePrompt, {
+        goal: run.goal,
+        workspaceId: workspace.workspaceId,
+        workspaceName: workspace.name,
+        runId: run.runId,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn('Unable to resolve tone-of-voice prompt.', error)
+      promptResolutionErrors.push({
+        agentId: 'tone_of_voice',
+        promptType: 'tone-of-voice',
+        error: message,
+      })
+      await eventWriter?.writeEvent({
+        type: 'status',
+        workspaceId: workspace.workspaceId,
+        status: 'prompt_resolution_failed',
+        details: { agentId: 'tone_of_voice', error: message },
+      })
+    }
+  }
+
+  const resolvedAgents = await Promise.all(
+    agents.map(async (agent) => {
+      const reference = promptConfig?.agentPrompts?.[agent.agentId]
+      if (!reference && !tonePrompt) {
+        return agent
+      }
+      try {
+        const resolvedPrompt = reference
+          ? await resolvePrompt(userId, reference, {
+              goal: run.goal,
+              workspaceId: workspace.workspaceId,
+              workspaceName: workspace.name,
+              runId: run.runId,
+              agentName: agent.name,
+              agentId: agent.agentId,
+            })
+          : agent.systemPrompt ?? ''
+        const mergedPrompt = tonePrompt
+          ? `${resolvedPrompt}\n\nTONE OF VOICE:\n${tonePrompt}`
+          : resolvedPrompt
+        return {
+          ...agent,
+          systemPrompt: mergedPrompt,
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.warn('Unable to resolve prompt for agent.', { agentId: agent.agentId, error })
+        promptResolutionErrors.push({
+          agentId: agent.agentId,
+          promptType: 'agent',
+          error: message,
+        })
+        await eventWriter?.writeEvent({
+          type: 'status',
+          workspaceId: workspace.workspaceId,
+          status: 'prompt_resolution_failed',
+          details: { agentId: agent.agentId, error: message },
+        })
+        return agent
+      }
+    })
+  )
+
+  if (promptResolutionErrors.length > 0) {
+    await runRef.update({ promptResolutionErrors })
+  }
+
   // Route to appropriate workflow executor
   switch (workspace.workflowType) {
     case 'sequential':
       console.log('Executing sequential workflow')
       return executeSequentialWorkflow(
         workspace,
-        agents,
+        resolvedAgents,
         run.goal,
         run.context,
         apiKeys,
@@ -1321,7 +1426,7 @@ export async function executeWorkflow(
       console.log('Executing parallel workflow')
       return executeParallelWorkflow(
         workspace,
-        agents,
+        resolvedAgents,
         run.goal,
         run.context,
         apiKeys,
@@ -1333,12 +1438,12 @@ export async function executeWorkflow(
 
     case 'supervisor': {
       console.log('Executing supervisor workflow')
-      if (agents.length < 2) {
+      if (resolvedAgents.length < 2) {
         throw new Error('Supervisor workflow requires at least 2 agents (1 supervisor + 1 worker)')
       }
       // First agent is supervisor, rest are workers
-      const supervisorAgent = agents[0]
-      const workerAgents = agents.slice(1)
+      const supervisorAgent = resolvedAgents[0]
+      const workerAgents = resolvedAgents.slice(1)
       return executeSupervisorWorkflow(
         workspace,
         supervisorAgent,
@@ -1359,7 +1464,7 @@ export async function executeWorkflow(
       console.log('Custom workflow not yet implemented, falling back to sequential')
       return executeSequentialWorkflow(
         workspace,
-        agents,
+        resolvedAgents,
         run.goal,
         run.context,
         apiKeys,
@@ -1374,7 +1479,7 @@ export async function executeWorkflow(
       console.log('Executing graph workflow')
       return executeGraphWorkflow(
         workspace,
-        agents,
+        resolvedAgents,
         run,
         apiKeys,
         userId,

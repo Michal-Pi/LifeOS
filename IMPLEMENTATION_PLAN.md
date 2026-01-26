@@ -224,7 +224,7 @@ This plan addresses 20 gaps and issues identified in the Phase 1-3 code review. 
            console.error('Failed to load OKRs:', error)
            setLoadError(error instanceof Error ? error : new Error('Failed to load OKRs'))
            // Show user-friendly error
-           toast.error('Failed to load projects and milestones', {
+           toast.error('Failed to load projects and chapters', {
              description: 'Please try again or refresh the page',
            })
          }

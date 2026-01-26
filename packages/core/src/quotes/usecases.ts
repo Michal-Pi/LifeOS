@@ -13,7 +13,7 @@
  * @module quotes/usecases
  */
 
-import type { Quote } from './types'
+import type { Quote } from './types.js'
 
 function formatAddedAt(isoDate: string): string {
   const date = new Date(isoDate)

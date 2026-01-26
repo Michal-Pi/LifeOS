@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import type { ChangeEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
 import { useAgentTemplateOperations } from '@/hooks/useAgentTemplateOperations'
 import { useToolOperations } from '@/hooks/useToolOperations'
@@ -51,6 +52,7 @@ const downloadJson = (filename: string, data: unknown) => {
 
 export function AgentsPage() {
   const { confirm, alert: showAlert } = useDialog()
+  const navigate = useNavigate()
   const { agents, isLoading, loadAgents } = useAgentOperations()
   const {
     templates: agentTemplates,
@@ -280,9 +282,18 @@ export function AgentsPage() {
           <h1>AI Agents</h1>
           <p>Configure and manage your AI assistants</p>
         </div>
-        <button onClick={handleNew} className="primary-button">
-          + New Agent
-        </button>
+        <div className="page-header__actions">
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => navigate('/agents/prompts')}
+          >
+            Prompt Library
+          </button>
+          <button onClick={handleNew} className="primary-button">
+            + New Agent
+          </button>
+        </div>
       </header>
 
       <div className="filters">

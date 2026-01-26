@@ -25,6 +25,7 @@ const NODE_COLORS: Record<WorkflowNodeType, { background: string; border: string
   human_input: { background: 'var(--error-light)', border: 'var(--error)' },
   join: { background: 'var(--accent-subtle)', border: 'var(--accent-secondary)' },
   end: { background: 'var(--background-secondary)', border: 'var(--border-strong)' },
+  research_request: { background: 'var(--success-light)', border: 'var(--success)' },
 }
 
 export function WorkflowGraphView({ graph }: WorkflowGraphViewProps) {

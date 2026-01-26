@@ -185,7 +185,7 @@ Two new endpoints:
 **No Dependencies**:
 
 - Projects
-- Milestones
+- Chapters
 - Notes
 - Habits (only check-ins have indirect link)
 

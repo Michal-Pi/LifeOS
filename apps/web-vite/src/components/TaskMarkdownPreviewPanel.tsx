@@ -11,9 +11,7 @@ interface TaskMarkdownPreviewPanelProps {
 }
 
 export function TaskMarkdownPreviewPanel({ tasks }: TaskMarkdownPreviewPanelProps) {
-  const totalTime = tasks
-    .map((task) => task.estimate || 0)
-    .reduce((sum, time) => sum + time, 0)
+  const totalTime = tasks.map((task) => task.estimate || 0).reduce((sum, time) => sum + time, 0)
 
   const formatTime = (minutes: number): string => {
     if (minutes === 0) return '0m'
@@ -48,18 +46,10 @@ export function TaskMarkdownPreviewPanel({ tasks }: TaskMarkdownPreviewPanelProp
             <li key={taskIdx} className="task-item">
               <span className="task-title">{task.title || '(No title)'}</span>
               <div className="task-metadata">
-                {task.domain && (
-                  <span className="task-tag domain">domain: {task.domain}</span>
-                )}
-                {task.project && (
-                  <span className="task-tag project">project: {task.project}</span>
-                )}
-                {task.chapter && (
-                  <span className="task-tag chapter">chapter: {task.chapter}</span>
-                )}
-                {task.urgency && (
-                  <span className="task-tag urgency">urgency: {task.urgency}</span>
-                )}
+                {task.domain && <span className="task-tag domain">domain: {task.domain}</span>}
+                {task.project && <span className="task-tag project">project: {task.project}</span>}
+                {task.chapter && <span className="task-tag chapter">chapter: {task.chapter}</span>}
+                {task.urgency && <span className="task-tag urgency">urgency: {task.urgency}</span>}
                 {task.importance && (
                   <span className="task-tag importance">importance: {task.importance}</span>
                 )}
@@ -68,9 +58,7 @@ export function TaskMarkdownPreviewPanel({ tasks }: TaskMarkdownPreviewPanelProp
                   <span className="task-tag estimate">estimate: {formatTime(task.estimate)}</span>
                 )}
               </div>
-              {task.description && (
-                <div className="task-description">{task.description}</div>
-              )}
+              {task.description && <div className="task-description">{task.description}</div>}
             </li>
           ))}
         </ul>

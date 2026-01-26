@@ -98,7 +98,7 @@ export async function authenticatedFetch(
 - ✅ Added explicit rules for all collections:
   - `calendarEvents` - User read/write
   - `recurrenceInstanceMap` - User read only, server writes
-  - `projects`, `milestones`, `tasks` - Planner module
+  - `projects`, `chapters`, `tasks` - Planner module
   - `topics`, `sections`, `attachments` - Notes module
 
 **Before:**
@@ -121,7 +121,7 @@ match /users/{userId}/recurrenceInstanceMap/{docId} {
   allow read: if isAuthenticated(userId);
   allow write: if false; // Server-only writes
 }
-// Projects, Milestones, Tasks (Planner module)
+// Projects, Chapters, Tasks (Planner module)
 match /users/{userId}/projects/{projectId} {
   allow read, write: if isAuthenticated(userId);
 }

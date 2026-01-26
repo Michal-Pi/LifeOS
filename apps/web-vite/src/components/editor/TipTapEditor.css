@@ -330,35 +330,3 @@
   background-color: var(--accent-subtle);
   border-radius: 4px;
 }
-/* Hover affordance for block actions */
-.tiptap-editor > * {
-  position: relative;
-}
-
-.tiptap-editor > *:not(ul):not(ol)::before {
-  content: '+';
-  position: absolute;
-  left: -1.5rem;
-  top: 0.2rem;
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--background-secondary);
-  color: var(--text-secondary);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.85rem;
-  opacity: 0;
-  transition:
-    opacity var(--motion-fast) var(--motion-ease),
-    border-color var(--motion-fast) var(--motion-ease),
-    color var(--motion-fast) var(--motion-ease);
-}
-
-.tiptap-editor > *:not(ul):not(ol):hover::before {
-  opacity: 1;
-  border-color: var(--accent);
-  color: var(--foreground);
-}

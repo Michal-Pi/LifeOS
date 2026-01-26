@@ -40,21 +40,13 @@ export function TaskImportPreview({ tasks }: TaskImportPreviewProps) {
                 <span className="task-title">{task.title || '(No title)'}</span>
               </div>
               <div className="task-metadata">
-                {task.domain && (
-                  <span className="task-tag domain">Domain: {task.domain}</span>
-                )}
-                {task.project && (
-                  <span className="task-tag project">Project: {task.project}</span>
-                )}
-                {task.chapter && (
-                  <span className="task-tag chapter">Chapter: {task.chapter}</span>
-                )}
+                {task.domain && <span className="task-tag domain">Domain: {task.domain}</span>}
+                {task.project && <span className="task-tag project">Project: {task.project}</span>}
+                {task.chapter && <span className="task-tag chapter">Chapter: {task.chapter}</span>}
                 {task.importance && (
                   <span className="task-tag importance">Importance: {task.importance}</span>
                 )}
-                {task.urgency && (
-                  <span className="task-tag urgency">Urgency: {task.urgency}</span>
-                )}
+                {task.urgency && <span className="task-tag urgency">Urgency: {task.urgency}</span>}
                 {task.due && <span className="task-tag due">Due: {task.due}</span>}
                 {task.estimate && (
                   <span className="task-tag estimate">Estimate: {formatTime(task.estimate)}</span>

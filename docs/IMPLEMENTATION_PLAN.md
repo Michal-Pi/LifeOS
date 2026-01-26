@@ -29,7 +29,7 @@ This plan reflects the current codebase and near-term work.
 ## Now
 
 - Maintain calendar + sync stability
-- Harden todos (projects/milestones/tasks) UX
+- Harden todos (projects/chapters/tasks) UX
 - Continue Training module (workout planning)
 
 ## Next

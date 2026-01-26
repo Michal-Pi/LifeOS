@@ -9,6 +9,7 @@ Central navigation for the docs. Start here.
 3. `docs/ARCHITECTURE.md`
 4. `docs/DATA_MODELS.md`
 5. `DEPLOYMENT.md`
+6. `docs/ONBOARDING.md`
 
 ## Core Docs
 
@@ -18,6 +19,8 @@ Central navigation for the docs. Start here.
 - `docs/IMPLEMENTATION_PLAN.md` - Current roadmap + next steps
 - `docs/TESTING_GUIDE.md` - Test strategy + examples
 - `docs/DEPLOY_SCRIPTS.md` - Deploy scripts + workflows
+- `docs/APP_MODULES.md` - Module inventory and documentation gaps
+- `docs/ONBOARDING.md` - Setup and onboarding guide
 
 ## Feature/Subsystem Docs
 
@@ -25,6 +28,10 @@ Central navigation for the docs. Start here.
 - `docs/features/ai-agents-progress-summary.md` - AI Agent Framework status + roadmap
 - `docs/features/agents-roadmap.md` - AI Agent Framework phases
 - `docs/features/agents-phase-5e-completion.md` - AI Agent Framework Phase 5E completion
+- `docs/features/expert-council-user-guide.md` - Expert Council user guide
+- `docs/features/project-manager-user-guide.md` - Project Manager user guide
+- `docs/features/deep-research-user-guide.md` - Deep Research user guide
+- `docs/features/writing-agents-guide.md` - Writing agents guide
 - `docs/todos/overview.md` - Planner feature overview
 - `docs/todos/ui.md` - Planner UI behavior
 - `docs/sync/` - Outbox + conflict strategy + overview

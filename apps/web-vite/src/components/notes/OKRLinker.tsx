@@ -2,7 +2,7 @@
  * OKR Linker Component
  *
  * Allows users to link notes to specific OKRs (Objectives and Key Results)
- * from their projects and milestones for learning tracking and progress monitoring.
+ * from their projects and chapters for learning tracking and progress monitoring.
  */
 
 import { useState, useEffect } from 'react'
@@ -19,7 +19,7 @@ export interface OKRLinkerProps {
 
 interface OKRItem {
   id: string
-  type: 'project' | 'milestone'
+  type: 'project' | 'chapter'
   title: string
   objective?: string
   keyResults?: { id: string; text: string }[]
@@ -29,14 +29,14 @@ interface OKRItem {
 export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinkerProps) {
   const { user } = useAuth()
   const userId = user?.uid || ''
-  const { projects, milestones, loading: todoLoading, loadData } = useTodoOperations({ userId })
+  const { projects, chapters, loading: todoLoading, loadData } = useTodoOperations({ userId })
 
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [initialLoadDone, setInitialLoadDone] = useState(false)
   const [loadError, setLoadError] = useState<Error | null>(null)
 
-  // Load projects and milestones when dropdown opens
+  // Load projects and chapters when dropdown opens
   useEffect(() => {
     if (isOpen && !initialLoadDone && userId) {
       const loadOKRs = async () => {
@@ -47,7 +47,7 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
         } catch (error) {
           console.error('Failed to load OKRs:', error)
           const err =
-            error instanceof Error ? error : new Error('Failed to load projects and milestones')
+            error instanceof Error ? error : new Error('Failed to load projects and chapters')
           setLoadError(err)
 
           // Show user-friendly error toast
@@ -78,14 +78,14 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
         })
       })
 
-    // Add milestones with OKRs
-    milestones
+    // Add chapters with OKRs
+    chapters
       .filter((m) => m.objective || (m.keyResults && m.keyResults.length > 0))
       .forEach((m) => {
         const project = projects.find((p) => p.id === m.projectId)
         items.push({
           id: m.id,
-          type: 'milestone',
+          type: 'chapter',
           title: `${project?.title || 'Project'} > ${m.title}`,
           objective: m.objective,
           keyResults: m.keyResults,
@@ -174,7 +174,7 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
 
             {loadError && (
               <div className="okr-error">
-                <p className="error-message">Failed to load projects and milestones</p>
+                <p className="error-message">Failed to load projects and chapters</p>
                 <button
                   type="button"
                   className="retry-button"
@@ -240,7 +240,7 @@ export function OKRLinker({ selectedOKRIds, onChange, className = '' }: OKRLinke
       {/* Error State */}
       {loadError && (
         <div className="okr-error">
-          <p className="error-message">Failed to load projects and milestones</p>
+          <p className="error-message">Failed to load projects and chapters</p>
           <button
             type="button"
             className="retry-button"

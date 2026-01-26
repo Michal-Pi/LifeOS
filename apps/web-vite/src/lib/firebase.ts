@@ -20,6 +20,7 @@ import {
   type Firestore
 } from 'firebase/firestore'
 import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage'
+import { getFunctions, connectFunctionsEmulator, type Functions } from 'firebase/functions'
 import { createLogger } from '@lifeos/core'
 
 const logger = createLogger('Firebase')
@@ -41,9 +42,11 @@ let app: FirebaseApp | null = null
 let firestoreInstance: Firestore | null = null
 let authInstance: Auth | null = null
 let storageInstance: FirebaseStorage | null = null
+let functionsInstance: Functions | null = null
 let emulatorConnected = false
 let authEmulatorConnected = false
 let storageEmulatorConnected = false
+let functionsEmulatorConnected = false
 
 // Cache for runtime-fetched config
 let cachedConfig: FirebaseConfig | null = null
@@ -315,7 +318,8 @@ export function getFirestoreClient(): Firestore {
   // Initialize Firestore with the new cache API
   try {
     firestoreInstance = initializeFirestore(firebaseApp, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      experimentalAutoDetectLongPolling: true
     })
     logger.info('Firestore initialized with multi-tab persistence')
   } catch {
@@ -410,6 +414,38 @@ export function getStorageClient(): FirebaseStorage {
   }
 
   return storageInstance
+}
+
+/**
+ * Get Firebase Functions instance
+ * Returns the Functions instance for callable functions
+ */
+export function getFunctionsClient(): Functions {
+  if (functionsInstance) {
+    return functionsInstance
+  }
+
+  const firebaseApp = ensureAppInitialized()
+  if (!firebaseApp) {
+    throw new Error(
+      'Firebase is not initialized. ' +
+      'Make sure to call initializeFirebase() before using Functions.'
+    )
+  }
+
+  functionsInstance = getFunctions(firebaseApp)
+
+  const env = import.meta.env
+  if (env.VITE_USE_EMULATORS === 'true' && !functionsEmulatorConnected) {
+    try {
+      connectFunctionsEmulator(functionsInstance, '127.0.0.1', 5001)
+      functionsEmulatorConnected = true
+    } catch {
+      // Emulator already connected
+    }
+  }
+
+  return functionsInstance
 }
 
 /**

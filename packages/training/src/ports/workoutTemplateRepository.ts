@@ -16,4 +16,5 @@ export interface WorkoutTemplateRepository {
   delete(userId: string, templateId: TemplateId): Promise<void>
   get(userId: string, templateId: TemplateId): Promise<WorkoutTemplate | null>
   list(userId: string, options?: { context?: WorkoutContext }): Promise<WorkoutTemplate[]>
+  listByContext(userId: string, context: WorkoutContext): Promise<WorkoutTemplate[]>
 }

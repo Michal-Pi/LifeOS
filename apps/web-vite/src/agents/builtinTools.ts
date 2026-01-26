@@ -46,8 +46,28 @@ export const builtinTools: BuiltinToolMeta[] = [
     description: 'Read a note by id',
   },
   {
+    toolId: 'tool:analyze_note_paragraphs',
+    name: 'analyze_note_paragraphs',
+    description: 'Analyze a note and identify key paragraphs/ideas that could be tagged',
+  },
+  {
+    toolId: 'tool:tag_paragraph_with_note',
+    name: 'tag_paragraph_with_note',
+    description: 'Tag a paragraph in a note with another note or topic',
+  },
+  {
     toolId: 'tool:web_search',
     name: 'web_search',
     description: 'Search the web via Google Custom Search',
+  },
+  {
+    toolId: 'tool:create_deep_research_request',
+    name: 'create_deep_research_request',
+    description: 'Create a deep research request for external delegation',
+  },
+  {
+    toolId: 'tool:expert_council_execute',
+    name: 'expert_council_execute',
+    description: 'Run the Expert Council multi-model consensus pipeline',
   },
 ]

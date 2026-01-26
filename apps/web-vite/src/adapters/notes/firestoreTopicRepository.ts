@@ -37,6 +37,7 @@ export const createFirestoreTopicRepository = (): TopicRepository => {
 
     const topic: Topic = {
       ...input,
+      userId,
       topicId,
       createdAtMs: now,
       updatedAtMs: now,
@@ -65,6 +66,7 @@ export const createFirestoreTopicRepository = (): TopicRepository => {
     const updatedTopic: Topic = {
       ...existingTopic,
       ...updates,
+      userId: existingTopic.userId ?? userId,
       updatedAtMs: Date.now(),
     }
 
@@ -99,7 +101,22 @@ export const createFirestoreTopicRepository = (): TopicRepository => {
     }
 
     const snapshot = await getDocs(q)
-    const topics = snapshot.docs.map((doc) => doc.data() as Topic)
+    const batch = writeBatch(db)
+    const topics: Topic[] = []
+    let needsBackfill = false
+
+    for (const docSnapshot of snapshot.docs) {
+      const data = docSnapshot.data() as Topic
+      if (!data.userId) {
+        needsBackfill = true
+        batch.set(docSnapshot.ref, { userId }, { merge: true })
+      }
+      topics.push({ ...data, userId: data.userId ?? userId })
+    }
+
+    if (needsBackfill) {
+      await batch.commit()
+    }
 
     // Sort by order
     return topics.sort((a, b) => a.order - b.order)

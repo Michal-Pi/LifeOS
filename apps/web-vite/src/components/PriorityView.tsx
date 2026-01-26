@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { CanonicalTask, CanonicalProject, CanonicalMilestone } from '@/types/todo'
+import type { CanonicalTask, CanonicalProject, CanonicalChapter } from '@/types/todo'
 import { groupTasksByBucket, PRIORITY_BUCKETS, type TaskFilters } from '@/lib/priorityBuckets'
 import { getProjectColor } from '@/config/domainColors'
 import { importanceLabel } from '@/lib/todoUi'
@@ -7,7 +7,7 @@ import { importanceLabel } from '@/lib/todoUi'
 interface PriorityViewProps {
   tasks: CanonicalTask[]
   projects: CanonicalProject[]
-  milestones: CanonicalMilestone[]
+  chapters: CanonicalChapter[]
   filters: TaskFilters
   onSelectTask: (task: CanonicalTask) => void
   onToggleComplete: (task: CanonicalTask) => void
@@ -43,6 +43,8 @@ export function PriorityView({
                 {bucketTasks.map((task) => {
                   const project = projects.find((p) => p.id === task.projectId)
                   const taskColor = project ? getProjectColor(project.color, project.domain) : null
+                  // Badge shows project name if available, otherwise domain
+                  const badgeLabel = project ? project.title : task.domain
 
                   return (
                     <div
@@ -56,6 +58,11 @@ export function PriorityView({
                           style={{ backgroundColor: taskColor }}
                         />
                       )}
+                      <div
+                        className={`task-card-badge ${project ? 'task-card-badge-project' : `task-card-badge-domain-${task.domain}`}`}
+                      >
+                        {badgeLabel}
+                      </div>
                       <div className="task-card-header">
                         <input
                           type="checkbox"

@@ -37,7 +37,7 @@ LifeOS is a productivity application centered around calendar management with of
 
 - **Calendar Page** - Full-featured calendar with events, recurring events, RSVP, alerts, and sync
 - **Today Page** - Dashboard with daily stats, quotes, workout preview, and event telemetry
-- **Planner Page** - Projects, milestones, tasks, and scheduling to calendar
+- **Planner Page** - Projects, chapters, tasks, and scheduling to calendar
 - **Notes Page** - Topics, notes, attachments, rich editor
 - **Habits Page** - Habit creation, check-ins, consistency insights
 - **Mind Page** - Interventions, sessions, summaries
@@ -62,7 +62,7 @@ People and Projects remain placeholder pages.
 - Today dashboard with stats and customizable quotes
 - Quote management with add, edit, delete, and reset functionality
 - Deterministic daily quote selection (same quote for same date)
-- Planner projects, milestones, tasks, and scheduling to calendar
+- Planner projects, chapters, tasks, and scheduling to calendar
 - Notes topics, rich text editing, and attachments
 - Habit creation, check-ins, and consistency charts
 - Mind interventions with session summaries
@@ -113,7 +113,7 @@ People and Projects remain placeholder pages.
 ├─────────────┤
 │             │  Today      - Dashboard view
 │   Main      │  Calendar   - Full calendar (implemented)
-│   Content   │  Planner    - Projects, milestones, tasks
+│   Content   │  Planner    - Projects, chapters, tasks
 │   Area      │  Notes      - Topics, notes, attachments
 │             │  Habits     - Check-ins and charts
 │             │  Mind       - Interventions and sessions
@@ -157,7 +157,7 @@ verification and expected results. This path ensures all new features since Dec 
 
 **Steps:**
 
-1. Create a **Project** and **Milestone**.
+1. Create a **Project** and **Chapter**.
 2. Add three tasks (one due today, one overdue, one future).
 3. Mark one task complete and verify counters/filters update.
 4. Schedule a task to the calendar (if enabled) and verify it appears.
@@ -2596,9 +2596,9 @@ function isDeleted(event) {
 
 ### Planner
 
-- [ ] **Projects and milestones**
+- [ ] **Projects and chapters**
   - [ ] Create a project
-  - [ ] Create a milestone inside the project
+  - [ ] Create a chapter inside the project
   - [ ] Verify filters update (All / Active / Completed)
 
 - [ ] **Task lifecycle**

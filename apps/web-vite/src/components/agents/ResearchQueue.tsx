@@ -5,6 +5,7 @@ import { useDeepResearch } from '@/hooks/useDeepResearch'
 import {
   buildResearchPrompt,
   synthesizeResearchFindings,
+  synthesizeResearchFindingsWithAI,
   validateResearchCompleteness,
 } from '@/services/deepResearch/resultProcessor'
 import { ResearchRequestCard } from './ResearchRequestCard'
@@ -23,7 +24,8 @@ const formatDateTime = (timestampMs: number) => new Date(timestampMs).toLocaleSt
 const RESEARCH_SOURCES: DeepResearchSource[] = ['claude', 'chatgpt', 'gemini', 'other']
 
 export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
-  const { requests, isLoading, uploadResults, updateRequest } = useDeepResearch(workspaceId)
+  const { requests, isLoading, uploadResults, updateRequest, synthesizeRequest } =
+    useDeepResearch(workspaceId)
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | DeepResearchRequest['status']>('all')
   const [search, setSearch] = useState('')
@@ -33,6 +35,7 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
     requestId: string
     prompt: string
   } | null>(null)
+  const [isSynthesizing, setIsSynthesizing] = useState(false)
 
   const filteredRequests = useMemo(() => {
     return requests.filter((request) => {
@@ -94,14 +97,27 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
   const handleMarkComplete = async () => {
     if (!selectedRequest) return
     const synthesizedFindings =
-      selectedRequest.results && selectedRequest.results.length > 0
-        ? synthesizeResearchFindings(selectedRequest)
-        : selectedRequest.synthesizedFindings
+      selectedRequest.results && selectedRequest.results.length > 1
+        ? await synthesizeResearchFindingsWithAI(selectedRequest)
+        : selectedRequest.synthesizedFindings ??
+          (selectedRequest.results && selectedRequest.results.length === 1
+            ? synthesizeResearchFindings(selectedRequest)
+            : undefined)
     await updateRequest(selectedRequest, {
       status: 'completed',
       synthesizedFindings,
       integratedAtMs: Date.now(),
     })
+  }
+
+  const handleSynthesize = async () => {
+    if (!selectedRequest) return
+    setIsSynthesizing(true)
+    try {
+      await synthesizeRequest(selectedRequest)
+    } finally {
+      setIsSynthesizing(false)
+    }
   }
 
   return (
@@ -192,6 +208,16 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
                   <button className="primary-button" type="button" onClick={handleCopyPrompt}>
                     Copy prompt for {selectedModel}
                   </button>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    onClick={handleSynthesize}
+                    disabled={
+                      isSynthesizing || (selectedRequest?.results?.length ?? 0) < 2
+                    }
+                  >
+                    {isSynthesizing ? 'Synthesizing...' : 'Synthesize'}
+                  </button>
                   <button className="ghost-button" type="button" onClick={handleExportJson}>
                     Export JSON
                   </button>
@@ -237,13 +263,26 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
             </div>
 
             <div className={styles['research-section']}>
-              <div className={styles['research-section__header']}>
-                <h4>Results</h4>
-                <div className={styles['research-action-buttons']}>
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={handleMarkComplete}
+                <div className={styles['research-section__header']}>
+                  <h4>Results</h4>
+                  <div className={styles['research-action-buttons']}>
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() =>
+                        void updateRequest(selectedRequest, {
+                          status: 'cancelled',
+                          integratedAtMs: Date.now(),
+                        })
+                      }
+                      disabled={selectedRequest.status === 'cancelled'}
+                    >
+                      Cancel request
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={handleMarkComplete}
                     disabled={selectedRequest.status === 'completed'}
                   >
                     Mark complete

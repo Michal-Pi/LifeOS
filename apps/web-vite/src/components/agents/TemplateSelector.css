@@ -1,0 +1,151 @@
+.template-selector {
+  margin: 1.5rem 0 2rem;
+}
+
+.template-selector__header {
+  margin-bottom: 1.5rem;
+}
+
+.template-selector__subhead {
+  color: var(--text-secondary);
+  max-width: 720px;
+}
+
+.template-selector__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.template-selector__notice {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--background-secondary);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.template-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+}
+
+.template-card__header {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.template-card__icon {
+  min-width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: var(--background-secondary);
+}
+
+.template-card__title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.template-card__description {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+}
+
+.template-card__agents {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.template-card__label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+}
+
+.template-card__agent-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.template-card__agent {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+  font-size: 0.7rem;
+}
+
+.template-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.template-card__badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--background-secondary);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-secondary);
+}
+
+.template-card__selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.template-card__selector label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.template-card__selector select {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--background-secondary);
+  color: var(--foreground);
+  padding: 0.5rem 0.75rem;
+}
+
+.template-card__action {
+  align-self: stretch;
+}
+
+@media (max-width: 720px) {
+  .template-card {
+    padding: 1.25rem;
+  }
+
+  .template-card__header {
+    flex-direction: column;
+  }
+
+  .template-card__icon {
+    width: 56px;
+  }
+}

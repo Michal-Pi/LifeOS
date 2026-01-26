@@ -1,5 +1,8 @@
 // Domain models
 export * from './domain/models'
+export * from './domain/modelPricing'
+export * from './domain/projectManager'
+export * from './domain/promptLibrary'
 
 // Validation schemas
 export * from './domain/validation'
@@ -13,6 +16,10 @@ export * from './ports/toolRepository'
 export * from './ports/toolCallRecordRepository'
 export * from './ports/agentTemplateRepository'
 export * from './ports/workspaceTemplateRepository'
+export * from './ports/expertCouncilRepository'
+export * from './ports/deepResearchRepository'
+export * from './ports/projectManagerRepository'
+export * from './ports/promptLibraryRepository'
 
 // Usecases
 export * from './usecases'

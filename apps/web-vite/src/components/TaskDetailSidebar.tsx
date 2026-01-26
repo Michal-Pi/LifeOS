@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { CanonicalTask, TaskStatus } from '@/types/todo'
 import { calculateUrgency } from '@/lib/priority'
 import {
@@ -50,16 +50,80 @@ export function TaskDetailSidebar({
   const { user } = useAuth()
   const eventService = useEventService({ userId: user?.uid || '' })
   const [showTimePicker, setShowTimePicker] = useState(false)
+  const [draftTask, setDraftTask] = useState<CanonicalTask | null>(task)
+  const [isSaving, setIsSaving] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
+  const updateTimerRef = useRef<number | null>(null)
+  const savingTimerRef = useRef<number | null>(null)
+  const latestTaskRef = useRef<CanonicalTask | null>(task)
 
-  const totalMinutes = task?.allocatedTimeMinutes || 0
+  useEffect(() => {
+    return () => {
+      if (updateTimerRef.current) {
+        window.clearTimeout(updateTimerRef.current)
+      }
+      if (savingTimerRef.current) {
+        window.clearTimeout(savingTimerRef.current)
+      }
+    }
+  }, [])
+
+  const scheduleUpdate = useCallback(
+    (nextTask: CanonicalTask, immediate: boolean = false) => {
+      setDraftTask(nextTask)
+      latestTaskRef.current = nextTask
+
+      if (updateTimerRef.current) {
+        window.clearTimeout(updateTimerRef.current)
+      }
+      if (savingTimerRef.current) {
+        window.clearTimeout(savingTimerRef.current)
+      }
+
+      if (immediate) {
+        setIsSaving(true)
+        onUpdate(nextTask)
+        setLastSavedAt(Date.now())
+        savingTimerRef.current = window.setTimeout(() => setIsSaving(false), 300)
+        return
+      }
+
+      updateTimerRef.current = window.setTimeout(() => {
+        if (latestTaskRef.current) {
+          onUpdate(latestTaskRef.current)
+        }
+        setLastSavedAt(Date.now())
+        setIsSaving(false)
+        updateTimerRef.current = null
+      }, 400)
+
+      setIsSaving(true)
+    },
+    [onUpdate]
+  )
+
+  const activeTask = draftTask ?? task
+  const totalMinutes = activeTask?.allocatedTimeMinutes || 0
   const estimatedHours = Math.floor(totalMinutes / 60)
   const estimatedMinutes = totalMinutes % 60
 
-  const effectiveUrgency = task?.dueDate
-    ? calculateUrgency(task.dueDate)
-    : (task?.urgency ?? 'later')
+  const effectiveUrgency = activeTask?.dueDate
+    ? calculateUrgency(activeTask.dueDate)
+    : (activeTask?.urgency ?? 'later')
 
-  if (!task) {
+  const saveStatusLabel = (() => {
+    if (isSaving) return 'Saving…'
+    if (lastSavedAt) {
+      const formattedTime = new Intl.DateTimeFormat(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(new Date(lastSavedAt))
+      return `Saved ${formattedTime}`
+    }
+    return 'Idle'
+  })()
+
+  if (!task || !activeTask) {
     return (
       <aside className="task-detail-sidebar placeholder">
         <p className="section-label">Task Details</p>
@@ -86,28 +150,28 @@ export function TaskDetailSidebar({
   }
 
   const handleStatusChange = (value: string) => {
-    onUpdate({ ...task, status: value as TaskStatus })
+    scheduleUpdate({ ...activeTask, status: value as TaskStatus })
   }
 
   const handleUrgencyChange = (value: number) => {
     const nextUrgency = urgencyFromSlider(value)
-    onUpdate({ ...task, urgency: nextUrgency })
+    scheduleUpdate({ ...activeTask, urgency: nextUrgency })
   }
 
   const handleImportanceSliderChange = (value: number) => {
     const nextImportance = importanceFromSlider(value)
-    onUpdate({ ...task, importance: nextImportance })
+    scheduleUpdate({ ...activeTask, importance: nextImportance })
   }
 
   const updateEstimatedTime = (hours: number, minutes: number) => {
     const safeHours = Number.isFinite(hours) ? hours : 0
     const safeMinutes = Number.isFinite(minutes) ? minutes : 0
     const totalMinutes = Math.max(safeHours, 0) * 60 + Math.min(Math.max(safeMinutes, 0), 59)
-    onUpdate({ ...task, allocatedTimeMinutes: totalMinutes || undefined })
+    scheduleUpdate({ ...activeTask, allocatedTimeMinutes: totalMinutes || undefined })
   }
 
   const handleTimeBlockSelect = async (startMs: number, endMs: number) => {
-    if (!task) return
+    if (!activeTask) return
 
     try {
       const startDate = new Date(startMs)
@@ -115,8 +179,8 @@ export function TaskDetailSidebar({
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
       const formData = {
-        title: task.title,
-        description: task.description,
+        title: activeTask.title,
+        description: activeTask.description,
         allDay: false,
         startDate: startDate.toISOString().split('T')[0],
         startTime: startDate.toTimeString().slice(0, 5),
@@ -125,15 +189,15 @@ export function TaskDetailSidebar({
         timezone,
       }
 
-      const newEvent = await eventService.createEvent(formData, { taskId: task.id })
+      const newEvent = await eventService.createEvent(formData, { taskId: activeTask.id })
 
       // Update task with new calendar event ID
       const updatedTask: CanonicalTask = {
-        ...task,
+        ...activeTask,
         status: 'scheduled',
-        calendarEventIds: [...(task.calendarEventIds || []), newEvent.canonicalEventId],
+        calendarEventIds: [...(activeTask.calendarEventIds || []), newEvent.canonicalEventId],
       }
-      onUpdate(updatedTask)
+      scheduleUpdate(updatedTask, true)
       setShowTimePicker(false)
     } catch (error) {
       console.error('Failed to create calendar event:', error)
@@ -144,18 +208,21 @@ export function TaskDetailSidebar({
     <aside className="task-detail-sidebar">
       <div className="sidebar-header">
         <h3>Task Details</h3>
-        <button className="close-button" onClick={onClose}>
-          ×
-        </button>
+        <div className="task-header-actions">
+          <span className="task-save-status">{saveStatusLabel}</span>
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
+        </div>
       </div>
       <div className="sidebar-content">
-        <h3 className="task-title">{task.title}</h3>
-        <p className="task-description">{task.description || 'No description.'}</p>
+        <h3 className="task-title">{activeTask.title}</h3>
+        <p className="task-description">{activeTask.description || 'No description.'}</p>
 
         <div className="form-group">
           <label>Status</label>
           <Select
-            value={task.status}
+            value={activeTask.status}
             onChange={handleStatusChange}
             options={STATUS_OPTIONS}
             placeholder="Select status"
@@ -171,10 +238,10 @@ export function TaskDetailSidebar({
             step={1}
             value={urgencyToSlider(effectiveUrgency)}
             onChange={(e) => handleUrgencyChange(Number(e.target.value))}
-            disabled={Boolean(task.dueDate)}
+            disabled={Boolean(activeTask.dueDate)}
           />
           <p className="helper-text">
-            {task.dueDate
+            {activeTask.dueDate
               ? `Auto: ${urgencyLabel(effectiveUrgency)}`
               : `Selected: ${urgencyLabel(effectiveUrgency)}`}
           </p>
@@ -187,11 +254,11 @@ export function TaskDetailSidebar({
             min={1}
             max={5}
             step={1}
-            value={importanceToSlider(task.importance)}
+            value={importanceToSlider(activeTask.importance)}
             onChange={(e) => handleImportanceSliderChange(Number(e.target.value))}
           />
           <p className="helper-text">
-            {importanceLabel(task.importance)} ({task.importance})
+            {importanceLabel(activeTask.importance)} ({activeTask.importance})
           </p>
         </div>
 
@@ -199,8 +266,8 @@ export function TaskDetailSidebar({
           <label>Due Date</label>
           <input
             type="date"
-            value={task.dueDate || ''}
-            onChange={(e) => onUpdate({ ...task, dueDate: e.target.value })}
+            value={activeTask.dueDate || ''}
+            onChange={(e) => scheduleUpdate({ ...activeTask, dueDate: e.target.value })}
           />
         </div>
 
@@ -240,9 +307,9 @@ export function TaskDetailSidebar({
 
         <div className="form-group">
           <label>Scheduled Events</label>
-          {task.calendarEventIds && task.calendarEventIds.length > 0 ? (
+          {activeTask.calendarEventIds && activeTask.calendarEventIds.length > 0 ? (
             <ul className="linked-events-list">
-              {task.calendarEventIds.map((id) => (
+              {activeTask.calendarEventIds.map((id) => (
                 <li key={id}>🔗 {id.substring(0, 12)}...</li>
               ))}
             </ul>
@@ -252,9 +319,9 @@ export function TaskDetailSidebar({
         </div>
 
         <div className="sidebar-actions">
-          <button className="ghost-button" onClick={() => onSchedule(task)}>
-            {task.calendarEventIds && task.calendarEventIds.length > 0
-              ? `Add Time Block (${task.calendarEventIds.length} scheduled)`
+          <button className="ghost-button" onClick={() => onSchedule(activeTask)}>
+            {activeTask.calendarEventIds && activeTask.calendarEventIds.length > 0
+              ? `Add Time Block (${activeTask.calendarEventIds.length} scheduled)`
               : 'Schedule on Calendar'}
           </button>
           <button
@@ -266,12 +333,12 @@ export function TaskDetailSidebar({
           </button>
           <button
             className="ghost-button"
-            onClick={() => onConvert(task)}
+            onClick={() => onConvert(activeTask)}
             title="Convert this task into a new project"
           >
             Convert to Project
           </button>
-          <button className="ghost-button danger" onClick={() => onDelete(task.id)}>
+          <button className="ghost-button danger" onClick={() => onDelete(activeTask.id)}>
             Delete Task
           </button>
         </div>
@@ -282,8 +349,8 @@ export function TaskDetailSidebar({
         isOpen={showTimePicker}
         onClose={() => setShowTimePicker(false)}
         onSelect={handleTimeBlockSelect}
-        defaultDurationMinutes={task.allocatedTimeMinutes || 60}
-        selectedDate={task.dueDate ? new Date(task.dueDate) : undefined}
+        defaultDurationMinutes={activeTask.allocatedTimeMinutes || 60}
+        selectedDate={activeTask.dueDate ? new Date(activeTask.dueDate) : undefined}
       />
     </aside>
   )

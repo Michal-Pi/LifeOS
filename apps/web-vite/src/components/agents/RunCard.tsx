@@ -4,29 +4,68 @@
  * Displays details for a single run including tool calls.
  */
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useToolCallOperations } from '@/hooks/useToolCallOperations'
 import { useRunEvents } from '@/hooks/useRunEvents'
 import { useRunMessages } from '@/hooks/useRunMessages'
 import { useWorkflowSteps } from '@/hooks/useWorkflowSteps'
+import { useExpertCouncilTurns } from '@/hooks/useExpertCouncilTurns'
+import { useProjectManager } from '@/hooks/useProjectManager'
 import { ToolCallTimeline } from './ToolCallTimeline'
-import type { Run, RunStatus } from '@lifeos/agents'
+import { ExpertCouncilInspector } from './ExpertCouncilInspector'
+import { ProjectManagerChat } from './ProjectManagerChat'
+import type { DeepResearchRequest, Run, RunStatus, Workspace, WorkspaceId } from '@lifeos/agents'
 
 interface RunCardProps {
   run: Run
+  workspace: Workspace
+  workspaceId: WorkspaceId
+  researchRequests: DeepResearchRequest[]
   currentTime: number
+  showProjectManager: boolean
   onDelete: (runId: string) => void
   onResume?: (runId: string) => void
   onProvideInput?: (runId: string, nodeId: string, response: string) => Promise<void>
 }
 
-export function RunCard({ run, currentTime, onDelete, onResume, onProvideInput }: RunCardProps) {
+export function RunCard({
+  run,
+  workspace,
+  workspaceId,
+  researchRequests,
+  currentTime,
+  showProjectManager,
+  onDelete,
+  onResume,
+  onProvideInput,
+}: RunCardProps) {
+  const navigate = useNavigate()
   const { toolCalls } = useToolCallOperations(run.runId)
   const { messages, hasMore, isLoadingMore, loadMore } = useRunMessages(run.runId)
   const { events } = useRunEvents(run.runId)
   const { steps: workflowSteps } = useWorkflowSteps(run.runId)
+  const { latestTurn } = useExpertCouncilTurns(run.runId)
+  const {
+    context: projectManagerContext,
+    startConversation,
+    addTurn,
+    recordInteraction,
+    profile,
+  } = useProjectManager(workspaceId, run.runId)
   const [inputResponse, setInputResponse] = useState('')
   const [isSubmittingInput, setIsSubmittingInput] = useState(false)
+  const deepResearch =
+    run.context && typeof run.context === 'object'
+      ? ((run.context as Record<string, unknown>).deepResearch as
+          | {
+              requestId?: string
+              status?: string
+              synthesizedFindings?: string
+              integratedAtMs?: number
+            }
+          | undefined)
+      : undefined
 
   const streamingOutput = events
     .filter((event) => event.type === 'token')
@@ -34,6 +73,42 @@ export function RunCard({ run, currentTime, onDelete, onResume, onProvideInput }
     .join('')
   const finalEvent = [...events].reverse().find((event) => event.type === 'final')
   const displayOutput = run.output ?? finalEvent?.output ?? streamingOutput
+
+  const runResearchRequests = useMemo(
+    () => researchRequests.filter((request) => request.runId === run.runId),
+    [researchRequests, run.runId]
+  )
+  const pendingResearch = runResearchRequests.filter((request) => request.status === 'pending')
+
+  const projectManagerEnabled = Boolean(workspace.projectManagerConfig?.enabled)
+  const projectManagerVisible = projectManagerEnabled && showProjectManager
+  const pendingDecisions = projectManagerContext?.decisions?.filter(
+    (decision) => decision.status === 'pending'
+  )
+  const clarificationQuestions =
+    pendingDecisions?.map((decision) => ({
+      questionId: decision.decisionId,
+      text: decision.question,
+    })) ?? []
+  const decisionOptions =
+    pendingDecisions?.flatMap((decision) =>
+      (decision.options ?? []).map((option) => ({
+        optionId: `${decision.decisionId}::${option}`,
+        label: option,
+        description: decision.question,
+      }))
+    ) ?? []
+
+  useEffect(() => {
+    if (!projectManagerVisible) return
+    if (!projectManagerContext) {
+      void startConversation()
+    }
+  }, [projectManagerContext, projectManagerVisible, startConversation])
+
+  const projectManagerKey = projectManagerContext?.contextId
+    ? `${run.runId}:${projectManagerContext.contextId}`
+    : `${run.runId}:${clarificationQuestions.length}:${decisionOptions.length}`
 
   const formatDate = (timestampMs: number) => {
     return new Date(timestampMs).toLocaleString()
@@ -77,6 +152,16 @@ export function RunCard({ run, currentTime, onDelete, onResume, onProvideInput }
         <div>
           <h4>{run.goal}</h4>
           <span className={getStatusBadgeClass(run.status)}>{run.status}</span>
+          {latestTurn ? <span className="badge">Expert Council</span> : <span className="badge">Workflow</span>}
+          {pendingResearch.length > 0 && (
+            <button
+              type="button"
+              className="run-research-indicator"
+              onClick={() => navigate(`/agents/research?workspaceId=${workspaceId}&runId=${run.runId}`)}
+            >
+              🔬 {pendingResearch.length} pending
+            </button>
+          )}
         </div>
         <div className="run-meta">
           <small>Started: {formatDate(run.startedAtMs)}</small>
@@ -89,6 +174,22 @@ export function RunCard({ run, currentTime, onDelete, onResume, onProvideInput }
         <strong>Progress:</strong> Step {run.currentStep}
         {run.totalSteps && ` of ${run.totalSteps}`}
       </div>
+
+      {deepResearch && (
+        <div className="run-output">
+          <strong>Research Status:</strong>
+          <p>
+            {deepResearch.status ?? 'pending'}
+            {deepResearch.requestId ? ` - ${deepResearch.requestId}` : ''}
+          </p>
+          {deepResearch.synthesizedFindings && (
+            <details className="run-context">
+              <summary>Synthesized Findings</summary>
+              <pre>{deepResearch.synthesizedFindings}</pre>
+            </details>
+          )}
+        </div>
+      )}
 
       {displayOutput && (
         <div className="run-output">
@@ -137,6 +238,20 @@ export function RunCard({ run, currentTime, onDelete, onResume, onProvideInput }
         </div>
       )}
 
+      {run.status === 'paused' && pendingResearch.length > 0 && (
+        <div className="run-output">
+          <strong>This run is waiting for research results.</strong>
+          <p>Click the research indicator above to upload findings.</p>
+        </div>
+      )}
+
+      {run.promptResolutionErrors && run.promptResolutionErrors.length > 0 && (
+        <div className="run-error">
+          <strong>Warning:</strong>
+          <p>Some custom prompts failed to load. Default prompts were used instead.</p>
+        </div>
+      )}
+
       {run.context && Object.keys(run.context).length > 0 && (
         <details className="run-context">
           <summary>Context</summary>
@@ -168,6 +283,43 @@ export function RunCard({ run, currentTime, onDelete, onResume, onProvideInput }
               </div>
             ))}
           </div>
+        </details>
+      )}
+
+      {latestTurn && (
+        <details className="run-context">
+          <summary>Expert Council Inspector</summary>
+          <ExpertCouncilInspector turn={latestTurn} />
+        </details>
+      )}
+
+      {projectManagerVisible && (
+        <details className="run-context">
+          <summary>Project Manager</summary>
+          <ProjectManagerChat
+            key={projectManagerKey}
+            contextSummary={projectManagerContext?.summary}
+            clarificationQuestions={clarificationQuestions}
+            decisionOptions={decisionOptions}
+            conflicts={projectManagerContext?.conflicts ?? []}
+            profile={profile}
+            onAnswerQuestion={(questionId, answer) => {
+              const question = clarificationQuestions.find((item) => item.questionId === questionId)
+              const questionText = question?.text ?? 'Clarification question'
+              void addTurn(answer, `Answered: ${questionText}`)
+            }}
+            onSelectDecision={(optionId) => {
+              const [decisionId, option] = optionId.split('::')
+              const decision = pendingDecisions?.find((item) => item.decisionId === decisionId)
+              const prompt = decision?.question ?? 'Decision'
+              void addTurn(`Selected option: ${option}`, `Decision made: ${prompt}`)
+            }}
+            onResolveConflict={(conflict) => {
+              void addTurn(`Resolved conflict: ${conflict.description}`, 'Conflict resolved.')
+            }}
+            onRequestExpertCouncil={() => void addTurn('Request Expert Council', 'Expert Council requested.')}
+            onRecordInteraction={(interaction) => void recordInteraction(interaction)}
+          />
         </details>
       )}
 

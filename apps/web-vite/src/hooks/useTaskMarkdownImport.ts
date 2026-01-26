@@ -31,7 +31,8 @@ export interface UseTaskMarkdownImportReturn {
     projects: CanonicalProject[],
     chapters: CanonicalChapter[],
     createTaskFn: (
-      task: Omit<CanonicalTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+      task: Omit<CanonicalTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
+      options?: { suppressToast?: boolean }
     ) => Promise<CanonicalTask>
   ) => Promise<void>
   reset: () => void
@@ -84,7 +85,8 @@ export function useTaskMarkdownImport(): UseTaskMarkdownImportReturn {
       projects: CanonicalProject[],
       chapters: CanonicalChapter[],
       createTaskFn: (
-        task: Omit<CanonicalTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+        task: Omit<CanonicalTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
+        options?: { suppressToast?: boolean }
       ) => Promise<CanonicalTask>
     ) => {
       if (!parsedTasks || parsedTasks.length === 0) {
@@ -102,13 +104,9 @@ export function useTaskMarkdownImport(): UseTaskMarkdownImportReturn {
       setErrors([])
 
       try {
-        const result = await importTasks(
-          userId,
-          parsedTasks,
-          projects,
-          chapters,
-          createTaskFn
-        )
+        const result = await importTasks(userId, parsedTasks, projects, chapters, createTaskFn, {
+          suppressToast: true,
+        })
 
         setImportResult(result)
 
@@ -123,9 +121,16 @@ export function useTaskMarkdownImport(): UseTaskMarkdownImportReturn {
           setState('error')
         } else if (result.failureCount > 0) {
           // Partial success - show success but with warnings
+          const validationErrors: ValidationError[] = result.errors.map((err) => ({
+            field: `tasks[${err.taskIndex}].import`,
+            message: err.error,
+            line: parsedTasks[err.taskIndex]?.lineNumber,
+          }))
+          setErrors(validationErrors)
           setState('success')
         } else {
           // All succeeded
+          setErrors([])
           setState('success')
         }
       } catch (error) {
@@ -133,9 +138,7 @@ export function useTaskMarkdownImport(): UseTaskMarkdownImportReturn {
           {
             field: 'import',
             message:
-              error instanceof Error
-                ? error.message
-                : 'Failed to create tasks. Please try again.',
+              error instanceof Error ? error.message : 'Failed to create tasks. Please try again.',
           },
         ])
         setState('error')

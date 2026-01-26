@@ -33,6 +33,9 @@ service cloud.firestore {
       match /toolCalls/{toolCallId} {
         allow read, write: if isAuthenticated(userId);
       }
+      match /expertCouncilTurns/{turnId} {
+        allow read, write: if isAuthenticated(userId);
+      }
     }
     // Agents + tooling (Agents module)
     match /users/{userId}/agents/{agentId} {
@@ -49,6 +52,9 @@ service cloud.firestore {
     }
     // Workspaces + runs (Agents module)
     match /users/{userId}/workspaces/{workspaceId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/workspaces/{workspaceId}/deepResearchRequests/{requestId} {
       allow read, write: if isAuthenticated(userId);
     }
     match /users/{userId}/workspaces/{workspaceId}/runs/{runId} {
@@ -89,6 +95,27 @@ service cloud.firestore {
     match /users/{userId}/calendarSyncState/{key} {
       allow read, write: if isAuthenticated(userId);
     }
+    match /users/{userId}/councilAnalytics/{workspaceId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/councilCache/{cacheKey} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/pmProfile/{docId} {
+      allow read, write: if isAuthenticated(userId);
+    }
+    match /users/{userId}/pmContexts/{contextId} {
+      allow read, write: if isAuthenticated(userId);
+      match /{document=**} {
+        allow read, write: if isAuthenticated(userId);
+      }
+    }
+    match /users/{userId}/promptLibrary/{templateId} {
+      allow read, write: if isAuthenticated(userId);
+      match /versions/{versionId} {
+        allow read, write: if isAuthenticated(userId);
+      }
+    }
     // Calendars list (Phase 2.6)
     // Allow both collection queries and individual document access
     match /users/{userId}/calendars/{document=**} {
@@ -107,8 +134,8 @@ service cloud.firestore {
     match /users/{userId}/projects/{projectId} {
       allow read, write: if isAuthenticated(userId);
     }
-    // Milestones (Todo module)
-    match /users/{userId}/milestones/{milestoneId} {
+    // Chapters (Todo module)
+    match /users/{userId}/chapters/{chapterId} {
       allow read, write: if isAuthenticated(userId);
     }
     // Tasks (Todo module)

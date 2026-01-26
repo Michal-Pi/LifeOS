@@ -106,7 +106,8 @@ export async function listHabitsForDateLocally(
   dateKey: string
 ): Promise<CanonicalHabit[]> {
   const habits = await listActiveHabitsLocally(userId)
-  const date = new Date(dateKey)
+  const [year, month, day] = dateKey.split('-').map((part) => Number(part))
+  const date = new Date(year, month - 1, day)
   const dayOfWeek = date.getDay() // 0 = Sunday, 1 = Monday, etc.
 
   return habits.filter((habit) => habit.schedule.daysOfWeek.includes(dayOfWeek))

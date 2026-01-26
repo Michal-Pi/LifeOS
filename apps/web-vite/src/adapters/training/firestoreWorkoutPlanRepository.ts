@@ -9,7 +9,7 @@ import {
   doc,
   getDoc,
   getDocs,
-  addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -18,7 +18,7 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
-import { generateId } from '@lifeos/core'
+import { newId } from '@lifeos/core'
 import type {
   WorkoutPlan,
   WorkoutPlanRepository,
@@ -42,7 +42,7 @@ export function createFirestoreWorkoutPlanRepository(): WorkoutPlanRepository {
     async create(userId: string, input: CreatePlanInput): Promise<WorkoutPlan> {
       const db = await getDb()
       const now = Date.now()
-      const planId = generateId('plan') as PlanId
+      const planId = newId('plan') as PlanId
 
       const plan: WorkoutPlan = {
         planId,
@@ -58,17 +58,10 @@ export function createFirestoreWorkoutPlanRepository(): WorkoutPlanRepository {
       }
 
       const docRef = planDoc(db, userId, planId)
-      await updateDoc(docRef, {
+      await setDoc(docRef, {
         ...plan,
         createdAt: Timestamp.fromMillis(now),
         updatedAt: Timestamp.fromMillis(now),
-      }).catch(async () => {
-        // Document doesn't exist, create it
-        await addDoc(plansCollection(db, userId), {
-          ...plan,
-          createdAt: Timestamp.fromMillis(now),
-          updatedAt: Timestamp.fromMillis(now),
-        })
       })
 
       return plan

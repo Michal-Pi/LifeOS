@@ -2,15 +2,16 @@ import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
 import type { CanonicalProject, CanonicalTask } from '@/types/todo'
+import { clearAllLocalData } from '@/todos/offlineStore'
 
 const repo = vi.hoisted(() => ({
   getProjects: vi.fn(),
-  getMilestones: vi.fn(),
+  getChapters: vi.fn(),
   getTasks: vi.fn(),
   saveProject: vi.fn(),
   deleteProject: vi.fn(),
-  saveMilestone: vi.fn(),
-  deleteMilestone: vi.fn(),
+  saveChapter: vi.fn(),
+  deleteChapter: vi.fn(),
   saveTask: vi.fn(),
   deleteTask: vi.fn(),
 }))
@@ -54,14 +55,15 @@ const baseTask = (overrides: Partial<CanonicalTask> = {}): CanonicalTask => ({
 describe('useTodoOperations', () => {
   beforeEach(() => {
     repo.getProjects.mockReset()
-    repo.getMilestones.mockReset()
+    repo.getChapters.mockReset()
     repo.getTasks.mockReset()
     repo.saveProject.mockReset()
     repo.deleteProject.mockReset()
-    repo.saveMilestone.mockReset()
-    repo.deleteMilestone.mockReset()
+    repo.saveChapter.mockReset()
+    repo.deleteChapter.mockReset()
     repo.saveTask.mockReset()
     repo.deleteTask.mockReset()
+    return clearAllLocalData()
   })
 
   it('normalizes loaded tasks against project domain', async () => {
@@ -69,7 +71,7 @@ describe('useTodoOperations', () => {
     const task = baseTask({ projectId: project.id })
 
     repo.getProjects.mockResolvedValue([project])
-    repo.getMilestones.mockResolvedValue([])
+    repo.getChapters.mockResolvedValue([])
     repo.getTasks.mockResolvedValue([task])
 
     const { result } = renderHook(() => useTodoOperations({ userId: 'u1' }))
@@ -86,7 +88,7 @@ describe('useTodoOperations', () => {
     const project = baseProject()
 
     repo.getProjects.mockResolvedValue([project])
-    repo.getMilestones.mockResolvedValue([])
+    repo.getChapters.mockResolvedValue([])
     repo.getTasks.mockResolvedValue([])
     repo.saveTask.mockResolvedValue(undefined)
 

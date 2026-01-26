@@ -91,11 +91,11 @@
   --success-light: rgba(15, 191, 74, 0.12);
   --success-color: var(--success);
   --info-light: rgba(52, 229, 195, 0.12);
-  --info-color: var(--info);
+  --info-color: #0d9488; /* Darker teal for better contrast on light bg */
   --warning-light: rgba(255, 214, 10, 0.16);
-  --warning-color: var(--warning);
+  --warning-color: #b8860b; /* Darker yellow for better contrast on light bg */
   --error-light: rgba(255, 59, 59, 0.12);
-  --error-color: var(--error);
+  --error-color: #c2185b; /* Darker red for better contrast on light bg */
 
   /* Chart + domain colors */
   --chart-work: #0313a6;
@@ -103,6 +103,18 @@
   --chart-life: #34e5c3;
   --chart-learning: #ffd60a;
   --chart-wellbeing: #f715ab;
+
+  /* Domain badge colors for light mode */
+  --domain-work-bg: rgba(3, 19, 166, 0.1);
+  --domain-work-text: #0313a6;
+  --domain-projects-bg: rgba(146, 1, 203, 0.1);
+  --domain-projects-text: #9201cb;
+  --domain-life-bg: rgba(52, 229, 195, 0.1);
+  --domain-life-text: #0d9488;
+  --domain-learning-bg: rgba(255, 214, 10, 0.15);
+  --domain-learning-text: #b8860b;
+  --domain-wellbeing-bg: rgba(247, 21, 171, 0.1);
+  --domain-wellbeing-text: #c2185b;
 
   /* Priority badge tokens */
   --priority-high-bg: #fecaca;
@@ -191,11 +203,11 @@
   --success-light: rgba(57, 255, 20, 0.16);
   --success-color: var(--success);
   --info-light: rgba(52, 229, 195, 0.18);
-  --info-color: var(--info);
+  --info-color: var(--info); /* Bright teal works well on dark bg */
   --warning-light: rgba(255, 214, 10, 0.18);
-  --warning-color: var(--warning);
+  --warning-color: var(--warning); /* Bright yellow works well on dark bg */
   --error-light: rgba(255, 59, 59, 0.18);
-  --error-color: var(--error);
+  --error-color: #ff6b6b; /* Slightly lighter red for better contrast on dark bg */
 
   /* Chart + domain colors */
   --chart-work: #34e5c3;
@@ -203,6 +215,18 @@
   --chart-life: #39ff14;
   --chart-learning: #ffd60a;
   --chart-wellbeing: #f715ab;
+
+  /* Domain badge colors for dark mode */
+  --domain-work-bg: rgba(52, 229, 195, 0.18);
+  --domain-work-text: #34e5c3;
+  --domain-projects-bg: rgba(146, 1, 203, 0.18);
+  --domain-projects-text: #b855e8;
+  --domain-life-bg: rgba(57, 255, 20, 0.18);
+  --domain-life-text: #39ff14;
+  --domain-learning-bg: rgba(255, 214, 10, 0.18);
+  --domain-learning-text: #ffd60a;
+  --domain-wellbeing-bg: rgba(247, 21, 171, 0.18);
+  --domain-wellbeing-text: #f715ab;
 
   /* Priority badge tokens - adjusted for dark mode */
   --priority-high-bg: rgba(254, 202, 202, 0.2);

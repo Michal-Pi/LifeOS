@@ -119,6 +119,9 @@ importers:
       '@tiptap/extension-image':
         specifier: ^3.15.2
         version: 3.15.2(@tiptap/core@3.15.2(@tiptap/pm@3.15.2))
+      '@tiptap/extension-link':
+        specifier: ^3.15.2
+        version: 3.15.2(@tiptap/core@3.15.2(@tiptap/pm@3.15.2))(@tiptap/pm@3.15.2)
       '@tiptap/extension-mathematics':
         specifier: ^3.15.2
         version: 3.15.2(@tiptap/core@3.15.2(@tiptap/pm@3.15.2))(@tiptap/pm@3.15.2)(katex@0.16.27)

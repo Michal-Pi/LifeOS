@@ -62,6 +62,11 @@ export function parseTaskMarkdown(markdown: string): ParseResult {
       continue
     }
 
+    // Skip comment lines
+    if (trimmedLine.startsWith('#')) {
+      continue
+    }
+
     // Task item (bullet point)
     if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
       // Save previous task if exists
@@ -167,8 +172,7 @@ export function parseTaskLine(
     }
   }
 
-  // Keep title empty if missing - validation will catch it
-  task.title = title
+  task.title = title || 'Untitled Task'
 
   // Parse tags
   for (const tag of tags) {

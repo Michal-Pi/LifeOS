@@ -104,7 +104,9 @@ export function useEventOperations({
 
       // Get default calendar ID (from metadata, or fetch user's default)
       const calendarId =
-        (metadata?.calendarId as string | undefined) || (await getDefaultCalendarId(userId))
+        (metadata?.calendarId as string | undefined) ||
+        (await getDefaultCalendarId(userId)) ||
+        'local:primary'
 
       const attendees = data.attendees?.map((email) => ({
         email,
@@ -260,8 +262,10 @@ export function useEventOperations({
       }))
       const updatedEvent: CanonicalCalendarEvent = {
         ...selectedEvent,
+        rev: (selectedEvent.rev ?? 0) + 1,
         updatedAt: new Date(nowMs).toISOString(),
         updatedAtMs: nowMs,
+        canonicalUpdatedAtMs: nowMs,
         startMs,
         endMs,
         startIso: new Date(startMs).toISOString(),

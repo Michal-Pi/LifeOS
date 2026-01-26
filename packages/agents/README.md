@@ -23,6 +23,7 @@ usecases/       # Pure business logic functions
 - **Run**: An execution instance of a workspace processing a user's goal
 - **Message**: Individual interactions between agents during a run
 - **Tool**: Server-side functions that agents can invoke (e.g., create workout, search calendar)
+- **Module**: User-defined tool definitions exposed to agents (UI labels these as modules)
 
 ## Installation
 
@@ -112,6 +113,17 @@ const input = {
 // Validate input
 const validated = CreateAgentInputSchema.parse(input)
 ```
+
+## Custom Modules (Tools)
+
+In the web UI, custom tools are labeled as "Modules" under the Agents page. These are user-defined
+tools with JSON schemas, auth requirements, and optional module scoping (`allowedModules`) for
+limiting availability.
+
+Relevant UI/logic:
+
+- `apps/web-vite/src/pages/AgentsPage.tsx` (Modules section)
+- `apps/web-vite/src/components/agents/ToolBuilderModal.tsx`
 
 ## Domain Models
 

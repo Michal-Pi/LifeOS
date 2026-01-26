@@ -11,7 +11,7 @@ users/{userId}/calendars/{calendarId}
 users/{userId}/calendarSyncState/{stateKey}
 users/{userId}/compositeEvents/{compositeId}
 users/{userId}/projects/{projectId}
-users/{userId}/milestones/{milestoneId}
+users/{userId}/chapters/{chapterId}
 users/{userId}/tasks/{taskId}
 users/{userId}/notes/{noteId}
 users/{userId}/topics/{topicId}
@@ -92,14 +92,14 @@ interface CanonicalCalendarEvent {
 
 See `packages/calendar/src/domain/models.ts` and `packages/calendar/src/domain/recurrence/types.ts` for full definitions.
 
-## Todos (Projects / Milestones / Tasks)
+## Todos (Projects / Chapters / Tasks)
 
 Types live in `apps/web-vite/src/types/todo.ts`.
 
 Collections:
 
 - `users/{userId}/projects`
-- `users/{userId}/milestones`
+- `users/{userId}/chapters`
 - `users/{userId}/tasks`
 
 ```ts
@@ -113,7 +113,7 @@ interface CanonicalProject {
   archived: boolean
 }
 
-interface CanonicalMilestone {
+interface CanonicalChapter {
   id: string
   projectId: string
   userId: string

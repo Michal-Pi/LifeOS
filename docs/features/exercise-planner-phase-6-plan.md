@@ -23,13 +23,13 @@ Based on PRD Addendum (lines 512-853), this phase implements:
 
 ## Implementation Phases
 
-### Milestone T1: Training Domain Package (Steps 1-6)
+### Chapter T1: Training Domain Package (Steps 1-6)
 
-### Milestone T2: Firestore Adapters & Hooks (Steps 7-12)
+### Chapter T2: Firestore Adapters & Hooks (Steps 7-12)
 
-### Milestone T3: UI Components (Steps 13-18)
+### Chapter T3: UI Components (Steps 13-18)
 
-### Milestone T4: Integration & Polish (Steps 19-22)
+### Chapter T4: Integration & Polish (Steps 19-22)
 
 ---
 

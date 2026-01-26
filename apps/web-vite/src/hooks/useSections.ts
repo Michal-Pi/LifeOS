@@ -12,6 +12,7 @@ import type {
   Section,
   SectionId,
   TopicId,
+  SectionFilters,
   CreateSectionInput,
   UpdateSectionInput,
 } from '@lifeos/notes'
@@ -24,7 +25,7 @@ export interface UseSectionsReturn {
   updateSection: (sectionId: SectionId, updates: UpdateSectionInput) => Promise<Section>
   deleteSection: (sectionId: SectionId) => Promise<void>
   getSection: (sectionId: SectionId) => Promise<Section | null>
-  listSections: (topicId?: TopicId) => Promise<Section[]>
+  listSections: (filters?: SectionFilters) => Promise<Section[]>
   reorderSections: (sectionIds: SectionId[]) => Promise<void>
 }
 
@@ -148,7 +149,7 @@ export function useSections(topicId?: TopicId): UseSectionsReturn {
 
   // List sections (optionally filtered by topic)
   const listSections = useCallback(
-    async (filterTopicId?: TopicId): Promise<Section[]> => {
+    async (filters?: SectionFilters): Promise<Section[]> => {
       if (!userId) {
         throw new Error('User not authenticated')
       }
@@ -157,7 +158,7 @@ export function useSections(topicId?: TopicId): UseSectionsReturn {
       setError(null)
 
       try {
-        const fetchedSections = await sectionRepository.list(userId, filterTopicId)
+        const fetchedSections = await sectionRepository.list(userId, filters)
         setSections(fetchedSections.sort((a, b) => a.order - b.order))
         return fetchedSections
       } catch (err) {
@@ -208,7 +209,7 @@ export function useSections(topicId?: TopicId): UseSectionsReturn {
   // Load initial sections when user is authenticated or topicId changes
   useEffect(() => {
     if (userId) {
-      listSections(topicId).catch(console.error)
+      listSections(topicId ? { topicId } : undefined).catch(console.error)
     }
   }, [userId, topicId, listSections])
 

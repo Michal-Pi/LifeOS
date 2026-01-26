@@ -7,7 +7,7 @@ LifeOS is a personal productivity and knowledge management system built as a Vit
 LifeOS helps you organize daily work and long-term goals through:
 
 - Calendar-first planning with Google sync
-- Project/milestone/task management
+- Project/chapter/task management
 - Daily overview + weekly review
 - Quote-based inspiration
 - Notes and knowledge capture with Notion-style block editor
@@ -39,6 +39,13 @@ Start here:
 - `docs/DATA_MODELS.md`
 - `DEPLOYMENT.md`
 
+AI agents guides:
+
+- `docs/features/expert-council-user-guide.md`
+- `docs/features/project-manager-user-guide.md`
+- `docs/features/deep-research-user-guide.md`
+- `docs/features/writing-agents-guide.md`
+
 ## Current Features
 
 ### Calendar
@@ -50,9 +57,9 @@ Start here:
 - Google Calendar bidirectional sync
 - Offline-first patterns + outbox
 
-### Todos (Projects/Milestones/Tasks)
+### Todos (Projects/Chapters/Tasks)
 
-- Hierarchical project → milestone → task model
+- Hierarchical project → chapter → task model
 - Task detail sidebar + scheduling into calendar
 - Priority/urgency/importance support
 - Firestore-backed persistence

@@ -2,9 +2,9 @@
 
 ## Hierarchy Navigation
 
-- Sidebar shows projects and milestones.
-- Selecting a project or milestone filters the task list.
-- Project/Milestone objectives and key results render above the task list.
+- Sidebar shows projects and chapters.
+- Selecting a project or chapter filters the task list.
+- Project/Chapter objectives and key results render above the task list.
 
 ## Task Editing
 
@@ -30,3 +30,8 @@ Priority view groups tasks into:
 - This Month
 - Specific Deadline (dated > 30 days)
 - Parking Lot (no due date)
+
+## Project Insights Page
+
+- `ProjectsPage` surfaces per-project progress and time allocation.
+- Import from Markdown is available from the insights header.

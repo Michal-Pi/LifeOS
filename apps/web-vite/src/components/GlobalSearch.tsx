@@ -2,18 +2,18 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
-import type { CanonicalProject, CanonicalMilestone, CanonicalTask } from '@/types/todo'
+import type { CanonicalProject, CanonicalChapter, CanonicalTask } from '@/types/todo'
 
 type SearchResult =
   | { type: 'project'; item: CanonicalProject; context?: string }
-  | { type: 'milestone'; item: CanonicalMilestone; context?: string }
+  | { type: 'chapter'; item: CanonicalChapter; context?: string }
   | { type: 'task'; item: CanonicalTask; context?: string }
 
 export function GlobalSearch() {
   const { user, loading: authLoading } = useAuth()
   const userId = user?.uid ?? ''
   const navigate = useNavigate()
-  const { projects, milestones, tasks, loadData } = useTodoOperations({ userId })
+  const { projects, chapters, tasks, loadData } = useTodoOperations({ userId })
 
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -33,7 +33,7 @@ export function GlobalSearch() {
     const lowerQuery = query.toLowerCase()
     const newResults: SearchResult[] = []
     const projectById = new Map(projects.map((project) => [project.id, project]))
-    const milestoneById = new Map(milestones.map((milestone) => [milestone.id, milestone]))
+    const chapterById = new Map(chapters.map((chapter) => [chapter.id, chapter]))
 
     // Search Projects
     projects.forEach((p) => {
@@ -42,10 +42,10 @@ export function GlobalSearch() {
       }
     })
 
-    // Search Milestones
-    milestones.forEach((m) => {
+    // Search Chapters
+    chapters.forEach((m) => {
       if (m.title.toLowerCase().includes(lowerQuery)) {
-        newResults.push({ type: 'milestone', item: m })
+        newResults.push({ type: 'chapter', item: m })
       }
     })
 
@@ -55,14 +55,14 @@ export function GlobalSearch() {
       const projectMatch = t.projectId
         ? projectById.get(t.projectId)?.title.toLowerCase().includes(lowerQuery)
         : false
-      const milestoneMatch = t.milestoneId
-        ? milestoneById.get(t.milestoneId)?.title.toLowerCase().includes(lowerQuery)
+      const chapterMatch = t.chapterId
+        ? chapterById.get(t.chapterId)?.title.toLowerCase().includes(lowerQuery)
         : false
 
-      if (taskMatch || projectMatch || milestoneMatch) {
+      if (taskMatch || projectMatch || chapterMatch) {
         const projectTitle = t.projectId ? projectById.get(t.projectId)?.title : undefined
-        const milestoneTitle = t.milestoneId ? milestoneById.get(t.milestoneId)?.title : undefined
-        const contextParts = [projectTitle, milestoneTitle].filter(Boolean)
+        const chapterTitle = t.chapterId ? chapterById.get(t.chapterId)?.title : undefined
+        const contextParts = [projectTitle, chapterTitle].filter(Boolean)
         newResults.push({
           type: 'task',
           item: t,
@@ -72,7 +72,7 @@ export function GlobalSearch() {
     })
 
     return newResults.slice(0, 10)
-  }, [query, projects, milestones, tasks])
+  }, [query, projects, chapters, tasks])
 
   // Close on click outside
   useEffect(() => {
@@ -96,8 +96,8 @@ export function GlobalSearch() {
       navigate(`/planner?taskId=${result.item.id}`)
     } else if (result.type === 'project') {
       navigate(`/planner?projectId=${result.item.id}`)
-    } else if (result.type === 'milestone') {
-      navigate(`/planner?milestoneId=${result.item.id}`)
+    } else if (result.type === 'chapter') {
+      navigate(`/planner?chapterId=${result.item.id}`)
     }
   }
 
@@ -125,7 +125,9 @@ export function GlobalSearch() {
         <ul className="search-results">
           {results.map((result) => (
             <li key={`${result.type}-${result.item.id}`} onClick={() => handleSelect(result)}>
-              <span className="result-type">{result.type}</span>
+              <span className="result-type">
+                {result.type === 'chapter' ? 'chapter' : result.type}
+              </span>
               <span className="result-title">{result.item.title}</span>
               {result.context && <span className="result-context">{result.context}</span>}
             </li>

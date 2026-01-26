@@ -13,10 +13,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
+import { useDeepResearch } from '@/hooks/useDeepResearch'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
+import { useProjectManager } from '@/hooks/useProjectManager'
 import { RunWorkspaceModal } from '@/components/agents/RunWorkspaceModal'
 import { RunCard } from '@/components/agents/RunCard'
 import { WorkflowGraphView } from '@/components/agents/WorkflowGraphView'
+import { ResearchQueue } from '@/components/agents/ResearchQueue'
 import type { WorkspaceId, RunStatus } from '@lifeos/agents'
 import { useDialog } from '@/contexts/useDialog'
 
@@ -27,6 +30,8 @@ export function WorkspaceDetailPage() {
   const { workspace, runs, isLoading, getWorkspace, loadRuns, deleteRun, updateRun } =
     useWorkspaceOperations()
   const { agents, loadAgents } = useAgentOperations()
+  const { requests: researchRequests } = useDeepResearch(workspaceId as WorkspaceId)
+  const { profile: projectManagerProfile } = useProjectManager(workspaceId as WorkspaceId)
 
   const [showRunModal, setShowRunModal] = useState(false)
   const [resumeSeed, setResumeSeed] = useState<{
@@ -35,6 +40,7 @@ export function WorkspaceDetailPage() {
   } | null>(null)
   const [statusFilter, setStatusFilter] = useState<RunStatus | 'all'>('all')
   const [currentTime, setCurrentTime] = useState(() => Date.now())
+  const [showProjectManager, setShowProjectManager] = useState(true)
 
   useEffect(() => {
     if (workspaceId) {
@@ -169,6 +175,30 @@ export function WorkspaceDetailPage() {
           </div>
         </div>
 
+        {workspace.projectManagerConfig?.enabled && (
+          <div className="info-card">
+            <h3>Project Manager</h3>
+            <div className="info-row">
+              <strong>Status:</strong> <span className="badge">Enabled</span>
+            </div>
+            <div className="info-row">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showProjectManager}
+                  onChange={(event) => setShowProjectManager(event.target.checked)}
+                />
+                <span>Show Project Manager interface</span>
+              </label>
+            </div>
+            {projectManagerProfile && (
+              <div className="info-row">
+                <strong>Expertise:</strong> {projectManagerProfile.expertiseLevel}
+              </div>
+            )}
+          </div>
+        )}
+
         {workspace.workflowGraph && (
           <div className="info-card">
             <h3>Workflow Graph</h3>
@@ -200,6 +230,13 @@ export function WorkspaceDetailPage() {
             ))}
           </ul>
         </div>
+      </div>
+
+      <div className="runs-section">
+        <div className="section-header">
+          <h2>Research Queue</h2>
+        </div>
+        <ResearchQueue workspaceId={workspaceId as WorkspaceId} />
       </div>
 
       <div className="runs-section">
@@ -236,7 +273,11 @@ export function WorkspaceDetailPage() {
               <RunCard
                 key={run.runId}
                 run={run}
+                workspace={workspace}
+                workspaceId={workspaceId as WorkspaceId}
+                researchRequests={researchRequests}
                 currentTime={currentTime}
+                showProjectManager={showProjectManager}
                 onDelete={handleDeleteRun}
                 onResume={handleResumeRun}
                 onProvideInput={handleProvideInput}

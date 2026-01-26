@@ -19,7 +19,7 @@ A fully-powered, offline-capable note-taking and learning management system with
 - ✅ **Offline-First** - Full offline capability with IndexedDB
 - ✅ **Organization** - Topics → Sections → Notes hierarchy
 - ✅ **Project Integration** - Link notes to Projects and OKRs
-- ✅ **Learning Projects** - Track learning with milestones and Key Results
+- ✅ **Learning Projects** - Track learning with chapters and Key Results
 
 ## Architecture
 
@@ -413,7 +413,7 @@ apps/web-vite/src/
 - [ ] Show linked notes in project detail view (Deferred to Phase 7)
 - [ ] Show linked notes in OKR detail view (Deferred to Phase 7)
 - [ ] Add "Create learning project" workflow (Deferred to Phase 7)
-- [ ] Implement learning milestones (Deferred to Phase 7)
+- [ ] Implement learning chapters (Deferred to Phase 7)
 
 #### Files to Create
 
@@ -437,7 +437,7 @@ apps/web-vite/src/
 - ⬜ Notes can be linked to specific OKRs (Deferred to Phase 7)
 - ⬜ Projects show all linked notes (Deferred to Phase 7)
 - ⬜ Special "Learning Project" template (Deferred to Phase 7)
-- ⬜ Learning milestones integrated with KRs (Deferred to Phase 7)
+- ⬜ Learning chapters integrated with KRs (Deferred to Phase 7)
 
 **Git Commit:**
 

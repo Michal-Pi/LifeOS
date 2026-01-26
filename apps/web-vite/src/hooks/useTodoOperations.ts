@@ -2,9 +2,35 @@ import { useState, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { createLogger } from '@lifeos/calendar'
 import { createFirestoreTodoRepository } from '@/adapters/firestoreTodoRepository'
-import type { CanonicalProject, CanonicalMilestone, CanonicalTask } from '@/types/todo'
+import type { CanonicalProject, CanonicalChapter, CanonicalTask } from '@/types/todo'
 import { generateId } from '@/lib/idGenerator'
 import { mergeTasksForLoad, normalizeTaskForSave } from '@/lib/todoRules'
+import {
+  listProjectsLocally,
+  saveProjectLocally,
+  deleteProjectLocally,
+  listChaptersLocally,
+  saveChapterLocally,
+  deleteChapterLocally,
+  listTasksLocally,
+  saveTaskLocally,
+  deleteTaskLocally,
+  type LocalProject,
+  type LocalChapter,
+  type LocalTask,
+} from '@/todos/offlineStore'
+import {
+  enqueueProjectOp,
+  enqueueChapterOp,
+  enqueueTaskOp,
+  type ProjectCreatePayload,
+  type ProjectDeletePayload,
+  type ChapterCreatePayload,
+  type ChapterDeletePayload,
+  type TaskCreatePayload,
+  type TaskUpdatePayload,
+  type TaskDeletePayload,
+} from '@/todos/todoOutbox'
 
 const logger = createLogger('useTodoOperations')
 const todoRepository = createFirestoreTodoRepository()
@@ -15,7 +41,7 @@ interface UseTodoOperationsProps {
 
 export function useTodoOperations({ userId }: UseTodoOperationsProps) {
   const [projects, setProjects] = useState<CanonicalProject[]>([])
-  const [milestones, setMilestones] = useState<CanonicalMilestone[]>([])
+  const [chapters, setChapters] = useState<CanonicalChapter[]>([])
   const [tasks, setTasks] = useState<CanonicalTask[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -29,22 +55,86 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
       }
       if (lastUserIdRef.current && lastUserIdRef.current !== userId) {
         setProjects([])
-        setMilestones([])
+        setChapters([])
         setTasks([])
       }
       setLoading(true)
       try {
         const includeTasks = options?.includeTasks !== false
-        const [loadedProjects, loadedMilestones, loadedTasks] = await Promise.all([
-          todoRepository.getProjects(userId),
-          todoRepository.getMilestones(userId),
-          includeTasks ? todoRepository.getTasks(userId) : Promise.resolve([]),
+
+        // Load from IndexedDB first (instant response)
+        const [localProjects, localChapters, localTasks] = await Promise.all([
+          listProjectsLocally(userId),
+          listChaptersLocally(userId),
+          includeTasks ? listTasksLocally(userId) : Promise.resolve([]),
         ])
-        setProjects(loadedProjects)
-        setMilestones(loadedMilestones)
+
+        // Update state with local data immediately
+        setProjects(localProjects)
+        setChapters(localChapters)
         if (includeTasks) {
-          setTasks((prev) => mergeTasksForLoad(prev, loadedTasks, loadedProjects))
+          setTasks((prev) => mergeTasksForLoad(prev, localTasks, localProjects))
         }
+
+        try {
+          const [remoteProjects, remoteChapters, remoteTasks] = await Promise.all([
+            todoRepository.getProjects(userId),
+            todoRepository.getChapters(userId),
+            includeTasks ? todoRepository.getTasks(userId) : Promise.resolve([]),
+          ])
+
+          for (const project of remoteProjects) {
+            await saveProjectLocally({ ...project, syncState: 'synced' })
+          }
+          for (const chapter of remoteChapters) {
+            await saveChapterLocally({ ...chapter, syncState: 'synced' })
+          }
+          for (const task of remoteTasks) {
+            await saveTaskLocally({ ...task, syncState: 'synced' })
+          }
+
+          setProjects((prev) => {
+            const prevMap = new Map(prev.map((p) => [p.id, p]))
+            const updated = remoteProjects.map((p) => {
+              const local = prevMap.get(p.id)
+              if (!local || p.updatedAt >= local.updatedAt) {
+                return { ...p, syncState: 'synced' as const }
+              }
+              return local
+            })
+            return updated.length !== prev.length || updated.some((p, i) => p.id !== prev[i]?.id)
+              ? updated
+              : prev
+          })
+
+          setChapters((prev) => {
+            const prevMap = new Map(prev.map((c) => [c.id, c]))
+            const updated = remoteChapters.map((c) => {
+              const local = prevMap.get(c.id)
+              if (!local || c.updatedAt >= local.updatedAt) {
+                return { ...c, syncState: 'synced' as const }
+              }
+              return local
+            })
+            return updated.length !== prev.length || updated.some((c, i) => c.id !== prev[i]?.id)
+              ? updated
+              : prev
+          })
+
+          if (includeTasks) {
+            setTasks((prev) => {
+              const merged = mergeTasksForLoad(prev, remoteTasks, remoteProjects)
+              return merged.length !== prev.length || merged.some((t, i) => t.id !== prev[i]?.id)
+                ? merged
+                : prev
+            })
+          }
+        } catch (err: unknown) {
+          const error = err as Error
+          logger.error('Failed to sync from Firestore:', error)
+          // Don't show error toast - local data is already loaded
+        }
+
         lastUserIdRef.current = userId
       } catch (err: unknown) {
         const error = err as Error
@@ -62,17 +152,43 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
   )
 
   const loadTasks = useCallback(
-    async (options?: { projectId?: string; milestoneId?: string }) => {
+    async (options?: { projectId?: string; chapterId?: string }) => {
       if (!userId) return
       if (lastUserIdRef.current && lastUserIdRef.current !== userId) {
         setProjects([])
-        setMilestones([])
+        setChapters([])
         setTasks([])
       }
       setLoading(true)
       try {
-        const loadedTasks = await todoRepository.getTasks(userId, options)
-        setTasks((prev) => mergeTasksForLoad(prev, loadedTasks, projects))
+        // Load from IndexedDB first
+        let localTasks = await listTasksLocally(userId)
+
+        // Filter by options if provided
+        if (options?.chapterId) {
+          localTasks = localTasks.filter((t) => t.chapterId === options.chapterId)
+        } else if (options?.projectId) {
+          localTasks = localTasks.filter((t) => t.projectId === options.projectId)
+        }
+
+        // Update state with local data immediately
+        setTasks((prev) => mergeTasksForLoad(prev, localTasks, projects))
+
+        // Fire Firestore request in background
+        todoRepository
+          .getTasks(userId, options)
+          .then(async (remoteTasks) => {
+            // Update IndexedDB with server data
+            for (const task of remoteTasks) {
+              await saveTaskLocally({ ...task, syncState: 'synced' })
+            }
+            // Update state
+            setTasks((prev) => mergeTasksForLoad(prev, remoteTasks, projects))
+          })
+          .catch((err) => {
+            logger.error('Failed to sync tasks from Firestore:', err)
+          })
+
         lastUserIdRef.current = userId
       } catch (err) {
         logger.error('Failed to load tasks:', err)
@@ -98,19 +214,26 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
         updatedAt: now,
       }
 
-      // Optimistic update
-      setProjects((prev) => [...prev, newProject])
+      // Save to IndexedDB immediately with 'pending' sync state
+      const localProject: LocalProject = { ...newProject, syncState: 'pending' }
+      await saveProjectLocally(localProject)
 
-      try {
-        await todoRepository.saveProject(newProject)
-        return newProject.id
-      } catch (err) {
-        logger.error('Failed to create project:', err)
-        setError((err as Error).message)
-        // Revert optimistic update
-        setProjects((prev) => prev.filter((p) => p.id !== newProject.id))
-        throw err
+      // Queue operation in outbox
+      await enqueueProjectOp('create', userId, newProject.id, {
+        project: newProject,
+      } as ProjectCreatePayload)
+
+      // Optimistic update
+      setProjects((prev) => [...prev, localProject])
+
+      // Try to sync immediately if online (don't block)
+      if (navigator.onLine) {
+        todoRepository.saveProject(newProject).catch((err) => {
+          logger.error('Failed to sync project:', err)
+        })
       }
+
+      return newProject.id
     },
     [userId]
   )
@@ -120,70 +243,90 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
       const projectToDelete = projects.find((p) => p.id === projectId)
       if (!projectToDelete) return
 
+      // Delete from IndexedDB immediately
+      await deleteProjectLocally(projectId)
+
+      // Queue operation in outbox
+      await enqueueProjectOp('delete', userId, projectId, {
+        projectId,
+      } as ProjectDeletePayload)
+
       // Optimistic update
       setProjects((prev) => prev.filter((p) => p.id !== projectId))
 
-      try {
-        await todoRepository.deleteProject(userId, projectId)
-      } catch (err) {
-        logger.error('Failed to delete project:', err)
-        setError((err as Error).message)
-        // Revert optimistic update
-        setProjects((prev) => [...prev, projectToDelete])
+      // Try to sync immediately if online (don't block)
+      if (navigator.onLine) {
+        todoRepository.deleteProject(userId, projectId).catch((err) => {
+          logger.error('Failed to sync project deletion:', err)
+        })
       }
     },
     [projects, userId]
   )
 
-  // --- Milestones ---
-  const createMilestone = useCallback(
-    async (
-      milestoneData: Omit<CanonicalMilestone, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
-    ) => {
+  // --- Chapters ---
+  const createChapter = useCallback(
+    async (chapterData: Omit<CanonicalChapter, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
       const now = new Date().toISOString()
-      const newMilestone: CanonicalMilestone = {
-        ...milestoneData,
+      const newChapter: CanonicalChapter = {
+        ...chapterData,
         id: generateId(),
         userId,
         createdAt: now,
         updatedAt: now,
       }
 
-      setMilestones((prev) => [...prev, newMilestone])
+      // Save to IndexedDB immediately
+      const localChapter: LocalChapter = { ...newChapter, syncState: 'pending' }
+      await saveChapterLocally(localChapter)
 
-      try {
-        await todoRepository.saveMilestone(newMilestone)
-      } catch (err) {
-        logger.error('Failed to create milestone:', err)
-        setError((err as Error).message)
-        setMilestones((prev) => prev.filter((m) => m.id !== newMilestone.id))
+      // Queue operation in outbox
+      await enqueueChapterOp('create', userId, newChapter.id, {
+        chapter: newChapter,
+      } as ChapterCreatePayload)
+
+      setChapters((prev) => [...prev, localChapter])
+
+      // Try to sync immediately if online (don't block)
+      if (navigator.onLine) {
+        todoRepository.saveChapter(newChapter).catch((err) => {
+          logger.error('Failed to sync chapter:', err)
+        })
       }
     },
     [userId]
   )
 
-  const deleteMilestone = useCallback(
-    async (milestoneId: string) => {
-      const milestoneToDelete = milestones.find((m) => m.id === milestoneId)
-      if (!milestoneToDelete) return
+  const deleteChapter = useCallback(
+    async (chapterId: string) => {
+      const chapterToDelete = chapters.find((c) => c.id === chapterId)
+      if (!chapterToDelete) return
 
-      setMilestones((prev) => prev.filter((m) => m.id !== milestoneId))
+      // Delete from IndexedDB immediately
+      await deleteChapterLocally(chapterId)
 
-      try {
-        await todoRepository.deleteMilestone(userId, milestoneId)
-      } catch (err) {
-        logger.error('Failed to delete milestone:', err)
-        setError((err as Error).message)
-        setMilestones((prev) => [...prev, milestoneToDelete])
+      // Queue operation in outbox
+      await enqueueChapterOp('delete', userId, chapterId, {
+        chapterId,
+      } as ChapterDeletePayload)
+
+      setChapters((prev) => prev.filter((c) => c.id !== chapterId))
+
+      // Try to sync immediately if online (don't block)
+      if (navigator.onLine) {
+        todoRepository.deleteChapter(userId, chapterId).catch((err) => {
+          logger.error('Failed to sync chapter deletion:', err)
+        })
       }
     },
-    [userId, milestones]
+    [userId, chapters]
   )
 
   // --- Tasks ---
   const createTask = useCallback(
     async (
-      taskData: Omit<CanonicalTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+      taskData: Omit<CanonicalTask, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
+      options?: { suppressToast?: boolean }
     ): Promise<CanonicalTask> => {
       const now = new Date().toISOString()
       const newTask: CanonicalTask = {
@@ -195,22 +338,31 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
       }
       const normalizedTask = normalizeTaskForSave(newTask, projects)
 
-      setTasks((prev) => [...prev, normalizedTask])
+      // Save to IndexedDB immediately with 'pending' sync state
+      const localTask: LocalTask = { ...normalizedTask, syncState: 'pending' }
+      await saveTaskLocally(localTask)
 
-      try {
-        await todoRepository.saveTask(normalizedTask)
+      // Queue operation in outbox
+      await enqueueTaskOp('create', userId, normalizedTask.id, {
+        task: normalizedTask,
+      } as TaskCreatePayload)
+
+      // Optimistic update
+      setTasks((prev) => [...prev, localTask])
+
+      // Show success message
+      if (!options?.suppressToast) {
         toast.success('Task created successfully')
-        return normalizedTask
-      } catch (err) {
-        logger.error('Failed to create task:', err)
-        const errorMessage = (err as Error).message
-        setError(errorMessage)
-        setTasks((prev) => prev.filter((t) => t.id !== normalizedTask.id))
-        toast.error('Failed to create task', {
-          description: errorMessage,
-        })
-        throw err
       }
+
+      // Try to sync immediately if online (don't block)
+      if (navigator.onLine) {
+        todoRepository.saveTask(normalizedTask).catch((err) => {
+          logger.error('Failed to sync task:', err)
+        })
+      }
+
+      return normalizedTask
     },
     [userId, projects]
   )
@@ -235,24 +387,29 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
         }
       }
 
-      // Optimistic update
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? normalizedTask : t)))
+      // Save to IndexedDB immediately
+      const localTask: LocalTask = { ...normalizedTask, syncState: 'pending' }
+      await saveTaskLocally(localTask)
 
-      try {
-        await todoRepository.saveTask(normalizedTask)
-        toast.success('Task updated successfully')
-      } catch (err) {
-        logger.error('Failed to update task:', err)
-        const errorMessage = (err as Error).message
-        setError(errorMessage)
-        // Revert optimistic update
-        setTasks((prev) => prev.map((t) => (t.id === task.id ? task : t)))
-        toast.error('Failed to update task', {
-          description: errorMessage,
+      // Queue operation in outbox
+      await enqueueTaskOp('update', userId, normalizedTask.id, {
+        taskId: normalizedTask.id,
+        updates: normalizedTask,
+      } as TaskUpdatePayload)
+
+      // Optimistic update
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? localTask : t)))
+
+      toast.success('Task updated successfully')
+
+      // Try to sync immediately if online (don't block)
+      if (navigator.onLine) {
+        todoRepository.saveTask(normalizedTask).catch((err) => {
+          logger.error('Failed to sync task update:', err)
         })
       }
     },
-    [projects]
+    [userId, projects]
   )
 
   const deleteTask = useCallback(
@@ -260,18 +417,22 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
       const taskToDelete = tasks.find((t) => t.id === taskId)
       if (!taskToDelete) return
 
+      // Delete from IndexedDB immediately
+      await deleteTaskLocally(taskId)
+
+      // Queue operation in outbox
+      await enqueueTaskOp('delete', userId, taskId, {
+        taskId,
+      } as TaskDeletePayload)
+
       setTasks((prev) => prev.filter((t) => t.id !== taskId))
 
-      try {
-        await todoRepository.deleteTask(userId, taskId)
-        toast.success('Task deleted successfully')
-      } catch (err) {
-        logger.error('Failed to delete task:', err)
-        const errorMessage = (err as Error).message
-        setError(errorMessage)
-        setTasks((prev) => [...prev, taskToDelete])
-        toast.error('Failed to delete task', {
-          description: errorMessage,
+      toast.success('Task deleted successfully')
+
+      // Try to sync immediately if online (don't block)
+      if (navigator.onLine) {
+        todoRepository.deleteTask(userId, taskId).catch((err) => {
+          logger.error('Failed to sync task deletion:', err)
         })
       }
     },
@@ -306,7 +467,7 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
 
   return {
     projects,
-    milestones,
+    chapters,
     tasks,
     loading,
     error,
@@ -314,8 +475,8 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
     loadTasks,
     createProject,
     deleteProject,
-    createMilestone,
-    deleteMilestone,
+    createChapter,
+    deleteChapter,
     createTask,
     updateTask,
     deleteTask,

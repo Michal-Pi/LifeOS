@@ -26,6 +26,7 @@ export type RunEvent = {
   toolName?: string
   toolCallId?: string
   toolResult?: unknown
+  details?: Record<string, unknown>
 }
 
 export type RunEventWriter = {

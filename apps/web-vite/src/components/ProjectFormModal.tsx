@@ -130,11 +130,7 @@ export function ProjectFormModal({
         <div className="modal-header">
           <div>
             <h2>New Project</h2>
-            <button
-              type="button"
-              className="import-projects-link"
-              onClick={handleImportClick}
-            >
+            <button type="button" className="import-projects-link" onClick={handleImportClick}>
               Import Projects
             </button>
           </div>

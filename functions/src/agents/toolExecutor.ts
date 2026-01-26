@@ -17,6 +17,7 @@ import type {
   ToolId,
   ExpertCouncilConfig,
   ExecutionMode,
+  PromptReference,
 } from '@lifeos/agents'
 import { executeExpertCouncilUsecase } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
@@ -28,6 +29,7 @@ import {
   createExpertCouncilPipeline,
   createExpertCouncilRepository,
 } from './expertCouncil.js'
+import { resolvePrompt } from './promptResolver.js'
 import { loadProviderKeys } from './providerKeys.js'
 import { TOOL_RETRY_CONFIG, executeWithRetry } from './retryHelper.js'
 import type { RunEventWriter } from './runEvents.js'
@@ -626,7 +628,10 @@ registerTool({
       throw new Error('Workspace not found.')
     }
 
-    const workspaceData = workspaceDoc.data() as { expertCouncilConfig?: ExpertCouncilConfig }
+    const workspaceData = workspaceDoc.data() as {
+      expertCouncilConfig?: ExpertCouncilConfig
+      promptConfig?: { synthesisPrompts?: Record<string, unknown> }
+    }
     const councilConfig = workspaceData.expertCouncilConfig
 
     if (!councilConfig?.enabled) {
@@ -634,6 +639,26 @@ registerTool({
     }
 
     const apiKeys = await loadProviderKeys(context.userId)
+    let resolvedCouncilConfig = councilConfig
+
+    const synthesisPrompt = workspaceData.promptConfig?.synthesisPrompts?.default
+    if (synthesisPrompt) {
+      try {
+        const resolvedPrompt = await resolvePrompt(
+          context.userId,
+          synthesisPrompt as PromptReference
+        )
+        resolvedCouncilConfig = {
+          ...councilConfig,
+          chairmanModel: {
+            ...councilConfig.chairmanModel,
+            systemPrompt: resolvedPrompt,
+          },
+        }
+      } catch (error) {
+        console.warn('Unable to resolve synthesis prompt for Expert Council.', error)
+      }
+    }
     const repository = createExpertCouncilRepository()
     const pipeline = createExpertCouncilPipeline({
       apiKeys,
@@ -647,7 +672,7 @@ registerTool({
       context.userId,
       context.runId as RunId,
       prompt.trim(),
-      councilConfig,
+      resolvedCouncilConfig,
       mode,
       context.workspaceId as WorkspaceId,
       contextHash

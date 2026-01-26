@@ -79,6 +79,12 @@
   text-decoration: line-through;
 }
 
+.task-row.spacing-top {
+  margin-top: 1rem;
+  border-top: 2px solid var(--border-strong);
+  padding-top: 0.75rem;
+}
+
 .task-cell {
   padding: 0 var(--space-2);
   white-space: nowrap;
@@ -120,4 +126,82 @@
   font-family: var(--font-mono);
   font-weight: bold;
   color: var(--accent);
+}
+
+.domain-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+  color: var(--secondary-foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+/* Domain-specific badge colors */
+.domain-badge-work {
+  background: var(--domain-work-bg);
+  color: var(--domain-work-text);
+  border-color: var(--domain-work-text);
+}
+
+.domain-badge-projects {
+  background: var(--domain-projects-bg);
+  color: var(--domain-projects-text);
+  border-color: var(--domain-projects-text);
+}
+
+.domain-badge-life {
+  background: var(--domain-life-bg);
+  color: var(--domain-life-text);
+  border-color: var(--domain-life-text);
+}
+
+.domain-badge-learning {
+  background: var(--domain-learning-bg);
+  color: var(--domain-learning-text);
+  border-color: var(--domain-learning-text);
+}
+
+.domain-badge-wellbeing {
+  background: var(--domain-wellbeing-bg);
+  color: var(--domain-wellbeing-text);
+  border-color: var(--domain-wellbeing-text);
+}
+
+.urgency-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Urgency: Today/Overdue - Critical/Error */
+.urgency-badge.today {
+  background: var(--error-light);
+  color: var(--error-color);
+}
+
+/* Urgency: Next 3 Days - Warning/Urgent */
+.urgency-badge.next_3_days {
+  background: var(--warning-light);
+  color: var(--warning-color);
+}
+
+/* Urgency: This Week - Info/Attention */
+.urgency-badge.this_week {
+  background: var(--info-light);
+  color: var(--info-color);
+}
+
+/* Urgency: This Month, Next Month, Later - Neutral/Muted */
+.urgency-badge.this_month,
+.urgency-badge.next_month,
+.urgency-badge.later {
+  background: var(--muted);
+  color: var(--text-label);
 }
