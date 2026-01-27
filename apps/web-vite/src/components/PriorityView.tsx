@@ -58,11 +58,6 @@ export function PriorityView({
                           style={{ backgroundColor: taskColor }}
                         />
                       )}
-                      <div
-                        className={`task-card-badge ${project ? 'task-card-badge-project' : `task-card-badge-domain-${task.domain}`}`}
-                      >
-                        {badgeLabel}
-                      </div>
                       <div className="task-card-header">
                         <input
                           type="checkbox"
@@ -76,6 +71,9 @@ export function PriorityView({
                         <span className="task-title">{task.title}</span>
                       </div>
                       <div className="task-card-meta">
+                        <span className={`meta-tag ${project ? 'task-card-badge-project' : `task-card-badge-domain-${task.domain}`}`}>
+                          {badgeLabel}
+                        </span>
                         {task.dueDate && (
                           <span className="meta-tag due-date">Due {task.dueDate}</span>
                         )}

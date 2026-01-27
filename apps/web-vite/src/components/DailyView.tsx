@@ -145,6 +145,7 @@ export function DailyView({
   onEventSelect,
   selectedEventId,
   calendarsById = new Map(),
+  loading = false,
 }: DailyViewProps) {
   const timelineRef = useRef<HTMLDivElement>(null)
   const now = useMemo(() => new Date(), [])

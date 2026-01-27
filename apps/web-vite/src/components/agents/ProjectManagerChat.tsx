@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Conflict, UserProfile } from '@lifeos/agents'
 import { ConflictResolutionPanel } from './ConflictResolutionPanel'
+import { Button } from '@/components/ui/button'
 import './ProjectManagerChat.css'
 
 type ClarificationQuestion = {
@@ -79,16 +80,16 @@ export function ProjectManagerChat({
           <section className="pm-section">
             <header className="pm-section__header">
               <h3>Clarification Questions</h3>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
-                className="ghost-button"
                 onClick={() => {
                   setExpertCouncilUsed(true)
                   onRequestExpertCouncil?.()
                 }}
               >
                 Consult Expert Council
-              </button>
+              </Button>
             </header>
             <div className="pm-questions">
               {clarificationQuestions.map((question) => (
@@ -105,9 +106,8 @@ export function ProjectManagerChat({
                     }
                     placeholder="Share your answer..."
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="primary-button"
                     onClick={() => {
                       const answer = answers[question.questionId] ?? ''
                       onAnswerQuestion?.(question.questionId, answer)
@@ -115,7 +115,7 @@ export function ProjectManagerChat({
                     }}
                   >
                     Submit answer
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -127,7 +127,8 @@ export function ProjectManagerChat({
             <h3>Decision Options</h3>
             <div className="pm-options">
               {decisionOptions.map((option) => (
-                <button
+                <Button
+                  variant="ghost"
                   key={option.optionId}
                   type="button"
                   className="pm-option-card"
@@ -138,7 +139,7 @@ export function ProjectManagerChat({
                 >
                   <strong>{option.label}</strong>
                   {option.description && <p>{option.description}</p>}
-                </button>
+                </Button>
               ))}
             </div>
           </section>
@@ -154,22 +155,19 @@ export function ProjectManagerChat({
             <h3>How helpful was this Project Manager session?</h3>
             <div className="pm-options">
               {[1, 2, 3, 4, 5].map((rating) => (
-                <button
+                <Button
+                  variant="ghost"
                   key={rating}
                   type="button"
                   className="pm-option-card"
                   onClick={() => void recordInteraction(rating)}
                 >
                   {rating} Star{rating === 1 ? '' : 's'}
-                </button>
+                </Button>
               ))}
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() => void recordInteraction()}
-              >
+              <Button variant="ghost" type="button" onClick={() => void recordInteraction()}>
                 Skip
-              </button>
+              </Button>
             </div>
           </section>
         )}

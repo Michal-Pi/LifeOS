@@ -22,14 +22,27 @@ export function WorkoutSessionCard({ dateKey, variant = 'card' }: WorkoutSession
   const [selectedContext, setSelectedContext] = useState<WorkoutContext>('gym')
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     const loadSessions = async () => {
+      setLoadError(null)
       try {
         const sessions = await getSessionByDate(dateKey)
         setTodaySessions(sessions)
       } catch (error) {
-        console.error('Failed to load workout sessions:', error)
+        // Handle Firebase permissions error gracefully
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load workout sessions'
+        const isPermissionError = errorMessage.includes('permission') || errorMessage.includes('Permission')
+        if (isPermissionError) {
+          setLoadError('Workout data unavailable. Please check your permissions.')
+        } else {
+          setLoadError(errorMessage)
+        }
+        // Only log non-permission errors to avoid console spam
+        if (!isPermissionError) {
+          console.error('Failed to load workout sessions:', error)
+        }
       }
     }
 
@@ -127,8 +140,14 @@ export function WorkoutSessionCard({ dateKey, variant = 'card' }: WorkoutSession
         </div>
       )}
 
+      {loadError && (
+        <div className="training-error-message">
+          <p className="error-text">{loadError}</p>
+        </div>
+      )}
+
       <div className="training-session-status">
-        {completedSessions.length > 0 ? (
+        {loadError ? null : completedSessions.length > 0 ? (
           <div
             className="training-completed"
             onClick={() => handleOpenSessionDetail(completedSessions[0])}

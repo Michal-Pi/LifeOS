@@ -1,5 +1,6 @@
 import type { CanonicalCalendarEvent } from '@lifeos/calendar'
 import { useMemo } from 'react'
+import { Button } from '@/components/ui/button'
 
 interface AgendaViewProps {
   events: CanonicalCalendarEvent[]
@@ -35,8 +36,10 @@ export function AgendaView({ events, onEventSelect, selectedEventId }: AgendaVie
 
   if (events.length === 0) {
     return (
-      <div className="agenda-empty">
+      <div className="calendar-empty-banner">
+        <p className="section-label">Agenda</p>
         <p>No upcoming events scheduled.</p>
+        <p className="calendar-empty-hint">Stay clear for deep work blocks.</p>
       </div>
     )
   }
@@ -54,19 +57,10 @@ export function AgendaView({ events, onEventSelect, selectedEventId }: AgendaVie
   return (
     <div className="agenda-view">
       {hasToday && (
-        <div
-          style={{
-            padding: '8px 16px',
-            position: 'sticky',
-            top: 0,
-            zIndex: 10,
-            backgroundColor: 'var(--card)',
-            borderBottom: '1px solid var(--border)',
-          }}
-        >
-          <button onClick={scrollToToday} className="ghost-button small">
+        <div className="agenda-sticky-bar">
+          <Button variant="ghost" className="small" onClick={scrollToToday}>
             Jump to Today
-          </button>
+          </Button>
         </div>
       )}
 
@@ -96,38 +90,51 @@ export function AgendaView({ events, onEventSelect, selectedEventId }: AgendaVie
                 event.recurrenceV2?.rule ||
                 event.recurrence?.recurrenceRules?.length
               )
+              const timeLabel = event.allDay
+                ? 'All day'
+                : `${timeFormatter.format(new Date(event.startMs))} — ${timeFormatter.format(
+                    new Date(event.endMs)
+                  )}`
+              const attendeeNames =
+                event.attendees
+                  ?.map((attendee) => attendee.displayName || attendee.email || 'Guest')
+                  .filter(Boolean) ?? []
+              const participantsLabel =
+                attendeeNames.length > 0
+                  ? `${attendeeNames.slice(0, 3).join(', ')}${
+                      attendeeNames.length > 3 ? ` +${attendeeNames.length - 3}` : ''
+                    }`
+                  : 'Private focus time'
+              const locationLabel = event.location ?? 'No location'
 
               return (
                 <button
                   key={event.canonicalEventId}
                   type="button"
-                  className={`agenda-event-card ${isSelected ? 'selected' : ''}`}
+                  className={`agenda-event-card ${isSelected ? 'is-selected' : ''}`}
                   onClick={() => onEventSelect(event)}
                 >
-                  <div className="agenda-time">
-                    {event.allDay ? (
-                      <span className="all-day-badge">All Day</span>
-                    ) : (
-                      <>
-                        <span>{timeFormatter.format(new Date(event.startMs))}</span>
-                        <span className="time-separator"> - </span>
-                        <span className="end-time">
-                          {timeFormatter.format(new Date(event.endMs))}
-                        </span>
-                      </>
+                  <div className="agenda-title-row">
+                    <h4 className="agenda-event-title">{event.title || 'Untitled Event'}</h4>
+                    {isRecurring && (
+                      <span className="recurrence-indicator" title="Recurring">
+                        ↻
+                      </span>
                     )}
                   </div>
-
-                  <div className="agenda-details">
-                    <div className="agenda-title-row">
-                      <h4>{event.title || 'Untitled Event'}</h4>
-                      {isRecurring && (
-                        <span className="recurrence-icon" title="Recurring">
-                          ↻
-                        </span>
-                      )}
+                  <div className="agenda-event-details">
+                    <div className="agenda-event-detail">
+                      <span className="agenda-event-detail-label">Time</span>
+                      <span className="agenda-event-detail-value">{timeLabel}</span>
                     </div>
-                    {event.location && <p className="agenda-location">{event.location}</p>}
+                    <div className="agenda-event-detail">
+                      <span className="agenda-event-detail-label">Participants</span>
+                      <span className="agenda-event-detail-value">{participantsLabel}</span>
+                    </div>
+                    <div className="agenda-event-detail">
+                      <span className="agenda-event-detail-label">Location</span>
+                      <span className="agenda-event-detail-value">{locationLabel}</span>
+                    </div>
                   </div>
                 </button>
               )

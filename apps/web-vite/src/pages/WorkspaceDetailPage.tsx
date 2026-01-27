@@ -20,6 +20,7 @@ import { RunWorkspaceModal } from '@/components/agents/RunWorkspaceModal'
 import { RunCard } from '@/components/agents/RunCard'
 import { WorkflowGraphView } from '@/components/agents/WorkflowGraphView'
 import { ResearchQueue } from '@/components/agents/ResearchQueue'
+import { Button } from '@/components/ui/button'
 import type { WorkspaceId, RunStatus } from '@lifeos/agents'
 import { useDialog } from '@/contexts/useDialog'
 
@@ -132,9 +133,9 @@ export function WorkspaceDetailPage() {
       <div className="page-container">
         <div className="error-state">
           <p>Workspace not found</p>
-          <button onClick={() => navigate('/workspaces')} className="ghost-button">
+          <Button variant="ghost" onClick={() => navigate('/workspaces')}>
             Back to Workspaces
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -144,15 +145,15 @@ export function WorkspaceDetailPage() {
     <div className="page-container">
       <header className="page-header">
         <div>
-          <button onClick={() => navigate('/workspaces')} className="back-button">
+          <Button variant="ghost" onClick={() => navigate('/workspaces')} className="back-button">
             ← Back
-          </button>
+          </Button>
           <h1>{workspace.name}</h1>
           {workspace.description && <p>{workspace.description}</p>}
         </div>
-        <button onClick={handleStartRun} className="primary-button">
+        <Button onClick={handleStartRun}>
           + Start Run
-        </button>
+        </Button>
       </header>
 
       <div className="workspace-info">
@@ -263,9 +264,9 @@ export function WorkspaceDetailPage() {
         {filteredRuns.length === 0 ? (
           <div className="empty-state">
             <p>System idle. No runs yet.</p>
-            <button onClick={handleStartRun} className="primary-button">
+            <Button onClick={handleStartRun}>
               Start your first run
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="runs-list">

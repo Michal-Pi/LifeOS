@@ -1,4 +1,5 @@
 import type { PromptVersion } from '@lifeos/agents'
+import { Button } from '@/components/ui/button'
 
 type VersionHistoryPanelProps = {
   versions: PromptVersion[]
@@ -25,13 +26,13 @@ export function VersionHistoryPanel({ versions, onRestore }: VersionHistoryPanel
               <span>{new Date(version.createdAtMs).toLocaleString()}</span>
             </div>
             <p>{version.changeDescription}</p>
-            <button
+            <Button
+              variant="ghost"
               type="button"
-              className="ghost-button"
               onClick={() => onRestore(version.version)}
             >
               Restore
-            </button>
+            </Button>
           </li>
         ))}
       </ul>

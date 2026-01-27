@@ -9,6 +9,7 @@
  */
 
 import { useMemo } from 'react'
+import { Button } from '@/components/ui/button'
 
 interface Recommendation {
   type: 'shrink' | 'anchor_change' | 'friction_removal' | 'calendar_block' | 'celebration'
@@ -151,7 +152,8 @@ export function HabitRecommendations({ stats, interventionCount }: HabitRecommen
           <p className="rec-message">{rec.message}</p>
 
           {rec.actionLabel && (
-            <button
+            <Button
+              variant="ghost"
               type="button"
               className="rec-action-btn"
               onClick={() => {
@@ -160,7 +162,7 @@ export function HabitRecommendations({ stats, interventionCount }: HabitRecommen
               }}
             >
               {rec.actionLabel}
-            </button>
+            </Button>
           )}
         </div>
       ))}

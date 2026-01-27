@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ExecutionMode, ExpertCouncilConfig } from '@lifeos/agents'
 import { calculateCostEstimate } from '@/services/expertCouncil/costEstimator'
+import { Button } from '@/components/ui/button'
 import { ModeComparisonTable } from './ModeComparisonTable'
 import { CostEstimateCard } from './CostEstimateCard'
 
@@ -54,9 +55,9 @@ export function ExpertCouncilModeSelector({
       />
 
       <div className="mode-selector-actions">
-        <button type="button" className="primary-button" onClick={() => onSelect(selectedMode)}>
+        <Button type="button" onClick={() => onSelect(selectedMode)}>
           Continue with {selectedMode} mode
-        </button>
+        </Button>
       </div>
     </div>
   )

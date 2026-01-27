@@ -6,6 +6,7 @@
  */
 
 import type { FeelingState } from '@lifeos/mind'
+import { Button } from '@/components/ui/button'
 
 interface FeelingSelectorProps {
   selectedFeeling?: FeelingState
@@ -70,7 +71,8 @@ export function FeelingSelector({ selectedFeeling, onSelect }: FeelingSelectorPr
 
       <div className="feeling-grid">
         {FEELINGS.map((feeling) => (
-          <button
+          <Button
+            variant="ghost"
             key={feeling.value}
             type="button"
             onClick={() => onSelect(feeling.value)}
@@ -79,7 +81,7 @@ export function FeelingSelector({ selectedFeeling, onSelect }: FeelingSelectorPr
             <span className="feeling-emoji">{feeling.emoji}</span>
             <span className="feeling-label">{feeling.label}</span>
             <span className="feeling-description">{feeling.description}</span>
-          </button>
+          </Button>
         ))}
       </div>
     </div>

@@ -1585,13 +1585,67 @@ button[aria-busy='true'] {
   color: var(--text-secondary);
 }
 
-.event-card {
+.agenda-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.agenda-sticky-bar {
+  padding: var(--space-2) var(--space-4);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.agenda-group {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.agenda-date-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.agenda-date-day {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.agenda-date-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.agenda-date-weekday {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-label);
+}
+
+.agenda-date-month {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.agenda-events-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.agenda-event-card {
   width: 100%;
   text-align: left;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--border-strong);
-  padding: 1rem;
+  padding: var(--space-4);
   background: var(--background-secondary);
   background-image: var(--panel-sheen);
   color: var(--foreground);
@@ -1600,52 +1654,133 @@ button[aria-busy='true'] {
     box-shadow var(--motion-standard) var(--motion-ease);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-3);
   box-shadow:
     inset 0 1px 0 var(--panel-edge),
     var(--panel-shadow);
 }
 
-.event-card--light {
-  border-left-color: var(--success);
-}
-
-.event-card--normal {
-  border-left-color: var(--accent);
-}
-
-.event-card--dark {
-  border-left-color: var(--warning);
-}
-
-.event-card.selected {
+.agenda-event-card.is-selected {
   border-right-color: var(--accent);
   border-top-color: var(--accent);
   border-bottom-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
-.event-card:hover {
+.agenda-event-card:hover {
   border-right-color: var(--accent);
   border-top-color: var(--accent);
   border-bottom-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-subtle);
 }
 
-.event-time strong {
+.agenda-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.agenda-event-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.agenda-event-details {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.agenda-event-detail {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.agenda-event-detail-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-label);
+}
+
+.agenda-event-detail-value {
   font-size: 0.9rem;
-  display: block;
   color: var(--text-secondary);
-  font-family: var(--font-mono);
 }
 
-.event-body h3 {
+.timeline-event-card {
+  width: 100%;
+  text-align: left;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  padding: var(--space-4);
+  background: var(--background-secondary);
+  background-image: var(--panel-sheen);
+  color: var(--foreground);
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow:
+    inset 0 1px 0 var(--panel-edge),
+    var(--panel-shadow);
+}
+
+.timeline-event-card.is-selected {
+  border-right-color: var(--accent);
+  border-top-color: var(--accent);
+  border-bottom-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
+}
+
+.timeline-event-card:hover {
+  border-right-color: var(--accent);
+  border-top-color: var(--accent);
+  border-bottom-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
+}
+
+.timeline-event-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.timeline-event-title {
   margin: 0;
   font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--foreground);
 }
 
-.event-body p {
-  margin: 0;
+.timeline-event-details {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.timeline-event-detail {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.timeline-event-detail-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-label);
+}
+
+.timeline-event-detail-value {
+  font-size: 0.9rem;
   color: var(--text-secondary);
 }
 
@@ -1718,7 +1853,7 @@ button[aria-busy='true'] {
   border-radius: 8px;
   padding: 2rem;
   width: 100%;
-  max-width: 28rem;
+  max-width: 61.6rem;
   max-height: 90vh;
   overflow-y: auto;
   border: 1px solid var(--border);
@@ -5284,12 +5419,15 @@ input[type='range']:disabled {
 }
 
 .calendar-event-time {
-  width: 8rem;
+  width: 7rem;
   flex-shrink: 0;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-secondary);
   font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .calendar-event-info {
@@ -7788,6 +7926,10 @@ input[type='range']:disabled {
   font-weight: 500;
   line-height: 1.5;
   color: var(--foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0; /* Allows flex item to shrink below content size */
 }
 
 .task-card.completed .task-title {
@@ -7837,6 +7979,43 @@ input[type='range']:disabled {
   background: var(--muted);
   color: var(--text-label);
   text-transform: capitalize;
+}
+
+/* Badge styles when used as meta-tag */
+.meta-tag.task-card-badge-project {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.meta-tag.task-card-badge-domain-work {
+  background: var(--domain-work-bg);
+  color: var(--domain-work-text);
+  border-color: var(--domain-work-text);
+}
+
+.meta-tag.task-card-badge-domain-projects {
+  background: var(--domain-projects-bg);
+  color: var(--domain-projects-text);
+  border-color: var(--domain-projects-text);
+}
+
+.meta-tag.task-card-badge-domain-life {
+  background: var(--domain-life-bg);
+  color: var(--domain-life-text);
+  border-color: var(--domain-life-text);
+}
+
+.meta-tag.task-card-badge-domain-learning {
+  background: var(--domain-learning-bg);
+  color: var(--domain-learning-text);
+  border-color: var(--domain-learning-text);
+}
+
+.meta-tag.task-card-badge-domain-wellbeing {
+  background: var(--domain-wellbeing-bg);
+  color: var(--domain-wellbeing-text);
+  border-color: var(--domain-wellbeing-text);
 }
 
 /* Responsive */

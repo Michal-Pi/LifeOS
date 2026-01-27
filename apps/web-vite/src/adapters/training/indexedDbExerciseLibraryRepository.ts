@@ -15,7 +15,6 @@ import {
 } from '@/training/offlineStore'
 import { enqueueTrainingUpsert } from '@/training/outbox'
 import { triggerTrainingSync } from '@/training/syncWorker'
-import { isOnline } from '@/training/utils'
 
 const firestoreRepo = createFirestoreExerciseLibraryRepository()
 
@@ -51,8 +50,21 @@ export const createIndexedDbExerciseLibraryRepository = (): ExerciseLibraryRepos
     ): Promise<ExerciseLibraryItem> {
       let existing = await getExerciseLocally(exerciseId)
 
-      if (!existing && isOnline()) {
-        existing = await firestoreRepo.get(userId, exerciseId)
+      if (!existing) {
+        try {
+          existing = await firestoreRepo.get(userId, exerciseId)
+        } catch (error) {
+          // Handle network errors gracefully - continue with local data
+          const firebaseError = error as Error & { code?: string }
+          if (firebaseError?.code === 'permission-denied' || 
+              firebaseError?.code === 'unavailable' ||
+              firebaseError?.message?.includes('Failed to fetch') ||
+              firebaseError?.message?.includes('network')) {
+            console.warn('Network error fetching exercise for update, falling back to local:', firebaseError.code || firebaseError.message)
+          } else {
+            console.error('Unexpected error fetching exercise from Firestore:', error)
+          }
+        }
       }
 
       if (!existing) {
@@ -94,17 +106,31 @@ export const createIndexedDbExerciseLibraryRepository = (): ExerciseLibraryRepos
 
     async get(userId: string, exerciseId: ExerciseId): Promise<ExerciseLibraryItem | null> {
       const local = await getExerciseLocally(exerciseId)
-      if (!isOnline()) return local
+      
+      // Always try Firestore first, fall back to local on network errors
+      try {
+        const remote = await firestoreRepo.get(userId, exerciseId)
+        if (!remote) return local
 
-      const remote = await firestoreRepo.get(userId, exerciseId)
-      if (!remote) return local
+        if (!local || !shouldPreferLocal(local)) {
+          await saveExerciseLocally(remote)
+          return remote
+        }
 
-      if (!local || !shouldPreferLocal(local)) {
-        await saveExerciseLocally(remote)
-        return remote
+        return local
+      } catch (error) {
+        // Handle network errors gracefully
+        const firebaseError = error as Error & { code?: string }
+        if (firebaseError?.code === 'permission-denied' || 
+            firebaseError?.code === 'unavailable' ||
+            firebaseError?.message?.includes('Failed to fetch') ||
+            firebaseError?.message?.includes('network')) {
+          console.warn('Network error fetching exercise, falling back to local:', firebaseError.code || firebaseError.message)
+        } else {
+          console.error('Unexpected error fetching exercise from Firestore:', error)
+        }
+        return local
       }
-
-      return local
     },
 
     async list(
@@ -112,30 +138,42 @@ export const createIndexedDbExerciseLibraryRepository = (): ExerciseLibraryRepos
       options?: { category?: ExerciseCategory; activeOnly?: boolean }
     ): Promise<ExerciseLibraryItem[]> {
       const localItems = await listExercisesLocally(userId)
-      if (!isOnline()) {
+      
+      // Always try Firestore first, fall back to local on network errors
+      try {
+        const remoteItems = await firestoreRepo.list(userId, options)
+        const localMap = new Map(localItems.map((item) => [item.exerciseId, item]))
+        const merged: ExerciseLibraryItem[] = []
+
+        for (const remote of remoteItems) {
+          const local = localMap.get(remote.exerciseId)
+          if (local && shouldPreferLocal(local)) {
+            merged.push(local)
+          } else {
+            merged.push(remote)
+            await saveExerciseLocally(remote)
+          }
+          localMap.delete(remote.exerciseId)
+        }
+
+        for (const local of localMap.values()) {
+          merged.push(local)
+        }
+
+        return filterExercises(merged, options)
+      } catch (error) {
+        // Handle network errors gracefully
+        const firebaseError = error as Error & { code?: string }
+        if (firebaseError?.code === 'permission-denied' || 
+            firebaseError?.code === 'unavailable' ||
+            firebaseError?.message?.includes('Failed to fetch') ||
+            firebaseError?.message?.includes('network')) {
+          console.warn('Network error listing exercises, falling back to local:', firebaseError.code || firebaseError.message)
+        } else {
+          console.error('Unexpected error listing exercises from Firestore:', error)
+        }
         return filterExercises(localItems, options)
       }
-
-      const remoteItems = await firestoreRepo.list(userId, options)
-      const localMap = new Map(localItems.map((item) => [item.exerciseId, item]))
-      const merged: ExerciseLibraryItem[] = []
-
-      for (const remote of remoteItems) {
-        const local = localMap.get(remote.exerciseId)
-        if (local && shouldPreferLocal(local)) {
-          merged.push(local)
-        } else {
-          merged.push(remote)
-          await saveExerciseLocally(remote)
-        }
-        localMap.delete(remote.exerciseId)
-      }
-
-      for (const local of localMap.values()) {
-        merged.push(local)
-      }
-
-      return filterExercises(merged, options)
     },
   }
 }

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { DeepResearchRequest, RunId, WorkspaceId } from '@lifeos/agents'
 import { useDeepResearch } from '@/hooks/useDeepResearch'
 import { ResearchUploadModal } from './ResearchUploadModal'
+import { Button } from '@/components/ui/button'
 
 interface ResearchQueueSidebarProps {
   workspaceId: WorkspaceId
@@ -55,18 +56,17 @@ export function ResearchQueueSidebar({
         ))}
       </div>
       <div className="research-sidebar__actions">
-        <button
+        <Button
           type="button"
-          className="primary-button"
           disabled={!selectedRequest}
           onClick={() => setShowUploadModal(true)}
         >
           Upload Results
-        </button>
+        </Button>
         {onOpenFullQueue && (
-          <button type="button" className="ghost-button" onClick={onOpenFullQueue}>
+          <Button variant="ghost" type="button" onClick={onOpenFullQueue}>
             Open Full Queue
-          </button>
+          </Button>
         )}
       </div>
 

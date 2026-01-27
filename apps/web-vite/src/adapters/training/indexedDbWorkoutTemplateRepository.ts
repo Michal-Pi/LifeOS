@@ -17,7 +17,6 @@ import {
 } from '@/training/offlineStore'
 import { enqueueTrainingUpsert, enqueueTrainingDelete } from '@/training/outbox'
 import { triggerTrainingSync } from '@/training/syncWorker'
-import { isOnline } from '@/training/utils'
 
 const firestoreRepo = createFirestoreWorkoutTemplateRepository()
 
@@ -54,8 +53,21 @@ export const createIndexedDbWorkoutTemplateRepository = (): WorkoutTemplateRepos
       updates: UpdateTemplateInput
     ): Promise<WorkoutTemplate> {
       let existing = await getTemplateLocally(templateId)
-      if (!existing && isOnline()) {
-        existing = await firestoreRepo.get(userId, templateId)
+      if (!existing) {
+        try {
+          existing = await firestoreRepo.get(userId, templateId)
+        } catch (error) {
+          // Handle network errors gracefully - continue with local data
+          const firebaseError = error as Error & { code?: string }
+          if (firebaseError?.code === 'permission-denied' || 
+              firebaseError?.code === 'unavailable' ||
+              firebaseError?.message?.includes('Failed to fetch') ||
+              firebaseError?.message?.includes('network')) {
+            console.warn('Network error fetching template for update, falling back to local:', firebaseError.code || firebaseError.message)
+          } else {
+            console.error('Unexpected error fetching template from Firestore:', error)
+          }
+        }
       }
       if (!existing) {
         throw new Error(`Template ${templateId} not found`)
@@ -83,17 +95,31 @@ export const createIndexedDbWorkoutTemplateRepository = (): WorkoutTemplateRepos
 
     async get(userId: string, templateId: TemplateId): Promise<WorkoutTemplate | null> {
       const local = await getTemplateLocally(templateId)
-      if (!isOnline()) return local
+      
+      // Always try Firestore first, fall back to local on network errors
+      try {
+        const remote = await firestoreRepo.get(userId, templateId)
+        if (!remote) return local
 
-      const remote = await firestoreRepo.get(userId, templateId)
-      if (!remote) return local
+        if (!local || !shouldPreferLocal(local)) {
+          await saveTemplateLocally(remote)
+          return remote
+        }
 
-      if (!local || !shouldPreferLocal(local)) {
-        await saveTemplateLocally(remote)
-        return remote
+        return local
+      } catch (error) {
+        // Handle network errors gracefully
+        const firebaseError = error as Error & { code?: string }
+        if (firebaseError?.code === 'permission-denied' || 
+            firebaseError?.code === 'unavailable' ||
+            firebaseError?.message?.includes('Failed to fetch') ||
+            firebaseError?.message?.includes('network')) {
+          console.warn('Network error fetching template, falling back to local:', firebaseError.code || firebaseError.message)
+        } else {
+          console.error('Unexpected error fetching template from Firestore:', error)
+        }
+        return local
       }
-
-      return local
     },
 
     async list(userId: string, options?: { context?: WorkoutContext }): Promise<WorkoutTemplate[]> {
@@ -101,15 +127,33 @@ export const createIndexedDbWorkoutTemplateRepository = (): WorkoutTemplateRepos
         ? await listTemplatesByContextLocally(userId, options.context)
         : await listTemplatesLocally(userId)
 
-      if (!isOnline()) {
+      // Always try Firestore first, fall back to local on network errors
+      let remoteItems: WorkoutTemplate[] = []
+      try {
+        remoteItems = options?.context
+          ? firestoreRepo.listByContext
+            ? await firestoreRepo.listByContext(userId, options.context)
+            : await firestoreRepo.list(userId, options)
+          : await firestoreRepo.list(userId)
+      } catch (error) {
+        // Handle network errors gracefully - return local data
+        const firebaseError = error as Error & { code?: string }
+        const isNetworkError =
+          firebaseError?.code === 'permission-denied' ||
+          firebaseError?.code === 'PERMISSION_DENIED' ||
+          firebaseError?.code === 'unavailable' ||
+          firebaseError?.message?.includes('Missing or insufficient permissions') ||
+          firebaseError?.message?.includes('Failed to fetch') ||
+          firebaseError?.message?.includes('network')
+        
+        if (isNetworkError) {
+          console.warn('Network error listing templates, falling back to local:', firebaseError.code || firebaseError.message)
+          return sortTemplates(localItems)
+        }
+        // Log unexpected errors but still return local data
+        console.error('Unexpected error listing templates from Firestore:', error)
         return sortTemplates(localItems)
       }
-
-      const remoteItems = options?.context
-        ? firestoreRepo.listByContext
-          ? await firestoreRepo.listByContext(userId, options.context)
-          : await firestoreRepo.list(userId, options)
-        : await firestoreRepo.list(userId)
 
       const localMap = new Map(localItems.map((item) => [item.templateId, item]))
       const merged: WorkoutTemplate[] = []

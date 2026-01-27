@@ -8,6 +8,7 @@ import {
   synthesizeResearchFindingsWithAI,
   validateResearchCompleteness,
 } from '@/services/deepResearch/resultProcessor'
+import { Button } from '@/components/ui/button'
 import { ResearchRequestCard } from './ResearchRequestCard'
 import { ResearchUploadModal } from './ResearchUploadModal'
 import styles from './ResearchQueue.module.css'
@@ -192,7 +193,8 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
               <div className={styles['research-detail__actions']}>
                 <div className={styles['research-models']}>
                   {RESEARCH_SOURCES.map((model) => (
-                    <button
+                    <Button
+                      variant="ghost"
                       key={model}
                       type="button"
                       className={`${styles['research-model']} ${
@@ -201,24 +203,24 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
                       onClick={() => setSelectedModel(model)}
                     >
                       {model}
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 <div className={styles['research-action-buttons']}>
-                  <button className="primary-button" type="button" onClick={handleCopyPrompt}>
+                  <Button type="button" onClick={handleCopyPrompt}>
                     Copy prompt for {selectedModel}
-                  </button>
-                  <button
-                    className="ghost-button"
+                  </Button>
+                  <Button
+                    variant="ghost"
                     type="button"
                     onClick={handleSynthesize}
                     disabled={isSynthesizing || (selectedRequest?.results?.length ?? 0) < 2}
                   >
                     {isSynthesizing ? 'Synthesizing...' : 'Synthesize'}
-                  </button>
-                  <button className="ghost-button" type="button" onClick={handleExportJson}>
+                  </Button>
+                  <Button variant="ghost" type="button" onClick={handleExportJson}>
                     Export JSON
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -227,13 +229,9 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
               <div className={styles['research-section']}>
                 <div className={styles['research-section__header']}>
                   <h4>Copy prompt</h4>
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => setFallbackPrompt(null)}
-                  >
+                  <Button variant="ghost" type="button" onClick={() => setFallbackPrompt(null)}>
                     Dismiss
-                  </button>
+                  </Button>
                 </div>
                 <textarea
                   className={styles['research-prompt-fallback']}
@@ -264,9 +262,9 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
               <div className={styles['research-section__header']}>
                 <h4>Results</h4>
                 <div className={styles['research-action-buttons']}>
-                  <button
+                  <Button
+                    variant="ghost"
                     type="button"
-                    className="ghost-button"
                     onClick={() =>
                       void updateRequest(selectedRequest, {
                         status: 'cancelled',
@@ -276,22 +274,21 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
                     disabled={selectedRequest.status === 'cancelled'}
                   >
                     Cancel request
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
                     type="button"
-                    className="ghost-button"
                     onClick={handleMarkComplete}
                     disabled={selectedRequest.status === 'completed'}
                   >
                     Mark complete
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    className="primary-button"
                     onClick={() => setShowUploadModal(true)}
                   >
                     Upload results
-                  </button>
+                  </Button>
                 </div>
               </div>
               {selectedRequest.results && selectedRequest.results.length > 0 ? (

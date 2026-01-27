@@ -12,6 +12,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
+import { Button } from '@/components/ui/button'
 import type { AgentConfig, AgentRole, ModelProvider, ToolDefinition } from '@lifeos/agents'
 import type { BuiltinToolMeta } from '@/agents/builtinTools'
 
@@ -341,12 +342,12 @@ export function AgentBuilderModal({
           </div>
 
           <div className="modal-actions">
-            <button type="button" onClick={onClose} disabled={isSaving}>
+            <Button variant="ghost" type="button" onClick={onClose} disabled={isSaving}>
               Cancel
-            </button>
-            <button type="submit" disabled={isSaving}>
+            </Button>
+            <Button type="submit" disabled={isSaving}>
               {isSaving ? 'Saving...' : agent ? 'Update Agent' : 'Create Agent'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

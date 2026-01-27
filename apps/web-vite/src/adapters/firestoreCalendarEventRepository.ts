@@ -188,6 +188,9 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
       const eventRef = doc(db, 'users', userId, 'calendarEvents', eventId)
 
       return runTransaction(db, async (transaction) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestoreCalendarEventRepository.ts:191',message:'Inside transaction - before get',data:{userId,eventId,hasEvent:!!event,eventKeys:event?Object.keys(event):[],baseRev,deviceId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         const serverSnapshot = await transaction.get(eventRef)
 
         if (!serverSnapshot.exists()) {
@@ -197,7 +200,17 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
             rev: 1,
             updatedByDeviceId: deviceId,
           }
-          transaction.set(eventRef, newEvent)
+          // Remove undefined fields - Firestore doesn't allow undefined values
+          const cleanedNewEvent: Record<string, unknown> = {}
+          for (const [key, value] of Object.entries(newEvent)) {
+            if (value !== undefined) {
+              cleanedNewEvent[key] = value
+            }
+          }
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestoreCalendarEventRepository.ts:207',message:'Creating new event in transaction',data:{eventId,newEventKeys:Object.keys(newEvent),cleanedKeys:Object.keys(cleanedNewEvent)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
+          // #endregion
+          transaction.set(eventRef, cleanedNewEvent as CanonicalCalendarEvent)
           return { winner: newEvent, hadConflict: false }
         }
 
@@ -213,7 +226,9 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
           updatedAtMs: event.canonicalUpdatedAtMs ?? Date.now(),
           deviceId: deviceId ?? 'unknown',
         }
-
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestoreCalendarEventRepository.ts:218',message:'Before resolveConflict',data:{incomingKeys:Object.keys(incoming.event),serverEventKeys:Object.keys(serverEvent)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
         // Resolve conflict deterministically
         const result = resolveConflict(serverEvent, incoming)
 
@@ -222,7 +237,17 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
           ...result.winner,
           rev: result.newRev,
         }
-        transaction.set(eventRef, winnerWithRev)
+        // Remove undefined fields - Firestore doesn't allow undefined values
+        const cleanedWinner: Record<string, unknown> = {}
+        for (const [key, value] of Object.entries(winnerWithRev)) {
+          if (value !== undefined) {
+            cleanedWinner[key] = value
+          }
+        }
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestoreCalendarEventRepository.ts:232',message:'Before transaction.set',data:{winnerKeys:Object.keys(winnerWithRev),cleanedKeys:Object.keys(cleanedWinner),removedUndefined:Object.entries(winnerWithRev).filter(([, value])=>value===undefined).map(([key])=>key)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
+        transaction.set(eventRef, cleanedWinner as CanonicalCalendarEvent)
 
         return {
           winner: winnerWithRev,

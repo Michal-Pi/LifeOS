@@ -19,6 +19,7 @@ import { AgentBuilderModal } from '@/components/agents/AgentBuilderModal'
 import { ToolBuilderModal } from '@/components/agents/ToolBuilderModal'
 import { TemplateSaveModal } from '@/components/agents/TemplateSaveModal'
 import { EmptyState } from '@/components/EmptyState'
+import { Button } from '@/components/ui/button'
 import { useDialog } from '@/contexts/useDialog'
 import { builtinTools } from '@/agents/builtinTools'
 import { agentTemplatePresets } from '@/agents/templatePresets'
@@ -283,16 +284,12 @@ export function AgentsPage() {
           <p>Configure and manage your AI assistants</p>
         </div>
         <div className="page-header__actions">
-          <button
-            type="button"
-            className="ghost-button"
-            onClick={() => navigate('/agents/prompts')}
-          >
+          <Button variant="ghost" type="button" onClick={() => navigate('/agents/prompts')}>
             Prompt Library
-          </button>
-          <button onClick={handleNew} className="primary-button">
+          </Button>
+          <Button onClick={handleNew}>
             + New Agent
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -385,12 +382,12 @@ export function AgentsPage() {
               </div>
 
               <div className="card-actions">
-                <button onClick={() => handleEdit(agent)} className="ghost-button">
+                <Button variant="ghost" onClick={() => handleEdit(agent)}>
                   Edit
-                </button>
-                <button onClick={() => handleSaveTemplate(agent)} className="ghost-button">
+                </Button>
+                <Button variant="ghost" onClick={() => handleSaveTemplate(agent)}>
                   Save Template
-                </button>
+                </Button>
               </div>
             </div>
           ))}
@@ -408,19 +405,19 @@ export function AgentsPage() {
               <h2>Agent Templates</h2>
               <p className="settings-panel__meta">Save reusable agent setups and start faster.</p>
               <div className="settings-panel__actions">
-                <button onClick={handleAddPresets} className="ghost-button" type="button">
+                <Button variant="ghost" onClick={handleAddPresets} type="button">
                   Add Presets
-                </button>
-                <button onClick={handleExportTemplates} className="ghost-button" type="button">
+                </Button>
+                <Button variant="ghost" onClick={handleExportTemplates} type="button">
                   Export
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
                   onClick={() => importInputRef.current?.click()}
-                  className="ghost-button"
                   type="button"
                 >
                   Import
-                </button>
+                </Button>
                 <input
                   ref={importInputRef}
                   type="file"
@@ -461,10 +458,11 @@ export function AgentsPage() {
                     </div>
                   </div>
                   <div className="card-actions">
-                    <button onClick={() => handleUseTemplate(template)} className="ghost-button">
+                    <Button variant="ghost" onClick={() => handleUseTemplate(template)}>
                       Use Template
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
                       onClick={async () => {
                         const confirmed = await confirm({
                           title: 'Delete template',
@@ -476,10 +474,10 @@ export function AgentsPage() {
                           void deleteTemplate(template.templateId)
                         }
                       }}
-                      className="ghost-button danger"
+                      className="danger"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -501,9 +499,9 @@ export function AgentsPage() {
                 Build reusable modules that agents can call during execution.
               </p>
             </div>
-            <button onClick={handleNewTool} className="primary-button">
+            <Button onClick={handleNewTool}>
               + New Module
-            </button>
+            </Button>
           </header>
 
           {toolsLoading ? (
@@ -534,10 +532,11 @@ export function AgentsPage() {
                     </div>
                   </div>
                   <div className="card-actions">
-                    <button onClick={() => handleEditTool(tool)} className="ghost-button">
+                    <Button variant="ghost" onClick={() => handleEditTool(tool)}>
                       Edit
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
                       onClick={async () => {
                         const confirmed = await confirm({
                           title: 'Delete tool',
@@ -549,10 +548,10 @@ export function AgentsPage() {
                           void deleteTool(tool.toolId)
                         }
                       }}
-                      className="ghost-button danger"
+                      className="danger"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}

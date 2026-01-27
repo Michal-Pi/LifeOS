@@ -28,6 +28,7 @@ import { builtinTools } from '@/agents/builtinTools'
 import { instantiateTemplate } from '@/services/templateInstantiation'
 import type { Workspace, WorkspaceTemplate, PromptTemplate } from '@lifeos/agents'
 import { EmptyState } from '@/components/EmptyState'
+import { Button } from '@/components/ui/button'
 import { useDialog } from '@/contexts/useDialog'
 
 type WorkspaceTemplateExport = {
@@ -351,9 +352,9 @@ export function WorkspacesPage() {
           <h1>Workspaces</h1>
           <p>Orchestrate multiple agents to work together</p>
         </div>
-        <button onClick={handleNew} className="primary-button">
+        <Button onClick={handleNew}>
           + New Workspace
-        </button>
+        </Button>
       </header>
 
       <div className="section-tabs">
@@ -429,21 +430,21 @@ export function WorkspacesPage() {
                   </div>
 
                   <div className="card-actions">
-                    <button
+                    <Button
+                      variant="ghost"
                       onClick={() => handleViewWorkspace(workspace.workspaceId)}
-                      className="ghost-button"
                     >
                       View Details
-                    </button>
-                    <button onClick={() => handleEdit(workspace)} className="ghost-button">
+                    </Button>
+                    <Button variant="ghost" onClick={() => handleEdit(workspace)}>
                       Edit
-                    </button>
-                    <button onClick={() => handleSaveTemplate(workspace)} className="ghost-button">
+                    </Button>
+                    <Button variant="ghost" onClick={() => handleSaveTemplate(workspace)}>
                       Save Template
-                    </button>
-                    <button onClick={() => handleDelete(workspace)} className="ghost-button danger">
+                    </Button>
+                    <Button variant="ghost" className="danger" onClick={() => handleDelete(workspace)}>
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -474,9 +475,9 @@ export function WorkspacesPage() {
                   Manage reusable prompts with version history across workspaces.
                 </p>
                 <div className="settings-panel__actions">
-                  <button onClick={handleCreatePrompt} className="ghost-button" type="button">
+                  <Button variant="ghost" onClick={handleCreatePrompt} type="button">
                     New Prompt
-                  </button>
+                  </Button>
                 </div>
               </div>
             </header>
@@ -507,12 +508,12 @@ export function WorkspacesPage() {
                       </div>
                     </div>
                     <div className="card-actions">
-                      <button
+                      <Button
+                        variant="ghost"
                         onClick={() => setPromptEditorTemplate(template)}
-                        className="ghost-button"
                       >
                         Edit
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -529,19 +530,19 @@ export function WorkspacesPage() {
                   Reuse workspace setups for repeated workflows.
                 </p>
                 <div className="settings-panel__actions">
-                  <button onClick={handleAddPresets} className="ghost-button" type="button">
+                  <Button variant="ghost" onClick={handleAddPresets} type="button">
                     Add Presets
-                  </button>
-                  <button onClick={handleExportTemplates} className="ghost-button" type="button">
+                  </Button>
+                  <Button variant="ghost" onClick={handleExportTemplates} type="button">
                     Export
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
                     onClick={() => importInputRef.current?.click()}
-                    className="ghost-button"
                     type="button"
                   >
                     Import
-                  </button>
+                  </Button>
                   <input
                     ref={importInputRef}
                     type="file"
@@ -582,10 +583,11 @@ export function WorkspacesPage() {
                       )}
                     </div>
                     <div className="card-actions">
-                      <button onClick={() => handleUseTemplate(template)} className="ghost-button">
+                      <Button variant="ghost" onClick={() => handleUseTemplate(template)}>
                         Use Template
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
                         onClick={async () => {
                           const confirmed = await confirm({
                             title: 'Delete template',
@@ -597,10 +599,10 @@ export function WorkspacesPage() {
                             void deleteTemplate(template.templateId)
                           }
                         }}
-                        className="ghost-button danger"
+                        className="danger"
                       >
                         Delete
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}

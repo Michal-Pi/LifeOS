@@ -90,9 +90,6 @@ const WorkspacesPage = lazyWithRetry(() =>
 const WorkspaceDetailPage = lazyWithRetry(() =>
   import('./pages/WorkspaceDetailPage').then((m) => ({ default: m.WorkspaceDetailPage }))
 )
-const ResearchPage = lazyWithRetry(() =>
-  import('./pages/ResearchPage').then((m) => ({ default: m.ResearchPage }))
-)
 const PromptLibraryPage = lazyWithRetry(() =>
   import('./pages/PromptLibraryPage').then((m) => ({ default: m.PromptLibraryPage }))
 )
@@ -297,26 +294,6 @@ function AppRoutes() {
                   <ProtectedRoute>
                     <ErrorBoundary>
                       <WorkspaceDetailPage />
-                    </ErrorBoundary>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/research"
-                element={
-                  <ProtectedRoute>
-                    <ErrorBoundary>
-                      <ResearchPage />
-                    </ErrorBoundary>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/agents/research"
-                element={
-                  <ProtectedRoute>
-                    <ErrorBoundary>
-                      <ResearchPage />
                     </ErrorBoundary>
                   </ProtectedRoute>
                 }

@@ -3,7 +3,7 @@
 .tool-call-timeline {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .tool-call-timeline__title {
@@ -16,12 +16,12 @@
 .tool-call-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .tool-call-card {
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-md);
   background: var(--card);
   box-shadow: 0 4px 12px var(--shadow-soft);
   overflow: hidden;
@@ -29,11 +29,11 @@
 
 .tool-call-header {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: var(--space-3) var(--space-4);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-4);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -47,7 +47,7 @@
 .tool-call-header__meta {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   flex: 1;
   flex-wrap: wrap;
 }
@@ -70,8 +70,8 @@
 }
 
 .tool-call-badge {
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -115,24 +115,24 @@
 }
 
 .tool-call-details {
-  padding: 0.75rem 1rem;
+  padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--border);
   background: var(--background-secondary);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
   font-size: 0.85rem;
 }
 
 .tool-call-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .tool-call-label {
   color: var(--text-label);
-  margin-right: 0.4rem;
+  margin-right: var(--space-1);
 }
 
 .tool-call-provider {
@@ -143,21 +143,21 @@
 
 .tool-call-model {
   color: var(--text-secondary);
-  margin-left: 0.4rem;
+  margin-left: var(--space-1);
 }
 
 .tool-call-section-title {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--foreground);
-  margin: 0 0 0.35rem;
+  margin: 0 0 var(--space-1);
 }
 
 .tool-call-pre {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 0.6rem;
-  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
   font-size: 0.75rem;
   overflow-x: auto;
   color: var(--foreground);

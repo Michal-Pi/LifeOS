@@ -1,21 +1,21 @@
 .prompt-editor {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
-  gap: 1.5rem;
+  gap: var(--space-5);
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
 }
 
 .prompt-editor--loading {
-  padding: 2rem;
+  padding: var(--space-6);
 }
 
 .prompt-editor__header {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .prompt-editor__header input,
@@ -25,33 +25,33 @@
 
 .prompt-editor__actions {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--space-3);
   align-items: flex-start;
 }
 
 .prompt-editor__content {
   width: 100%;
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }
 
 .prompt-editor__meta-grid {
-  margin-top: 1rem;
+  margin-top: var(--space-4);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .prompt-editor__meta-grid label {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 
 .prompt-editor__variables {
-  margin-top: 1rem;
+  margin-top: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .prompt-editor__variables-header {
@@ -63,13 +63,13 @@
 .prompt-editor__variable-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) auto;
-  gap: 0.75rem;
+  gap: var(--space-3);
   align-items: center;
 }
 
 .prompt-editor__sidebar {
   border-left: 1px solid var(--border);
-  padding-left: 1.5rem;
+  padding-left: var(--space-5);
 }
 
 .version-history ul {
@@ -78,22 +78,22 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .version-history li {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--space-1);
 }
 
 .version-history li div {
   display: flex;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
   font-size: 0.8rem;
   color: var(--text-secondary);
 }
@@ -107,10 +107,10 @@
     grid-template-columns: 1fr;
   }
 
-  .prompt-editor__sidebar {
-    border-left: none;
-    padding-left: 0;
-    border-top: 1px solid var(--border);
-    padding-top: 1rem;
-  }
+.prompt-editor__sidebar {
+  border-left: none;
+  padding-left: 0;
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-4);
+}
 }

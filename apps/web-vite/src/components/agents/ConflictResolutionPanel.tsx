@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Conflict } from '@lifeos/agents'
+import { Button } from '@/components/ui/button'
 import './ConflictResolutionPanel.css'
 
 type Props = {
@@ -24,9 +25,10 @@ export function ConflictResolutionPanel({ conflicts, onResolve }: Props) {
         </h3>
       </div>
 
-      <div className="conflict-list">
-        {unresolved.map((conflict) => (
-          <button
+          <div className="conflict-list">
+            {unresolved.map((conflict) => (
+          <Button
+            variant="ghost"
             key={conflict.conflictId}
             type="button"
             className="conflict-card"
@@ -36,33 +38,28 @@ export function ConflictResolutionPanel({ conflicts, onResolve }: Props) {
               {conflict.severity}
             </span>
             <p>{conflict.description}</p>
-          </button>
-        ))}
-      </div>
+          </Button>
+            ))}
+          </div>
 
       {selectedConflict && (
-        <div className="conflict-modal" role="dialog" aria-modal="true">
-          <div className="conflict-modal__content">
+        <div className="modal-overlay" role="dialog" aria-modal="true">
+          <div className="modal-content conflict-modal__content">
             <h4>Resolve Conflict</h4>
             <p>{selectedConflict.description}</p>
             <div className="conflict-modal__actions">
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() => setSelectedConflict(null)}
-              >
+              <Button variant="ghost" type="button" onClick={() => setSelectedConflict(null)}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className="primary-button"
                 onClick={() => {
                   onResolve(selectedConflict)
                   setSelectedConflict(null)
                 }}
               >
                 Mark Resolved
-              </button>
+              </Button>
             </div>
           </div>
         </div>

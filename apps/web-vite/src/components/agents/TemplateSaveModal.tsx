@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 
 interface TemplateSaveModalProps {
   isOpen: boolean
@@ -75,10 +76,10 @@ export function TemplateSaveModal({
           </div>
 
           <div className="modal-actions">
-            <button type="button" onClick={handleClose}>
+            <Button variant="ghost" type="button" onClick={handleClose}>
               Cancel
-            </button>
-            <button type="submit">Save Template</button>
+            </Button>
+            <Button type="submit">Save Template</Button>
           </div>
         </form>
       </div>

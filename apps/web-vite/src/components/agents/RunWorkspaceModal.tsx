@@ -13,6 +13,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAiProviderKeys } from '@/hooks/useAiProviderKeys'
 import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
+import { Button } from '@/components/ui/button'
 import type { AgentConfig, ExecutionMode, Workspace } from '@lifeos/agents'
 import { useAuth } from '@/hooks/useAuth'
 import { useDeepResearch } from '@/hooks/useDeepResearch'
@@ -186,13 +187,13 @@ export function RunWorkspaceModal({
                 </p>
               </div>
               {resumeRunId && runRequests.length > 0 && (
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
-                  className="ghost-button"
                   onClick={() => setShowResearchQueue((prev) => !prev)}
                 >
                   {showResearchQueue ? 'Hide' : 'Show'} Research ({runRequests.length})
-                </button>
+                </Button>
               )}
             </div>
 
@@ -260,16 +261,16 @@ export function RunWorkspaceModal({
                 </small>
               </div>
 
-              <div className="modal-actions">
-                <button type="button" onClick={onClose} disabled={isCreating}>
-                  Cancel
-                </button>
-                <button type="submit" disabled={isCreating}>
-                  {isCreating ? 'Starting...' : 'Start Run'}
-                </button>
-              </div>
-            </form>
-          </div>
+            <div className="modal-actions">
+              <Button variant="ghost" type="button" onClick={onClose} disabled={isCreating}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isCreating}>
+                {isCreating ? 'Starting...' : 'Start Run'}
+              </Button>
+            </div>
+          </form>
+        </div>
 
           {showResearchQueue && resumeRunId && (
             <ResearchQueueSidebar

@@ -502,11 +502,7 @@ export async function syncTodos(userId: string): Promise<void> {
   }
 
   // Don't sync if offline
-  if (!navigator.onLine) {
-    console.log('Sync skipped - offline')
-    return
-  }
-
+  // Always attempt sync - network errors handled gracefully
   state.isRunning = true
 
   try {
@@ -586,12 +582,10 @@ export function startTodoSyncWorker(
       console.log('Page visible - resuming sync worker')
       state.isPaused = false
       state.retryCount = 0 // Reset retry count on resume
-      // Trigger immediate sync when page becomes visible
-      if (navigator.onLine) {
-        syncTodos(userId).catch((error) => {
-          console.error('Resume sync failed:', error)
-        })
-      }
+      // Always attempt sync when page becomes visible
+      syncTodos(userId).catch((error) => {
+        console.error('Resume sync failed:', error)
+      })
     }
   }
 

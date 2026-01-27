@@ -9,6 +9,7 @@ import type {
 import { collection, getDocs, orderBy, query } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { createFirestorePromptLibraryRepository } from '@/adapters/agents/firestorePromptLibraryRepository'
+import { Button } from '@/components/ui/button'
 import { VersionHistoryPanel } from './VersionHistoryPanel'
 import './PromptEditor.css'
 
@@ -204,27 +205,27 @@ export function PromptEditor({
             />
           </div>
           <div className="prompt-editor__actions">
-            <button type="button" className="ghost-button" onClick={onClose}>
+            <Button variant="ghost" type="button" onClick={onClose}>
               Close
-            </button>
+            </Button>
             {!isCreateMode && (
-              <button
+              <Button
+                variant="ghost"
                 type="button"
-                className="ghost-button danger"
+                className="danger"
                 onClick={handleDelete}
                 disabled={isDeleting}
               >
                 {isDeleting ? 'Deleting...' : 'Delete'}
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               type="button"
-              className="primary-button"
               onClick={handleSave}
               disabled={isSaving}
             >
               {isCreateMode ? 'Create' : 'Save'}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -278,13 +279,13 @@ export function PromptEditor({
         <div className="prompt-editor__variables">
           <div className="prompt-editor__variables-header">
             <h4>Variables</h4>
-            <button
+            <Button
+              variant="ghost"
               type="button"
-              className="ghost-button"
               onClick={() => setVariables((prev) => [...prev, emptyVariable()])}
             >
               + Add Variable
-            </button>
+            </Button>
           </div>
           {variables.map((variable, index) => (
             <div key={`${variable.name}-${index}`} className="prompt-editor__variable-row">
@@ -328,15 +329,16 @@ export function PromptEditor({
                   handleVariableChange(index, { exampleValue: event.target.value })
                 }
               />
-              <button
+              <Button
+                variant="ghost"
                 type="button"
-                className="ghost-button danger"
+                className="danger"
                 onClick={() =>
                   setVariables((prev) => prev.filter((_, variableIndex) => variableIndex !== index))
                 }
               >
                 Remove
-              </button>
+              </Button>
             </div>
           ))}
         </div>

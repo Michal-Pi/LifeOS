@@ -15,6 +15,7 @@ import { useProjectManager } from '@/hooks/useProjectManager'
 import { ToolCallTimeline } from './ToolCallTimeline'
 import { ExpertCouncilInspector } from './ExpertCouncilInspector'
 import { ProjectManagerChat } from './ProjectManagerChat'
+import { Button } from '@/components/ui/button'
 import type { DeepResearchRequest, Run, RunStatus, Workspace, WorkspaceId } from '@lifeos/agents'
 
 interface RunCardProps {
@@ -223,8 +224,7 @@ export function RunCard({
                 rows={3}
                 placeholder="Type your response..."
               />
-              <button
-                className="primary-button"
+              <Button
                 disabled={!inputResponse.trim() || isSubmittingInput}
                 onClick={async () => {
                   if (!onProvideInput) return
@@ -238,7 +238,7 @@ export function RunCard({
                 }}
               >
                 {isSubmittingInput ? 'Submitting...' : 'Submit Response'}
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -352,14 +352,9 @@ export function RunCard({
           </div>
           {hasMore && (
             <div className="run-messages-actions">
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={loadMore}
-                disabled={isLoadingMore}
-              >
+              <Button variant="ghost" type="button" onClick={loadMore} disabled={isLoadingMore}>
                 {isLoadingMore ? 'Loading...' : 'Load older messages'}
-              </button>
+              </Button>
             </div>
           )}
         </details>
@@ -390,13 +385,13 @@ export function RunCard({
           run.status !== 'running' &&
           run.status !== 'pending' &&
           run.status !== 'waiting_for_input' && (
-            <button onClick={() => onResume(run.runId)} className="ghost-button">
+            <Button variant="ghost" onClick={() => onResume(run.runId)}>
               Resume
-            </button>
+            </Button>
           )}
-        <button onClick={() => onDelete(run.runId)} className="ghost-button danger">
+        <Button variant="ghost" className="danger" onClick={() => onDelete(run.runId)}>
           Delete
-        </button>
+        </Button>
       </div>
     </div>
   )

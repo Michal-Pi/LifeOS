@@ -8,7 +8,6 @@ const primaryLinks = [
   { to: '/notes', label: 'Notes' },
   { to: '/habits', label: 'Habits' },
   { to: '/workspaces', label: 'Workspaces' },
-  { to: '/research', label: 'Research' },
 ]
 
 const secondaryLinks = [

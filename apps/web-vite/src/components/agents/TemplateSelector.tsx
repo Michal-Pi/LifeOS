@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import type { WorkspaceTemplatePreset } from '@/agents/templatePresets'
 import type { ContentTypePreset } from '@/agents/contentTypePresets'
+import { Button } from '@/components/ui/button'
+import { Select, type SelectOption } from '@/components/Select'
 import './TemplateSelector.css'
 
 type TemplateSelectorProps = {
@@ -34,6 +36,10 @@ export function TemplateSelector({
     [templates]
   )
   const defaultContentType = contentTypes[0]?.name ?? ''
+  const contentTypeOptions = useMemo<SelectOption[]>(
+    () => contentTypes.map((preset) => ({ value: preset.name, label: preset.name })),
+    [contentTypes]
+  )
   const [selectedContentTypes, setSelectedContentTypes] = useState<SelectedContentTypes>({})
 
   const getContentType = (templateName: string) =>
@@ -96,27 +102,23 @@ export function TemplateSelector({
               {template.supportsContentTypes && contentTypes.length > 0 && (
                 <div className="template-card__selector">
                   <label htmlFor={contentTypeId}>Content type</label>
-                  <select
+                  <Select
                     id={contentTypeId}
                     value={contentType}
-                    onChange={(event) =>
+                    onChange={(value) =>
                       setSelectedContentTypes((prev) => ({
                         ...prev,
-                        [template.name]: event.target.value,
+                        [template.name]: value,
                       }))
                     }
-                  >
-                    {contentTypes.map((preset) => (
-                      <option key={preset.id} value={preset.name}>
-                        {preset.name}
-                      </option>
-                    ))}
-                  </select>
+                    options={contentTypeOptions}
+                    placeholder="Select content type"
+                  />
                 </div>
               )}
 
-              <button
-                className="primary-button template-card__action"
+              <Button
+                className="template-card__action"
                 type="button"
                 disabled={isBusy}
                 onClick={() =>
@@ -127,7 +129,7 @@ export function TemplateSelector({
                 }
               >
                 Use Template
-              </button>
+              </Button>
             </article>
           )
         })}

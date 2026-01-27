@@ -17,7 +17,6 @@ import type {
   RecurrenceInstance,
 } from '@lifeos/calendar'
 import type { OutboxOp } from '@/outbox/types'
-import { describeRecurrence } from '@lifeos/calendar'
 import { useMemo } from 'react'
 import { MonthView } from '@/components/MonthView'
 import { WeeklyView } from '@/components/WeeklyView'
@@ -214,6 +213,7 @@ export function CalendarViewsContainer({
           onEventSelect={onEventSelect}
           selectedEventId={selectedEvent?.canonicalEventId}
           calendarsById={calendarsById}
+          loading={loading}
         />
       )}
 
@@ -274,50 +274,60 @@ export function CalendarViewsContainer({
                     ? colors.light
                     : colors.normal
 
+                const timeLabel = event.allDay
+                  ? 'All day'
+                  : `${timeFormatter.format(new Date(event.startIso))} — ${timeFormatter.format(
+                      new Date(event.endIso)
+                    )}`
+                const attendeeNames =
+                  event.attendees
+                    ?.map((attendee) => attendee.displayName || attendee.email || 'Guest')
+                    .filter(Boolean) ?? []
+                const participantsLabel =
+                  attendeeNames.length > 0
+                    ? `${attendeeNames.slice(0, 3).join(', ')}${
+                        attendeeNames.length > 3 ? ` +${attendeeNames.length - 3}` : ''
+                      }`
+                    : 'Private focus time'
+                const locationLabel = event.location ?? 'No location'
+
                 return (
                   <button
                     key={event.canonicalEventId}
-                    className={`event-card ${isSelected ? 'selected' : ''}`}
+                    className={`timeline-event-card ${isSelected ? 'is-selected' : ''}`}
                     style={{ borderLeftColor: borderColor }}
                     type="button"
                     onClick={() => onEventSelect(event)}
                   >
-                    <div className="event-time">
-                      <strong>
-                        {event.allDay
-                          ? 'All day'
-                          : `${timeFormatter.format(new Date(event.startIso))} — ${timeFormatter.format(new Date(event.endIso))}`}
-                      </strong>
-                      <span className="calendar-meta">{event.location ?? 'No location'}</span>
-                    </div>
-                    <div className="event-body">
-                      <h3>
+                    <div className="timeline-event-title-row">
+                      <h3 className="timeline-event-title">
                         {event.title ?? 'Untitled event'}
                         {isRecurring && (
                           <span className="recurrence-indicator" title="Recurring event">
                             ↻
                           </span>
                         )}
-                        <span
-                          className={`sync-indicator ${eventSyncState.className}`}
-                          title={hasPendingOp ? 'Saving to device…' : eventSyncState.label}
-                        >
-                          {hasPendingOp ? '↻' : eventSyncState.icon}
-                        </span>
                       </h3>
-                      <p>{event.description ?? 'No description'}</p>
-                      {isRecurring && event.recurrenceV2 && (
-                        <p className="calendar-meta recurrence-description">
-                          {describeRecurrence(event.recurrenceV2)}
-                        </p>
-                      )}
-                      {event.attendees?.length ? (
-                        <p className="calendar-meta">
-                          {event.attendees.length} attendee{event.attendees.length > 1 ? 's' : ''}
-                        </p>
-                      ) : (
-                        <p className="calendar-meta">Private focus time</p>
-                      )}
+                      <span
+                        className={`sync-indicator ${eventSyncState.className}`}
+                        title={hasPendingOp ? 'Saving to device…' : eventSyncState.label}
+                      >
+                        {hasPendingOp ? '↻' : eventSyncState.icon}
+                      </span>
+                    </div>
+                    <div className="timeline-event-details">
+                      <div className="timeline-event-detail">
+                        <span className="timeline-event-detail-label">Time</span>
+                        <span className="timeline-event-detail-value">{timeLabel}</span>
+                      </div>
+                      <div className="timeline-event-detail">
+                        <span className="timeline-event-detail-label">Participants</span>
+                        <span className="timeline-event-detail-value">{participantsLabel}</span>
+                      </div>
+                      <div className="timeline-event-detail">
+                        <span className="timeline-event-detail-label">Location</span>
+                        <span className="timeline-event-detail-value">{locationLabel}</span>
+                      </div>
                     </div>
                   </button>
                 )

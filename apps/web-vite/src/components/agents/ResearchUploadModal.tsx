@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import type { DeepResearchRequest, DeepResearchSource } from '@lifeos/agents'
+import { Button } from '@/components/ui/button'
 import styles from './ResearchQueue.module.css'
 
 interface ResearchUploadModalProps {
@@ -134,13 +135,13 @@ export function ResearchUploadModal({
             onChange={(event) => void handleFileSelect(event.target.files)}
           />
           <p>Drag and drop a text file or</p>
-          <button
+          <Button
+            variant="ghost"
             type="button"
-            className="ghost-button"
             onClick={() => fileInputRef.current?.click()}
           >
             Choose File
-          </button>
+          </Button>
         </div>
 
         <label className={styles['research-field']}>
@@ -156,17 +157,16 @@ export function ResearchUploadModal({
         {error && <div className={styles['research-upload-error']}>{error}</div>}
 
         <div className="modal-actions">
-          <button className="ghost-button" type="button" onClick={onClose}>
+          <Button variant="ghost" type="button" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            className="primary-button"
+          </Button>
+          <Button
             type="button"
             onClick={handleUpload}
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Uploading...' : 'Upload Results'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

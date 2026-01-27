@@ -36,6 +36,7 @@ import { WorkoutSessionCard } from '@/components/training/WorkoutSessionCard'
 import { StatusBar } from '@/components/StatusBar'
 import { StatusDot } from '@/components/StatusDot'
 import { TelemetryBar } from '@/components/TelemetryBar'
+import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
@@ -52,9 +53,9 @@ const formatter = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
 })
 const timeFormat = new Intl.DateTimeFormat('en-US', {
-  hour: 'numeric',
-  minute: 'numeric',
-  hour12: true,
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
 })
 const timeWithSeconds = new Intl.DateTimeFormat('en-US', {
   hour: 'numeric',
@@ -144,15 +145,17 @@ export function TodayPage() {
     void loadData()
   }, [userId, todayKey, loadTasks])
 
-  // Convert events to display format
+  // Convert events to display format and sort chronologically
   const displayEvents = useMemo(
     () =>
-      events.map((event) => ({
-        title: event.title || 'Untitled event',
-        start: new Date(event.startMs),
-        end: new Date(event.endMs),
-        guests: event.attendees?.filter((a) => a.email).map((a) => a.email!) || [],
-      })),
+      events
+        .map((event) => ({
+          title: event.title || 'Untitled event',
+          start: new Date(event.startMs),
+          end: new Date(event.endMs),
+          guests: event.attendees?.filter((a) => a.email).map((a) => a.email!) || [],
+        }))
+        .sort((a, b) => a.start.getTime() - b.start.getTime()),
     [events]
   )
   const hasCalendarEvents = displayEvents.length > 0
@@ -340,9 +343,9 @@ export function TodayPage() {
                 <p className="section-label">Daily State</p>
                 <p className="section-hint">Signals that set your focus and tone.</p>
               </div>
-              <button className="ghost-button small" onClick={() => navigate('/review')}>
+              <Button variant="ghost" className="small" onClick={() => navigate('/review')}>
                 Review week
-              </button>
+              </Button>
             </div>
             <div className="daily-state-header">
               <div>
@@ -388,13 +391,9 @@ export function TodayPage() {
                   </button>
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={() => setIsMindModalOpen(true)}
-                className="ghost-button small"
-              >
+              <Button variant="ghost" type="button" onClick={() => setIsMindModalOpen(true)} className="small">
                 Adjust focus
-              </button>
+              </Button>
             </div>
             <IncantationDisplay variant="embedded" />
           </section>

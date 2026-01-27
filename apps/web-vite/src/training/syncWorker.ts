@@ -52,10 +52,6 @@ const state: TrainingSyncState = {
   userId: null,
 }
 
-function isOnline(): boolean {
-  return typeof navigator !== 'undefined' ? navigator.onLine : true
-}
-
 async function upsertTrainingDoc(
   userId: string,
   entityType: TrainingOutboxOp['entityType'],
@@ -190,7 +186,7 @@ async function syncOp(userId: string, op: TrainingOutboxOp): Promise<void> {
 }
 
 async function drainTrainingOutbox(userId: string): Promise<void> {
-  if (!isOnline()) return
+  // Always attempt sync - network errors handled gracefully
   const ops = await listReadyTrainingOps(userId)
   for (const op of ops) {
     try {

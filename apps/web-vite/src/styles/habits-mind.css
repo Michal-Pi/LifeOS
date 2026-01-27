@@ -128,6 +128,254 @@
   color: var(--text-primary);
 }
 
+.mind-intervention-modal {
+  max-width: 640px;
+  width: min(92vw, 640px);
+}
+
+.feeling-selector,
+.intervention-selector,
+.intervention-runner,
+.session-complete {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.feeling-selector-title,
+.intervention-selector-title,
+.intervention-runner-title,
+.session-complete-title {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--foreground);
+}
+
+.feeling-selector-subtitle,
+.intervention-selector-subtitle,
+.session-complete-subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.feeling-grid,
+.feeling-after-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+
+.feeling-option,
+.feeling-after-option {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--background-secondary);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.feeling-option.selected,
+.feeling-after-option.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.feeling-label {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.feeling-description {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.intervention-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.intervention-card {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--background-secondary);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.intervention-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.intervention-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.intervention-duration {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.intervention-description {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.intervention-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.intervention-tag {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  background: var(--background-secondary);
+}
+
+.intervention-runner-header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.intervention-runner-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.progress-text {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--background-tertiary);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.step-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.step-text-content,
+.step-timer-instruction,
+.step-choice-question {
+  margin: 0;
+  color: var(--foreground);
+}
+
+.choice-options {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.choice-option {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--background-secondary);
+}
+
+.choice-option.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.timer-display {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.timer-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  background: var(--background-secondary);
+}
+
+.timer-remaining {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.timer-progress {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--background-tertiary);
+  overflow: hidden;
+}
+
+.timer-progress-bar {
+  height: 100%;
+  background: var(--accent);
+}
+
+.session-complete-header {
+  display: grid;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.complete-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: var(--success-light);
+  color: var(--success);
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+  font-weight: 700;
+}
+
+.next-action-section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.next-action-hint {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.session-complete-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
 .habit-card-actions {
   display: flex;
   flex-wrap: wrap;

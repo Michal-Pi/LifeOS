@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react'
 import type { CanonicalHabit, HabitDomain, HabitAnchor } from '@lifeos/habits'
+import { Button } from '@/components/ui/button'
 
 interface HabitFormModalProps {
   isOpen: boolean
@@ -152,22 +153,22 @@ export function HabitFormModal({ isOpen, onClose, onSave, existingHabit }: Habit
 
         <form onSubmit={handleSubmit}>
           <div className="form-section">
-            <label className="form-label">
-              Habit Title *
+            <div className="form-group">
+              <label htmlFor="habit-title">Habit Title *</label>
               <input
+                id="habit-title"
                 type="text"
-                className="form-input"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Morning Meditation"
                 required
               />
-            </label>
+            </div>
 
-            <label className="form-label">
-              Category
+            <div className="form-group">
+              <label htmlFor="habit-domain">Category</label>
               <select
-                className="form-select"
+                id="habit-domain"
                 value={domain}
                 onChange={(e) => setDomain(e.target.value as HabitDomain)}
               >
@@ -177,108 +178,108 @@ export function HabitFormModal({ isOpen, onClose, onSave, existingHabit }: Habit
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
           </div>
 
           <div className="form-section">
-            <h3 className="form-section-title">Habit Recipe</h3>
-            <p className="form-hint">Define the tiny and standard versions of your habit</p>
+            <p className="section-label">Habit Recipe</p>
+            <p className="helper-text">Define the tiny and standard versions of your habit</p>
 
-            <label className="form-label">
-              Tiny Version
+            <div className="form-group">
+              <label htmlFor="habit-tiny">Tiny Version</label>
               <input
+                id="habit-tiny"
                 type="text"
-                className="form-input"
                 value={tinyVersion}
                 onChange={(e) => setTinyVersion(e.target.value)}
                 placeholder="e.g., 1 deep breath"
               />
-              <span className="form-help">The easiest version when you're struggling</span>
-            </label>
+              <p className="helper-text">The easiest version when you're struggling</p>
+            </div>
 
-            <label className="form-label">
-              Standard Version *
+            <div className="form-group">
+              <label htmlFor="habit-standard">Standard Version *</label>
               <input
+                id="habit-standard"
                 type="text"
-                className="form-input"
                 value={standardVersion}
                 onChange={(e) => setStandardVersion(e.target.value)}
                 placeholder="e.g., 10 minutes meditation"
                 required
               />
-              <span className="form-help">Your ideal target</span>
-            </label>
+              <p className="helper-text">Your ideal target</p>
+            </div>
           </div>
 
           <div className="form-section">
-            <h3 className="form-section-title">When to do it (Anchor)</h3>
+            <p className="section-label">When to do it (Anchor)</p>
 
-            <div className="form-radio-group">
-              <label className="form-radio">
+            <div className="form-row">
+              <label className="form-checkbox">
                 <input
                   type="radio"
                   name="anchorType"
                   checked={anchorType === 'time_window'}
                   onChange={() => setAnchorType('time_window')}
                 />
-                Time Window
+                <span>Time Window</span>
               </label>
-              <label className="form-radio">
+              <label className="form-checkbox">
                 <input
                   type="radio"
                   name="anchorType"
                   checked={anchorType === 'after_event'}
                   onChange={() => setAnchorType('after_event')}
                 />
-                After Event
+                <span>After Event</span>
               </label>
             </div>
 
             {anchorType === 'time_window' ? (
-              <div className="form-inline">
-                <label className="form-label">
-                  Start Time
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="habit-start">Start Time</label>
                   <input
+                    id="habit-start"
                     type="time"
-                    className="form-input"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
                   />
-                </label>
-                <label className="form-label">
-                  End Time
+                </div>
+                <div className="form-group">
+                  <label htmlFor="habit-end">End Time</label>
                   <input
+                    id="habit-end"
                     type="time"
-                    className="form-input"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
                   />
-                </label>
+                </div>
               </div>
             ) : (
-              <label className="form-label">
-                After what event?
+              <div className="form-group">
+                <label htmlFor="habit-after-event">After what event?</label>
                 <input
+                  id="habit-after-event"
                   type="text"
-                  className="form-input"
                   value={afterEvent}
                   onChange={(e) => setAfterEvent(e.target.value)}
                   placeholder="e.g., Wake up, Lunch, End workday"
                 />
-              </label>
+              </div>
             )}
           </div>
 
           <div className="form-section">
-            <h3 className="form-section-title">Schedule</h3>
-            <p className="form-hint">Select the days you want to do this habit</p>
+            <p className="section-label">Schedule</p>
+            <p className="helper-text">Select the days you want to do this habit</p>
 
-            <div className="days-selector">
+            <div className="weekday-picker">
               {DAYS_OF_WEEK.map((day) => (
                 <button
                   key={day.value}
                   type="button"
-                  className={`day-button ${selectedDays.includes(day.value) ? 'active' : ''}`}
+                  className={`weekday-button ${selectedDays.includes(day.value) ? 'selected' : ''}`}
                   onClick={() => toggleDay(day.value)}
                 >
                   {day.label}
@@ -288,7 +289,7 @@ export function HabitFormModal({ isOpen, onClose, onSave, existingHabit }: Habit
           </div>
 
           <div className="form-section">
-            <h3 className="form-section-title">Safety Net</h3>
+            <p className="section-label">Safety Net</p>
 
             <label className="form-checkbox">
               <input
@@ -296,7 +297,7 @@ export function HabitFormModal({ isOpen, onClose, onSave, existingHabit }: Habit
                 checked={tinyCountsAsSuccess}
                 onChange={(e) => setTinyCountsAsSuccess(e.target.checked)}
               />
-              Tiny version counts as success
+              <span>Tiny version counts as success</span>
             </label>
 
             <label className="form-checkbox">
@@ -305,17 +306,17 @@ export function HabitFormModal({ isOpen, onClose, onSave, existingHabit }: Habit
                 checked={allowRecovery}
                 onChange={(e) => setAllowRecovery(e.target.checked)}
               />
-              Allow recovery (can still mark as done later)
+              <span>Allow recovery (can still mark as done later)</span>
             </label>
           </div>
 
           <div className="modal-actions">
-            <button type="button" className="ghost-button" onClick={handleClose}>
+            <Button variant="ghost" type="button" onClick={handleClose}>
               Cancel
-            </button>
-            <button type="submit" className="primary-button" disabled={isSaving}>
+            </Button>
+            <Button type="submit" disabled={isSaving}>
               {isSaving ? 'Saving...' : existingHabit ? 'Update Habit' : 'Create Habit'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

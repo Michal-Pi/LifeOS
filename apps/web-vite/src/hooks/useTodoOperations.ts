@@ -226,12 +226,11 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
       // Optimistic update
       setProjects((prev) => [...prev, localProject])
 
-      // Try to sync immediately if online (don't block)
-      if (navigator.onLine) {
-        todoRepository.saveProject(newProject).catch((err) => {
-          logger.error('Failed to sync project:', err)
-        })
-      }
+      // Always attempt immediate sync - errors handled gracefully
+      todoRepository.saveProject(newProject).catch((err) => {
+        logger.error('Failed to sync project:', err)
+        // Outbox will retry later
+      })
 
       return newProject.id
     },
@@ -254,12 +253,11 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
       // Optimistic update
       setProjects((prev) => prev.filter((p) => p.id !== projectId))
 
-      // Try to sync immediately if online (don't block)
-      if (navigator.onLine) {
-        todoRepository.deleteProject(userId, projectId).catch((err) => {
-          logger.error('Failed to sync project deletion:', err)
-        })
-      }
+      // Always attempt immediate sync - errors handled gracefully
+      todoRepository.deleteProject(userId, projectId).catch((err) => {
+        logger.error('Failed to sync project deletion:', err)
+        // Outbox will retry later
+      })
     },
     [projects, userId]
   )
@@ -287,12 +285,11 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
 
       setChapters((prev) => [...prev, localChapter])
 
-      // Try to sync immediately if online (don't block)
-      if (navigator.onLine) {
-        todoRepository.saveChapter(newChapter).catch((err) => {
-          logger.error('Failed to sync chapter:', err)
-        })
-      }
+      // Always attempt immediate sync - errors handled gracefully
+      todoRepository.saveChapter(newChapter).catch((err) => {
+        logger.error('Failed to sync chapter:', err)
+        // Outbox will retry later
+      })
     },
     [userId]
   )
@@ -312,12 +309,11 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
 
       setChapters((prev) => prev.filter((c) => c.id !== chapterId))
 
-      // Try to sync immediately if online (don't block)
-      if (navigator.onLine) {
-        todoRepository.deleteChapter(userId, chapterId).catch((err) => {
-          logger.error('Failed to sync chapter deletion:', err)
-        })
-      }
+      // Always attempt immediate sync - errors handled gracefully
+      todoRepository.deleteChapter(userId, chapterId).catch((err) => {
+        logger.error('Failed to sync chapter deletion:', err)
+        // Outbox will retry later
+      })
     },
     [userId, chapters]
   )
@@ -355,12 +351,11 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
         toast.success('Task created successfully')
       }
 
-      // Try to sync immediately if online (don't block)
-      if (navigator.onLine) {
-        todoRepository.saveTask(normalizedTask).catch((err) => {
-          logger.error('Failed to sync task:', err)
-        })
-      }
+      // Always attempt immediate sync - errors handled gracefully
+      todoRepository.saveTask(normalizedTask).catch((err) => {
+        logger.error('Failed to sync task:', err)
+        // Outbox will retry later
+      })
 
       return normalizedTask
     },
@@ -402,12 +397,11 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
 
       toast.success('Task updated successfully')
 
-      // Try to sync immediately if online (don't block)
-      if (navigator.onLine) {
-        todoRepository.saveTask(normalizedTask).catch((err) => {
-          logger.error('Failed to sync task update:', err)
-        })
-      }
+      // Always attempt immediate sync - errors handled gracefully
+      todoRepository.saveTask(normalizedTask).catch((err) => {
+        logger.error('Failed to sync task update:', err)
+        // Outbox will retry later
+      })
     },
     [userId, projects]
   )
@@ -429,12 +423,11 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
 
       toast.success('Task deleted successfully')
 
-      // Try to sync immediately if online (don't block)
-      if (navigator.onLine) {
-        todoRepository.deleteTask(userId, taskId).catch((err) => {
-          logger.error('Failed to sync task deletion:', err)
-        })
-      }
+      // Always attempt immediate sync - errors handled gracefully
+      todoRepository.deleteTask(userId, taskId).catch((err) => {
+        logger.error('Failed to sync task deletion:', err)
+        // Outbox will retry later
+      })
     },
     [userId, tasks]
   )

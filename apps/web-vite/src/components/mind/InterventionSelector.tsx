@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react'
 import type { CanonicalInterventionPreset, FeelingState } from '@lifeos/mind'
 import { useMindInterventions } from '@/hooks/useMindInterventions'
+import { Button } from '@/components/ui/button'
 
 interface InterventionSelectorProps {
   feeling: FeelingState
@@ -50,9 +51,9 @@ export function InterventionSelector({ feeling, onSelect, onBack }: Intervention
   if (isLoading && interventions.length === 0) {
     return (
       <div className="intervention-selector">
-        <button type="button" onClick={onBack} className="back-button">
+        <Button variant="ghost" type="button" onClick={onBack} className="back-button">
           ← Back
-        </button>
+        </Button>
         <div className="loading-state">
           <p>Loading interventions...</p>
         </div>
@@ -75,9 +76,9 @@ export function InterventionSelector({ feeling, onSelect, onBack }: Intervention
 
   return (
     <div className="intervention-selector">
-      <button type="button" onClick={onBack} className="back-button">
+      <Button variant="ghost" type="button" onClick={onBack} className="back-button">
         ← Back
-      </button>
+      </Button>
 
       <h3 className="intervention-selector-title">
         Recommended for feeling {getFeelingLabel(feeling)}
@@ -92,7 +93,8 @@ export function InterventionSelector({ feeling, onSelect, onBack }: Intervention
       ) : (
         <div className="intervention-list">
           {interventions.map((intervention) => (
-            <button
+            <Button
+              variant="ghost"
               key={intervention.interventionId}
               type="button"
               onClick={() => onSelect(intervention)}
@@ -112,7 +114,7 @@ export function InterventionSelector({ feeling, onSelect, onBack }: Intervention
                   </span>
                 ))}
               </div>
-            </button>
+            </Button>
           ))}
         </div>
       )}

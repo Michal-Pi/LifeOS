@@ -195,6 +195,21 @@
   opacity: 0.7;
 }
 
+.training-error-message {
+  padding: var(--space-3);
+  background: var(--error-light);
+  border: 1px solid var(--error-color);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+}
+
+.training-error-message .error-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--error-color);
+  font-weight: 500;
+}
+
 /* ========== Exercise Library ========== */
 
 .exercise-library-list {

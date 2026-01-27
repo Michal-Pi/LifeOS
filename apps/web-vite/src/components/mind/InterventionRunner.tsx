@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useLayoutEffect, useCallback } from 'react'
 import type { CanonicalInterventionPreset } from '@lifeos/mind'
+import { Button } from '@/components/ui/button'
 
 interface InterventionRunnerProps {
   intervention: CanonicalInterventionPreset
@@ -79,9 +80,9 @@ export function InterventionRunner({
         return (
           <div className="step-content step-text">
             <p className="step-text-content">{currentStep.content}</p>
-            <button type="button" onClick={handleNext} className="primary-button">
+            <Button type="button" onClick={handleNext}>
               {isLastStep ? 'Complete' : 'Continue'}
-            </button>
+            </Button>
           </div>
         )
 
@@ -107,9 +108,9 @@ export function InterventionRunner({
             )}
 
             {timerRemaining === null && (
-              <button type="button" onClick={handleNext} className="primary-button">
+              <Button type="button" onClick={handleNext}>
                 {isLastStep ? 'Complete' : 'Continue'}
-              </button>
+              </Button>
             )}
           </div>
         )
@@ -117,7 +118,7 @@ export function InterventionRunner({
       case 'choice':
         return (
           <div className="step-content step-choice">
-            <p className="step-choice-question">{currentStep.question}</p>
+            <p className="section-label">{currentStep.question}</p>
             <div className="choice-options">
               {currentStep.options.map((option, index) => {
                 const responseKey = `step_${currentStepIndex}_choice`
@@ -126,7 +127,8 @@ export function InterventionRunner({
                   : responses[responseKey] === option
 
                 return (
-                  <button
+                  <Button
+                    variant="ghost"
                     key={index}
                     type="button"
                     onClick={() => {
@@ -143,28 +145,28 @@ export function InterventionRunner({
                     className={`choice-option ${isSelected ? 'selected' : ''}`}
                   >
                     {option}
-                  </button>
+                  </Button>
                 )
               })}
             </div>
-            <button
+            <Button
               type="button"
               onClick={handleNext}
               disabled={!responses[`step_${currentStepIndex}_choice`]}
-              className="primary-button"
             >
               {isLastStep ? 'Complete' : 'Continue'}
-            </button>
+            </Button>
           </div>
         )
 
       case 'input':
         return (
           <div className="step-content step-input">
-            <label className="step-input-prompt">{currentStep.prompt}</label>
+            <div className="form-group">
+              <label htmlFor={`step-input-${currentStepIndex}`}>{currentStep.prompt}</label>
             {currentStep.multiline ? (
               <textarea
-                className="step-input-field"
+                id={`step-input-${currentStepIndex}`}
                 placeholder={currentStep.placeholder}
                 value={(responses[`step_${currentStepIndex}_input`] as string) || ''}
                 onChange={(e) =>
@@ -174,8 +176,8 @@ export function InterventionRunner({
               />
             ) : (
               <input
+                id={`step-input-${currentStepIndex}`}
                 type="text"
-                className="step-input-field"
                 placeholder={currentStep.placeholder}
                 value={(responses[`step_${currentStepIndex}_input`] as string) || ''}
                 onChange={(e) =>
@@ -183,14 +185,14 @@ export function InterventionRunner({
                 }
               />
             )}
-            <button
+            </div>
+            <Button
               type="button"
               onClick={handleNext}
               disabled={!responses[`step_${currentStepIndex}_input`]}
-              className="primary-button"
             >
               {isLastStep ? 'Complete' : 'Continue'}
-            </button>
+            </Button>
           </div>
         )
 
@@ -202,9 +204,9 @@ export function InterventionRunner({
   return (
     <div className="intervention-runner">
       <div className="intervention-runner-header">
-        <button type="button" onClick={onCancel} className="cancel-button">
+        <Button variant="ghost" type="button" onClick={onCancel} className="cancel-button">
           ✕
-        </button>
+        </Button>
         <h3 className="intervention-runner-title">{intervention.title}</h3>
         <div className="intervention-runner-progress">
           <span className="progress-text">

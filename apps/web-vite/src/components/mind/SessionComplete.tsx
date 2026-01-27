@@ -7,6 +7,7 @@
 
 import { useState } from 'react'
 import type { FeelingState } from '@lifeos/mind'
+import { Button } from '@/components/ui/button'
 
 interface SessionCompleteProps {
   onFinish: (feelingAfter?: FeelingState, createTodo?: boolean) => void
@@ -44,7 +45,8 @@ export function SessionComplete({ onFinish }: SessionCompleteProps) {
         <h4 className="section-label">How are you feeling now?</h4>
         <div className="feeling-after-grid">
           {FEELINGS.map((feeling) => (
-            <button
+            <Button
+              variant="ghost"
               key={feeling.value}
               type="button"
               onClick={() => setFeelingAfter(feeling.value)}
@@ -52,13 +54,13 @@ export function SessionComplete({ onFinish }: SessionCompleteProps) {
             >
               <span className="feeling-emoji">{feeling.emoji}</span>
               <span className="feeling-label">{feeling.label}</span>
-            </button>
+            </Button>
           ))}
         </div>
 
         <div className="next-action-section">
           <h4 className="section-label">What's your next action?</h4>
-          <label className="checkbox-label">
+          <label className="form-checkbox">
             <input
               type="checkbox"
               checked={createTodo}
@@ -73,16 +75,12 @@ export function SessionComplete({ onFinish }: SessionCompleteProps) {
       </div>
 
       <div className="session-complete-footer">
-        <button
-          type="button"
-          onClick={() => onFinish(feelingAfter, createTodo)}
-          className="primary-button"
-        >
+        <Button type="button" onClick={() => onFinish(feelingAfter, createTodo)}>
           Finish
-        </button>
-        <button type="button" onClick={() => onFinish(undefined, false)} className="ghost-button">
+        </Button>
+        <Button variant="ghost" type="button" onClick={() => onFinish(undefined, false)}>
           Skip
-        </button>
+        </Button>
       </div>
     </div>
   )

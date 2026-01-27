@@ -31,15 +31,19 @@ if (typeof window !== 'undefined') {
 
   // Suppress Firebase token refresh errors when offline
   // These are expected when the app is offline and Firebase Auth tries to refresh tokens
+  // Also suppress Firestore primary lease errors (expected when page is hidden/offline)
   console.error = (...args: unknown[]) => {
     const message = args[0]
     if (
       typeof message === 'string' &&
       (message.includes('securetoken.googleapis.com') ||
         message.includes('ERR_INTERNET_DISCONNECTED') ||
-        message.includes('Failed to fetch'))
+        message.includes('Failed to fetch') ||
+        message.includes('Failed to obtain primary lease') ||
+        message.includes('Backfill Indexes') ||
+        message.includes('Apply remote event'))
     ) {
-      // Suppress Firebase token refresh errors when offline
+      // Suppress expected Firebase/Firestore errors when offline or page hidden
       return
     }
     originalError.apply(console, args)

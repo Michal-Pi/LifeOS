@@ -12,11 +12,14 @@
  * - Form validation
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
 import { usePromptLibrary } from '@/hooks/usePromptLibrary'
 import { useAuth } from '@/hooks/useAuth'
+import { useAiProviderKeys } from '@/hooks/useAiProviderKeys'
+import { Button } from '@/components/ui/button'
+import { Select, type SelectOption } from '@/components/Select'
 import { ProjectManagerConfig as ProjectManagerConfigForm } from './ProjectManagerConfig'
 import { PromptSelector } from './PromptSelector'
 import { PromptEditor } from './PromptEditor'
@@ -87,6 +90,18 @@ const EXECUTION_MODE_OPTIONS: {
   },
 ]
 
+const WORKFLOW_SELECT_OPTIONS: SelectOption[] = WORKFLOW_OPTIONS.map((option) => ({
+  value: option.value,
+  label: `${option.label} - ${option.description}`,
+}))
+
+const EXECUTION_MODE_SELECT_OPTIONS: SelectOption[] = EXECUTION_MODE_OPTIONS.map((option) => ({
+  value: option.value,
+  label: `${option.label} - ${option.description}`,
+}))
+
+const DEFAULT_AGENT_OPTION = 'none'
+
 const PROVIDER_OPTIONS: { value: ModelProvider; label: string }[] = [
   { value: 'openai', label: 'OpenAI' },
   { value: 'anthropic', label: 'Anthropic' },
@@ -95,13 +110,44 @@ const PROVIDER_OPTIONS: { value: ModelProvider; label: string }[] = [
 ]
 
 const createDefaultCouncilModel = (
-  index: number
-): ExpertCouncilConfig['councilModels'][number] => ({
-  modelId: `council-${index + 1}`,
-  provider: 'openai',
-  modelName: 'gpt-4',
-  temperature: 0.7,
-})
+  index: number,
+  connectedProviders: ModelProvider[] = ['openai']
+): ExpertCouncilConfig['councilModels'][number] => {
+  // Preferred order: OpenAI (GPT), Anthropic (Claude), xAI (Grok), Google (Gemini)
+  const preferredOrder: ModelProvider[] = ['openai', 'anthropic', 'xai', 'google']
+  
+  // For each index, try to use the preferred provider in order
+  // If that provider is not connected, cycle through connected providers
+  let defaultProvider: ModelProvider
+  
+  if (connectedProviders.length === 0) {
+    defaultProvider = 'openai' // Fallback
+  } else {
+    const preferredIndex = index % preferredOrder.length
+    const preferredProvider = preferredOrder[preferredIndex]
+    
+    if (connectedProviders.includes(preferredProvider)) {
+      // Use preferred provider if available
+      defaultProvider = preferredProvider
+    } else {
+      // Cycle through connected providers in their order
+      // This ensures we fill all 4 slots even if not all providers are available
+      defaultProvider = connectedProviders[index % connectedProviders.length]
+    }
+  }
+  
+  const defaultModel = defaultProvider === 'openai' ? 'gpt-4' : 
+                       defaultProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' :
+                       defaultProvider === 'google' ? 'gemini-pro' :
+                       defaultProvider === 'xai' ? 'grok-beta' : 'gpt-4'
+  
+  return {
+    modelId: `council-${index + 1}`,
+    provider: defaultProvider,
+    modelName: defaultModel,
+    temperature: 0.7,
+  }
+}
 
 const DEFAULT_PROJECT_MANAGER_CONFIG: ProjectManagerConfig = {
   enabled: false,
@@ -125,6 +171,28 @@ export function WorkspaceFormModal({
   const { agents, loadAgents } = useAgentOperations()
   const { templates: promptTemplates } = usePromptLibrary()
   const { user } = useAuth()
+  const providerKeys = useAiProviderKeys(user?.uid)
+  
+  // Get connected providers in preferred order: OpenAI, Anthropic, xAI, Google
+  const connectedProviders = useMemo(() => {
+    const providers: ModelProvider[] = []
+    if (providerKeys.keys.openaiKey) providers.push('openai')
+    if (providerKeys.keys.anthropicKey) providers.push('anthropic')
+    if (providerKeys.keys.xaiKey) providers.push('xai')
+    if (providerKeys.keys.googleKey) providers.push('google')
+    return providers.length > 0 ? providers : ['openai'] // Fallback to openai if none connected
+  }, [providerKeys.keys])
+
+  const providerOptions = useMemo<SelectOption[]>(
+    () =>
+      PROVIDER_OPTIONS.filter((option) => connectedProviders.includes(option.value)).map(
+        (option) => ({
+          value: option.value,
+          label: option.label,
+        })
+      ),
+    [connectedProviders]
+  )
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -220,13 +288,18 @@ export function WorkspaceFormModal({
           setExpertCouncilDefaultMode('full')
           setExpertCouncilAllowModeOverride(true)
           setExpertCouncilCouncilModels([
-            createDefaultCouncilModel(0),
-            createDefaultCouncilModel(1),
+            createDefaultCouncilModel(0, connectedProviders),
+            createDefaultCouncilModel(1, connectedProviders),
           ])
+          const defaultChairmanProvider = connectedProviders[0] || 'openai'
+          const defaultChairmanModel = defaultChairmanProvider === 'openai' ? 'gpt-4' : 
+                                       defaultChairmanProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' :
+                                       defaultChairmanProvider === 'google' ? 'gemini-pro' :
+                                       defaultChairmanProvider === 'xai' ? 'grok-beta' : 'gpt-4'
           setExpertCouncilChairmanModel({
             modelId: 'chairman-1',
-            provider: 'openai',
-            modelName: 'gpt-4',
+            provider: defaultChairmanProvider,
+            modelName: defaultChairmanModel,
             temperature: 0.2,
           })
           setExpertCouncilSelfExclusionEnabled(true)
@@ -281,13 +354,18 @@ export function WorkspaceFormModal({
           setExpertCouncilDefaultMode('full')
           setExpertCouncilAllowModeOverride(true)
           setExpertCouncilCouncilModels([
-            createDefaultCouncilModel(0),
-            createDefaultCouncilModel(1),
+            createDefaultCouncilModel(0, connectedProviders),
+            createDefaultCouncilModel(1, connectedProviders),
           ])
+          const defaultChairmanProvider = connectedProviders[0] || 'openai'
+          const defaultChairmanModel = defaultChairmanProvider === 'openai' ? 'gpt-4' : 
+                                       defaultChairmanProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' :
+                                       defaultChairmanProvider === 'google' ? 'gemini-pro' :
+                                       defaultChairmanProvider === 'xai' ? 'grok-beta' : 'gpt-4'
           setExpertCouncilChairmanModel({
             modelId: 'chairman-1',
-            provider: 'openai',
-            modelName: 'gpt-4',
+            provider: defaultChairmanProvider,
+            modelName: defaultChairmanModel,
             temperature: 0.2,
           })
           setExpertCouncilSelfExclusionEnabled(true)
@@ -303,7 +381,7 @@ export function WorkspaceFormModal({
       }
       setError(null)
     }
-  }, [isOpen, workspace, prefill])
+  }, [isOpen, workspace, prefill, connectedProviders])
 
   const handleAgentToggle = (agentId: AgentId) => {
     setSelectedAgentIds((prev) => {
@@ -363,7 +441,7 @@ export function WorkspaceFormModal({
   }
 
   const handleCouncilModelAdd = () => {
-    setExpertCouncilCouncilModels((prev) => [...prev, createDefaultCouncilModel(prev.length)])
+    setExpertCouncilCouncilModels((prev) => [...prev, createDefaultCouncilModel(prev.length, connectedProviders)])
   }
 
   const handleSave = async () => {
@@ -581,10 +659,22 @@ export function WorkspaceFormModal({
     }
   }
 
-  if (!isOpen) return null
-
   // Filter active agents only
   const activeAgents = agents.filter((agent) => !agent.archived)
+  const defaultAgentOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: DEFAULT_AGENT_OPTION, label: 'None' },
+      ...activeAgents
+        .filter((agent) => selectedAgentIds.includes(agent.agentId))
+        .map((agent) => ({
+          value: agent.agentId,
+          label: agent.name,
+        })),
+    ],
+    [activeAgents, selectedAgentIds]
+  )
+
+  if (!isOpen) return null
 
   return (
     <>
@@ -654,37 +744,27 @@ export function WorkspaceFormModal({
             {selectedAgentIds.length > 0 && (
               <div className="form-group">
                 <label htmlFor="defaultAgent">Default Agent (optional)</label>
-                <select
+                <Select
                   id="defaultAgent"
-                  value={defaultAgentId ?? ''}
-                  onChange={(e) => setDefaultAgentId((e.target.value as AgentId) || undefined)}
-                >
-                  <option value="">None</option>
-                  {activeAgents
-                    .filter((agent) => selectedAgentIds.includes(agent.agentId))
-                    .map((agent) => (
-                      <option key={agent.agentId} value={agent.agentId}>
-                        {agent.name}
-                      </option>
-                    ))}
-                </select>
+                  value={defaultAgentId ?? DEFAULT_AGENT_OPTION}
+                  onChange={(value) =>
+                    setDefaultAgentId(value === DEFAULT_AGENT_OPTION ? undefined : (value as AgentId))
+                  }
+                  options={defaultAgentOptions}
+                  placeholder="Select a default agent"
+                />
                 <small>The first agent to handle incoming requests</small>
               </div>
             )}
 
             <div className="form-group">
               <label htmlFor="workflowType">Workflow Type *</label>
-              <select
+              <Select
                 id="workflowType"
                 value={workflowType}
-                onChange={(e) => setWorkflowType(e.target.value as WorkflowType)}
-              >
-                {WORKFLOW_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label} - {option.description}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setWorkflowType(value as WorkflowType)}
+                options={WORKFLOW_SELECT_OPTIONS}
+              />
             </div>
 
             {workflowType === 'graph' && (
@@ -828,18 +908,13 @@ export function WorkspaceFormModal({
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="expertCouncilMode">Default Mode</label>
-                  <select
+                  <Select
                     id="expertCouncilMode"
                     value={expertCouncilDefaultMode}
-                    onChange={(e) => setExpertCouncilDefaultMode(e.target.value as ExecutionMode)}
+                    onChange={(value) => setExpertCouncilDefaultMode(value as ExecutionMode)}
                     disabled={!expertCouncilEnabled}
-                  >
-                    {EXECUTION_MODE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label} - {option.description}
-                      </option>
-                    ))}
-                  </select>
+                    options={EXECUTION_MODE_SELECT_OPTIONS}
+                  />
                 </div>
 
                 <div className="form-group">
@@ -919,22 +994,17 @@ export function WorkspaceFormModal({
                         </div>
                         <div className="form-group">
                           <label htmlFor={`council-model-provider-${index}`}>Provider</label>
-                          <select
+                          <Select
                             id={`council-model-provider-${index}`}
                             value={model.provider}
-                            onChange={(e) =>
+                            onChange={(value) =>
                               handleCouncilModelChange(index, {
-                                provider: e.target.value as ModelProvider,
+                                provider: value as ModelProvider,
                               })
                             }
                             disabled={!expertCouncilEnabled}
-                          >
-                            {PROVIDER_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
+                            options={providerOptions}
+                          />
                         </div>
                       </div>
                       <div className="form-row">
@@ -1000,24 +1070,26 @@ export function WorkspaceFormModal({
                         </div>
                       </div>
                       <div className="form-group">
-                        <button
+                        <Button
+                          variant="ghost"
                           type="button"
                           onClick={() => handleCouncilModelRemove(index)}
                           disabled={!expertCouncilEnabled}
                         >
                           Remove model
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))
                 )}
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={handleCouncilModelAdd}
                   disabled={!expertCouncilEnabled}
                 >
                   + Add Council Model
-                </button>
+                </Button>
               </div>
 
               <div className="form-group">
@@ -1040,23 +1112,18 @@ export function WorkspaceFormModal({
                   </div>
                   <div className="form-group">
                     <label htmlFor="chairman-model-provider">Provider</label>
-                    <select
+                    <Select
                       id="chairman-model-provider"
                       value={expertCouncilChairmanModel.provider}
-                      onChange={(e) =>
+                      onChange={(value) =>
                         setExpertCouncilChairmanModel((prev) => ({
                           ...prev,
-                          provider: e.target.value as ModelProvider,
+                          provider: value as ModelProvider,
                         }))
                       }
                       disabled={!expertCouncilEnabled}
-                    >
-                      {PROVIDER_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                      options={providerOptions}
+                    />
                   </div>
                 </div>
                 <div className="form-row">
@@ -1170,12 +1237,12 @@ export function WorkspaceFormModal({
             </div>
 
             <div className="modal-actions">
-              <button type="button" onClick={onClose} disabled={isSaving}>
+              <Button variant="ghost" type="button" onClick={onClose} disabled={isSaving}>
                 Cancel
-              </button>
-              <button type="submit" disabled={isSaving || activeAgents.length === 0}>
+              </Button>
+              <Button type="submit" disabled={isSaving || activeAgents.length === 0}>
                 {isSaving ? 'Saving...' : workspace ? 'Update Workspace' : 'Create Workspace'}
-              </button>
+              </Button>
             </div>
           </form>
         </div>

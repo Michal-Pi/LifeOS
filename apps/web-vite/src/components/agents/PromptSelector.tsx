@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { PromptReference, PromptType, PromptTemplate } from '@lifeos/agents'
 import { usePromptLibrary } from '@/hooks/usePromptLibrary'
+import { Button } from '@/components/ui/button'
 
 type PromptSelectorProps = {
   type: PromptType
@@ -41,9 +42,9 @@ export function PromptSelector({ type, value, onChange, onEditTemplate }: Prompt
         ))}
       </select>
       {value.type === 'shared' && value.templateId && onEditTemplate && (
-        <button
+        <Button
+          variant="ghost"
           type="button"
-          className="ghost-button"
           onClick={() => {
             const selected = options.find((template) => template.templateId === value.templateId)
             if (selected) {
@@ -52,7 +53,7 @@ export function PromptSelector({ type, value, onChange, onEditTemplate }: Prompt
           }}
         >
           Edit Template
-        </button>
+        </Button>
       )}
     </div>
   )

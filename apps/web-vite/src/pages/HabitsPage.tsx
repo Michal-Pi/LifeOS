@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useHabitOperations } from '@/hooks/useHabitOperations'
 import { HabitFormModal } from '@/components/habits/HabitFormModal'
 import { EmptyState } from '@/components/EmptyState'
+import { Button } from '@/components/ui/button'
 import { useDialog } from '@/contexts/useDialog'
 
 export function HabitsPage() {
@@ -152,30 +153,33 @@ export function HabitsPage() {
     <div className="page-container habits-page">
       <div className="page-header">
         <h1>Habits</h1>
-        <button className="primary-button" onClick={() => setIsModalOpen(true)}>
+        <Button onClick={() => setIsModalOpen(true)}>
           + New Habit
-        </button>
+        </Button>
       </div>
 
       <div className="habits-filters">
-        <button
+        <Button
+          variant="ghost"
           className={`filter-button ${filterStatus === 'active' ? 'active' : ''}`}
           onClick={() => setFilterStatus('active')}
         >
           Active
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
           className={`filter-button ${filterStatus === 'paused' ? 'active' : ''}`}
           onClick={() => setFilterStatus('paused')}
         >
           Paused
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
           className={`filter-button ${filterStatus === 'archived' ? 'active' : ''}`}
           onClick={() => setFilterStatus('archived')}
         >
           Archived
-        </button>
+        </Button>
       </div>
 
       {isLoading && filteredHabits.length === 0 ? (
@@ -276,24 +280,26 @@ export function HabitsPage() {
                 </div>
 
                 <div className="habit-card-actions">
-                  <button className="ghost-button small" onClick={() => handleEditHabit(habit)}>
+                  <Button variant="ghost" className="small" onClick={() => handleEditHabit(habit)}>
                     Edit
-                  </button>
+                  </Button>
                   {filterStatus === 'active' && (
-                    <button
-                      className="ghost-button small"
+                    <Button
+                      variant="ghost"
+                      className="small"
                       onClick={() => handleArchiveHabit(habit.habitId)}
                     >
                       Archive
-                    </button>
+                    </Button>
                   )}
                   {filterStatus === 'archived' && (
-                    <button
-                      className="ghost-button danger small"
+                    <Button
+                      variant="ghost"
+                      className="danger small"
                       onClick={() => handleDeleteHabit(habit.habitId)}
                     >
                       Delete
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

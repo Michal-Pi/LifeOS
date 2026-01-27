@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react'
 import type { ToolDefinition, ToolParameter, CreateToolInput } from '@lifeos/agents'
+import { Button } from '@/components/ui/button'
 
 interface ToolBuilderModalProps {
   tool: ToolDefinition | null
@@ -233,12 +234,12 @@ export function ToolBuilderModal({
           </div>
 
           <div className="modal-actions">
-            <button type="button" onClick={onClose} disabled={isSaving}>
+            <Button variant="ghost" type="button" onClick={onClose} disabled={isSaving}>
               Cancel
-            </button>
-            <button type="submit" disabled={isSaving}>
+            </Button>
+            <Button type="submit" disabled={isSaving}>
               {isSaving ? 'Saving...' : tool ? 'Update Tool' : 'Create Tool'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

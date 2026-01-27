@@ -9,6 +9,43 @@ import type {
   UpdateWorkspaceInput,
 } from '@lifeos/agents'
 
+const stripUndefined = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stripUndefined(item))
+      .filter((item) => item !== undefined) as T
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([key, entry]) => {
+        if (entry === undefined) return []
+        return [[key, stripUndefined(entry)]]
+      })
+    ) as T
+  }
+
+  return value
+}
+
+const collectUndefinedPaths = (value: unknown, path = ''): string[] => {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) =>
+      collectUndefinedPaths(item, path ? `${path}[${index}]` : `[${index}]`)
+    )
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.entries(value).flatMap(([key, entry]) => {
+      const nextPath = path ? `${path}.${key}` : key
+      if (entry === undefined) return [nextPath]
+      return collectUndefinedPaths(entry, nextPath)
+    })
+  }
+
+  return []
+}
+
 export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
   return {
     async create(userId: string, input: CreateWorkspaceInput): Promise<Workspace> {
@@ -26,8 +63,18 @@ export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
         version: 1,
       }
 
+      // Remove undefined values before saving to Firestore (deeply, including nested objects/arrays).
+      const cleanedWorkspace = stripUndefined(workspace)
+      const undefinedPaths = collectUndefinedPaths(workspace)
+      if (undefinedPaths.length > 0) {
+        console.warn('[WorkspaceRepository] Stripped undefined fields from workspace payload', {
+          workspaceId,
+          undefinedPaths,
+        })
+      }
+
       const workspaceDoc = doc(db, `users/${userId}/workspaces/${workspaceId}`)
-      await setDoc(workspaceDoc, workspace)
+      await setDoc(workspaceDoc, cleanedWorkspace)
 
       return workspace
     },
@@ -53,7 +100,10 @@ export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
         syncState: 'synced',
       }
 
-      await setDoc(workspaceDoc, updated)
+      // Remove undefined values before saving to Firestore (deeply, including nested objects/arrays).
+      const cleanedUpdated = stripUndefined(updated)
+
+      await setDoc(workspaceDoc, cleanedUpdated)
       return updated
     },
 
@@ -75,7 +125,10 @@ export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
         syncState: 'synced',
       }
 
-      await setDoc(workspaceDoc, updated)
+      // Remove undefined values before saving to Firestore (deeply, including nested objects/arrays).
+      const cleanedUpdated = stripUndefined(updated)
+
+      await setDoc(workspaceDoc, cleanedUpdated)
     },
 
     async get(userId: string, workspaceId: WorkspaceId): Promise<Workspace | null> {
