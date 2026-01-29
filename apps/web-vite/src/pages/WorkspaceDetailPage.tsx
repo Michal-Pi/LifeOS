@@ -25,7 +25,7 @@ import { WorkflowGraphView } from '@/components/agents/WorkflowGraphView'
 import { ResearchQueue } from '@/components/agents/ResearchQueue'
 import { Button } from '@/components/ui/button'
 import { Select, type SelectOption } from '@/components/Select'
-import type { WorkspaceId, RunStatus, Run } from '@lifeos/agents'
+import type { WorkspaceId, RunStatus, Run, RunId } from '@lifeos/agents'
 import { useDialog } from '@/contexts/useDialog'
 import { toast } from 'sonner'
 
@@ -34,8 +34,7 @@ export function WorkspaceDetailPage() {
   const { user } = useAuth()
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const navigate = useNavigate()
-  const { workspace, isLoading, getWorkspace, deleteRun, updateRun } =
-    useWorkspaceOperations()
+  const { workspace, isLoading, getWorkspace, deleteRun, updateRun } = useWorkspaceOperations()
   const { agents, loadAgents } = useAgentOperations()
   const { requests: researchRequests } = useDeepResearch(workspaceId as WorkspaceId)
   const { profile: projectManagerProfile } = useProjectManager(workspaceId as WorkspaceId)
@@ -65,16 +64,17 @@ export function WorkspaceDetailPage() {
 
     const db = getFirestoreClient()
     const runsRef = collection(db, `users/${user.uid}/workspaces/${workspaceId}/runs`)
-    const q = query(runsRef, orderBy('createdAtMs', 'desc'), limit(50))
+    const q = query(runsRef, orderBy('startedAtMs', 'desc'), limit(50))
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         const updatedRuns = snapshot.docs.map((doc) => doc.data() as Run)
+        console.log(`[WorkspaceDetailPage] Received ${updatedRuns.length} runs from Firestore`)
         setRuns(updatedRuns)
       },
       (err) => {
-        console.error('Error subscribing to runs:', err)
+        console.error('[WorkspaceDetailPage] Error subscribing to runs:', err)
         toast.error('Failed to load runs')
       }
     )
@@ -110,7 +110,7 @@ export function WorkspaceDetailPage() {
     if (!confirmed) return
 
     try {
-      await deleteRun(runId)
+      await deleteRun(runId as RunId)
       // Real-time subscription will automatically update the runs list
       toast.success('Run deleted')
     } catch (err) {
@@ -123,7 +123,7 @@ export function WorkspaceDetailPage() {
     try {
       // Resume by changing status from paused/failed to pending
       // This will trigger the Cloud Function to continue execution
-      await updateRun(runId, {
+      await updateRun(runId as RunId, {
         status: 'pending',
       })
       toast.success('Run resumed')
@@ -151,7 +151,7 @@ export function WorkspaceDetailPage() {
       ...(run.context ?? {}),
       humanInput: { nodeId, response },
     }
-    await updateRun(runId, {
+    await updateRun(runId as RunId, {
       status: 'pending',
       pendingInput: null,
       context,
@@ -160,7 +160,7 @@ export function WorkspaceDetailPage() {
 
   const handleStopRun = async (runId: string) => {
     try {
-      await updateRun(runId, {
+      await updateRun(runId as RunId, {
         status: 'paused',
       })
       // Real-time subscription will automatically update the runs list
