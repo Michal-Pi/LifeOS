@@ -8974,3 +8974,52 @@ input[type='range']:disabled {
 .stop-button {
   margin-left: auto;
 }
+
+/* Settings Link Card */
+.settings-panel__footer {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-link-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 160ms cubic-bezier(0.2, 0, 0, 1);
+  gap: 16px;
+}
+
+.settings-link-card:hover {
+  border-color: var(--accent);
+  background: var(--background-secondary);
+  transform: translateX(2px);
+}
+
+.settings-link-card__content h4 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.settings-link-card__content p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+
+.settings-link-card__arrow {
+  font-size: 24px;
+  color: var(--accent);
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-link-card:hover .settings-link-card__arrow {
+  transform: translateX(4px);
+}

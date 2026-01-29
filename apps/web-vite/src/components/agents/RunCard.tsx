@@ -194,10 +194,8 @@ export function RunCard({
 
   const getAgentNameFromMessages = () => {
     // Get the last assistant message to find the agent asking the question
-    const lastAssistantMessage = [...messages]
-      .reverse()
-      .find((msg) => msg.role === 'assistant')
-    
+    const lastAssistantMessage = [...messages].reverse().find((msg) => msg.role === 'assistant')
+
     // Try to extract agent name from agentId if available
     if (lastAssistantMessage && 'agentId' in lastAssistantMessage) {
       const agentId = lastAssistantMessage.agentId as string
@@ -207,7 +205,7 @@ export function RunCard({
         return agentId.split(':')[0] || 'Agent'
       }
     }
-    
+
     return 'Project Manager'
   }
 

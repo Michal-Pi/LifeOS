@@ -82,8 +82,8 @@ Focus on:
 - Clear deliverables
 - Risk awareness
 Create 3-7 chapters for a complete project structure.`,
-      modelProvider: 'anthropic',
-      modelName: 'claude-3-5-sonnet-20241022',
+      modelProvider: 'xai',
+      modelName: 'grok-4-1-fast-reasoning',
       temperature: 0.5,
       maxTokens: 4000,
       description: 'Creates structured project chapters and milestones.',
@@ -98,8 +98,8 @@ Create 3-7 chapters for a complete project structure.`,
       role: 'critic',
       systemPrompt:
         'You are a critical reviewer. Identify gaps, risks, and ways to improve accuracy, clarity, or feasibility.',
-      modelProvider: 'anthropic',
-      modelName: 'claude-3-5-sonnet-20241022',
+      modelProvider: 'openai',
+      modelName: 'gpt-4o',
       temperature: 0.3,
       maxTokens: 1400,
       description: 'Evaluates plans and drafts for quality.',
@@ -114,8 +114,8 @@ Create 3-7 chapters for a complete project structure.`,
       role: 'synthesizer',
       systemPrompt:
         'You are a synthesizer. Combine inputs into concise, well-structured summaries and actionable recommendations.',
-      modelProvider: 'openai',
-      modelName: 'gpt-4o',
+      modelProvider: 'google',
+      modelName: 'gemini-1.5-pro',
       temperature: 0.6,
       maxTokens: 1500,
       description: 'Synthesizes results into final deliverables.',
@@ -206,8 +206,8 @@ Focus on:
 - Timeline risks (estimates, blockers, external dependencies)
 - Quality risks (testing, validation, edge cases)
 Prioritize top 5-10 risks by severity.`,
-      modelProvider: 'anthropic',
-      modelName: 'claude-3-5-sonnet-20241022',
+      modelProvider: 'xai',
+      modelName: 'grok-4-1-fast-reasoning',
       temperature: 0.3,
       maxTokens: 3000,
       description: 'Surfaces and prioritizes project risks.',
@@ -288,8 +288,8 @@ Output format:
 ## Research Needed
 - [Topic 1]
 - [Topic 2]`,
-      modelProvider: 'anthropic',
-      modelName: 'claude-3-5-sonnet-20241022',
+      modelProvider: 'openai',
+      modelName: 'gpt-4o',
       temperature: 0.6,
       maxTokens: 3000,
       description: 'Defines positioning and structure for thought leadership.',
@@ -349,8 +349,8 @@ Structure:
 5. **Conclusion** - Key takeaways and call to action
 Tone: Professional but conversational. Authoritative but accessible.
 Use markdown formatting. Aim for 800-1500 words.`,
-      modelProvider: 'anthropic',
-      modelName: 'claude-3-5-sonnet-20241022',
+      modelProvider: 'openai',
+      modelName: 'gpt-4o',
       temperature: 0.7,
       maxTokens: 4000,
       description: 'Drafts polished thought leadership content.',
@@ -376,8 +376,8 @@ Provide:
 - Explanation of major changes
 - Suggestions for improvement
 Focus on making content more engaging and readable.`,
-      modelProvider: 'openai',
-      modelName: 'gpt-4o',
+      modelProvider: 'google',
+      modelName: 'gemini-1.5-pro',
       temperature: 0.3,
       maxTokens: 4000,
       description: 'Refines content for clarity and impact.',
@@ -443,7 +443,7 @@ Output:
 - [How to strengthen credibility]
 Be rigorous but fair. Distinguish between opinions and facts.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-3-5-sonnet-20241022',
+      modelName: 'claude-3-5-haiku-20241022',
       temperature: 0.3,
       maxTokens: 3000,
       description: 'Checks accuracy and evidence quality.',
@@ -482,7 +482,7 @@ Output format:
 
 Focus on accuracy, timeliness, and relevance. Always cite timeframes and sources.`,
       modelProvider: 'xai',
-      modelName: 'grok-2-1212',
+      modelName: 'grok-4',
       temperature: 0.4,
       maxTokens: 3000,
       description: 'Analyzes real-time news and current events.',
@@ -529,7 +529,7 @@ Output format:
 
 Focus on forward-looking insights and actionable intelligence.`,
       modelProvider: 'xai',
-      modelName: 'grok-2-1212',
+      modelName: 'grok-4',
       temperature: 0.6,
       maxTokens: 3000,
       description: 'Spots emerging trends and patterns.',
@@ -707,9 +707,9 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
         councilModels: [
           { modelId: 'council-gpt-4o', provider: 'openai', modelName: 'gpt-4o', temperature: 0.7 },
           {
-            modelId: 'council-claude-sonnet',
+            modelId: 'council-claude-haiku',
             provider: 'anthropic',
-            modelName: 'claude-3-5-sonnet-20241022',
+            modelName: 'claude-3-5-haiku-20241022',
             temperature: 0.7,
           },
           {
@@ -719,9 +719,9 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
             temperature: 0.7,
           },
           {
-            modelId: 'council-grok-2',
+            modelId: 'council-grok-4',
             provider: 'xai',
-            modelName: 'grok-2-1212',
+            modelName: 'grok-4',
             temperature: 0.7,
           },
         ],
@@ -825,9 +825,9 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
         councilModels: [
           { modelId: 'council-gpt-4o', provider: 'openai', modelName: 'gpt-4o', temperature: 0.7 },
           {
-            modelId: 'council-claude-sonnet',
+            modelId: 'council-claude-haiku',
             provider: 'anthropic',
-            modelName: 'claude-3-5-sonnet-20241022',
+            modelName: 'claude-3-5-haiku-20241022',
             temperature: 0.7,
           },
           {
@@ -837,16 +837,16 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
             temperature: 0.7,
           },
           {
-            modelId: 'council-grok-2',
+            modelId: 'council-grok-4',
             provider: 'xai',
-            modelName: 'grok-2-1212',
+            modelName: 'grok-4',
             temperature: 0.7,
           },
         ],
         chairmanModel: {
-          modelId: 'chairman-claude-sonnet',
-          provider: 'anthropic',
-          modelName: 'claude-3-5-sonnet-20241022',
+          modelId: 'chairman-gpt-4o',
+          provider: 'openai',
+          modelName: 'gpt-4o',
           temperature: 0.3,
         },
         selfExclusionEnabled: true,

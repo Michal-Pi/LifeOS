@@ -26,12 +26,12 @@ interface AgentQuestionPanelProps {
  */
 function FormattedPrompt({ text }: { text: string }) {
   const lines = text.split('\n')
-  
+
   return (
     <div>
       {lines.map((line, idx) => {
         const trimmed = line.trim()
-        
+
         // Handle numbered lists (e.g., "1. ", "2. ")
         const numberedMatch = trimmed.match(/^(\d+)\.\s+(.+)$/)
         if (numberedMatch) {
@@ -42,7 +42,7 @@ function FormattedPrompt({ text }: { text: string }) {
             </div>
           )
         }
-        
+
         // Handle bullet points (e.g., "- ", "* ")
         const bulletMatch = trimmed.match(/^[-*]\s+(.+)$/)
         if (bulletMatch) {
@@ -53,12 +53,12 @@ function FormattedPrompt({ text }: { text: string }) {
             </div>
           )
         }
-        
+
         // Empty lines
         if (!trimmed) {
           return <div key={idx} style={{ height: '8px' }} />
         }
-        
+
         // Regular paragraphs
         return (
           <p key={idx} style={{ margin: '0 0 8px 0' }}>
@@ -75,7 +75,7 @@ function FormattedPrompt({ text }: { text: string }) {
  */
 function formatInlineText(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*)/)
-  
+
   return parts.map((part, idx) => {
     const boldMatch = part.match(/^\*\*([^*]+)\*\*$/)
     if (boldMatch) {
@@ -152,18 +152,11 @@ export function AgentQuestionPanel({
       <div className="agent-question-footer">
         <div className="agent-question-meta">
           {charCount > 0 && <span>{charCount} characters</span>}
-          {!isSubmitting && (
-            <span className="keyboard-hint">⌘↵ to submit</span>
-          )}
+          {!isSubmitting && <span className="keyboard-hint">⌘↵ to submit</span>}
         </div>
 
         <div className="agent-question-actions">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSkip}
-            disabled={isSubmitting}
-          >
+          <Button variant="ghost" size="sm" onClick={handleSkip} disabled={isSubmitting}>
             Skip
           </Button>
           <Button

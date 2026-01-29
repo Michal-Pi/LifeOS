@@ -93,6 +93,9 @@ const WorkspaceDetailPage = lazyWithRetry(() =>
 const PromptLibraryPage = lazyWithRetry(() =>
   import('./pages/PromptLibraryPage').then((m) => ({ default: m.PromptLibraryPage }))
 )
+const ModelSettingsPage = lazyWithRetry(() =>
+  import('./pages/ModelSettingsPage').then((m) => ({ default: m.ModelSettingsPage }))
+)
 
 // Loading fallback component
 function PageLoader() {
@@ -334,6 +337,16 @@ function AppRoutes() {
                   <ProtectedRoute>
                     <ErrorBoundary>
                       <SettingsPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/models"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <ModelSettingsPage />
                     </ErrorBoundary>
                   </ProtectedRoute>
                 }

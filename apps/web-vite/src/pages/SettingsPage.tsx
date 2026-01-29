@@ -579,6 +579,16 @@ export function SettingsPage() {
                   </div>
                 ))}
               </div>
+              
+              <div className="settings-panel__footer">
+                <Link to="/settings/models" className="settings-link-card">
+                  <div className="settings-link-card__content">
+                    <h4>Default Model Settings</h4>
+                    <p>Configure default models for each AI provider</p>
+                  </div>
+                  <span className="settings-link-card__arrow">→</span>
+                </Link>
+              </div>
             </section>
 
             <section className="settings-panel">

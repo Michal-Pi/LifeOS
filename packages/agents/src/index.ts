@@ -3,6 +3,7 @@ export * from './domain/models'
 export * from './domain/modelPricing'
 export * from './domain/projectManager'
 export * from './domain/promptLibrary'
+export * from './domain/modelSettings'
 
 // Validation schemas
 export * from './domain/validation'
@@ -20,6 +21,7 @@ export * from './ports/expertCouncilRepository'
 export * from './ports/deepResearchRepository'
 export * from './ports/projectManagerRepository'
 export * from './ports/promptLibraryRepository'
+export * from './ports/modelSettingsRepository'
 
 // Usecases
 export * from './usecases'
