@@ -5,29 +5,31 @@
  * These defaults are used when creating new agents or workspaces.
  */
 
-export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'xai'
+import type { ModelProvider } from './models'
+
+export type { ModelProvider }
 
 export interface ProviderModelConfig {
   /**
    * Default model name for this provider
    */
   defaultModel: string
-  
+
   /**
    * Available models for this provider (for dropdown)
    */
   availableModels: string[]
-  
+
   /**
    * Whether this provider is enabled
    */
   enabled: boolean
-  
+
   /**
    * Optional API key override (stored encrypted)
    */
   apiKeyOverride?: string
-  
+
   /**
    * Last updated timestamp
    */
@@ -39,7 +41,7 @@ export interface ModelSettings {
    * User ID who owns these settings
    */
   userId: string
-  
+
   /**
    * Provider-specific configurations
    */
@@ -49,12 +51,12 @@ export interface ModelSettings {
     google: ProviderModelConfig
     xai: ProviderModelConfig
   }
-  
+
   /**
    * When settings were created
    */
   createdAtMs: number
-  
+
   /**
    * When settings were last modified
    */

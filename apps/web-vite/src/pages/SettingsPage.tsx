@@ -579,7 +579,7 @@ export function SettingsPage() {
                   </div>
                 ))}
               </div>
-              
+
               <div className="settings-panel__footer">
                 <Link to="/settings/models" className="settings-link-card">
                   <div className="settings-link-card__content">

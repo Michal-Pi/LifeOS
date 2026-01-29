@@ -6,10 +6,11 @@ import type {
   ModelProvider,
 } from '@lifeos/agents'
 import { createDefaultModelSettings } from '@lifeos/agents'
-import { db } from '@/lib/firebase'
+import { getFirestoreClient } from '@/lib/firebase'
 
 export class FirestoreModelSettingsRepository implements ModelSettingsRepository {
   private getDocRef(userId: string) {
+    const db = getFirestoreClient()
     return doc(db, 'users', userId, 'settings', 'models')
   }
 

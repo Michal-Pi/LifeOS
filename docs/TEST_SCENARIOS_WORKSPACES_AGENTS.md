@@ -7,12 +7,14 @@
 ## Purpose
 
 This document provides **practical test scenarios** to help you:
+
 1. **Explore every feature** of the AI Agents & Workspaces system
 2. **Validate functionality** and provide feedback
 3. **Learn through doing** with real-world examples
 4. **Test edge cases** and error handling
 
 Each scenario includes:
+
 - **Objective**: What you're testing
 - **Features Tested**: Which components are exercised
 - **Steps**: Detailed walkthrough
@@ -24,33 +26,39 @@ Each scenario includes:
 ## Table of Contents
 
 ### Basic Scenarios
+
 1. [Create Your First Agent](#scenario-1-create-your-first-agent)
 2. [Create a Sequential Workspace](#scenario-2-create-a-sequential-workspace)
 3. [Run a Simple Workflow](#scenario-3-run-a-simple-workflow)
 
 ### Intermediate Scenarios
+
 4. [Multi-Agent Collaboration](#scenario-4-multi-agent-collaboration)
 5. [Using Agent Templates](#scenario-5-using-agent-templates)
 6. [Building a Graph Workflow](#scenario-6-building-a-graph-workflow)
 7. [Interactive Workflow with Human Input](#scenario-7-interactive-workflow-with-human-input)
 
 ### Advanced Scenarios
+
 8. [Expert Council Decision Making](#scenario-8-expert-council-decision-making)
 9. [Project Manager Orchestration](#scenario-9-project-manager-orchestration)
 10. [Deep Research Integration](#scenario-10-deep-research-integration)
 11. [Prompt-to-Graph Workflow](#scenario-11-prompt-to-graph-workflow)
 
 ### Template & Management Scenarios
+
 12. [Create and Share Templates](#scenario-12-create-and-share-templates)
 13. [Import/Export Templates](#scenario-13-importexport-templates)
 14. [Prompt Library Management](#scenario-14-prompt-library-management)
 
 ### Edge Case & Error Scenarios
+
 15. [Handling Run Failures](#scenario-15-handling-run-failures)
 16. [Infinite Loop Prevention](#scenario-16-infinite-loop-prevention)
 17. [Memory Limit Effects](#scenario-17-memory-limit-effects)
 
 ### Real-World Use Cases
+
 18. [Business Plan Development](#use-case-1-business-plan-development)
 19. [Technical Documentation Creation](#use-case-2-technical-documentation-creation)
 20. [Market Research Report](#use-case-3-market-research-report)
@@ -66,12 +74,14 @@ Each scenario includes:
 **Objective**: Learn agent creation basics
 
 **Features Tested**:
+
 - Agent Builder modal
 - Model selection
 - System prompt configuration
 - Agent card display
 
 **Steps**:
+
 1. Navigate to **Agents** page (`/agents`)
 2. Click **➕ New Agent** button
 3. Fill in Basic Information:
@@ -89,11 +99,13 @@ Each scenario includes:
 6. Click **Save Agent**
 
 **Expected Results**:
+
 - ✅ Agent appears in agents list
 - ✅ Agent card shows name, role badge, model, tools
 - ✅ Can click Edit to modify
 
 **Feedback Questions**:
+
 1. Is the agent builder intuitive?
 2. Are the model options clear?
 3. Is system prompt editing comfortable?
@@ -106,17 +118,20 @@ Each scenario includes:
 **Objective**: Build a simple multi-agent workflow
 
 **Features Tested**:
+
 - Workspace Builder modal
 - Agent selection
 - Sequential workflow
 - Workspace card display
 
 **Prerequisites**: Create 3 agents:
+
 - "Content Researcher" (from Scenario 1)
 - "Content Writer"
 - "Content Editor"
 
 **Steps**:
+
 1. Navigate to **Workspaces** page (`/workspaces`)
 2. Click **➕ New Workspace**
 3. Basic tab:
@@ -133,12 +148,14 @@ Each scenario includes:
 7. Click **Save Workspace**
 
 **Expected Results**:
+
 - ✅ Workspace appears in list
 - ✅ Shows "3 agents"
 - ✅ Shows "Sequential" badge
 - ✅ Can click "Show Details"
 
 **Feedback Questions**:
+
 1. Is workspace creation straightforward?
 2. Is the agent selection clear?
 3. Would visual workflow preview help during creation?
@@ -150,6 +167,7 @@ Each scenario includes:
 **Objective**: Execute your first run and see results
 
 **Features Tested**:
+
 - Run modal
 - Run execution
 - Live status updates
@@ -158,6 +176,7 @@ Each scenario includes:
 **Prerequisites**: "Simple Content Pipeline" workspace from Scenario 2
 
 **Steps**:
+
 1. On Workspaces page, find "Simple Content Pipeline"
 2. Click **▶️ Run Workspace**
 3. In Run modal:
@@ -173,6 +192,7 @@ Each scenario includes:
    - Read the final content
 
 **Expected Results**:
+
 - ✅ Run starts immediately
 - ✅ Live updates show progress
 - ✅ Token count increases
@@ -180,6 +200,7 @@ Each scenario includes:
 - ✅ All 3 agents contributed (check Messages section)
 
 **Feedback Questions**:
+
 1. Is the run progress clear?
 2. Is the live status helpful?
 3. Is the final output satisfactory?
@@ -194,6 +215,7 @@ Each scenario includes:
 **Objective**: See agents building on each other's work
 
 **Features Tested**:
+
 - Message history
 - Context passing
 - Agent coordination
@@ -201,6 +223,7 @@ Each scenario includes:
 **Prerequisites**: "Simple Content Pipeline" completed run from Scenario 3
 
 **Steps**:
+
 1. On Workspace Detail page, find completed run
 2. Expand **▼ Messages** section
 3. Observe conversation flow:
@@ -214,12 +237,14 @@ Each scenario includes:
    - Maintains context
 
 **Expected Results**:
+
 - ✅ Clear conversation thread
 - ✅ Agents acknowledge previous work
 - ✅ Context maintained throughout
 - ✅ Each agent's contribution is distinct
 
 **Feedback Questions**:
+
 1. Is the agent collaboration visible and understandable?
 2. Can you see how context flows between agents?
 3. Would visual indicators of context usage help?
@@ -231,11 +256,13 @@ Each scenario includes:
 **Objective**: Leverage pre-built agent configurations
 
 **Features Tested**:
+
 - Template selector
 - Template instantiation
 - Template customization
 
 **Steps**:
+
 1. Navigate to **Agents** page
 2. Click **📋 From Template** button
 3. Browse templates:
@@ -251,12 +278,14 @@ Each scenario includes:
    - Save
 
 **Expected Results**:
+
 - ✅ Template instantiates immediately
 - ✅ Agent is fully configured
 - ✅ Ready to use in workspaces
 - ✅ Can be customized if needed
 
 **Feedback Questions**:
+
 1. Are templates discoverable?
 2. Are template descriptions helpful?
 3. Would you like more built-in templates?
@@ -269,18 +298,21 @@ Each scenario includes:
 **Objective**: Create complex workflow with branching
 
 **Features Tested**:
+
 - Graph workflow designer
 - Node creation
 - Edge connections
 - Conditional routing
 
 **Prerequisites**: Create agents:
+
 - "Content Strategist"
 - "SEO Analyst"
 - "Technical Writer"
 - "Creative Writer"
 
 **Steps**:
+
 1. Create new workspace: "Adaptive Content Creation"
 2. Add all 4 agents
 3. Workflow tab:
@@ -303,6 +335,7 @@ Each scenario includes:
 6. Save workspace
 
 **Expected Results**:
+
 - ✅ Graph displays visually
 - ✅ Nodes show agent/type
 - ✅ Edges show conditions
@@ -310,6 +343,7 @@ Each scenario includes:
 - ✅ Can edit nodes/edges
 
 **Feedback Questions**:
+
 1. Is the graph designer intuitive?
 2. Are conditions easy to set up?
 3. Would you like graph templates?
@@ -322,6 +356,7 @@ Each scenario includes:
 **Objective**: Test human-in-the-loop workflows
 
 **Features Tested**:
+
 - Human input nodes
 - Run pausing
 - Input submission
@@ -330,6 +365,7 @@ Each scenario includes:
 **Prerequisites**: "Adaptive Content Creation" workspace from Scenario 6
 
 **Steps**:
+
 1. Run workspace with goal: "Create content about AI in healthcare"
 2. Watch run progress through:
    - Content Strategist creates strategy
@@ -343,6 +379,7 @@ Each scenario includes:
 7. Wait for completion
 
 **Expected Results**:
+
 - ✅ Run pauses cleanly at input node
 - ✅ Question is displayed clearly
 - ✅ Response input is prominent
@@ -351,6 +388,7 @@ Each scenario includes:
 - ✅ Final output matches chosen style
 
 **Feedback Questions**:
+
 1. Is the pause for input clear?
 2. Is the question display effective?
 3. Would you like to provide structured data (not just text)?
@@ -365,12 +403,14 @@ Each scenario includes:
 **Objective**: Experience multi-model deliberation
 
 **Features Tested**:
+
 - Expert Council configuration
 - Council invocation
 - Multi-model voting
 - Chairman synthesis
 
 **Steps**:
+
 1. Create workspace: "Strategic Decision Maker"
 2. Add agent: "Strategic Advisor" (any model)
 3. Enable **Expert Council**:
@@ -387,7 +427,7 @@ Each scenario includes:
 7. Run with goal:
    ```
    Should our SaaS startup focus on enterprise or SMB market first?
-   Considerations: $2M seed funding, team of 10, 18-month runway, product is 
+   Considerations: $2M seed funding, team of 10, 18-month runway, product is
    AI-powered analytics for e-commerce.
    ```
 8. Watch run execute:
@@ -398,6 +438,7 @@ Each scenario includes:
 10. Read each model's reasoning and final recommendation
 
 **Expected Results**:
+
 - ✅ Council is invoked automatically
 - ✅ All 4 models provide distinct perspectives
 - ✅ Each reasoning is substantive (Full mode)
@@ -405,6 +446,7 @@ Each scenario includes:
 - ✅ Decision considers all viewpoints
 
 **Feedback Questions**:
+
 1. Is multi-model value clear in the output?
 2. Are the different perspectives helpful?
 3. Is the chairman's synthesis effective?
@@ -418,6 +460,7 @@ Each scenario includes:
 **Objective**: Test intelligent workflow coordination
 
 **Features Tested**:
+
 - Project Manager configuration
 - Question generation
 - Assumption validation
@@ -425,6 +468,7 @@ Each scenario includes:
 - Quality gates
 
 **Steps**:
+
 1. Create workspace: "Comprehensive Project Planner"
 2. Add agents:
    - "Project Manager" (with expert_council tool)
@@ -456,6 +500,7 @@ Each scenario includes:
 9. Workflow proceeds once PM is satisfied
 
 **Expected Results**:
+
 - ✅ PM asks relevant, probing questions
 - ✅ Questions address ambiguity in original prompt
 - ✅ PM identifies unrealistic assumptions
@@ -464,6 +509,7 @@ Each scenario includes:
 - ✅ Can view PM context to see decisions made
 
 **Feedback Questions**:
+
 1. Are PM's questions helpful or annoying?
 2. Is Deep questioning too much?
 3. Does assumption validation add value?
@@ -476,6 +522,7 @@ Each scenario includes:
 **Objective**: Test external research workflow
 
 **Features Tested**:
+
 - Research request creation
 - Research queue
 - Priority management
@@ -484,6 +531,7 @@ Each scenario includes:
 **Prerequisites**: Create agent with `create_deep_research_request` tool permission
 
 **Steps**:
+
 1. Create workspace: "Research-Intensive Analysis"
 2. Add "Research Analyst" agent (with deep research tool)
 3. Run with complex research goal:
@@ -513,6 +561,7 @@ Each scenario includes:
 15. Agent receives research results in next iteration
 
 **Expected Results**:
+
 - ✅ Agent identifies research need
 - ✅ Request created with clear question
 - ✅ Request appears in queue
@@ -521,6 +570,7 @@ Each scenario includes:
 - ✅ Agent incorporates findings
 
 **Feedback Questions**:
+
 1. Is research workflow clear?
 2. Should research pause the run or continue async?
 3. Would automated research be valuable?
@@ -533,11 +583,13 @@ Each scenario includes:
 **Objective**: Generate workflow from natural language
 
 **Features Tested**:
+
 - Natural language graph generation
 - AI workflow design
 - Graph validation
 
 **Steps**:
+
 1. Create new workspace: "AI-Generated Workflow"
 2. Add several agents of different types
 3. Workflow tab:
@@ -574,6 +626,7 @@ Each scenario includes:
 8. Save workspace
 
 **Expected Results**:
+
 - ✅ Graph is generated from description
 - ✅ Logic matches prompt intent
 - ✅ Nodes are correctly typed
@@ -581,6 +634,7 @@ Each scenario includes:
 - ✅ Graph is valid and executable
 
 **Feedback Questions**:
+
 1. Does AI understand complex workflow logic?
 2. Is generated graph correct?
 3. How often do you need to manually adjust?
@@ -595,6 +649,7 @@ Each scenario includes:
 **Objective**: Save and reuse configurations
 
 **Features Tested**:
+
 - Template creation from agent
 - Template creation from workspace
 - Template library
@@ -603,6 +658,7 @@ Each scenario includes:
 **Steps**:
 
 **Part A: Agent Template**
+
 1. Create well-configured agent: "Product Analyst"
    - Detailed system prompt
    - Specific model and parameters
@@ -615,6 +671,7 @@ Each scenario includes:
 7. Your template appears
 
 **Part B: Workspace Template**
+
 1. Create comprehensive workspace: "Product Launch Kit"
    - 6 agents (Market Researcher, Product Analyst, Marketing Strategist, etc.)
    - Graph workflow
@@ -633,12 +690,14 @@ Each scenario includes:
    - "Project Manager" badge
 
 **Expected Results**:
+
 - ✅ Templates save all configuration
 - ✅ Templates appear in library
 - ✅ Templates show key features
 - ✅ Can instantiate templates anytime
 
 **Feedback Questions**:
+
 1. Is template saving intuitive?
 2. Should templates be public/sharable?
 3. Would you like template categories?
@@ -651,6 +710,7 @@ Each scenario includes:
 **Objective**: Share templates as files
 
 **Features Tested**:
+
 - Template export
 - JSON file generation
 - Template import
@@ -659,6 +719,7 @@ Each scenario includes:
 **Steps**:
 
 **Part A: Export**
+
 1. Go to Workspaces → Templates tab
 2. Find "Complete Product Launch Workflow" template
 3. Click **⋮ Menu** → **📤 Export**
@@ -666,9 +727,11 @@ Each scenario includes:
 5. Open file in text editor to inspect structure
 
 **Part B: Share (Simulated)**
+
 1. Share JSON file with colleague (simulate by saving to different folder)
 
 **Part C: Import**
+
 1. Delete the template (to simulate fresh import)
 2. Click **📥 Import Template** button
 3. Select the exported JSON file
@@ -680,6 +743,7 @@ Each scenario includes:
    - Features match
 
 **Expected Results**:
+
 - ✅ Export produces valid JSON
 - ✅ JSON is human-readable
 - ✅ Import recreates exactly
@@ -687,6 +751,7 @@ Each scenario includes:
 - ✅ Agents are included/referenced correctly
 
 **Feedback Questions**:
+
 1. Is import/export workflow smooth?
 2. Should exports include agent configurations inline?
 3. Would you like a template marketplace?
@@ -699,12 +764,14 @@ Each scenario includes:
 **Objective**: Organize reusable prompts
 
 **Features Tested**:
+
 - Prompt creation
 - Variable usage
 - Prompt categories
 - Prompt reuse
 
 **Steps**:
+
 1. Navigate to **Prompt Library** (`/agents/prompts`)
 2. Click **➕ New Prompt**
 3. Create "Tone of Voice" prompt:
@@ -724,15 +791,16 @@ Each scenario includes:
    - Name: "Comprehensive Research Structure"
    - Category: "Workflow"
    - Content:
+
      ```
      Research {{topic}} thoroughly:
-     
+
      1. Key Facts & Statistics
      2. Industry Trends
      3. Expert Opinions
      4. Case Studies
      5. Counterarguments
-     
+
      Focus areas: {{focus_areas}}
      Target depth: {{depth}}
      ```
@@ -749,6 +817,7 @@ Each scenario includes:
    - Variables inserted
 
 **Expected Results**:
+
 - ✅ Prompts save with variables
 - ✅ Variables are detected automatically
 - ✅ Prompts can be inserted anywhere
@@ -756,6 +825,7 @@ Each scenario includes:
 - ✅ Prompt library is searchable
 
 **Feedback Questions**:
+
 1. Is variable syntax (`{{var}}`) intuitive?
 2. Would you like prompt versioning?
 3. Should prompts support default values for variables?
@@ -770,15 +840,17 @@ Each scenario includes:
 **Objective**: Test error handling and recovery
 
 **Features Tested**:
+
 - Error detection
 - Error display
 - Retry mechanism
 - Partial results
 
 **Steps**:
+
 1. Create agent with invalid configuration:
    - Set temperature to 5.0 (invalid, max is 2.0)
-   OR
+     OR
    - Use model that requires API key you don't have
 2. Create workspace with this agent
 3. Run workspace
@@ -793,12 +865,13 @@ Each scenario includes:
    - Stack trace (if applicable)
 6. Fix the issue:
    - Edit agent to correct temperature
-   OR
+     OR
    - Add API key in Settings
 7. Click **Retry** on run
 8. Run completes successfully
 
 **Expected Results**:
+
 - ✅ Errors are caught and displayed clearly
 - ✅ Error messages are actionable
 - ✅ Failed runs can be retried
@@ -806,6 +879,7 @@ Each scenario includes:
 - ✅ Error categories help diagnosis
 
 **Feedback Questions**:
+
 1. Are error messages helpful?
 2. Is retry obvious and easy?
 3. Should system auto-retry transient errors?
@@ -818,12 +892,14 @@ Each scenario includes:
 **Objective**: Test max iteration safety limit
 
 **Features Tested**:
+
 - Iteration counting
 - Max iteration enforcement
 - Loop detection
 - Graceful termination
 
 **Steps**:
+
 1. Create graph workflow with intentional loop:
    - Node A: Agent produces output
    - Node B: Always routes back to Node A
@@ -841,6 +917,7 @@ Each scenario includes:
 7. Error: "Maximum iterations reached (5)"
 
 **Expected Results**:
+
 - ✅ System counts iterations
 - ✅ Stops at exactly max iterations
 - ✅ Error message is clear
@@ -848,6 +925,7 @@ Each scenario includes:
 - ✅ User is not charged for runaway loops
 
 **Feedback Questions**:
+
 1. Is max iterations clear when setting up?
 2. Should system warn about potential loops?
 3. What's a reasonable default max iterations?
@@ -860,12 +938,14 @@ Each scenario includes:
 **Objective**: Understand memory/context tradeoffs
 
 **Features Tested**:
+
 - Memory limit configuration
 - Context truncation
 - Performance impact
 - Cost impact
 
 **Steps**:
+
 1. Create workspace: "Memory Test"
 2. Add agent: "Summarizer" (simple task)
 3. **Test A: Low Memory**
@@ -883,12 +963,14 @@ Each scenario includes:
    - Cost
 
 **Expected Results**:
+
 - ✅ Low memory = faster, cheaper, less context
 - ✅ High memory = slower, pricier, more context
 - ✅ Token count reflects memory setting
 - ✅ Quality difference is noticeable for complex tasks
 
 **Feedback Questions**:
+
 1. Is memory limit impact clear?
 2. Should system recommend memory based on task?
 3. Would you like memory usage visualization?
@@ -905,6 +987,7 @@ Each scenario includes:
 **Workflow**: Project Plan Builder template
 
 **Agents**:
+
 - Project Manager (orchestrator)
 - Strategic Planner
 - Market Researcher
@@ -913,12 +996,14 @@ Each scenario includes:
 - Critical Reviewer
 
 **Configuration**:
+
 - Workflow: Graph with validation gates
 - Expert Council: Enabled (Full mode)
 - Project Manager: Deep questioning
 - Memory: 150 messages
 
 **Steps**:
+
 1. Use "Project Plan Builder" template
 2. Add Financial Analyst agent
 3. Run with goal:
@@ -940,12 +1025,14 @@ Each scenario includes:
    - Go-to-market strategy
 
 **Expected Output**:
+
 - Comprehensive 20-30 page business plan
 - Validated by multiple perspectives
 - Realistic timeline and budget
 - Identified risks with mitigation
 
 **Success Metrics**:
+
 - Plan is actionable
 - Financial projections are realistic
 - Risks are thoroughly assessed
@@ -960,21 +1047,24 @@ Each scenario includes:
 **Workflow**: Sequential with technical focus
 
 **Agents**:
+
 - API Analyst (understands API structure)
 - Technical Writer (Gemini 1.5 Pro)
 - Code Example Generator (Grok Code Fast)
 - Editor
 
 **Configuration**:
+
 - Workflow: Sequential
 - Memory: 100 messages
 - No Expert Council (straightforward task)
 
 **Steps**:
+
 1. Create custom workspace
 2. Run with goal:
    ```
-   Document our REST API with 15 endpoints for user management, 
+   Document our REST API with 15 endpoints for user management,
    project management, and analytics. Include:
    - Endpoint descriptions
    - Parameters (required/optional)
@@ -989,12 +1079,14 @@ Each scenario includes:
 6. Editor polishes for clarity
 
 **Expected Output**:
+
 - Complete API reference
 - Code examples in Python, JavaScript, Ruby, Go, Java
 - Clear authentication guide
 - Error handling documentation
 
 **Success Metrics**:
+
 - Developer can integrate without asking questions
 - Examples are copy-paste ready
 - All endpoints documented
@@ -1009,17 +1101,20 @@ Each scenario includes:
 **Workflow**: Parallel analysis with synthesis
 
 **Agents**:
+
 - Market Researcher (web search enabled)
 - Competitive Analyst
 - Trend Analyst (Grok 4 for real-time data)
 - Data Synthesizer
 
 **Configuration**:
+
 - Workflow: Parallel → Join → Synthesize
 - Expert Council: Disabled (research task)
 - Deep Research: Enabled
 
 **Steps**:
+
 1. Create parallel workflow
 2. Run with goal:
    ```
@@ -1040,6 +1135,7 @@ Each scenario includes:
 5. Data Synthesizer creates cohesive report
 
 **Expected Output**:
+
 - Executive summary
 - Detailed competitor profiles
 - Market size and growth projections
@@ -1048,6 +1144,7 @@ Each scenario includes:
 - Strategic recommendations
 
 **Success Metrics**:
+
 - Data is current (within 30 days)
 - Competitors accurately profiled
 - Trends are actionable
@@ -1062,6 +1159,7 @@ Each scenario includes:
 **Workflow**: Thought Leadership Writer template
 
 **Agents**:
+
 - Content Strategist
 - SEO Researcher
 - Content Writer
@@ -1070,23 +1168,27 @@ Each scenario includes:
 - SEO Optimizer
 
 **Configuration**:
+
 - Workflow: Sequential
 - Expert Council: For headline approval
 - Content Type: Blog Post
 - Memory: 150 messages
 
 **Steps**:
+
 1. Use "Thought Leadership Writer" template
 2. Run with goal:
+
    ```
-   Create thought leadership post: "The Future of Remote Work: 
+   Create thought leadership post: "The Future of Remote Work:
    Beyond Zoom Fatigue to Async-First Culture"
-   
+
    Target: HR leaders and executives
    Length: 1500-2000 words
    Tone: Authoritative but accessible
    Include: Data, expert quotes, actionable takeaways
    ```
+
 3. Content Strategist defines positioning
 4. SEO Researcher finds high-value keywords
 5. Content Writer creates draft
@@ -1096,6 +1198,7 @@ Each scenario includes:
 9. Expert Council approves headline
 
 **Expected Output**:
+
 - Publication-ready blog post
 - SEO-optimized
 - Fact-checked
@@ -1103,6 +1206,7 @@ Each scenario includes:
 - Actionable takeaways
 
 **Success Metrics**:
+
 - Passes editorial standards
 - SEO score > 80
 - All facts cited
@@ -1118,6 +1222,7 @@ Each scenario includes:
 **Workflow**: Complex graph with multiple paths
 
 **Agents**:
+
 - Product Manager (orchestrator)
 - Market Researcher
 - Positioning Specialist
@@ -1127,6 +1232,7 @@ Each scenario includes:
 - Launch Coordinator
 
 **Configuration**:
+
 - Workflow: Graph (complex dependencies)
 - Expert Council: For go/no-go decision
 - Project Manager: Standard questioning
@@ -1134,6 +1240,7 @@ Each scenario includes:
 - Memory: 200 messages
 
 **Steps**:
+
 1. Create complex graph workflow:
    ```
    Product Manager → Market Research
@@ -1164,6 +1271,7 @@ Each scenario includes:
    - Final coordinated launch plan
 
 **Expected Output**:
+
 - Complete launch plan with:
   - Positioning statement
   - Target customer profiles
@@ -1175,6 +1283,7 @@ Each scenario includes:
   - Budget allocation
 
 **Success Metrics**:
+
 - All launch elements coordinated
 - Timeline is realistic
 - Budget is allocated effectively
@@ -1188,23 +1297,27 @@ Each scenario includes:
 After each scenario, collect feedback on:
 
 ### Usability:
+
 - Was the feature discoverable?
 - Was the UI intuitive?
 - Were instructions clear?
 - What was confusing?
 
 ### Performance:
+
 - Was response time acceptable?
 - Were token costs reasonable?
 - Did output quality justify cost?
 
 ### Functionality:
+
 - Did it work as expected?
 - Were there bugs or errors?
 - What features are missing?
 - What would improve workflow?
 
 ### Value:
+
 - Is this feature useful?
 - Would you use it regularly?
 - What's the value proposition?
@@ -1240,4 +1353,4 @@ When providing feedback, please include:
 
 ---
 
-*End of Test Scenarios. See main guide: [User Guide: Workspaces & Agents](./USER_GUIDE_WORKSPACES_AGENTS.md)*
+_End of Test Scenarios. See main guide: [User Guide: Workspaces & Agents](./USER_GUIDE_WORKSPACES_AGENTS.md)_

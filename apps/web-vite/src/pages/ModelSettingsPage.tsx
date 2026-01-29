@@ -72,11 +72,7 @@ function ProviderCard({ provider, config, onUpdate }: ProviderCardProps) {
           <p className="provider-description">{PROVIDER_DESCRIPTIONS[provider]}</p>
         </div>
         <label className="toggle-switch">
-          <input
-            type="checkbox"
-            checked={localConfig.enabled}
-            onChange={handleEnabledChange}
-          />
+          <input type="checkbox" checked={localConfig.enabled} onChange={handleEnabledChange} />
           <span className="toggle-slider"></span>
         </label>
       </div>

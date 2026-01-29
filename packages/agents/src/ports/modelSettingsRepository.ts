@@ -6,12 +6,12 @@ export interface ModelSettingsRepository {
    * Returns default settings if none exist
    */
   getSettings(userId: string): Promise<ModelSettings>
-  
+
   /**
    * Update model settings for a user
    */
   updateSettings(settings: ModelSettings): Promise<void>
-  
+
   /**
    * Update a specific provider's configuration
    */
@@ -20,7 +20,7 @@ export interface ModelSettingsRepository {
     provider: ModelProvider,
     config: ProviderModelConfig
   ): Promise<void>
-  
+
   /**
    * Reset settings to defaults
    */
