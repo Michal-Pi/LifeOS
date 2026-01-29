@@ -30,6 +30,11 @@ export function RunStatusIndicator({
 
   // Determine current status message
   const statusMessage = useMemo(() => {
+    // Special handling for waiting_for_input status
+    if (run.status === 'waiting_for_input') {
+      return '❓ Question pending - response required'
+    }
+
     if (run.status !== 'running') {
       return null
     }
@@ -94,7 +99,7 @@ export function RunStatusIndicator({
     }
   }, [run.tokensUsed, run.estimatedCost])
 
-  if (run.status !== 'running') {
+  if (run.status !== 'running' && run.status !== 'waiting_for_input') {
     return null
   }
 

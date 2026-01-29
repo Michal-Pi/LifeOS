@@ -20,6 +20,7 @@ import { ProjectManagerChat } from './ProjectManagerChat'
 import { InteractiveWorkflowGraph } from './InteractiveWorkflowGraph'
 import { WorkflowNodeModal } from './WorkflowNodeModal'
 import { RunStatusIndicator } from './RunStatusIndicator'
+import { AgentQuestionPanel } from './AgentQuestionPanel'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import type {
@@ -62,7 +63,6 @@ export function RunCard({
   const navigate = useNavigate()
   const { user } = useAuth()
   const { createNote } = useNoteOperations()
-  const [inputResponse, setInputResponse] = useState('')
   const [isSubmittingInput, setIsSubmittingInput] = useState(false)
   const [isSavingNote, setIsSavingNote] = useState(false)
   const [selectedNode, setSelectedNode] = useState<{
@@ -186,10 +186,29 @@ export function RunCard({
       case 'paused':
         return 'badge-warning'
       case 'waiting_for_input':
-        return 'badge-warning'
+        return 'badge-waiting'
       default:
         return 'badge'
     }
+  }
+
+  const getAgentNameFromMessages = () => {
+    // Get the last assistant message to find the agent asking the question
+    const lastAssistantMessage = [...messages]
+      .reverse()
+      .find((msg) => msg.role === 'assistant')
+    
+    // Try to extract agent name from agentId if available
+    if (lastAssistantMessage && 'agentId' in lastAssistantMessage) {
+      const agentId = lastAssistantMessage.agentId as string
+      const agent = workspace.agentIds?.find((id) => id === agentId)
+      if (agent) {
+        // Extract agent name from ID (format: "agent:uuid")
+        return agentId.split(':')[0] || 'Agent'
+      }
+    }
+    
+    return 'Project Manager'
   }
 
   const handleSaveAsNote = async () => {
@@ -332,36 +351,20 @@ export function RunCard({
         </div>
       )}
 
-      {run.status === 'waiting_for_input' && run.pendingInput && (
-        <div className="run-output">
-          <strong>Input Needed:</strong>
-          <p>{run.pendingInput.prompt}</p>
-          {onProvideInput && (
-            <div className="run-input-actions">
-              <textarea
-                value={inputResponse}
-                onChange={(e) => setInputResponse(e.target.value)}
-                rows={3}
-                placeholder="Type your response..."
-              />
-              <Button
-                disabled={!inputResponse.trim() || isSubmittingInput}
-                onClick={async () => {
-                  if (!onProvideInput) return
-                  try {
-                    setIsSubmittingInput(true)
-                    await onProvideInput(run.runId, run.pendingInput.nodeId, inputResponse.trim())
-                    setInputResponse('')
-                  } finally {
-                    setIsSubmittingInput(false)
-                  }
-                }}
-              >
-                {isSubmittingInput ? 'Submitting...' : 'Submit Response'}
-              </Button>
-            </div>
-          )}
-        </div>
+      {run.status === 'waiting_for_input' && run.pendingInput && onProvideInput && (
+        <AgentQuestionPanel
+          pendingInput={run.pendingInput}
+          agentName={getAgentNameFromMessages()}
+          onSubmit={async (response) => {
+            try {
+              setIsSubmittingInput(true)
+              await onProvideInput(run.runId, run.pendingInput!.nodeId, response)
+            } finally {
+              setIsSubmittingInput(false)
+            }
+          }}
+          isSubmitting={isSubmittingInput}
+        />
       )}
 
       {run.status === 'paused' && pendingResearch.length > 0 && (
