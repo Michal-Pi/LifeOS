@@ -391,7 +391,12 @@ export function TodayPage() {
                   </button>
                 ))}
               </div>
-              <Button variant="ghost" type="button" onClick={() => setIsMindModalOpen(true)} className="small">
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => setIsMindModalOpen(true)}
+                className="small"
+              >
                 Adjust focus
               </Button>
             </div>

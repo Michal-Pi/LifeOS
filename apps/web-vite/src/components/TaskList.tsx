@@ -100,7 +100,7 @@ export const TaskList = React.memo(function TaskList({
   const endIndex = Math.min(startIndex + ROWS_PER_PAGE, sortedTasks.length)
   const paginatedTasks = sortedTasks.slice(startIndex, endIndex)
   const visibleRowCount = Math.min(ROWS_PER_PAGE, sortedTasks.length - startIndex)
-  
+
   // Calculate dynamic height: up to 20 rows, min 400px, max based on visible rows
   const listHeight = Math.max(400, Math.min(68 * visibleRowCount + 40, 68 * ROWS_PER_PAGE + 40))
 
@@ -148,14 +148,15 @@ export const TaskList = React.memo(function TaskList({
     // Determine effective urgency (from task or calculated from due date)
     const effectiveUrgency =
       task.urgency ?? (task.dueDate ? calculateUrgency(task.dueDate) : 'later')
-    
+
     // Check if previous task was "this_week" or earlier and current is "later"
     const prevTask = index > 0 ? tasks[index - 1] : null
     const prevUrgency =
       prevTask?.urgency ?? (prevTask?.dueDate ? calculateUrgency(prevTask.dueDate) : 'later')
     // Show separator only when transitioning FROM "this_week" (or earlier, but not "later") TO "later"
     // This ensures separator appears only once, right after the last "this_week" task
-    const isPrevThisWeekOrEarlier = prevUrgency === 'today' || prevUrgency === 'next_3_days' || prevUrgency === 'this_week'
+    const isPrevThisWeekOrEarlier =
+      prevUrgency === 'today' || prevUrgency === 'next_3_days' || prevUrgency === 'this_week'
     const isCurrentLater = effectiveUrgency === 'later'
     const showSeparator = isPrevThisWeekOrEarlier && isCurrentLater
 
@@ -246,7 +247,7 @@ export const TaskList = React.memo(function TaskList({
           style={{ height: listHeight, width: '100%' }}
         />
       </div>
-      
+
       {totalPages > 1 && (
         <div className="task-list-pagination">
           <button

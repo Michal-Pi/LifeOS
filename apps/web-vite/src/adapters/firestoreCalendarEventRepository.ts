@@ -189,7 +189,26 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
 
       return runTransaction(db, async (transaction) => {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestoreCalendarEventRepository.ts:191',message:'Inside transaction - before get',data:{userId,eventId,hasEvent:!!event,eventKeys:event?Object.keys(event):[],baseRev,deviceId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'firestoreCalendarEventRepository.ts:191',
+            message: 'Inside transaction - before get',
+            data: {
+              userId,
+              eventId,
+              hasEvent: !!event,
+              eventKeys: event ? Object.keys(event) : [],
+              baseRev,
+              deviceId,
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'A',
+          }),
+        }).catch(() => {})
         // #endregion
         const serverSnapshot = await transaction.get(eventRef)
 
@@ -208,7 +227,23 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
             }
           }
           // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestoreCalendarEventRepository.ts:207',message:'Creating new event in transaction',data:{eventId,newEventKeys:Object.keys(newEvent),cleanedKeys:Object.keys(cleanedNewEvent)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location: 'firestoreCalendarEventRepository.ts:207',
+              message: 'Creating new event in transaction',
+              data: {
+                eventId,
+                newEventKeys: Object.keys(newEvent),
+                cleanedKeys: Object.keys(cleanedNewEvent),
+              },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'post-fix',
+              hypothesisId: 'D',
+            }),
+          }).catch(() => {})
           // #endregion
           transaction.set(eventRef, cleanedNewEvent as CanonicalCalendarEvent)
           return { winner: newEvent, hadConflict: false }
@@ -227,7 +262,22 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
           deviceId: deviceId ?? 'unknown',
         }
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestoreCalendarEventRepository.ts:218',message:'Before resolveConflict',data:{incomingKeys:Object.keys(incoming.event),serverEventKeys:Object.keys(serverEvent)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'firestoreCalendarEventRepository.ts:218',
+            message: 'Before resolveConflict',
+            data: {
+              incomingKeys: Object.keys(incoming.event),
+              serverEventKeys: Object.keys(serverEvent),
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'D',
+          }),
+        }).catch(() => {})
         // #endregion
         // Resolve conflict deterministically
         const result = resolveConflict(serverEvent, incoming)
@@ -245,7 +295,25 @@ export function createFirestoreCalendarEventRepository(): CalendarEventRepositor
           }
         }
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firestoreCalendarEventRepository.ts:232',message:'Before transaction.set',data:{winnerKeys:Object.keys(winnerWithRev),cleanedKeys:Object.keys(cleanedWinner),removedUndefined:Object.entries(winnerWithRev).filter(([, value])=>value===undefined).map(([key])=>key)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'firestoreCalendarEventRepository.ts:232',
+            message: 'Before transaction.set',
+            data: {
+              winnerKeys: Object.keys(winnerWithRev),
+              cleanedKeys: Object.keys(cleanedWinner),
+              removedUndefined: Object.entries(winnerWithRev)
+                .filter(([, value]) => value === undefined)
+                .map(([key]) => key),
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'post-fix',
+            hypothesisId: 'D',
+          }),
+        }).catch(() => {})
         // #endregion
         transaction.set(eventRef, cleanedWinner as CanonicalCalendarEvent)
 

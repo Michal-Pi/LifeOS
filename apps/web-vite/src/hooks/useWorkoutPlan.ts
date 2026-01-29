@@ -162,22 +162,62 @@ export function useWorkoutPlan(): UseWorkoutPlanReturn {
 
     try {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useWorkoutPlan.ts:164',message:'getActivePlan calling repository',data:{userId},timestamp:Date.now(),sessionId:'debug-session',runId:'workout-debug',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'useWorkoutPlan.ts:164',
+          message: 'getActivePlan calling repository',
+          data: { userId },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'workout-debug',
+          hypothesisId: 'B',
+        }),
+      }).catch(() => {})
       // #endregion
-      
+
       const plan = await planRepository.getActive(userId)
-      
+
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useWorkoutPlan.ts:169',message:'getActivePlan repository returned',data:{hasPlan:!!plan,planId:plan?.planId},timestamp:Date.now(),sessionId:'debug-session',runId:'workout-debug',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'useWorkoutPlan.ts:169',
+          message: 'getActivePlan repository returned',
+          data: { hasPlan: !!plan, planId: plan?.planId },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'workout-debug',
+          hypothesisId: 'B',
+        }),
+      }).catch(() => {})
       // #endregion
-      
+
       setActivePlan(plan)
       return plan
     } catch (err) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useWorkoutPlan.ts:175',message:'getActivePlan error caught',data:{errorName:(err as Error).name,errorMessage:(err as Error).message,errorCode:(err as Error & {code?:string}).code},timestamp:Date.now(),sessionId:'debug-session',runId:'workout-debug',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'useWorkoutPlan.ts:175',
+          message: 'getActivePlan error caught',
+          data: {
+            errorName: (err as Error).name,
+            errorMessage: (err as Error).message,
+            errorCode: (err as Error & { code?: string }).code,
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'workout-debug',
+          hypothesisId: 'B',
+        }),
+      }).catch(() => {})
       // #endregion
-      
+
       const error = err as Error
       setError(error)
       throw error

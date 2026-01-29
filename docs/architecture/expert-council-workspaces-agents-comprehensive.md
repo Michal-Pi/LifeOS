@@ -1,6 +1,7 @@
 # Expert Council, Workspaces, and Agents: Comprehensive Architecture Documentation
 
 ## Table of Contents
+
 1. [Overview](#overview)
 2. [Architectural Patterns](#architectural-patterns)
 3. [Technology Stack](#technology-stack)
@@ -17,6 +18,7 @@
 ## Overview
 
 The LifeOS AI Agent Framework is a sophisticated multi-agent collaboration system that enables:
+
 - **Multi-model consensus** through Expert Council
 - **Flexible workflow orchestration** (sequential, parallel, supervisor, graph-based)
 - **Modular agent configuration** with role-based templates
@@ -24,6 +26,7 @@ The LifeOS AI Agent Framework is a sophisticated multi-agent collaboration syste
 - **Project management** with intelligent questioning and conflict detection
 
 ### Key Capabilities
+
 - Run multiple AI models in parallel for consensus-based decisions
 - Orchestrate complex agent workflows with branching and loops
 - Integrate with external tools (calendar, todos, research, web search)
@@ -36,6 +39,7 @@ The LifeOS AI Agent Framework is a sophisticated multi-agent collaboration syste
 ## Architectural Patterns
 
 ### 1. **Domain-Driven Design (DDD)**
+
 ```
 packages/agents/
 ├── domain/          # Core types, models, validation
@@ -44,19 +48,24 @@ packages/agents/
 ```
 
 ### 2. **Hexagonal Architecture (Ports & Adapters)**
+
 - **Domain Layer**: Pure business logic (`@lifeos/agents`)
 - **Application Layer**: Use cases and orchestration
 - **Infrastructure Layer**: Firebase adapters, AI provider services
 - **Presentation Layer**: React UI components
 
 ### 3. **Repository Pattern**
+
 Each entity has a repository interface in `ports/` and Firebase implementation in `apps/web-vite/src/adapters/agents/`.
 
 ### 4. **Strategy Pattern**
+
 Provider abstraction allows switching between OpenAI, Anthropic, Google, xAI through unified interface.
 
 ### 5. **Pipeline Pattern**
+
 Expert Council uses a 3-stage pipeline:
+
 - **Stage 1**: Council models generate responses in parallel
 - **Stage 2**: Judge models review and rank responses
 - **Stage 3**: Chairman model synthesizes final answer
@@ -66,6 +75,7 @@ Expert Council uses a 3-stage pipeline:
 ## Technology Stack
 
 ### Backend
+
 - **Runtime**: Firebase Cloud Functions (Node.js)
 - **Database**: Cloud Firestore
 - **Auth**: Firebase Authentication
@@ -74,12 +84,14 @@ Expert Council uses a 3-stage pipeline:
 - **Condition Logic**: `json-logic-js` for edge conditions
 
 ### Frontend
+
 - **Framework**: React 19 + TypeScript
 - **Build Tool**: Vite
 - **State**: React hooks + Firestore realtime listeners
 - **UI Components**: Custom component library
 
 ### Shared Packages
+
 - **@lifeos/agents**: Domain models and business logic
 - **@lifeos/core**: Shared utilities and types
 
@@ -88,6 +100,7 @@ Expert Council uses a 3-stage pipeline:
 ## Core Components
 
 ### 1. **Agent**
+
 A configurable AI agent with specific role and capabilities.
 
 ```typescript
@@ -107,6 +120,7 @@ interface AgentConfig {
 ```
 
 ### 2. **Workspace**
+
 A collection of agents organized to work together.
 
 ```typescript
@@ -126,6 +140,7 @@ interface Workspace {
 ```
 
 ### 3. **Run**
+
 An execution instance of a workspace processing a goal.
 
 ```typescript
@@ -152,12 +167,14 @@ interface Run {
 The Expert Council implements a **multi-model consensus pipeline** with three stages:
 
 #### **Stage 1: Council (Parallel Responses)**
+
 - Multiple AI models receive the same prompt
 - Execute in parallel for speed
 - Each model provides independent response
 - Responses are anonymized with labels (A, B, C, etc.)
 
 #### **Stage 2: Judges (Peer Review)**
+
 - Judge models review anonymized responses
 - Provide critiques for each response
 - Rank responses from best to worst
@@ -165,6 +182,7 @@ The Expert Council implements a **multi-model consensus pipeline** with three st
 - Calculate consensus metrics (Kendall's Tau, Borda scores)
 
 #### **Stage 3: Chairman (Synthesis)**
+
 - Chairman model receives all responses + reviews
 - Synthesizes final consensus answer
 - Incorporates best insights from all perspectives
@@ -184,7 +202,7 @@ interface ExpertCouncilConfig {
   enabled: boolean
   defaultMode: ExecutionMode
   allowModeOverride: boolean
-  
+
   // Models
   councilModels: Array<{
     modelId: string
@@ -193,22 +211,22 @@ interface ExpertCouncilConfig {
     temperature?: number
     systemPrompt?: string
   }>
-  
+
   chairmanModel: {
     modelId: string
     provider: ModelProvider
     modelName: string
     temperature?: number
   }
-  
+
   judgeModels?: Array<...>  // Optional, defaults to councilModels
-  
+
   // Settings
   selfExclusionEnabled: boolean
   minCouncilSize: number
   maxCouncilSize: number
   requireConsensusThreshold?: number  // 0-100
-  
+
   // Cost controls
   maxCostPerTurn?: number
   enableCaching: boolean
@@ -257,38 +275,49 @@ interface ExpertCouncilConfig {
 ### Workflow Types
 
 #### 1. **Sequential**
+
 Agents execute one after another in order.
+
 ```
 Agent A → Agent B → Agent C → Agent D
 ```
+
 - Output of A becomes input for B
 - Linear progression
 - Simple to understand and debug
 
 #### 2. **Parallel**
+
 Agents execute simultaneously.
+
 ```
         ┌→ Agent A →┐
 Goal →  ├→ Agent B →├→ Synthesizer
         └→ Agent C →┘
 ```
+
 - All agents receive same goal
 - Results combined by final agent
 - Fastest for independent tasks
 
 #### 3. **Supervisor**
+
 One agent coordinates others.
+
 ```
                 ┌→ Worker A →┐
 Supervisor  →  ├→ Worker B →├→ Supervisor → Final
                 └→ Worker C →┘
 ```
+
 - Supervisor routes tasks to specialists
 - Can iterate based on quality
 - Good for complex projects
 
 #### 4. **Graph**
+
 Custom workflow with branching and loops.
+
 ```
 Start → Agent A → [Decision] → Agent B → Join
                       ↓              ↓
@@ -296,6 +325,7 @@ Start → Agent A → [Decision] → Agent B → Join
                                     ↓
                                    End
 ```
+
 - Full control over execution flow
 - Supports conditional branching
 - Enables human-in-the-loop steps
@@ -344,8 +374,8 @@ interface ProjectManagerConfig {
   enabled: boolean
   questioningDepth: 'minimal' | 'standard' | 'thorough'
   autoUseExpertCouncil: boolean
-  expertCouncilThreshold: number  // 0-100, triggers council for complex questions
-  qualityGateThreshold: number    // 0-100, minimum quality score
+  expertCouncilThreshold: number // 0-100, triggers council for complex questions
+  qualityGateThreshold: number // 0-100, minimum quality score
   requireAssumptionValidation: boolean
   enableConflictDetection: boolean
   enableUserProfiling: boolean
@@ -353,6 +383,7 @@ interface ProjectManagerConfig {
 ```
 
 **Features**:
+
 - Extracts requirements and assumptions from conversations
 - Validates assumptions with user
 - Detects contradictory requirements
@@ -390,6 +421,7 @@ interface ToolDefinition {
 ```
 
 **Built-in Tools**:
+
 - `get_current_time`: Returns current date/time
 - `query_firestore`: Queries user's Firestore data
 - `search_web`: Web search via provider
@@ -424,6 +456,7 @@ async function executeWithProvider(
 ```
 
 **Supported Providers**:
+
 - OpenAI (GPT-4, GPT-4 Turbo, GPT-3.5)
 - Anthropic (Claude 3 Opus, Sonnet, Haiku)
 - Google (Gemini Pro, Gemini 1.5 Pro)
@@ -458,6 +491,7 @@ async function executeGraphWorkflow(
 ```
 
 **Algorithm**:
+
 1. Initialize workflow state from run
 2. Start with `startNodeId` in pending nodes
 3. While pending nodes exist:
@@ -469,6 +503,7 @@ async function executeGraphWorkflow(
 4. Return final output and steps
 
 **Safety Features**:
+
 - Max iterations limit (prevents infinite loops)
 - Max node visits per node
 - Max edge repeats per edge
@@ -489,6 +524,7 @@ interface WorkflowState {
 ```
 
 State persisted to Firestore enables:
+
 - **Resumption** after pauses
 - **Debugging** via execution history
 - **Auditing** of decision paths
@@ -502,6 +538,7 @@ State persisted to Firestore enables:
 Pre-configured agent personas with optimized prompts.
 
 #### **Research Analyst**
+
 ```typescript
 {
   name: 'Research Analyst',
@@ -515,6 +552,7 @@ Pre-configured agent personas with optimized prompts.
 ```
 
 #### **Strategic Planner**
+
 ```typescript
 {
   name: 'Strategic Planner',
@@ -527,6 +565,7 @@ Pre-configured agent personas with optimized prompts.
 ```
 
 #### **Critical Reviewer**
+
 ```typescript
 {
   name: 'Critical Reviewer',
@@ -539,6 +578,7 @@ Pre-configured agent personas with optimized prompts.
 ```
 
 #### **Content Writer - Thought Leadership**
+
 ```typescript
 {
   name: 'Content Writer',
@@ -551,7 +591,8 @@ Pre-configured agent personas with optimized prompts.
 }
 ```
 
-**Full List** (14 agent templates):
+**Full List** (18 agent templates):
+
 1. Research Analyst
 2. Strategic Planner
 3. Critical Reviewer
@@ -566,12 +607,17 @@ Pre-configured agent personas with optimized prompts.
 12. Editor - Content Polish
 13. SEO Specialist
 14. Fact Checker
+15. **Real-Time News Analyst** (Grok - real-time events)
+16. **Trend Analyst** (Grok - emerging patterns)
+17. **Technical Documentation Writer** (Gemini - code + docs)
+18. **Quick Summarizer** (GPT-4o-mini - fast & cheap)
 
 ### Workspace Templates
 
 Pre-configured multi-agent workflows.
 
 #### **Project Plan Builder** (Supervisor + Expert Council)
+
 ```typescript
 {
   name: 'Project Plan Builder',
@@ -602,6 +648,7 @@ Pre-configured multi-agent workflows.
 ```
 
 **Configuration Details**:
+
 - **Workflow Type**: Supervisor (Project Manager coordinates specialists)
 - **Default Agent**: Project Manager - Planning
 - **Max Iterations**: 15
@@ -610,6 +657,7 @@ Pre-configured multi-agent workflows.
 - **Project Manager**: Enabled with conflict detection and Expert Council auto-trigger
 
 #### **Thought Leadership Writer** (Graph + Deep Research)
+
 ```typescript
 {
   name: 'Thought Leadership Writer',
@@ -639,6 +687,7 @@ Pre-configured multi-agent workflows.
 ```
 
 **Configuration Details**:
+
 - **Workflow Type**: Graph (custom branching workflow)
 - **Default Agent**: Content Strategist
 - **Max Iterations**: 20
@@ -647,6 +696,7 @@ Pre-configured multi-agent workflows.
 - **Workflow Flow**: Strategy → Research → Draft → (Edit + SEO in parallel) → Fact Check → Final Review
 
 **Workflow Visualization**:
+
 ```
 Strategy → Research → Draft → Edit ──┐
                                       ├→ Fact Check → Final
@@ -656,6 +706,7 @@ Strategy → Research → Draft → SEO ──┘
 ### Agent Template Details
 
 #### **Project Manager - Planning**
+
 - **Role**: Custom
 - **Model**: GPT-4 Turbo
 - **Temperature**: 0.3 (low for consistency)
@@ -663,6 +714,7 @@ Strategy → Research → Draft → SEO ──┘
 - **Purpose**: Coordinates planning session, asks clarifying questions, validates assumptions, delegates to specialists
 
 **System Prompt Excerpt**:
+
 ```
 You are a Project Manager coordinating a project planning session.
 Your responsibilities:
@@ -675,12 +727,14 @@ Your responsibilities:
 ```
 
 #### **Task Breakdown Specialist**
+
 - **Role**: Planner
 - **Model**: GPT-4
 - **Temperature**: 0.4
 - **Purpose**: Breaks chapters into actionable tasks with effort estimates
 
 **System Prompt Excerpt**:
+
 ```
 You are a Task Breakdown Specialist.
 For each chapter, create detailed tasks:
@@ -695,12 +749,14 @@ For each chapter, create detailed tasks:
 ```
 
 #### **Risk Analyst**
+
 - **Role**: Critic
 - **Model**: Claude 3.5 Sonnet
 - **Temperature**: 0.3
 - **Purpose**: Identifies risks, dependencies, and mitigation strategies
 
 **System Prompt Excerpt**:
+
 ```
 You are a Risk Analyst identifying project risks.
 For each chapter or task, identify:
@@ -714,12 +770,14 @@ For each chapter or task, identify:
 ```
 
 #### **Content Strategist**
+
 - **Role**: Planner
 - **Model**: Claude 3.5 Sonnet
 - **Temperature**: 0.6
 - **Purpose**: Plans content strategy, positioning, and key messages
 
 **System Prompt Excerpt**:
+
 ```
 You are a Content Strategist for thought leadership.
 Your role:
@@ -731,6 +789,7 @@ Your role:
 ```
 
 #### **Content Writer - Thought Leadership**
+
 - **Role**: Synthesizer
 - **Model**: Claude 3.5 Sonnet
 - **Temperature**: 0.7 (higher for creativity)
@@ -738,6 +797,7 @@ Your role:
 - **Purpose**: Drafts engaging, well-structured content
 
 **System Prompt Excerpt**:
+
 ```
 You are a Content Writer creating thought leadership posts.
 Writing principles:
@@ -749,12 +809,14 @@ Writing principles:
 ```
 
 #### **Editor - Content Polish**
+
 - **Role**: Critic
 - **Model**: GPT-4
 - **Temperature**: 0.3 (low for precision)
 - **Purpose**: Polishes content for clarity, flow, and impact
 
 **System Prompt Excerpt**:
+
 ```
 You are an Editor polishing thought leadership content.
 Review for:
@@ -766,12 +828,14 @@ Review for:
 ```
 
 #### **SEO Specialist**
+
 - **Role**: Custom
 - **Model**: GPT-4
 - **Temperature**: 0.4
 - **Purpose**: Optimizes content for search and discoverability
 
 **System Prompt Excerpt**:
+
 ```
 You are an SEO Specialist optimizing thought leadership content.
 Provide:
@@ -783,12 +847,14 @@ Provide:
 ```
 
 #### **Fact Checker**
+
 - **Role**: Critic
 - **Model**: Claude 3.5 Sonnet
 - **Temperature**: 0.3
 - **Purpose**: Validates accuracy of claims and data
 
 **System Prompt Excerpt**:
+
 ```
 You are a Fact Checker validating content accuracy.
 For each claim in the content:
@@ -797,6 +863,80 @@ For each claim in the content:
 3. Flag unsupported claims
 4. Suggest sources or caveats
 ```
+
+#### **Real-Time News Analyst** (NEW)
+
+- **Role**: Researcher
+- **Model**: Grok 2 (leverages real-time data access)
+- **Temperature**: 0.4
+- **Purpose**: Analyzes current events, breaking news, and real-time developments
+
+**System Prompt Excerpt**:
+
+```
+You are a Real-Time News Analyst specializing in current events and breaking developments.
+Analyze recent news (last 24-48 hours), identify key developments, provide context,
+track evolving situations, and connect related events across domains.
+Always cite timeframes and sources.
+```
+
+**Unique Value**: Grok's access to real-time X/Twitter data and recent web content makes it ideal for analyzing breaking news and current events.
+
+#### **Trend Analyst** (NEW)
+
+- **Role**: Researcher
+- **Model**: Grok 2 (leverages social signals and real-time data)
+- **Temperature**: 0.6
+- **Purpose**: Identifies emerging patterns, trending topics, and cultural shifts
+
+**System Prompt Excerpt**:
+
+```
+You are a Trend Analyst identifying emerging patterns and cultural shifts.
+Spot early signals, analyze social media and cultural indicators,
+distinguish fads from lasting trends, predict trajectory, and identify
+cross-domain connections. Focus on forward-looking insights.
+```
+
+**Unique Value**: Grok's real-time social media access enables early trend detection and cultural pattern recognition.
+
+#### **Technical Documentation Writer** (NEW)
+
+- **Role**: Synthesizer
+- **Model**: Gemini 1.5 Pro (excellent at code + documentation)
+- **Temperature**: 0.4
+- **Max Tokens**: 4000
+- **Purpose**: Creates clear, comprehensive technical documentation and guides
+
+**System Prompt Excerpt**:
+
+```
+You are a Technical Documentation Writer creating clear, comprehensive docs.
+Explain complex technical concepts clearly, provide code examples and usage patterns,
+structure documentation logically, include troubleshooting and edge cases.
+Balance detail with accessibility. Target developers who need to integrate quickly.
+```
+
+**Unique Value**: Gemini's strong code understanding and fast processing make it ideal for technical documentation with runnable examples.
+
+#### **Quick Summarizer** (NEW)
+
+- **Role**: Synthesizer
+- **Model**: GPT-4o-mini (fast and cost-effective)
+- **Temperature**: 0.3
+- **Max Tokens**: 800 (intentionally limited for brevity)
+- **Purpose**: Fast, cost-effective summarization of content and documents
+
+**System Prompt Excerpt**:
+
+```
+You are a Quick Summarizer providing concise, accurate summaries.
+Extract key points, identify main themes, preserve essential details,
+maintain objectivity, and deliver in under 200 words.
+Focus on clarity and brevity. Perfect for quick overviews and inbox triage.
+```
+
+**Unique Value**: GPT-4o-mini costs 94% less than GPT-4 ($0.15 vs $30 per 1M tokens) while maintaining quality for simple summarization tasks.
 
 ---
 
@@ -827,7 +967,7 @@ interface ExpertCouncilTurn {
   turnId: string
   runId: RunId
   userPrompt: string
-  
+
   stage1: {
     responses: Array<{
       modelId: string
@@ -841,13 +981,13 @@ interface ExpertCouncilTurn {
       timestampMs: number
     }>
   }
-  
+
   stage2: {
-    anonymizationMap: Record<string, string>  // label -> modelId
+    anonymizationMap: Record<string, string> // label -> modelId
     reviews: Array<{
       judgeModelId: string
-      critiques: Record<string, string>  // label -> critique
-      ranking: string[]  // ordered labels
+      critiques: Record<string, string> // label -> critique
+      ranking: string[] // ordered labels
       confidenceScore?: number
       timestampMs: number
       tokensUsed?: number
@@ -870,7 +1010,7 @@ interface ExpertCouncilTurn {
       excludedResponses?: string[]
     }
   }
-  
+
   stage3: {
     chairmanModelId: string
     finalResponse: string
@@ -878,7 +1018,7 @@ interface ExpertCouncilTurn {
     estimatedCost?: number
     timestampMs: number
   }
-  
+
   totalDurationMs: number
   totalCost: number
   createdAtMs: number

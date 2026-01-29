@@ -124,7 +124,7 @@ export function useNoteEditor({
     }
   }, [note?.contentHtml])
 
-  // Update when note changes
+  // Update when note ID changes (switching notes), but not when content updates
   useEffect(() => {
     const sanitized = sanitizeNoteContent(note?.content as JSONContent)
     setContent(sanitized)
@@ -135,7 +135,8 @@ export function useNoteEditor({
     if (note?.updatedAtMs) {
       setLastSaved(new Date(note.updatedAtMs))
     }
-  }, [note?.noteId, note?.content, note?.contentHtml, note?.updatedAtMs])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note?.noteId]) // Only reset when switching to a different note, NOT on content/timestamp changes
 
   // Cleanup auto-save timer on unmount
   useEffect(() => {

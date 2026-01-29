@@ -68,11 +68,7 @@ export function ResearchPage() {
           <h1>Research</h1>
           <p>Track deep research requests, upload findings, and complete workflows.</p>
         </div>
-        <Button
-          variant="ghost"
-          type="button"
-          onClick={() => navigate('/workspaces')}
-        >
+        <Button variant="ghost" type="button" onClick={() => navigate('/workspaces')}>
           Manage workspaces
         </Button>
       </header>

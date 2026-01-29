@@ -38,6 +38,7 @@ const logger = createLogger('useWorkspaceOperations')
 
 export interface UseWorkspaceOperationsReturn {
   workspaces: Workspace[]
+  workspace: Workspace | null // Current workspace for detail view
   runs: Run[]
   isLoading: boolean
   error: Error | null
@@ -76,6 +77,7 @@ const runRepository = createFirestoreRunRepository()
 export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
   const { user } = useAuth()
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
+  const [workspace, setWorkspace] = useState<Workspace | null>(null) // Current workspace for detail view
   const [runs, setRuns] = useState<Run[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
@@ -184,8 +186,9 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
       setError(null)
 
       try {
-        const workspace = await usecases.getWorkspace(userId, workspaceId)
-        return workspace
+        const fetchedWorkspace = await usecases.getWorkspace(userId, workspaceId)
+        setWorkspace(fetchedWorkspace) // Update state for detail view
+        return fetchedWorkspace
       } catch (err) {
         const error = err as Error
         setError(error)
@@ -360,6 +363,7 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
 
   return {
     workspaces,
+    workspace,
     runs,
     isLoading,
     error,

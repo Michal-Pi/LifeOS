@@ -57,27 +57,38 @@ export const onRunCreated = onDocumentCreated(
   async (event) => {
     const snapshot = event.data
     if (!snapshot) {
-      console.error('No snapshot data available')
+      console.error('[onRunCreated] No snapshot data available')
       return
     }
 
     const run = snapshot.data() as Run
     const { userId, workspaceId, runId } = event.params
 
-    console.log(`Processing run ${runId} for user ${userId} in workspace ${workspaceId}`)
+    console.log(
+      `[onRunCreated] Processing run ${runId} for user ${userId} in workspace ${workspaceId}`
+    )
+    console.log(`[onRunCreated] Run status: ${run.status}, Goal: ${run.goal.substring(0, 50)}...`)
 
     // Only process pending runs
     if (run.status !== 'pending') {
-      console.log(`Run ${runId} is not pending (status: ${run.status}), skipping`)
+      console.log(`[onRunCreated] Run ${runId} is not pending (status: ${run.status}), skipping`)
       return
     }
 
-    await executeRun({
-      run,
-      userId,
-      workspaceId,
-      runId,
-    })
+    console.log(`[onRunCreated] Starting execution for run ${runId}`)
+
+    try {
+      await executeRun({
+        run,
+        userId,
+        workspaceId,
+        runId,
+      })
+      console.log(`[onRunCreated] Execution completed for run ${runId}`)
+    } catch (error) {
+      console.error(`[onRunCreated] Execution failed for run ${runId}:`, error)
+      throw error
+    }
   }
 )
 
@@ -125,22 +136,31 @@ async function executeRun(params: {
   runId: string
 }): Promise<void> {
   const { run, userId, workspaceId, runId } = params
+  console.log(`[executeRun] Starting execution for run ${runId}`)
+
   const db = getFirestore()
   const runRef = db.doc(`users/${userId}/workspaces/${workspaceId}/runs/${runId}`)
 
   try {
+    console.log(`[executeRun] Creating event writer for run ${runId}`)
     const eventWriter = createRunEventWriter({ userId, runId, workspaceId })
+
     // Phase 5E: Check rate limits and quotas before starting
+    console.log(`[executeRun] Checking rate limits for user ${userId}`)
     await checkRunRateLimit(userId)
+
+    console.log(`[executeRun] Checking quota for user ${userId}`)
     await checkQuota(userId)
 
     // Update status to running
+    console.log(`[executeRun] Updating run ${runId} status to 'running'`)
     await runRef.update({
       status: 'running',
       currentStep: run.currentStep ?? 0,
       pendingInput: null,
     })
 
+    console.log(`[executeRun] Writing 'running' status event for run ${runId}`)
     await eventWriter.writeEvent({
       type: 'status',
       workspaceId,
@@ -148,15 +168,28 @@ async function executeRun(params: {
     })
 
     // Load workspace configuration
+    console.log(`[executeRun] Loading workspace ${workspaceId}`)
     const workspaceDoc = await db.doc(`users/${userId}/workspaces/${workspaceId}`).get()
     if (!workspaceDoc.exists) {
       throw new Error(`Workspace ${workspaceId} not found`)
     }
     const workspace = workspaceDoc.data() as Workspace
+    console.log(`[executeRun] Workspace loaded: ${workspace.name}, type: ${workspace.workflowType}`)
 
+    console.log(`[executeRun] Loading provider keys for user ${userId}`)
     const providerKeys = await loadProviderKeys(userId)
+    console.log(
+      `[executeRun] Provider keys loaded. Available: ${Object.keys(providerKeys)
+        .filter((k) => providerKeys[k as keyof typeof providerKeys])
+        .join(', ')}`
+    )
+
+    console.log(`[executeRun] Loading memory settings for user ${userId}`)
     const memorySettings = await loadMemorySettings(userId)
+
+    console.log(`[executeRun] Loading tool registry for user ${userId}`)
     const toolRegistry = await loadToolRegistryForUser(userId)
+    console.log(`[executeRun] Tool registry loaded with ${Object.keys(toolRegistry).length} tools`)
 
     const resumeRunId =
       run.context && typeof run.context === 'object'
@@ -188,8 +221,10 @@ async function executeRun(params: {
       runWithContext.context as Record<string, unknown>
     )
 
+    console.log(`[executeRun] Checking Expert Council configuration`)
     const expertCouncilConfig = workspace.expertCouncilConfig
     if (expertCouncilConfig?.enabled) {
+      console.log(`[executeRun] Expert Council is ENABLED for workspace ${workspaceId}`)
       try {
         const modeCandidate =
           runWithContext.context &&
@@ -202,7 +237,14 @@ async function executeRun(params: {
             ? (modeCandidate as ExecutionMode)
             : undefined
 
+        console.log(
+          `[executeRun] Expert Council mode: ${modeOverride || expertCouncilConfig.defaultMode}`
+        )
+
+        console.log(`[executeRun] Creating Expert Council repository`)
         const repository = createExpertCouncilRepository()
+
+        console.log(`[executeRun] Creating Expert Council pipeline`)
         const pipeline = createExpertCouncilPipeline({
           apiKeys: providerKeys,
           context: runWithContext.context,
@@ -210,7 +252,10 @@ async function executeRun(params: {
           workspaceId,
         })
 
+        console.log(`[executeRun] Creating Expert Council use case`)
         const executeCouncil = executeExpertCouncilUsecase(repository, pipeline)
+
+        console.log(`[executeRun] Executing Expert Council for run ${runId}`)
         const turn = await executeCouncil(
           userId,
           runId as RunId,
@@ -220,6 +265,7 @@ async function executeRun(params: {
           workspaceId as WorkspaceId,
           contextHash
         )
+        console.log(`[executeRun] Expert Council execution completed for run ${runId}`)
 
         const totalTokensUsed =
           turn.stage1.responses.reduce((sum, response) => sum + (response.tokensUsed ?? 0), 0) +
@@ -277,11 +323,15 @@ async function executeRun(params: {
       }
     }
 
+    console.log(`[executeRun] Expert Council not enabled or failed, using workflow execution`)
+
     if (!workspace.agentIds || workspace.agentIds.length === 0) {
       throw new Error('No agents configured in workspace')
     }
+    console.log(`[executeRun] Workspace has ${workspace.agentIds.length} agents configured`)
 
     // Execute workflow with multi-agent orchestration
+    console.log(`[executeRun] Starting workflow execution for run ${runId}`)
     const result = await executeWorkflow(
       userId,
       workspace,
@@ -295,6 +345,7 @@ async function executeRun(params: {
       eventWriter,
       toolRegistry
     )
+    console.log(`[executeRun] Workflow execution completed for run ${runId}`)
 
     if (result.status === 'waiting_for_input') {
       await recordRunUsage(userId, result.totalTokensUsed, result.totalEstimatedCost)
@@ -457,6 +508,7 @@ async function executeRun(params: {
     }
 
     // Update run with successful result
+    console.log(`[executeRun] Updating run ${runId} status to 'completed'`)
     await runRef.update({
       status: 'completed',
       output: result.output,
@@ -467,6 +519,7 @@ async function executeRun(params: {
       currentStep: result.totalSteps,
     })
 
+    console.log(`[executeRun] Writing 'final' event for run ${runId}`)
     await eventWriter.writeEvent({
       type: 'final',
       workspaceId,
@@ -475,15 +528,23 @@ async function executeRun(params: {
     })
 
     console.log(
-      `Run ${runId} completed successfully. Workflow: ${workspace.workflowType}, Steps: ${result.totalSteps}, Tokens: ${result.totalTokensUsed}, Cost: $${result.totalEstimatedCost.toFixed(4)}`
+      `[executeRun] ✅ Run ${runId} completed successfully. Workflow: ${workspace.workflowType}, Steps: ${result.totalSteps}, Tokens: ${result.totalTokensUsed}, Cost: $${result.totalEstimatedCost.toFixed(4)}`
     )
   } catch (error) {
-    console.error(`Run ${runId} failed:`, error)
+    console.error(`[executeRun] ❌ Run ${runId} FAILED with error:`, error)
+    console.error(
+      `[executeRun] Error stack:`,
+      error instanceof Error ? error.stack : 'No stack trace'
+    )
 
     // Phase 5E: Wrap error for better user messages
     const agentError = wrapError(error, 'run_execution')
+    console.error(
+      `[executeRun] Error category: ${agentError.category}, User message: ${agentError.userMessage}`
+    )
 
     // Update run with error (including category and quota flag)
+    console.log(`[executeRun] Updating run ${runId} status to 'failed'`)
     await runRef.update({
       status: 'failed',
       error: agentError.userMessage,
@@ -493,6 +554,7 @@ async function executeRun(params: {
       completedAtMs: Date.now(),
     })
 
+    console.log(`[executeRun] Writing 'error' event for run ${runId}`)
     const eventWriter = createRunEventWriter({ userId, runId, workspaceId })
     await eventWriter.writeEvent({
       type: 'error',
@@ -501,6 +563,8 @@ async function executeRun(params: {
       errorCategory: agentError.category,
       status: 'failed',
     })
+
+    console.error(`[executeRun] Run ${runId} error handling complete`)
   }
 }
 

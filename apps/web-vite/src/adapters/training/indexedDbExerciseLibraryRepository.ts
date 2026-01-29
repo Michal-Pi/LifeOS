@@ -56,11 +56,16 @@ export const createIndexedDbExerciseLibraryRepository = (): ExerciseLibraryRepos
         } catch (error) {
           // Handle network errors gracefully - continue with local data
           const firebaseError = error as Error & { code?: string }
-          if (firebaseError?.code === 'permission-denied' || 
-              firebaseError?.code === 'unavailable' ||
-              firebaseError?.message?.includes('Failed to fetch') ||
-              firebaseError?.message?.includes('network')) {
-            console.warn('Network error fetching exercise for update, falling back to local:', firebaseError.code || firebaseError.message)
+          if (
+            firebaseError?.code === 'permission-denied' ||
+            firebaseError?.code === 'unavailable' ||
+            firebaseError?.message?.includes('Failed to fetch') ||
+            firebaseError?.message?.includes('network')
+          ) {
+            console.warn(
+              'Network error fetching exercise for update, falling back to local:',
+              firebaseError.code || firebaseError.message
+            )
           } else {
             console.error('Unexpected error fetching exercise from Firestore:', error)
           }
@@ -106,7 +111,7 @@ export const createIndexedDbExerciseLibraryRepository = (): ExerciseLibraryRepos
 
     async get(userId: string, exerciseId: ExerciseId): Promise<ExerciseLibraryItem | null> {
       const local = await getExerciseLocally(exerciseId)
-      
+
       // Always try Firestore first, fall back to local on network errors
       try {
         const remote = await firestoreRepo.get(userId, exerciseId)
@@ -121,11 +126,16 @@ export const createIndexedDbExerciseLibraryRepository = (): ExerciseLibraryRepos
       } catch (error) {
         // Handle network errors gracefully
         const firebaseError = error as Error & { code?: string }
-        if (firebaseError?.code === 'permission-denied' || 
-            firebaseError?.code === 'unavailable' ||
-            firebaseError?.message?.includes('Failed to fetch') ||
-            firebaseError?.message?.includes('network')) {
-          console.warn('Network error fetching exercise, falling back to local:', firebaseError.code || firebaseError.message)
+        if (
+          firebaseError?.code === 'permission-denied' ||
+          firebaseError?.code === 'unavailable' ||
+          firebaseError?.message?.includes('Failed to fetch') ||
+          firebaseError?.message?.includes('network')
+        ) {
+          console.warn(
+            'Network error fetching exercise, falling back to local:',
+            firebaseError.code || firebaseError.message
+          )
         } else {
           console.error('Unexpected error fetching exercise from Firestore:', error)
         }
@@ -138,7 +148,7 @@ export const createIndexedDbExerciseLibraryRepository = (): ExerciseLibraryRepos
       options?: { category?: ExerciseCategory; activeOnly?: boolean }
     ): Promise<ExerciseLibraryItem[]> {
       const localItems = await listExercisesLocally(userId)
-      
+
       // Always try Firestore first, fall back to local on network errors
       try {
         const remoteItems = await firestoreRepo.list(userId, options)
@@ -164,11 +174,16 @@ export const createIndexedDbExerciseLibraryRepository = (): ExerciseLibraryRepos
       } catch (error) {
         // Handle network errors gracefully
         const firebaseError = error as Error & { code?: string }
-        if (firebaseError?.code === 'permission-denied' || 
-            firebaseError?.code === 'unavailable' ||
-            firebaseError?.message?.includes('Failed to fetch') ||
-            firebaseError?.message?.includes('network')) {
-          console.warn('Network error listing exercises, falling back to local:', firebaseError.code || firebaseError.message)
+        if (
+          firebaseError?.code === 'permission-denied' ||
+          firebaseError?.code === 'unavailable' ||
+          firebaseError?.message?.includes('Failed to fetch') ||
+          firebaseError?.message?.includes('network')
+        ) {
+          console.warn(
+            'Network error listing exercises, falling back to local:',
+            firebaseError.code || firebaseError.message
+          )
         } else {
           console.error('Unexpected error listing exercises from Firestore:', error)
         }

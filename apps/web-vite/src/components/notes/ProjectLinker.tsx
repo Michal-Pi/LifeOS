@@ -121,6 +121,7 @@ export function ProjectLinker({
 
       <style>{`
         .project-linker {
+          position: relative;
           padding: 16px;
           border: 1px solid var(--border);
           border-radius: 16px;

@@ -115,17 +115,17 @@ const createDefaultCouncilModel = (
 ): ExpertCouncilConfig['councilModels'][number] => {
   // Preferred order: OpenAI (GPT), Anthropic (Claude), xAI (Grok), Google (Gemini)
   const preferredOrder: ModelProvider[] = ['openai', 'anthropic', 'xai', 'google']
-  
+
   // For each index, try to use the preferred provider in order
   // If that provider is not connected, cycle through connected providers
   let defaultProvider: ModelProvider
-  
+
   if (connectedProviders.length === 0) {
     defaultProvider = 'openai' // Fallback
   } else {
     const preferredIndex = index % preferredOrder.length
     const preferredProvider = preferredOrder[preferredIndex]
-    
+
     if (connectedProviders.includes(preferredProvider)) {
       // Use preferred provider if available
       defaultProvider = preferredProvider
@@ -135,12 +135,18 @@ const createDefaultCouncilModel = (
       defaultProvider = connectedProviders[index % connectedProviders.length]
     }
   }
-  
-  const defaultModel = defaultProvider === 'openai' ? 'gpt-4' : 
-                       defaultProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' :
-                       defaultProvider === 'google' ? 'gemini-pro' :
-                       defaultProvider === 'xai' ? 'grok-beta' : 'gpt-4'
-  
+
+  const defaultModel =
+    defaultProvider === 'openai'
+      ? 'gpt-4'
+      : defaultProvider === 'anthropic'
+        ? 'claude-3-5-sonnet-20241022'
+        : defaultProvider === 'google'
+          ? 'gemini-pro'
+          : defaultProvider === 'xai'
+            ? 'grok-beta'
+            : 'gpt-4'
+
   return {
     modelId: `council-${index + 1}`,
     provider: defaultProvider,
@@ -172,7 +178,7 @@ export function WorkspaceFormModal({
   const { templates: promptTemplates } = usePromptLibrary()
   const { user } = useAuth()
   const providerKeys = useAiProviderKeys(user?.uid)
-  
+
   // Get connected providers in preferred order: OpenAI, Anthropic, xAI, Google
   const connectedProviders = useMemo(() => {
     const providers: ModelProvider[] = []
@@ -202,6 +208,8 @@ export function WorkspaceFormModal({
   const [maxIterations, setMaxIterations] = useState<number>(10)
   const [memoryMessageLimitInput, setMemoryMessageLimitInput] = useState('')
   const [workflowGraphInput, setWorkflowGraphInput] = useState('')
+  const [workflowPrompt, setWorkflowPrompt] = useState('')
+  const [isGeneratingWorkflow, setIsGeneratingWorkflow] = useState(false)
   const [executionModeChoice, setExecutionModeChoice] = useState<'workflow' | 'expert_council'>(
     'workflow'
   )
@@ -235,6 +243,7 @@ export function WorkspaceFormModal({
 
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   // Load agents on mount
   useEffect(() => {
@@ -292,10 +301,16 @@ export function WorkspaceFormModal({
             createDefaultCouncilModel(1, connectedProviders),
           ])
           const defaultChairmanProvider = connectedProviders[0] || 'openai'
-          const defaultChairmanModel = defaultChairmanProvider === 'openai' ? 'gpt-4' : 
-                                       defaultChairmanProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' :
-                                       defaultChairmanProvider === 'google' ? 'gemini-pro' :
-                                       defaultChairmanProvider === 'xai' ? 'grok-beta' : 'gpt-4'
+          const defaultChairmanModel =
+            defaultChairmanProvider === 'openai'
+              ? 'gpt-4'
+              : defaultChairmanProvider === 'anthropic'
+                ? 'claude-3-5-sonnet-20241022'
+                : defaultChairmanProvider === 'google'
+                  ? 'gemini-pro'
+                  : defaultChairmanProvider === 'xai'
+                    ? 'grok-beta'
+                    : 'gpt-4'
           setExpertCouncilChairmanModel({
             modelId: 'chairman-1',
             provider: defaultChairmanProvider,
@@ -358,10 +373,16 @@ export function WorkspaceFormModal({
             createDefaultCouncilModel(1, connectedProviders),
           ])
           const defaultChairmanProvider = connectedProviders[0] || 'openai'
-          const defaultChairmanModel = defaultChairmanProvider === 'openai' ? 'gpt-4' : 
-                                       defaultChairmanProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' :
-                                       defaultChairmanProvider === 'google' ? 'gemini-pro' :
-                                       defaultChairmanProvider === 'xai' ? 'grok-beta' : 'gpt-4'
+          const defaultChairmanModel =
+            defaultChairmanProvider === 'openai'
+              ? 'gpt-4'
+              : defaultChairmanProvider === 'anthropic'
+                ? 'claude-3-5-sonnet-20241022'
+                : defaultChairmanProvider === 'google'
+                  ? 'gemini-pro'
+                  : defaultChairmanProvider === 'xai'
+                    ? 'grok-beta'
+                    : 'gpt-4'
           setExpertCouncilChairmanModel({
             modelId: 'chairman-1',
             provider: defaultChairmanProvider,
@@ -398,6 +419,12 @@ export function WorkspaceFormModal({
         if (newList.length === 1) {
           setDefaultAgentId(agentId)
         }
+        // Clear validation error when agent is selected
+        if (validationErrors.agents) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { agents: _, ...rest } = validationErrors
+          setValidationErrors(rest)
+        }
         return newList
       }
     })
@@ -427,6 +454,93 @@ export function WorkspaceFormModal({
     setPromptEditorTemplate(template)
   }
 
+  const handleGenerateWorkflowFromPrompt = async () => {
+    if (!workflowPrompt.trim()) {
+      setError('Please enter a workflow description')
+      return
+    }
+
+    setIsGeneratingWorkflow(true)
+    setError(null)
+
+    try {
+      // Use OpenAI to convert prompt to workflow graph JSON
+      const systemPrompt = `You are an expert at designing AI agent workflows. Convert the user's description into a workflow graph JSON structure.
+
+The JSON should follow this schema:
+{
+  "version": 1,
+  "startNodeId": "node_1",
+  "nodes": [
+    {
+      "nodeId": "node_1",
+      "agentId": "agent_id_here",
+      "label": "Node Name",
+      "config": {}
+    }
+  ],
+  "edges": [
+    {
+      "edgeId": "edge_1",
+      "sourceNodeId": "node_1",
+      "targetNodeId": "node_2",
+      "condition": null
+    }
+  ]
+}
+
+Examples:
+1. "Sequential workflow with researcher then writer"
+   -> 2 nodes connected in sequence
+
+2. "Parallel research by 3 agents, then synthesize"
+   -> 3 parallel nodes all connecting to 1 synthesis node
+
+3. "Router that sends to specialist based on topic"
+   -> 1 router node with conditional edges to multiple specialist nodes
+
+Return ONLY valid JSON, no explanation.`
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${providerKeys.openai}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: workflowPrompt },
+          ],
+          temperature: 0.3,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      const generatedJson = data.choices[0]?.message?.content?.trim()
+
+      if (!generatedJson) {
+        throw new Error('No response from AI')
+      }
+
+      // Validate it's valid JSON
+      JSON.parse(generatedJson)
+
+      setWorkflowGraphInput(generatedJson)
+      setWorkflowPrompt('') // Clear prompt after successful generation
+    } catch (err) {
+      const error = err as Error
+      setError(`Failed to generate workflow: ${error.message}`)
+    } finally {
+      setIsGeneratingWorkflow(false)
+    }
+  }
+
   const handleCouncilModelChange = (
     index: number,
     updates: Partial<ExpertCouncilConfig['councilModels'][number]>
@@ -441,19 +555,26 @@ export function WorkspaceFormModal({
   }
 
   const handleCouncilModelAdd = () => {
-    setExpertCouncilCouncilModels((prev) => [...prev, createDefaultCouncilModel(prev.length, connectedProviders)])
+    setExpertCouncilCouncilModels((prev) => [
+      ...prev,
+      createDefaultCouncilModel(prev.length, connectedProviders),
+    ])
   }
 
   const handleSave = async () => {
+    // Clear previous validation errors
+    setValidationErrors({})
+    setError(null)
+
+    const errors: Record<string, string> = {}
+
     // Validation
     if (!name.trim()) {
-      setError('Workspace name is required')
-      return
+      errors.name = 'Workspace name is required'
     }
 
     if (selectedAgentIds.length === 0) {
-      setError('At least one agent must be selected')
-      return
+      errors.agents = 'At least one agent must be selected'
     }
 
     if (defaultAgentId && !selectedAgentIds.includes(defaultAgentId)) {
@@ -579,19 +700,24 @@ export function WorkspaceFormModal({
     let workflowGraph: Workspace['workflowGraph'] | undefined
     if (workflowType === 'graph') {
       if (!workflowGraphInput.trim()) {
-        setError('Workflow graph JSON is required for graph workflows')
-        return
-      }
-      try {
-        workflowGraph = JSON.parse(workflowGraphInput) as Workspace['workflowGraph']
-      } catch {
-        setError('Workflow graph JSON is invalid')
-        return
+        errors.workflowGraph = 'Workflow graph JSON is required for graph workflows'
+      } else {
+        try {
+          workflowGraph = JSON.parse(workflowGraphInput) as Workspace['workflowGraph']
+        } catch {
+          errors.workflowGraph = 'Workflow graph JSON is invalid'
+        }
       }
     }
 
+    // If there are validation errors, show them and return
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors)
+      setError('Please fix the validation errors highlighted below')
+      return
+    }
+
     setIsSaving(true)
-    setError(null)
 
     try {
       const expertCouncilConfig: ExpertCouncilConfig | undefined = expertCouncilEnabled
@@ -696,10 +822,21 @@ export function WorkspaceFormModal({
                 id="name"
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value)
+                  if (validationErrors.name) {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { name: _, ...rest } = validationErrors
+                    setValidationErrors(rest)
+                  }
+                }}
                 placeholder="e.g., Fitness Assistant"
                 required
+                className={validationErrors.name ? 'error' : ''}
               />
+              {validationErrors.name && (
+                <span className="field-error">{validationErrors.name}</span>
+              )}
             </div>
 
             <div className="form-group">
@@ -720,7 +857,7 @@ export function WorkspaceFormModal({
                   <p>No agents available. Create an agent first.</p>
                 </div>
               ) : (
-                <div className="agent-selection">
+                <div className={`agent-selection ${validationErrors.agents ? 'error' : ''}`}>
                   {activeAgents.map((agent) => (
                     <div key={agent.agentId} className="agent-checkbox">
                       <label>
@@ -739,6 +876,9 @@ export function WorkspaceFormModal({
                   ))}
                 </div>
               )}
+              {validationErrors.agents && (
+                <span className="field-error">{validationErrors.agents}</span>
+              )}
             </div>
 
             {selectedAgentIds.length > 0 && (
@@ -748,7 +888,9 @@ export function WorkspaceFormModal({
                   id="defaultAgent"
                   value={defaultAgentId ?? DEFAULT_AGENT_OPTION}
                   onChange={(value) =>
-                    setDefaultAgentId(value === DEFAULT_AGENT_OPTION ? undefined : (value as AgentId))
+                    setDefaultAgentId(
+                      value === DEFAULT_AGENT_OPTION ? undefined : (value as AgentId)
+                    )
                   }
                   options={defaultAgentOptions}
                   placeholder="Select a default agent"
@@ -768,17 +910,66 @@ export function WorkspaceFormModal({
             </div>
 
             {workflowType === 'graph' && (
-              <div className="form-group">
-                <label htmlFor="workflowGraph">Workflow Graph (JSON)</label>
-                <textarea
-                  id="workflowGraph"
-                  value={workflowGraphInput}
-                  onChange={(e) => setWorkflowGraphInput(e.target.value)}
-                  placeholder='{"version":1,"startNodeId":"node_1","nodes":[],"edges":[]}'
-                  rows={8}
-                />
-                <small>Provide a graph definition for advanced orchestration.</small>
-              </div>
+              <>
+                <div className="form-group">
+                  <label htmlFor="workflowPrompt">Describe Workflow (Optional)</label>
+                  <textarea
+                    id="workflowPrompt"
+                    value={workflowPrompt}
+                    onChange={(e) => setWorkflowPrompt(e.target.value)}
+                    placeholder="Example: Sequential workflow with researcher then writer, or Parallel research by 3 agents then synthesize..."
+                    rows={3}
+                    style={{
+                      marginBottom: '0.5rem',
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleGenerateWorkflowFromPrompt}
+                    disabled={
+                      isGeneratingWorkflow || !workflowPrompt.trim() || !providerKeys.openai
+                    }
+                  >
+                    {isGeneratingWorkflow ? 'Generating...' : '🪄 Generate JSON from Description'}
+                  </Button>
+                  {!providerKeys.openai && (
+                    <small
+                      style={{
+                        display: 'block',
+                        marginTop: '0.25rem',
+                        color: 'var(--destructive)',
+                      }}
+                    >
+                      OpenAI API key required in Settings
+                    </small>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="workflowGraph">Workflow Graph (JSON)</label>
+                  <textarea
+                    id="workflowGraph"
+                    value={workflowGraphInput}
+                    onChange={(e) => {
+                      setWorkflowGraphInput(e.target.value)
+                      if (validationErrors.workflowGraph) {
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                        const { workflowGraph: _, ...rest } = validationErrors
+                        setValidationErrors(rest)
+                      }
+                    }}
+                    placeholder='{"version":1,"startNodeId":"node_1","nodes":[],"edges":[]}'
+                    rows={8}
+                    className={validationErrors.workflowGraph ? 'error' : ''}
+                  />
+                  {validationErrors.workflowGraph ? (
+                    <span className="field-error">{validationErrors.workflowGraph}</span>
+                  ) : (
+                    <small>Provide a graph definition for advanced orchestration.</small>
+                  )}
+                </div>
+              </>
             )}
 
             <div className="form-group">

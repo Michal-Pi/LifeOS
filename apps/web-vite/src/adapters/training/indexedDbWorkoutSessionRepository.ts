@@ -58,11 +58,16 @@ export const createIndexedDbWorkoutSessionRepository = (): WorkoutSessionReposit
         } catch (error) {
           // Handle network errors gracefully - continue with local data
           const firebaseError = error as Error & { code?: string }
-          if (firebaseError?.code === 'permission-denied' || 
-              firebaseError?.code === 'unavailable' ||
-              firebaseError?.message?.includes('Failed to fetch') ||
-              firebaseError?.message?.includes('network')) {
-            console.warn('Network error fetching session for update, falling back to local:', firebaseError.code || firebaseError.message)
+          if (
+            firebaseError?.code === 'permission-denied' ||
+            firebaseError?.code === 'unavailable' ||
+            firebaseError?.message?.includes('Failed to fetch') ||
+            firebaseError?.message?.includes('network')
+          ) {
+            console.warn(
+              'Network error fetching session for update, falling back to local:',
+              firebaseError.code || firebaseError.message
+            )
           } else {
             console.error('Unexpected error fetching session from Firestore:', error)
           }
@@ -94,7 +99,7 @@ export const createIndexedDbWorkoutSessionRepository = (): WorkoutSessionReposit
 
     async get(userId: string, sessionId: SessionId): Promise<WorkoutSession | null> {
       const local = await getSessionLocally(sessionId)
-      
+
       // Always try Firestore first, fall back to local on network errors
       try {
         const remote = await firestoreRepo.get(userId, sessionId)
@@ -109,11 +114,16 @@ export const createIndexedDbWorkoutSessionRepository = (): WorkoutSessionReposit
       } catch (error) {
         // Handle network errors gracefully
         const firebaseError = error as Error & { code?: string }
-        if (firebaseError?.code === 'permission-denied' || 
-            firebaseError?.code === 'unavailable' ||
-            firebaseError?.message?.includes('Failed to fetch') ||
-            firebaseError?.message?.includes('network')) {
-          console.warn('Network error fetching session, falling back to local:', firebaseError.code || firebaseError.message)
+        if (
+          firebaseError?.code === 'permission-denied' ||
+          firebaseError?.code === 'unavailable' ||
+          firebaseError?.message?.includes('Failed to fetch') ||
+          firebaseError?.message?.includes('network')
+        ) {
+          console.warn(
+            'Network error fetching session, falling back to local:',
+            firebaseError.code || firebaseError.message
+          )
         } else {
           console.error('Unexpected error fetching session from Firestore:', error)
         }
@@ -123,7 +133,7 @@ export const createIndexedDbWorkoutSessionRepository = (): WorkoutSessionReposit
 
     async getByDate(userId: string, dateKey: string): Promise<WorkoutSession[]> {
       const localItems = await listSessionsByDateLocally(userId, dateKey)
-      
+
       // Always try Firestore first, fall back to local on network errors
       let remoteItems: WorkoutSession[] = []
       try {
@@ -138,9 +148,12 @@ export const createIndexedDbWorkoutSessionRepository = (): WorkoutSessionReposit
           firebaseError?.message?.includes('Permission') ||
           firebaseError?.message?.includes('Failed to fetch') ||
           firebaseError?.message?.includes('network')
-        
+
         if (isNetworkError) {
-          console.warn('Network error fetching sessions by date, falling back to local:', firebaseError.code || firebaseError.message)
+          console.warn(
+            'Network error fetching sessions by date, falling back to local:',
+            firebaseError.code || firebaseError.message
+          )
           return sortSessions(localItems)
         }
         // Log unexpected errors but still return local data
@@ -175,7 +188,7 @@ export const createIndexedDbWorkoutSessionRepository = (): WorkoutSessionReposit
       context: WorkoutContext
     ): Promise<WorkoutSession | null> {
       const local = await getSessionByDateAndContextLocally(userId, dateKey, context)
-      
+
       // Always try Firestore first, fall back to local on network errors
       try {
         const remote = await firestoreRepo.getByDateAndContext(userId, dateKey, context)
@@ -190,11 +203,16 @@ export const createIndexedDbWorkoutSessionRepository = (): WorkoutSessionReposit
       } catch (error) {
         // Handle network errors gracefully
         const firebaseError = error as Error & { code?: string }
-        if (firebaseError?.code === 'permission-denied' || 
-            firebaseError?.code === 'unavailable' ||
-            firebaseError?.message?.includes('Failed to fetch') ||
-            firebaseError?.message?.includes('network')) {
-          console.warn('Network error fetching session by date and context, falling back to local:', firebaseError.code || firebaseError.message)
+        if (
+          firebaseError?.code === 'permission-denied' ||
+          firebaseError?.code === 'unavailable' ||
+          firebaseError?.message?.includes('Failed to fetch') ||
+          firebaseError?.message?.includes('network')
+        ) {
+          console.warn(
+            'Network error fetching session by date and context, falling back to local:',
+            firebaseError.code || firebaseError.message
+          )
         } else {
           console.error('Unexpected error fetching session from Firestore:', error)
         }
@@ -208,7 +226,7 @@ export const createIndexedDbWorkoutSessionRepository = (): WorkoutSessionReposit
       endDate: string
     ): Promise<WorkoutSession[]> {
       const localItems = await listSessionsForDateRangeLocally(userId, startDate, endDate)
-      
+
       // Always try Firestore first, fall back to local on network errors
       try {
         const remoteItems = await firestoreRepo.listForDateRange(userId, startDate, endDate)
@@ -234,11 +252,16 @@ export const createIndexedDbWorkoutSessionRepository = (): WorkoutSessionReposit
       } catch (error) {
         // Handle network errors gracefully
         const firebaseError = error as Error & { code?: string }
-        if (firebaseError?.code === 'permission-denied' || 
-            firebaseError?.code === 'unavailable' ||
-            firebaseError?.message?.includes('Failed to fetch') ||
-            firebaseError?.message?.includes('network')) {
-          console.warn('Network error listing sessions for date range, falling back to local:', firebaseError.code || firebaseError.message)
+        if (
+          firebaseError?.code === 'permission-denied' ||
+          firebaseError?.code === 'unavailable' ||
+          firebaseError?.message?.includes('Failed to fetch') ||
+          firebaseError?.message?.includes('network')
+        ) {
+          console.warn(
+            'Network error listing sessions for date range, falling back to local:',
+            firebaseError.code || firebaseError.message
+          )
         } else {
           console.error('Unexpected error listing sessions from Firestore:', error)
         }

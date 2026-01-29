@@ -31,9 +31,14 @@ export function useProjectManager(workspaceId?: string, runId?: string) {
     if (!user || !activeKey) {
       return
     }
-    repository.getActiveContext(user.uid, workspaceId).then((ctx) => {
-      setContextState({ key: activeKey, context: ctx })
-    })
+    repository
+      .getActiveContext(user.uid, workspaceId)
+      .then((ctx) => {
+        setContextState({ key: activeKey, context: ctx })
+      })
+      .catch(() => {
+        // Silently fail if context loading fails
+      })
   }, [activeKey, repository, user, workspaceId])
 
   useEffect(() => {

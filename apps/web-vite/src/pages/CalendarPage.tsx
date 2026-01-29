@@ -181,22 +181,55 @@ export function CalendarPage() {
 
   // Load events via hook
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CalendarPage.tsx:183',message:'About to call useCalendarEvents',data:{userId,displayDayKeysLength:displayDayKeys.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      location: 'CalendarPage.tsx:183',
+      message: 'About to call useCalendarEvents',
+      data: { userId, displayDayKeysLength: displayDayKeys.length },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'run1',
+      hypothesisId: 'B',
+    }),
+  }).catch(() => {})
   // #endregion
   const hookResult = useCalendarEvents(userId, displayDayKeys)
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CalendarPage.tsx:190',message:'useCalendarEvents returned',data:{hasLoading:'loading' in hookResult,hasEvents:'events' in hookResult,keys:Object.keys(hookResult)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      location: 'CalendarPage.tsx:190',
+      message: 'useCalendarEvents returned',
+      data: {
+        hasLoading: 'loading' in hookResult,
+        hasEvents: 'events' in hookResult,
+        keys: Object.keys(hookResult),
+      },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'run1',
+      hypothesisId: 'A',
+    }),
+  }).catch(() => {})
   // #endregion
-  const {
-    events,
-    instances,
-    setEvents,
-    loading,
-    reload: reloadEvents,
-    syncProgress,
-  } = hookResult
+  const { events, instances, setEvents, loading, reload: reloadEvents, syncProgress } = hookResult
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CalendarPage.tsx:197',message:'After destructuring loading',data:{loadingType:typeof loading,loadingValue:loading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      location: 'CalendarPage.tsx:197',
+      message: 'After destructuring loading',
+      data: { loadingType: typeof loading, loadingValue: loading },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'run1',
+      hypothesisId: 'D',
+    }),
+  }).catch(() => {})
   // #endregion
 
   // Event operations hook

@@ -59,11 +59,16 @@ export const createIndexedDbWorkoutTemplateRepository = (): WorkoutTemplateRepos
         } catch (error) {
           // Handle network errors gracefully - continue with local data
           const firebaseError = error as Error & { code?: string }
-          if (firebaseError?.code === 'permission-denied' || 
-              firebaseError?.code === 'unavailable' ||
-              firebaseError?.message?.includes('Failed to fetch') ||
-              firebaseError?.message?.includes('network')) {
-            console.warn('Network error fetching template for update, falling back to local:', firebaseError.code || firebaseError.message)
+          if (
+            firebaseError?.code === 'permission-denied' ||
+            firebaseError?.code === 'unavailable' ||
+            firebaseError?.message?.includes('Failed to fetch') ||
+            firebaseError?.message?.includes('network')
+          ) {
+            console.warn(
+              'Network error fetching template for update, falling back to local:',
+              firebaseError.code || firebaseError.message
+            )
           } else {
             console.error('Unexpected error fetching template from Firestore:', error)
           }
@@ -95,7 +100,7 @@ export const createIndexedDbWorkoutTemplateRepository = (): WorkoutTemplateRepos
 
     async get(userId: string, templateId: TemplateId): Promise<WorkoutTemplate | null> {
       const local = await getTemplateLocally(templateId)
-      
+
       // Always try Firestore first, fall back to local on network errors
       try {
         const remote = await firestoreRepo.get(userId, templateId)
@@ -110,11 +115,16 @@ export const createIndexedDbWorkoutTemplateRepository = (): WorkoutTemplateRepos
       } catch (error) {
         // Handle network errors gracefully
         const firebaseError = error as Error & { code?: string }
-        if (firebaseError?.code === 'permission-denied' || 
-            firebaseError?.code === 'unavailable' ||
-            firebaseError?.message?.includes('Failed to fetch') ||
-            firebaseError?.message?.includes('network')) {
-          console.warn('Network error fetching template, falling back to local:', firebaseError.code || firebaseError.message)
+        if (
+          firebaseError?.code === 'permission-denied' ||
+          firebaseError?.code === 'unavailable' ||
+          firebaseError?.message?.includes('Failed to fetch') ||
+          firebaseError?.message?.includes('network')
+        ) {
+          console.warn(
+            'Network error fetching template, falling back to local:',
+            firebaseError.code || firebaseError.message
+          )
         } else {
           console.error('Unexpected error fetching template from Firestore:', error)
         }
@@ -145,9 +155,12 @@ export const createIndexedDbWorkoutTemplateRepository = (): WorkoutTemplateRepos
           firebaseError?.message?.includes('Missing or insufficient permissions') ||
           firebaseError?.message?.includes('Failed to fetch') ||
           firebaseError?.message?.includes('network')
-        
+
         if (isNetworkError) {
-          console.warn('Network error listing templates, falling back to local:', firebaseError.code || firebaseError.message)
+          console.warn(
+            'Network error listing templates, falling back to local:',
+            firebaseError.code || firebaseError.message
+          )
           return sortTemplates(localItems)
         }
         // Log unexpected errors but still return local data

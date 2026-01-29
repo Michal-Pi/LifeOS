@@ -352,9 +352,7 @@ export function WorkspacesPage() {
           <h1>Workspaces</h1>
           <p>Orchestrate multiple agents to work together</p>
         </div>
-        <Button onClick={handleNew}>
-          + New Workspace
-        </Button>
+        <Button onClick={handleNew}>+ New Workspace</Button>
       </header>
 
       <div className="section-tabs">
@@ -442,7 +440,11 @@ export function WorkspacesPage() {
                     <Button variant="ghost" onClick={() => handleSaveTemplate(workspace)}>
                       Save Template
                     </Button>
-                    <Button variant="ghost" className="danger" onClick={() => handleDelete(workspace)}>
+                    <Button
+                      variant="ghost"
+                      className="danger"
+                      onClick={() => handleDelete(workspace)}
+                    >
                       Delete
                     </Button>
                   </div>
@@ -508,10 +510,7 @@ export function WorkspacesPage() {
                       </div>
                     </div>
                     <div className="card-actions">
-                      <Button
-                        variant="ghost"
-                        onClick={() => setPromptEditorTemplate(template)}
-                      >
+                      <Button variant="ghost" onClick={() => setPromptEditorTemplate(template)}>
                         Edit
                       </Button>
                     </div>

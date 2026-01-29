@@ -219,11 +219,7 @@ export function PromptEditor({
                 {isDeleting ? 'Deleting...' : 'Delete'}
               </Button>
             )}
-            <Button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-            >
+            <Button type="button" onClick={handleSave} disabled={isSaving}>
               {isCreateMode ? 'Create' : 'Save'}
             </Button>
           </div>

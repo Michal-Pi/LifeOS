@@ -6,6 +6,7 @@
  */
 
 import { Extension } from '@tiptap/core'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { Note } from '@lifeos/notes'
 
 export interface NoteLinkOptions {
@@ -68,9 +69,11 @@ export const NoteLink = Extension.create<NoteLinkOptions>({
   },
 
   addProseMirrorPlugins() {
+    const { onNoteClick } = this.options
+
     return [
-      {
-        key: 'noteLinkClickHandler',
+      new Plugin({
+        key: new PluginKey('noteLinkClickHandler'),
         props: {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           handleClick: (view: any, pos: number, event: MouseEvent) => {
@@ -90,8 +93,8 @@ export const NoteLink = Extension.create<NoteLinkOptions>({
                 if (href.startsWith('note://')) {
                   event.preventDefault()
                   const noteId = href.replace('note://', '')
-                  if (this.options.onNoteClick && noteId) {
-                    this.options.onNoteClick(noteId)
+                  if (onNoteClick && noteId) {
+                    onNoteClick(noteId)
                   }
                   return true
                 }
@@ -105,8 +108,8 @@ export const NoteLink = Extension.create<NoteLinkOptions>({
                 if (href && href.startsWith('note://')) {
                   event.preventDefault()
                   const noteId = href.replace('note://', '')
-                  if (this.options.onNoteClick && noteId) {
-                    this.options.onNoteClick(noteId)
+                  if (onNoteClick && noteId) {
+                    onNoteClick(noteId)
                   }
                   return true
                 }
@@ -118,7 +121,7 @@ export const NoteLink = Extension.create<NoteLinkOptions>({
             return false
           },
         },
-      },
+      }),
     ]
   },
 

@@ -32,8 +32,10 @@ export function WorkoutSessionCard({ dateKey, variant = 'card' }: WorkoutSession
         setTodaySessions(sessions)
       } catch (error) {
         // Handle Firebase permissions error gracefully
-        const errorMessage = error instanceof Error ? error.message : 'Failed to load workout sessions'
-        const isPermissionError = errorMessage.includes('permission') || errorMessage.includes('Permission')
+        const errorMessage =
+          error instanceof Error ? error.message : 'Failed to load workout sessions'
+        const isPermissionError =
+          errorMessage.includes('permission') || errorMessage.includes('Permission')
         if (isPermissionError) {
           setLoadError('Workout data unavailable. Please check your permissions.')
         } else {

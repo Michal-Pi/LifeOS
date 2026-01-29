@@ -56,11 +56,7 @@ export function ResearchQueueSidebar({
         ))}
       </div>
       <div className="research-sidebar__actions">
-        <Button
-          type="button"
-          disabled={!selectedRequest}
-          onClick={() => setShowUploadModal(true)}
-        >
+        <Button type="button" disabled={!selectedRequest} onClick={() => setShowUploadModal(true)}>
           Upload Results
         </Button>
         {onOpenFullQueue && (

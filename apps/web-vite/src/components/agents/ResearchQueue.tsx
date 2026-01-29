@@ -283,10 +283,7 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
                   >
                     Mark complete
                   </Button>
-                  <Button
-                    type="button"
-                    onClick={() => setShowUploadModal(true)}
-                  >
+                  <Button type="button" onClick={() => setShowUploadModal(true)}>
                     Upload results
                   </Button>
                 </div>

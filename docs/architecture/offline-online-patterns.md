@@ -27,32 +27,32 @@ Your codebase currently has **multiple independent online state checks**:
 class NetworkStatusService {
   private isOnline: boolean = navigator.onLine
   private listeners: Set<(isOnline: boolean) => void> = new Set()
-  
+
   constructor() {
     window.addEventListener('online', () => this.setOnline(true))
     window.addEventListener('offline', () => this.setOnline(false))
-    
+
     // Also do periodic connectivity checks (navigator.onLine can be unreliable)
     this.startConnectivityChecks()
   }
-  
+
   subscribe(callback: (isOnline: boolean) => void): () => void {
     this.listeners.add(callback)
     callback(this.isOnline) // Immediate callback with current state
     return () => this.listeners.delete(callback)
   }
-  
+
   getIsOnline(): boolean {
     return this.isOnline
   }
-  
+
   private setOnline(value: boolean) {
     if (this.isOnline !== value) {
       this.isOnline = value
-      this.listeners.forEach(cb => cb(value))
+      this.listeners.forEach((cb) => cb(value))
     }
   }
-  
+
   private async startConnectivityChecks() {
     // Periodic HEAD request to verify actual connectivity
     // navigator.onLine can be true but network unreachable
@@ -71,6 +71,7 @@ export const networkStatus = new NetworkStatusService()
 ```
 
 **Usage in services:**
+
 ```typescript
 // All services check the same source
 if (networkStatus.getIsOnline()) {
@@ -95,12 +96,12 @@ const NetworkContext = createContext<{
 export function NetworkProvider({ children }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [latency, setLatency] = useState<number | null>(null)
-  
+
   useEffect(() => {
     const unsubscribe = networkStatus.subscribe(setIsOnline)
     return unsubscribe
   }, [])
-  
+
   return (
     <NetworkContext.Provider value={{ isOnline, latency, isSlowConnection: latency > 1000 }}>
       {children}
@@ -114,6 +115,7 @@ export function useNetwork() {
 ```
 
 **Usage:**
+
 ```typescript
 function MyComponent() {
   const { isOnline } = useNetwork()
@@ -130,18 +132,18 @@ class DataService {
   async createItem(data: Item): Promise<Item> {
     // 1. Always write to local storage first (optimistic)
     const localItem = await localStore.create(data)
-    
+
     // 2. Queue for sync (works offline)
     await outbox.enqueue('create', localItem)
-    
+
     // 3. Try immediate sync if online (non-blocking)
     if (networkStatus.getIsOnline()) {
       this.syncInBackground().catch(console.error)
     }
-    
+
     return localItem // Return immediately
   }
-  
+
   private async syncInBackground() {
     // Process outbox queue
     await outbox.process()
@@ -158,8 +160,7 @@ class DataService {
 self.addEventListener('fetch', (event) => {
   if (event.request.method === 'GET') {
     event.respondWith(
-      caches.match(event.request)
-        .then(response => response || fetch(event.request))
+      caches.match(event.request).then((response) => response || fetch(event.request))
     )
   }
 })
@@ -177,42 +178,42 @@ class NetworkStatusService {
   private isOnline: boolean
   private listeners: Set<(isOnline: boolean) => void> = new Set()
   private connectivityCheckInterval: ReturnType<typeof setInterval> | null = null
-  
+
   constructor() {
     this.isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
-    
+
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.handleOnline)
       window.addEventListener('offline', this.handleOffline)
       this.startConnectivityChecks()
     }
   }
-  
+
   private handleOnline = () => {
     this.setOnline(true)
   }
-  
+
   private handleOffline = () => {
     this.setOnline(false)
   }
-  
+
   private setOnline(value: boolean) {
     if (this.isOnline !== value) {
       this.isOnline = value
-      this.listeners.forEach(callback => callback(value))
+      this.listeners.forEach((callback) => callback(value))
     }
   }
-  
+
   getIsOnline(): boolean {
     return this.isOnline
   }
-  
+
   subscribe(callback: (isOnline: boolean) => void): () => void {
     this.listeners.add(callback)
     callback(this.isOnline) // Immediate callback
     return () => this.listeners.delete(callback)
   }
-  
+
   private startConnectivityChecks() {
     // Check actual connectivity every 30s (navigator.onLine can be unreliable)
     this.connectivityCheckInterval = setInterval(async () => {
@@ -222,7 +223,7 @@ class NetworkStatusService {
         await fetch(window.location.origin + '/ping', {
           method: 'HEAD',
           cache: 'no-store',
-          signal: controller.signal
+          signal: controller.signal,
         })
         clearTimeout(timeoutId)
         if (!this.isOnline) this.setOnline(true)
@@ -231,7 +232,7 @@ class NetworkStatusService {
       }
     }, 30000)
   }
-  
+
   destroy() {
     if (typeof window !== 'undefined') {
       window.removeEventListener('online', this.handleOnline)
@@ -264,12 +265,12 @@ const NetworkContext = createContext<NetworkContextValue | undefined>(undefined)
 export function NetworkProvider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState(networkStatus.getIsOnline())
   const [latency, setLatency] = useState<number | null>(null)
-  
+
   useEffect(() => {
     const unsubscribe = networkStatus.subscribe(setIsOnline)
     return unsubscribe
   }, [])
-  
+
   // Optional: Measure latency
   useEffect(() => {
     const checkLatency = async () => {
@@ -284,12 +285,12 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         setLatency(null)
       }
     }
-    
+
     checkLatency()
     const interval = setInterval(checkLatency, 10000)
     return () => clearInterval(interval)
   }, [])
-  
+
   return (
     <NetworkContext.Provider value={{ isOnline, latency }}>
       {children}

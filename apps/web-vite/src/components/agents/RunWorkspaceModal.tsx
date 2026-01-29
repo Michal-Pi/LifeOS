@@ -14,11 +14,13 @@ import { useNavigate } from 'react-router-dom'
 import { useAiProviderKeys } from '@/hooks/useAiProviderKeys'
 import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
 import { Button } from '@/components/ui/button'
-import type { AgentConfig, ExecutionMode, Workspace } from '@lifeos/agents'
+import type { AgentConfig, ExecutionMode, Workspace, CreateRunInput } from '@lifeos/agents'
 import { useAuth } from '@/hooks/useAuth'
 import { useDeepResearch } from '@/hooks/useDeepResearch'
 import { ExpertCouncilModeSelector } from './ExpertCouncilModeSelector'
 import { ResearchQueueSidebar } from './ResearchQueueSidebar'
+import { TipTapEditor } from '@/components/editor/TipTapEditor'
+import type { JSONContent } from '@tiptap/react'
 
 interface RunWorkspaceModalProps {
   workspace: Workspace | null
@@ -48,6 +50,8 @@ export function RunWorkspaceModal({
     : 'Use workspace/global default'
 
   const [goal, setGoal] = useState('')
+  const [inputMode, setInputMode] = useState<'simple' | 'rich'>('simple')
+  const [richContent, setRichContent] = useState<JSONContent>({ type: 'doc', content: [] })
   const [contextInput, setContextInput] = useState('')
   const [memoryMessageLimitInput, setMemoryMessageLimitInput] = useState('')
   const [expertCouncilMode, setExpertCouncilMode] = useState<ExecutionMode>('full')
@@ -95,6 +99,8 @@ export function RunWorkspaceModal({
   useEffect(() => {
     if (isOpen) {
       setGoal(initialGoal ?? '')
+      setInputMode('simple')
+      setRichContent({ type: 'doc', content: [] })
       setContextInput(initialContext ? JSON.stringify(initialContext, null, 2) : '')
       setMemoryMessageLimitInput('')
       setExpertCouncilMode(workspace?.expertCouncilConfig?.defaultMode ?? 'full')
@@ -103,8 +109,25 @@ export function RunWorkspaceModal({
   }, [initialContext, initialGoal, isOpen, workspace])
 
   const handleStart = async () => {
+    // Get goal text based on input mode
+    let goalText = ''
+    if (inputMode === 'simple') {
+      goalText = goal.trim()
+    } else {
+      // Convert rich content to plain text
+      const extractText = (content: JSONContent): string => {
+        if (!content) return ''
+        if (content.text) return content.text
+        if (content.content) {
+          return content.content.map(extractText).join(' ')
+        }
+        return ''
+      }
+      goalText = extractText(richContent).trim()
+    }
+
     // Validation
-    if (!goal.trim()) {
+    if (!goalText) {
       setError('Goal is required')
       return
     }
@@ -156,12 +179,18 @@ export function RunWorkspaceModal({
         context = { ...(context ?? {}), expertCouncilMode }
       }
 
-      await createRun({
+      // Build run input, only include memoryMessageLimit if it's defined
+      const runInput: CreateRunInput = {
         workspaceId: workspace.workspaceId,
-        goal: goal.trim(),
+        goal: goalText,
         context,
-        memoryMessageLimit,
-      })
+      }
+
+      if (memoryMessageLimit !== undefined) {
+        runInput.memoryMessageLimit = memoryMessageLimit
+      }
+
+      await createRun(runInput)
 
       onRunCreated()
       onClose()
@@ -220,15 +249,44 @@ export function RunWorkspaceModal({
                   />
                 )}
               <div className="form-group">
-                <label htmlFor="goal">Goal *</label>
-                <textarea
-                  id="goal"
-                  value={goal}
-                  onChange={(e) => setGoal(e.target.value)}
-                  placeholder="What do you want the workspace to accomplish?"
-                  rows={4}
-                  required
-                />
+                <div className="form-label-with-toggle">
+                  <label htmlFor="goal">Goal *</label>
+                  <div className="input-mode-toggle">
+                    <button
+                      type="button"
+                      className={`toggle-btn ${inputMode === 'simple' ? 'active' : ''}`}
+                      onClick={() => setInputMode('simple')}
+                    >
+                      Simple Text
+                    </button>
+                    <button
+                      type="button"
+                      className={`toggle-btn ${inputMode === 'rich' ? 'active' : ''}`}
+                      onClick={() => setInputMode('rich')}
+                    >
+                      Rich Editor
+                    </button>
+                  </div>
+                </div>
+                {inputMode === 'simple' ? (
+                  <textarea
+                    id="goal"
+                    value={goal}
+                    onChange={(e) => setGoal(e.target.value)}
+                    placeholder="What do you want the workspace to accomplish?"
+                    rows={4}
+                    required
+                  />
+                ) : (
+                  <div className="rich-editor-container">
+                    <TipTapEditor
+                      content={richContent}
+                      onChange={setRichContent}
+                      placeholder="What do you want the workspace to accomplish?"
+                      editable={true}
+                    />
+                  </div>
+                )}
                 <small>Describe the task or goal for this run</small>
               </div>
 
@@ -261,16 +319,16 @@ export function RunWorkspaceModal({
                 </small>
               </div>
 
-            <div className="modal-actions">
-              <Button variant="ghost" type="button" onClick={onClose} disabled={isCreating}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isCreating}>
-                {isCreating ? 'Starting...' : 'Start Run'}
-              </Button>
-            </div>
-          </form>
-        </div>
+              <div className="modal-actions">
+                <Button variant="ghost" type="button" onClick={onClose} disabled={isCreating}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isCreating}>
+                  {isCreating ? 'Starting...' : 'Start Run'}
+                </Button>
+              </div>
+            </form>
+          </div>
 
           {showResearchQueue && resumeRunId && (
             <ResearchQueueSidebar

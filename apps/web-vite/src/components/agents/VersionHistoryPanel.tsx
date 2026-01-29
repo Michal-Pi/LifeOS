@@ -26,11 +26,7 @@ export function VersionHistoryPanel({ versions, onRestore }: VersionHistoryPanel
               <span>{new Date(version.createdAtMs).toLocaleString()}</span>
             </div>
             <p>{version.changeDescription}</p>
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={() => onRestore(version.version)}
-            >
+            <Button variant="ghost" type="button" onClick={() => onRestore(version.version)}>
               Restore
             </Button>
           </li>

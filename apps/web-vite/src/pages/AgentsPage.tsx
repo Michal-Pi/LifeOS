@@ -287,9 +287,7 @@ export function AgentsPage() {
           <Button variant="ghost" type="button" onClick={() => navigate('/agents/prompts')}>
             Prompt Library
           </Button>
-          <Button onClick={handleNew}>
-            + New Agent
-          </Button>
+          <Button onClick={handleNew}>+ New Agent</Button>
         </div>
       </header>
 
@@ -499,9 +497,7 @@ export function AgentsPage() {
                 Build reusable modules that agents can call during execution.
               </p>
             </div>
-            <Button onClick={handleNewTool}>
-              + New Module
-            </Button>
+            <Button onClick={handleNewTool}>+ New Module</Button>
           </header>
 
           {toolsLoading ? (

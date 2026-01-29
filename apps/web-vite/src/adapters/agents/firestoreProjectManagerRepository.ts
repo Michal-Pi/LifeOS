@@ -58,7 +58,6 @@ export const createFirestoreProjectManagerRepository = (): ProjectManagerReposit
         turnCount: 0,
         startedAtMs: now,
         lastUpdatedAtMs: now,
-        summary: undefined,
         fullHistory: [],
       }
       const contextRef = doc(db, `users/${userId}/pmContexts/${contextId}`)

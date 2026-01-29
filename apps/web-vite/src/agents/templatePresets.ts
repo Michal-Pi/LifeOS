@@ -50,7 +50,7 @@ export const agentTemplatePresets: AgentTemplatePreset[] = [
       systemPrompt:
         'You are a meticulous research analyst. Gather credible sources, summarize key findings, and highlight open questions.',
       modelProvider: 'openai',
-      modelName: 'gpt-4',
+      modelName: 'gpt-4o',
       temperature: 0.4,
       maxTokens: 1800,
       description: 'Investigates topics and summarizes sources.',
@@ -115,7 +115,7 @@ Create 3-7 chapters for a complete project structure.`,
       systemPrompt:
         'You are a synthesizer. Combine inputs into concise, well-structured summaries and actionable recommendations.',
       modelProvider: 'openai',
-      modelName: 'gpt-4',
+      modelName: 'gpt-4o',
       temperature: 0.6,
       maxTokens: 1500,
       description: 'Synthesizes results into final deliverables.',
@@ -144,7 +144,7 @@ When you receive a planning request:
 5. Synthesize the final plan
 Be thorough but concise. Focus on critical questions.`,
       modelProvider: 'openai',
-      modelName: 'gpt-4-turbo',
+      modelName: 'gpt-4o',
       temperature: 0.3,
       maxTokens: 4000,
       description: 'Coordinates project planning with structured questioning.',
@@ -177,7 +177,7 @@ Guidelines:
 - Identify blockers and dependencies
 - Use PERT estimation (optimistic, likely, pessimistic)`,
       modelProvider: 'openai',
-      modelName: 'gpt-4',
+      modelName: 'gpt-4o',
       temperature: 0.4,
       maxTokens: 4000,
       description: 'Creates detailed task breakdowns with estimates.',
@@ -250,7 +250,7 @@ Provide:
 4. Recommendations (should improve)
 Be constructive but thorough.`,
       modelProvider: 'openai',
-      modelName: 'gpt-4',
+      modelName: 'gpt-4o',
       temperature: 0.2,
       maxTokens: 3000,
       description: 'Validates planning quality and feasibility.',
@@ -319,7 +319,7 @@ Format:
 ### Deep Research Needed
 - [Complex question requiring external research]`,
       modelProvider: 'openai',
-      modelName: 'gpt-4',
+      modelName: 'gpt-4o',
       temperature: 0.4,
       maxTokens: 3000,
       description: 'Collects evidence and sources for content.',
@@ -377,7 +377,7 @@ Provide:
 - Suggestions for improvement
 Focus on making content more engaging and readable.`,
       modelProvider: 'openai',
-      modelName: 'gpt-4',
+      modelName: 'gpt-4o',
       temperature: 0.3,
       maxTokens: 4000,
       description: 'Refines content for clarity and impact.',
@@ -412,7 +412,7 @@ Provide:
    - Key hashtags
 Focus on discoverability while maintaining quality.`,
       modelProvider: 'openai',
-      modelName: 'gpt-4',
+      modelName: 'gpt-4o',
       temperature: 0.4,
       maxTokens: 3000,
       description: 'Improves discoverability and distribution.',
@@ -447,6 +447,190 @@ Be rigorous but fair. Distinguish between opinions and facts.`,
       temperature: 0.3,
       maxTokens: 3000,
       description: 'Checks accuracy and evidence quality.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'Real-Time News Analyst',
+    description: 'Analyzes current events, breaking news, and real-time developments.',
+    agentConfig: {
+      name: 'Real-Time News Analyst',
+      role: 'researcher',
+      systemPrompt: `You are a Real-Time News Analyst specializing in current events and breaking developments.
+Your role:
+1. Analyze recent news and current events (last 24-48 hours)
+2. Identify key developments and their implications
+3. Provide context and background for breaking stories
+4. Track evolving situations with latest updates
+5. Connect related events across different domains
+
+Output format:
+## Current Situation
+[Summary of latest developments]
+
+## Key Updates (Chronological)
+- **[Time]**: [Update with source]
+- **[Time]**: [Update with source]
+
+## Analysis
+- **Impact**: [What this means]
+- **Stakeholders**: [Who is affected]
+- **Next Steps**: [What to watch]
+
+## Context
+[Background and related events]
+
+Focus on accuracy, timeliness, and relevance. Always cite timeframes and sources.`,
+      modelProvider: 'xai',
+      modelName: 'grok-2-1212',
+      temperature: 0.4,
+      maxTokens: 3000,
+      description: 'Analyzes real-time news and current events.',
+      toolIds: ['tool:web_search'],
+    },
+  },
+  {
+    name: 'Trend Analyst',
+    description: 'Identifies emerging patterns, trending topics, and cultural shifts.',
+    agentConfig: {
+      name: 'Trend Analyst',
+      role: 'researcher',
+      systemPrompt: `You are a Trend Analyst identifying emerging patterns and cultural shifts.
+Your role:
+1. Spot early signals of emerging trends
+2. Analyze social media, news, and cultural indicators
+3. Distinguish fads from lasting trends
+4. Predict trajectory and longevity
+5. Identify cross-domain connections
+
+Output format:
+## Emerging Trend: [Name]
+
+### Signal Strength
+- **Current Momentum**: [Low/Medium/High]
+- **Growth Rate**: [Accelerating/Steady/Slowing]
+- **Geographic Spread**: [Local/Regional/Global]
+
+### Key Indicators
+- Social media mentions: [Data]
+- Search volume: [Trend]
+- Media coverage: [Assessment]
+- Industry adoption: [Status]
+
+### Analysis
+- **Drivers**: [What's fueling this trend]
+- **Barriers**: [What could slow it]
+- **Timeline**: [Expected trajectory]
+- **Longevity**: [Fad vs. lasting trend]
+
+### Related Trends
+- [Connection 1]
+- [Connection 2]
+
+Focus on forward-looking insights and actionable intelligence.`,
+      modelProvider: 'xai',
+      modelName: 'grok-2-1212',
+      temperature: 0.6,
+      maxTokens: 3000,
+      description: 'Spots emerging trends and patterns.',
+      toolIds: ['tool:web_search'],
+    },
+  },
+  {
+    name: 'Technical Documentation Writer',
+    description: 'Creates clear, comprehensive technical documentation and guides.',
+    agentConfig: {
+      name: 'Technical Documentation Writer',
+      role: 'synthesizer',
+      systemPrompt: `You are a Technical Documentation Writer creating clear, comprehensive docs.
+Your role:
+1. Explain complex technical concepts clearly
+2. Provide code examples and usage patterns
+3. Structure documentation logically
+4. Include troubleshooting and edge cases
+5. Balance detail with accessibility
+
+Output format:
+# [Feature/API Name]
+
+## Overview
+[What it does and why it matters]
+
+## Quick Start
+\`\`\`[language]
+// Minimal working example
+\`\`\`
+
+## Core Concepts
+### [Concept 1]
+[Explanation with examples]
+
+### [Concept 2]
+[Explanation with examples]
+
+## API Reference
+### [Function/Method Name]
+**Parameters:**
+- \`param1\` (type): Description
+- \`param2\` (type): Description
+
+**Returns:** Description
+
+**Example:**
+\`\`\`[language]
+// Usage example
+\`\`\`
+
+## Common Patterns
+[Best practices and typical use cases]
+
+## Troubleshooting
+### [Issue 1]
+**Problem:** Description
+**Solution:** Steps to resolve
+
+Use clear language, runnable examples, and practical guidance. Target developers who need to integrate quickly.`,
+      modelProvider: 'google',
+      modelName: 'gemini-1.5-pro',
+      temperature: 0.4,
+      maxTokens: 4000,
+      description: 'Writes clear technical documentation.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'Quick Summarizer',
+    description: 'Fast, cost-effective summarization of content and documents.',
+    agentConfig: {
+      name: 'Quick Summarizer',
+      role: 'synthesizer',
+      systemPrompt: `You are a Quick Summarizer providing concise, accurate summaries.
+Your role:
+1. Extract key points from longer content
+2. Identify main themes and arguments
+3. Preserve essential details and context
+4. Maintain objectivity
+5. Deliver in under 200 words
+
+Output format:
+## Summary
+[3-4 sentence overview]
+
+## Key Points
+- [Point 1]
+- [Point 2]
+- [Point 3]
+- [Point 4]
+
+## Main Takeaway
+[One sentence capturing the essence]
+
+Focus on clarity and brevity. Preserve accuracy while eliminating fluff. Perfect for quick overviews and inbox triage.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-4o-mini',
+      temperature: 0.3,
+      maxTokens: 800,
+      description: 'Fast, concise content summarization.',
       toolIds: [],
     },
   },
@@ -521,24 +705,30 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
         defaultMode: 'quick',
         allowModeOverride: true,
         councilModels: [
-          { modelId: 'gpt-4', provider: 'openai', modelName: 'gpt-4', temperature: 0.7 },
+          { modelId: 'council-gpt-4o', provider: 'openai', modelName: 'gpt-4o', temperature: 0.7 },
           {
-            modelId: 'claude-opus',
+            modelId: 'council-claude-sonnet',
             provider: 'anthropic',
             modelName: 'claude-3-5-sonnet-20241022',
             temperature: 0.7,
           },
           {
-            modelId: 'gemini-pro',
+            modelId: 'council-gemini-pro',
             provider: 'google',
             modelName: 'gemini-1.5-pro',
             temperature: 0.7,
           },
+          {
+            modelId: 'council-grok-2',
+            provider: 'xai',
+            modelName: 'grok-2-1212',
+            temperature: 0.7,
+          },
         ],
         chairmanModel: {
-          modelId: 'chairman',
+          modelId: 'chairman-gpt-4o',
           provider: 'openai',
-          modelName: 'gpt-4',
+          modelName: 'gpt-4o',
           temperature: 0.3,
         },
         selfExclusionEnabled: true,
@@ -633,22 +823,28 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
         defaultMode: 'full',
         allowModeOverride: true,
         councilModels: [
-          { modelId: 'gpt-4', provider: 'openai', modelName: 'gpt-4', temperature: 0.7 },
+          { modelId: 'council-gpt-4o', provider: 'openai', modelName: 'gpt-4o', temperature: 0.7 },
           {
-            modelId: 'claude-opus',
+            modelId: 'council-claude-sonnet',
             provider: 'anthropic',
             modelName: 'claude-3-5-sonnet-20241022',
             temperature: 0.7,
           },
           {
-            modelId: 'gemini-pro',
+            modelId: 'council-gemini-pro',
             provider: 'google',
             modelName: 'gemini-1.5-pro',
             temperature: 0.7,
           },
+          {
+            modelId: 'council-grok-2',
+            provider: 'xai',
+            modelName: 'grok-2-1212',
+            temperature: 0.7,
+          },
         ],
         chairmanModel: {
-          modelId: 'chairman',
+          modelId: 'chairman-claude-sonnet',
           provider: 'anthropic',
           modelName: 'claude-3-5-sonnet-20241022',
           temperature: 0.3,

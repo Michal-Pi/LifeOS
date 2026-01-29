@@ -25,8 +25,8 @@ export function ConflictResolutionPanel({ conflicts, onResolve }: Props) {
         </h3>
       </div>
 
-          <div className="conflict-list">
-            {unresolved.map((conflict) => (
+      <div className="conflict-list">
+        {unresolved.map((conflict) => (
           <Button
             variant="ghost"
             key={conflict.conflictId}
@@ -39,8 +39,8 @@ export function ConflictResolutionPanel({ conflicts, onResolve }: Props) {
             </span>
             <p>{conflict.description}</p>
           </Button>
-            ))}
-          </div>
+        ))}
+      </div>
 
       {selectedConflict && (
         <div className="modal-overlay" role="dialog" aria-modal="true">

@@ -211,14 +211,18 @@ export async function markApplied(opId: string): Promise<void> {
 export async function markFailed(
   opId: string,
   error: Error | string,
-  errorCode?: string
+  errorCode?: string,
+  isNetworkError?: boolean
 ): Promise<void> {
   const db = await getDb()
   const op = await db.get(STORE_NAME, opId)
   if (!op) return
 
   op.status = 'failed'
-  op.attempts = (op.attempts ?? 0) + 1
+  // Don't increment attempts for network errors - preserve retries for when online
+  if (!isNetworkError) {
+    op.attempts = (op.attempts ?? 0) + 1
+  }
   op.lastError = {
     message: typeof error === 'string' ? error : error.message,
     code: errorCode,
@@ -226,7 +230,9 @@ export async function markFailed(
   }
 
   // Calculate next retry time with backoff
-  op.availableAtMs = Date.now() + calculateBackoffMs(op.attempts)
+  // For network errors, use shorter backoff to retry sooner when connection returns
+  const backoffMs = isNetworkError ? 5000 : calculateBackoffMs(op.attempts)
+  op.availableAtMs = Date.now() + backoffMs
 
   await db.put(STORE_NAME, op)
 }

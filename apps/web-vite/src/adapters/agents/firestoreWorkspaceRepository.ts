@@ -11,9 +11,7 @@ import type {
 
 const stripUndefined = <T>(value: T): T => {
   if (Array.isArray(value)) {
-    return value
-      .map((item) => stripUndefined(item))
-      .filter((item) => item !== undefined) as T
+    return value.map((item) => stripUndefined(item)).filter((item) => item !== undefined) as T
   }
 
   if (value && typeof value === 'object') {

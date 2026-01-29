@@ -12,11 +12,25 @@ import { useRunMessages } from '@/hooks/useRunMessages'
 import { useWorkflowSteps } from '@/hooks/useWorkflowSteps'
 import { useExpertCouncilTurns } from '@/hooks/useExpertCouncilTurns'
 import { useProjectManager } from '@/hooks/useProjectManager'
+import { useNoteOperations } from '@/hooks/useNoteOperations'
+import { useAuth } from '@/hooks/useAuth'
 import { ToolCallTimeline } from './ToolCallTimeline'
 import { ExpertCouncilInspector } from './ExpertCouncilInspector'
 import { ProjectManagerChat } from './ProjectManagerChat'
+import { InteractiveWorkflowGraph } from './InteractiveWorkflowGraph'
+import { WorkflowNodeModal } from './WorkflowNodeModal'
+import { RunStatusIndicator } from './RunStatusIndicator'
 import { Button } from '@/components/ui/button'
-import type { DeepResearchRequest, Run, RunStatus, Workspace, WorkspaceId } from '@lifeos/agents'
+import { toast } from 'sonner'
+import type {
+  DeepResearchRequest,
+  Run,
+  RunStatus,
+  Workspace,
+  WorkspaceId,
+  WorkflowStep,
+  WorkflowGraphNode,
+} from '@lifeos/agents'
 
 interface RunCardProps {
   run: Run
@@ -28,6 +42,8 @@ interface RunCardProps {
   onDelete: (runId: string) => void
   onResume?: (runId: string) => void
   onProvideInput?: (runId: string, nodeId: string, response: string) => Promise<void>
+  onRunAgain?: (runId: string) => void
+  onStop?: (runId: string) => Promise<void>
 }
 
 export function RunCard({
@@ -40,22 +56,51 @@ export function RunCard({
   onDelete,
   onResume,
   onProvideInput,
+  onRunAgain,
+  onStop,
 }: RunCardProps) {
   const navigate = useNavigate()
-  const { toolCalls } = useToolCallOperations(run.runId)
-  const { messages, hasMore, isLoadingMore, loadMore } = useRunMessages(run.runId)
-  const { events } = useRunEvents(run.runId)
-  const { steps: workflowSteps } = useWorkflowSteps(run.runId)
-  const { latestTurn } = useExpertCouncilTurns(run.runId)
+  const { user } = useAuth()
+  const { createNote } = useNoteOperations()
+  const [inputResponse, setInputResponse] = useState('')
+  const [isSubmittingInput, setIsSubmittingInput] = useState(false)
+  const [isSavingNote, setIsSavingNote] = useState(false)
+  const [selectedNode, setSelectedNode] = useState<{
+    node: WorkflowGraphNode | null
+    step?: WorkflowStep
+  } | null>(null)
+
+  // Lazy load data only when sections are expanded
+  const [workflowExpanded, setWorkflowExpanded] = useState(false)
+  const [messagesExpanded, setMessagesExpanded] = useState(false)
+  const [expertCouncilExpanded, setExpertCouncilExpanded] = useState(false)
+  const [projectManagerExpanded, setProjectManagerExpanded] = useState(false)
+
+  // Only fetch when running or when explicitly expanded
+  const shouldLoadToolCalls = run.status === 'running' || workflowExpanded || messagesExpanded
+  const shouldLoadMessages = run.status === 'running' || messagesExpanded || workflowExpanded
+  const shouldLoadEvents = run.status === 'running'
+  const shouldLoadWorkflowSteps = run.status === 'running' || workflowExpanded
+  const shouldLoadExpertCouncil = run.status === 'running' || expertCouncilExpanded
+  const shouldLoadProjectManager = projectManagerExpanded && showProjectManager
+
+  const { toolCalls } = useToolCallOperations(shouldLoadToolCalls ? run.runId : '')
+  const { messages, hasMore, isLoadingMore, loadMore } = useRunMessages(
+    shouldLoadMessages ? run.runId : ''
+  )
+  const { events } = useRunEvents(shouldLoadEvents ? run.runId : '')
+  const { steps: workflowSteps } = useWorkflowSteps(shouldLoadWorkflowSteps ? run.runId : '')
+  const { latestTurn } = useExpertCouncilTurns(shouldLoadExpertCouncil ? run.runId : '')
   const {
     context: projectManagerContext,
     startConversation,
     addTurn,
     recordInteraction,
     profile,
-  } = useProjectManager(workspaceId, run.runId)
-  const [inputResponse, setInputResponse] = useState('')
-  const [isSubmittingInput, setIsSubmittingInput] = useState(false)
+  } = useProjectManager(
+    shouldLoadProjectManager ? workspaceId : ('' as WorkspaceId),
+    shouldLoadProjectManager ? run.runId : ''
+  )
   const deepResearch =
     run.context && typeof run.context === 'object'
       ? ((run.context as Record<string, unknown>).deepResearch as
@@ -147,6 +192,64 @@ export function RunCard({
     }
   }
 
+  const handleSaveAsNote = async () => {
+    if (!displayOutput || !user) return
+
+    setIsSavingNote(true)
+    try {
+      // Extract title from first line or use goal
+      const firstLine = displayOutput.split('\n')[0]
+      const title = firstLine.length > 100 ? `Run: ${run.goal}` : firstLine || run.goal
+
+      // Create note with output content
+      const note = await createNote({
+        title,
+        content: displayOutput,
+        context: {
+          source: 'workspace-run',
+          workspaceId: workspace.workspaceId,
+          workspaceName: workspace.name,
+          runId: run.runId,
+          goal: run.goal,
+        },
+      })
+
+      toast.success('Note created!', {
+        description: 'Click to view note',
+        action: {
+          label: 'View',
+          onClick: () => navigate(`/notes?noteId=${note.noteId}`),
+        },
+      })
+    } catch (error) {
+      toast.error('Failed to create note', {
+        description: (error as Error).message,
+      })
+    } finally {
+      setIsSavingNote(false)
+    }
+  }
+
+  const handleNodeClick = (nodeId: string, step?: WorkflowStep) => {
+    // Find the node definition from the workflow graph
+    const node = workspace.workflowGraph?.nodes.find((n) => n.id === nodeId)
+    if (node) {
+      setSelectedNode({ node, step })
+    }
+  }
+
+  const handleStop = async () => {
+    if (!onStop) return
+    try {
+      await onStop(run.runId)
+      toast.success('Run stopped')
+    } catch (error) {
+      toast.error('Failed to stop run', {
+        description: (error as Error).message,
+      })
+    }
+  }
+
   return (
     <div className="run-card">
       <div className="run-header">
@@ -177,6 +280,16 @@ export function RunCard({
         </div>
       </div>
 
+      {/* Live Status Indicator for Running Runs */}
+      {run.status === 'running' && (
+        <RunStatusIndicator
+          run={run}
+          events={events}
+          workflowGraph={workspace.workflowGraph}
+          onStop={onStop ? handleStop : undefined}
+        />
+      )}
+
       <div className="run-progress">
         <strong>Progress:</strong> Step {run.currentStep}
         {run.totalSteps && ` of ${run.totalSteps}`}
@@ -200,7 +313,14 @@ export function RunCard({
 
       {displayOutput && (
         <div className="run-output">
-          <strong>{run.status === 'running' ? 'Live Output:' : 'Output:'}</strong>
+          <div className="run-output-header">
+            <strong>{run.status === 'running' ? 'Live Output:' : 'Output:'}</strong>
+            {run.status === 'completed' && (
+              <Button variant="ghost" size="sm" onClick={handleSaveAsNote} disabled={isSavingNote}>
+                {isSavingNote ? 'Saving...' : '📝 Save as Note'}
+              </Button>
+            )}
+          </div>
           <p>{displayOutput}</p>
         </div>
       )}
@@ -265,100 +385,118 @@ export function RunCard({
         </details>
       )}
 
-      {workflowSteps.length > 0 && (
-        <details className="run-context">
-          <summary>Workflow Steps ({workflowSteps.length})</summary>
-          <div className="run-messages-list">
-            {workflowSteps.map((step) => (
-              <div key={step.workflowStepId} className="run-message">
-                <div className="run-message-meta">
-                  <span className="run-message-role">{step.nodeType}</span>
-                  <span className="run-message-time">
-                    {new Date(step.startedAtMs).toLocaleTimeString()}
-                  </span>
-                </div>
-                <div className="run-message-content">
-                  <strong>Node:</strong> {step.nodeId}
-                  {step.output !== undefined && <pre>{JSON.stringify(step.output, null, 2)}</pre>}
-                  {step.error && (
-                    <p className="run-error">
-                      <strong>Error:</strong> {step.error}
-                    </p>
-                  )}
-                </div>
+      {workspace.workflowGraph && (
+        <details
+          className="run-context"
+          onToggle={(e) => setWorkflowExpanded((e.target as HTMLDetailsElement).open)}
+        >
+          <summary>
+            Workflow Execution {workflowSteps.length > 0 ? `(${workflowSteps.length} steps)` : ''}
+          </summary>
+          {workflowExpanded && workflowSteps.length > 0 && (
+            <>
+              <div className="workflow-graph-container">
+                <InteractiveWorkflowGraph
+                  graph={workspace.workflowGraph}
+                  workflowSteps={workflowSteps}
+                  messages={messages}
+                  onNodeClick={handleNodeClick}
+                />
               </div>
-            ))}
-          </div>
+              <p className="workflow-hint">💡 Click on a node to view its execution details</p>
+            </>
+          )}
+          {workflowExpanded && workflowSteps.length === 0 && (
+            <p className="no-data">No workflow steps yet</p>
+          )}
         </details>
       )}
 
-      {latestTurn && (
-        <details className="run-context">
+      {(latestTurn || expertCouncilExpanded) && (
+        <details
+          className="run-context"
+          onToggle={(e) => setExpertCouncilExpanded((e.target as HTMLDetailsElement).open)}
+        >
           <summary>Expert Council Inspector</summary>
-          <ExpertCouncilInspector turn={latestTurn} />
+          {expertCouncilExpanded && latestTurn && <ExpertCouncilInspector turn={latestTurn} />}
+          {expertCouncilExpanded && !latestTurn && (
+            <p className="no-data">No expert council data yet</p>
+          )}
         </details>
       )}
 
       {projectManagerVisible && (
-        <details className="run-context">
+        <details
+          className="run-context"
+          onToggle={(e) => setProjectManagerExpanded((e.target as HTMLDetailsElement).open)}
+        >
           <summary>Project Manager</summary>
-          <ProjectManagerChat
-            key={projectManagerKey}
-            contextSummary={projectManagerContext?.summary}
-            clarificationQuestions={clarificationQuestions}
-            decisionOptions={decisionOptions}
-            conflicts={projectManagerContext?.conflicts ?? []}
-            profile={profile}
-            onAnswerQuestion={(questionId, answer) => {
-              const question = clarificationQuestions.find((item) => item.questionId === questionId)
-              const questionText = question?.text ?? 'Clarification question'
-              void addTurn(answer, `Answered: ${questionText}`)
-            }}
-            onSelectDecision={(optionId) => {
-              const [decisionId, option] = optionId.split('::')
-              const decision = pendingDecisions?.find((item) => item.decisionId === decisionId)
-              const prompt = decision?.question ?? 'Decision'
-              void addTurn(`Selected option: ${option}`, `Decision made: ${prompt}`)
-            }}
-            onResolveConflict={(conflict) => {
-              void addTurn(`Resolved conflict: ${conflict.description}`, 'Conflict resolved.')
-            }}
-            onRequestExpertCouncil={() =>
-              void addTurn('Request Expert Council', 'Expert Council requested.')
-            }
-            onRecordInteraction={(interaction) => void recordInteraction(interaction)}
-          />
-        </details>
-      )}
-
-      {messages.length > 0 && (
-        <details className="run-messages">
-          <summary>
-            Messages ({messages.length}
-            {hasMore ? '+' : ''})
-          </summary>
-          <div className="run-messages-list">
-            {messages.map((message) => (
-              <div key={message.messageId} className={`run-message run-message--${message.role}`}>
-                <div className="run-message-meta">
-                  <span className="run-message-role">{message.role}</span>
-                  <span className="run-message-time">
-                    {new Date(message.timestampMs).toLocaleTimeString()}
-                  </span>
-                </div>
-                <div className="run-message-content">{message.content}</div>
-              </div>
-            ))}
-          </div>
-          {hasMore && (
-            <div className="run-messages-actions">
-              <Button variant="ghost" type="button" onClick={loadMore} disabled={isLoadingMore}>
-                {isLoadingMore ? 'Loading...' : 'Load older messages'}
-              </Button>
-            </div>
+          {projectManagerExpanded && (
+            <ProjectManagerChat
+              key={projectManagerKey}
+              contextSummary={projectManagerContext?.summary}
+              clarificationQuestions={clarificationQuestions}
+              decisionOptions={decisionOptions}
+              conflicts={projectManagerContext?.conflicts ?? []}
+              profile={profile}
+              onAnswerQuestion={(questionId, answer) => {
+                const question = clarificationQuestions.find(
+                  (item) => item.questionId === questionId
+                )
+                const questionText = question?.text ?? 'Clarification question'
+                void addTurn(answer, `Answered: ${questionText}`)
+              }}
+              onSelectDecision={(optionId) => {
+                const [decisionId, option] = optionId.split('::')
+                const decision = pendingDecisions?.find((item) => item.decisionId === decisionId)
+                const prompt = decision?.question ?? 'Decision'
+                void addTurn(`Selected option: ${option}`, `Decision made: ${prompt}`)
+              }}
+              onResolveConflict={(conflict) => {
+                void addTurn(`Resolved conflict: ${conflict.description}`, 'Conflict resolved.')
+              }}
+              onRequestExpertCouncil={() =>
+                void addTurn('Request Expert Council', 'Expert Council requested.')
+              }
+              onRecordInteraction={(interaction) => void recordInteraction(interaction)}
+            />
           )}
         </details>
       )}
+
+      <details
+        className="run-messages"
+        onToggle={(e) => setMessagesExpanded((e.target as HTMLDetailsElement).open)}
+      >
+        <summary>
+          Messages {messages.length > 0 ? `(${messages.length}${hasMore ? '+' : ''})` : ''}
+        </summary>
+        {messagesExpanded && messages.length > 0 && (
+          <>
+            <div className="run-messages-list">
+              {messages.map((message) => (
+                <div key={message.messageId} className={`run-message run-message--${message.role}`}>
+                  <div className="run-message-meta">
+                    <span className="run-message-role">{message.role}</span>
+                    <span className="run-message-time">
+                      {new Date(message.timestampMs).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="run-message-content">{message.content}</div>
+                </div>
+              ))}
+            </div>
+            {hasMore && (
+              <div className="run-messages-actions">
+                <Button variant="ghost" type="button" onClick={loadMore} disabled={isLoadingMore}>
+                  {isLoadingMore ? 'Loading...' : 'Load older messages'}
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+        {messagesExpanded && messages.length === 0 && <p className="no-data">No messages yet</p>}
+      </details>
 
       {/* Tool Call Timeline */}
       {toolCalls.length > 0 && (
@@ -389,10 +527,25 @@ export function RunCard({
               Resume
             </Button>
           )}
+        {onRunAgain && (run.status === 'completed' || run.status === 'failed') && (
+          <Button variant="ghost" onClick={() => onRunAgain(run.runId)}>
+            🔄 Run Again
+          </Button>
+        )}
         <Button variant="ghost" className="danger" onClick={() => onDelete(run.runId)}>
           Delete
         </Button>
       </div>
+
+      {/* Workflow Node Details Modal */}
+      <WorkflowNodeModal
+        node={selectedNode?.node ?? null}
+        step={selectedNode?.step}
+        messages={messages}
+        toolCalls={toolCalls}
+        isOpen={!!selectedNode}
+        onClose={() => setSelectedNode(null)}
+      />
     </div>
   )
 }

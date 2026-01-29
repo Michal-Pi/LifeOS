@@ -501,7 +501,6 @@ export async function syncTodos(userId: string): Promise<void> {
     return
   }
 
-  // Don't sync if offline
   // Always attempt sync - network errors handled gracefully
   state.isRunning = true
 
@@ -593,8 +592,7 @@ export function startTodoSyncWorker(
 
   // Handle network connection changes
   const handleOnline = () => {
-    console.log('Connection restored - resuming sync worker')
-    state.isPaused = false
+    console.log('Connection restored - triggering immediate sync')
     state.retryCount = 0
     // Trigger immediate sync when connection is restored
     syncTodos(userId).catch((error) => {
@@ -603,8 +601,7 @@ export function startTodoSyncWorker(
   }
 
   const handleOffline = () => {
-    console.log('Connection lost - pausing sync worker')
-    state.isPaused = true
+    console.log('Connection lost - sync will continue to attempt and fail gracefully')
   }
 
   window.addEventListener('online', handleOnline)

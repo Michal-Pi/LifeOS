@@ -201,7 +201,19 @@ export async function listPlansLocally(userId: string): Promise<WorkoutPlan[]> {
 export async function getActivePlanLocally(userId: string): Promise<WorkoutPlan | null> {
   // Guard against invalid userId (empty string, null, undefined)
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'offlineStore.ts:200',message:'getActivePlanLocally entry',data:{userId,userIdType:typeof userId,isEmpty:!userId,trimmed:userId?.trim()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      location: 'offlineStore.ts:200',
+      message: 'getActivePlanLocally entry',
+      data: { userId, userIdType: typeof userId, isEmpty: !userId, trimmed: userId?.trim() },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'run1',
+      hypothesisId: 'A',
+    }),
+  }).catch(() => {})
   // #endregion
   if (!userId || userId.trim() === '') {
     return null
@@ -209,29 +221,95 @@ export async function getActivePlanLocally(userId: string): Promise<WorkoutPlan 
 
   const db = await getDb()
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'offlineStore.ts:210',message:'Before accessing index',data:{hasDb:!!db,storeNames:db?.objectStoreNames?Array.from(db.objectStoreNames):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      location: 'offlineStore.ts:210',
+      message: 'Before accessing index',
+      data: {
+        hasDb: !!db,
+        storeNames: db?.objectStoreNames ? Array.from(db.objectStoreNames) : [],
+      },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'post-fix',
+      hypothesisId: 'B',
+    }),
+  }).catch(() => {})
   // #endregion
   const tx = db.transaction(PLAN_STORE, 'readonly')
   const store = tx.store
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'offlineStore.ts:214',message:'Got store, checking index',data:{hasStore:!!store,indexNames:store?.indexNames?Array.from(store.indexNames):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      location: 'offlineStore.ts:214',
+      message: 'Got store, checking index',
+      data: {
+        hasStore: !!store,
+        indexNames: store?.indexNames ? Array.from(store.indexNames) : [],
+      },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'post-fix',
+      hypothesisId: 'B',
+    }),
+  }).catch(() => {})
   // #endregion
   // Use userId index instead of compound index to avoid issues with empty stores
   // Then filter client-side for active=true
   const userIdIndex = store.index('userId')
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'offlineStore.ts:220',message:'Before getAll by userId',data:{hasIndex:!!userIdIndex,userId},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix-v2',hypothesisId:'C'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      location: 'offlineStore.ts:220',
+      message: 'Before getAll by userId',
+      data: { hasIndex: !!userIdIndex, userId },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'post-fix-v2',
+      hypothesisId: 'C',
+    }),
+  }).catch(() => {})
   // #endregion
   let allUserPlans: WorkoutPlan[] = []
   try {
     allUserPlans = await userIdIndex.getAll(userId)
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'offlineStore.ts:225',message:'After getAll by userId',data:{allPlansCount:allUserPlans.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix-v2',hypothesisId:'C'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'offlineStore.ts:225',
+        message: 'After getAll by userId',
+        data: { allPlansCount: allUserPlans.length },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'post-fix-v2',
+        hypothesisId: 'C',
+      }),
+    }).catch(() => {})
     // #endregion
   } catch (error) {
     // Handle case where store is empty or index lookup fails
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'offlineStore.ts:229',message:'getAll by userId failed',data:{error:(error as Error).message,errorName:(error as Error).name},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix-v2',hypothesisId:'C'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'offlineStore.ts:229',
+        message: 'getAll by userId failed',
+        data: { error: (error as Error).message, errorName: (error as Error).name },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'post-fix-v2',
+        hypothesisId: 'C',
+      }),
+    }).catch(() => {})
     // #endregion
     await tx.done
     return null
@@ -240,7 +318,19 @@ export async function getActivePlanLocally(userId: string): Promise<WorkoutPlan 
   // Filter for active plans client-side
   const activePlans = allUserPlans.filter((plan) => plan.active === true)
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'offlineStore.ts:238',message:'After filtering active plans',data:{activePlansCount:activePlans.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix-v2',hypothesisId:'C'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      location: 'offlineStore.ts:238',
+      message: 'After filtering active plans',
+      data: { activePlansCount: activePlans.length },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'post-fix-v2',
+      hypothesisId: 'C',
+    }),
+  }).catch(() => {})
   // #endregion
   if (activePlans.length === 0) return null
   return activePlans.sort((a, b) => b.startDateKey.localeCompare(a.startDateKey))[0] ?? null

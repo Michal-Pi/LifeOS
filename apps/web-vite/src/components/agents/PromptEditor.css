@@ -107,10 +107,10 @@
     grid-template-columns: 1fr;
   }
 
-.prompt-editor__sidebar {
-  border-left: none;
-  padding-left: 0;
-  border-top: 1px solid var(--border);
-  padding-top: var(--space-4);
-}
+  .prompt-editor__sidebar {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--border);
+    padding-top: var(--space-4);
+  }
 }

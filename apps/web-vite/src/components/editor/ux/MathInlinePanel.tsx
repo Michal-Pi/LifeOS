@@ -125,11 +125,8 @@ export function MathInlinePanel({
       onClose()
       return
     }
-    editor
-      .chain()
-      .focus()
-      .insertContent({ type: 'mathInline', attrs: { formula: trimmed } })
-      .run()
+    // Use the Mathematics extension's command with 'latex' attribute
+    editor.chain().focus().insertInlineMath({ latex: trimmed }).run()
     onClose()
   }
 

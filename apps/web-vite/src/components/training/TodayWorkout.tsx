@@ -40,21 +40,61 @@ export function TodayWorkout({ dateKey, userId, variant = 'card' }: TodayWorkout
       if (!userId) return
       try {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodayWorkout.tsx:42',message:'Loading workout data',data:{userId},timestamp:Date.now(),sessionId:'debug-session',runId:'workout-debug',hypothesisId:'C'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'TodayWorkout.tsx:42',
+            message: 'Loading workout data',
+            data: { userId },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'workout-debug',
+            hypothesisId: 'C',
+          }),
+        }).catch(() => {})
         // #endregion
-        
+
         await Promise.all([getActivePlan(), listTemplates()])
-        
+
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodayWorkout.tsx:46',message:'Workout data loaded successfully',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'workout-debug',hypothesisId:'C'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'TodayWorkout.tsx:46',
+            message: 'Workout data loaded successfully',
+            data: {},
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'workout-debug',
+            hypothesisId: 'C',
+          }),
+        }).catch(() => {})
         // #endregion
-        
+
         setLoadError(null)
       } catch (err) {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TodayWorkout.tsx:50',message:'Workout data load error',data:{errorName:(err as Error).name,errorMessage:(err as Error).message,errorCode:(err as Error & {code?:string}).code},timestamp:Date.now(),sessionId:'debug-session',runId:'workout-debug',hypothesisId:'C'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'TodayWorkout.tsx:50',
+            message: 'Workout data load error',
+            data: {
+              errorName: (err as Error).name,
+              errorMessage: (err as Error).message,
+              errorCode: (err as Error & { code?: string }).code,
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'workout-debug',
+            hypothesisId: 'C',
+          }),
+        }).catch(() => {})
         // #endregion
-        
+
         console.error('Failed to load workout data:', err)
         setLoadError((err as Error).message)
       }

@@ -38,17 +38,30 @@ export async function recordMessage(
   const docRef = messagesRef.doc()
   const messageId = docRef.id || randomUUID()
 
-  await docRef.set({
+  // Build message document, omitting undefined fields
+  const messageDoc: any = {
     messageId,
     runId: input.runId,
-    agentId: input.agentId,
     role: input.role,
     content: input.content,
-    toolCalls: input.toolCalls,
-    toolResults: input.toolResults,
-    tokensUsed: input.tokensUsed,
     timestampMs: Date.now(),
-  })
+  }
+
+  // Only include optional fields if they have values
+  if (input.agentId !== undefined) {
+    messageDoc.agentId = input.agentId
+  }
+  if (input.toolCalls !== undefined) {
+    messageDoc.toolCalls = input.toolCalls
+  }
+  if (input.toolResults !== undefined) {
+    messageDoc.toolResults = input.toolResults
+  }
+  if (input.tokensUsed !== undefined) {
+    messageDoc.tokensUsed = input.tokensUsed
+  }
+
+  await docRef.set(messageDoc)
 
   if (!options?.skipPrune) {
     await pruneAndCompactMessages(input.userId, input.runId)

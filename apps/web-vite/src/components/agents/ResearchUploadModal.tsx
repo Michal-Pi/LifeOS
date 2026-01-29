@@ -135,11 +135,7 @@ export function ResearchUploadModal({
             onChange={(event) => void handleFileSelect(event.target.files)}
           />
           <p>Drag and drop a text file or</p>
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-          >
+          <Button variant="ghost" type="button" onClick={() => fileInputRef.current?.click()}>
             Choose File
           </Button>
         </div>
@@ -160,11 +156,7 @@ export function ResearchUploadModal({
           <Button variant="ghost" type="button" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            onClick={handleUpload}
-            disabled={isSubmitting}
-          >
+          <Button type="button" onClick={handleUpload} disabled={isSubmitting}>
             {isSubmitting ? 'Uploading...' : 'Upload Results'}
           </Button>
         </div>

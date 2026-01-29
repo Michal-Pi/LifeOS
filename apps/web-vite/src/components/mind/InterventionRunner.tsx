@@ -164,27 +164,33 @@ export function InterventionRunner({
           <div className="step-content step-input">
             <div className="form-group">
               <label htmlFor={`step-input-${currentStepIndex}`}>{currentStep.prompt}</label>
-            {currentStep.multiline ? (
-              <textarea
-                id={`step-input-${currentStepIndex}`}
-                placeholder={currentStep.placeholder}
-                value={(responses[`step_${currentStepIndex}_input`] as string) || ''}
-                onChange={(e) =>
-                  setResponses({ ...responses, [`step_${currentStepIndex}_input`]: e.target.value })
-                }
-                rows={4}
-              />
-            ) : (
-              <input
-                id={`step-input-${currentStepIndex}`}
-                type="text"
-                placeholder={currentStep.placeholder}
-                value={(responses[`step_${currentStepIndex}_input`] as string) || ''}
-                onChange={(e) =>
-                  setResponses({ ...responses, [`step_${currentStepIndex}_input`]: e.target.value })
-                }
-              />
-            )}
+              {currentStep.multiline ? (
+                <textarea
+                  id={`step-input-${currentStepIndex}`}
+                  placeholder={currentStep.placeholder}
+                  value={(responses[`step_${currentStepIndex}_input`] as string) || ''}
+                  onChange={(e) =>
+                    setResponses({
+                      ...responses,
+                      [`step_${currentStepIndex}_input`]: e.target.value,
+                    })
+                  }
+                  rows={4}
+                />
+              ) : (
+                <input
+                  id={`step-input-${currentStepIndex}`}
+                  type="text"
+                  placeholder={currentStep.placeholder}
+                  value={(responses[`step_${currentStepIndex}_input`] as string) || ''}
+                  onChange={(e) =>
+                    setResponses({
+                      ...responses,
+                      [`step_${currentStepIndex}_input`]: e.target.value,
+                    })
+                  }
+                />
+              )}
             </div>
             <Button
               type="button"

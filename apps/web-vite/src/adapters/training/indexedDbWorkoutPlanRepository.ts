@@ -51,15 +51,20 @@ export const createIndexedDbWorkoutPlanRepository = (): WorkoutPlanRepository =>
       let existing = await getPlanLocally(planId)
       if (!existing) {
         try {
-        existing = await firestoreRepo.get(userId, planId)
+          existing = await firestoreRepo.get(userId, planId)
         } catch (error) {
           // Handle network errors gracefully - continue with local data
           const firebaseError = error as Error & { code?: string }
-          if (firebaseError?.code === 'permission-denied' || 
-              firebaseError?.code === 'unavailable' ||
-              firebaseError?.message?.includes('Failed to fetch') ||
-              firebaseError?.message?.includes('network')) {
-            console.warn('Network error fetching plan for update, falling back to local:', firebaseError.code || firebaseError.message)
+          if (
+            firebaseError?.code === 'permission-denied' ||
+            firebaseError?.code === 'unavailable' ||
+            firebaseError?.message?.includes('Failed to fetch') ||
+            firebaseError?.message?.includes('network')
+          ) {
+            console.warn(
+              'Network error fetching plan for update, falling back to local:',
+              firebaseError.code || firebaseError.message
+            )
           } else {
             console.error('Unexpected error fetching plan from Firestore:', error)
           }
@@ -94,23 +99,28 @@ export const createIndexedDbWorkoutPlanRepository = (): WorkoutPlanRepository =>
 
       // Always try Firestore first, fall back to local on network errors
       try {
-      const remote = await firestoreRepo.get(userId, planId)
-      if (!remote) return local
+        const remote = await firestoreRepo.get(userId, planId)
+        if (!remote) return local
 
-      if (!local || !shouldPreferLocal(local)) {
-        await savePlanLocally(remote)
-        return remote
-      }
+        if (!local || !shouldPreferLocal(local)) {
+          await savePlanLocally(remote)
+          return remote
+        }
 
-      return local
+        return local
       } catch (error) {
         // Handle network errors gracefully
         const firebaseError = error as Error & { code?: string }
-        if (firebaseError?.code === 'permission-denied' || 
-            firebaseError?.code === 'unavailable' ||
-            firebaseError?.message?.includes('Failed to fetch') ||
-            firebaseError?.message?.includes('network')) {
-          console.warn('Network error fetching plan, falling back to local:', firebaseError.code || firebaseError.message)
+        if (
+          firebaseError?.code === 'permission-denied' ||
+          firebaseError?.code === 'unavailable' ||
+          firebaseError?.message?.includes('Failed to fetch') ||
+          firebaseError?.message?.includes('network')
+        ) {
+          console.warn(
+            'Network error fetching plan, falling back to local:',
+            firebaseError.code || firebaseError.message
+          )
         } else {
           console.error('Unexpected error fetching plan from Firestore:', error)
         }
@@ -120,31 +130,96 @@ export const createIndexedDbWorkoutPlanRepository = (): WorkoutPlanRepository =>
 
     async getActive(userId: string): Promise<WorkoutPlan | null> {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'indexedDbWorkoutPlanRepository.ts:96',message:'getActive called',data:{userId,isOnline:isOnline()},timestamp:Date.now(),sessionId:'debug-session',runId:'workout-debug',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'indexedDbWorkoutPlanRepository.ts:96',
+          message: 'getActive called',
+          data: { userId },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'workout-debug',
+          hypothesisId: 'A',
+        }),
+      }).catch(() => {})
       // #endregion
-      
+
       const local = await getActivePlanLocally(userId)
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'indexedDbWorkoutPlanRepository.ts:100',message:'Local plan fetched',data:{hasLocal:!!local,planId:local?.planId},timestamp:Date.now(),sessionId:'debug-session',runId:'workout-debug',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'indexedDbWorkoutPlanRepository.ts:100',
+          message: 'Local plan fetched',
+          data: { hasLocal: !!local, planId: local?.planId },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'workout-debug',
+          hypothesisId: 'A',
+        }),
+      }).catch(() => {})
       // #endregion
-      
+
       // Always try Firestore first, fall back to local on network errors
       let remote: WorkoutPlan | null = null
       try {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'indexedDbWorkoutPlanRepository.ts:107',message:'Attempting Firestore getActive',data:{userId},timestamp:Date.now(),sessionId:'debug-session',runId:'workout-debug',hypothesisId:'A'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'indexedDbWorkoutPlanRepository.ts:107',
+            message: 'Attempting Firestore getActive',
+            data: { userId },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'workout-debug',
+            hypothesisId: 'A',
+          }),
+        }).catch(() => {})
         // #endregion
-        
+
         remote = await firestoreRepo.getActive(userId)
-        
+
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'indexedDbWorkoutPlanRepository.ts:111',message:'Firestore getActive succeeded',data:{hasRemote:!!remote,planId:remote?.planId},timestamp:Date.now(),sessionId:'debug-session',runId:'workout-debug',hypothesisId:'A'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'indexedDbWorkoutPlanRepository.ts:111',
+            message: 'Firestore getActive succeeded',
+            data: { hasRemote: !!remote, planId: remote?.planId },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'workout-debug',
+            hypothesisId: 'A',
+          }),
+        }).catch(() => {})
         // #endregion
       } catch (error) {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'indexedDbWorkoutPlanRepository.ts:115',message:'Firestore getActive error',data:{errorName:(error as Error).name,errorMessage:(error as Error).message,errorCode:(error as Error & {code?:string}).code,errorStack:(error as Error).stack?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'workout-debug',hypothesisId:'A'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'indexedDbWorkoutPlanRepository.ts:115',
+            message: 'Firestore getActive error',
+            data: {
+              errorName: (error as Error).name,
+              errorMessage: (error as Error).message,
+              errorCode: (error as Error & { code?: string }).code,
+              errorStack: (error as Error).stack?.substring(0, 200),
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'workout-debug',
+            hypothesisId: 'A',
+          }),
+        }).catch(() => {})
         // #endregion
-        
+
         // Handle network errors gracefully - return local data
         const firebaseError = error as Error & { code?: string }
         const isNetworkError =
@@ -154,13 +229,28 @@ export const createIndexedDbWorkoutPlanRepository = (): WorkoutPlanRepository =>
           firebaseError?.message?.includes('Missing or insufficient permissions') ||
           firebaseError?.message?.includes('Failed to fetch') ||
           firebaseError?.message?.includes('network')
-        
+
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'indexedDbWorkoutPlanRepository.ts:123',message:'Network error check',data:{isNetworkError,errorCode:firebaseError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'workout-debug',hypothesisId:'A'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'indexedDbWorkoutPlanRepository.ts:123',
+            message: 'Network error check',
+            data: { isNetworkError, errorCode: firebaseError?.code },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'workout-debug',
+            hypothesisId: 'A',
+          }),
+        }).catch(() => {})
         // #endregion
-        
+
         if (isNetworkError) {
-          console.warn('Network error fetching active plan, falling back to local:', firebaseError.code || firebaseError.message)
+          console.warn(
+            'Network error fetching active plan, falling back to local:',
+            firebaseError.code || firebaseError.message
+          )
           return local
         }
         // Re-throw unexpected errors
@@ -206,11 +296,16 @@ export const createIndexedDbWorkoutPlanRepository = (): WorkoutPlanRepository =>
       } catch (error) {
         // Handle network errors gracefully
         const firebaseError = error as Error & { code?: string }
-        if (firebaseError?.code === 'permission-denied' || 
-            firebaseError?.code === 'unavailable' ||
-            firebaseError?.message?.includes('Failed to fetch') ||
-            firebaseError?.message?.includes('network')) {
-          console.warn('Network error listing plans, falling back to local:', firebaseError.code || firebaseError.message)
+        if (
+          firebaseError?.code === 'permission-denied' ||
+          firebaseError?.code === 'unavailable' ||
+          firebaseError?.message?.includes('Failed to fetch') ||
+          firebaseError?.message?.includes('network')
+        ) {
+          console.warn(
+            'Network error listing plans, falling back to local:',
+            firebaseError.code || firebaseError.message
+          )
         } else {
           console.error('Unexpected error listing plans from Firestore:', error)
         }

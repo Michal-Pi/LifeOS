@@ -150,7 +150,6 @@
   position: relative;
 }
 
-
 .task-cell {
   padding: 0 var(--space-2);
   white-space: nowrap;

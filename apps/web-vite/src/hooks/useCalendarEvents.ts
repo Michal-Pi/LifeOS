@@ -284,7 +284,23 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
   }, [loadEvents])
 
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCalendarEvents.ts:286',message:'Returning from useCalendarEvents',data:{loadingType:typeof loading,loadingValue:loading,hasLoading:loading !== undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      location: 'useCalendarEvents.ts:286',
+      message: 'Returning from useCalendarEvents',
+      data: {
+        loadingType: typeof loading,
+        loadingValue: loading,
+        hasLoading: loading !== undefined,
+      },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'run1',
+      hypothesisId: 'A',
+    }),
+  }).catch(() => {})
   // #endregion
   return { events, instances, setEvents, loading, reload: loadEvents, syncProgress }
 }

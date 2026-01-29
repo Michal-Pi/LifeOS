@@ -29,7 +29,7 @@ import { FontSize } from './extensions/FontSize'
 import { TextColor } from './extensions/TextColor'
 import { NoteLink } from './extensions/NoteLink'
 import { ParagraphTag } from './extensions/ParagraphTag'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import type { Note, TopicId } from '@lifeos/notes'
 import { TipTapMenuBar } from './TipTapMenuBar'
 import { DragDropContext } from './ux/DragDropContext'
@@ -38,6 +38,7 @@ import { CommandMenu } from './ux/CommandMenu'
 import { MathInlinePanel } from './ux/MathInlinePanel'
 import { NoteLinkAutocomplete } from './ux/NoteLinkAutocomplete'
 import { ParagraphTagMenu } from './ux/ParagraphTagMenu'
+import { TableControlMenu } from './ux/TableControlMenu'
 import { VirtualizedEditor } from './ux/VirtualizedEditor'
 import 'katex/dist/katex.min.css'
 import './TipTapEditor.css'
@@ -88,8 +89,8 @@ export function TipTapEditor({
   } | null>(null)
   const lastCharRef = useRef<string>('') // Track last character for [[ detection
 
-  const editor = useEditor({
-    extensions: [
+  const extensions = useMemo(() => {
+    return [
       StarterKit.configure({
         heading: {
           levels: [1, 2, 3, 4],
@@ -99,7 +100,7 @@ export function TipTapEditor({
             class: 'code-block',
           },
         },
-        link: false, // Disable StarterKit's Link, we'll add our own
+        link: false, // We use custom Link extension below
       }),
       Link.configure({
         openOnClick: false,
@@ -146,16 +147,16 @@ export function TipTapEditor({
         },
       }),
       TextStyle,
+      FontFamily,
+      FontSize,
       TextColor,
-      FontFamily.configure({
-        types: ['paragraph', 'heading'],
-      }),
-      FontSize.configure({
-        types: ['paragraph', 'heading'],
-      }),
       Superscript,
       Subscript,
-    ],
+    ]
+  }, [availableNotes, availableTopics, onNoteLinkClick, onParagraphTag, placeholder])
+
+  const editor = useEditor({
+    extensions,
     content,
     editable,
     onUpdate: ({ editor }) => {
@@ -652,9 +653,10 @@ export function TipTapEditor({
             position={paragraphTagMenuState.position}
             availableNotes={availableNotes}
             availableTopics={availableTopics}
-            onTagSelect={handleParagraphTagSelect}
+            onTagSelect={onParagraphTag}
           />
         )}
+      <TableControlMenu editor={editor} />
     </div>
   )
 }

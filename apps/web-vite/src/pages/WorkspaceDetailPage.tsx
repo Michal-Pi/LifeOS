@@ -10,7 +10,7 @@
  * - Filter runs by status
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
 import { useDeepResearch } from '@/hooks/useDeepResearch'
@@ -21,6 +21,7 @@ import { RunCard } from '@/components/agents/RunCard'
 import { WorkflowGraphView } from '@/components/agents/WorkflowGraphView'
 import { ResearchQueue } from '@/components/agents/ResearchQueue'
 import { Button } from '@/components/ui/button'
+import { Select, type SelectOption } from '@/components/Select'
 import type { WorkspaceId, RunStatus } from '@lifeos/agents'
 import { useDialog } from '@/contexts/useDialog'
 
@@ -46,7 +47,7 @@ export function WorkspaceDetailPage() {
   useEffect(() => {
     if (workspaceId) {
       void getWorkspace(workspaceId as WorkspaceId)
-      void loadRuns({ workspaceId: workspaceId as WorkspaceId })
+      void loadRuns(workspaceId as WorkspaceId)
       void loadAgents()
     }
   }, [workspaceId, getWorkspace, loadRuns, loadAgents])
@@ -66,7 +67,7 @@ export function WorkspaceDetailPage() {
 
   const handleRunCreated = () => {
     if (workspaceId) {
-      void loadRuns({ workspaceId: workspaceId as WorkspaceId })
+      void loadRuns(workspaceId as WorkspaceId)
     }
   }
 
@@ -82,7 +83,7 @@ export function WorkspaceDetailPage() {
     try {
       await deleteRun(runId)
       if (workspaceId) {
-        void loadRuns({ workspaceId: workspaceId as WorkspaceId })
+        void loadRuns(workspaceId as WorkspaceId)
       }
     } catch (err) {
       console.error('Failed to delete run:', err)
@@ -95,6 +96,17 @@ export function WorkspaceDetailPage() {
     setResumeSeed({
       goal: `Continue: ${runToResume.goal}`,
       context: { resumeRunId: runToResume.runId },
+    })
+    setShowRunModal(true)
+  }
+
+  const handleRunAgain = (runId: string) => {
+    const runToRerun = runs.find((run) => run.runId === runId)
+    if (!runToRerun) return
+    // Pre-fill with same workspace settings, but clear goal for new prompt
+    setResumeSeed({
+      goal: '', // Empty goal field ready for new prompt
+      context: runToRerun.context, // Keep the same context structure
     })
     setShowRunModal(true)
   }
@@ -113,10 +125,38 @@ export function WorkspaceDetailPage() {
     })
   }
 
+  const handleStopRun = async (runId: string) => {
+    try {
+      await updateRun(runId, {
+        status: 'paused',
+      })
+      if (workspaceId) {
+        void loadRuns(workspaceId as WorkspaceId)
+      }
+    } catch (err) {
+      console.error('Failed to stop run:', err)
+      throw err
+    }
+  }
+
   const getAgentName = (agentId: string) => {
     const agent = agents.find((a) => a.agentId === agentId)
     return agent?.name ?? 'Unknown Agent'
   }
+
+  // Status filter options
+  const statusOptions: SelectOption[] = useMemo(
+    () => [
+      { value: 'all', label: 'All' },
+      { value: 'pending', label: 'Pending' },
+      { value: 'running', label: 'Running' },
+      { value: 'completed', label: 'Completed' },
+      { value: 'failed', label: 'Failed' },
+      { value: 'paused', label: 'Paused' },
+      { value: 'waiting_for_input', label: 'Waiting for Input' },
+    ],
+    []
+  )
 
   // Filter runs by status
   const filteredRuns = runs.filter((run) => {
@@ -151,9 +191,7 @@ export function WorkspaceDetailPage() {
           <h1>{workspace.name}</h1>
           {workspace.description && <p>{workspace.description}</p>}
         </div>
-        <Button onClick={handleStartRun}>
-          + Start Run
-        </Button>
+        <Button onClick={handleStartRun}>+ Start Run</Button>
       </header>
 
       <div className="workspace-info">
@@ -245,28 +283,19 @@ export function WorkspaceDetailPage() {
           <h2>Run History</h2>
           <div className="filters">
             <label htmlFor="statusFilter">Status:</label>
-            <select
-              id="statusFilter"
+            <Select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as RunStatus | 'all')}
-            >
-              <option value="all">All</option>
-              <option value="pending">Pending</option>
-              <option value="running">Running</option>
-              <option value="completed">Completed</option>
-              <option value="failed">Failed</option>
-              <option value="paused">Paused</option>
-              <option value="waiting_for_input">Waiting for Input</option>
-            </select>
+              onChange={(value) => setStatusFilter(value as RunStatus | 'all')}
+              options={statusOptions}
+              placeholder="Filter by status..."
+            />
           </div>
         </div>
 
         {filteredRuns.length === 0 ? (
           <div className="empty-state">
             <p>System idle. No runs yet.</p>
-            <Button onClick={handleStartRun}>
-              Start your first run
-            </Button>
+            <Button onClick={handleStartRun}>Start your first run</Button>
           </div>
         ) : (
           <div className="runs-list">
@@ -282,6 +311,8 @@ export function WorkspaceDetailPage() {
                 onDelete={handleDeleteRun}
                 onResume={handleResumeRun}
                 onProvideInput={handleProvideInput}
+                onRunAgain={handleRunAgain}
+                onStop={handleStopRun}
               />
             ))}
           </div>

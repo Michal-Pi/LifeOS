@@ -71,7 +71,9 @@ export function PriorityView({
                         <span className="task-title">{task.title}</span>
                       </div>
                       <div className="task-card-meta">
-                        <span className={`meta-tag ${project ? 'task-card-badge-project' : `task-card-badge-domain-${task.domain}`}`}>
+                        <span
+                          className={`meta-tag ${project ? 'task-card-badge-project' : `task-card-badge-domain-${task.domain}`}`}
+                        >
                           {badgeLabel}
                         </span>
                         {task.dueDate && (

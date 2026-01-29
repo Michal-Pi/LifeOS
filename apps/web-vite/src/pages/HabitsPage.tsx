@@ -153,9 +153,7 @@ export function HabitsPage() {
     <div className="page-container habits-page">
       <div className="page-header">
         <h1>Habits</h1>
-        <Button onClick={() => setIsModalOpen(true)}>
-          + New Habit
-        </Button>
+        <Button onClick={() => setIsModalOpen(true)}>+ New Habit</Button>
       </div>
 
       <div className="habits-filters">
