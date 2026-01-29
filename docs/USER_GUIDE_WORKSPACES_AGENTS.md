@@ -304,7 +304,7 @@ Templates are saved, reusable configurations:
 
 ### Built-in Templates
 
-#### Agent Templates (18 Pre-built):
+#### Agent Templates (19 Pre-built):
 
 1. **Research Analyst** - Investigates topics, summarizes findings
 2. **Strategic Planner** - Creates project structures with chapters
@@ -322,6 +322,7 @@ Templates are saved, reusable configurations:
 14. **Trend Analyst** - Identifies emerging patterns (Grok 4)
 15. **Technical Documentation Writer** - Creates clear technical docs (Gemini)
 16. **Quick Summarizer** - Fast, concise summaries (GPT-4o-mini)
+17. **X (Twitter) Analyst** - Real-time X analysis for trends, sentiment, brand monitoring (Grok 4)
 
 #### Workspace Templates (2 Pre-built):
 

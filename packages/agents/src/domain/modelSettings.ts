@@ -1,6 +1,6 @@
 /**
  * Model Settings Domain
- * 
+ *
  * Allows users to configure default models for each provider.
  * These defaults are used when creating new agents or workspaces.
  */

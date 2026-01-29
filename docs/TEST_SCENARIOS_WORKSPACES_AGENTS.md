@@ -804,6 +804,7 @@ Each scenario includes:
      Focus areas: {{focus_areas}}
      Target depth: {{depth}}
      ```
+
 6. Save
 7. Now use prompts:
    - Create new agent
