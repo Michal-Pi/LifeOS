@@ -799,7 +799,8 @@ export const serpSearchTool: ToolDefinition = {
       },
       searchType: {
         type: 'string',
-        description: 'Type of search: "search" for web results, "news" for news results (default: "search")',
+        description:
+          'Type of search: "search" for web results, "news" for news results (default: "search")',
       },
     },
     required: ['query'],
@@ -952,7 +953,9 @@ export const readUrlTool: ToolDefinition = {
       // Truncate very long content to avoid token bloat
       const maxLength = 15000
       const truncated = content.length > maxLength
-      const trimmedContent = truncated ? content.substring(0, maxLength) + '\n\n[... content truncated]' : content
+      const trimmedContent = truncated
+        ? content.substring(0, maxLength) + '\n\n[... content truncated]'
+        : content
 
       return {
         url,
@@ -1043,7 +1046,9 @@ export const scrapeUrlTool: ToolDefinition = {
       // Truncate very long content
       const maxLength = 15000
       const truncated = content.length > maxLength
-      const trimmedContent = truncated ? content.substring(0, maxLength) + '\n\n[... content truncated]' : content
+      const trimmedContent = truncated
+        ? content.substring(0, maxLength) + '\n\n[... content truncated]'
+        : content
 
       return {
         url,

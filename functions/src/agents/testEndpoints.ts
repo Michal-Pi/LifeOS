@@ -210,7 +210,12 @@ export const testAgentConfig = onCall(
         systemPrompt: 'You are a test. Respond with exactly: OK',
       }
 
-      const result = await executeWithProvider(testAgent, 'Respond with exactly: OK', undefined, apiKeys)
+      const result = await executeWithProvider(
+        testAgent,
+        'Respond with exactly: OK',
+        undefined,
+        apiKeys
+      )
 
       return {
         ok: true,

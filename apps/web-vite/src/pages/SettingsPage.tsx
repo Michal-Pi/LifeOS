@@ -80,14 +80,14 @@ export function SettingsPage() {
     xai: '',
   })
   const [keySaving, setKeySaving] = useState<Partial<Record<AiProviderKeyType, boolean>>>({})
-  const [searchToolKeyInputs, setSearchToolKeyInputs] = useState<
-    Record<SearchToolKeyType, string>
-  >({
-    serper: '',
-    firecrawl: '',
-    exa: '',
-    jina: '',
-  })
+  const [searchToolKeyInputs, setSearchToolKeyInputs] = useState<Record<SearchToolKeyType, string>>(
+    {
+      serper: '',
+      firecrawl: '',
+      exa: '',
+      jina: '',
+    }
+  )
   const [searchToolKeySaving, setSearchToolKeySaving] = useState<
     Partial<Record<SearchToolKeyType, boolean>>
   >({})
@@ -227,27 +227,24 @@ export function SettingsPage() {
     [removeSearchToolKey]
   )
 
-  const handleTestSearchToolKey = useCallback(
-    async (tool: SearchToolKeyType) => {
-      setSearchToolKeyTesting((prev) => ({ ...prev, [tool]: true }))
-      setSearchToolKeyTestResult((prev) => ({ ...prev, [tool]: undefined }))
-      try {
-        const result = await testSearchToolKeyCallable({ toolId: tool })
-        setSearchToolKeyTestResult((prev) => ({
-          ...prev,
-          [tool]: { ok: result.data.ok, message: result.data.message },
-        }))
-      } catch (err) {
-        setSearchToolKeyTestResult((prev) => ({
-          ...prev,
-          [tool]: { ok: false, message: (err as Error).message },
-        }))
-      } finally {
-        setSearchToolKeyTesting((prev) => ({ ...prev, [tool]: false }))
-      }
-    },
-    []
-  )
+  const handleTestSearchToolKey = useCallback(async (tool: SearchToolKeyType) => {
+    setSearchToolKeyTesting((prev) => ({ ...prev, [tool]: true }))
+    setSearchToolKeyTestResult((prev) => ({ ...prev, [tool]: undefined }))
+    try {
+      const result = await testSearchToolKeyCallable({ toolId: tool })
+      setSearchToolKeyTestResult((prev) => ({
+        ...prev,
+        [tool]: { ok: result.data.ok, message: result.data.message },
+      }))
+    } catch (err) {
+      setSearchToolKeyTestResult((prev) => ({
+        ...prev,
+        [tool]: { ok: false, message: (err as Error).message },
+      }))
+    } finally {
+      setSearchToolKeyTesting((prev) => ({ ...prev, [tool]: false }))
+    }
+  }, [])
 
   useEffect(() => {
     if (memorySettings.memoryMessageLimit) {
@@ -512,7 +509,8 @@ export function SettingsPage() {
       label: 'Jina Reader',
       saved: Boolean(searchToolKeys.jinaKey),
       placeholder: 'jina_...',
-      helper: 'Extract clean markdown from any URL. Free without a key; key gives higher rate limits.',
+      helper:
+        'Extract clean markdown from any URL. Free without a key; key gives higher rate limits.',
     },
   ]
 

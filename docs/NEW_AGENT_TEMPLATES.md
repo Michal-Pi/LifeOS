@@ -307,12 +307,12 @@ Replace standard summarization agents with Quick Summarizer for:
 
 Four new search/research tools were added alongside the existing `web_search` (Google CSE):
 
-| Tool | Service | Purpose | API Key Required |
-|------|---------|---------|-----------------|
-| `serp_search` | Serper | Fast SERP results with People Also Ask, knowledge panels | Yes (`SERPER_API_KEY`) |
-| `read_url` | Jina Reader | Extract clean markdown from any URL | Optional (free tier) |
-| `scrape_url` | Firecrawl | Scrape JS-heavy or blocked web pages | Yes (`FIRECRAWL_API_KEY`) |
-| `semantic_search` | Exa | Neural/semantic search for conceptual discovery | Yes (`EXA_API_KEY`) |
+| Tool              | Service     | Purpose                                                  | API Key Required          |
+| ----------------- | ----------- | -------------------------------------------------------- | ------------------------- |
+| `serp_search`     | Serper      | Fast SERP results with People Also Ask, knowledge panels | Yes (`SERPER_API_KEY`)    |
+| `read_url`        | Jina Reader | Extract clean markdown from any URL                      | Optional (free tier)      |
+| `scrape_url`      | Firecrawl   | Scrape JS-heavy or blocked web pages                     | Yes (`FIRECRAWL_API_KEY`) |
+| `semantic_search` | Exa         | Neural/semantic search for conceptual discovery          | Yes (`EXA_API_KEY`)       |
 
 These tools can be assigned to any agent via the Agent Builder's Tools tab. They appear alongside existing tools like `web_search` and `create_deep_research_request`.
 

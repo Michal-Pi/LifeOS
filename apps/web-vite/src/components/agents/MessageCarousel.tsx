@@ -122,7 +122,7 @@ export function MessageCarousel({
         const inputStr = toolInput
           ? `**Input:**\n\`\`\`json\n${JSON.stringify(toolInput, null, 2)}\n\`\`\``
           : ''
-        
+
         msgs.push({
           id: `tool-${idx}`,
           timestamp: event.timestampMs || fallbackTimestamp,
@@ -187,7 +187,9 @@ export function MessageCarousel({
           statusContent = `🤖 **${latestEvent.agentName}** is working...`
         }
       } else if (run.workflowState?.currentNodeId && workflowGraph) {
-        const currentNode = workflowGraph.nodes.find((n) => n.id === run.workflowState?.currentNodeId)
+        const currentNode = workflowGraph.nodes.find(
+          (n) => n.id === run.workflowState?.currentNodeId
+        )
         if (currentNode) {
           const nodeLabel = currentNode.label || currentNode.id
           if (currentNode.type === 'agent') {
@@ -217,9 +219,10 @@ export function MessageCarousel({
   }, [events, messages, run, workflowGraph, pendingInput, agentName])
 
   // Determine current index: manual navigation takes precedence, otherwise show latest
-  const currentIndex = manualNavigationIndex !== null 
-    ? Math.min(manualNavigationIndex, carouselMessages.length - 1)
-    : Math.max(0, carouselMessages.length - 1)
+  const currentIndex =
+    manualNavigationIndex !== null
+      ? Math.min(manualNavigationIndex, carouselMessages.length - 1)
+      : Math.max(0, carouselMessages.length - 1)
 
   const currentMessage = carouselMessages[currentIndex] || null
 

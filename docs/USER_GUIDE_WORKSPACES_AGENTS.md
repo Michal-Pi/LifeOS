@@ -542,15 +542,15 @@ Agents can use tools to take actions:
 
 **Built-in Tools:**
 
-| Tool                           | Purpose                                    | Configuration                 |
-| ------------------------------ | ------------------------------------------ | ----------------------------- |
-| `web_search`                   | Search the web (Google CSE)                | Query, max results            |
-| `serp_search`                  | Fast SERP results (Serper)                 | Query, max results, type      |
-| `read_url`                     | Extract clean markdown from URL (Jina)     | URL                           |
-| `scrape_url`                   | Scrape JS-heavy pages (Firecrawl)          | URL, formats                  |
-| `semantic_search`              | Neural/semantic search (Exa)               | Query, num results            |
-| `create_deep_research_request` | Request deep research                      | Question, context, depth      |
-| `expert_council_execute`       | Invoke Expert Council                      | Prompt, mode                  |
+| Tool                           | Purpose                                | Configuration            |
+| ------------------------------ | -------------------------------------- | ------------------------ |
+| `web_search`                   | Search the web (Google CSE)            | Query, max results       |
+| `serp_search`                  | Fast SERP results (Serper)             | Query, max results, type |
+| `read_url`                     | Extract clean markdown from URL (Jina) | URL                      |
+| `scrape_url`                   | Scrape JS-heavy pages (Firecrawl)      | URL, formats             |
+| `semantic_search`              | Neural/semantic search (Exa)           | Query, num results       |
+| `create_deep_research_request` | Request deep research                  | Question, context, depth |
+| `expert_council_execute`       | Invoke Expert Council                  | Prompt, mode             |
 
 **Custom Tools:**
 
@@ -1065,6 +1065,7 @@ This means users can supply their own keys for higher rate limits or billing iso
 #### Test Connection:
 
 Each tool has a "Test" button that:
+
 1. Reads the user's stored key from Firestore (or falls back to system key)
 2. Makes a minimal API call to the service (e.g., a single search query)
 3. Returns success/failure with latency information
