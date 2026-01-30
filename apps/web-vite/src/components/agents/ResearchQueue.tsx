@@ -9,6 +9,7 @@ import {
   validateResearchCompleteness,
 } from '@/services/deepResearch/resultProcessor'
 import { Button } from '@/components/ui/button'
+import { Select, type SelectOption } from '@/components/Select'
 import { ResearchRequestCard } from './ResearchRequestCard'
 import { ResearchUploadModal } from './ResearchUploadModal'
 import styles from './ResearchQueue.module.css'
@@ -23,6 +24,14 @@ const formatStatus = (status: DeepResearchRequest['status']) =>
 const formatDateTime = (timestampMs: number) => new Date(timestampMs).toLocaleString()
 
 const RESEARCH_SOURCES: DeepResearchSource[] = ['claude', 'chatgpt', 'gemini', 'other']
+
+const STATUS_FILTER_OPTIONS: SelectOption[] = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'in_progress', label: 'In progress' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+]
 
 export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
   const { requests, isLoading, uploadResults, updateRequest, synthesizeRequest } =
@@ -130,16 +139,13 @@ export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
         </div>
 
         <div className={styles['research-queue__filters']}>
-          <select
+          <Select
+            options={STATUS_FILTER_OPTIONS}
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-          >
-            <option value="all">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="in_progress">In progress</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+            onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}
+            placeholder="Filter by status"
+            className="w-full"
+          />
           <input
             type="search"
             placeholder="Search topics..."

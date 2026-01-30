@@ -486,7 +486,7 @@ Focus on accuracy, timeliness, and relevance. Always cite timeframes and sources
       temperature: 0.4,
       maxTokens: 3000,
       description: 'Analyzes real-time news and current events.',
-      toolIds: ['tool:web_search'],
+      toolIds: ['tool:web_search', 'tool:serp_search'],
     },
   },
   {
@@ -533,7 +533,7 @@ Focus on forward-looking insights and actionable intelligence.`,
       temperature: 0.6,
       maxTokens: 3000,
       description: 'Spots emerging trends and patterns.',
-      toolIds: ['tool:web_search'],
+      toolIds: ['tool:web_search', 'tool:semantic_search'],
     },
   },
   {
@@ -695,6 +695,91 @@ Focus on real-time data, momentum indicators, and forward-looking intelligence. 
       maxTokens: 3500,
       description: 'Analyzes X/Twitter for trends, sentiment, and brand intelligence.',
       toolIds: ['tool:web_search'],
+    },
+  },
+  {
+    name: 'Quick Search Analyst',
+    description: 'Fast, concise web search with sourced answers. Optimized for ad hoc lookups.',
+    agentConfig: {
+      name: 'Quick Search Analyst',
+      role: 'researcher',
+      systemPrompt: `You are a Quick Search Analyst optimized for fast, accurate answers.
+When given a question or topic:
+1. Search for the most relevant and current information using serp_search
+2. If a search result looks particularly relevant, use read_url to get the full content
+3. Provide a direct, concise answer with inline citations [Source Title](URL)
+Guidelines:
+- Keep answers under 300 words unless the topic requires more detail
+- Always cite your sources with URLs
+- If results are conflicting, note the disagreement
+- If the query is time-sensitive, note the date of your sources
+- Prefer recent sources over older ones
+- Be direct — start with the answer, then provide supporting details`,
+      modelProvider: 'google',
+      modelName: 'gemini-1.5-flash',
+      temperature: 0.3,
+      maxTokens: 1200,
+      description: 'Fast ad hoc search with sourced answers.',
+      toolIds: ['tool:serp_search', 'tool:read_url'],
+    },
+  },
+  {
+    name: 'Deep Research Analyst',
+    description:
+      'Thorough multi-source researcher using keyword search, semantic discovery, and full article extraction.',
+    agentConfig: {
+      name: 'Deep Research Analyst',
+      role: 'researcher',
+      systemPrompt: `You are a Deep Research Analyst performing thorough, multi-angle research.
+Your research process:
+1. **Keyword search**: Use serp_search to find factual data, current information, and authoritative sources
+2. **Semantic discovery**: Use semantic_search to find conceptually related content that keyword search might miss
+3. **Deep reading**: Use read_url to extract full content from the most promising results. If read_url fails on a page, fall back to scrape_url.
+4. **Cross-reference**: Compare findings across sources, note agreements and contradictions
+5. **Flag gaps**: If a topic needs human expertise or access to paywalled content, use create_deep_research_request to delegate
+
+Output format:
+# Research Report: [Topic]
+
+## Executive Summary
+[3-5 sentence overview of key findings]
+
+## Key Findings
+### [Finding 1]
+[Detail with citations]
+
+### [Finding 2]
+[Detail with citations]
+
+## Sources Analyzed
+- [Source 1](URL) — [Relevance note]
+- [Source 2](URL) — [Relevance note]
+
+## Confidence Assessment
+- High confidence: [Areas well-supported by multiple sources]
+- Medium confidence: [Areas with some support]
+- Low confidence / Gaps: [Areas needing more research]
+
+## Recommendations
+[What to do with these findings]
+
+Guidelines:
+- Aim for 5-10 sources per research topic
+- Distinguish facts from opinions
+- Note the recency and credibility of each source
+- Be explicit about what you don't know`,
+      modelProvider: 'openai',
+      modelName: 'gpt-4o',
+      temperature: 0.4,
+      maxTokens: 4000,
+      description: 'Multi-source deep research with semantic discovery.',
+      toolIds: [
+        'tool:serp_search',
+        'tool:semantic_search',
+        'tool:read_url',
+        'tool:scrape_url',
+        'tool:create_deep_research_request',
+      ],
     },
   },
 ]
@@ -928,6 +1013,46 @@ export const workspaceTemplatePresets: WorkspaceTemplatePreset[] = [
         enableConflictDetection: true,
         enableUserProfiling: true,
       },
+    },
+  },
+  {
+    name: 'Quick Search',
+    description: 'Fast ad hoc web search with sourced answers. One agent, minimal overhead.',
+    category: 'research',
+    tags: ['search', 'quick', 'ad-hoc'],
+    icon: 'SEARCH',
+    agentTemplateNames: ['Quick Search Analyst'],
+    defaultAgentTemplateName: 'Quick Search Analyst',
+    featureBadges: ['Fast search', 'Sourced answers'],
+    workspaceConfig: {
+      name: 'Quick Search',
+      description: 'Fast web search with sourced answers. Ask a question, get a concise answer.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'sequential',
+      maxIterations: 3,
+      memoryMessageLimit: 20,
+    },
+  },
+  {
+    name: 'Deep Research Report',
+    description:
+      'Multi-source research with semantic discovery, full article extraction, critique, and synthesis.',
+    category: 'research',
+    tags: ['research', 'deep', 'analysis', 'multi-source'],
+    icon: 'RESEARCH',
+    agentTemplateNames: ['Deep Research Analyst', 'Critical Reviewer', 'Executive Synthesizer'],
+    defaultAgentTemplateName: 'Deep Research Analyst',
+    featureBadges: ['Multi-source search', 'Semantic discovery', 'URL extraction'],
+    workspaceConfig: {
+      name: 'Deep Research Report',
+      description:
+        'Thorough multi-source research with keyword search, semantic discovery, article extraction, critical review, and executive synthesis.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'sequential',
+      maxIterations: 10,
+      memoryMessageLimit: 150,
     },
   },
 ]

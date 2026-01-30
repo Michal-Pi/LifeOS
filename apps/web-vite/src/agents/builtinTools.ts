@@ -70,4 +70,24 @@ export const builtinTools: BuiltinToolMeta[] = [
     name: 'expert_council_execute',
     description: 'Run the Expert Council multi-model consensus pipeline',
   },
+  {
+    toolId: 'tool:serp_search',
+    name: 'serp_search',
+    description: 'Fast web search via Serper (SERP results, news, People Also Ask)',
+  },
+  {
+    toolId: 'tool:read_url',
+    name: 'read_url',
+    description: 'Read any URL and extract clean markdown content (via Jina Reader)',
+  },
+  {
+    toolId: 'tool:scrape_url',
+    name: 'scrape_url',
+    description: 'Scrape JS-heavy or blocked web pages (via Firecrawl)',
+  },
+  {
+    toolId: 'tool:semantic_search',
+    name: 'semantic_search',
+    description: 'Neural/semantic search for conceptually related content (via Exa)',
+  },
 ]

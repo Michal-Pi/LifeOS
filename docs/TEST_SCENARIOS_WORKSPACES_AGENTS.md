@@ -1,6 +1,6 @@
 # Test Scenarios & Use Cases: AI Agents & Workspaces
 
-**Version 1.0** | Last Updated: January 29, 2026
+**Version 1.1** | Last Updated: January 30, 2026
 
 ---
 
@@ -57,13 +57,19 @@ Each scenario includes:
 16. [Infinite Loop Prevention](#scenario-16-infinite-loop-prevention)
 17. [Memory Limit Effects](#scenario-17-memory-limit-effects)
 
+### Search Tool Scenarios
+
+18. [Configure Search Tool API Keys](#scenario-18-configure-search-tool-api-keys)
+19. [Quick Search Workspace](#scenario-19-quick-search-workspace)
+20. [Deep Research Report Workspace](#scenario-20-deep-research-report-workspace)
+
 ### Real-World Use Cases
 
-18. [Business Plan Development](#use-case-1-business-plan-development)
-19. [Technical Documentation Creation](#use-case-2-technical-documentation-creation)
-20. [Market Research Report](#use-case-3-market-research-report)
-21. [Content Marketing Pipeline](#use-case-4-content-marketing-pipeline)
-22. [Product Launch Strategy](#use-case-5-product-launch-strategy)
+21. [Business Plan Development](#use-case-1-business-plan-development)
+22. [Technical Documentation Creation](#use-case-2-technical-documentation-creation)
+23. [Market Research Report](#use-case-3-market-research-report)
+24. [Content Marketing Pipeline](#use-case-4-content-marketing-pipeline)
+25. [Product Launch Strategy](#use-case-5-product-launch-strategy)
 
 ---
 
@@ -976,6 +982,157 @@ Each scenario includes:
 2. Should system recommend memory based on task?
 3. Would you like memory usage visualization?
 4. How do you decide optimal memory limit?
+
+---
+
+## Search Tool Scenarios
+
+### Scenario 18: Configure Search Tool API Keys
+
+**Objective**: Set up and test search tool API keys in Settings
+
+**Features Tested**:
+
+- Search Tool Keys settings panel
+- Key storage in Firestore
+- Test connection functionality
+- Key priority chain (user key → system key)
+
+**Steps**:
+
+1. Navigate to **Settings** page (`/settings`)
+2. Scroll to **Intelligence** section
+3. Find **Search Tools** panel (below AI Provider Keys)
+4. For each tool (Serper, Firecrawl, Exa, Jina Reader):
+   - Note the status indicator (Connected / Inactive)
+   - Enter your API key in the password field
+   - Click **Save**
+   - Status should change to "Connected" (green dot)
+   - Click **Test** button
+   - Observe: Loading spinner → success (green ✓) or failure (red ✗)
+5. Test key removal:
+   - Click **Clear** on any saved key
+   - Status reverts to "Inactive"
+   - Test button disappears (no key to test)
+6. Test invalid key:
+   - Enter "invalid-key-12345" for Serper
+   - Save and click Test
+   - Should show red ✗ with error message (e.g., "401 Unauthorized")
+
+**Expected Results**:
+
+- ✅ Search Tools panel appears in Settings
+- ✅ Keys save and persist across page reloads
+- ✅ Status indicators update in real time
+- ✅ Test button verifies key against the actual service
+- ✅ Invalid keys show clear error messages
+- ✅ Clearing a key removes it from Firestore
+
+**Feedback Questions**:
+
+1. Is the Search Tools section easy to find?
+2. Are the tool descriptions helpful?
+3. Is the Test button reassuring?
+4. Would you like to see which tools require keys vs. which are free?
+
+---
+
+### Scenario 19: Quick Search Workspace
+
+**Objective**: Test the Quick Search workspace template for fast sourced answers
+
+**Features Tested**:
+
+- Quick Search Analyst agent
+- `serp_search` tool (Serper)
+- `read_url` tool (Jina Reader)
+- Concise output with citations
+
+**Prerequisites**: Serper API key configured in Settings (or system key available)
+
+**Steps**:
+
+1. Navigate to **Workspaces** page → **Templates** tab
+2. Find **"Quick Search"** template
+3. Click **Use Template**
+4. Workspace is created with 1 agent (Quick Search Analyst)
+5. Click **▶️ Run Workspace**
+6. Enter goal: "What are the key differences between React Server Components and traditional SSR?"
+7. Click **Start Run**
+8. Observe:
+   - Agent uses `serp_search` to find relevant results
+   - Agent may use `read_url` to extract content from top result
+   - Response is concise (under 300 words) with citations
+9. Check tool calls section for search results
+
+**Expected Results**:
+
+- ✅ Template instantiates with correct agent and tools
+- ✅ Agent uses search tools to find current information
+- ✅ Response is concise and directly answers the question
+- ✅ Sources are cited with URLs
+- ✅ Execution is fast (Gemini 1.5 Flash)
+
+**Feedback Questions**:
+
+1. Is the Quick Search workflow useful for ad-hoc questions?
+2. Is the response quality sufficient for quick lookups?
+3. Would you prefer more or fewer search results?
+4. Is the citation format clear?
+
+---
+
+### Scenario 20: Deep Research Report Workspace
+
+**Objective**: Test comprehensive multi-source research with critique and synthesis
+
+**Features Tested**:
+
+- Deep Research Analyst agent
+- All 4 search tools (`serp_search`, `semantic_search`, `read_url`, `scrape_url`)
+- Critical Reviewer agent
+- Executive Synthesizer agent
+- Sequential workflow (research → critique → synthesize)
+
+**Prerequisites**: Search tool API keys configured (Serper, Exa at minimum)
+
+**Steps**:
+
+1. Navigate to **Workspaces** page → **Templates** tab
+2. Find **"Deep Research Report"** template
+3. Click **Use Template**
+4. Workspace is created with 3 agents
+5. Click **▶️ Run Workspace**
+6. Enter goal:
+   ```
+   Research the current state of AI code assistants:
+   - Market leaders and their capabilities
+   - Pricing and business models
+   - Developer satisfaction and adoption rates
+   - Emerging trends and future directions
+   ```
+7. Click **Start Run**
+8. Observe the 3-stage workflow:
+   - **Stage 1**: Deep Research Analyst searches multiple sources using different tools
+   - **Stage 2**: Critical Reviewer evaluates findings for gaps, bias, and quality
+   - **Stage 3**: Executive Synthesizer produces a structured final report
+9. Review final output for structure, citations, and confidence levels
+
+**Expected Results**:
+
+- ✅ Research Analyst uses multiple search strategies (SERP + semantic)
+- ✅ Full pages are read for deep content extraction
+- ✅ Critical Reviewer identifies gaps and suggests improvements
+- ✅ Synthesizer produces a well-structured report
+- ✅ Multiple sources are cited throughout
+- ✅ Output includes confidence levels where appropriate
+
+**Feedback Questions**:
+
+1. Does multi-tool research produce better results than single-tool?
+2. Is the critique stage valuable?
+3. Is the final synthesis well-structured?
+4. How does this compare to manual research?
 
 ---
 

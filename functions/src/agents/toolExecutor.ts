@@ -96,6 +96,7 @@ export interface BaseToolExecutionContext {
   runId: string
   eventWriter?: RunEventWriter
   toolRegistry?: ToolRegistry
+  searchToolKeys?: { serper?: string; firecrawl?: string; exa?: string; jina?: string }
 }
 
 /**

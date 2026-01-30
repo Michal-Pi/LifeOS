@@ -19,8 +19,7 @@ import { ExpertCouncilInspector } from './ExpertCouncilInspector'
 import { ProjectManagerChat } from './ProjectManagerChat'
 import { InteractiveWorkflowGraph } from './InteractiveWorkflowGraph'
 import { WorkflowNodeModal } from './WorkflowNodeModal'
-import { RunStatusIndicator } from './RunStatusIndicator'
-import { AgentQuestionPanel } from './AgentQuestionPanel'
+import { MessageCarousel } from './MessageCarousel'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import type {
@@ -297,13 +296,29 @@ export function RunCard({
         </div>
       </div>
 
-      {/* Live Status Indicator for Running Runs */}
-      {run.status === 'running' && (
-        <RunStatusIndicator
+      {/* Message Carousel - Live View & Agent Questions */}
+      {(run.status === 'running' || run.status === 'waiting_for_input') && (
+        <MessageCarousel
           run={run}
           events={events}
+          messages={messages}
           workflowGraph={workspace.workflowGraph}
           onStop={onStop ? handleStop : undefined}
+          onProvideInput={
+            onProvideInput && run.pendingInput
+              ? async (response) => {
+                  try {
+                    setIsSubmittingInput(true)
+                    await onProvideInput(run.runId, run.pendingInput!.nodeId, response)
+                  } finally {
+                    setIsSubmittingInput(false)
+                  }
+                }
+              : undefined
+          }
+          isSubmittingInput={isSubmittingInput}
+          pendingInput={run.pendingInput}
+          agentName={getAgentNameFromMessages()}
         />
       )}
 
@@ -328,10 +343,11 @@ export function RunCard({
         </div>
       )}
 
+      {/* Final Output Box - Shows after run completion */}
       {displayOutput && (
         <div className="run-output">
           <div className="run-output-header">
-            <strong>{run.status === 'running' ? 'Live Output:' : 'Output:'}</strong>
+            <strong>{run.status === 'running' ? 'Partial Output:' : 'Final Output:'}</strong>
             {run.status === 'completed' && (
               <Button variant="ghost" size="sm" onClick={handleSaveAsNote} disabled={isSavingNote}>
                 {isSavingNote ? 'Saving...' : '📝 Save as Note'}
@@ -347,22 +363,6 @@ export function RunCard({
           <strong>Error:</strong>
           <p>{run.error}</p>
         </div>
-      )}
-
-      {run.status === 'waiting_for_input' && run.pendingInput && onProvideInput && (
-        <AgentQuestionPanel
-          pendingInput={run.pendingInput}
-          agentName={getAgentNameFromMessages()}
-          onSubmit={async (response) => {
-            try {
-              setIsSubmittingInput(true)
-              await onProvideInput(run.runId, run.pendingInput!.nodeId, response)
-            } finally {
-              setIsSubmittingInput(false)
-            }
-          }}
-          isSubmitting={isSubmittingInput}
-        />
       )}
 
       {run.status === 'paused' && pendingResearch.length > 0 && (

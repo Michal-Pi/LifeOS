@@ -1,4 +1,5 @@
 @import './tokens.css';
+@import './styles/components/MessageCarousel.css';
 
 @font-face {
   font-family: 'Satoshi';
@@ -6185,6 +6186,12 @@ input[type='range']:disabled {
   font-size: 0.9rem;
 }
 
+.settings-panel__success {
+  margin: 0;
+  color: var(--success, #22c55e);
+  font-size: 0.9rem;
+}
+
 .provider-grid {
   display: grid;
   gap: 1rem;
@@ -8903,15 +8910,34 @@ input[type='range']:disabled {
 
 /* Run Status Indicator */
 .run-status-indicator {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  position: relative;
   background: var(--info-light);
   border: 1px solid var(--info);
   border-radius: 12px;
   padding: 0.75rem 1rem;
   margin-bottom: 1rem;
   box-shadow: 0 2px 8px var(--shadow-soft);
+  max-height: 150px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Subtle scrollbar styling for status indicator */
+.run-status-indicator::-webkit-scrollbar {
+  width: 6px;
+}
+
+.run-status-indicator::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.run-status-indicator::-webkit-scrollbar-thumb {
+  background: var(--info);
+  border-radius: 3px;
+}
+
+.run-status-indicator::-webkit-scrollbar-thumb:hover {
+  background: var(--info-dark);
 }
 
 .status-content {
@@ -8919,6 +8945,7 @@ input[type='range']:disabled {
   align-items: center;
   gap: 1.5rem;
   flex-wrap: wrap;
+  min-height: fit-content;
 }
 
 .status-message {

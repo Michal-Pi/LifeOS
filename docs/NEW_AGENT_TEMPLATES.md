@@ -232,6 +232,117 @@ Replace standard summarization agents with Quick Summarizer for:
 
 ---
 
+## 5. Quick Search Analyst (January 30, 2026)
+
+**Model**: Gemini 1.5 Flash (Google)
+**Role**: Researcher
+**Temperature**: 0.3
+**Max Tokens**: 1200
+
+### Unique Value
+
+- Optimized for fast, sourced answers using advanced search tools
+- Uses Serper for SERP results and Jina Reader for full-page extraction
+- Concise responses under 300 words with citations
+
+### Best Use Cases
+
+- Quick fact-checking
+- Ad-hoc questions needing sourced answers
+- Fast lookups with direct citations
+- News verification
+
+### Output Format
+
+- Direct answer with inline citations
+- Source URLs listed at bottom
+- Under 300 words
+
+### Tools
+
+- `serp_search` — Fast web search via Serper
+- `read_url` — URL-to-markdown extraction via Jina Reader
+
+---
+
+## 6. Deep Research Analyst (January 30, 2026)
+
+**Model**: GPT-4o (OpenAI)
+**Role**: Researcher
+**Temperature**: 0.4
+**Max Tokens**: 4000
+
+### Unique Value
+
+- Performs thorough multi-angle research combining multiple search strategies
+- Uses SERP search for facts, semantic search for conceptual discovery, and full-page extraction for deep reading
+- Produces structured findings with confidence levels
+
+### Best Use Cases
+
+- Comprehensive topic research
+- Multi-source analysis
+- Literature reviews
+- Competitive intelligence
+- Deep-dive investigations
+
+### Output Format
+
+- Structured findings with sections
+- Source citations with URLs
+- Confidence levels per finding
+- Areas flagged for human follow-up via deep research requests
+
+### Tools
+
+- `serp_search` — Fast SERP results via Serper
+- `semantic_search` — Neural/semantic search via Exa
+- `read_url` — Clean markdown extraction via Jina Reader
+- `scrape_url` — JS-heavy page scraping via Firecrawl
+- `create_deep_research_request` — Flag items for human research
+
+---
+
+## New Search & Research Tools (January 30, 2026)
+
+Four new search/research tools were added alongside the existing `web_search` (Google CSE):
+
+| Tool | Service | Purpose | API Key Required |
+|------|---------|---------|-----------------|
+| `serp_search` | Serper | Fast SERP results with People Also Ask, knowledge panels | Yes (`SERPER_API_KEY`) |
+| `read_url` | Jina Reader | Extract clean markdown from any URL | Optional (free tier) |
+| `scrape_url` | Firecrawl | Scrape JS-heavy or blocked web pages | Yes (`FIRECRAWL_API_KEY`) |
+| `semantic_search` | Exa | Neural/semantic search for conceptual discovery | Yes (`EXA_API_KEY`) |
+
+These tools can be assigned to any agent via the Agent Builder's Tools tab. They appear alongside existing tools like `web_search` and `create_deep_research_request`.
+
+### Updated Existing Agents
+
+- **Trend Analyst**: Now also has `semantic_search` for deeper pattern discovery
+- **Real-Time News Analyst**: Now also has `serp_search` for supplementary SERP data
+
+---
+
+## New Workspace Templates (January 30, 2026)
+
+### Quick Search Workspace
+
+- **Category**: Research
+- **Agents**: Quick Search Analyst (1 agent)
+- **Workflow**: Sequential
+- **Max Iterations**: 3
+- **Use Case**: Fast, sourced answers to ad-hoc questions
+
+### Deep Research Report Workspace
+
+- **Category**: Research
+- **Agents**: Deep Research Analyst, Critical Reviewer, Executive Synthesizer (3 agents)
+- **Workflow**: Sequential (research → critique → synthesize)
+- **Max Iterations**: 10
+- **Use Case**: Comprehensive multi-source research reports
+
+---
+
 ## Future Enhancements
 
 ### Potential Additions
@@ -251,6 +362,17 @@ Replace standard summarization agents with Quick Summarizer for:
 
 ## Changelog
 
+**2026-01-30**
+
+- Added Quick Search Analyst (Gemini 1.5 Flash) — fast sourced answers
+- Added Deep Research Analyst (GPT-4o) — multi-angle deep research
+- Added 4 new search/research tools: `serp_search`, `read_url`, `scrape_url`, `semantic_search`
+- Added 2 new workspace templates: Quick Search, Deep Research Report
+- Updated Trend Analyst with `semantic_search` tool
+- Updated Real-Time News Analyst with `serp_search` tool
+- Added Search Tool API Key management in Settings UI with test connection buttons
+- Added backend test endpoints for verifying search tool and agent configurations
+
 **2026-01-29**
 
 - Added Real-Time News Analyst (Grok 2)
@@ -261,6 +383,7 @@ Replace standard summarization agents with Quick Summarizer for:
 - Updated comprehensive documentation
 - Updated Expert Council configurations with consistent naming
 
-**Model Count**: 14 → 18 agent templates (+4)  
-**Provider Coverage**: 2 → 4 providers (added Gemini, Grok for agents)  
-**Cost Optimization**: Added 94% cheaper option for high-volume summarization
+**Model Count**: 18 → 20 agent templates (+2)
+**Workspace Templates**: 2 → 4 workspace templates (+2)
+**Search Tools**: 1 → 5 search/research tools (+4)
+**Provider Coverage**: 4 providers (OpenAI, Anthropic, Google, xAI)

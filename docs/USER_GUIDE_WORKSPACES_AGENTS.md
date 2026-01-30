@@ -1,6 +1,6 @@
 # Complete User Guide: AI Agents & Workspaces
 
-**Version 1.0** | Last Updated: January 29, 2026
+**Version 1.1** | Last Updated: January 30, 2026
 
 ---
 
@@ -304,7 +304,7 @@ Templates are saved, reusable configurations:
 
 ### Built-in Templates
 
-#### Agent Templates (19 Pre-built):
+#### Agent Templates (21 Pre-built):
 
 1. **Research Analyst** - Investigates topics, summarizes findings
 2. **Strategic Planner** - Creates project structures with chapters
@@ -318,13 +318,15 @@ Templates are saved, reusable configurations:
 10. **Editor** - Polishes for clarity and flow
 11. **SEO Specialist** - Optimizes for search engines
 12. **Fact Checker** - Validates accuracy of claims
-13. **Real-Time News Analyst** - Analyzes current events (Grok 4)
-14. **Trend Analyst** - Identifies emerging patterns (Grok 4)
+13. **Real-Time News Analyst** - Analyzes current events (Grok 4) + `serp_search`
+14. **Trend Analyst** - Identifies emerging patterns (Grok 4) + `semantic_search`
 15. **Technical Documentation Writer** - Creates clear technical docs (Gemini)
 16. **Quick Summarizer** - Fast, concise summaries (GPT-4o-mini)
 17. **X (Twitter) Analyst** - Real-time X analysis for trends, sentiment, brand monitoring (Grok 4)
+18. **Quick Search Analyst** - Fast sourced answers (Gemini 1.5 Flash) with `serp_search` + `read_url`
+19. **Deep Research Analyst** - Multi-angle deep research (GPT-4o) with all search tools
 
-#### Workspace Templates (2 Pre-built):
+#### Workspace Templates (4 Pre-built):
 
 1. **Project Plan Builder**
    - Multi-agent planning workflow
@@ -337,6 +339,18 @@ Templates are saved, reusable configurations:
    - Strategist + Researcher + Writer + Editor + SEO + Fact Checker
    - Expert Council enabled (Full mode)
    - Use: High-quality thought leadership content
+
+3. **Quick Search**
+   - Fast sourced answers
+   - Quick Search Analyst (1 agent)
+   - Sequential workflow, 3 max iterations
+   - Use: Ad-hoc questions needing fast, cited answers
+
+4. **Deep Research Report**
+   - Comprehensive multi-source research
+   - Deep Research Analyst + Critical Reviewer + Executive Synthesizer
+   - Sequential workflow, 10 max iterations
+   - Use: In-depth research reports with critique and synthesis
 
 ### Creating Templates
 
@@ -528,11 +542,15 @@ Agents can use tools to take actions:
 
 **Built-in Tools:**
 
-| Tool                           | Purpose               | Configuration            |
-| ------------------------------ | --------------------- | ------------------------ |
-| `web_search`                   | Search the web        | Query, max results       |
-| `create_deep_research_request` | Request deep research | Question, context, depth |
-| `expert_council_execute`       | Invoke Expert Council | Prompt, mode             |
+| Tool                           | Purpose                                    | Configuration                 |
+| ------------------------------ | ------------------------------------------ | ----------------------------- |
+| `web_search`                   | Search the web (Google CSE)                | Query, max results            |
+| `serp_search`                  | Fast SERP results (Serper)                 | Query, max results, type      |
+| `read_url`                     | Extract clean markdown from URL (Jina)     | URL                           |
+| `scrape_url`                   | Scrape JS-heavy pages (Firecrawl)          | URL, formats                  |
+| `semantic_search`              | Neural/semantic search (Exa)               | Query, num results            |
+| `create_deep_research_request` | Request deep research                      | Question, context, depth      |
+| `expert_council_execute`       | Invoke Expert Council                      | Prompt, mode                  |
 
 **Custom Tools:**
 
@@ -825,7 +843,7 @@ In workspace with `supportsContentTypes: true`, select content type when creatin
 - **Available Tools List**: All tools you can grant
 - **Checkboxes**: Select which tools agent can use
 - **Tool Description**: Shown on hover
-- **Built-in Tools**: web_search, create_deep_research_request, expert_council_execute
+- **Built-in Tools**: web_search, serp_search, read_url, scrape_url, semantic_search, create_deep_research_request, expert_council_execute
 - **Custom Tools**: Your created tools
 
 #### Actions:
@@ -1016,6 +1034,41 @@ When you click a node in workflow graph:
 - **Actions**:
   - **Cancel**: Close without saving
   - **Save Prompt**: Create or update
+
+---
+
+### Search Tool API Keys (Settings Page)
+
+The Settings page includes a **Search Tools** panel for managing API keys for the new search/research tools. This is found in the Intelligence section alongside the AI Provider Keys panel.
+
+#### Search Tool Key Cards:
+
+For each tool (Serper, Firecrawl, Exa, Jina Reader):
+
+- **Status Indicator**: Connected (green) / Inactive (gray)
+- **Helper Text**: Describes what the tool does
+- **API Key Input**: Password-masked field for entering the key
+- **Save Button**: Persists key to Firestore (`users/{userId}/settings/searchToolKeys`)
+- **Clear Button**: Removes the stored key
+- **Test Button**: Verifies the key works by making a lightweight API call to the service
+
+#### Key Priority Chain:
+
+When a search tool runs during an agent workflow, keys are resolved in this order:
+
+1. **User's Firestore key** (set via Settings UI) — highest priority
+2. **Firebase Secret** (`defineSecret`) — system-level fallback
+3. **Environment variable** (`process.env`) — lowest priority
+
+This means users can supply their own keys for higher rate limits or billing isolation, while the system keys serve as fallbacks.
+
+#### Test Connection:
+
+Each tool has a "Test" button that:
+1. Reads the user's stored key from Firestore (or falls back to system key)
+2. Makes a minimal API call to the service (e.g., a single search query)
+3. Returns success/failure with latency information
+4. Displays result inline (green checkmark or red X with error message)
 
 ---
 

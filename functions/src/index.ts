@@ -32,6 +32,7 @@ export {
   summarizeProjectManagerContext,
   detectProjectManagerConflicts,
 } from './agents/projectManagerFunctions.js'
+export { testSearchToolKey, testAgentConfig } from './agents/testEndpoints.js'
 
 // ==================== Cloud Functions Configuration ====================
 

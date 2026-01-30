@@ -778,6 +778,389 @@ export const createDeepResearchRequestTool: ToolDefinition = {
 }
 
 /**
+ * Serper Search Tool: Fast SERP results with rich structured data
+ * Uses Serper API (https://serper.dev)
+ * Requires SERPER_API_KEY environment variable
+ */
+export const serpSearchTool: ToolDefinition = {
+  name: 'serp_search',
+  description:
+    'Fast web search via Serper. Returns SERP results with titles, snippets, URLs, and optionally People Also Ask and Knowledge Graph data. Supports web search and news search.',
+  parameters: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: 'Search query (required)',
+      },
+      maxResults: {
+        type: 'number',
+        description: 'Maximum number of results to return (default: 5, max: 10)',
+      },
+      searchType: {
+        type: 'string',
+        description: 'Type of search: "search" for web results, "news" for news results (default: "search")',
+      },
+    },
+    required: ['query'],
+  },
+  execute: async (params, context) => {
+    const query = params.query as string
+    const maxResults = Math.min((params.maxResults as number) || 5, 10)
+    const searchType = (params.searchType as string) || 'search'
+
+    const apiKey = context?.searchToolKeys?.serper || process.env.SERPER_API_KEY
+
+    if (!apiKey) {
+      return {
+        query,
+        results: [],
+        note: 'Serper API key not configured. Set SERPER_API_KEY in Firebase Functions secrets.',
+      }
+    }
+
+    try {
+      const endpoint =
+        searchType === 'news'
+          ? 'https://google.serper.dev/news'
+          : 'https://google.serper.dev/search'
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          q: query,
+          num: maxResults,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Serper API error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = (await response.json()) as {
+        organic?: Array<{
+          title: string
+          snippet: string
+          link: string
+          position: number
+          date?: string
+        }>
+        news?: Array<{
+          title: string
+          snippet: string
+          link: string
+          date?: string
+          source?: string
+        }>
+        peopleAlsoAsk?: Array<{
+          question: string
+          snippet: string
+        }>
+        knowledgeGraph?: {
+          title?: string
+          type?: string
+          description?: string
+        }
+      }
+
+      const results =
+        searchType === 'news'
+          ? (data.news || []).map((item) => ({
+              title: item.title,
+              snippet: item.snippet,
+              url: item.link,
+              date: item.date,
+              source: item.source,
+            }))
+          : (data.organic || []).map((item) => ({
+              title: item.title,
+              snippet: item.snippet,
+              url: item.link,
+              position: item.position,
+            }))
+
+      return {
+        query,
+        searchType,
+        count: results.length,
+        results,
+        peopleAlsoAsk: data.peopleAlsoAsk?.slice(0, 3),
+        knowledgeGraph: data.knowledgeGraph,
+        note:
+          results.length === 0
+            ? `No results found for "${query}"`
+            : `Found ${results.length} results for "${query}"`,
+      }
+    } catch (error) {
+      throw new Error(`Serper search failed: ${(error as Error).message}`)
+    }
+  },
+}
+
+/**
+ * Jina Reader Tool: Free URL-to-clean-markdown extraction
+ * Uses Jina Reader API (https://jina.ai/reader)
+ * No API key required for basic usage; optional JINA_API_KEY for higher rate limits
+ */
+export const readUrlTool: ToolDefinition = {
+  name: 'read_url',
+  description:
+    'Read any URL and extract its content as clean markdown. Uses Jina Reader for reliable extraction. Good for reading articles, blog posts, documentation, and other web pages.',
+  parameters: {
+    type: 'object',
+    properties: {
+      url: {
+        type: 'string',
+        description: 'The full URL to read (required)',
+      },
+    },
+    required: ['url'],
+  },
+  execute: async (params, context) => {
+    const url = params.url as string
+
+    if (!url || !url.startsWith('http')) {
+      throw new Error('A valid URL starting with http:// or https:// is required')
+    }
+
+    try {
+      const headers: Record<string, string> = {
+        Accept: 'text/plain',
+      }
+
+      const jinaKey = context?.searchToolKeys?.jina || process.env.JINA_API_KEY
+      if (jinaKey) {
+        headers['Authorization'] = `Bearer ${jinaKey}`
+      }
+
+      const response = await fetch(`https://r.jina.ai/${url}`, { headers })
+
+      if (!response.ok) {
+        throw new Error(`Jina Reader error: ${response.status} ${response.statusText}`)
+      }
+
+      const content = await response.text()
+
+      // Extract title from the first markdown heading if present
+      const titleMatch = content.match(/^#\s+(.+)$/m)
+      const title = titleMatch?.[1] || url
+
+      // Truncate very long content to avoid token bloat
+      const maxLength = 15000
+      const truncated = content.length > maxLength
+      const trimmedContent = truncated ? content.substring(0, maxLength) + '\n\n[... content truncated]' : content
+
+      return {
+        url,
+        title,
+        content: trimmedContent,
+        wordCount: content.split(/\s+/).length,
+        truncated,
+        note: `Successfully extracted content from "${title}" (${content.split(/\s+/).length} words)`,
+      }
+    } catch (error) {
+      throw new Error(`URL reading failed: ${(error as Error).message}`)
+    }
+  },
+}
+
+/**
+ * Firecrawl Scrape Tool: Robust scraping for JS-heavy or blocked sites
+ * Uses Firecrawl API (https://firecrawl.dev)
+ * Requires FIRECRAWL_API_KEY environment variable
+ */
+export const scrapeUrlTool: ToolDefinition = {
+  name: 'scrape_url',
+  description:
+    'Scrape a web page and extract content as markdown. Handles JavaScript-rendered pages and sites that block simple fetching. Use this as a fallback when read_url fails.',
+  parameters: {
+    type: 'object',
+    properties: {
+      url: {
+        type: 'string',
+        description: 'The full URL to scrape (required)',
+      },
+    },
+    required: ['url'],
+  },
+  execute: async (params, context) => {
+    const url = params.url as string
+
+    if (!url || !url.startsWith('http')) {
+      throw new Error('A valid URL starting with http:// or https:// is required')
+    }
+
+    const apiKey = context?.searchToolKeys?.firecrawl || process.env.FIRECRAWL_API_KEY
+
+    if (!apiKey) {
+      return {
+        url,
+        content: '',
+        note: 'Firecrawl API key not configured. Set FIRECRAWL_API_KEY in Firebase Functions secrets.',
+      }
+    }
+
+    try {
+      const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url,
+          formats: ['markdown'],
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Firecrawl API error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = (await response.json()) as {
+        success: boolean
+        data?: {
+          markdown?: string
+          metadata?: {
+            title?: string
+            description?: string
+            sourceURL?: string
+          }
+        }
+      }
+
+      if (!data.success || !data.data) {
+        throw new Error('Firecrawl scraping failed - no content returned')
+      }
+
+      const content = data.data.markdown || ''
+      const title = data.data.metadata?.title || url
+
+      // Truncate very long content
+      const maxLength = 15000
+      const truncated = content.length > maxLength
+      const trimmedContent = truncated ? content.substring(0, maxLength) + '\n\n[... content truncated]' : content
+
+      return {
+        url,
+        title,
+        content: trimmedContent,
+        wordCount: content.split(/\s+/).length,
+        truncated,
+        metadata: data.data.metadata,
+        note: `Successfully scraped "${title}" (${content.split(/\s+/).length} words)`,
+      }
+    } catch (error) {
+      throw new Error(`Firecrawl scraping failed: ${(error as Error).message}`)
+    }
+  },
+}
+
+/**
+ * Exa Semantic Search Tool: Neural/semantic search for conceptual discovery
+ * Uses Exa API (https://exa.ai)
+ * Requires EXA_API_KEY environment variable
+ */
+export const semanticSearchTool: ToolDefinition = {
+  name: 'semantic_search',
+  description:
+    'Neural/semantic search that finds conceptually related content, not just keyword matches. Good for discovering research, articles, and resources related to a concept or idea. Use this alongside serp_search for comprehensive research.',
+  parameters: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: 'Search query describing the concept or topic (required)',
+      },
+      numResults: {
+        type: 'number',
+        description: 'Number of results to return (default: 5, max: 10)',
+      },
+      useAutoprompt: {
+        type: 'boolean',
+        description: 'Let Exa optimize the query for better results (default: true)',
+      },
+    },
+    required: ['query'],
+  },
+  execute: async (params, context) => {
+    const query = params.query as string
+    const numResults = Math.min((params.numResults as number) || 5, 10)
+    const useAutoprompt = params.useAutoprompt !== false
+
+    const apiKey = context?.searchToolKeys?.exa || process.env.EXA_API_KEY
+
+    if (!apiKey) {
+      return {
+        query,
+        results: [],
+        note: 'Exa API key not configured. Set EXA_API_KEY in Firebase Functions secrets.',
+      }
+    }
+
+    try {
+      const response = await fetch('https://api.exa.ai/search', {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          numResults,
+          useAutoprompt,
+          contents: {
+            text: { maxCharacters: 500 },
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Exa API error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = (await response.json()) as {
+        results: Array<{
+          title: string
+          url: string
+          text?: string
+          score: number
+          publishedDate?: string
+          author?: string
+        }>
+        autopromptString?: string
+      }
+
+      const results = (data.results || []).map((item) => ({
+        title: item.title,
+        url: item.url,
+        snippet: item.text || '',
+        score: item.score,
+        publishedDate: item.publishedDate,
+        author: item.author,
+      }))
+
+      return {
+        query,
+        optimizedQuery: data.autopromptString,
+        count: results.length,
+        results,
+        note:
+          results.length === 0
+            ? `No semantic results found for "${query}"`
+            : `Found ${results.length} semantically related results for "${query}"`,
+      }
+    } catch (error) {
+      throw new Error(`Exa semantic search failed: ${(error as Error).message}`)
+    }
+  },
+}
+
+/**
  * Export all advanced tools for registration
  */
 export const advancedTools: ToolDefinition[] = [
@@ -790,4 +1173,8 @@ export const advancedTools: ToolDefinition[] = [
   tagParagraphTool,
   createDeepResearchRequestTool,
   webSearchTool,
+  serpSearchTool,
+  readUrlTool,
+  scrapeUrlTool,
+  semanticSearchTool,
 ]

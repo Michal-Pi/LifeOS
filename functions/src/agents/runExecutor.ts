@@ -25,7 +25,15 @@ import {
   createExpertCouncilRepository,
 } from './expertCouncil.js'
 import { buildConversationContext } from './messageStore.js'
-import { loadProviderKeys, OPENAI_API_KEY, ANTHROPIC_API_KEY } from './providerKeys.js'
+import {
+  loadProviderKeys,
+  loadSearchToolKeys,
+  OPENAI_API_KEY,
+  ANTHROPIC_API_KEY,
+  SERPER_API_KEY,
+  FIRECRAWL_API_KEY,
+  EXA_API_KEY,
+} from './providerKeys.js'
 import { checkQuota, updateQuota, shouldSendQuotaAlert } from './quotaManager.js'
 import { checkRunRateLimit, recordRunUsage } from './rateLimiter.js'
 import { createRunEventWriter } from './runEvents.js'
@@ -52,7 +60,7 @@ export const onRunCreated = onDocumentCreated(
   {
     ...FUNCTION_CONFIG,
     document: 'users/{userId}/workspaces/{workspaceId}/runs/{runId}',
-    secrets: [OPENAI_API_KEY, ANTHROPIC_API_KEY],
+    secrets: [OPENAI_API_KEY, ANTHROPIC_API_KEY, SERPER_API_KEY, FIRECRAWL_API_KEY, EXA_API_KEY],
   },
   async (event) => {
     const snapshot = event.data
@@ -102,7 +110,7 @@ export const onRunUpdated = onDocumentUpdated(
   {
     ...FUNCTION_CONFIG,
     document: 'users/{userId}/workspaces/{workspaceId}/runs/{runId}',
-    secrets: [OPENAI_API_KEY, ANTHROPIC_API_KEY],
+    secrets: [OPENAI_API_KEY, ANTHROPIC_API_KEY, SERPER_API_KEY, FIRECRAWL_API_KEY, EXA_API_KEY],
   },
   async (event) => {
     const snapshot = event.data
@@ -190,6 +198,9 @@ async function executeRun(params: {
     console.log(`[executeRun] Loading tool registry for user ${userId}`)
     const toolRegistry = await loadToolRegistryForUser(userId)
     console.log(`[executeRun] Tool registry loaded with ${Object.keys(toolRegistry).length} tools`)
+
+    console.log(`[executeRun] Loading search tool keys for user ${userId}`)
+    const searchToolKeys = await loadSearchToolKeys(userId)
 
     const resumeRunId =
       run.context && typeof run.context === 'object'
@@ -343,7 +354,8 @@ async function executeRun(params: {
         grok: providerKeys.grok,
       },
       eventWriter,
-      toolRegistry
+      toolRegistry,
+      searchToolKeys
     )
     console.log(`[executeRun] Workflow execution completed for run ${runId}`)
 

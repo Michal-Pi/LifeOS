@@ -22,6 +22,7 @@ import jsonLogic from 'json-logic-js'
 
 import { assertValidResearchContext, normalizeResearchQuestions } from './deepResearchValidation.js'
 import { resolvePrompt } from './promptResolver.js'
+import type { SearchToolKeys } from './providerKeys.js'
 import type { ProviderKeys } from './providerService.js'
 import { executeWithProvider, executeWithProviderStreaming } from './providerService.js'
 import type { RunEventWriter } from './runEvents.js'
@@ -80,7 +81,8 @@ export async function executeSequentialWorkflow(
   userId?: string,
   runId?: string,
   eventWriter?: RunEventWriter,
-  toolRegistry?: ToolRegistry
+  toolRegistry?: ToolRegistry,
+  searchToolKeys?: SearchToolKeys
 ): Promise<WorkflowExecutionResult> {
   const steps: AgentExecutionStep[] = []
   let currentContext = context ?? {}
@@ -107,6 +109,7 @@ export async function executeSequentialWorkflow(
             runId,
             eventWriter,
             toolRegistry,
+            searchToolKeys,
           }
         : undefined
 
@@ -226,7 +229,8 @@ export async function executeParallelWorkflow(
   userId?: string,
   runId?: string,
   eventWriter?: RunEventWriter,
-  toolRegistry?: ToolRegistry
+  toolRegistry?: ToolRegistry,
+  searchToolKeys?: SearchToolKeys
 ): Promise<WorkflowExecutionResult> {
   console.log(`Parallel workflow: Executing ${agents.length} agents concurrently`)
 
@@ -244,6 +248,7 @@ export async function executeParallelWorkflow(
             runId,
             eventWriter,
             toolRegistry,
+            searchToolKeys,
           }
         : undefined
 
@@ -356,7 +361,8 @@ export async function executeSupervisorWorkflow(
   userId?: string,
   runId?: string,
   eventWriter?: RunEventWriter,
-  toolRegistry?: ToolRegistry
+  toolRegistry?: ToolRegistry,
+  searchToolKeys?: SearchToolKeys
 ): Promise<WorkflowExecutionResult> {
   const steps: AgentExecutionStep[] = []
   const iterationLimit = Math.min(maxIterations, workspace.maxIterations ?? 10)
@@ -385,6 +391,7 @@ export async function executeSupervisorWorkflow(
           runId,
           eventWriter,
           toolRegistry,
+          searchToolKeys,
         }
       : undefined
 
@@ -477,6 +484,7 @@ export async function executeSupervisorWorkflow(
             runId,
             eventWriter,
             toolRegistry,
+            searchToolKeys,
           }
         : undefined
 
@@ -789,7 +797,8 @@ export async function executeGraphWorkflow(
   userId?: string,
   runId?: string,
   eventWriter?: RunEventWriter,
-  toolRegistry?: ToolRegistry
+  toolRegistry?: ToolRegistry,
+  searchToolKeys?: SearchToolKeys
 ): Promise<WorkflowExecutionResult> {
   if (!workspace.workflowGraph) {
     throw new Error('Graph workflow configuration missing from workspace')
@@ -1089,6 +1098,7 @@ export async function executeGraphWorkflow(
             iteration: stepCount + 1,
             eventWriter,
             toolRegistry,
+            searchToolKeys,
           }
 
           const toolResult = await tool.execute({}, toolContext)
@@ -1113,6 +1123,7 @@ export async function executeGraphWorkflow(
                 runId,
                 eventWriter,
                 toolRegistry,
+                searchToolKeys,
               }
             : undefined
 
@@ -1314,7 +1325,8 @@ export async function executeWorkflow(
   run: Run,
   apiKeys: ProviderKeys,
   eventWriter?: RunEventWriter,
-  toolRegistry?: ToolRegistry
+  toolRegistry?: ToolRegistry,
+  searchToolKeys?: SearchToolKeys
 ): Promise<WorkflowExecutionResult> {
   const db = getFirestore()
 
@@ -1419,7 +1431,8 @@ export async function executeWorkflow(
         userId,
         run.runId,
         eventWriter,
-        toolRegistry
+        toolRegistry,
+        searchToolKeys
       )
 
     case 'parallel':
@@ -1433,7 +1446,8 @@ export async function executeWorkflow(
         userId,
         run.runId,
         eventWriter,
-        toolRegistry
+        toolRegistry,
+        searchToolKeys
       )
 
     case 'supervisor': {
@@ -1455,7 +1469,8 @@ export async function executeWorkflow(
         userId,
         run.runId,
         eventWriter,
-        toolRegistry
+        toolRegistry,
+        searchToolKeys
       )
     }
 
@@ -1472,7 +1487,8 @@ export async function executeWorkflow(
         userId,
         run.runId,
         eventWriter,
-        toolRegistry
+        toolRegistry,
+        searchToolKeys
       )
 
     case 'graph':
@@ -1485,7 +1501,8 @@ export async function executeWorkflow(
         userId,
         run.runId,
         eventWriter,
-        toolRegistry
+        toolRegistry,
+        searchToolKeys
       )
 
     default:

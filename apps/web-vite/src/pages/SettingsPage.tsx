@@ -17,7 +17,9 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme } from '@/contexts/useTheme'
 import { useAiProviderKeys, type AiProviderKeyType } from '@/hooks/useAiProviderKeys'
+import { useSearchToolKeys, type SearchToolKeyType } from '@/hooks/useSearchToolKeys'
 import { useAgentMemorySettings } from '@/hooks/useAgentMemorySettings'
+import { testSearchToolKey as testSearchToolKeyCallable } from '@/lib/callables'
 import { SystemStatus } from '@/components/SystemStatus'
 import { CalendarSettingsPanel } from '@/components/CalendarSettingsPanel'
 import { EmptyState } from '@/components/EmptyState'
@@ -47,6 +49,12 @@ export function SettingsPage() {
     saveMemoryLimit,
     clearMemoryLimit,
   } = useAgentMemorySettings(user?.uid)
+  const {
+    keys: searchToolKeys,
+    isLoading: searchToolKeysLoading,
+    saveKey: saveSearchToolKey,
+    removeKey: removeSearchToolKey,
+  } = useSearchToolKeys(user?.uid)
 
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [total, setTotal] = useState(0)
@@ -72,6 +80,23 @@ export function SettingsPage() {
     xai: '',
   })
   const [keySaving, setKeySaving] = useState<Partial<Record<AiProviderKeyType, boolean>>>({})
+  const [searchToolKeyInputs, setSearchToolKeyInputs] = useState<
+    Record<SearchToolKeyType, string>
+  >({
+    serper: '',
+    firecrawl: '',
+    exa: '',
+    jina: '',
+  })
+  const [searchToolKeySaving, setSearchToolKeySaving] = useState<
+    Partial<Record<SearchToolKeyType, boolean>>
+  >({})
+  const [searchToolKeyTesting, setSearchToolKeyTesting] = useState<
+    Partial<Record<SearchToolKeyType, boolean>>
+  >({})
+  const [searchToolKeyTestResult, setSearchToolKeyTestResult] = useState<
+    Partial<Record<SearchToolKeyType, { ok: boolean; message: string }>>
+  >({})
   const [memoryLimitInput, setMemoryLimitInput] = useState('')
   const [memorySaving, setMemorySaving] = useState(false)
   const [pinnedQuoteIds, setPinnedQuoteIds] = useState<string[]>([])
@@ -164,6 +189,64 @@ export function SettingsPage() {
       }
     },
     [removeKey]
+  )
+
+  const handleSaveSearchToolKey = useCallback(
+    async (tool: SearchToolKeyType) => {
+      const value = searchToolKeyInputs[tool]?.trim()
+      if (!value) {
+        setError('Please enter a key before saving.')
+        return
+      }
+      try {
+        setSearchToolKeySaving((prev) => ({ ...prev, [tool]: true }))
+        await saveSearchToolKey(tool, value)
+        setSearchToolKeyInputs((prev) => ({ ...prev, [tool]: '' }))
+        setSearchToolKeyTestResult((prev) => ({ ...prev, [tool]: undefined }))
+      } catch (err) {
+        setError((err as Error).message)
+      } finally {
+        setSearchToolKeySaving((prev) => ({ ...prev, [tool]: false }))
+      }
+    },
+    [searchToolKeyInputs, saveSearchToolKey]
+  )
+
+  const handleRemoveSearchToolKey = useCallback(
+    async (tool: SearchToolKeyType) => {
+      try {
+        setSearchToolKeySaving((prev) => ({ ...prev, [tool]: true }))
+        await removeSearchToolKey(tool)
+        setSearchToolKeyTestResult((prev) => ({ ...prev, [tool]: undefined }))
+      } catch (err) {
+        setError((err as Error).message)
+      } finally {
+        setSearchToolKeySaving((prev) => ({ ...prev, [tool]: false }))
+      }
+    },
+    [removeSearchToolKey]
+  )
+
+  const handleTestSearchToolKey = useCallback(
+    async (tool: SearchToolKeyType) => {
+      setSearchToolKeyTesting((prev) => ({ ...prev, [tool]: true }))
+      setSearchToolKeyTestResult((prev) => ({ ...prev, [tool]: undefined }))
+      try {
+        const result = await testSearchToolKeyCallable({ toolId: tool })
+        setSearchToolKeyTestResult((prev) => ({
+          ...prev,
+          [tool]: { ok: result.data.ok, message: result.data.message },
+        }))
+      } catch (err) {
+        setSearchToolKeyTestResult((prev) => ({
+          ...prev,
+          [tool]: { ok: false, message: (err as Error).message },
+        }))
+      } finally {
+        setSearchToolKeyTesting((prev) => ({ ...prev, [tool]: false }))
+      }
+    },
+    []
   )
 
   useEffect(() => {
@@ -396,6 +479,43 @@ export function SettingsPage() {
     },
   ]
 
+  const searchToolRows: Array<{
+    id: SearchToolKeyType
+    label: string
+    saved: boolean
+    placeholder: string
+    helper: string
+  }> = [
+    {
+      id: 'serper',
+      label: 'Serper',
+      saved: Boolean(searchToolKeys.serperKey),
+      placeholder: 'your-serper-key...',
+      helper: 'Fast SERP results with People Also Ask and knowledge panels.',
+    },
+    {
+      id: 'firecrawl',
+      label: 'Firecrawl',
+      saved: Boolean(searchToolKeys.firecrawlKey),
+      placeholder: 'fc-...',
+      helper: 'Scrape JS-heavy or blocked web pages into clean markdown.',
+    },
+    {
+      id: 'exa',
+      label: 'Exa',
+      saved: Boolean(searchToolKeys.exaKey),
+      placeholder: 'your-exa-key...',
+      helper: 'Neural/semantic search for conceptually related content.',
+    },
+    {
+      id: 'jina',
+      label: 'Jina Reader',
+      saved: Boolean(searchToolKeys.jinaKey),
+      placeholder: 'jina_...',
+      helper: 'Extract clean markdown from any URL. Free without a key; key gives higher rate limits.',
+    },
+  ]
+
   const pinnedSet = useMemo(() => new Set(pinnedQuoteIds), [pinnedQuoteIds])
   const filteredQuotes = useMemo(() => {
     const query = quoteSearch.trim().toLowerCase()
@@ -588,6 +708,93 @@ export function SettingsPage() {
                   </div>
                   <span className="settings-link-card__arrow">→</span>
                 </Link>
+              </div>
+            </section>
+
+            <section className="settings-panel">
+              <header className="settings-panel__header">
+                <div>
+                  <p className="section-label">Search Tools</p>
+                  <h3>Search API Keys</h3>
+                  <p className="settings-panel__meta">
+                    Connect external search and scraping services used by research agents.
+                  </p>
+                </div>
+              </header>
+
+              {searchToolKeysLoading && (
+                <p className="settings-panel__meta">Loading search tool keys…</p>
+              )}
+
+              <div className="provider-grid">
+                {searchToolRows.map((tool) => (
+                  <div key={tool.id} className="provider-card">
+                    <div className="provider-card__header">
+                      <div>
+                        <p className="section-label">Search Tool</p>
+                        <h4>{tool.label}</h4>
+                      </div>
+                      <div className="provider-card__status">
+                        <StatusDot
+                          status={tool.saved ? 'online' : 'offline'}
+                          label={tool.saved ? 'Connected' : 'Inactive'}
+                        />
+                        <span>{tool.saved ? 'Connected' : 'Inactive'}</span>
+                      </div>
+                    </div>
+                    <p className="settings-panel__meta">{tool.helper}</p>
+                    <div className="provider-card__input">
+                      <input
+                        type="password"
+                        value={searchToolKeyInputs[tool.id]}
+                        onChange={(e) =>
+                          setSearchToolKeyInputs((prev) => ({
+                            ...prev,
+                            [tool.id]: e.target.value,
+                          }))
+                        }
+                        placeholder={tool.saved ? '••••••••••••' : tool.placeholder}
+                        className="settings-code-input"
+                      />
+                      <div className="provider-card__actions">
+                        <button
+                          type="button"
+                          className="ghost-button"
+                          onClick={() => handleRemoveSearchToolKey(tool.id)}
+                          disabled={!tool.saved || searchToolKeySaving[tool.id]}
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          className="primary-button"
+                          onClick={() => handleSaveSearchToolKey(tool.id)}
+                          disabled={searchToolKeySaving[tool.id]}
+                        >
+                          Save
+                        </button>
+                        {tool.saved && (
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            onClick={() => handleTestSearchToolKey(tool.id)}
+                            disabled={searchToolKeyTesting[tool.id]}
+                          >
+                            {searchToolKeyTesting[tool.id] ? 'Testing…' : 'Test'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {searchToolKeyTestResult[tool.id] && (
+                      <p
+                        className={`settings-panel__meta ${searchToolKeyTestResult[tool.id]?.ok ? 'settings-panel__success' : 'settings-panel__error'}`}
+                      >
+                        {searchToolKeyTestResult[tool.id]?.ok ? '✓' : '✗'}{' '}
+                        {searchToolKeyTestResult[tool.id]?.message}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
             </section>
 
