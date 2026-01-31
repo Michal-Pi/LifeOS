@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import type { ToolDefinition, ToolParameter, CreateToolInput } from '@lifeos/agents'
 import { Button } from '@/components/ui/button'
+import { Select } from '@/components/Select'
 
 interface ToolBuilderModalProps {
   tool: ToolDefinition | null
@@ -83,7 +84,7 @@ export function ToolBuilderModal({
       setError('Description is required')
       return
     }
-    if (!code.trim()) {
+    if (!isBuiltin && !code.trim()) {
       setError('Tool code is required')
       return
     }
@@ -131,7 +132,7 @@ export function ToolBuilderModal({
     }
 
     try {
-      if (tool) {
+      if (tool && !isBuiltin) {
         await onUpdate(tool.toolId, payload)
       } else {
         await onCreate(payload)
@@ -145,12 +146,14 @@ export function ToolBuilderModal({
     }
   }
 
+  const isBuiltin = tool?.source === 'builtin'
+
   if (!isOpen) return null
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>{tool ? 'Edit Tool' : 'Create Tool'}</h2>
+        <h2>{tool ? (isBuiltin ? 'Edit Built-in Tool' : 'Edit Tool') : 'Create Tool'}</h2>
 
         {error && <div className="error-message">{error}</div>}
 
@@ -169,6 +172,7 @@ export function ToolBuilderModal({
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., summarize_notes"
               required
+              readOnly={isBuiltin}
             />
           </div>
 
@@ -196,40 +200,49 @@ export function ToolBuilderModal({
           </div>
 
           <div className="form-group">
-            <label htmlFor="toolCode">Tool Code (JavaScript) *</label>
+            <label htmlFor="toolCode">Tool Code (JavaScript) {isBuiltin ? '' : '*'}</label>
             <textarea
               id="toolCode"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="return { result: params.input.toUpperCase() }"
+              placeholder={
+                isBuiltin
+                  ? 'Built-in tools are implemented server-side'
+                  : 'return { result: params.input.toUpperCase() }'
+              }
               rows={8}
-              required
+              required={!isBuiltin}
             />
-            <small>Return a JSON-serializable value. Use params and context.</small>
+            <small>
+              {isBuiltin
+                ? 'Built-in tools run server-side. Add code here to override.'
+                : 'Return a JSON-serializable value. Use params and context.'}
+            </small>
           </div>
 
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="requiresAuth">Requires Auth</label>
-              <select
+              <Select
                 id="requiresAuth"
                 value={requiresAuth ? 'yes' : 'no'}
-                onChange={(e) => setRequiresAuth(e.target.value === 'yes')}
-              >
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
+                onChange={(value) => setRequiresAuth(value === 'yes')}
+                options={[
+                  { value: 'no', label: 'No' },
+                  { value: 'yes', label: 'Yes' },
+                ]}
+              />
             </div>
             <div className="form-group">
-              <label htmlFor="allowedModules">Allowed Modules</label>
+              <label htmlFor="allowedTools">Allowed Tools</label>
               <input
-                id="allowedModules"
+                id="allowedTools"
                 type="text"
                 value={allowedModulesInput}
                 onChange={(e) => setAllowedModulesInput(e.target.value)}
                 placeholder="calendar, planner"
               />
-              <small>Optional comma-separated module list</small>
+              <small>Optional comma-separated tool list</small>
             </div>
           </div>
 
@@ -238,7 +251,13 @@ export function ToolBuilderModal({
               Cancel
             </Button>
             <Button type="submit" disabled={isSaving}>
-              {isSaving ? 'Saving...' : tool ? 'Update Tool' : 'Create Tool'}
+              {isSaving
+                ? 'Saving...'
+                : isBuiltin
+                  ? 'Save Override'
+                  : tool
+                    ? 'Update Tool'
+                    : 'Create Tool'}
             </Button>
           </div>
         </form>

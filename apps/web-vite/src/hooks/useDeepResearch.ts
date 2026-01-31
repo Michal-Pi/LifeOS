@@ -15,7 +15,7 @@ import {
   getDoc,
   arrayUnion,
 } from 'firebase/firestore'
-import { getFirestore } from 'firebase/firestore'
+import { getFirestoreClient } from '@/lib/firebase'
 import { useAuth } from './useAuth'
 import type { DeepResearchRequest, DeepResearchSource, Run, WorkspaceId } from '@lifeos/agents'
 import {
@@ -58,7 +58,7 @@ export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResear
       return
     }
 
-    const db = getFirestore()
+    const db = getFirestoreClient()
     const requestsRef = collection(
       db,
       `users/${user.uid}/workspaces/${workspaceId}/deepResearchRequests`
@@ -88,7 +88,7 @@ export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResear
       updates: Partial<Omit<DeepResearchRequest, 'requestId' | 'workspaceId' | 'userId'>>
     ) => {
       if (!user) return
-      const db = getFirestore()
+      const db = getFirestoreClient()
       const docRef = doc(
         db,
         `users/${user.uid}/workspaces/${request.workspaceId}/deepResearchRequests/${request.requestId}`
@@ -106,7 +106,7 @@ export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResear
         throw new Error('Upload content is required')
       }
 
-      const db = getFirestore()
+      const db = getFirestoreClient()
       const result = createResearchResult({
         source,
         model,
@@ -240,7 +240,7 @@ export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResear
     async (request: DeepResearchRequest) => {
       if (!user) return
       const synthesizedFindings = await synthesizeResearchFindingsWithAI(request)
-      const db = getFirestore()
+      const db = getFirestoreClient()
       const docRef = doc(
         db,
         `users/${user.uid}/workspaces/${request.workspaceId}/deepResearchRequests/${request.requestId}`

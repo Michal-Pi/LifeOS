@@ -1,0 +1,58 @@
+.supervisor-preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--background-secondary);
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.supervisor-preview__svg {
+  width: 100%;
+  min-width: 400px;
+  height: auto;
+  display: block;
+}
+
+.supervisor-preview__line {
+  stroke: var(--border-strong);
+  stroke-width: 2;
+  stroke-dasharray: 6 3;
+}
+
+.supervisor-preview__node rect {
+  fill: var(--card);
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.supervisor-preview__node--supervisor rect {
+  stroke: var(--accent);
+  stroke-width: 2;
+  fill: var(--accent-subtle);
+}
+
+.supervisor-preview__name {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--foreground);
+}
+
+.supervisor-preview__role {
+  font-size: 9px;
+  font-weight: 600;
+  fill: var(--muted-foreground);
+  letter-spacing: 0.05em;
+}
+
+.supervisor-preview__tools {
+  font-size: 8px;
+  fill: var(--muted-foreground);
+  font-style: italic;
+}
+
+.supervisor-preview__empty {
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+  padding: 1.5rem 1rem;
+}

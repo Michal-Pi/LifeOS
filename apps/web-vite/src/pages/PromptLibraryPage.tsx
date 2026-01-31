@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { PromptCategory, PromptTemplate, PromptType } from '@lifeos/agents'
 import { useAuth } from '@/hooks/useAuth'
 import { usePromptLibrary } from '@/hooks/usePromptLibrary'
 import { PromptEditor } from '@/components/agents/PromptEditor'
+import { PromptCard } from '@/components/agents/PromptCard'
 import { EmptyState } from '@/components/EmptyState'
+import { SegmentedControl } from '@/components/SegmentedControl'
+import { useDialog } from '@/contexts/useDialog'
 
 const PROMPT_TYPES: Array<PromptType | 'all'> = [
   'all',
@@ -29,7 +33,9 @@ type EditorState =
   | { mode: 'edit'; template: PromptTemplate }
 
 export function PromptLibraryPage() {
+  const navigate = useNavigate()
   const { user } = useAuth()
+  const { confirm } = useDialog()
   const [typeFilter, setTypeFilter] = useState<PromptType | 'all'>('all')
   const [categoryFilter, setCategoryFilter] = useState<PromptCategory | 'all'>('all')
   const [editorState, setEditorState] = useState<EditorState | null>(null)
@@ -45,7 +51,8 @@ export function PromptLibraryPage() {
     [typeFilter, categoryFilter]
   )
 
-  const { templates, loading, loadTemplates, getUsageStats } = usePromptLibrary(filters)
+  const { templates, loading, loadTemplates, deleteTemplate, getUsageStats } =
+    usePromptLibrary(filters)
 
   useEffect(() => {
     void loadTemplates()
@@ -70,6 +77,14 @@ export function PromptLibraryPage() {
           <p>Browse, create, and manage reusable prompts with version history.</p>
         </div>
         <div className="page-header__actions">
+          <SegmentedControl
+            value="prompts"
+            onChange={(value) => navigate(value === 'agents' ? '/agents' : '/agents/prompts')}
+            options={[
+              { value: 'agents', label: 'Agents' },
+              { value: 'prompts', label: 'Prompts' },
+            ]}
+          />
           <button
             type="button"
             className="primary-button"
@@ -142,35 +157,24 @@ export function PromptLibraryPage() {
             description="Create your first prompt template to reuse across runs."
           />
         ) : (
-          <div className="workspaces-grid">
+          <div className="prompts-grid">
             {templates.map((template) => (
-              <div key={template.templateId} className="workspace-card">
-                <div className="card-header">
-                  <h3>{template.name}</h3>
-                  <span className="badge">{template.type}</span>
-                </div>
-                <p className="description">{template.description}</p>
-                <div className="card-meta">
-                  <div>
-                    <strong>Category:</strong> {template.category}
-                  </div>
-                  <div>
-                    <strong>Version:</strong> v{template.version}
-                  </div>
-                  <div>
-                    <strong>Usage:</strong> {template.usageCount}
-                  </div>
-                </div>
-                <div className="card-actions">
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => setEditorState({ mode: 'edit', template })}
-                  >
-                    Edit
-                  </button>
-                </div>
-              </div>
+              <PromptCard
+                key={template.templateId}
+                template={template}
+                onEdit={(template) => setEditorState({ mode: 'edit', template })}
+                onDelete={async (template) => {
+                  const confirmed = await confirm({
+                    title: 'Delete prompt',
+                    description: `Delete prompt "${template.name}"? This action cannot be undone.`,
+                    confirmLabel: 'Delete',
+                    confirmVariant: 'danger',
+                  })
+                  if (confirmed) {
+                    void deleteTemplate(template.templateId)
+                  }
+                }}
+              />
             ))}
           </div>
         )}

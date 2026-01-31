@@ -22,7 +22,14 @@ export type SyncState = 'synced' | 'pending' | 'conflict'
 
 // ----- Enums -----
 
-export type AgentRole = 'planner' | 'researcher' | 'critic' | 'synthesizer' | 'executor' | 'custom'
+export type AgentRole =
+  | 'planner'
+  | 'researcher'
+  | 'critic'
+  | 'synthesizer'
+  | 'executor'
+  | 'supervisor'
+  | 'custom'
 
 export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'xai'
 
@@ -48,7 +55,7 @@ export type WorkflowNodeType =
 
 export type WorkflowEdgeConditionType = 'always' | 'equals' | 'contains' | 'regex'
 
-export type JoinAggregationMode = 'list' | 'ranked' | 'consensus'
+export type JoinAggregationMode = 'list' | 'ranked' | 'consensus' | 'synthesize' | 'dedup_combine'
 
 export type ExecutionMode = 'full' | 'quick' | 'single' | 'custom'
 
@@ -112,6 +119,7 @@ export interface Workspace {
   // Workflow configuration
   workflowType: 'sequential' | 'parallel' | 'supervisor' | 'custom' | 'graph'
   workflowGraph?: WorkflowGraph
+  parallelMergeStrategy?: JoinAggregationMode // Only used when workflowType === 'parallel'
   maxIterations?: number // Prevent infinite loops, default 10
 
   // Memory configuration (Phase 6A)

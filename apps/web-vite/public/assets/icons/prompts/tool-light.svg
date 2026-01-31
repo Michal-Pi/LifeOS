@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="prompt-tool-light-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Wrench -->
+  <path d="M38 20 L44 26 L42 28 L36 22 L28 30 L24 26 L32 18 L34 20 L38 20 Z" stroke="url(#prompt-tool-light-grad)" stroke-width="2" fill="url(#prompt-tool-light-grad)" fill-opacity="0.2"/>
+  <!-- Screwdriver -->
+  <line x1="22" y1="32" x2="32" y2="42" stroke="url(#prompt-tool-light-grad)" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M32 42 L36 46 L38 44 L34 40 Z" stroke="url(#prompt-tool-light-grad)" stroke-width="2" fill="url(#prompt-tool-light-grad)" fill-opacity="0.3"/>
+  <line x1="18" y1="28" x2="22" y2="32" stroke="url(#prompt-tool-light-grad)" stroke-width="2" stroke-linecap="round"/>
+  <!-- Accent lines -->
+  <line x1="40" y1="34" x2="44" y2="38" stroke="url(#prompt-tool-light-grad)" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+  <line x1="42" y1="32" x2="46" y2="36" stroke="url(#prompt-tool-light-grad)" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+</svg>

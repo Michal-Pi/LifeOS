@@ -11,14 +11,16 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import type { ChangeEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
 import { useAgentTemplateOperations } from '@/hooks/useAgentTemplateOperations'
 import { useToolOperations } from '@/hooks/useToolOperations'
 import { AgentBuilderModal } from '@/components/agents/AgentBuilderModal'
 import { ToolBuilderModal } from '@/components/agents/ToolBuilderModal'
 import { TemplateSaveModal } from '@/components/agents/TemplateSaveModal'
+import { AgentCard } from '@/components/agents/AgentCard'
 import { EmptyState } from '@/components/EmptyState'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import { Button } from '@/components/ui/button'
 import { useDialog } from '@/contexts/useDialog'
 import { builtinTools } from '@/agents/builtinTools'
@@ -54,7 +56,9 @@ const downloadJson = (filename: string, data: unknown) => {
 export function AgentsPage() {
   const { confirm, alert: showAlert } = useDialog()
   const navigate = useNavigate()
-  const { agents, isLoading, loadAgents } = useAgentOperations()
+  const location = useLocation()
+  const currentView = location.pathname === '/agents/prompts' ? 'prompts' : 'agents'
+  const { agents, isLoading, loadAgents, deleteAgent } = useAgentOperations()
   const {
     templates: agentTemplates,
     isLoading: templatesLoading,
@@ -269,6 +273,25 @@ export function AgentsPage() {
   const availableTools = useMemo(() => [...builtinTools, ...tools], [tools])
   const existingToolNames = useMemo(() => availableTools.map((tool) => tool.name), [availableTools])
 
+  // Convert built-in tool metadata to ToolDefinition shape for display
+  const builtinToolDefs: ToolDefinition[] = useMemo(
+    () =>
+      builtinTools.map((bt) => ({
+        toolId: bt.toolId as ToolDefinition['toolId'],
+        name: bt.name,
+        description: bt.description,
+        parameters: {},
+        requiresAuth: false,
+        source: 'builtin' as const,
+        createdAtMs: 0,
+        updatedAtMs: 0,
+      })),
+    []
+  )
+
+  // All tools for the grid: built-in first, then custom
+  const allDisplayTools = useMemo(() => [...builtinToolDefs, ...tools], [builtinToolDefs, tools])
+
   // Filter agents
   const filteredAgents = agents.filter((agent) => {
     if (roleFilter !== 'all' && agent.role !== roleFilter) return false
@@ -284,9 +307,14 @@ export function AgentsPage() {
           <p>Configure and manage your AI assistants</p>
         </div>
         <div className="page-header__actions">
-          <Button variant="ghost" type="button" onClick={() => navigate('/agents/prompts')}>
-            Prompt Library
-          </Button>
+          <SegmentedControl
+            value={currentView}
+            onChange={(value) => navigate(value === 'prompts' ? '/agents/prompts' : '/agents')}
+            options={[
+              { value: 'agents', label: 'Agents' },
+              { value: 'prompts', label: 'Prompts' },
+            ]}
+          />
           <Button onClick={handleNew}>+ New Agent</Button>
         </div>
       </header>
@@ -349,45 +377,23 @@ export function AgentsPage() {
       ) : (
         <div className="agents-grid">
           {filteredAgents.map((agent) => (
-            <div key={agent.agentId} className="agent-card">
-              <div className="card-header">
-                <h3>{agent.name}</h3>
-                <span className="badge">{agent.role}</span>
-              </div>
-
-              {agent.description && <p className="description">{agent.description}</p>}
-
-              <div className="card-meta">
-                <div>
-                  <strong>Provider:</strong> {agent.modelProvider}
-                </div>
-                <div>
-                  <strong>Model:</strong> {agent.modelName}
-                </div>
-                <div>
-                  <strong>Temperature:</strong> {agent.temperature?.toFixed(2) ?? '0.70'}
-                </div>
-                {agent.maxTokens && (
-                  <div>
-                    <strong>Max Tokens:</strong> {agent.maxTokens.toLocaleString()}
-                  </div>
-                )}
-              </div>
-
-              <div className="prompt-preview">
-                <strong>System Prompt:</strong>
-                <p>{agent.systemPrompt.substring(0, 150)}...</p>
-              </div>
-
-              <div className="card-actions">
-                <Button variant="ghost" onClick={() => handleEdit(agent)}>
-                  Edit
-                </Button>
-                <Button variant="ghost" onClick={() => handleSaveTemplate(agent)}>
-                  Save Template
-                </Button>
-              </div>
-            </div>
+            <AgentCard
+              key={agent.agentId}
+              agent={agent}
+              onEdit={handleEdit}
+              onSaveTemplate={handleSaveTemplate}
+              onDelete={async (agent) => {
+                const confirmed = await confirm({
+                  title: 'Delete agent',
+                  description: `Delete agent "${agent.name}"? This cannot be undone. Workspaces using this agent will need to be updated.`,
+                  confirmLabel: 'Delete',
+                  confirmVariant: 'danger',
+                })
+                if (confirmed) {
+                  void deleteAgent(agent.agentId)
+                }
+              }}
+            />
           ))}
         </div>
       )}
@@ -486,71 +492,76 @@ export function AgentsPage() {
 
       <details className="collapsible-section">
         <summary className="collapsible-summary">
-          <span>Modules</span>
+          <span>Tools</span>
         </summary>
         <section className="settings-panel">
           <header className="settings-panel__header">
             <div>
-              <p className="section-label">Modules</p>
-              <h2>Modules</h2>
+              <p className="section-label">Tools</p>
+              <h2>Tools</h2>
               <p className="settings-panel__meta">
-                Build reusable modules that agents can call during execution.
+                Build reusable tools that agents can call during execution.
               </p>
             </div>
-            <Button onClick={handleNewTool}>+ New Module</Button>
+            <Button onClick={handleNewTool}>+ New Tool</Button>
           </header>
 
           {toolsLoading ? (
             <div className="loading">Loading tools...</div>
-          ) : tools.length === 0 ? (
+          ) : allDisplayTools.length === 0 ? (
             <EmptyState
-              label="Modules"
+              label="Tools"
               title="System idle"
-              description="Create reusable modules so agents can call structured tools."
-              actionLabel="Create Module"
+              description="Create reusable tools so agents can call structured operations."
+              actionLabel="Create Tool"
               onAction={handleNewTool}
             />
           ) : (
             <div className="agents-grid">
-              {tools.map((tool) => (
-                <div key={tool.toolId} className="agent-card">
-                  <div className="card-header">
-                    <h3>{tool.name}</h3>
-                    <span className="badge">custom</span>
-                  </div>
-                  <p className="description">{tool.description}</p>
-                  <div className="card-meta">
-                    <div>
-                      <strong>Params:</strong> {Object.keys(tool.parameters ?? {}).length}
+              {allDisplayTools.map((tool) => {
+                const isBuiltin = tool.source === 'builtin'
+                return (
+                  <div key={tool.toolId} className="agent-card">
+                    <div className="card-header">
+                      <h3>{tool.name}</h3>
+                      <span className="badge">{isBuiltin ? 'built-in' : 'custom'}</span>
                     </div>
-                    <div>
-                      <strong>Auth:</strong> {tool.requiresAuth ? 'Required' : 'None'}
+                    <p className="description">{tool.description}</p>
+                    <div className="card-meta">
+                      <div>
+                        <strong>Params:</strong> {Object.keys(tool.parameters ?? {}).length}
+                      </div>
+                      <div>
+                        <strong>Auth:</strong> {tool.requiresAuth ? 'Required' : 'None'}
+                      </div>
+                    </div>
+                    <div className="card-actions">
+                      <Button variant="ghost" onClick={() => handleEditTool(tool)}>
+                        Edit
+                      </Button>
+                      {!isBuiltin && (
+                        <Button
+                          variant="ghost"
+                          onClick={async () => {
+                            const confirmed = await confirm({
+                              title: 'Delete tool',
+                              description: `Delete tool "${tool.name}"?`,
+                              confirmLabel: 'Delete',
+                              confirmVariant: 'danger',
+                            })
+                            if (confirmed) {
+                              void deleteTool(tool.toolId)
+                            }
+                          }}
+                          className="danger"
+                        >
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  <div className="card-actions">
-                    <Button variant="ghost" onClick={() => handleEditTool(tool)}>
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={async () => {
-                        const confirmed = await confirm({
-                          title: 'Delete tool',
-                          description: `Delete tool "${tool.name}"?`,
-                          confirmLabel: 'Delete',
-                          confirmVariant: 'danger',
-                        })
-                        if (confirmed) {
-                          void deleteTool(tool.toolId)
-                        }
-                      }}
-                      className="danger"
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </section>

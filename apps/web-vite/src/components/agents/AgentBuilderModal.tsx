@@ -13,6 +13,7 @@
 import { useState, useEffect } from 'react'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
 import { Button } from '@/components/ui/button'
+import { Select } from '@/components/Select'
 import type { AgentConfig, AgentRole, ModelProvider, ToolDefinition } from '@lifeos/agents'
 import type { BuiltinToolMeta } from '@/agents/builtinTools'
 
@@ -46,6 +47,11 @@ const ROLE_OPTIONS: { value: AgentRole; label: string; description: string }[] =
     value: 'executor',
     label: 'Executor',
     description: 'Performs tasks and takes actions',
+  },
+  {
+    value: 'supervisor',
+    label: 'Supervisor',
+    description: 'Delegates and coordinates work across agents',
   },
   { value: 'custom', label: 'Custom', description: 'Define your own role' },
 ]
@@ -221,13 +227,15 @@ export function AgentBuilderModal({
 
           <div className="form-group">
             <label htmlFor="role">Role *</label>
-            <select id="role" value={role} onChange={(e) => setRole(e.target.value as AgentRole)}>
-              {ROLE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label} - {option.description}
-                </option>
-              ))}
-            </select>
+            <Select
+              id="role"
+              value={role}
+              onChange={(value) => setRole(value as AgentRole)}
+              options={ROLE_OPTIONS.map((option) => ({
+                value: option.value,
+                label: `${option.label} - ${option.description}`,
+              }))}
+            />
           </div>
 
           <div className="form-group">
@@ -285,17 +293,12 @@ export function AgentBuilderModal({
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="provider">AI Provider *</label>
-              <select
+              <Select
                 id="provider"
                 value={modelProvider}
-                onChange={(e) => setModelProvider(e.target.value as ModelProvider)}
-              >
-                {PROVIDER_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setModelProvider(value as ModelProvider)}
+                options={PROVIDER_OPTIONS}
+              />
             </div>
 
             <div className="form-group">

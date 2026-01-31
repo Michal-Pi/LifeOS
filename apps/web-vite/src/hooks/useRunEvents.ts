@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react'
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { getFirestore } from 'firebase/firestore'
+import { getFirestoreClient } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import type { RunId } from '@lifeos/agents'
 
@@ -41,7 +41,7 @@ export function useRunEvents(runId: RunId | null) {
       return
     }
 
-    const db = getFirestore()
+    const db = getFirestoreClient()
     const eventsRef = collection(db, `users/${user.uid}/runs/${runId}/events`)
     const q = query(eventsRef, orderBy('timestampMs', 'asc'))
 

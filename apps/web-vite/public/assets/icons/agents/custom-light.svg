@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="custom-light-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Star/sparkle shape -->
+  <path d="M32 14 L34 28 L48 30 L34 32 L32 46 L30 32 L16 30 L30 28 Z" stroke="url(#custom-light-grad)" stroke-width="2" fill="url(#custom-light-grad)" fill-opacity="0.2"/>
+  <!-- Center circle -->
+  <circle cx="32" cy="30" r="5" stroke="url(#custom-light-grad)" stroke-width="2" fill="url(#custom-light-grad)" fill-opacity="0.3"/>
+  <!-- Small accent dots -->
+  <circle cx="32" cy="18" r="2" fill="url(#custom-light-grad)"/>
+  <circle cx="32" cy="42" r="2" fill="url(#custom-light-grad)"/>
+  <circle cx="20" cy="30" r="2" fill="url(#custom-light-grad)"/>
+  <circle cx="44" cy="30" r="2" fill="url(#custom-light-grad)"/>
+</svg>

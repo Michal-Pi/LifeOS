@@ -22,6 +22,7 @@ import {
 import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage'
 import { getFunctions, connectFunctionsEmulator, type Functions } from 'firebase/functions'
 import { createLogger } from '@lifeos/core'
+import { initFirestoreLifecycle } from './firestoreLifecycle'
 
 const logger = createLogger('Firebase')
 
@@ -328,6 +329,9 @@ export function getFirestoreClient(): Firestore {
     // This is expected in development with HMR - no need to warn
     logger.debug('Firestore already initialized, using existing instance')
   }
+
+  // Manage Firestore network state with browser lifecycle events
+  initFirestoreLifecycle(firestoreInstance)
 
   // Connect to emulator in development
   const env = import.meta.env

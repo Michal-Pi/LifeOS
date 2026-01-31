@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="planner-light-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Calendar/grid -->
+  <rect x="16" y="14" width="32" height="36" rx="2" stroke="url(#planner-light-grad)" stroke-width="2" fill="none"/>
+  <line x1="16" y1="22" x2="48" y2="22" stroke="url(#planner-light-grad)" stroke-width="2"/>
+  <!-- Grid dots -->
+  <circle cx="24" cy="30" r="2" fill="url(#planner-light-grad)"/>
+  <circle cx="32" cy="30" r="2" fill="url(#planner-light-grad)"/>
+  <circle cx="40" cy="30" r="2" fill="url(#planner-light-grad)"/>
+  <circle cx="24" cy="38" r="2" fill="url(#planner-light-grad)"/>
+  <circle cx="32" cy="38" r="2" fill="url(#planner-light-grad)" fill-opacity="0.5"/>
+  <circle cx="40" cy="38" r="2" fill="url(#planner-light-grad)" fill-opacity="0.5"/>
+  <!-- Check mark -->
+  <polyline points="29,41 31,43 35,39" stroke="url(#planner-light-grad)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

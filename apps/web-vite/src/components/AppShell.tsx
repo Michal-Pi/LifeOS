@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { ThemeToggle } from './ThemeToggle'
 import { GlobalSearch } from './GlobalSearch'
 
-const modules = [
+const tools = [
   { label: 'Today', href: '/', icon: '🌅' },
   { label: 'Calendar', href: '/calendar', icon: '🗓️' },
   { label: 'Planner', href: '/planner', icon: '📝' },
@@ -34,9 +34,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span>⤢</span>
           </button>
         </div>
-        <div className="sidebar-heading">Modules</div>
+        <div className="sidebar-heading">Tools</div>
         <ul>
-          {modules.map((item) => {
+          {tools.map((item) => {
             const active = pathname === item.href
             return (
               <li key={item.href}>

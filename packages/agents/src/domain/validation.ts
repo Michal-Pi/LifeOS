@@ -20,6 +20,7 @@ export const AgentRoleSchema = z.enum([
   'critic',
   'synthesizer',
   'executor',
+  'supervisor',
   'custom',
 ])
 
@@ -105,7 +106,13 @@ export const PromptTemplateSchema = z.object({
   versions: z.array(PromptVersionSchema).optional(),
 })
 
-export const JoinAggregationModeSchema = z.enum(['list', 'ranked', 'consensus'])
+export const JoinAggregationModeSchema = z.enum([
+  'list',
+  'ranked',
+  'consensus',
+  'synthesize',
+  'dedup_combine',
+])
 
 export const ExecutionModeSchema = z.enum(['full', 'quick', 'single', 'custom'])
 
@@ -263,6 +270,7 @@ export const WorkspaceSchema = z.object({
     })
     .optional(),
   workflowType: WorkflowTypeSchema,
+  parallelMergeStrategy: JoinAggregationModeSchema.optional(),
   workflowGraph: z
     .object({
       version: z.literal(1),

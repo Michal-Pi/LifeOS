@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="prompt-tone-dark-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#818cf8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a78bfa;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <path d="M16 20 L48 20 L48 36 L38 36 L32 42 L32 36 L16 36 Z" stroke="url(#prompt-tone-dark-grad)" stroke-width="2" fill="url(#prompt-tone-dark-grad)" fill-opacity="0.1"/>
+  <line x1="22" y1="26" x2="42" y2="26" stroke="url(#prompt-tone-dark-grad)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="22" y1="31" x2="36" y2="31" stroke="url(#prompt-tone-dark-grad)" stroke-width="2" stroke-linecap="round"/>
+  <path d="M50 24 Q52 28 50 32" stroke="url(#prompt-tone-dark-grad)" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M53 22 Q56 28 53 34" stroke="url(#prompt-tone-dark-grad)" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+</svg>

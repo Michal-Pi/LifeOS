@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react'
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { getFirestore } from 'firebase/firestore'
+import { getFirestoreClient } from '@/lib/firebase'
 import { useAuth } from './useAuth'
 import type { RunId, WorkflowStep } from '@lifeos/agents'
 
@@ -27,7 +27,7 @@ export function useWorkflowSteps(runId: RunId | null): UseWorkflowStepsReturn {
       return
     }
 
-    const db = getFirestore()
+    const db = getFirestoreClient()
     const stepsRef = collection(db, `users/${user.uid}/runs/${runId}/workflowSteps`)
     const q = query(stepsRef, orderBy('startedAtMs', 'asc'))
 

@@ -18,15 +18,23 @@ import { useAgentOperations } from '@/hooks/useAgentOperations'
 import { usePromptLibrary } from '@/hooks/usePromptLibrary'
 import { useAuth } from '@/hooks/useAuth'
 import { useAiProviderKeys } from '@/hooks/useAiProviderKeys'
+import { getFirstAvailableProvider, generateWithProvider } from '@/lib/aiProviderApi'
 import { Button } from '@/components/ui/button'
 import { Select, type SelectOption } from '@/components/Select'
 import { ProjectManagerConfig as ProjectManagerConfigForm } from './ProjectManagerConfig'
 import { PromptSelector } from './PromptSelector'
 import { PromptEditor } from './PromptEditor'
+import { SortableAgentList } from './SortableAgentList'
+import { ParallelMergeSelector } from './ParallelMergeSelector'
+import { WorkflowGraphDocsModal } from './WorkflowGraphDocsModal'
+import { CustomWorkflowBuilder } from './CustomWorkflowBuilder'
+import { SupervisorPreview } from './SupervisorPreview'
 import type {
   Workspace,
   WorkflowType,
   AgentId,
+  AgentRole,
+  JoinAggregationMode,
   ExpertCouncilConfig,
   ExecutionMode,
   ModelProvider,
@@ -42,6 +50,27 @@ interface WorkspaceFormModalProps {
   onClose: () => void
   onSave: () => void
 }
+
+const ROLE_LABELS: Record<AgentRole, string> = {
+  researcher: 'Researcher',
+  planner: 'Planner',
+  critic: 'Critic',
+  synthesizer: 'Synthesizer',
+  executor: 'Executor',
+  supervisor: 'Supervisor',
+  custom: 'Custom',
+}
+
+const ROLE_FILTER_OPTIONS: SelectOption[] = [
+  { value: 'all', label: 'All Types' },
+  { value: 'planner', label: 'Planner' },
+  { value: 'researcher', label: 'Researcher' },
+  { value: 'critic', label: 'Critic' },
+  { value: 'synthesizer', label: 'Synthesizer' },
+  { value: 'executor', label: 'Executor' },
+  { value: 'supervisor', label: 'Supervisor' },
+  { value: 'custom', label: 'Custom' },
+]
 
 const WORKFLOW_OPTIONS: { value: WorkflowType; label: string; description: string }[] = [
   {
@@ -203,6 +232,7 @@ export function WorkspaceFormModal({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [selectedAgentIds, setSelectedAgentIds] = useState<AgentId[]>([])
+  const [roleFilter, setRoleFilter] = useState<AgentRole | 'all'>('all')
   const [defaultAgentId, setDefaultAgentId] = useState<AgentId | undefined>(undefined)
   const [workflowType, setWorkflowType] = useState<WorkflowType>('sequential')
   const [maxIterations, setMaxIterations] = useState<number>(10)
@@ -240,6 +270,10 @@ export function WorkspaceFormModal({
   )
   const [promptConfig, setPromptConfig] = useState<Workspace['promptConfig']>()
   const [promptEditorTemplate, setPromptEditorTemplate] = useState<PromptTemplate | null>(null)
+  const [parallelMergeStrategy, setParallelMergeStrategy] = useState<JoinAggregationMode>('list')
+  const [showGraphDocs, setShowGraphDocs] = useState(false)
+  const [showCustomBuilder, setShowCustomBuilder] = useState(false)
+  const [supervisorAgentId, setSupervisorAgentId] = useState<AgentId | undefined>(undefined)
 
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -269,6 +303,12 @@ export function WorkspaceFormModal({
         setWorkflowGraphInput(
           workspace.workflowGraph ? JSON.stringify(workspace.workflowGraph, null, 2) : ''
         )
+        setParallelMergeStrategy(workspace.parallelMergeStrategy ?? 'list')
+        if (workspace.workflowType === 'supervisor' && workspace.agentIds.length > 0) {
+          setSupervisorAgentId(workspace.agentIds[0] as AgentId)
+        } else {
+          setSupervisorAgentId(undefined)
+        }
         const councilConfig = workspace.expertCouncilConfig
         const pmConfig = workspace.projectManagerConfig ?? DEFAULT_PROJECT_MANAGER_CONFIG
         if (councilConfig) {
@@ -334,6 +374,15 @@ export function WorkspaceFormModal({
         setSelectedAgentIds(prefill?.agentIds ?? [])
         setDefaultAgentId(prefill?.defaultAgentId)
         setWorkflowType(prefill?.workflowType ?? 'sequential')
+        setParallelMergeStrategy(prefill?.parallelMergeStrategy ?? 'list')
+        if (
+          (prefill?.workflowType ?? 'sequential') === 'supervisor' &&
+          (prefill?.agentIds ?? []).length > 0
+        ) {
+          setSupervisorAgentId(prefill!.agentIds![0] as AgentId)
+        } else {
+          setSupervisorAgentId(undefined)
+        }
         setMaxIterations(prefill?.maxIterations ?? 10)
         setMemoryMessageLimitInput(
           prefill?.memoryMessageLimit ? String(prefill.memoryMessageLimit) : ''
@@ -408,9 +457,12 @@ export function WorkspaceFormModal({
     setSelectedAgentIds((prev) => {
       const isSelected = prev.includes(agentId)
       if (isSelected) {
-        // Deselecting - clear default if it's this agent
+        // Deselecting - clear default/supervisor if it's this agent
         if (defaultAgentId === agentId) {
           setDefaultAgentId(undefined)
+        }
+        if (supervisorAgentId === agentId) {
+          setSupervisorAgentId(undefined)
         }
         return prev.filter((id) => id !== agentId)
       } else {
@@ -460,11 +512,16 @@ export function WorkspaceFormModal({
       return
     }
 
+    const providerConfig = getFirstAvailableProvider(providerKeys.keys)
+    if (!providerConfig) {
+      setError('No AI provider key configured. Add one in Settings.')
+      return
+    }
+
     setIsGeneratingWorkflow(true)
     setError(null)
 
     try {
-      // Use OpenAI to convert prompt to workflow graph JSON
       const systemPrompt = `You are an expert at designing AI agent workflows. Convert the user's description into a workflow graph JSON structure.
 
 The JSON should follow this schema:
@@ -473,60 +530,37 @@ The JSON should follow this schema:
   "startNodeId": "node_1",
   "nodes": [
     {
-      "nodeId": "node_1",
+      "id": "node_1",
+      "type": "agent",
       "agentId": "agent_id_here",
-      "label": "Node Name",
-      "config": {}
+      "label": "Node Name"
     }
   ],
   "edges": [
     {
-      "edgeId": "edge_1",
-      "sourceNodeId": "node_1",
-      "targetNodeId": "node_2",
-      "condition": null
+      "from": "node_1",
+      "to": "node_2",
+      "condition": { "type": "always" }
     }
   ]
 }
 
+Node types: agent, tool, human_input, join, end, research_request
+Edge condition types: always, equals, contains, regex
+
 Examples:
 1. "Sequential workflow with researcher then writer"
-   -> 2 nodes connected in sequence
+   -> 2 agent nodes connected in sequence + end node
 
 2. "Parallel research by 3 agents, then synthesize"
-   -> 3 parallel nodes all connecting to 1 synthesis node
+   -> 3 parallel agent nodes all connecting to 1 join node then end
 
 3. "Router that sends to specialist based on topic"
-   -> 1 router node with conditional edges to multiple specialist nodes
+   -> 1 router agent with conditional edges to multiple specialist agents
 
 Return ONLY valid JSON, no explanation.`
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${providerKeys.openai}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: workflowPrompt },
-          ],
-          temperature: 0.3,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      const generatedJson = data.choices[0]?.message?.content?.trim()
-
-      if (!generatedJson) {
-        throw new Error('No response from AI')
-      }
+      const generatedJson = await generateWithProvider(providerConfig, systemPrompt, workflowPrompt)
 
       // Validate it's valid JSON
       JSON.parse(generatedJson)
@@ -580,6 +614,28 @@ Return ONLY valid JSON, no explanation.`
     if (defaultAgentId && !selectedAgentIds.includes(defaultAgentId)) {
       setError('Default agent must be in the selected agents list')
       return
+    }
+
+    if (workflowType === 'parallel' && parallelMergeStrategy === 'synthesize') {
+      const selectedAgents = agents.filter((a) => selectedAgentIds.includes(a.agentId))
+      const synthesizerCount = selectedAgents.filter((a) => a.role === 'synthesizer').length
+      if (synthesizerCount === 0) {
+        errors.agents = 'Synthesize merge strategy requires exactly one Synthesizer agent'
+      } else if (synthesizerCount > 1) {
+        errors.agents =
+          'Synthesize merge strategy requires exactly one Synthesizer agent — select only one'
+      }
+    }
+
+    if (workflowType === 'supervisor') {
+      if (selectedAgentIds.length < 2) {
+        errors.agents = 'Supervisor workflow requires at least 2 agents (1 supervisor + 1 worker)'
+      }
+      if (!supervisorAgentId) {
+        errors.supervisor = 'A supervisor agent must be selected'
+      } else if (!selectedAgentIds.includes(supervisorAgentId)) {
+        errors.supervisor = 'The selected supervisor must be among the selected agents'
+      }
     }
 
     if (maxIterations < 1 || maxIterations > 50) {
@@ -698,15 +754,15 @@ Return ONLY valid JSON, no explanation.`
     }
 
     let workflowGraph: Workspace['workflowGraph'] | undefined
-    if (workflowType === 'graph') {
-      if (!workflowGraphInput.trim()) {
-        errors.workflowGraph = 'Workflow graph JSON is required for graph workflows'
-      } else {
+    if (workflowType === 'graph' || workflowType === 'custom') {
+      if (workflowGraphInput.trim()) {
         try {
           workflowGraph = JSON.parse(workflowGraphInput) as Workspace['workflowGraph']
         } catch {
           errors.workflowGraph = 'Workflow graph JSON is invalid'
         }
+      } else if (workflowType === 'graph') {
+        errors.workflowGraph = 'Workflow graph JSON is required for graph workflows'
       }
     }
 
@@ -756,13 +812,20 @@ Return ONLY valid JSON, no explanation.`
               : expertCouncilCacheHours,
           }
 
+      // For supervisor workflows, ensure supervisor is first in agentIds
+      const finalAgentIds =
+        workflowType === 'supervisor' && supervisorAgentId
+          ? [supervisorAgentId, ...selectedAgentIds.filter((id) => id !== supervisorAgentId)]
+          : selectedAgentIds
+
       const input = {
         name: name.trim(),
         description: description.trim() || undefined,
-        agentIds: selectedAgentIds,
+        agentIds: finalAgentIds,
         defaultAgentId,
         workflowType,
         workflowGraph,
+        parallelMergeStrategy: workflowType === 'parallel' ? parallelMergeStrategy : undefined,
         maxIterations,
         memoryMessageLimit,
         expertCouncilConfig,
@@ -787,6 +850,16 @@ Return ONLY valid JSON, no explanation.`
 
   // Filter active agents only
   const activeAgents = agents.filter((agent) => !agent.archived)
+
+  // Filter by role
+  const filteredAgents = useMemo(
+    () =>
+      roleFilter === 'all'
+        ? activeAgents
+        : activeAgents.filter((agent) => agent.role === roleFilter),
+    [activeAgents, roleFilter]
+  )
+
   const defaultAgentOptions = useMemo<SelectOption[]>(
     () => [
       { value: DEFAULT_AGENT_OPTION, label: 'None' },
@@ -851,29 +924,68 @@ Return ONLY valid JSON, no explanation.`
             </div>
 
             <div className="form-group">
-              <label>Select Agents *</label>
+              <div className="agent-selection-header">
+                <label>Select Agents *</label>
+                <Select
+                  options={ROLE_FILTER_OPTIONS}
+                  value={roleFilter}
+                  onValueChange={(value) => setRoleFilter(value as AgentRole | 'all')}
+                  placeholder="Filter by type"
+                  className="role-filter-select"
+                />
+              </div>
               {activeAgents.length === 0 ? (
                 <div className="empty-state">
                   <p>No agents available. Create an agent first.</p>
                 </div>
+              ) : filteredAgents.length === 0 ? (
+                <div className="empty-state">
+                  <p>No agents match the selected filter. Try a different type.</p>
+                </div>
               ) : (
                 <div className={`agent-selection ${validationErrors.agents ? 'error' : ''}`}>
-                  {activeAgents.map((agent) => (
-                    <div key={agent.agentId} className="agent-checkbox">
-                      <label>
+                  {filteredAgents.map((agent) => {
+                    const isSelected = selectedAgentIds.includes(agent.agentId)
+                    return (
+                      <div
+                        key={agent.agentId}
+                        className={`agent-selection-item ${isSelected ? 'selected' : ''}`}
+                        tabIndex={0}
+                        role="button"
+                        onClick={() => handleAgentToggle(agent.agentId)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            handleAgentToggle(agent.agentId)
+                          }
+                        }}
+                      >
                         <input
                           type="checkbox"
-                          checked={selectedAgentIds.includes(agent.agentId)}
+                          id={`agent-${agent.agentId}`}
+                          checked={isSelected}
                           onChange={() => handleAgentToggle(agent.agentId)}
+                          className="agent-selection-checkbox"
+                          onClick={(e) => e.stopPropagation()}
                         />
-                        <span className="agent-info">
-                          <strong>{agent.name}</strong>
-                          <span className="badge">{agent.role}</span>
-                          {agent.description && <small>{agent.description}</small>}
-                        </span>
-                      </label>
-                    </div>
-                  ))}
+                        <div className="agent-selection-content">
+                          <div className="agent-selection-header">
+                            <label
+                              htmlFor={`agent-${agent.agentId}`}
+                              className="agent-selection-name"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {agent.name}
+                            </label>
+                            <span className="agent-selection-badge">{ROLE_LABELS[agent.role]}</span>
+                          </div>
+                          {agent.description && (
+                            <p className="agent-selection-description">{agent.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
               {validationErrors.agents && (
@@ -904,10 +1016,102 @@ Return ONLY valid JSON, no explanation.`
               <Select
                 id="workflowType"
                 value={workflowType}
-                onChange={(value) => setWorkflowType(value as WorkflowType)}
+                onChange={(value) => {
+                  const newType = value as WorkflowType
+                  setWorkflowType(newType)
+                  if (newType !== 'supervisor') {
+                    setSupervisorAgentId(undefined)
+                  }
+                }}
                 options={WORKFLOW_SELECT_OPTIONS}
               />
             </div>
+
+            {(workflowType === 'sequential' || workflowType === 'parallel') &&
+              selectedAgentIds.length > 1 && (
+                <div className="form-group">
+                  <label>
+                    {workflowType === 'sequential' ? 'Execution Order' : 'Output Order'} (drag to
+                    reorder)
+                  </label>
+                  <SortableAgentList
+                    agents={activeAgents.filter((a) => selectedAgentIds.includes(a.agentId))}
+                    orderedIds={selectedAgentIds}
+                    onReorder={setSelectedAgentIds}
+                  />
+                  {workflowType === 'parallel' && (
+                    <small>Controls the order in which agent outputs are combined</small>
+                  )}
+                </div>
+              )}
+
+            {workflowType === 'parallel' && (
+              <div className="form-group">
+                <label>Merge Strategy</label>
+                <ParallelMergeSelector
+                  value={parallelMergeStrategy}
+                  onChange={setParallelMergeStrategy}
+                  selectedAgents={activeAgents.filter((a) => selectedAgentIds.includes(a.agentId))}
+                />
+              </div>
+            )}
+
+            {workflowType === 'supervisor' &&
+              selectedAgentIds.length > 0 &&
+              (() => {
+                const supervisorCandidates = activeAgents.filter(
+                  (a) => selectedAgentIds.includes(a.agentId) && a.role === 'supervisor'
+                )
+                const workerAgents = activeAgents.filter(
+                  (a) => selectedAgentIds.includes(a.agentId) && a.agentId !== supervisorAgentId
+                )
+                const supervisorAgent = supervisorAgentId
+                  ? activeAgents.find((a) => a.agentId === supervisorAgentId)
+                  : undefined
+
+                return (
+                  <>
+                    <div className="form-group">
+                      <label htmlFor="supervisorAgent">Supervisor Agent *</label>
+                      {supervisorCandidates.length === 0 ? (
+                        <div className="merge-selector__warning">
+                          No supervisor-role agents found among selected agents. Create an agent
+                          with the &quot;Supervisor&quot; role first, then select it here.
+                        </div>
+                      ) : (
+                        <Select
+                          id="supervisorAgent"
+                          value={supervisorAgentId ?? ''}
+                          onChange={(value) => setSupervisorAgentId(value as AgentId)}
+                          options={supervisorCandidates.map((a) => ({
+                            value: a.agentId,
+                            label: a.name,
+                          }))}
+                          placeholder="Select a supervisor agent"
+                        />
+                      )}
+                      {validationErrors.supervisor && (
+                        <span className="field-error">{validationErrors.supervisor}</span>
+                      )}
+                      <small>
+                        The supervisor breaks the problem into sub-tasks, dispatches to workers,
+                        validates results, and decides next steps. Worker agents and their tools are
+                        passed as context automatically.
+                      </small>
+                    </div>
+
+                    {supervisorAgent && workerAgents.length > 0 && (
+                      <div className="form-group">
+                        <label>Supervisor Overview</label>
+                        <SupervisorPreview
+                          supervisorAgent={supervisorAgent}
+                          workerAgents={workerAgents}
+                        />
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
 
             {workflowType === 'graph' && (
               <>
@@ -928,12 +1132,14 @@ Return ONLY valid JSON, no explanation.`
                     variant="secondary"
                     onClick={handleGenerateWorkflowFromPrompt}
                     disabled={
-                      isGeneratingWorkflow || !workflowPrompt.trim() || !providerKeys.openai
+                      isGeneratingWorkflow ||
+                      !workflowPrompt.trim() ||
+                      connectedProviders.length === 0
                     }
                   >
-                    {isGeneratingWorkflow ? 'Generating...' : '🪄 Generate JSON from Description'}
+                    {isGeneratingWorkflow ? 'Generating...' : 'Generate JSON from Description'}
                   </Button>
-                  {!providerKeys.openai && (
+                  {connectedProviders.length === 0 && (
                     <small
                       style={{
                         display: 'block',
@@ -941,13 +1147,24 @@ Return ONLY valid JSON, no explanation.`
                         color: 'var(--destructive)',
                       }}
                     >
-                      OpenAI API key required in Settings
+                      An AI provider API key is required. Add one in Settings (OpenAI, Anthropic,
+                      xAI, or Google).
                     </small>
                   )}
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="workflowGraph">Workflow Graph (JSON)</label>
+                  <label htmlFor="workflowGraph">
+                    Workflow Graph (JSON)
+                    <button
+                      type="button"
+                      className="help-icon-btn"
+                      onClick={() => setShowGraphDocs(true)}
+                      title="Graph documentation"
+                    >
+                      ?
+                    </button>
+                  </label>
                   <textarea
                     id="workflowGraph"
                     value={workflowGraphInput}
@@ -970,6 +1187,38 @@ Return ONLY valid JSON, no explanation.`
                   )}
                 </div>
               </>
+            )}
+
+            {workflowType === 'custom' && (
+              <div className="form-group">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowCustomBuilder(true)}
+                >
+                  Open Visual Builder
+                </Button>
+                {workflowGraphInput &&
+                  (() => {
+                    try {
+                      const parsed = JSON.parse(workflowGraphInput)
+                      return (
+                        <small
+                          style={{
+                            marginTop: '0.25rem',
+                            display: 'block',
+                            color: 'var(--success)',
+                          }}
+                        >
+                          Graph configured ({parsed.nodes?.length ?? 0} nodes,{' '}
+                          {parsed.edges?.length ?? 0} edges)
+                        </small>
+                      )
+                    } catch {
+                      return null
+                    }
+                  })()}
+              </div>
             )}
 
             <div className="form-group">
@@ -1055,12 +1304,13 @@ Return ONLY valid JSON, no explanation.`
                   const agent = agents.find((entry) => entry.agentId === agentId)
                   return (
                     <div key={agentId} className="prompt-config-row">
-                      <span>{agent?.name ?? agentId}</span>
+                      <span className="agent-prompt-name">{agent?.name ?? agentId}</span>
                       <PromptSelector
                         type="agent"
                         value={promptConfig?.agentPrompts?.[agentId] ?? { type: 'custom' }}
                         onChange={(ref) => updateAgentPrompt(agentId, ref)}
                         onEditTemplate={handleEditPromptTemplate}
+                        agentName={agent?.name}
                       />
                     </div>
                   )
@@ -1449,6 +1699,27 @@ Return ONLY valid JSON, no explanation.`
           </div>
         </div>
       )}
+      <WorkflowGraphDocsModal isOpen={showGraphDocs} onClose={() => setShowGraphDocs(false)} />
+      <CustomWorkflowBuilder
+        isOpen={showCustomBuilder}
+        onClose={() => setShowCustomBuilder(false)}
+        initialGraph={
+          workflowGraphInput
+            ? (() => {
+                try {
+                  return JSON.parse(workflowGraphInput)
+                } catch {
+                  return undefined
+                }
+              })()
+            : undefined
+        }
+        agents={activeAgents}
+        onSave={(graph) => {
+          setWorkflowGraphInput(JSON.stringify(graph, null, 2))
+          setShowCustomBuilder(false)
+        }}
+      />
     </>
   )
 }

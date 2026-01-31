@@ -553,483 +553,578 @@ export function SettingsPage() {
       )}
 
       <div className="settings-sections">
-        <section className="settings-section">
-          <header className="settings-section__header">
-            <div>
-              <p className="section-label">Intelligence</p>
-              <h2>Intelligence</h2>
-              <p className="settings-section__meta">
-                Connect providers and define how much context your agents remember by default.
-              </p>
-            </div>
-          </header>
+        <details className="collapsible-section" open>
+          <summary className="collapsible-summary">
+            <span>Intelligence</span>
+          </summary>
+          <section className="settings-section">
+            <header className="settings-section__header">
+              <div>
+                <p className="section-label">Intelligence</p>
+                <h2>Intelligence</h2>
+                <p className="settings-section__meta">
+                  Connect providers and define how much context your agents remember by default.
+                </p>
+              </div>
+            </header>
 
-          <div className="settings-section__grid">
-            <section className="settings-panel">
-              <header className="settings-panel__header">
-                <div>
-                  <p className="section-label">Appearance</p>
-                  <h3>Theme Mode</h3>
-                  <p className="settings-panel__meta">
-                    Choose a theme or follow system settings. Auto can use OS or a custom schedule.
-                  </p>
-                </div>
-              </header>
-              <div className="settings-panel__content theme-controls">
-                <div className="theme-control-row">
-                  <SegmentedControl
-                    value={mode}
-                    onChange={(value) => setMode(value as 'light' | 'dark' | 'auto')}
-                    options={[
-                      { value: 'light', label: 'Light' },
-                      { value: 'dark', label: 'Dark' },
-                      { value: 'auto', label: 'Auto' },
-                    ]}
-                  />
-                </div>
-                {mode === 'auto' && (
-                  <div className="theme-auto-controls">
-                    <div className="theme-control-row">
-                      <SegmentedControl
-                        value={autoMode}
-                        onChange={(value) => setAutoMode(value as 'system' | 'schedule')}
-                        options={[
-                          { value: 'system', label: 'Follow OS' },
-                          { value: 'schedule', label: 'Scheduled' },
-                        ]}
-                      />
-                    </div>
-                    {autoMode === 'schedule' && (
-                      <div className="theme-schedule-grid">
-                        <div className="form-group">
-                          <label htmlFor="theme-schedule-start">Dark mode starts</label>
-                          <input
-                            id="theme-schedule-start"
-                            type="time"
-                            value={schedule.start}
-                            onChange={(event) =>
-                              setSchedule({ ...schedule, start: event.target.value })
-                            }
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label htmlFor="theme-schedule-end">Dark mode ends</label>
-                          <input
-                            id="theme-schedule-end"
-                            type="time"
-                            value={schedule.end}
-                            onChange={(event) =>
-                              setSchedule({ ...schedule, end: event.target.value })
-                            }
-                          />
-                        </div>
-                      </div>
-                    )}
-                    {autoMode === 'schedule' && (!schedule.start || !schedule.end) && (
-                      <p className="settings-panel__meta theme-schedule-hint">
-                        Set both start and end times to enable scheduled switching.
-                      </p>
-                    )}
+            <div className="settings-section__grid">
+              <section className="settings-panel">
+                <header className="settings-panel__header">
+                  <div>
+                    <p className="section-label">Appearance</p>
+                    <h3>Theme Mode</h3>
+                    <p className="settings-panel__meta">
+                      Choose a theme or follow system settings. Auto can use OS or a custom
+                      schedule.
+                    </p>
                   </div>
+                </header>
+                <div className="settings-panel__content theme-controls">
+                  <div className="theme-control-row">
+                    <SegmentedControl
+                      value={mode}
+                      onChange={(value) => setMode(value as 'light' | 'dark' | 'auto')}
+                      options={[
+                        { value: 'light', label: 'Light' },
+                        { value: 'dark', label: 'Dark' },
+                        { value: 'auto', label: 'Auto' },
+                      ]}
+                    />
+                  </div>
+                  {mode === 'auto' && (
+                    <div className="theme-auto-controls">
+                      <div className="theme-control-row">
+                        <SegmentedControl
+                          value={autoMode}
+                          onChange={(value) => setAutoMode(value as 'system' | 'schedule')}
+                          options={[
+                            { value: 'system', label: 'Follow OS' },
+                            { value: 'schedule', label: 'Scheduled' },
+                          ]}
+                        />
+                      </div>
+                      {autoMode === 'schedule' && (
+                        <div className="theme-schedule-grid">
+                          <div className="form-group">
+                            <label htmlFor="theme-schedule-start">Dark mode starts</label>
+                            <input
+                              id="theme-schedule-start"
+                              type="time"
+                              value={schedule.start}
+                              onChange={(event) =>
+                                setSchedule({ ...schedule, start: event.target.value })
+                              }
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="theme-schedule-end">Dark mode ends</label>
+                            <input
+                              id="theme-schedule-end"
+                              type="time"
+                              value={schedule.end}
+                              onChange={(event) =>
+                                setSchedule({ ...schedule, end: event.target.value })
+                              }
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {autoMode === 'schedule' && (!schedule.start || !schedule.end) && (
+                        <p className="settings-panel__meta theme-schedule-hint">
+                          Set both start and end times to enable scheduled switching.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </section>
+              <section className="settings-panel">
+                <header className="settings-panel__header">
+                  <div>
+                    <p className="section-label">AI Providers</p>
+                    <h3>Provider Keys</h3>
+                    <p className="settings-panel__meta">
+                      Keys live per account. Connect only what you plan to use.
+                    </p>
+                  </div>
+                </header>
+
+                {providerKeysError && (
+                  <p className="settings-panel__error">⚠ {providerKeysError}</p>
                 )}
-              </div>
-            </section>
-            <section className="settings-panel">
-              <header className="settings-panel__header">
-                <div>
-                  <p className="section-label">AI Providers</p>
-                  <h3>Provider Keys</h3>
-                  <p className="settings-panel__meta">
-                    Keys live per account. Connect only what you plan to use.
-                  </p>
-                </div>
-              </header>
+                {providerKeysLoading && <p className="settings-panel__meta">Loading keys…</p>}
 
-              {providerKeysError && <p className="settings-panel__error">⚠ {providerKeysError}</p>}
-              {providerKeysLoading && <p className="settings-panel__meta">Loading keys…</p>}
-
-              <div className="provider-grid">
-                {providerRows.map((provider) => (
-                  <div key={provider.id} className="provider-card">
-                    <div className="provider-card__header">
-                      <div>
-                        <p className="section-label">Provider</p>
-                        <h4>{provider.label}</h4>
+                <div className="provider-grid">
+                  {providerRows.map((provider) => (
+                    <div key={provider.id} className="provider-card">
+                      <div className="provider-card__header">
+                        <div>
+                          <p className="section-label">Provider</p>
+                          <h4>{provider.label}</h4>
+                        </div>
+                        <div className="provider-card__status">
+                          <StatusDot
+                            status={provider.saved ? 'online' : 'offline'}
+                            label={provider.saved ? 'Connected' : 'Inactive'}
+                          />
+                          <span>{provider.saved ? 'Connected' : 'Inactive'}</span>
+                        </div>
                       </div>
-                      <div className="provider-card__status">
-                        <StatusDot
-                          status={provider.saved ? 'online' : 'offline'}
-                          label={provider.saved ? 'Connected' : 'Inactive'}
+                      <p className="settings-panel__meta">{provider.helper}</p>
+                      <div className="provider-card__input">
+                        <input
+                          type="password"
+                          value={keyInputs[provider.id]}
+                          onChange={(e) =>
+                            setKeyInputs((prev) => ({ ...prev, [provider.id]: e.target.value }))
+                          }
+                          placeholder={provider.saved ? '••••••••••••' : provider.placeholder}
+                          className="settings-code-input"
                         />
-                        <span>{provider.saved ? 'Connected' : 'Inactive'}</span>
-                      </div>
-                    </div>
-                    <p className="settings-panel__meta">{provider.helper}</p>
-                    <div className="provider-card__input">
-                      <input
-                        type="password"
-                        value={keyInputs[provider.id]}
-                        onChange={(e) =>
-                          setKeyInputs((prev) => ({ ...prev, [provider.id]: e.target.value }))
-                        }
-                        placeholder={provider.saved ? '••••••••••••' : provider.placeholder}
-                        className="settings-code-input"
-                      />
-                      <div className="provider-card__actions">
-                        <button
-                          type="button"
-                          className="ghost-button"
-                          onClick={() => handleRemoveKey(provider.id)}
-                          disabled={!provider.saved || keySaving[provider.id]}
-                        >
-                          Clear
-                        </button>
-                        <button
-                          type="button"
-                          className="primary-button"
-                          onClick={() => handleSaveKey(provider.id)}
-                          disabled={keySaving[provider.id]}
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="settings-panel__footer">
-                <Link to="/settings/models" className="settings-link-card">
-                  <div className="settings-link-card__content">
-                    <h4>Default Model Settings</h4>
-                    <p>Configure default models for each AI provider</p>
-                  </div>
-                  <span className="settings-link-card__arrow">→</span>
-                </Link>
-              </div>
-            </section>
-
-            <section className="settings-panel">
-              <header className="settings-panel__header">
-                <div>
-                  <p className="section-label">Search Tools</p>
-                  <h3>Search API Keys</h3>
-                  <p className="settings-panel__meta">
-                    Connect external search and scraping services used by research agents.
-                  </p>
-                </div>
-              </header>
-
-              {searchToolKeysLoading && (
-                <p className="settings-panel__meta">Loading search tool keys…</p>
-              )}
-
-              <div className="provider-grid">
-                {searchToolRows.map((tool) => (
-                  <div key={tool.id} className="provider-card">
-                    <div className="provider-card__header">
-                      <div>
-                        <p className="section-label">Search Tool</p>
-                        <h4>{tool.label}</h4>
-                      </div>
-                      <div className="provider-card__status">
-                        <StatusDot
-                          status={tool.saved ? 'online' : 'offline'}
-                          label={tool.saved ? 'Connected' : 'Inactive'}
-                        />
-                        <span>{tool.saved ? 'Connected' : 'Inactive'}</span>
-                      </div>
-                    </div>
-                    <p className="settings-panel__meta">{tool.helper}</p>
-                    <div className="provider-card__input">
-                      <input
-                        type="password"
-                        value={searchToolKeyInputs[tool.id]}
-                        onChange={(e) =>
-                          setSearchToolKeyInputs((prev) => ({
-                            ...prev,
-                            [tool.id]: e.target.value,
-                          }))
-                        }
-                        placeholder={tool.saved ? '••••••••••••' : tool.placeholder}
-                        className="settings-code-input"
-                      />
-                      <div className="provider-card__actions">
-                        <button
-                          type="button"
-                          className="ghost-button"
-                          onClick={() => handleRemoveSearchToolKey(tool.id)}
-                          disabled={!tool.saved || searchToolKeySaving[tool.id]}
-                        >
-                          Clear
-                        </button>
-                        <button
-                          type="button"
-                          className="primary-button"
-                          onClick={() => handleSaveSearchToolKey(tool.id)}
-                          disabled={searchToolKeySaving[tool.id]}
-                        >
-                          Save
-                        </button>
-                        {tool.saved && (
+                        <div className="provider-card__actions">
                           <button
                             type="button"
                             className="ghost-button"
-                            onClick={() => handleTestSearchToolKey(tool.id)}
-                            disabled={searchToolKeyTesting[tool.id]}
+                            onClick={() => handleRemoveKey(provider.id)}
+                            disabled={!provider.saved || keySaving[provider.id]}
                           >
-                            {searchToolKeyTesting[tool.id] ? 'Testing…' : 'Test'}
+                            Clear
                           </button>
-                        )}
+                          <button
+                            type="button"
+                            className="primary-button"
+                            onClick={() => handleSaveKey(provider.id)}
+                            disabled={keySaving[provider.id]}
+                          >
+                            Save
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    {searchToolKeyTestResult[tool.id] && (
-                      <p
-                        className={`settings-panel__meta ${searchToolKeyTestResult[tool.id]?.ok ? 'settings-panel__success' : 'settings-panel__error'}`}
-                      >
-                        {searchToolKeyTestResult[tool.id]?.ok ? '✓' : '✗'}{' '}
-                        {searchToolKeyTestResult[tool.id]?.message}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="settings-panel">
-              <header className="settings-panel__header">
-                <div>
-                  <p className="section-label">Agent Memory</p>
-                  <h3>Memory Span</h3>
-                  <p className="settings-panel__meta">
-                    Define how many recent messages agents should remember when resuming work.
-                  </p>
+                  ))}
                 </div>
-              </header>
 
-              {memoryError && <p className="settings-panel__error">⚠ {memoryError}</p>}
-              {memoryLoading && <p className="settings-panel__meta">Loading memory settings…</p>}
+                <div className="settings-panel__footer">
+                  <Link to="/settings/models" className="settings-link-card">
+                    <div className="settings-link-card__content">
+                      <h4>Default Model Settings</h4>
+                      <p>Configure default models for each AI provider</p>
+                    </div>
+                    <span className="settings-link-card__arrow">→</span>
+                  </Link>
+                </div>
+              </section>
 
-              <div className="memory-panel">
-                <div className="memory-panel__header">
+              <section className="settings-panel">
+                <header className="settings-panel__header">
                   <div>
-                    <p className="section-label">Default Span</p>
-                    <h4>{memorySpanDisplay} messages</h4>
+                    <p className="section-label">Search Tools</p>
+                    <h3>Search API Keys</h3>
+                    <p className="settings-panel__meta">
+                      Connect external search and scraping services used by research agents.
+                    </p>
                   </div>
-                  <div className="memory-panel__status">
-                    <StatusDot status={memorySpanStatus} label="Memory span status" />
-                    <span>{memorySettings.memoryMessageLimit ? 'Custom' : 'System default'}</span>
-                  </div>
-                </div>
+                </header>
 
-                <div className="memory-panel__controls">
-                  <input
-                    type="range"
-                    min={1}
-                    max={200}
-                    value={memorySpanDisplay}
-                    onChange={(e) => setMemoryLimitInput(e.target.value)}
-                    className="memory-range"
-                  />
-                  <div className="memory-panel__inputs">
+                {searchToolKeysLoading && (
+                  <p className="settings-panel__meta">Loading search tool keys…</p>
+                )}
+
+                <div className="provider-grid">
+                  {searchToolRows.map((tool) => (
+                    <div key={tool.id} className="provider-card">
+                      <div className="provider-card__header">
+                        <div>
+                          <p className="section-label">Search Tool</p>
+                          <h4>{tool.label}</h4>
+                        </div>
+                        <div className="provider-card__status">
+                          <StatusDot
+                            status={tool.saved ? 'online' : 'offline'}
+                            label={tool.saved ? 'Connected' : 'Inactive'}
+                          />
+                          <span>{tool.saved ? 'Connected' : 'Inactive'}</span>
+                        </div>
+                      </div>
+                      <p className="settings-panel__meta">{tool.helper}</p>
+                      <div className="provider-card__input">
+                        <input
+                          type="password"
+                          value={searchToolKeyInputs[tool.id]}
+                          onChange={(e) =>
+                            setSearchToolKeyInputs((prev) => ({
+                              ...prev,
+                              [tool.id]: e.target.value,
+                            }))
+                          }
+                          placeholder={tool.saved ? '••••••••••••' : tool.placeholder}
+                          className="settings-code-input"
+                        />
+                        <div className="provider-card__actions">
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            onClick={() => handleRemoveSearchToolKey(tool.id)}
+                            disabled={!tool.saved || searchToolKeySaving[tool.id]}
+                          >
+                            Clear
+                          </button>
+                          <button
+                            type="button"
+                            className="primary-button"
+                            onClick={() => handleSaveSearchToolKey(tool.id)}
+                            disabled={searchToolKeySaving[tool.id]}
+                          >
+                            Save
+                          </button>
+                          {tool.saved && (
+                            <button
+                              type="button"
+                              className="ghost-button"
+                              onClick={() => handleTestSearchToolKey(tool.id)}
+                              disabled={searchToolKeyTesting[tool.id]}
+                            >
+                              {searchToolKeyTesting[tool.id] ? 'Testing…' : 'Test'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {searchToolKeyTestResult[tool.id] && (
+                        <p
+                          className={`settings-panel__meta ${searchToolKeyTestResult[tool.id]?.ok ? 'settings-panel__success' : 'settings-panel__error'}`}
+                        >
+                          {searchToolKeyTestResult[tool.id]?.ok ? '✓' : '✗'}{' '}
+                          {searchToolKeyTestResult[tool.id]?.message}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="settings-panel">
+                <header className="settings-panel__header">
+                  <div>
+                    <p className="section-label">Agent Memory</p>
+                    <h3>Memory Span</h3>
+                    <p className="settings-panel__meta">
+                      Define how many recent messages agents should remember when resuming work.
+                    </p>
+                  </div>
+                </header>
+
+                {memoryError && <p className="settings-panel__error">⚠ {memoryError}</p>}
+                {memoryLoading && <p className="settings-panel__meta">Loading memory settings…</p>}
+
+                <div className="memory-panel">
+                  <div className="memory-panel__header">
+                    <div>
+                      <p className="section-label">Default Span</p>
+                      <h4>{memorySpanDisplay} messages</h4>
+                    </div>
+                    <div className="memory-panel__status">
+                      <StatusDot status={memorySpanStatus} label="Memory span status" />
+                      <span>{memorySettings.memoryMessageLimit ? 'Custom' : 'System default'}</span>
+                    </div>
+                  </div>
+
+                  <div className="memory-panel__controls">
                     <input
-                      type="number"
+                      type="range"
                       min={1}
                       max={200}
-                      value={memoryLimitInput}
+                      value={memorySpanDisplay}
                       onChange={(e) => setMemoryLimitInput(e.target.value)}
-                      placeholder="e.g., 50"
-                      className="settings-code-input"
+                      className="memory-range"
                     />
-                    <div className="provider-card__actions">
-                      <button
-                        type="button"
-                        className="ghost-button"
-                        onClick={() => void handleClearMemoryLimit()}
-                        disabled={!memorySettings.memoryMessageLimit || memorySaving}
-                      >
-                        Reset
-                      </button>
-                      <button
-                        type="button"
-                        className="primary-button"
-                        onClick={() => void handleSaveMemoryLimit()}
-                        disabled={memorySaving || isMemoryInputEmpty}
-                      >
-                        Save
-                      </button>
+                    <div className="memory-panel__inputs">
+                      <input
+                        type="number"
+                        min={1}
+                        max={200}
+                        value={memoryLimitInput}
+                        onChange={(e) => setMemoryLimitInput(e.target.value)}
+                        placeholder="e.g., 50"
+                        className="settings-code-input"
+                      />
+                      <div className="provider-card__actions">
+                        <button
+                          type="button"
+                          className="ghost-button"
+                          onClick={() => void handleClearMemoryLimit()}
+                          disabled={!memorySettings.memoryMessageLimit || memorySaving}
+                        >
+                          Reset
+                        </button>
+                        <button
+                          type="button"
+                          className="primary-button"
+                          onClick={() => void handleSaveMemoryLimit()}
+                          disabled={memorySaving || isMemoryInputEmpty}
+                        >
+                          Save
+                        </button>
+                      </div>
                     </div>
+                  </div>
+
+                  <details className="settings-accordion">
+                    <summary>Advanced context rules</summary>
+                    <p>
+                      Resolution order: run override → workspace override → global default →
+                      built-in default (50). Keep the span lean to reduce drift.
+                    </p>
+                  </details>
+                </div>
+              </section>
+            </div>
+          </section>
+        </details>
+
+        <details className="collapsible-section">
+          <summary className="collapsible-summary">
+            <span>Behavior</span>
+          </summary>
+          <section className="settings-section">
+            <header className="settings-section__header">
+              <div>
+                <p className="section-label">Behavior</p>
+                <h2>Behavior</h2>
+                <p className="settings-section__meta">
+                  Defaults shape how tasks, routines, and workspaces behave out of the box.
+                </p>
+              </div>
+            </header>
+
+            <div className="settings-section__grid">
+              <section className="settings-panel">
+                <header className="settings-panel__header">
+                  <div>
+                    <p className="section-label">Defaults</p>
+                    <h3>Workspace Defaults</h3>
+                    <p className="settings-panel__meta">
+                      Set baseline timing, review cadence, and focus blocks in each workspace.
+                    </p>
+                  </div>
+                </header>
+                <div className="settings-panel__actions">
+                  <Link to="/workspaces" className="ghost-button">
+                    Open Workspaces
+                  </Link>
+                </div>
+              </section>
+            </div>
+          </section>
+        </details>
+
+        <details className="collapsible-section">
+          <summary className="collapsible-summary">
+            <span>Experience</span>
+          </summary>
+          <section className="settings-section">
+            <header className="settings-section__header">
+              <div>
+                <p className="section-label">Experience</p>
+                <h2>Experience</h2>
+                <p className="settings-section__meta">
+                  Shape the tone of the system with quotes and daily prompts.
+                </p>
+              </div>
+            </header>
+
+            <div className="settings-section__grid">
+              <section className="settings-panel">
+                <header className="settings-panel__header">
+                  <div>
+                    <p className="section-label">Quotes</p>
+                    <h3>Daily Quotes</h3>
+                    <p className="settings-panel__meta">
+                      Keep a small set of quotes that reset focus and intention.
+                    </p>
+                  </div>
+                  <div className="settings-panel__actions">
+                    <button className="ghost-button" onClick={() => setConfirmResetOpen(true)}>
+                      Reset to Defaults
+                    </button>
+                    <button
+                      className="primary-button"
+                      onClick={handleStartAdd}
+                      disabled={loading || total >= 1000 || isAddingNew}
+                    >
+                      + Add Quote
+                    </button>
+                  </div>
+                </header>
+
+                <div className="quote-controls">
+                  <input
+                    type="text"
+                    className="quote-search"
+                    placeholder="Search quotes or authors…"
+                    value={quoteSearch}
+                    onChange={(e) => setQuoteSearch(e.target.value)}
+                  />
+                  <div className="quote-count">
+                    <span>{total} total</span>
+                    <span>•</span>
+                    <span>{pinnedQuotes.length} pinned</span>
                   </div>
                 </div>
 
-                <details className="settings-accordion">
-                  <summary>Advanced context rules</summary>
-                  <p>
-                    Resolution order: run override → workspace override → global default → built-in
-                    default (50). Keep the span lean to reduce drift.
-                  </p>
-                </details>
-              </div>
-            </section>
-          </div>
-        </section>
-
-        <section className="settings-section">
-          <header className="settings-section__header">
-            <div>
-              <p className="section-label">Behavior</p>
-              <h2>Behavior</h2>
-              <p className="settings-section__meta">
-                Defaults shape how tasks, routines, and workspaces behave out of the box.
-              </p>
-            </div>
-          </header>
-
-          <div className="settings-section__grid">
-            <section className="settings-panel">
-              <header className="settings-panel__header">
-                <div>
-                  <p className="section-label">Defaults</p>
-                  <h3>Workspace Defaults</h3>
-                  <p className="settings-panel__meta">
-                    Set baseline timing, review cadence, and focus blocks in each workspace.
-                  </p>
-                </div>
-              </header>
-              <div className="settings-panel__actions">
-                <Link to="/workspaces" className="ghost-button">
-                  Open Workspaces
-                </Link>
-              </div>
-            </section>
-          </div>
-        </section>
-
-        <section className="settings-section">
-          <header className="settings-section__header">
-            <div>
-              <p className="section-label">Experience</p>
-              <h2>Experience</h2>
-              <p className="settings-section__meta">
-                Shape the tone of the system with quotes and daily prompts.
-              </p>
-            </div>
-          </header>
-
-          <div className="settings-section__grid">
-            <section className="settings-panel">
-              <header className="settings-panel__header">
-                <div>
-                  <p className="section-label">Quotes</p>
-                  <h3>Daily Quotes</h3>
-                  <p className="settings-panel__meta">
-                    Keep a small set of quotes that reset focus and intention.
-                  </p>
-                </div>
-                <div className="settings-panel__actions">
-                  <button className="ghost-button" onClick={() => setConfirmResetOpen(true)}>
-                    Reset to Defaults
-                  </button>
-                  <button
-                    className="primary-button"
-                    onClick={handleStartAdd}
-                    disabled={loading || total >= 1000 || isAddingNew}
-                  >
-                    + Add Quote
-                  </button>
-                </div>
-              </header>
-
-              <div className="quote-controls">
-                <input
-                  type="text"
-                  className="quote-search"
-                  placeholder="Search quotes or authors…"
-                  value={quoteSearch}
-                  onChange={(e) => setQuoteSearch(e.target.value)}
-                />
-                <div className="quote-count">
-                  <span>{total} total</span>
-                  <span>•</span>
-                  <span>{pinnedQuotes.length} pinned</span>
-                </div>
-              </div>
-
-              {loading && page === 0 ? (
-                <div className="settings-loading">
-                  <p>Loading quotes…</p>
-                </div>
-              ) : total === 0 ? (
-                <EmptyState
-                  label="Quotes"
-                  title="System idle"
-                  description="Quotes shape the tone of your day. Add one to guide focus and reset attention."
-                  hint="Tip: pin the ones you want to see more often."
-                  actionLabel="Add Quote"
-                  onAction={handleStartAdd}
-                />
-              ) : (
-                <>
-                  {isAddingNew && (
-                    <div className="quote-add-form">
-                      <h3>Add New Quote</h3>
-                      <div className="form-group">
-                        <label htmlFor="new-quote-text">Quote Text *</label>
-                        <textarea
-                          id="new-quote-text"
-                          className="quote-textarea"
-                          value={newQuoteText}
-                          onChange={(e) => setNewQuoteText(e.target.value)}
-                          placeholder="Enter quote text..."
-                          rows={3}
-                          maxLength={500}
-                          autoFocus
-                        />
-                        <span className="char-count">{newQuoteText.length}/500</span>
+                {loading && page === 0 ? (
+                  <div className="settings-loading">
+                    <p>Loading quotes…</p>
+                  </div>
+                ) : total === 0 ? (
+                  <EmptyState
+                    label="Quotes"
+                    title="System idle"
+                    description="Quotes shape the tone of your day. Add one to guide focus and reset attention."
+                    hint="Tip: pin the ones you want to see more often."
+                    actionLabel="Add Quote"
+                    onAction={handleStartAdd}
+                  />
+                ) : (
+                  <>
+                    {isAddingNew && (
+                      <div className="quote-add-form">
+                        <h3>Add New Quote</h3>
+                        <div className="form-group">
+                          <label htmlFor="new-quote-text">Quote Text *</label>
+                          <textarea
+                            id="new-quote-text"
+                            className="quote-textarea"
+                            value={newQuoteText}
+                            onChange={(e) => setNewQuoteText(e.target.value)}
+                            placeholder="Enter quote text..."
+                            rows={3}
+                            maxLength={500}
+                            autoFocus
+                          />
+                          <span className="char-count">{newQuoteText.length}/500</span>
+                        </div>
+                        <div className="form-group">
+                          <label htmlFor="new-quote-author">Author (optional)</label>
+                          <input
+                            type="text"
+                            id="new-quote-author"
+                            className="quote-input"
+                            value={newQuoteAuthor}
+                            onChange={(e) => setNewQuoteAuthor(e.target.value)}
+                            placeholder="Author name (leave blank if unknown)..."
+                            maxLength={100}
+                          />
+                        </div>
+                        <div className="form-actions">
+                          <button className="ghost-button" onClick={handleCancelAdd}>
+                            Cancel
+                          </button>
+                          <button
+                            className="primary-button"
+                            onClick={handleSaveNew}
+                            disabled={!newQuoteText.trim()}
+                          >
+                            Save Quote
+                          </button>
+                        </div>
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="new-quote-author">Author (optional)</label>
-                        <input
-                          type="text"
-                          id="new-quote-author"
-                          className="quote-input"
-                          value={newQuoteAuthor}
-                          onChange={(e) => setNewQuoteAuthor(e.target.value)}
-                          placeholder="Author name (leave blank if unknown)..."
-                          maxLength={100}
-                        />
-                      </div>
-                      <div className="form-actions">
-                        <button className="ghost-button" onClick={handleCancelAdd}>
-                          Cancel
-                        </button>
-                        <button
-                          className="primary-button"
-                          onClick={handleSaveNew}
-                          disabled={!newQuoteText.trim()}
-                        >
-                          Save Quote
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {filteredQuotes.length === 0 ? (
-                    <div className="settings-empty">
-                      <h4>System idle</h4>
-                      <p>No quotes match this filter. Refine the search or add a new one.</p>
-                      <div className="settings-panel__actions">
-                        <button className="ghost-button" onClick={() => setQuoteSearch('')}>
-                          Clear Search
-                        </button>
+                    {filteredQuotes.length === 0 ? (
+                      <div className="settings-empty">
+                        <h4>System idle</h4>
+                        <p>No quotes match this filter. Refine the search or add a new one.</p>
+                        <div className="settings-panel__actions">
+                          <button className="ghost-button" onClick={() => setQuoteSearch('')}>
+                            Clear Search
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="quote-list">
-                      {pinnedQuotes.length > 0 && (
+                    ) : (
+                      <div className="quote-list">
+                        {pinnedQuotes.length > 0 && (
+                          <div className="quote-group">
+                            <p className="section-label">Pinned</p>
+                            {pinnedQuotes.map((quote) => (
+                              <article
+                                key={quote.id}
+                                className="quote-card"
+                                title={`Added ${quote.addedAt}`}
+                              >
+                                <div className="quote-card__content">
+                                  <p className="quote-text">“{quote.text}”</p>
+                                  <p className="quote-author">
+                                    {quote.author ? quote.author : 'Anonymous'}
+                                  </p>
+                                </div>
+                                <div className="quote-card__actions">
+                                  <button
+                                    type="button"
+                                    className="quote-menu-button"
+                                    onClick={() =>
+                                      setOpenMenuId((prev) => (prev === quote.id ? null : quote.id))
+                                    }
+                                    aria-label="Quote actions"
+                                  >
+                                    ⋯
+                                  </button>
+                                  {openMenuId === quote.id && (
+                                    <Menu>
+                                      <MenuItem onSelect={() => handleStartEdit(quote)}>
+                                        Edit
+                                      </MenuItem>
+                                      <MenuItem onSelect={() => togglePinnedQuote(quote.id)}>
+                                        Unpin
+                                      </MenuItem>
+                                      <MenuItem onSelect={() => handleDeleteRequest(quote.id)}>
+                                        Delete
+                                      </MenuItem>
+                                    </Menu>
+                                  )}
+                                </div>
+                                {editingQuoteId === quote.id && (
+                                  <div className="quote-edit-form">
+                                    <div className="form-group">
+                                      <label htmlFor={`edit-quote-text-${quote.id}`}>Quote</label>
+                                      <textarea
+                                        id={`edit-quote-text-${quote.id}`}
+                                        className="quote-textarea"
+                                        value={editQuoteText}
+                                        onChange={(e) => setEditQuoteText(e.target.value)}
+                                        rows={3}
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label htmlFor={`edit-quote-author-${quote.id}`}>
+                                        Author
+                                      </label>
+                                      <input
+                                        type="text"
+                                        id={`edit-quote-author-${quote.id}`}
+                                        className="quote-input"
+                                        value={editQuoteAuthor}
+                                        onChange={(e) => setEditQuoteAuthor(e.target.value)}
+                                      />
+                                    </div>
+                                    <div className="form-actions">
+                                      <button className="ghost-button" onClick={handleCancelEdit}>
+                                        Cancel
+                                      </button>
+                                      <button className="primary-button" onClick={handleSaveEdit}>
+                                        Save Changes
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </article>
+                            ))}
+                          </div>
+                        )}
+
                         <div className="quote-group">
-                          <p className="section-label">Pinned</p>
-                          {pinnedQuotes.map((quote) => (
+                          {pinnedQuotes.length > 0 && <p className="section-label">All Quotes</p>}
+                          {unpinnedQuotes.map((quote) => (
                             <article
                               key={quote.id}
                               className="quote-card"
@@ -1058,7 +1153,7 @@ export function SettingsPage() {
                                       Edit
                                     </MenuItem>
                                     <MenuItem onSelect={() => togglePinnedQuote(quote.id)}>
-                                      Unpin
+                                      Pin
                                     </MenuItem>
                                     <MenuItem onSelect={() => handleDeleteRequest(quote.id)}>
                                       Delete
@@ -1101,126 +1196,58 @@ export function SettingsPage() {
                             </article>
                           ))}
                         </div>
-                      )}
-
-                      <div className="quote-group">
-                        {pinnedQuotes.length > 0 && <p className="section-label">All Quotes</p>}
-                        {unpinnedQuotes.map((quote) => (
-                          <article
-                            key={quote.id}
-                            className="quote-card"
-                            title={`Added ${quote.addedAt}`}
-                          >
-                            <div className="quote-card__content">
-                              <p className="quote-text">“{quote.text}”</p>
-                              <p className="quote-author">
-                                {quote.author ? quote.author : 'Anonymous'}
-                              </p>
-                            </div>
-                            <div className="quote-card__actions">
-                              <button
-                                type="button"
-                                className="quote-menu-button"
-                                onClick={() =>
-                                  setOpenMenuId((prev) => (prev === quote.id ? null : quote.id))
-                                }
-                                aria-label="Quote actions"
-                              >
-                                ⋯
-                              </button>
-                              {openMenuId === quote.id && (
-                                <Menu>
-                                  <MenuItem onSelect={() => handleStartEdit(quote)}>Edit</MenuItem>
-                                  <MenuItem onSelect={() => togglePinnedQuote(quote.id)}>
-                                    Pin
-                                  </MenuItem>
-                                  <MenuItem onSelect={() => handleDeleteRequest(quote.id)}>
-                                    Delete
-                                  </MenuItem>
-                                </Menu>
-                              )}
-                            </div>
-                            {editingQuoteId === quote.id && (
-                              <div className="quote-edit-form">
-                                <div className="form-group">
-                                  <label htmlFor={`edit-quote-text-${quote.id}`}>Quote</label>
-                                  <textarea
-                                    id={`edit-quote-text-${quote.id}`}
-                                    className="quote-textarea"
-                                    value={editQuoteText}
-                                    onChange={(e) => setEditQuoteText(e.target.value)}
-                                    rows={3}
-                                  />
-                                </div>
-                                <div className="form-group">
-                                  <label htmlFor={`edit-quote-author-${quote.id}`}>Author</label>
-                                  <input
-                                    type="text"
-                                    id={`edit-quote-author-${quote.id}`}
-                                    className="quote-input"
-                                    value={editQuoteAuthor}
-                                    onChange={(e) => setEditQuoteAuthor(e.target.value)}
-                                  />
-                                </div>
-                                <div className="form-actions">
-                                  <button className="ghost-button" onClick={handleCancelEdit}>
-                                    Cancel
-                                  </button>
-                                  <button className="primary-button" onClick={handleSaveEdit}>
-                                    Save Changes
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </article>
-                        ))}
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {totalPages > 1 && (
-                    <div className="pagination">
-                      <button
-                        className="ghost-button"
-                        onClick={() => handlePageChange(page - 1)}
-                        disabled={page === 0 || loading}
-                      >
-                        ← Previous
-                      </button>
-                      <span className="page-info">
-                        Page {page + 1} of {totalPages} ({total} total quotes)
-                      </span>
-                      <button
-                        className="ghost-button"
-                        onClick={() => handlePageChange(page + 1)}
-                        disabled={!hasMore || loading}
-                      >
-                        Next →
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </section>
-          </div>
-        </section>
-
-        <section className="settings-section">
-          <header className="settings-section__header">
-            <div>
-              <p className="section-label">System</p>
-              <h2>System</h2>
-              <p className="settings-section__meta">
-                Monitor sync health and keep calendars aligned.
-              </p>
+                    {totalPages > 1 && (
+                      <div className="pagination">
+                        <button
+                          className="ghost-button"
+                          onClick={() => handlePageChange(page - 1)}
+                          disabled={page === 0 || loading}
+                        >
+                          ← Previous
+                        </button>
+                        <span className="page-info">
+                          Page {page + 1} of {totalPages} ({total} total quotes)
+                        </span>
+                        <button
+                          className="ghost-button"
+                          onClick={() => handlePageChange(page + 1)}
+                          disabled={!hasMore || loading}
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
             </div>
-          </header>
+          </section>
+        </details>
 
-          <div className="settings-section__grid">
-            <SystemStatus />
-            <CalendarSettingsPanel />
-          </div>
-        </section>
+        <details className="collapsible-section">
+          <summary className="collapsible-summary">
+            <span>System</span>
+          </summary>
+          <section className="settings-section">
+            <header className="settings-section__header">
+              <div>
+                <p className="section-label">System</p>
+                <h2>System</h2>
+                <p className="settings-section__meta">
+                  Monitor sync health and keep calendars aligned.
+                </p>
+              </div>
+            </header>
+
+            <div className="settings-section__grid">
+              <SystemStatus />
+              <CalendarSettingsPanel />
+            </div>
+          </section>
+        </details>
       </div>
 
       <ConfirmDialog

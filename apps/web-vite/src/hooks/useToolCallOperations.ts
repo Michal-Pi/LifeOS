@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
-import { getFirestore } from 'firebase/firestore'
+import { getFirestoreClient } from '@/lib/firebase'
 import { useAuth } from './useAuth'
 import type { ToolCallRecord, RunId } from '@lifeos/agents'
 
@@ -37,7 +37,7 @@ export function useToolCallOperations(runId: RunId | null): UseToolCallOperation
       return
     }
 
-    const db = getFirestore()
+    const db = getFirestoreClient()
 
     // Subscribe to tool calls for this run
     const toolCallsRef = collection(db, `users/${user.uid}/runs/${runId}/toolCalls`)

@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react'
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { getFirestore } from 'firebase/firestore'
+import { getFirestoreClient } from '@/lib/firebase'
 import type { Message, RunId } from '@lifeos/agents'
 import { useAuth } from './useAuth'
 
@@ -35,7 +35,7 @@ export function useRunMessages(runId: RunId | null): UseRunMessagesReturn {
       return
     }
 
-    const db = getFirestore()
+    const db = getFirestoreClient()
     const messagesRef = collection(db, `users/${user.uid}/runs/${runId}/messages`)
     const q = query(messagesRef, orderBy('timestampMs', 'desc'), limit(limitCount))
 

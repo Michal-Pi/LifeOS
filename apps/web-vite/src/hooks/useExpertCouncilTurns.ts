@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from 'react'
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { getFirestore } from 'firebase/firestore'
+import { getFirestoreClient } from '@/lib/firebase'
 import type { ExpertCouncilTurn, RunId } from '@lifeos/agents'
 import { useAuth } from './useAuth'
 
@@ -28,7 +28,7 @@ export function useExpertCouncilTurns(runId: RunId | null): {
       return
     }
 
-    const db = getFirestore()
+    const db = getFirestoreClient()
     const turnsRef = collection(db, `users/${user.uid}/runs/${runId}/expertCouncilTurns`)
     const q = query(turnsRef, orderBy('createdAtMs', 'desc'), limit(1))
 

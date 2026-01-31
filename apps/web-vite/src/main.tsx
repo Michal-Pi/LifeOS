@@ -12,39 +12,69 @@ if (typeof window !== 'undefined') {
     console.error('Unhandled promise rejection:', error)
   })
 
-  // Suppress harmless Firestore persistence warnings
-  // This warning occurs when multiple tabs compete for the primary lease
-  // It's expected behavior and doesn't affect functionality
+  // Intercept Firestore primary lease warnings and route them to the
+  // lifecycle manager for active recovery instead of only suppressing output.
   const originalWarn = console.warn
   const originalError = console.error
+
+  const isLeaseMessage = (msg: string) =>
+    msg.includes('Failed to obtain primary lease') ||
+    msg.includes('Backfill Indexes') ||
+    msg.includes('Apply remote event') ||
+    msg.includes('Collect garbage')
+
+  const routeLeaseError = (msg: string) => {
+    import('./lib/firestoreLifecycle').then(({ reportLeaseError }) => {
+      import('./lib/firebase').then(({ getFirestoreClient }) => {
+        try {
+          const db = getFirestoreClient()
+          const action = msg.includes('Backfill')
+            ? 'Backfill Indexes'
+            : msg.includes('Apply remote')
+              ? 'Apply remote event'
+              : 'Collect garbage'
+          reportLeaseError(db, action)
+        } catch {
+          // Firestore not initialized yet
+        }
+      })
+    })
+  }
+
   console.warn = (...args: unknown[]) => {
     const message = args[0]
-    if (
-      typeof message === 'string' &&
-      (message.includes('Failed to obtain primary lease') || message.includes('Backfill Indexes'))
-    ) {
-      // Suppress this specific warning
-      return
+    if (typeof message === 'string') {
+      if (isLeaseMessage(message)) {
+        routeLeaseError(message)
+        return
+      }
+      if (message.includes('WebChannelConnection') && message.includes('transport errored')) {
+        return
+      }
     }
     originalWarn.apply(console, args)
   }
 
-  // Suppress Firebase token refresh errors when offline
-  // These are expected when the app is offline and Firebase Auth tries to refresh tokens
-  // Also suppress Firestore primary lease errors (expected when page is hidden/offline)
+  // Suppress expected Firebase network errors when offline.
+  // Route lease errors to lifecycle manager for recovery.
   console.error = (...args: unknown[]) => {
     const message = args[0]
-    if (
-      typeof message === 'string' &&
-      (message.includes('securetoken.googleapis.com') ||
+    if (typeof message === 'string') {
+      if (isLeaseMessage(message)) {
+        routeLeaseError(message)
+        return
+      }
+      if (
+        message.includes('securetoken.googleapis.com') ||
         message.includes('ERR_INTERNET_DISCONNECTED') ||
         message.includes('Failed to fetch') ||
-        message.includes('Failed to obtain primary lease') ||
-        message.includes('Backfill Indexes') ||
-        message.includes('Apply remote event'))
-    ) {
-      // Suppress expected Firebase/Firestore errors when offline or page hidden
-      return
+        message.includes('ERR_QUIC_PROTOCOL_ERROR') ||
+        message.includes('ERR_ABORTED') ||
+        message.includes('ERR_NETWORK_CHANGED') ||
+        message.includes('fireauth is not defined')
+      ) {
+        return
+      }
     }
     originalError.apply(console, args)
   }

@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import type { WorkspaceTemplatePreset } from '@/agents/templatePresets'
 import type { ContentTypePreset } from '@/agents/contentTypePresets'
-import { Button } from '@/components/ui/button'
-import { Select, type SelectOption } from '@/components/Select'
+import { WorkspaceBlueprint } from './WorkspaceBlueprint'
+import type { SelectOption } from '@/components/Select'
 import './TemplateSelector.css'
 
 type TemplateSelectorProps = {
@@ -18,12 +18,6 @@ type TemplateSelectorProps = {
 }
 
 type SelectedContentTypes = Record<string, string>
-
-const toId = (name: string) =>
-  name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
 
 export function TemplateSelector({
   templates,
@@ -60,77 +54,18 @@ export function TemplateSelector({
       <div className="template-selector__grid">
         {availableTemplates.map((template) => {
           const contentType = getContentType(template.name)
-          const contentTypeId = `${toId(template.name)}-content-type`
           return (
-            <article key={template.name} className="template-card">
-              <div className="template-card__header">
-                <div className="template-card__icon">{template.icon ?? 'TEMPLATE'}</div>
-                <div>
-                  <h3 className="template-card__title">{template.name}</h3>
-                  {template.description && (
-                    <p className="template-card__description">{template.description}</p>
-                  )}
-                </div>
-              </div>
-
-              {template.agentTemplateNames && (
-                <div className="template-card__agents">
-                  <span className="template-card__label">
-                    {template.agentTemplateNames.length} agents
-                  </span>
-                  <div className="template-card__agent-list">
-                    {template.agentTemplateNames.map((agent) => (
-                      <span key={agent} className="template-card__agent">
-                        {agent}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="template-card__meta">
-                <span className="template-card__badge">
-                  {template.workspaceConfig.workflowType}
-                </span>
-                {(template.featureBadges ?? []).map((badge) => (
-                  <span key={badge} className="template-card__badge">
-                    {badge}
-                  </span>
-                ))}
-              </div>
-
-              {template.supportsContentTypes && contentTypes.length > 0 && (
-                <div className="template-card__selector">
-                  <label htmlFor={contentTypeId}>Content type</label>
-                  <Select
-                    id={contentTypeId}
-                    value={contentType}
-                    onChange={(value) =>
-                      setSelectedContentTypes((prev) => ({
-                        ...prev,
-                        [template.name]: value,
-                      }))
-                    }
-                    options={contentTypeOptions}
-                    placeholder="Select content type"
-                  />
-                </div>
-              )}
-
-              <Button
-                className="template-card__action"
-                type="button"
-                disabled={isBusy}
-                onClick={() =>
-                  onUseTemplate(
-                    template,
-                    template.supportsContentTypes ? { contentType } : undefined
-                  )
-                }
-              >
-                Use Template
-              </Button>
-            </article>
+            <WorkspaceBlueprint
+              key={template.name}
+              template={template}
+              contentTypes={contentTypeOptions}
+              selectedContentType={contentType}
+              onContentTypeChange={(value) =>
+                setSelectedContentTypes((prev) => ({ ...prev, [template.name]: value }))
+              }
+              onUse={(t, ct) => onUseTemplate(t, ct ? { contentType: ct } : undefined)}
+              isBusy={isBusy}
+            />
           )
         })}
       </div>
