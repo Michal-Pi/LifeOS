@@ -20,7 +20,6 @@ import { OKRLinker } from '@/components/notes/OKRLinker'
 import { AttachmentUploader } from '@/components/notes/AttachmentUploader'
 import { TagEditor } from '@/components/notes/TagEditor'
 import { BacklinksPanel } from '@/components/notes/BacklinksPanel'
-import { AIToolsPanel } from '@/components/notes/AIToolsPanel'
 import { useTopics } from '@/hooks/useTopics'
 import type { Note, AttachmentId, NoteId } from '@lifeos/notes'
 
@@ -39,8 +38,6 @@ export interface NoteEditorProps {
   showOKRLinker?: boolean
   showAttachments?: boolean
   showTags?: boolean
-  showAIAnalysis?: boolean
-  onCloseAIAnalysis?: () => void
   className?: string
   statusContainerId?: string
   availableNotes?: Note[]
@@ -62,8 +59,6 @@ export function NoteEditor({
   showOKRLinker = true,
   showAttachments = true,
   showTags = true,
-  showAIAnalysis = false,
-  onCloseAIAnalysis,
   className = '',
   statusContainerId,
   availableNotes = [],
@@ -256,17 +251,6 @@ export function NoteEditor({
               navigate(`/notes?noteId=${noteId}`)
             }
           }}
-        />
-      )}
-
-      {/* AI Tools Panel */}
-      {showAIAnalysis && note && (
-        <AIToolsPanel
-          note={note}
-          availableNotes={availableNotes}
-          availableTopics={topics.map((t) => ({ topicId: t.topicId, name: t.name }))}
-          onClose={() => onCloseAIAnalysis?.()}
-          onTagsChange={handleTagsChange}
         />
       )}
 

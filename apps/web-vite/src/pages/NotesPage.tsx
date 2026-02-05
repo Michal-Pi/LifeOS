@@ -18,7 +18,9 @@ import { ExportMenu } from '@/components/notes/ExportMenu'
 import { ProjectLinker } from '@/components/notes/ProjectLinker'
 import { OKRLinker } from '@/components/notes/OKRLinker'
 import { ImportModal } from '@/components/notes/ImportModal'
+import { AIToolsDropdown } from '@/components/notes/AIToolsDropdown'
 import { useNoteOperations } from '@/hooks/useNoteOperations'
+import { useTopics } from '@/hooks/useTopics'
 import { useNoteSync } from '@/hooks/useNoteSync'
 import type { AttachmentId } from '@lifeos/notes'
 import type { JSONContent } from '@tiptap/core'
@@ -51,8 +53,8 @@ export function NotesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showProjectLinker, setShowProjectLinker] = useState(false)
   const [showOKRLinker, setShowOKRLinker] = useState(false)
-  const [showAIAnalysis, setShowAIAnalysis] = useState(false)
   const [showOverflowMenu, setShowOverflowMenu] = useState(false)
+  const { topics } = useTopics()
   const [showImportModal, setShowImportModal] = useState(false)
   const overflowRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -315,13 +317,12 @@ export function NotesPage() {
                   />
                   <div className="editor-actions">
                     <div className="editor-actions-row">
-                      <button
-                        className="ghost-button notes-header-button"
-                        onClick={() => setShowAIAnalysis((prev) => !prev)}
-                        type="button"
-                      >
-                        AI Tools
-                      </button>
+                      <AIToolsDropdown
+                        note={currentNote}
+                        availableNotes={notes}
+                        availableTopics={topics.map((t) => ({ topicId: t.topicId, name: t.name }))}
+                        onTagsChange={handleTagsChange}
+                      />
                       <button
                         className="ghost-button notes-header-button"
                         onClick={() => navigate('/notes/graph')}
@@ -420,8 +421,6 @@ export function NotesPage() {
                   showOKRLinker={false}
                   showAttachments={false}
                   showTags={false}
-                  showAIAnalysis={showAIAnalysis}
-                  onCloseAIAnalysis={() => setShowAIAnalysis(false)}
                   statusContainerId="note-status-anchor"
                   availableNotes={notes}
                   onNoteClick={(noteId) => {

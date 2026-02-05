@@ -12,11 +12,8 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { MODEL_PRICING } from '@lifeos/agents'
-import { defineSecret } from 'firebase-functions/params'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
-
-// Define secrets
-const anthropicKey = defineSecret('ANTHROPIC_API_KEY')
+import { loadProviderKeys, ANTHROPIC_API_KEY } from './providerKeys.js'
 
 // Types
 interface AIToolRequest {
@@ -332,7 +329,7 @@ Respond with a JSON array of tag strings:
  */
 export const analyzeNoteWithAI = onCall(
   {
-    secrets: [anthropicKey],
+    secrets: [ANTHROPIC_API_KEY],
     timeoutSeconds: 120,
     memory: '512MiB',
   },
@@ -342,15 +339,26 @@ export const analyzeNoteWithAI = onCall(
       throw new HttpsError('unauthenticated', 'User must be authenticated')
     }
 
+    const userId = request.auth.uid
     const data = request.data as AIToolRequest
 
     if (!data.tool || !data.content) {
       throw new HttpsError('invalid-argument', 'Missing required fields: tool and content')
     }
 
+    // Load API keys from user settings (with fallback to secrets)
+    const providerKeys = await loadProviderKeys(userId)
+
+    if (!providerKeys.anthropic) {
+      throw new HttpsError(
+        'failed-precondition',
+        'Anthropic API key not configured. Please add your API key in Settings → Model Settings.'
+      )
+    }
+
     // Initialize Anthropic client
     const client = new Anthropic({
-      apiKey: anthropicKey.value(),
+      apiKey: providerKeys.anthropic,
     })
 
     let result: unknown
