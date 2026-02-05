@@ -1,0 +1,295 @@
+/**
+ * Note Import Modal Styles
+ */
+
+.note-import-modal {
+  max-width: 32rem;
+  max-height: 90vh;
+}
+
+/* Drop Zone */
+.import-drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--motion-standard) var(--motion-ease);
+  background: var(--background-secondary);
+}
+
+.import-drop-zone:hover {
+  border-color: var(--accent);
+  background: var(--background-tertiary);
+}
+
+.import-drop-zone.dragging {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.drop-zone-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.drop-zone-text {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.drop-zone-hint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+/* Error State */
+.import-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--destructive-subtle);
+  border: 1px solid var(--destructive);
+  border-radius: 8px;
+  color: var(--destructive-foreground);
+  font-size: 0.875rem;
+}
+
+.error-icon {
+  flex-shrink: 0;
+}
+
+/* Loading State */
+.import-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
+.loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Success State */
+.import-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.success-icon {
+  font-size: 2.5rem;
+  color: var(--success);
+  margin-bottom: 0.5rem;
+}
+
+.import-success p {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--success-foreground);
+}
+
+/* Preview State */
+.import-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* File Info */
+.import-file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.file-info-icon {
+  font-size: 1.5rem;
+}
+
+.file-info-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.file-info-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-info-meta {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.file-change-button {
+  padding: 0.375rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--motion-ease);
+}
+
+.file-change-button:hover {
+  background: var(--background-tertiary);
+  color: var(--foreground);
+}
+
+/* Form Fields */
+.import-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.import-field label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.import-input {
+  padding: 0.5rem 0.75rem;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  transition: border-color var(--motion-fast) var(--motion-ease);
+}
+
+.import-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+/* Tags */
+.import-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.import-tag {
+  padding: 0.25rem 0.5rem;
+  background: var(--accent-subtle);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
+/* Import Mode Options */
+.import-mode-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.import-mode-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.75rem 1rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--motion-ease);
+}
+
+.import-mode-option:hover:not(.disabled) {
+  background: var(--background-tertiary);
+}
+
+.import-mode-option.selected {
+  background: var(--accent-subtle);
+  border-color: var(--accent);
+}
+
+.import-mode-option.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.import-mode-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.option-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.option-desc {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.import-mode-option.selected .option-label {
+  color: var(--accent);
+}
+
+/* Content Preview */
+.import-content-preview {
+  max-height: 150px;
+  padding: 0.75rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.import-content-preview em {
+  color: var(--muted-foreground);
+  font-style: italic;
+}

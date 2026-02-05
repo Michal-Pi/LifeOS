@@ -33,6 +33,7 @@ export {
   detectProjectManagerConflicts,
 } from './agents/projectManagerFunctions.js'
 export { testSearchToolKey, testAgentConfig } from './agents/testEndpoints.js'
+export { analyzeNoteWithAI } from './agents/noteAnalysis.js'
 
 // ==================== Cloud Functions Configuration ====================
 
@@ -190,6 +191,8 @@ const SCOPES = [
   'https://www.googleapis.com/auth/calendar.events.readonly',
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/drive.readonly',
+  'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',
   'openid',
@@ -243,6 +246,7 @@ async function storeTokens(uid: string, accountId: string, tokens: Credentials) 
     {
       provider: 'google',
       status: 'connected',
+      grantedScopes: tokens.scope ?? null,
       lastSuccessAt: now.toISOString(),
       updatedAt: now.toISOString(),
     },

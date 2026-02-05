@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Note Import Feature**: Import Markdown (.md), PDF (.pdf), and plain text (.txt) files as notes
+  - Accessible via overflow menu (···) → "Import" in Notes page
+  - Supports creating new notes or appending to existing notes
+  - Automatically extracts YAML frontmatter (title, tags) from Markdown files
+  - File drag-and-drop support with content preview
+  - Preserves formatting including headings, lists, code blocks, tables, and inline marks
+
+- **AI Tools Panel**: New AI-powered analysis panel for notes (replaces "Analyze with AI")
+  - **Summarize**: Condenses notes into key points and main themes
+  - **Fact Check**: Analyzes claims for accuracy with confidence levels and source suggestions
+  - **LinkedIn Analysis**: Evaluates content for LinkedIn engagement potential with hooks, hashtags, and quotable lines
+  - **Write with AI**: Generates new content based on existing note context and user prompts
+  - **Tag with AI**: Semantic paragraph-level tagging with freeform tags and entity matching
+  - **Note Tags**: Merged Tags functionality with AI-powered tag suggestions
+
+- Cloud Function `analyzeNoteWithAI` for AI-powered note analysis using Claude 3.5 Haiku
+
+### Changed
+
+- Renamed "Analyze with AI" button to "AI Tools" in Notes page
+- Merged standalone Tags button functionality into AI Tools panel
+
+### Removed
+
+- Standalone Tags button from Notes page header (functionality moved to AI Tools panel)
+- AIAnalysisPanel component (replaced by AIToolsPanel)
+
+---
+
+## [Previous] - 2026-02-04
+
+### Added
+
 - Pure offline-first architecture implementation across the entire application
 - Comprehensive network error handling with automatic fallback to local data
 - Deprecated `isOnline()` function with clear JSDoc warnings for UI-only usage

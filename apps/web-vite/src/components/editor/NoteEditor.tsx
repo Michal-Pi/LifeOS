@@ -20,9 +20,8 @@ import { OKRLinker } from '@/components/notes/OKRLinker'
 import { AttachmentUploader } from '@/components/notes/AttachmentUploader'
 import { TagEditor } from '@/components/notes/TagEditor'
 import { BacklinksPanel } from '@/components/notes/BacklinksPanel'
-import { AIAnalysisPanel } from '@/components/notes/AIAnalysisPanel'
+import { AIToolsPanel } from '@/components/notes/AIToolsPanel'
 import { useTopics } from '@/hooks/useTopics'
-import { useState } from 'react'
 import type { Note, AttachmentId, NoteId } from '@lifeos/notes'
 
 export interface NoteEditorProps {
@@ -40,6 +39,8 @@ export interface NoteEditorProps {
   showOKRLinker?: boolean
   showAttachments?: boolean
   showTags?: boolean
+  showAIAnalysis?: boolean
+  onCloseAIAnalysis?: () => void
   className?: string
   statusContainerId?: string
   availableNotes?: Note[]
@@ -61,6 +62,8 @@ export function NoteEditor({
   showOKRLinker = true,
   showAttachments = true,
   showTags = true,
+  showAIAnalysis = false,
+  onCloseAIAnalysis,
   className = '',
   statusContainerId,
   availableNotes = [],
@@ -68,7 +71,6 @@ export function NoteEditor({
 }: NoteEditorProps) {
   const navigate = useNavigate()
   const { topics } = useTopics()
-  const [showAIAnalysis, setShowAIAnalysis] = useState(false)
   const { content, isDirty, isSaving, lastSaved, error, handleContentChange, handleHtmlChange } =
     useNoteEditor({
       note,
@@ -196,30 +198,6 @@ export function NoteEditor({
         }}
       />
 
-      {/* View in Graph Button & AI Analysis */}
-      {note && (
-        <div className="editor-section">
-          <div className="editor-actions-row">
-            <button
-              onClick={() => navigate('/notes/graph')}
-              className="view-in-graph-button"
-              type="button"
-            >
-              View in Graph
-            </button>
-            {editable && (
-              <button
-                onClick={() => setShowAIAnalysis(true)}
-                className="ai-analysis-button"
-                type="button"
-              >
-                Analyze with AI
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Project Linker */}
       {showProjectLinker && note && editable && (
         <div className="editor-section">
@@ -281,19 +259,14 @@ export function NoteEditor({
         />
       )}
 
-      {/* AI Analysis Panel */}
+      {/* AI Tools Panel */}
       {showAIAnalysis && note && (
-        <AIAnalysisPanel
+        <AIToolsPanel
           note={note}
           availableNotes={availableNotes}
           availableTopics={topics.map((t) => ({ topicId: t.topicId, name: t.name }))}
-          onClose={() => setShowAIAnalysis(false)}
-          onTagged={() => {
-            // Refresh note content after tagging
-            if (onChange) {
-              onChange(content, '')
-            }
-          }}
+          onClose={() => onCloseAIAnalysis?.()}
+          onTagsChange={handleTagsChange}
         />
       )}
 
@@ -305,6 +278,7 @@ export function NoteEditor({
           height: 100%;
           width: 100%;
           min-height: 0;
+          overflow: hidden;
           position: relative;
         }
 
@@ -336,49 +310,13 @@ export function NoteEditor({
         .editor-content {
           flex: 1;
           min-height: 0;
+          overflow: hidden;
         }
 
         .editor-section {
           border-top: 1px solid var(--border);
           padding-top: 1.5rem;
           margin-top: 1.5rem;
-        }
-
-        .view-in-graph-button {
-          padding: 0.5rem 1rem;
-          background: var(--accent);
-          color: var(--accent-foreground);
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 0.875rem;
-          font-weight: 500;
-          transition: opacity 0.2s;
-        }
-
-        .view-in-graph-button:hover {
-          opacity: 0.9;
-        }
-
-        .editor-actions-row {
-          display: flex;
-          gap: 0.75rem;
-        }
-
-        .ai-analysis-button {
-          padding: 0.5rem 1rem;
-          background: var(--primary);
-          color: var(--primary-foreground);
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 0.875rem;
-          font-weight: 500;
-          transition: opacity 0.2s;
-        }
-
-        .ai-analysis-button:hover {
-          opacity: 0.9;
         }
       `}</style>
     </div>

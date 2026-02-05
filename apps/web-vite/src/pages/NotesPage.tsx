@@ -15,13 +15,11 @@ import { ProjectSidebar } from '@/components/notes/ProjectSidebar'
 import { NoteTitleEditor } from '@/components/notes/NoteTitleEditor'
 import { SyncStatusBanner } from '@/components/notes/NoteSyncStatus'
 import { ExportMenu } from '@/components/notes/ExportMenu'
-import { TemplateSelector } from '@/components/notes/TemplateSelector'
 import { ProjectLinker } from '@/components/notes/ProjectLinker'
 import { OKRLinker } from '@/components/notes/OKRLinker'
-import { TagEditor } from '@/components/notes/TagEditor'
+import { ImportModal } from '@/components/notes/ImportModal'
 import { useNoteOperations } from '@/hooks/useNoteOperations'
 import { useNoteSync } from '@/hooks/useNoteSync'
-import { getTemplateContent } from '@/lib/noteTemplates'
 import type { AttachmentId } from '@lifeos/notes'
 import type { JSONContent } from '@tiptap/core'
 import { useNoteMetadataCache } from '@/hooks/useNoteMetadataCache'
@@ -51,10 +49,12 @@ export function NotesPage() {
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [showTemplateSelector, setShowTemplateSelector] = useState(false)
   const [showProjectLinker, setShowProjectLinker] = useState(false)
   const [showOKRLinker, setShowOKRLinker] = useState(false)
-  const [showTags, setShowTags] = useState(false)
+  const [showAIAnalysis, setShowAIAnalysis] = useState(false)
+  const [showOverflowMenu, setShowOverflowMenu] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const overflowRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -75,30 +75,20 @@ export function NotesPage() {
     }
   }, [selectedNoteId, notes, setCurrentNote])
 
-  const handleCreateNote = useCallback(() => {
-    setShowTemplateSelector(true)
-  }, [])
-
-  const handleTemplateSelect = async (templateId: string) => {
+  const handleCreateNote = useCallback(async () => {
     try {
-      const content = getTemplateContent(templateId)
       const newNote = await createNote({
         title: 'Untitled Note',
-        content,
+        content: undefined,
         topicId: selectedTopicId || null,
         sectionId: selectedSectionId || null,
       })
       setCurrentNote(newNote)
       setSelectedNoteId(newNote.noteId)
-      setShowTemplateSelector(false)
     } catch (error) {
       console.error('Failed to create note:', error)
     }
-  }
-
-  const handleTemplateCancelCreate = () => {
-    setShowTemplateSelector(false)
-  }
+  }, [createNote, selectedTopicId, selectedSectionId, setCurrentNote])
 
   const handleSelectNote = (noteId: string) => {
     const note = notes.find((n) => n.noteId === noteId)
@@ -196,6 +186,30 @@ export function NotesPage() {
     }
   }, [currentNote, updateNote])
 
+  const handleImportAsNew = useCallback(
+    async (content: JSONContent, title: string, tags?: string[]) => {
+      const newNote = await createNote({
+        title,
+        content,
+        topicId: currentNote?.topicId ?? null,
+        sectionId: currentNote?.sectionId ?? null,
+        tags: tags || [],
+      })
+      setSelectedNoteId(newNote.noteId)
+      setCurrentNote(newNote)
+    },
+    [createNote, currentNote, setCurrentNote]
+  )
+
+  const handleImportAppend = useCallback(
+    async (content: JSONContent) => {
+      if (!currentNote) return
+      // Empty HTML - the editor will regenerate proper HTML on next save
+      await saveNoteContent(currentNote.noteId, content, '')
+    },
+    [currentNote, saveNoteContent]
+  )
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -205,7 +219,7 @@ export function NotesPage() {
       // Cmd/Ctrl + N: New note
       if (modKey && e.key === 'n' && !e.shiftKey) {
         e.preventDefault()
-        handleCreateNote()
+        void handleCreateNote()
         return
       }
 
@@ -222,6 +236,18 @@ export function NotesPage() {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [handleCreateNote])
+
+  // Close overflow menu on outside click
+  useEffect(() => {
+    if (!showOverflowMenu) return
+    const handleClick = (e: MouseEvent) => {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+        setShowOverflowMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showOverflowMenu])
 
   const pendingCount =
     (stats?.notes.pending || 0) + (stats?.topics.pending || 0) + (stats?.sections.pending || 0)
@@ -288,49 +314,79 @@ export function NotesPage() {
                     placeholder="Untitled"
                   />
                   <div className="editor-actions">
-                    <div className="editor-linker-actions">
+                    <div className="editor-actions-row">
                       <button
                         className="ghost-button notes-header-button"
-                        onClick={() => setShowProjectLinker((prev) => !prev)}
+                        onClick={() => setShowAIAnalysis((prev) => !prev)}
                         type="button"
                       >
-                        Link project
+                        AI Tools
                       </button>
                       <button
                         className="ghost-button notes-header-button"
-                        onClick={() => setShowOKRLinker((prev) => !prev)}
+                        onClick={() => navigate('/notes/graph')}
                         type="button"
                       >
-                        Link OKR
+                        Graph View
                       </button>
-                      <button
-                        className="ghost-button notes-header-button"
-                        onClick={() => setShowTags((prev) => !prev)}
-                        type="button"
-                      >
-                        Tags
-                      </button>
-                    </div>
-                    <div className="editor-actions-stack">
-                      <div className="editor-actions-row">
+                      <div className="editor-overflow-wrap" ref={overflowRef}>
                         <button
-                          className="ghost-button notes-header-button"
-                          onClick={() => navigate('/notes/graph')}
+                          className="ghost-button notes-header-button editor-overflow-trigger"
+                          onClick={() => setShowOverflowMenu((prev) => !prev)}
                           type="button"
+                          aria-label="More actions"
+                          aria-expanded={showOverflowMenu}
                         >
-                          Graph View
+                          ···
                         </button>
-                        <button
-                          className="ghost-button notes-header-button"
-                          onClick={handleArchiveToggle}
-                          type="button"
-                        >
-                          {currentNote.archived ? 'Unarchive' : 'Archive'}
-                        </button>
-                        <ExportMenu note={currentNote} className="notes-header-export" />
+                        {showOverflowMenu && (
+                          <div className="editor-overflow-menu">
+                            <ExportMenu note={currentNote} className="notes-header-export" />
+                            <button
+                              className="editor-overflow-item"
+                              onClick={() => {
+                                setShowImportModal(true)
+                                setShowOverflowMenu(false)
+                              }}
+                              type="button"
+                            >
+                              Import
+                            </button>
+                            <button
+                              className="editor-overflow-item"
+                              onClick={() => {
+                                void handleArchiveToggle()
+                                setShowOverflowMenu(false)
+                              }}
+                              type="button"
+                            >
+                              {currentNote.archived ? 'Unarchive' : 'Archive'}
+                            </button>
+                            <button
+                              className="editor-overflow-item"
+                              onClick={() => {
+                                setShowProjectLinker((prev) => !prev)
+                                setShowOverflowMenu(false)
+                              }}
+                              type="button"
+                            >
+                              Link project
+                            </button>
+                            <button
+                              className="editor-overflow-item"
+                              onClick={() => {
+                                setShowOKRLinker((prev) => !prev)
+                                setShowOverflowMenu(false)
+                              }}
+                              type="button"
+                            >
+                              Link OKRs
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <div className="editor-status" id="note-status-anchor" />
                     </div>
+                    <div className="editor-status" id="note-status-anchor" />
                   </div>
                 </div>
                 {showProjectLinker && (
@@ -349,11 +405,6 @@ export function NotesPage() {
                     />
                   </div>
                 )}
-                {showTags && (
-                  <div className="editor-linker-panel">
-                    <TagEditor tags={currentNote.tags || []} onChange={handleTagsChange} />
-                  </div>
-                )}
               </div>
               <div className="editor-wrapper">
                 <NoteEditor
@@ -369,6 +420,8 @@ export function NotesPage() {
                   showOKRLinker={false}
                   showAttachments={false}
                   showTags={false}
+                  showAIAnalysis={showAIAnalysis}
+                  onCloseAIAnalysis={() => setShowAIAnalysis(false)}
                   statusContainerId="note-status-anchor"
                   availableNotes={notes}
                   onNoteClick={(noteId) => {
@@ -410,18 +463,12 @@ export function NotesPage() {
         </div>
       </div>
 
-      {/* Template Selector Modal */}
-      <TemplateSelector
-        isOpen={showTemplateSelector}
-        onSelect={handleTemplateSelect}
-        onCancel={handleTemplateCancelCreate}
-      />
-
       <style>{`
         .notes-page {
-          height: 100vh;
+          height: calc(100vh - var(--nav-height) - 20px);
           display: flex;
           flex-direction: column;
+          gap: 0;
           overflow: hidden;
           background: var(--background);
           background-image: var(--background-texture);
@@ -470,30 +517,79 @@ export function NotesPage() {
 
         .editor-actions {
           display: flex;
-          align-items: flex-start;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-          justify-content: flex-end;
-        }
-
-        .editor-linker-actions {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-
-        .editor-actions-stack {
-          display: flex;
           flex-direction: column;
           align-items: flex-end;
           gap: 0.25rem;
+          flex-shrink: 0;
         }
 
         .editor-actions-row {
           display: flex;
           align-items: center;
           gap: 0.5rem;
+        }
+
+        .editor-overflow-wrap {
+          position: relative;
+        }
+
+        .editor-overflow-trigger {
+          font-size: 1.1rem;
+          letter-spacing: 0.15em;
+          line-height: 1;
+          padding: 0.45rem 0.6rem !important;
+        }
+
+        .editor-overflow-menu {
+          position: absolute;
+          top: calc(100% + 4px);
+          right: 0;
+          z-index: 50;
+          min-width: 160px;
+          background: var(--card);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          box-shadow: 0 8px 24px var(--shadow-soft);
+          padding: 0.35rem;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .editor-overflow-item {
+          display: block;
+          width: 100%;
+          text-align: left;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.8rem;
+          color: var(--foreground);
+          background: none;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: background var(--motion-fast) var(--motion-ease);
+        }
+
+        .editor-overflow-item:hover {
+          background: var(--background-secondary);
+        }
+
+        /* Style ExportMenu inside overflow to match items */
+        .editor-overflow-menu .notes-header-export .export-button {
+          display: block;
+          width: 100%;
+          text-align: left;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.8rem;
+          min-height: unset;
+          border-radius: 6px;
+          border: none;
+          background: none;
+          color: var(--foreground);
+          letter-spacing: normal;
+        }
+
+        .editor-overflow-menu .notes-header-export .export-button:hover {
+          background: var(--background-secondary);
         }
 
         .editor-status {
@@ -510,6 +606,15 @@ export function NotesPage() {
           font-size: 0.8rem;
           border-radius: 8px;
           letter-spacing: 0.04em;
+          background: transparent;
+          border-color: var(--border);
+          color: var(--foreground);
+        }
+
+        .notes-header-button:hover,
+        .notes-header-export .export-button:hover {
+          background: var(--background-tertiary);
+          border-color: var(--border-strong);
         }
 
         .editor-wrapper {
@@ -605,6 +710,16 @@ export function NotesPage() {
           font-size: 0.8125rem;
         }
       `}</style>
+
+      {/* Import Modal */}
+      <ImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportNew={handleImportAsNew}
+        onAppendToCurrent={handleImportAppend}
+        currentNoteExists={!!currentNote}
+        currentNoteContent={currentNote?.content as JSONContent | undefined}
+      />
     </div>
   )
 }
