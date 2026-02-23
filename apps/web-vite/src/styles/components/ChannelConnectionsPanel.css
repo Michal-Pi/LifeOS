@@ -1,0 +1,183 @@
+/* Channel Connections Panel - Unified channel management */
+
+.channel-connections-panel {
+  grid-column: 1 / -1;
+}
+
+/* Channel list */
+.channel-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Individual channel card */
+.channel-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.channel-card--disabled {
+  opacity: 0.6;
+}
+
+/* Channel header row */
+.channel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  cursor: pointer;
+  transition: background var(--motion-fast);
+}
+
+.channel-header:hover {
+  background: var(--background-tertiary);
+}
+
+.channel-card--disabled .channel-header {
+  cursor: default;
+}
+
+.channel-card--disabled .channel-header:hover {
+  background: transparent;
+}
+
+/* Channel icon */
+.channel-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.channel-icon--gmail {
+  color: #ea4335;
+}
+
+.channel-icon--slack {
+  color: #4a154b;
+}
+
+.channel-icon--linkedin {
+  color: #0a66c2;
+}
+
+.channel-icon--whatsapp {
+  color: #25d366;
+}
+
+.channel-icon--telegram {
+  color: #0088cc;
+}
+
+/* Channel info */
+.channel-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.channel-info h4 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.channel-info p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* Channel status area */
+.channel-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.channel-expand-icon {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  transition: transform var(--motion-fast);
+}
+
+.channel-expand-icon--open {
+  transform: rotate(180deg);
+}
+
+/* Coming soon badge */
+.channel-badge-soon {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  background: var(--background-tertiary);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+/* Channel expanded content */
+.channel-content {
+  padding: var(--space-4);
+  border-top: 1px solid var(--border);
+  background: var(--background-tertiary);
+}
+
+/* Gmail notice */
+.channel-managed-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.channel-managed-notice a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.channel-managed-notice a:hover {
+  text-decoration: underline;
+}
+
+/* Embedded panels (Slack App Settings + Connections rendered inline) */
+.channel-content .settings-panel {
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.channel-content .settings-panel + .settings-panel {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .channel-header {
+    gap: var(--space-2);
+  }
+
+  .channel-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+}

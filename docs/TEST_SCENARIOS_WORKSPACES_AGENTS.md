@@ -1,6 +1,6 @@
 # Test Scenarios & Use Cases: AI Agents & Workspaces
 
-**Version 1.1** | Last Updated: January 30, 2026
+**Version 1.5** | Last Updated: February 23, 2026
 
 ---
 
@@ -38,38 +38,74 @@ Each scenario includes:
 6. [Building a Graph Workflow](#scenario-6-building-a-graph-workflow)
 7. [Interactive Workflow with Human Input](#scenario-7-interactive-workflow-with-human-input)
 
+### Workflow Builder & Ordering Scenarios
+
+8. [Drag-and-Drop Agent Ordering](#scenario-8-drag-and-drop-agent-ordering)
+9. [Parallel Workflow with Merge Strategies](#scenario-9-parallel-workflow-with-merge-strategies)
+10. [Custom Visual Workflow Builder](#scenario-10-custom-visual-workflow-builder)
+11. [Supervisor Workflow](#scenario-11-supervisor-workflow)
+
 ### Advanced Scenarios
 
-8. [Expert Council Decision Making](#scenario-8-expert-council-decision-making)
-9. [Project Manager Orchestration](#scenario-9-project-manager-orchestration)
-10. [Deep Research Integration](#scenario-10-deep-research-integration)
-11. [Prompt-to-Graph Workflow](#scenario-11-prompt-to-graph-workflow)
+12. [Expert Council Decision Making](#scenario-12-expert-council-decision-making)
+13. [Project Manager Orchestration](#scenario-13-project-manager-orchestration)
+14. [Deep Research Integration](#scenario-14-deep-research-integration)
+15. [Prompt-to-Graph Workflow](#scenario-15-prompt-to-graph-workflow)
 
 ### Template & Management Scenarios
 
-12. [Create and Share Templates](#scenario-12-create-and-share-templates)
-13. [Import/Export Templates](#scenario-13-importexport-templates)
-14. [Prompt Library Management](#scenario-14-prompt-library-management)
+16. [Create and Share Templates](#scenario-16-create-and-share-templates)
+17. [Import/Export Templates](#scenario-17-importexport-templates)
+18. [Prompt Library Management](#scenario-18-prompt-library-management)
+19. [Coaching Agent Templates](#scenario-19-coaching-agent-templates)
 
 ### Edge Case & Error Scenarios
 
-15. [Handling Run Failures](#scenario-15-handling-run-failures)
-16. [Infinite Loop Prevention](#scenario-16-infinite-loop-prevention)
-17. [Memory Limit Effects](#scenario-17-memory-limit-effects)
+20. [Handling Run Failures](#scenario-20-handling-run-failures)
+21. [Infinite Loop Prevention](#scenario-21-infinite-loop-prevention)
+22. [Memory Limit Effects](#scenario-22-memory-limit-effects)
 
 ### Search Tool Scenarios
 
-18. [Configure Search Tool API Keys](#scenario-18-configure-search-tool-api-keys)
-19. [Quick Search Workspace](#scenario-19-quick-search-workspace)
-20. [Deep Research Report Workspace](#scenario-20-deep-research-report-workspace)
+23. [Configure Search Tool API Keys](#scenario-23-configure-search-tool-api-keys)
+24. [Quick Search Workspace](#scenario-24-quick-search-workspace)
+25. [Deep Research Report Workspace](#scenario-25-deep-research-report-workspace)
+
+### Workspace Template Scenarios
+
+26. [Deep Research Template](#scenario-26-deep-research-template)
+27. [Normal Research Template](#scenario-27-normal-research-template)
+28. [Project Plan Builder Template](#scenario-28-project-plan-builder-template)
+29. [Data Scraper Template](#scenario-29-data-scraper-template)
+30. [Large Document Reviewer Template](#scenario-30-large-document-reviewer-template)
+31. [Transcript Action Extractor Template](#scenario-31-transcript-action-extractor-template)
+32. [Block Calendar Template](#scenario-32-block-calendar-template)
+33. [Gmail Review Template](#scenario-33-gmail-review-template)
+34. [Dialectical Reasoning Template](#scenario-34-dialectical-reasoning-template)
+
+### Hegelian Dialectical Scenarios
+
+35. [Dialectical Cycle: Strategic Decision](#scenario-35-dialectical-cycle-strategic-decision)
+36. [Multi-Model Thesis Generation](#scenario-36-multi-model-thesis-generation)
+37. [Contradiction Tracking & Resolution](#scenario-37-contradiction-tracking-resolution)
+38. [Knowledge Hypergraph Retrieval](#scenario-38-knowledge-hypergraph-retrieval)
+
+### Channel Connection Scenarios
+
+39. [Connect LinkedIn Channel](#scenario-39-connect-linkedin-channel)
+40. [Connect Telegram Channel](#scenario-40-connect-telegram-channel)
+41. [Connect WhatsApp Channel](#scenario-41-connect-whatsapp-channel)
+42. [Channel Connection Error Handling](#scenario-42-channel-connection-error-handling)
 
 ### Real-World Use Cases
 
-21. [Business Plan Development](#use-case-1-business-plan-development)
-22. [Technical Documentation Creation](#use-case-2-technical-documentation-creation)
-23. [Market Research Report](#use-case-3-market-research-report)
-24. [Content Marketing Pipeline](#use-case-4-content-marketing-pipeline)
-25. [Product Launch Strategy](#use-case-5-product-launch-strategy)
+43. [Business Plan Development](#use-case-1-business-plan-development)
+44. [Technical Documentation Creation](#use-case-2-technical-documentation-creation)
+45. [Market Research Report](#use-case-3-market-research-report)
+46. [Content Marketing Pipeline](#use-case-4-content-marketing-pipeline)
+47. [Product Launch Strategy](#use-case-5-product-launch-strategy)
+48. [Supervisor-Driven Project Triage](#use-case-6-supervisor-driven-project-triage)
+49. [Dialectical Market Entry Analysis](#use-case-7-dialectical-market-entry-analysis)
 
 ---
 
@@ -97,7 +133,7 @@ Each scenario includes:
 4. Go to Configuration tab:
    - System Prompt: "You are a content researcher. Find credible sources, key statistics, and relevant examples for any topic. Always cite sources."
    - Provider: "OpenAI"
-   - Model: "gpt-4o"
+   - Model: "gpt-4.1"
    - Temperature: 0.4 (slightly creative but focused)
    - Max Tokens: 2000
 5. Go to Tools tab:
@@ -106,16 +142,18 @@ Each scenario includes:
 
 **Expected Results**:
 
-- ✅ Agent appears in agents list
-- ✅ Agent card shows name, role badge, model, tools
-- ✅ Can click Edit to modify
+- ✅ Agent appears in agents list as a card with role-specific icon (light/dark variants match theme)
+- ✅ Agent card shows name, role badge (e.g. "🔍 Researcher"), provider, model, temperature
+- ✅ System prompt preview is truncated on the card
+- ✅ Can click Edit to modify, Save Template to reuse, or Delete
+- ✅ Role filter dropdown in the agents list lets you filter by role (Researcher, Planner, Critic, Synthesizer, Executor, Supervisor, Custom)
 
 **Feedback Questions**:
 
 1. Is the agent builder intuitive?
 2. Are the model options clear?
 3. Is system prompt editing comfortable?
-4. Would you like prompt templates for common agent types?
+4. Do the role-specific icons help distinguish agent types at a glance?
 
 ---
 
@@ -138,33 +176,34 @@ Each scenario includes:
 
 **Steps**:
 
-1. Navigate to **Workspaces** page (`/workspaces`)
+1. Navigate to **Agents** page → **Workspaces** section
 2. Click **➕ New Workspace**
-3. Basic tab:
+3. Fill in:
    - Name: "Simple Content Pipeline"
    - Description: "Research → Write → Edit"
-4. Agents tab:
-   - Select all 3 agents (checkboxes)
+4. Select agents:
+   - Use the role filter dropdown to narrow the list
+   - Check all 3 agents
    - Default Agent: "Content Researcher"
-5. Workflow tab:
+5. Workflow settings:
    - Workflow Type: "Sequential"
+   - A drag-and-drop ordering list appears automatically
+   - Drag agents to set execution order: Researcher → Writer → Editor
    - Max Iterations: 10
-6. Memory tab:
-   - Memory Limit: 100
-7. Click **Save Workspace**
+6. Click **Save Workspace**
 
 **Expected Results**:
 
 - ✅ Workspace appears in list
-- ✅ Shows "3 agents"
-- ✅ Shows "Sequential" badge
-- ✅ Can click "Show Details"
+- ✅ Shows "3 agents" and "Sequential" badge
+- ✅ Drag-and-drop ordering list appears when 2+ agents are selected
+- ✅ Agent order is preserved on save and reload
 
 **Feedback Questions**:
 
 1. Is workspace creation straightforward?
-2. Is the agent selection clear?
-3. Would visual workflow preview help during creation?
+2. Is drag-and-drop ordering intuitive for setting execution order?
+3. Is the role filter helpful when selecting agents?
 
 ---
 
@@ -271,10 +310,10 @@ Each scenario includes:
 
 1. Navigate to **Agents** page
 2. Click **📋 From Template** button
-3. Browse templates:
-   - Look at "Strategic Planner"
+3. Browse templates — each shows a category-specific icon (light/dark):
    - Look at "Risk Analyst"
    - Look at "Real-Time News Analyst" (Grok 4)
+   - Look at "Agency & Urgency Coach" (new coaching templates)
 4. Select **"Technical Documentation Writer"**
 5. Click **Use Template**
 6. Agent is created automatically
@@ -286,74 +325,77 @@ Each scenario includes:
 **Expected Results**:
 
 - ✅ Template instantiates immediately
-- ✅ Agent is fully configured
+- ✅ Agent is fully configured with role, model, temperature, and tools
 - ✅ Ready to use in workspaces
 - ✅ Can be customized if needed
 
 **Feedback Questions**:
 
 1. Are templates discoverable?
-2. Are template descriptions helpful?
+2. Are template descriptions and icons helpful?
 3. Would you like more built-in templates?
-4. Which template types would be most useful?
+4. Are the coaching agent templates useful for business scenarios?
 
 ---
 
 ### Scenario 6: Building a Graph Workflow
 
-**Objective**: Create complex workflow with branching
+**Objective**: Create complex workflow with branching using JSON or Visual Builder
 
 **Features Tested**:
 
-- Graph workflow designer
-- Node creation
-- Edge connections
+- Graph workflow JSON editor
+- Custom Visual Workflow Builder (ReactFlow canvas)
+- Graph Docs modal
+- Node creation and edge connections
 - Conditional routing
 
-**Prerequisites**: Create agents:
+**Prerequisites**: Create agents from templates:
 
-- "Content Strategist"
-- "SEO Analyst"
-- "Technical Writer"
-- "Creative Writer"
+- "Content Strategist (Balanced)"
+- "SEO Specialist (Balanced)"
+- "Technical Documentation Writer (Balanced)"
+- "Creative Writer (Balanced)"
 
 **Steps**:
 
 1. Create new workspace: "Adaptive Content Creation"
 2. Add all 4 agents
-3. Workflow tab:
+3. Workflow settings:
    - Type: "Graph"
-4. In Graph Designer:
-   - **Node 1**: Agent (Content Strategist) - "strategy"
-   - **Node 2**: Agent (SEO Analyst) - "seo"
-   - **Node 3**: Human Input - "choice"
-     - Prompt: "Which style? A) Technical B) Creative"
-   - **Node 4**: Agent (Technical Writer) - "technical"
-   - **Node 5**: Agent (Creative Writer) - "creative"
-   - **Node 6**: End - "done"
-5. Connect edges:
-   - strategy → seo (Always)
-   - seo → choice (Always)
-   - choice → technical (Condition: Contains "A" or "technical")
-   - choice → creative (Condition: Contains "B" or "creative")
-   - technical → done (Always)
-   - creative → done (Always)
-6. Save workspace
+4. Click **"View Graph Docs"** to read the schema reference
+5. Option A — **JSON Editor**: Paste or type graph JSON directly
+6. Option B — **Visual Builder** (recommended):
+   - Click **"Open Visual Builder"**
+   - The builder opens with a Start Agent and End node
+   - Use the **Node Palette** on the left to add nodes:
+     - Select Start Agent → click "Agent" → adds an agent node after it
+     - In the properties panel, assign "Content Strategist" from the agent dropdown
+     - Repeat: add SEO Analyst, then a Human Input node, then branch
+   - The **Workspace Agents** section in the palette lists all 4 agents for quick add
+   - Use **Conditional Branch** in the Structure section to split paths
+   - Configure edges: set condition type (Equals/Contains/Regex) in properties
+   - Click **Save Workflow** to export graph JSON back to the form
+7. Save workspace
 
 **Expected Results**:
 
-- ✅ Graph displays visually
-- ✅ Nodes show agent/type
-- ✅ Edges show conditions
-- ✅ Can drag nodes to rearrange
-- ✅ Can edit nodes/edges
+- ✅ Visual builder renders nodes on a grid-snapped canvas
+- ✅ Nodes are color-coded by type (blue = agent, yellow = tool, red = human input, etc.)
+- ✅ Edges show condition labels when not "always"
+- ✅ Node properties panel lets you edit label, type, assigned agent, and output key
+- ✅ Workspace agents appear in the palette for quick insertion
+- ✅ Parallel Split creates N branch nodes with a join node
+- ✅ Conditional Branch creates branching paths with edge conditions
+- ✅ Saving exports valid graph JSON
+- ✅ Graph Docs modal explains the schema
 
 **Feedback Questions**:
 
-1. Is the graph designer intuitive?
-2. Are conditions easy to set up?
-3. Would you like graph templates?
-4. What other node types would be useful?
+1. Is the visual builder more intuitive than raw JSON?
+2. Is the node palette easy to discover?
+3. Are the color-coded node types helpful?
+4. Is the properties panel sufficient for configuration?
 
 ---
 
@@ -402,9 +444,250 @@ Each scenario includes:
 
 ---
 
+## Workflow Builder & Ordering Scenarios
+
+### Scenario 8: Drag-and-Drop Agent Ordering
+
+**Objective**: Reorder agents via drag-and-drop for sequential and parallel workflows
+
+**Features Tested**:
+
+- SortableAgentList drag-and-drop component
+- Agent ordering persistence on save
+- Order restoration on edit
+
+**Prerequisites**: A workspace with 3+ agents in sequential or parallel mode
+
+**Steps**:
+
+1. Create or edit a workspace
+2. Select 3+ agents and set workflow type to **Sequential**
+3. Observe the **Execution Order** section that appears below workflow type:
+   - Each selected agent is listed with a drag handle (dots icon), index number, role icon, and name
+4. Drag "Content Editor" above "Content Writer" to change execution order
+5. Observe the index numbers update in real time
+6. Save the workspace
+7. Re-open the workspace for editing
+8. Verify the order is preserved
+
+**Expected Results**:
+
+- ✅ Drag handle appears on the left of each agent row
+- ✅ Dragging animates smoothly (agent lifts with drop shadow)
+- ✅ Index numbers re-sequence immediately on drop
+- ✅ Order is preserved through save/reload
+- ✅ Works for both Sequential ("Execution Order") and Parallel ("Output Order") workflows
+- ✅ Ordering list only appears when 2+ agents are selected
+
+**Feedback Questions**:
+
+1. Is the drag handle discoverable?
+2. Is the animation smooth enough?
+3. Would you like keyboard shortcuts for reordering?
+
+---
+
+### Scenario 9: Parallel Workflow with Merge Strategies
+
+**Objective**: Test all merge strategies for parallel agent outputs
+
+**Features Tested**:
+
+- ParallelMergeSelector radio-card component
+- Merge strategy validation (synthesize requires exactly 1 Synthesizer)
+- SortableAgentList output ordering
+
+**Prerequisites**: Create 3 agents:
+
+- "Brainstorm Agent A" (role: Researcher)
+- "Brainstorm Agent B" (role: Researcher)
+- "Result Synthesizer" (role: Synthesizer)
+
+**Steps**:
+
+1. Create workspace: "Merge Strategy Test"
+2. Select all 3 agents
+3. Set workflow type to **Parallel**
+4. Observe the **Merge Strategy** selector with 4 options:
+   - **Combine** — concatenate all outputs in order
+   - **Pick Best** — Expert Council selects the best response
+   - **Synthesize** — a Synthesizer agent merges outputs
+   - **Deduplicate Combine** — combine only unique results
+5. Select **Combine** — no warnings shown
+6. Select **Synthesize**:
+   - A green hint confirms "The Synthesizer receives all outputs"
+   - Because exactly 1 Synthesizer is selected, no warning
+7. Now deselect "Result Synthesizer" and observe:
+   - Warning: "Requires exactly one Synthesizer agent"
+8. Re-select the Synthesizer. Select a second Synthesizer (if available):
+   - Warning: "Requires exactly one Synthesizer agent — 2 are currently selected"
+9. Switch merge to **Pick Best** — no synthesizer constraint
+10. Use the **Output Order** drag-and-drop list to control concatenation order
+11. Save workspace
+
+**Expected Results**:
+
+- ✅ 4 merge options displayed as radio cards with labels and descriptions
+- ✅ Selecting "Synthesize" without a Synthesizer shows a warning
+- ✅ Selecting "Synthesize" with exactly 1 Synthesizer shows a success hint
+- ✅ Multiple Synthesizers show a specific warning
+- ✅ Save is blocked with validation error if "Synthesize" is selected without a valid Synthesizer
+- ✅ Output order drag-and-drop controls the combination sequence
+
+**Feedback Questions**:
+
+1. Are the merge strategy descriptions clear enough?
+2. Is the synthesizer validation helpful or restrictive?
+3. Would you like a preview of how merge affects output?
+
+---
+
+### Scenario 10: Custom Visual Workflow Builder
+
+**Objective**: Build a full custom workflow graph using the visual canvas
+
+**Features Tested**:
+
+- ReactFlow-based visual builder canvas
+- Node palette (add nodes, workspace agents, structural operations)
+- Node properties panel (label, type, agent assignment, edge conditions)
+- Parallel split and conditional branch operations
+- Save/load graph cycle
+
+**Prerequisites**: Create 3 agents in any role
+
+**Steps**:
+
+1. Create a new workspace
+2. Select 3+ agents
+3. Set workflow type to **Custom**
+4. Click **"Open Visual Builder"**
+5. The builder opens with 2 default nodes: "Start Agent" and "End", connected by an edge
+6. Click the "Start Agent" node to select it (border highlights)
+7. In the **Node Palette** (left sidebar):
+   - Under "Add Node", click **Agent** — a new agent node is inserted after the selected node
+   - Under "Workspace Agents", click one of your agents — a pre-configured agent node is inserted
+8. Select the new agent node, then in **Node Properties** (below palette):
+   - Change its label
+   - Assign an agent from the dropdown
+   - Add an output key
+9. With a node selected, click **Parallel Split** (set branches to 3):
+   - 3 branch nodes + 1 join/merge node appear
+   - All branch nodes connect from the selected node, all merge into the join
+10. Select a node and click **Conditional Branch**:
+    - 2 conditional paths (Path A, Path B) are created
+    - In Properties, set edge conditions (Equals, Contains, Regex)
+11. Select any non-start node and click **Delete Selected Node**:
+    - Node is removed, edges are re-wired (predecessors connect to successors)
+12. Header shows live "N nodes, M edges" counter
+13. Click **Save Workflow** — canvas closes, graph JSON is populated in the form
+14. Save workspace, then re-edit it
+15. Click "Open Visual Builder" again — previous graph is loaded
+
+**Expected Results**:
+
+- ✅ Canvas renders with zoom, pan, and auto-fit
+- ✅ Nodes are color-coded: blue (agent), yellow (tool), red (human input), teal (join), gray (end), green (research)
+- ✅ Start node shows "START" badge
+- ✅ Conditional edges are animated with dashed stroke and show condition labels
+- ✅ Parallel Split creates correct fan-out/fan-in topology
+- ✅ Deleting a node preserves graph connectivity
+- ✅ Graph survives a save → reload → reopen cycle
+- ✅ The N^2 iteration guard prevents browser freeze if cycles are accidentally introduced
+
+**Feedback Questions**:
+
+1. Is the node palette organized well?
+2. Is the split between palette and properties panel intuitive?
+3. Would you like undo/redo support?
+4. Is auto-layout sufficient or would manual positioning help?
+
+---
+
+### Scenario 11: Supervisor Workflow
+
+**Objective**: Create a supervisor-driven workspace where one agent delegates to workers
+
+**Features Tested**:
+
+- Supervisor agent role creation
+- Supervisor workflow type selection
+- Supervisor agent selector (filtered to supervisor-role agents)
+- SupervisorPreview hub-and-spoke visualization
+- Validation (minimum 2 agents, supervisor required)
+- Agent ID reordering on save (supervisor first)
+
+**Prerequisites**: None — this scenario walks through end-to-end
+
+**Steps**:
+
+**Part A: Create a Supervisor Agent**
+
+1. Navigate to **Agents** page
+2. Click **➕ New Agent**
+3. Fill in:
+   - Name: "Project Coordinator"
+   - Role: **Supervisor** (new role option)
+   - Description: "Routes and delegates work across specialist agents"
+4. Configure:
+   - System Prompt: "You are a project coordinator. Break down the problem into sub-tasks, delegate each to the appropriate specialist, validate their work, and synthesize the final result."
+   - Provider: OpenAI, Model: gpt-4.1, Temperature: 0.3
+5. Save — agent card shows "👔 Supervisor" badge with the supervisor icon
+
+**Part B: Create Worker Agents**
+
+6. Create 2 more agents:
+   - "Research Specialist" (role: Researcher)
+   - "Report Writer" (role: Executor)
+
+**Part C: Create Supervisor Workspace**
+
+7. Click **➕ New Workspace**
+8. Name: "Supervised Research Pipeline"
+9. Select all 3 agents
+10. Set workflow type to **Supervisor**
+11. Observe new UI elements:
+    - **Supervisor Agent** dropdown appears, filtered to agents with role "supervisor"
+    - If no supervisor-role agent is selected, a warning is shown
+    - Select "Project Coordinator" as the supervisor
+12. Observe the **Supervisor Overview** visualization:
+    - Hub-and-spoke SVG: "Project Coordinator" at the top center
+    - "Research Specialist" and "Report Writer" below, connected by dashed lines
+    - Each worker shows their role badge
+13. Save workspace
+
+**Part D: Validation**
+
+14. Try saving without selecting a supervisor:
+    - Error: "A supervisor agent must be selected"
+15. Deselect all agents except the supervisor:
+    - Error: "Supervisor workflow requires at least 2 agents (1 supervisor + 1 worker)"
+16. Re-select agents and supervisor, save successfully
+17. Re-open for editing — supervisor selection is restored
+
+**Expected Results**:
+
+- ✅ "Supervisor" appears in the role dropdown in Agent Builder
+- ✅ Agent cards show 👔 icon and "Supervisor" label
+- ✅ Workspace form shows supervisor-specific UI when "supervisor" workflow is selected
+- ✅ Supervisor dropdown is filtered to supervisor-role agents only
+- ✅ Hub-and-spoke preview renders correctly with correct agent names
+- ✅ Validation prevents save without supervisor or with fewer than 2 agents
+- ✅ On save, supervisor agent ID is placed first in the `agentIds` array (backend contract)
+- ✅ Edit mode restores supervisor selection from the first agent ID
+
+**Feedback Questions**:
+
+1. Is the supervisor workflow concept clear from the UI?
+2. Is the hub-and-spoke preview useful for understanding the topology?
+3. Should the preview also show agent tools?
+4. Would you like to configure delegation rules (e.g. which workers handle which tasks)?
+
+---
+
 ## Advanced Scenarios
 
-### Scenario 8: Expert Council Decision Making
+### Scenario 12: Expert Council Decision Making
 
 **Objective**: Experience multi-model deliberation
 
@@ -422,7 +705,7 @@ Each scenario includes:
 3. Enable **Expert Council**:
    - Default Mode: "Full"
    - Council Models: All 4 (OpenAI, Anthropic, Google, Grok)
-   - Chairman: "gpt-4o"
+   - Chairman: "gpt-4.1"
    - Self-Exclusion: Enabled
 4. In agent's system prompt, add:
    ```
@@ -461,7 +744,7 @@ Each scenario includes:
 
 ---
 
-### Scenario 9: Project Manager Orchestration
+### Scenario 13: Project Manager Orchestration
 
 **Objective**: Test intelligent workflow coordination
 
@@ -523,7 +806,7 @@ Each scenario includes:
 
 ---
 
-### Scenario 10: Deep Research Integration
+### Scenario 14: Deep Research Integration
 
 **Objective**: Test external research workflow
 
@@ -584,7 +867,7 @@ Each scenario includes:
 
 ---
 
-### Scenario 11: Prompt-to-Graph Workflow
+### Scenario 15: Prompt-to-Graph Workflow
 
 **Objective**: Generate workflow from natural language
 
@@ -602,7 +885,7 @@ Each scenario includes:
    - Type: "Graph"
 4. Instead of manually designing, use **Prompt-to-Graph**:
    - Click "Use Prompt-to-Graph" button
-   - Model: "gpt-4o"
+   - Model: "gpt-4.1"
    - Prompt:
      ```
      Create a content review workflow:
@@ -650,7 +933,7 @@ Each scenario includes:
 
 ## Template & Management Scenarios
 
-### Scenario 12: Create and Share Templates
+### Scenario 16: Create and Share Templates
 
 **Objective**: Save and reuse configurations
 
@@ -711,7 +994,7 @@ Each scenario includes:
 
 ---
 
-### Scenario 13: Import/Export Templates
+### Scenario 17: Import/Export Templates
 
 **Objective**: Share templates as files
 
@@ -765,7 +1048,7 @@ Each scenario includes:
 
 ---
 
-### Scenario 14: Prompt Library Management
+### Scenario 18: Prompt Library Management
 
 **Objective**: Organize reusable prompts
 
@@ -840,9 +1123,57 @@ Each scenario includes:
 
 ---
 
+### Scenario 19: Coaching Agent Templates
+
+**Objective**: Deploy and use the new business coaching agent templates
+
+**Features Tested**:
+
+- 6 new coaching/business agent templates
+- Template instantiation with pre-configured prompts and models
+- Using coaching agents in sequential workflows
+
+**Steps**:
+
+1. Navigate to **Agents** page
+2. Click **📋 From Template**
+3. Browse the new coaching templates:
+   - **Agency & Urgency Coach** — helps define immediate action plans
+   - **Planning & Prioritization Coach** — structures priorities and weekly plans
+   - **Offer & Positioning Coach** — refines value proposition and messaging
+   - **Marketing & Content Pipeline Coach** — plans content strategy
+   - **Sales Pipeline & Deal Coach** — structures sales processes
+   - **LinkedIn Post Critic** — reviews and improves LinkedIn content
+4. Create one of each template agent
+5. Verify each agent's configuration:
+   - System prompt is detailed and domain-specific
+   - Model and temperature are set appropriately
+   - Role is set correctly (varies by template)
+6. Create a workspace: "Business Coaching Suite"
+   - Add: Agency Coach, Planning Coach, Offer Coach
+   - Workflow: Sequential
+   - Run with goal: "I'm a solo consultant launching a new AI advisory practice. Help me build an actionable plan."
+7. Observe each coach contributing domain-specific advice
+
+**Expected Results**:
+
+- ✅ All 6 coaching templates are available in the template selector
+- ✅ Each instantiates with a detailed, multi-section system prompt
+- ✅ Agents provide focused, domain-specific coaching responses
+- ✅ Sequential workflow passes context between coaches
+
+**Feedback Questions**:
+
+1. Are the coaching agent prompts realistic and useful?
+2. Which coaching areas would you add next?
+3. Would coaching templates benefit from tool access (e.g. web search)?
+4. Is the sequential flow natural for coaching scenarios?
+
+---
+
 ## Edge Case & Error Scenarios
 
-### Scenario 15: Handling Run Failures
+### Scenario 20: Handling Run Failures
 
 **Objective**: Test error handling and recovery
 
@@ -894,7 +1225,7 @@ Each scenario includes:
 
 ---
 
-### Scenario 16: Infinite Loop Prevention
+### Scenario 21: Infinite Loop Prevention
 
 **Objective**: Test max iteration safety limit
 
@@ -940,7 +1271,7 @@ Each scenario includes:
 
 ---
 
-### Scenario 17: Memory Limit Effects
+### Scenario 22: Memory Limit Effects
 
 **Objective**: Understand memory/context tradeoffs
 
@@ -987,7 +1318,7 @@ Each scenario includes:
 
 ## Search Tool Scenarios
 
-### Scenario 18: Configure Search Tool API Keys
+### Scenario 23: Configure Search Tool API Keys
 
 **Objective**: Set up and test search tool API keys in Settings
 
@@ -1037,7 +1368,7 @@ Each scenario includes:
 
 ---
 
-### Scenario 19: Quick Search Workspace
+### Scenario 24: Quick Search Workspace
 
 **Objective**: Test the Quick Search workspace template for fast sourced answers
 
@@ -1082,7 +1413,7 @@ Each scenario includes:
 
 ---
 
-### Scenario 20: Deep Research Report Workspace
+### Scenario 25: Deep Research Report Workspace
 
 **Objective**: Test comprehensive multi-source research with critique and synthesis
 
@@ -1142,23 +1473,23 @@ Each scenario includes:
 
 **Objective**: Create comprehensive business plan
 
-**Workflow**: Project Plan Builder template
+**Workflow**: Project Plan Builder template (supervisor workflow)
 
 **Agents**:
 
-- Project Manager (orchestrator)
-- Strategic Planner
-- Market Researcher
-- Financial Analyst
+- Project Planning Coordinator (role: Supervisor — orchestrator)
+- Project Structure Planner
+- Task Breakdown Specialist
 - Risk Analyst
-- Critical Reviewer
+- Plan Quality Reviewer
+- Financial Analyst (added manually)
 
 **Configuration**:
 
-- Workflow: Graph with validation gates
-- Expert Council: Enabled (Full mode)
+- Workflow: Supervisor (coordinator delegates to specialists)
+- Expert Council: Enabled (Quick mode)
 - Project Manager: Deep questioning
-- Memory: 150 messages
+- Memory: 100 messages
 
 **Steps**:
 
@@ -1447,6 +1778,789 @@ Each scenario includes:
 - Budget is allocated effectively
 - Risks are identified
 - Ready for execution
+
+---
+
+### Use Case 6: Supervisor-Driven Project Triage
+
+**Objective**: Use the supervisor workflow to triage and delegate a complex multi-domain request
+
+**Workflow**: Supervisor Triage template (or custom supervisor workspace)
+
+**Agents**:
+
+- Project Coordinator (role: Supervisor)
+- Research Specialist (role: Researcher)
+- Technical Analyst (role: Executor)
+- Report Writer (role: Synthesizer)
+
+**Configuration**:
+
+- Workflow: Supervisor
+- Supervisor Agent: Project Coordinator
+- Max Iterations: 10
+- Memory: 100 messages
+
+**Steps**:
+
+1. Create a supervisor agent: "Project Coordinator" (role: Supervisor)
+   - System prompt: "You are a project coordinator. Analyze the incoming request, break it into sub-tasks, delegate each to the appropriate specialist agent, validate their outputs, and synthesize a final deliverable."
+2. Create 3 worker agents (Researcher, Technical Analyst, Report Writer)
+3. Create workspace using **Supervisor** workflow type
+4. Select all 4 agents, designate Project Coordinator as supervisor
+5. Verify the hub-and-spoke preview shows correct topology
+6. Run with goal:
+   ```
+   Evaluate whether our company should migrate from AWS to a multi-cloud
+   strategy. Consider: cost analysis, technical complexity, security implications,
+   team readiness, and a phased migration plan.
+   ```
+7. Observe supervisor execution:
+   - Phase 1: Supervisor plans sub-tasks and delegates
+   - Phase 2: Workers execute in parallel (research, technical analysis, writing)
+   - Phase 3: Supervisor validates results and produces final synthesis
+8. Review output: should be a coordinated deliverable, not fragmented
+
+**Expected Output**:
+
+- Structured report with sections from each specialist
+- Supervisor's executive summary tying everything together
+- Clear recommendations with supporting evidence from workers
+- No redundancy between worker outputs (supervisor deduplicates)
+
+**Success Metrics**:
+
+- Supervisor correctly identifies and delegates sub-tasks
+- Each worker contributes domain-specific expertise
+- Final output is cohesive, not a simple concatenation
+- Worker agent tools and descriptions are available to the supervisor
+
+---
+
+### Use Case 7: Dialectical Market Entry Analysis
+
+**Objective**: Use Hegelian dialectical reasoning to analyze market entry strategy with balanced thesis-antithesis exploration
+
+**Workflow**: Dialectical Reasoning (custom or template)
+
+**Agents**:
+
+- Market Analyst (thesis generator)
+- Devil's Advocate (antithesis generator)
+- Strategic Synthesizer (sublation/resolution)
+- Knowledge Curator (hypergraph management)
+
+**Configuration**:
+
+- Dialectical Mode: Enabled
+- Cycle Depth: 2 (allows refinement)
+- Contradiction Tracking: All 4 types enabled
+- Multi-Model Synthesis: Optional (GPT-4.1 thesis, Claude antithesis)
+
+**Steps**:
+
+1. Create a dialectical workspace with 4 agents configured as above
+2. Enable contradiction visualization in workspace settings
+3. Run with goal:
+   ```
+   Should our B2B SaaS company expand into the European market in 2026?
+   Consider: regulatory environment (GDPR, AI Act), competitive landscape,
+   localization costs, partnership opportunities, and timing risks.
+   ```
+4. Observe Phase 1 - Market Analyst generates thesis:
+   - Opportunity size and growth projections
+   - Strategic timing arguments
+   - Competitive advantages
+5. Observe Phase 2 - Devil's Advocate generates antithesis:
+   - Regulatory compliance costs
+   - Localization challenges
+   - Market saturation risks
+6. Watch contradiction detection identify conflicts:
+   - PRAGMATIC: Cost of entry vs. revenue projections
+   - BOUNDARY: EU-wide strategy vs. country-specific approaches
+   - LOGIC: "First mover advantage" vs. "Let competitors validate market"
+7. Observe sublation phase synthesize:
+   - Phased entry strategy (resolve timing contradiction)
+   - Country prioritization framework (resolve boundary contradiction)
+   - Risk-adjusted financial model (resolve pragmatic contradiction)
+8. Verify knowledge integration adds insights to hypergraph
+9. Review final recommendation with confidence scores
+
+**Expected Output**:
+
+- Balanced analysis covering both opportunity and risk
+- Clear contradiction identification with resolution strategies
+- Phased market entry recommendation with conditions
+- Evidence-linked claims for each major point
+- Decision framework usable for future market evaluations
+
+**Success Metrics**:
+
+- At least 3 contradictions detected and processed
+- Synthesis includes conditions/triggers for action
+- Knowledge graph updated with market analysis framework
+- Final output acknowledges unresolved tensions as monitoring items
+- Cost breakdown shows per-phase token usage
+
+---
+
+## Channel Connection Scenarios
+
+### Scenario 39: Connect LinkedIn Channel
+
+**Objective**: Set up a LinkedIn channel connection using cookie-based authentication
+
+**Features Tested**:
+
+- Channel Connections panel in Settings
+- LinkedIn Settings Panel (credential input form)
+- Backend credential validation via Voyager API
+- Real-time connection status updates
+
+**Prerequisites**: Active LinkedIn account with valid session
+
+**Steps**:
+
+1. Navigate to **Settings** > **Channel Connections**
+2. Expand the **LinkedIn** channel row
+3. Observe the LinkedIn Settings Panel with:
+   - `li_at Cookie` field (required, password input)
+   - `CSRF Token` field (optional, password input)
+   - Help accordion with cookie extraction instructions
+4. Open browser DevTools on LinkedIn, copy the `li_at` cookie value
+5. Paste the cookie into the `li_at Cookie` field
+6. Optionally enter the CSRF token
+7. Click **Connect**
+8. Wait for credential validation (backend calls Voyager `/me` API)
+
+**Expected Results**:
+
+- ✅ LinkedIn row is expandable (no longer "Coming Soon")
+- ✅ Help accordion shows step-by-step DevTools instructions
+- ✅ Password input masks cookie value
+- ✅ Successful validation stores connection in Firestore
+- ✅ Connected state shows masked cookie, green StatusDot, "Test" and "Disconnect" buttons
+- ✅ Channel status in the row updates to "Connected" with connection summary
+- ✅ Invalid/expired cookie returns 400 error with "invalid or expired" message
+
+**Feedback Questions**:
+
+1. Are the cookie extraction instructions clear enough?
+2. Is the connected state informative?
+3. Does the expired session warning ("Expired" badge) help users understand they need to re-authenticate?
+
+---
+
+### Scenario 40: Connect Telegram Channel
+
+**Objective**: Connect a Telegram bot using a BotFather token
+
+**Features Tested**:
+
+- Telegram Settings Panel (bot token form)
+- Token format validation (client-side regex)
+- Backend validation via Telegram Bot API `getMe`
+- Bot username display after connection
+
+**Prerequisites**: Telegram bot created via @BotFather
+
+**Steps**:
+
+1. Navigate to **Settings** > **Channel Connections**
+2. Expand the **Telegram** channel row
+3. Observe the Telegram Settings Panel with:
+   - `Bot Token` field (required, password input, monospace)
+   - Help accordion with BotFather setup steps
+4. Enter an invalid token format (e.g., "not-a-token")
+5. Observe client-side validation error
+6. Enter a valid bot token from BotFather (format: `123456:ABC-DEF...`)
+7. Click **Connect**
+8. Wait for backend to call Telegram `getMe` API
+
+**Expected Results**:
+
+- ✅ Telegram row is expandable (no longer "Coming Soon")
+- ✅ Client-side regex validates token format `/^\d+:[A-Za-z0-9_-]+$/`
+- ✅ Invalid format shows inline error before submission
+- ✅ Successful validation returns bot username (e.g., `@MyBot`)
+- ✅ Connected state shows bot username, green StatusDot, Test/Disconnect buttons
+- ✅ "Test" button re-validates token by calling `getMe` again
+- ✅ Invalid token returns 400 error from backend
+
+**Feedback Questions**:
+
+1. Is the BotFather setup guide helpful for first-time users?
+2. Is the bot username display clear after connection?
+3. Does the token format validation catch mistakes early enough?
+
+---
+
+### Scenario 41: Connect WhatsApp Channel
+
+**Objective**: Connect WhatsApp via companion service and QR code pairing
+
+**Features Tested**:
+
+- WhatsApp Settings Panel (companion URL + QR flow)
+- QR code generation from companion service
+- Status polling during pairing
+- Companion service health check
+
+**Prerequisites**: WhatsApp companion service deployed (see help accordion for deployment instructions)
+
+**Steps**:
+
+1. Navigate to **Settings** > **Channel Connections**
+2. Expand the **WhatsApp** channel row
+3. Observe the WhatsApp Settings Panel with:
+   - `Companion Service URL` field (required, URL input)
+   - `Phone Number` field (optional, for reference)
+   - Help accordion with companion deployment instructions
+4. Enter the companion service URL (e.g., `https://wa-companion.example.com`)
+5. Optionally enter your phone number for reference
+6. Click **Pair Device**
+7. Observe QR code displayed in the panel
+8. Scan the QR code with WhatsApp on your phone (Linked Devices)
+9. Wait for status polling (every 3 seconds) to detect successful pairing
+10. Observe automatic connection creation after pairing succeeds
+
+**Expected Results**:
+
+- ✅ WhatsApp row is expandable (no longer "Coming Soon")
+- ✅ URL validation rejects invalid URLs
+- ✅ QR code appears after clicking "Pair Device"
+- ✅ "Waiting for scan..." pulsing animation visible during polling
+- ✅ QR code expires after 2 minutes with auto-cleanup
+- ✅ Successful scan creates connection in Firestore
+- ✅ Connected state shows green StatusDot, Test/Disconnect buttons
+- ✅ "Save Without Pairing" fallback stores connection without QR flow
+- ✅ Companion service URL is validated via `/api/status` endpoint
+
+**Feedback Questions**:
+
+1. Is the QR code large and clear enough to scan easily?
+2. Is the 2-minute expiry reasonable?
+3. Are the companion service deployment instructions adequate?
+4. Is the "Save Without Pairing" fallback useful for advanced users?
+
+---
+
+### Scenario 42: Channel Connection Error Handling
+
+**Objective**: Verify error handling across all channel connection flows
+
+**Features Tested**:
+
+- Missing credential validation (all channels)
+- Network error handling
+- Connection test/disconnect operations
+- Unsupported source rejection
+
+**Steps**:
+
+1. **LinkedIn - Expired Cookie**:
+   - Connect with a valid cookie, then wait for it to expire
+   - Observe "Expired" badge appears on the connection
+   - Click "Test" to re-validate — should show error status
+   - Update the cookie to restore connection
+
+2. **Telegram - Invalid Token**:
+   - Try connecting with a revoked bot token
+   - Observe backend returns 400 with validation error
+   - Try connecting with correct token, then revoke it via BotFather
+   - Click "Test" — should show disconnected status
+
+3. **WhatsApp - Companion Offline**:
+   - Enter a companion URL that is unreachable
+   - Click "Pair Device" — should show connection error
+   - Enter a valid URL but don't scan QR within 2 minutes
+   - Observe QR expiry and cleanup
+
+4. **Delete Connections**:
+   - For each connected channel, click "Disconnect"
+   - Confirm the connection is removed from Firestore
+   - Channel status reverts to "Not connected"
+
+**Expected Results**:
+
+- ✅ Missing required fields return 400 with descriptive error message
+- ✅ Expired credentials are detected and surfaced to the user
+- ✅ Network errors are caught and displayed (not silent failures)
+- ✅ Delete operation removes the connection document
+- ✅ Channel panel reverts to the credential input form after disconnect
+- ✅ Each channel validates its specific required credentials:
+  - LinkedIn: `li_at` cookie
+  - Telegram: `botToken`
+  - WhatsApp: `companionServiceUrl`
+
+**Feedback Questions**:
+
+1. Are error messages clear and actionable?
+2. Is the expired credential flow intuitive (detect → notify → re-authenticate)?
+3. Does the disconnect flow feel safe (confirmation prompt)?
+
+---
+
+## Workspace Template Scenarios
+
+### Scenario 26: Deep Research Template
+
+**Objective**: Test the iterative deep research workflow with parallel search, fact checking, and human review
+
+**Prerequisites**: Google account connected (for real-time search); Serper, Exa API keys configured in Settings
+
+**Tools Used**: `serp_search`, `semantic_search`, `read_url`, `scrape_url`
+
+**Steps**:
+
+1. Go to **Workspaces** > **Create from Template**
+2. Select **"Deep Research"** template
+3. Review the pre-configured agents (8 agents, including coordinator, SERP/semantic searchers, compiler, evaluator, fact checker)
+4. Review the graph: coordinator > human confirm > 4 parallel searchers > join > compiler > evaluator > (ITERATE loop or COMPLETE > fact checker > human review > end)
+5. Click **Create Workspace**
+6. Start a run with: _"Research the impact of AI on healthcare diagnostics"_
+7. When prompted at "Confirm Assumptions", review the coordinator's research plan and confirm
+8. Observe the parallel search phase (4 agents searching simultaneously)
+9. Watch the compiler synthesize results and the evaluator decide ITERATE or COMPLETE
+10. If ITERATE, observe the loop back to searchers
+11. Once COMPLETE, review the fact checker's output
+12. At "Review Final Report", approve or provide feedback
+
+**Expected Results**:
+
+- 8 agents are created from templates with correct models and tools
+- Graph renders with loop edges (evaluator back to searchers)
+- Human input nodes pause the workflow for user confirmation
+- Parallel fan-out to 4 searchers works correctly
+- Join node combines all research outputs
+- Loop respects limits (maxNodeVisits: 12, maxEdgeRepeats: 10)
+- Final report includes citations and confidence levels
+
+---
+
+### Scenario 27: Normal Research Template
+
+**Objective**: Test the 4-way parallel fan-out research workflow (custom/visual builder type)
+
+**Prerequisites**: Same as Scenario 26
+
+**Tools Used**: `serp_search`, `semantic_search`, `read_url`, `get_current_time`
+
+**Steps**:
+
+1. Create workspace from **"Normal Research"** template
+2. Note the workflow type is **custom** (visual builder)
+3. Click **"Open Visual Builder"** to see the workflow graph visually
+4. Observe the fan-out: start trigger > 4 parallel researchers > join > synthesizer > end
+5. Close the builder and start a run: _"What are the latest developments in quantum computing?"_
+6. Observe all 4 researchers running in parallel (Quick SERP, Deep SERP, Semantic, News)
+7. Watch the thinking-model synthesizer combine outputs
+
+**Expected Results**:
+
+- Visual builder shows clean 4-way fan-out pattern
+- All 4 research agents execute in parallel
+- Join node uses `synthesize` aggregation mode
+- Research Synthesizer (o3) produces unified report with confidence levels
+- Total run completes within maxIterations: 10
+
+---
+
+### Scenario 28: Project Plan Builder Template
+
+**Objective**: Test iterative planning with gap research and multi-provider evaluation
+
+**Tools Used**: `serp_search`, `read_url`
+
+**Steps**:
+
+1. Create workspace from **"Project Plan Builder"** template
+2. Review the graph: planner > evaluator > (NEEDS_WORK: gap researcher > planner loop | COMPLETE: improvement > quality review > end)
+3. Start run: _"Plan a mobile app for personal finance tracking"_
+4. Observe the planner creating initial structure
+5. Watch evaluator assess completeness — may trigger NEEDS_WORK loop
+6. If looped, observe gap researcher filling knowledge gaps
+7. Once COMPLETE, watch improvement and quality review agents refine
+
+**Expected Results**:
+
+- Iterative loop between evaluator and planner works (maxEdgeRepeats: 3)
+- Multi-provider agents: OpenAI (planner, evaluator), Google (gap researcher), Anthropic (improvement)
+- Final plan includes chapters, milestones, risk assessment, and quality score
+
+---
+
+### Scenario 29: Data Scraper Template
+
+**Objective**: Test parallel scraping with dedup and structured storage (custom/visual builder type)
+
+**Tools Used**: `serp_search`, `read_url`, `scrape_url`, `create_note`, `create_topic`
+
+**Steps**:
+
+1. Create workspace from **"Data Scraper"** template
+2. Note the workflow type is **custom** — open the visual builder to see fan-out
+3. Start run: _"Find 50 senior product manager job descriptions from tech companies"_
+4. Watch coordinator plan 10-20 search queries and partition into 3 groups
+5. Observe 3 scraper agents running in parallel
+6. Watch join node deduplicate results
+7. Observe storage agent creating a topic and storing items as notes
+
+**Expected Results**:
+
+- 3-way parallel fan-out visible in visual builder
+- Join uses `dedup_combine` aggregation
+- Storage agent creates a topic (e.g., "PM Job Descriptions") and individual notes
+- Notes are searchable in the Notes section after the run
+
+---
+
+### Scenario 30: Large Document Reviewer Template
+
+**Objective**: Test PDF parsing, parallel chapter analysis, and knowledge graph building
+
+**Prerequisites**: A PDF document to upload (100+ pages recommended)
+
+**Tools Used**: `parse_pdf`, `create_note`, `create_topic`, `analyze_note_paragraphs`, `tag_paragraph_with_note`
+
+**Steps**:
+
+1. Create workspace from **"Large Document Reviewer"** template
+2. Review the graph: chunker > 3 parallel analysts > join > note creator (Knowledge Manager) > synthesizer > end
+3. Upload a PDF and start the run
+4. Watch the chunker parse the PDF and divide into 3 analysis chunks
+5. Observe 3 Chapter Analysts analyzing their chunks in parallel
+6. Watch the Knowledge Manager create topics, notes, and knowledge graph connections
+7. Review the Synthesis Agent's cross-chapter summary
+
+**Expected Results**:
+
+- `parse_pdf` tool extracts text from uploaded PDF
+- 3-way parallel chapter analysis works
+- Knowledge Manager creates topics and tagged notes (visible in Notes section)
+- Document Synthesis Agent identifies cross-chapter themes and contradictions
+- Handles large documents (500K char truncation if needed)
+
+---
+
+### Scenario 31: Transcript Action Extractor Template
+
+**Objective**: Test transcript parsing, todo creation, and optional calendar scheduling with human input
+
+**Tools Used**: `parse_pdf`, `create_todo`, `create_note`, `list_calendar_events`, `create_calendar_event`, `get_current_time`
+
+**Steps**:
+
+1. Create workspace from **"Transcript Action Extractor"** template
+2. Review the graph: parser > prioritizer > todo creator > human calendar > (yes: scheduler > end | no: end)
+3. Paste or upload a meeting transcript and start the run
+4. Watch the parser extract speakers, decisions, and action items
+5. Observe the prioritizer assigning urgency and time estimates
+6. Check that todo items appear in your task list
+7. At "Calendar Preferences" human input, choose "yes" to schedule or "no" to skip
+8. If yes, watch the scheduler create calendar blocks respecting your constraints
+
+**Expected Results**:
+
+- Action items extracted accurately with owners and deadlines
+- Todo items created with correct urgency levels (visible in Planner)
+- Meeting summary note created
+- Human input node presents yes/no branching correctly
+- Calendar events respect existing schedule (no double-booking)
+
+---
+
+### Scenario 32: Block Calendar Template
+
+**Objective**: Test todo review and calendar scheduling workflow with human constraint gathering
+
+**Prerequisites**: Existing todos with due dates in Planner; Google Calendar connected
+
+**Tools Used**: `list_todos`, `get_current_time`, `list_calendar_events`, `create_calendar_event`
+
+**Steps**:
+
+1. Ensure you have some overdue or this-week todos in Planner
+2. Create workspace from **"Block Calendar"** template
+3. Review the simple graph: todo reviewer > human constraints > scheduler > end
+4. Start the run
+5. Watch the Todo Review Agent list overdue and upcoming tasks with time estimates
+6. At "Scheduling Preferences", provide constraints (e.g., "Max 4 hours/day, no meetings before 10am, avoid lunch 12-1")
+7. Watch the scheduler create calendar blocks
+
+**Expected Results**:
+
+- Todo Review Agent finds overdue and this-week tasks from your Planner
+- Time estimates are reasonable
+- Human input pauses for constraint gathering
+- Calendar blocks appear on your Google Calendar
+- Existing events are not overlapped
+- High-urgency/overdue items get earliest slots
+
+---
+
+### Scenario 33: Gmail Review Template
+
+**Objective**: Test email scanning, smart filtering, summarization, and action extraction
+
+**Prerequisites**: Google account connected with Gmail access; `gmail.readonly` OAuth scope granted
+
+**Tools Used**: `list_gmail_messages`, `read_gmail_message`, `query_firestore`, `create_todo`, `create_note`, `list_calendar_events`, `create_calendar_event`, `get_current_time`
+
+**Steps**:
+
+1. Create workspace from **"Gmail Review"** template
+2. Review the graph: scanner > summarizer > human actions > (schedule: scheduler > end | done: end)
+3. Start the run
+4. Watch the Email Scanner (gpt-4.1-nano, fast/cheap) list recent emails and classify by subject/sender
+5. Observe it filtering out spam, promotions, and automated notifications
+6. Watch the Summarizer read full bodies of important emails only
+7. Check that a summary note and todo items are created
+8. At "Review Actions", choose "schedule" to block calendar time or "done" to finish
+9. If scheduling, watch the Calendar Scheduler create events
+
+**Expected Results**:
+
+- Scanner uses gpt-4.1-nano for cost efficiency (only reads subject/sender)
+- Spam/promo emails correctly filtered as "skip"
+- Only important emails have bodies read (cost optimization)
+- Summary note created with all email summaries
+- Action items become todos in Planner
+- Calendar events created for time-sensitive items
+- Already-processed emails tracked (won't be re-processed on next run)
+
+---
+
+### Scenario 34: Dialectical Reasoning Template
+
+**Objective**: Test the research-first Hegelian dialectical reasoning template with multi-model thesis generation, full 6-phase cycle, and iterative loops
+
+**Prerequisites**:
+
+- API keys configured for at least 3 providers (Anthropic, OpenAI, Google)
+- Search tool API keys configured (Serper at minimum; Exa and Jina recommended)
+
+**Tools Used**: `serp_search`, `semantic_search`, `read_url`, `search_web`, `search_scholar`
+
+**Steps**:
+
+1. Go to **Workspaces** > **Create from Template**
+2. Select **"Dialectical Reasoning"** template
+3. Review the pre-configured agents (5 agents):
+   - **Dialectical Economic Thesis Agent (Anthropic)** — `thesis_generator` role, Claude Sonnet 4.5, tools: `serp_search`, `semantic_search`, `read_url`
+   - **Dialectical Systems Thesis Agent (OpenAI)** — `thesis_generator` role, GPT-5.2, tools: `serp_search`, `search_web`, `search_scholar`
+   - **Dialectical Adversarial Thesis Agent (Google)** — `thesis_generator` role, Gemini 2.5 Pro, tools: `serp_search`, `semantic_search`, `search_scholar`
+   - **Dialectical Synthesis Agent (Thinking)** — `synthesizer` role, o1, no tools
+   - **Dialectical Meta-Reflection Agent (Thinking)** — `meta_reflection` role, Claude Opus 4.6, no tools
+4. Verify workflow type is **dialectical** (no custom graph needed — the executor builds the 6-phase cycle automatically)
+5. Click **Create Workspace**
+6. Start a run with a strategic question:
+   ```
+   Should enterprise companies adopt AI agents for customer support in 2026?
+   Consider: cost implications, customer satisfaction risks, regulatory
+   compliance, competitive pressure, and workforce transition.
+   ```
+7. Observe **Phase 1 — Retrieve Context**: On first cycle, passes through (no knowledge graph yet)
+8. Observe **Phase 2 — Generate Theses** (3 agents in parallel):
+   - **Economic Agent** (Anthropic): Calls `serp_search` and `semantic_search` to find current cost data, ROI studies, and market analysis. Then generates an economic thesis with concept graph, causal model, and confidence score
+   - **Systems Agent** (OpenAI): Calls `serp_search` and `search_web` to find system dynamics, adoption patterns, and feedback loops. Then generates a systems thesis
+   - **Adversarial Agent** (Google): Calls `serp_search` and `search_scholar` specifically searching for _failures, criticisms, and counter-evidence_. Then generates an adversarial thesis highlighting risks
+9. Verify each thesis includes:
+   - Research findings with cited URLs
+   - Concept graph entries (A → B: relationship)
+   - Falsification criteria
+   - Decision implications
+   - Confidence score (0.0–1.0)
+10. Observe **Phase 3 — Cross-Negation**: Each thesis negated by another agent using typed rewrite operators (SPLIT, MERGE, REVERSE_EDGE, ADD_MEDIATOR, SCOPE_TO_REGIME, TEMPORALIZE)
+11. Observe **Phase 4 — Crystallize Contradictions**: 4 algorithmic trackers identify conflicts:
+    - LOGIC: Mutually exclusive claims (e.g., "AI reduces costs" vs "AI increases costs in year 1")
+    - PRAGMATIC: Action conflicts (e.g., "deploy fast" vs "thorough testing required")
+    - SEMANTIC: Different definitions (e.g., "customer satisfaction" measured differently)
+    - BOUNDARY: Regime mismatches (e.g., claims valid for enterprise but not SMB)
+12. Observe **Phase 5 — Sublation**: Synthesis Agent (o1) applies typed operators to create a higher-order understanding. Check scoring: parsimony (40%), scope (40%), novelty (20%)
+13. Observe **Phase 6 — Meta-Reflection**: Meta-Reflection Agent (Claude Opus 4.6) evaluates:
+    - Conceptual velocity (rate of new insights)
+    - Contradiction density (unresolved conflicts per claim)
+    - Decision: CONTINUE, TERMINATE, or RESPECIFY
+14. If CONTINUE: Watch the cycle loop back to Phase 1, this time with an enriched knowledge graph. Thesis agents search again, potentially with refined queries
+15. If TERMINATE: Review the final synthesis summary
+16. Check the DialecticalCycleVisualization component for cycle metrics
+
+**Expected Results**:
+
+- ✅ 5 agents are created from templates with correct roles, models, and tools
+- ✅ Template uses `workflowType: 'dialectical'` (no `workflowGraphTemplate` needed)
+- ✅ Phase 2 shows all 3 thesis agents running in parallel
+- ✅ Each thesis agent calls at least 2 search tools before generating its thesis (research-first protocol)
+- ✅ Different agents use different tool combinations for information diversity:
+  - Economic: `serp_search` + `semantic_search` + `read_url`
+  - Systems: `serp_search` + `search_web` + `search_scholar`
+  - Adversarial: `serp_search` + `semantic_search` + `search_scholar`
+- ✅ Research findings are cited with URLs in each thesis
+- ✅ Multi-model heterogeneity (Anthropic, OpenAI, Google) produces genuinely different perspectives
+- ✅ Cross-negation uses typed rewrite operators (not free-text critiques)
+- ✅ At least 2 contradictions detected across the 4 tracker types
+- ✅ Sublation produces novel claims and testable predictions
+- ✅ Meta-reflection correctly decides CONTINUE or TERMINATE based on velocity
+- ✅ If CONTINUE, cycle 2+ has richer context from the accumulated knowledge graph
+- ✅ Total run completes within maxIterations: 30 (~5 full cycles)
+- ✅ Run cost breakdown shows per-phase token usage
+- ✅ Final output is a balanced, evidence-grounded analysis — not a compromise but a higher-order synthesis
+
+**Feedback Questions**:
+
+1. Does the research-first protocol produce more grounded theses compared to non-search dialectical runs?
+2. Is multi-model heterogeneity visible in the diversity of perspectives?
+3. Are the typed rewrite operators (SPLIT, MERGE, etc.) reflected in the synthesis output?
+4. Does the adversarial agent find meaningfully different information by searching for counter-evidence?
+5. Is the meta-reflection decision (CONTINUE vs TERMINATE) well-calibrated? Does it stop at the right time?
+6. How does this template compare to the manual dialectical setup (Scenarios 35-38)?
+
+---
+
+## Hegelian Dialectical Scenarios
+
+These scenarios test the advanced Hegelian dialectical reasoning architecture introduced in version 1.3.
+
+### Scenario 35: Dialectical Cycle: Strategic Decision
+
+**Objective**: Test the complete 6-phase dialectical reasoning cycle for strategic decision-making.
+
+**Prerequisites**:
+
+- Enable Dialectical Mode in Agent Builder
+- Configure at least 2 AI providers (for multi-model synthesis)
+- Have a research topic requiring balanced analysis
+
+**Steps**:
+
+1. Navigate to **Agents** page and create a new agent
+2. Enable **"Dialectical Mode"** in the Agent Builder
+3. Set the cycle depth to 2 (allows refinement cycles)
+4. Enter a strategic question: _"Should we migrate from monolith to microservices?"_
+5. Start the run and observe Phase 1 (Thesis Generation)
+6. Watch Phase 2 (Antithesis Generation) - note how it generates counterarguments
+7. Observe Phase 3 (Contradiction Detection) - see detected conflicts highlighted
+8. Watch Phase 4 (Sublation) - observe synthesis of competing positions
+9. Check Phase 5 (Knowledge Integration) - verify insights added to hypergraph
+10. Review Phase 6 (Response Composition) - final balanced recommendation
+
+**Expected Results**:
+
+- All 6 phases complete successfully
+- Thesis presents migration benefits (scalability, team autonomy, etc.)
+- Antithesis presents valid concerns (complexity, distributed debugging, etc.)
+- At least 2 contradictions detected (e.g., PRAGMATIC: cost vs benefit)
+- Sublation produces nuanced recommendation with conditions
+- Knowledge graph updated with decision framework
+- Final response includes confidence score and evidence links
+- Run cost breakdown shows per-phase token usage
+
+---
+
+### Scenario 36: Multi-Model Thesis Generation
+
+**Objective**: Test thesis/antithesis generation using different AI models for diverse perspectives.
+
+**Prerequisites**:
+
+- Configure API keys for at least 3 providers (OpenAI, Anthropic, Google)
+- Enable Dialectical Mode
+
+**Steps**:
+
+1. Create a Dialectical agent with **"Multi-Model Synthesis"** enabled
+2. Configure model assignments:
+   - Thesis: GPT-4.1 (analytical strength)
+   - Antithesis: Claude Sonnet (nuanced reasoning)
+   - Synthesis: Gemini 2.0 (integration capability)
+3. Enter topic: _"Remote work vs office-first culture for startups"_
+4. Start the run
+5. Observe thesis generation using GPT-4.1
+6. Watch antithesis generation switch to Claude Sonnet
+7. Note the model indicator changes in the run log
+8. Verify synthesis uses Gemini 2.0
+9. Compare output quality with single-model approach
+
+**Expected Results**:
+
+- Model switching occurs visibly in run log
+- Each model's strengths reflected in their phase outputs
+- GPT-4.1 thesis is structured and analytical
+- Claude antithesis shows nuanced counterpoints
+- Gemini synthesis integrates both perspectives coherently
+- Token costs distributed across providers
+- No API errors during model switches
+
+---
+
+### Scenario 37: Contradiction Tracking & Resolution
+
+**Objective**: Test the 4 contradiction tracker types and resolution strategies.
+
+**Prerequisites**:
+
+- Enable Dialectical Mode with contradiction tracking visible
+
+**Steps**:
+
+1. Create agent with **"Show Contradiction Details"** enabled
+2. Enter complex topic: _"AI regulation: innovation vs safety"_
+3. Start the run and observe contradiction detection phase
+4. Look for **LOGIC** contradictions (mutually exclusive claims)
+5. Look for **PRAGMATIC** contradictions (implementation conflicts)
+6. Look for **SEMANTIC** contradictions (definition/framing conflicts)
+7. Look for **BOUNDARY** contradictions (scope/context conflicts)
+8. Observe resolution proposals for each type
+9. Check which contradictions get resolved vs preserved as tensions
+10. Verify the sublation phase addresses unresolved contradictions
+
+**Expected Results**:
+
+- At least 1 contradiction detected per tracker type (for complex topics)
+- LOGIC tracker catches: "AI must be autonomous" vs "AI must be controlled"
+- PRAGMATIC tracker catches: "Fast deployment" vs "Thorough testing"
+- SEMANTIC tracker catches: Different definitions of "safety"
+- BOUNDARY tracker catches: "National regulation" vs "Global AI systems"
+- Resolution strategies applied (SYNTHESIS, HIERARCHY, CONTEXT_SPLIT, PRESERVE_TENSION)
+- Unresolved tensions clearly marked in final output
+- Contradiction visualization shows color-coded types
+
+---
+
+### Scenario 38: Knowledge Hypergraph Retrieval
+
+**Objective**: Test the 4-layer knowledge hypergraph storage and retrieval.
+
+**Prerequisites**:
+
+- Complete at least 2 prior dialectical runs to populate the hypergraph
+- Have runs on related topics for cross-referencing
+
+**Steps**:
+
+1. View the **Knowledge Graph** from the Agents page
+2. Observe the 4 layers: Claims, Evidence, Relationships, Meta
+3. Click on a claim node to see its evidence links
+4. Check the hyperedge connecting multiple claims
+5. Start a new dialectical run on a related topic
+6. Observe "Retrieving relevant context..." during thesis generation
+7. Watch the retrieval agent select from prior knowledge
+8. Verify retrieved context appears in the run log
+9. Check that prior contradictions inform current analysis
+10. After completion, verify new nodes added to hypergraph
+
+**Expected Results**:
+
+- Graph visualization shows all 4 layers distinctly
+- Claims layer contains thesis/antithesis statements
+- Evidence layer links to sources and prior runs
+- Relationship layer shows supports/contradicts edges
+- Meta layer contains confidence scores and timestamps
+- Retrieval finds 3-5 relevant prior insights
+- Retrieved context improves output quality
+- New run adds to graph (not duplicating existing nodes)
+- Cross-topic insights discovered and utilized
 
 ---
 

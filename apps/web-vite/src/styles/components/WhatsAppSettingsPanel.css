@@ -1,0 +1,206 @@
+/* WhatsApp Settings Panel */
+
+.whatsapp-settings {
+  grid-column: span 1;
+}
+
+.whatsapp-error {
+  padding: var(--space-3);
+  background: var(--error-light);
+  color: var(--error-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  margin-bottom: var(--space-4);
+}
+
+/* Setup state */
+.whatsapp-setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.whatsapp-setup-text {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Configured state */
+.whatsapp-configured {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.whatsapp-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--background-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.whatsapp-info-label {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.whatsapp-info-value {
+  font-size: 0.8125rem;
+  color: var(--foreground);
+}
+
+.whatsapp-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Form state */
+.whatsapp-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.whatsapp-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.whatsapp-form-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.whatsapp-required {
+  color: var(--error-color);
+}
+
+.whatsapp-optional {
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+.whatsapp-form-input {
+  padding: var(--space-2) var(--space-3);
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  color: var(--foreground);
+  transition: border-color var(--motion-fast);
+}
+
+.whatsapp-form-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.whatsapp-form-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.whatsapp-form-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.whatsapp-form-hint {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.whatsapp-form-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* QR Code section */
+.whatsapp-qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--background-tertiary);
+  border-radius: var(--radius-md);
+}
+
+.whatsapp-qr-instructions {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0;
+}
+
+.whatsapp-qr-steps {
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+}
+
+.whatsapp-qr-container {
+  padding: var(--space-3);
+  background: white;
+  border-radius: var(--radius-sm);
+}
+
+.whatsapp-qr-image {
+  display: block;
+  width: 200px;
+  height: 200px;
+}
+
+.whatsapp-qr-waiting {
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+  margin: 0;
+  animation: whatsapp-pulse 2s ease-in-out infinite;
+}
+
+@keyframes whatsapp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Help section */
+.whatsapp-help {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.whatsapp-help summary {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--motion-fast);
+}
+
+.whatsapp-help summary:hover {
+  color: var(--foreground);
+}
+
+.whatsapp-help-list {
+  margin: var(--space-3) 0 0;
+  padding-left: var(--space-5);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.whatsapp-help-list li {
+  margin-bottom: var(--space-2);
+}

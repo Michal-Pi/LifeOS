@@ -1,0 +1,164 @@
+/* LinkedIn Settings Panel */
+
+.linkedin-settings {
+  grid-column: span 1;
+}
+
+.linkedin-error {
+  padding: var(--space-3);
+  background: var(--error-light);
+  color: var(--error-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  margin-bottom: var(--space-4);
+}
+
+.linkedin-warning {
+  padding: var(--space-3);
+  background: var(--warning-light, rgba(234, 179, 8, 0.1));
+  color: var(--warning-color, #ca8a04);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+}
+
+/* Setup state */
+.linkedin-setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.linkedin-setup-text {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Configured state */
+.linkedin-configured {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.linkedin-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--background-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.linkedin-info-label {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.linkedin-info-value {
+  font-size: 0.8125rem;
+  color: var(--foreground);
+}
+
+.linkedin-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Form state */
+.linkedin-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.linkedin-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.linkedin-form-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.linkedin-required {
+  color: var(--error-color);
+}
+
+.linkedin-optional {
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+.linkedin-form-input {
+  padding: var(--space-2) var(--space-3);
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--foreground);
+  transition: border-color var(--motion-fast);
+}
+
+.linkedin-form-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.linkedin-form-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.linkedin-form-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.linkedin-form-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Help section */
+.linkedin-help {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.linkedin-help summary {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--motion-fast);
+}
+
+.linkedin-help summary:hover {
+  color: var(--foreground);
+}
+
+.linkedin-help-list {
+  margin: var(--space-3) 0 0;
+  padding-left: var(--space-5);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.linkedin-help-list li {
+  margin-bottom: var(--space-2);
+}
+
+.linkedin-help-list code {
+  padding: 1px 4px;
+  background: var(--background-tertiary);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}

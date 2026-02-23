@@ -26,6 +26,7 @@ import {
 } from './google/writeback.js'
 import { buildWritebackPayload } from './google/writebackPayload.js'
 import { firestore } from './lib/firebase.js'
+import { createLogger } from './lib/logger.js'
 export { synthesizeResearch } from './agents/researchSynthesis.js'
 export {
   extractProjectManagerContext,
@@ -34,6 +35,11 @@ export {
 } from './agents/projectManagerFunctions.js'
 export { testSearchToolKey, testAgentConfig } from './agents/testEndpoints.js'
 export { analyzeNoteWithAI } from './agents/noteAnalysis.js'
+export { analyzeWorkoutWithAI } from './agents/workoutAITools.js'
+export { mailboxAITool } from './agents/mailboxAITools.js'
+export { discoverModels } from './agents/modelDiscovery.js'
+
+const log = createLogger('Functions')
 
 // ==================== Cloud Functions Configuration ====================
 
@@ -205,7 +211,7 @@ function logOAuthConfigOnce() {
   if (_oauthConfigLogged) return
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim()
   const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI?.trim()
-  console.info('[OAuth] Config loaded', {
+  log.info('OAuth config loaded', {
     clientIdTail: clientId ? clientId.slice(-6) : 'missing',
     clientIdLength: clientId ? clientId.length : 0,
     redirectUri: redirectUri ?? 'missing',
@@ -283,7 +289,7 @@ export const googleAuthStart = onRequest(
       })
       response.json({ url })
     } catch (error) {
-      console.error('[OAuth] googleAuthStart failed', error)
+      log.error('googleAuthStart failed', error)
       response.status(500).json({ error: (error as Error).message })
     }
   }
@@ -299,14 +305,14 @@ export const googleAuthCallback = onRequest(
       const code = String(request.query.code ?? '')
       const state = String(request.query.state ?? '')
 
-      console.info('[OAuth] googleAuthCallback invoked', {
+      log.info('googleAuthCallback invoked', {
         hasCode: !!code,
         hasState: !!state,
         codeLength: code.length,
       })
 
       if (!code || !state) {
-        console.error('[OAuth] Missing code or state parameter')
+        log.error('Missing code or state parameter')
         response.status(400).json({ error: 'Missing code or state' })
         return
       }
@@ -314,7 +320,7 @@ export const googleAuthCallback = onRequest(
       const stateDocRef = tempStateRef(state)
       const stateSnap = await stateDocRef.get()
       if (!stateSnap.exists) {
-        console.error('[OAuth] Invalid or expired state', { state })
+        log.error('Invalid or expired state', undefined, { state })
         response.status(400).json({ error: 'Invalid or expired state' })
         return
       }
@@ -322,12 +328,12 @@ export const googleAuthCallback = onRequest(
       const stored = stateSnap.data() as AuthState
       const { uid, accountId } = stored
 
-      console.info('[OAuth] Exchanging code for tokens', { uid, accountId })
+      log.info('Exchanging code for tokens', { uid, accountId })
 
       // This is where invalid_client error happens if OAuth client config is wrong
       const { tokens } = await getOAuthClient().getToken(code)
 
-      console.info('[OAuth] Token exchange successful', {
+      log.info('Token exchange successful', {
         hasRefreshToken: !!tokens.refresh_token,
         hasAccessToken: !!tokens.access_token,
         scope: tokens.scope,
@@ -336,13 +342,11 @@ export const googleAuthCallback = onRequest(
       await storeTokens(uid, accountId, tokens)
       await stateDocRef.delete()
 
-      console.info('[OAuth] Tokens stored successfully, redirecting to app')
+      log.info('Tokens stored successfully, redirecting to app')
       // Redirect back to the app calendar page
       response.redirect('https://lifeos-pi.web.app/calendar?success=true')
     } catch (error) {
-      console.error('[OAuth] googleAuthCallback failed', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
+      log.error('googleAuthCallback failed', error, {
         name: error instanceof Error ? error.name : undefined,
       })
       response.status(500).json({
@@ -461,22 +465,22 @@ export const syncNow = onRequest(
       const uid = String(request.query.uid ?? request.body.uid ?? '')
       const accountId = String(request.query.accountId ?? 'primary')
 
-      console.info('[Sync] syncNow invoked', { uid, accountId })
+      log.info('syncNow invoked', { uid, accountId })
 
       if (!uid) {
-        console.error('[Sync] Missing uid parameter')
+        log.error('Missing uid parameter')
         response.status(400).json({ error: 'Missing uid' })
         return
       }
 
       // Verify authentication
       if (!(await verifyAuth(request, response, uid))) {
-        console.error('[Sync] Authentication verification failed', { uid })
+        log.error('Authentication verification failed', undefined, { uid })
         return
       }
 
       const accountSnap = await accountRef(uid, accountId).get()
-      console.info('[Sync] Checking account status', {
+      log.info('Checking account status', {
         uid,
         accountId,
         exists: accountSnap.exists,
@@ -484,7 +488,7 @@ export const syncNow = onRequest(
         data: accountSnap.exists ? accountSnap.data() : null,
       })
       if (!accountSnap.exists || accountSnap.data()?.status !== 'connected') {
-        console.error('[Sync] Google account not connected', {
+        log.error('Google account not connected', undefined, {
           uid,
           accountId,
           exists: accountSnap.exists,
@@ -498,24 +502,35 @@ export const syncNow = onRequest(
         ? (privateAccountSnap.data()?.refreshToken as string | null | undefined)
         : null
       if (!refreshToken) {
-        console.error('[Sync] Missing refresh token', { uid, accountId })
+        log.error('Missing refresh token', undefined, { uid, accountId })
         response.status(400).json({ error: 'missing_refresh_token' })
         return
       }
 
-      console.info('[Sync] Starting calendar sync', { uid, accountId })
+      log.info('Starting calendar sync', { uid, accountId })
       const calendars = await syncAllCalendarsIncremental(uid, accountId)
-      console.info('[Sync] Sync completed successfully', {
+      log.info('Sync completed successfully', {
         uid,
         accountId,
         calendarCount: calendars.length,
       })
+
+      // Write account-level sync state for the frontend status display
+      const now = new Date().toISOString()
+      await firestore.doc(`users/${uid}/calendarSyncState/${accountId}:primary`).set(
+        {
+          accountId,
+          calendarId: 'primary',
+          lastSyncAt: now,
+          lastSuccessAt: now,
+          updatedAt: now,
+        },
+        { merge: true }
+      )
+
       response.json({ ok: true, calendars })
     } catch (error) {
-      console.error('[Sync] syncNow failed', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      })
+      log.error('syncNow failed', error)
       response.status(500).json({ error: (error as Error).message })
     }
   }
@@ -528,18 +543,18 @@ export const scheduleSync = onSchedule(
     secrets: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT_URI'],
   },
   async () => {
-    console.info('[ScheduleSync] Starting scheduled Google Calendar sync')
+    log.info('Starting scheduled Google Calendar sync')
 
     try {
       // Query all users with connected Google Calendar accounts
       const usersSnapshot = await firestore.collectionGroup('calendarAccounts').get()
 
       if (usersSnapshot.empty) {
-        console.info('[ScheduleSync] No connected Google Calendar accounts found')
+        log.info('No connected Google Calendar accounts found')
         return
       }
 
-      console.info(`[ScheduleSync] Found ${usersSnapshot.size} connected accounts`)
+      log.info('Found connected accounts', { count: usersSnapshot.size })
 
       // Group accounts by user ID
       const accountsByUser = new Map<string, string[]>()
@@ -560,7 +575,7 @@ export const scheduleSync = onSchedule(
         }
       }
 
-      console.info(`[ScheduleSync] Processing ${accountsByUser.size} users with connected accounts`)
+      log.info('Processing users with connected accounts', { userCount: accountsByUser.size })
 
       // Process each user's accounts with rate limiting
       const MAX_CONCURRENT = 5 // Process 5 users at a time
@@ -587,7 +602,7 @@ export const scheduleSync = onSchedule(
                   await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_ACCOUNTS))
                 }
 
-                console.info(`[ScheduleSync] Syncing account for user ${uid}, account ${accountId}`)
+                log.info('Syncing account', { uid, accountId })
 
                 // Use existing incremental sync function with timeout protection
                 const { syncAllCalendarsIncremental } = await import('./google/syncEvents.js')
@@ -603,23 +618,16 @@ export const scheduleSync = onSchedule(
                 const results = await syncWithTimeout
 
                 const totalEvents = results.reduce((sum, r) => sum + r.eventsUpserted, 0)
-                console.info(
-                  `[ScheduleSync] Successfully synced account ${accountId} for user ${uid}: ${totalEvents} events processed`
-                )
+                log.info('Successfully synced account', { uid, accountId, totalEvents })
 
                 succeeded++
               } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error)
-                console.error(
-                  `[ScheduleSync] Failed to sync account ${accountId} for user ${uid}:`,
-                  errorMessage
-                )
+                log.error('Failed to sync account', error, { uid, accountId })
 
                 // Handle timeout specifically
                 if (errorMessage === 'Sync timeout') {
-                  console.warn(
-                    `[ScheduleSync] Sync timeout for ${uid}/${accountId}, marking for retry`
-                  )
+                  log.warn('Sync timeout, marking for retry', { uid, accountId })
                   try {
                     await accountRef(uid, accountId).set(
                       {
@@ -631,10 +639,7 @@ export const scheduleSync = onSchedule(
                       { merge: true }
                     )
                   } catch (updateError) {
-                    console.error(
-                      `[ScheduleSync] Failed to update account status after timeout:`,
-                      updateError
-                    )
+                    log.error('Failed to update account status after timeout', updateError)
                   }
                 } else if (
                   // Mark account as needs_attention if it's a token/auth error
@@ -652,7 +657,7 @@ export const scheduleSync = onSchedule(
                       { merge: true }
                     )
                   } catch (updateError) {
-                    console.error(`[ScheduleSync] Failed to update account status:`, updateError)
+                    log.error('Failed to update account status', updateError)
                   }
                 }
 
@@ -670,12 +675,9 @@ export const scheduleSync = onSchedule(
         }
       }
 
-      console.info(
-        `[ScheduleSync] Completed scheduled sync: ${processed} accounts processed, ${succeeded} succeeded, ${failed} failed`
-      )
+      log.info('Completed scheduled sync', { processed, succeeded, failed })
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      console.error('[ScheduleSync] Fatal error in scheduled sync:', errorMessage)
+      log.error('Fatal error in scheduled sync', error)
       // Don't throw - scheduled functions should not throw to avoid retries
     }
   }
@@ -1065,7 +1067,7 @@ export const recomputeCompositesEndpoint = onRequest(
       const result = await recomputeComposites(uid, startMs, endMs)
       response.json({ ok: true, ...result })
     } catch (error) {
-      console.error('Error recomputing composites:', error)
+      log.error('Error recomputing composites', error)
       response.status(500).json({ error: (error as Error).message })
     }
   }
@@ -1136,7 +1138,7 @@ export const attendeeFreeBusy = onRequest(
       const result = await getAttendeeFreeBusy(uid, emails, startMs, endMs, timeZone)
       response.json(result)
     } catch (error) {
-      console.error('Error fetching free/busy:', error)
+      log.error('Error fetching free/busy', error)
       response.status(500).json({ error: (error as Error).message })
     }
   }
@@ -1191,7 +1193,7 @@ export const getFirebaseConfig = onRequest(
       const missingRequired = requiredKeys.filter((key) => !config[key])
 
       if (missingRequired.length > 0) {
-        console.error('Missing required Firebase config:', missingRequired)
+        log.error('Missing required Firebase config', undefined, { missingRequired })
         response.status(500).json({
           error: `Missing required Firebase config: ${missingRequired.join(', ')}`,
         })
@@ -1202,7 +1204,7 @@ export const getFirebaseConfig = onRequest(
       response.set('Cache-Control', 'public, max-age=3600')
       response.json(config)
     } catch (error) {
-      console.error('Error providing Firebase config:', error)
+      log.error('Error providing Firebase config', error)
       response.status(500).json({ error: (error as Error).message })
     }
   }
@@ -1453,7 +1455,7 @@ export const deleteAllCalendarData = onRequest(
         counts,
       })
     } catch (error) {
-      console.error('Error deleting calendar data:', error)
+      log.error('Error deleting calendar data', error)
       response.status(500).json({ error: (error as Error).message })
     }
   }
@@ -1513,7 +1515,7 @@ export const previewDeleteCalendarData = onRequest(
         habitCheckinsFromCalendar: habitCheckinsSnapshot.data().count,
       })
     } catch (error) {
-      console.error('Error previewing calendar data deletion:', error)
+      log.error('Error previewing calendar data deletion', error)
       response.status(500).json({ error: (error as Error).message })
     }
   }
@@ -1526,3 +1528,47 @@ export const previewDeleteCalendarData = onRequest(
  * Executes AI agent runs when they are created with 'pending' status
  */
 export { onRunCreated, onRunUpdated } from './agents/runExecutor.js'
+
+// ==================== Slack Integration & Mailbox (Phase 2.3) ====================
+
+/**
+ * Slack OAuth and mailbox sync endpoints
+ * - OAuth flow for connecting Slack workspaces
+ * - Message sync with AI prioritization
+ * - Channel management
+ */
+export {
+  slackAuthStart,
+  slackAuthCallback,
+  slackDisconnect,
+  slackListChannels,
+  slackAddChannel,
+  slackRemoveChannel,
+  mailboxSync,
+  mailboxMessages,
+  mailboxMarkRead,
+  mailboxDismiss,
+} from './slack/slackEndpoints.js'
+
+// ==================== Mailbox Write Endpoints (Phase 3) ====================
+
+/**
+ * Mailbox compose, delete, and draft endpoints
+ */
+export {
+  mailboxSend,
+  mailboxDelete,
+  mailboxSaveDraft,
+  mailboxDeleteDraft,
+} from './channels/mailboxWriteEndpoints.js'
+
+// ==================== Channel Connection Management ====================
+
+/**
+ * CRUD endpoints for LinkedIn, Telegram, and WhatsApp connections
+ */
+export {
+  channelConnectionCreate,
+  channelConnectionDelete,
+  channelConnectionTest,
+} from './channels/channelConnectionEndpoints.js'
