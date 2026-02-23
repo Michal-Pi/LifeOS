@@ -8,19 +8,10 @@
 
 import type { AgentConfig } from '@lifeos/agents'
 
-import {
-  createAnthropicClient,
-  executeWithAnthropic,
-  executeWithAnthropicStreaming,
-} from './anthropicService.js'
+// AI provider service modules are loaded lazily to keep Firebase function
+// discovery fast. Each SDK (Anthropic, OpenAI, Google AI, Grok/xAI) is only
+// loaded when its provider is actually invoked.
 import { AgentError, ERROR_MESSAGES } from './errorHandler.js'
-import { createGoogleAIClient, executeWithGoogle } from './googleService.js'
-import { createGrokClient, executeWithGrok } from './grokService.js'
-import {
-  createOpenAIClient,
-  executeWithOpenAI,
-  executeWithOpenAIStreaming,
-} from './openaiService.js'
 import type { StreamContext } from './streamingTypes.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
 
@@ -31,6 +22,7 @@ export interface ProviderExecutionResult {
   output: string
   tokensUsed: number
   estimatedCost: number
+  iterationsUsed: number
   provider: string
   model: string
 }
@@ -72,12 +64,13 @@ export async function executeWithProvider(
           provider: 'openai',
         })
       }
+      const { createOpenAIClient, executeWithOpenAI } = await import('./openaiService.js')
       const client = createOpenAIClient(apiKeys.openai)
       const result = await executeWithOpenAI(client, agent, goal, context, toolContext)
       return {
         ...result,
         provider: 'openai',
-        model: agent.modelName ?? 'gpt-4o-mini',
+        model: agent.modelName ?? 'gpt-5-mini',
       }
     }
 
@@ -88,12 +81,15 @@ export async function executeWithProvider(
           provider: 'anthropic',
         })
       }
+      const { createAnthropicClient, executeWithAnthropic } = await import(
+        './anthropicService.js'
+      )
       const client = createAnthropicClient(apiKeys.anthropic)
       const result = await executeWithAnthropic(client, agent, goal, context, toolContext)
       return {
         ...result,
         provider: 'anthropic',
-        model: agent.modelName ?? 'claude-3-5-haiku-20241022',
+        model: agent.modelName ?? 'claude-haiku-4-5',
       }
     }
 
@@ -104,12 +100,13 @@ export async function executeWithProvider(
           provider: 'google',
         })
       }
+      const { createGoogleAIClient, executeWithGoogle } = await import('./googleService.js')
       const client = createGoogleAIClient(apiKeys.google)
       const result = await executeWithGoogle(client, agent, goal, context, toolContext)
       return {
         ...result,
         provider: 'google',
-        model: agent.modelName ?? 'gemini-1.5-flash',
+        model: agent.modelName ?? 'gemini-3-flash',
       }
     }
 
@@ -120,12 +117,13 @@ export async function executeWithProvider(
           provider: 'xai',
         })
       }
+      const { createGrokClient, executeWithGrok } = await import('./grokService.js')
       const client = createGrokClient(apiKeys.grok)
       const result = await executeWithGrok(client, agent, goal, context, toolContext)
       return {
         ...result,
         provider: 'xai',
-        model: agent.modelName ?? 'grok-2-1212',
+        model: agent.modelName ?? 'grok-3-mini',
       }
     }
 
@@ -155,6 +153,9 @@ export async function executeWithProviderStreaming(
           provider: 'openai',
         })
       }
+      const { createOpenAIClient, executeWithOpenAIStreaming } = await import(
+        './openaiService.js'
+      )
       const client = createOpenAIClient(apiKeys.openai)
       const result = await executeWithOpenAIStreaming(
         client,
@@ -167,7 +168,7 @@ export async function executeWithProviderStreaming(
       return {
         ...result,
         provider: 'openai',
-        model: agent.modelName ?? 'gpt-4o-mini',
+        model: agent.modelName ?? 'gpt-5-mini',
       }
     }
 
@@ -178,6 +179,9 @@ export async function executeWithProviderStreaming(
           provider: 'anthropic',
         })
       }
+      const { createAnthropicClient, executeWithAnthropicStreaming } = await import(
+        './anthropicService.js'
+      )
       const client = createAnthropicClient(apiKeys.anthropic)
       const result = await executeWithAnthropicStreaming(
         client,
@@ -190,7 +194,7 @@ export async function executeWithProviderStreaming(
       return {
         ...result,
         provider: 'anthropic',
-        model: agent.modelName ?? 'claude-3-5-haiku-20241022',
+        model: agent.modelName ?? 'claude-haiku-4-5',
       }
     }
 
@@ -201,12 +205,13 @@ export async function executeWithProviderStreaming(
           provider: 'google',
         })
       }
+      const { createGoogleAIClient, executeWithGoogle } = await import('./googleService.js')
       const client = createGoogleAIClient(apiKeys.google)
       const result = await executeWithGoogle(client, agent, goal, context, toolContext)
       return {
         ...result,
         provider: 'google',
-        model: agent.modelName ?? 'gemini-1.5-flash',
+        model: agent.modelName ?? 'gemini-3-flash',
       }
     }
 
@@ -217,12 +222,13 @@ export async function executeWithProviderStreaming(
           provider: 'xai',
         })
       }
+      const { createGrokClient, executeWithGrok } = await import('./grokService.js')
       const client = createGrokClient(apiKeys.grok)
       const result = await executeWithGrok(client, agent, goal, context, toolContext)
       return {
         ...result,
         provider: 'xai',
-        model: agent.modelName ?? 'grok-2-1212',
+        model: agent.modelName ?? 'grok-3-mini',
       }
     }
 
