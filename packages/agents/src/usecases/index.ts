@@ -1,8 +1,8 @@
 // Agent usecases
 export * from './agentUsecases'
 
-// Workspace usecases
-export * from './workspaceUsecases'
+// Workflow usecases
+export * from './workflowUsecases'
 
 // Run usecases
 export * from './runUsecases'
@@ -24,3 +24,6 @@ export * from './projectManagerUsecases'
 
 // Prompt Library usecases
 export * from './promptLibraryUsecases'
+
+// Contact usecases
+export * from './contactUsecases'

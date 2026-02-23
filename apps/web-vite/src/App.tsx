@@ -16,13 +16,18 @@ function lazyWithRetry<T extends React.ComponentType>(
 ): React.LazyExoticComponent<T> {
   return lazy(() =>
     importFn().catch((error) => {
-      // Check if it's a chunk loading error (usually means new deployment)
+      // Check if it's a chunk loading error (usually means new deployment or offline)
       const isChunkError =
         error?.message?.includes('Failed to fetch dynamically imported module') ||
         error?.message?.includes('Loading chunk') ||
+        error?.message?.includes('Unable to preload CSS') ||
         error?.name === 'ChunkLoadError'
 
       if (isChunkError) {
+        // Check if we're offline - don't reload, just show error boundary
+        if (!navigator.onLine) {
+          throw new Error('This page is not available offline. Please reconnect to the internet.')
+        }
         // Clear service worker cache and reload
         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
           navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' })
@@ -84,17 +89,26 @@ const WorkoutPlanPage = lazyWithRetry(() =>
 const AgentsPage = lazyWithRetry(() =>
   import('./pages/AgentsPage').then((m) => ({ default: m.AgentsPage }))
 )
-const WorkspacesPage = lazyWithRetry(() =>
-  import('./pages/WorkspacesPage').then((m) => ({ default: m.WorkspacesPage }))
+const WorkflowsPage = lazyWithRetry(() =>
+  import('./pages/WorkflowsPage').then((m) => ({ default: m.WorkflowsPage }))
 )
-const WorkspaceDetailPage = lazyWithRetry(() =>
-  import('./pages/WorkspaceDetailPage').then((m) => ({ default: m.WorkspaceDetailPage }))
+const WorkflowDetailPage = lazyWithRetry(() =>
+  import('./pages/WorkflowDetailPage').then((m) => ({ default: m.WorkflowDetailPage }))
 )
 const PromptLibraryPage = lazyWithRetry(() =>
   import('./pages/PromptLibraryPage').then((m) => ({ default: m.PromptLibraryPage }))
 )
 const ModelSettingsPage = lazyWithRetry(() =>
   import('./pages/ModelSettingsPage').then((m) => ({ default: m.ModelSettingsPage }))
+)
+const AIToolSettingsPage = lazyWithRetry(() =>
+  import('./pages/AIToolSettingsPage').then((m) => ({ default: m.AIToolSettingsPage }))
+)
+const MailboxPage = lazyWithRetry(() =>
+  import('./pages/MailboxPage').then((m) => ({ default: m.MailboxPage }))
+)
+const PeoplePage = lazyWithRetry(() =>
+  import('./pages/PeoplePage').then((m) => ({ default: m.PeoplePage }))
 )
 
 // Loading fallback component
@@ -191,6 +205,26 @@ function AppRoutes() {
                 }
               />
               <Route
+                path="/mailbox"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <MailboxPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/people"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <PeoplePage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/calendar"
                 element={
                   <ProtectedRoute>
@@ -282,21 +316,21 @@ function AppRoutes() {
                 }
               />
               <Route
-                path="/workspaces"
+                path="/workflows"
                 element={
                   <ProtectedRoute>
                     <ErrorBoundary>
-                      <WorkspacesPage />
+                      <WorkflowsPage />
                     </ErrorBoundary>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/workspaces/:workspaceId"
+                path="/workflows/:workflowId"
                 element={
                   <ProtectedRoute>
                     <ErrorBoundary>
-                      <WorkspaceDetailPage />
+                      <WorkflowDetailPage />
                     </ErrorBoundary>
                   </ProtectedRoute>
                 }
@@ -347,6 +381,16 @@ function AppRoutes() {
                   <ProtectedRoute>
                     <ErrorBoundary>
                       <ModelSettingsPage />
+                    </ErrorBoundary>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/ai-tools"
+                element={
+                  <ProtectedRoute>
+                    <ErrorBoundary>
+                      <AIToolSettingsPage />
                     </ErrorBoundary>
                   </ProtectedRoute>
                 }

@@ -1,0 +1,213 @@
+/**
+ * ContactDetail — right panel showing full contact profile and interactions
+ */
+
+import { useState, useCallback } from 'react'
+import { useContactDetail } from '@/hooks/useContactDetail'
+import { InteractionTimeline } from './InteractionTimeline'
+import type { ContactId, DunbarCircle, UpdateContactInput } from '@lifeos/agents'
+import { CIRCLE_LABELS, getFollowUpStatus, DEFAULT_FOLLOW_UP_DAYS } from '@lifeos/agents'
+import '@/styles/components/ContactDetail.css'
+
+interface ContactDetailProps {
+  contactId: ContactId
+  onEdit: () => void
+  onDelete: () => void
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+}
+
+function formatRelativeDate(ms: number | undefined): string {
+  if (!ms) return 'Never'
+  const days = Math.floor((Date.now() - ms) / (24 * 60 * 60 * 1000))
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 30) return `${days} days ago`
+  if (days < 365) return `${Math.floor(days / 30)} months ago`
+  return `${Math.floor(days / 365)} years ago`
+}
+
+const CIRCLES: DunbarCircle[] = [0, 1, 2, 3, 4]
+
+export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProps) {
+  const { contact, interactions, loading, updateContact } = useContactDetail({
+    contactId,
+    interactionLimit: 50,
+  })
+  const [activeTab, setActiveTab] = useState<'interactions' | 'info'>('interactions')
+
+  const handleCircleChange = useCallback(
+    async (circle: DunbarCircle) => {
+      if (!contact || contact.circle === circle) return
+      const updates: UpdateContactInput = { circle }
+      await updateContact(updates)
+    },
+    [contact, updateContact]
+  )
+
+  const handleToggleStar = useCallback(async () => {
+    if (!contact) return
+    await updateContact({ starred: !contact.starred })
+  }, [contact, updateContact])
+
+  if (loading) {
+    return <div className="contact-detail">Loading...</div>
+  }
+
+  if (!contact) {
+    return <div className="contact-detail">Contact not found</div>
+  }
+
+  const followUpStatus = getFollowUpStatus(contact)
+  const titleCompany = [contact.title, contact.company].filter(Boolean).join(' at ')
+  const cadenceDays = contact.followUpCadenceDays ?? DEFAULT_FOLLOW_UP_DAYS[contact.circle]
+
+  return (
+    <div className="contact-detail">
+      {/* Header */}
+      <div className="contact-detail__header">
+        <div className="contact-detail__avatar">
+          {contact.avatarUrl ? (
+            <img src={contact.avatarUrl} alt={contact.displayName} />
+          ) : (
+            getInitials(contact.displayName)
+          )}
+        </div>
+        <div className="contact-detail__header-info">
+          <h2 className="contact-detail__name">{contact.displayName}</h2>
+          {titleCompany && (
+            <div className="contact-detail__title-company">{titleCompany}</div>
+          )}
+          {contact.relationship && (
+            <div className="contact-detail__relationship">{contact.relationship}</div>
+          )}
+        </div>
+        <div className="contact-detail__header-actions">
+          <button
+            className="contact-detail__icon-btn"
+            onClick={handleToggleStar}
+            title={contact.starred ? 'Unstar' : 'Star'}
+          >
+            {contact.starred ? '\u2605' : '\u2606'}
+          </button>
+          <button className="contact-detail__icon-btn" onClick={onEdit} title="Edit">
+            \u270E
+          </button>
+          <button className="contact-detail__icon-btn" onClick={onDelete} title="Delete">
+            \u2715
+          </button>
+        </div>
+      </div>
+
+      {/* Circle selector */}
+      <div className="contact-detail__circle">
+        <span className="contact-detail__section-label">Circle</span>
+        <div className="contact-detail__circle-selector">
+          {CIRCLES.map((c) => (
+            <button
+              key={c}
+              className={`contact-detail__circle-btn${contact.circle === c ? ' contact-detail__circle-btn--active' : ''}`}
+              onClick={() => handleCircleChange(c)}
+            >
+              {CIRCLE_LABELS[c]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Follow-up status */}
+      <div className="contact-detail__followup">
+        <span className="contact-detail__section-label">Follow-up</span>
+        <div className="contact-detail__followup-info">
+          <span className={`contact-detail__followup-status contact-detail__followup-status--${followUpStatus}`}>
+            {followUpStatus === 'ok' ? 'On track' : followUpStatus.charAt(0).toUpperCase() + followUpStatus.slice(1)}
+          </span>
+          <span>Last contact: {formatRelativeDate(contact.lastInteractionMs)}</span>
+          {cadenceDays > 0 && <span>({cadenceDays}d cadence)</span>}
+        </div>
+      </div>
+
+      {/* Identifiers */}
+      {(contact.identifiers.emails.length > 0 ||
+        contact.identifiers.phones.length > 0 ||
+        contact.identifiers.linkedinSlug) && (
+        <div className="contact-detail__identifiers">
+          <span className="contact-detail__section-label">Channels</span>
+          {contact.identifiers.emails.map((email) => (
+            <div key={email} className="contact-detail__identifier">
+              <span className="contact-detail__identifier-icon">{'\u2709'}</span>
+              {email}
+            </div>
+          ))}
+          {contact.identifiers.phones.map((phone) => (
+            <div key={phone} className="contact-detail__identifier">
+              <span className="contact-detail__identifier-icon">{'\uD83D\uDCF1'}</span>
+              {phone}
+            </div>
+          ))}
+          {contact.identifiers.linkedinSlug && (
+            <div className="contact-detail__identifier">
+              <span className="contact-detail__identifier-icon">in</span>
+              {contact.identifiers.linkedinSlug}
+            </div>
+          )}
+          {contact.identifiers.telegramUsername && (
+            <div className="contact-detail__identifier">
+              <span className="contact-detail__identifier-icon">{'\u2708'}</span>
+              @{contact.identifiers.telegramUsername}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tags */}
+      {contact.tags.length > 0 && (
+        <div>
+          <span className="contact-detail__section-label">Tags</span>
+          <div className="contact-detail__tags">
+            {contact.tags.map((tag) => (
+              <span key={tag} className="contact-detail__tag">
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tabs: Interactions / Info */}
+      <div className="contact-detail__tabs">
+        <button
+          className={`contact-detail__tab${activeTab === 'interactions' ? ' contact-detail__tab--active' : ''}`}
+          onClick={() => setActiveTab('interactions')}
+        >
+          Interactions ({interactions.length})
+        </button>
+        <button
+          className={`contact-detail__tab${activeTab === 'info' ? ' contact-detail__tab--active' : ''}`}
+          onClick={() => setActiveTab('info')}
+        >
+          Notes
+        </button>
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'interactions' && <InteractionTimeline interactions={interactions} />}
+      {activeTab === 'info' && contact.notes && (
+        <div className="contact-detail__notes">{contact.notes}</div>
+      )}
+      {activeTab === 'info' && !contact.notes && (
+        <div className="contact-detail__notes" style={{ opacity: 0.5, fontStyle: 'italic' }}>
+          No notes yet. Click edit to add notes.
+        </div>
+      )}
+    </div>
+  )
+}
