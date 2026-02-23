@@ -14,10 +14,6 @@ import { getAuth } from 'firebase-admin/auth'
 import { onRequest } from 'firebase-functions/v2/https'
 import type { MessageSource, ChannelConnectionId } from '@lifeos/agents'
 import { prioritizedMessageRef, mailboxDraftRef, mailboxDraftsCollection } from '../slack/paths.js'
-import { gmailAdapter } from './gmailAdapter.js'
-import { linkedinAdapter } from './linkedinAdapter.js'
-import { telegramAdapter } from './telegramAdapter.js'
-import { whatsappAdapter } from './whatsappAdapter.js'
 
 const log = createLogger('MailboxWrite')
 
@@ -57,16 +53,16 @@ async function verifyAuth(request: Request, response: Response, uid: string): Pr
 
 // ----- Channel Adapter Registry -----
 
-function getAdapter(source: MessageSource) {
+async function getAdapter(source: MessageSource) {
   switch (source) {
     case 'gmail':
-      return gmailAdapter
+      return (await import('./gmailAdapter.js')).gmailAdapter
     case 'linkedin':
-      return linkedinAdapter
+      return (await import('./linkedinAdapter.js')).linkedinAdapter
     case 'telegram':
-      return telegramAdapter
+      return (await import('./telegramAdapter.js')).telegramAdapter
     case 'whatsapp':
-      return whatsappAdapter
+      return (await import('./whatsappAdapter.js')).whatsappAdapter
     default:
       return null
   }
@@ -108,7 +104,7 @@ export const mailboxSend = onRequest(
 
     if (!(await verifyAuth(request, response, uid))) return
 
-    const adapter = getAdapter(source as MessageSource)
+    const adapter = await getAdapter(source as MessageSource)
     if (!adapter) {
       response.status(400).json({ error: `Channel "${source}" does not support sending yet` })
       return
@@ -156,7 +152,7 @@ export const mailboxDelete = onRequest(
 
     if (!(await verifyAuth(request, response, uid))) return
 
-    const adapter = getAdapter(source as MessageSource)
+    const adapter = await getAdapter(source as MessageSource)
     if (!adapter) {
       response.status(400).json({ error: `Channel "${source}" does not support deletion yet` })
       return
