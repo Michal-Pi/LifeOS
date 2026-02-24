@@ -10,6 +10,7 @@ import { useContacts } from '@/hooks/useContacts'
 import { ContactList } from '@/components/contacts/ContactList'
 import { ContactDetail } from '@/components/contacts/ContactDetail'
 import { ContactFormModal } from '@/components/contacts/ContactFormModal'
+import { DuplicateReviewModal } from '@/components/contacts/DuplicateReviewModal'
 import type {
   ContactId,
   DunbarCircle,
@@ -24,6 +25,7 @@ export function PeoplePage() {
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editContact, setEditContact] = useState<ContactId | null>(null)
+  const [showDuplicates, setShowDuplicates] = useState(false)
 
   const { contacts, loading, createContact, updateContact, deleteContact } = useContacts({
     circle: selectedCircle,
@@ -77,6 +79,9 @@ export function PeoplePage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <button className="people-page__dedup-btn" onClick={() => setShowDuplicates(true)}>
+            Find Duplicates
+          </button>
           <button className="people-page__add-btn" onClick={() => setShowForm(true)}>
             + Add Contact
           </button>
@@ -146,6 +151,11 @@ export function PeoplePage() {
           onSave={handleUpdate}
           onClose={() => setEditContact(null)}
         />
+      )}
+
+      {/* Duplicate review modal */}
+      {showDuplicates && (
+        <DuplicateReviewModal contacts={allContacts} onClose={() => setShowDuplicates(false)} />
       )}
     </div>
   )

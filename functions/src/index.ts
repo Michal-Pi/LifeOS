@@ -37,6 +37,9 @@ export { testSearchToolKey, testAgentConfig } from './agents/testEndpoints.js'
 export { analyzeNoteWithAI } from './agents/noteAnalysis.js'
 export { analyzeWorkoutWithAI } from './agents/workoutAITools.js'
 export { mailboxAITool } from './agents/mailboxAITools.js'
+export { getMeetingBriefing, suggestCirclePlacement } from './contacts/contactAITools.js'
+export { findDuplicateContacts } from './contacts/findDuplicates.js'
+export { mergeContacts } from './contacts/mergeContacts.js'
 export { discoverModels } from './agents/modelDiscovery.js'
 
 const log = createLogger('Functions')
@@ -1534,9 +1537,7 @@ export const syncContactsNow = onRequest(
   async (request, response) => {
     try {
       const uid = String(request.query.uid ?? request.body.uid ?? '')
-      const accountIdParam = String(
-        request.query.accountId ?? request.body.accountId ?? 'primary'
-      )
+      const accountIdParam = String(request.query.accountId ?? request.body.accountId ?? 'primary')
 
       if (!uid) {
         response.status(400).json({ error: 'Missing uid' })
