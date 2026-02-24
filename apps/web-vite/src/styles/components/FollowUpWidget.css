@@ -1,0 +1,136 @@
+/* FollowUpWidget — compact follow-up list for Today dashboard */
+
+.followup-widget__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.followup-widget__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background-color var(--motion-fast);
+}
+
+.followup-widget__item:last-child {
+  border-bottom: none;
+}
+
+.followup-widget__item:hover {
+  background: var(--background-secondary);
+}
+
+.followup-widget__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--background-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.followup-widget__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.followup-widget__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.followup-widget__name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.followup-widget__hint {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.followup-widget__badges {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.followup-widget__status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.followup-widget__status-dot--overdue {
+  background: var(--error-color);
+}
+
+.followup-widget__status-dot--due {
+  background: #f59e0b;
+}
+
+.followup-widget__status-dot--upcoming {
+  background: #3b82f6;
+}
+
+.followup-widget__circle-badge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.followup-widget__circle-badge--0 {
+  background: #f0e6ff;
+  color: #7c3aed;
+}
+
+.followup-widget__circle-badge--1 {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.followup-widget__circle-badge--2 {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.followup-widget__circle-badge--3 {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.followup-widget__circle-badge--4 {
+  background: var(--background-secondary);
+  color: var(--text-tertiary);
+}
+
+.followup-widget__empty {
+  padding: var(--space-4);
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+}
