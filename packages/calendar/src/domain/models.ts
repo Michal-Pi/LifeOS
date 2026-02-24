@@ -376,6 +376,10 @@ export interface CanonicalCalendarEvent {
   raw?: unknown
   deletedAtMs?: number
 
+  // CRM linking (Phase 4)
+  /** Contact IDs linked via attendee emails, set by onCalendarEventCreated trigger */
+  linkedContactIds?: string[]
+
   // Alerts (Phase 2.5)
   alerts?: CanonicalAlert[] // Alert configurations for this event
   alertsUpdatedAtMs?: number // When alerts were last modified
@@ -429,7 +433,7 @@ export function computeOccursOn(start: string, end: string, capDays = 60): strin
   const days: string[] = []
   const startDate = new Date(start)
   const endDate = new Date(end)
-  let cursor = new Date(startDate)
+  const cursor = new Date(startDate)
   let iterations = 0
   while (cursor <= endDate && iterations < capDays) {
     days.push(cursor.toISOString().split('T')[0])

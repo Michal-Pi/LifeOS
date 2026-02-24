@@ -191,14 +191,12 @@ interface AuthState {
   createdAt: Timestamp
 }
 
-// Updated scopes to include write access for Phase 2.2
-// Including profile and email scopes to match what Firebase Auth provides
 const SCOPES = [
-  'https://www.googleapis.com/auth/calendar.events.readonly',
+  'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/calendar.events',
-  'https://www.googleapis.com/auth/calendar.readonly',
-  'https://www.googleapis.com/auth/drive.readonly',
-  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/contacts',
+  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/gmail.modify',
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',
   'openid',
@@ -1518,6 +1516,207 @@ export const previewDeleteCalendarData = onRequest(
       log.error('Error previewing calendar data deletion', error)
       response.status(500).json({ error: (error as Error).message })
     }
+  }
+)
+
+// ==================== Inner Circle CRM: Contacts Sync ====================
+
+/**
+ * On-demand Google Contacts sync trigger.
+ * POST /syncContactsNow?uid=xxx&accountId=primary
+ */
+export const syncContactsNow = onRequest(
+  {
+    ...FUNCTION_CONFIG.http,
+    secrets: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT_URI'],
+    cors: true,
+  },
+  async (request, response) => {
+    try {
+      const uid = String(request.query.uid ?? request.body.uid ?? '')
+      const accountIdParam = String(
+        request.query.accountId ?? request.body.accountId ?? 'primary'
+      )
+
+      if (!uid) {
+        response.status(400).json({ error: 'Missing uid' })
+        return
+      }
+
+      if (!(await verifyAuth(request, response, uid))) return
+
+      // Verify Google account is connected
+      const accountSnap = await accountRef(uid, accountIdParam).get()
+      if (!accountSnap.exists || accountSnap.data()?.status !== 'connected') {
+        response.status(400).json({ error: 'Google account not connected' })
+        return
+      }
+
+      const { syncGoogleContacts } = await import('./contacts/syncContacts.js')
+      const result = await syncGoogleContacts(uid, accountIdParam)
+
+      response.json({ ok: true, ...result })
+    } catch (error) {
+      log.error('syncContactsNow failed', error)
+      response.status(500).json({ error: (error as Error).message })
+    }
+  }
+)
+
+/**
+ * Scheduled Google Contacts sync — runs every 24 hours.
+ * Discovers users with connected Google accounts via the calendarAccounts collectionGroup.
+ */
+export const scheduleContactsSync = onSchedule(
+  {
+    ...FUNCTION_CONFIG.scheduled,
+    schedule: 'every 24 hours',
+    secrets: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT_URI'],
+  },
+  async () => {
+    log.info('Starting scheduled Google Contacts sync')
+
+    try {
+      const usersSnapshot = await firestore.collectionGroup('calendarAccounts').get()
+
+      if (usersSnapshot.empty) {
+        log.info('No connected Google accounts found for contacts sync')
+        return
+      }
+
+      const accountsByUser = new Map<string, string[]>()
+      for (const doc of usersSnapshot.docs) {
+        const data = doc.data()
+        if (data.status === 'connected') {
+          const pathParts = doc.ref.path.split('/')
+          const uid = pathParts[1]
+          const aid = pathParts[3]
+          if (!accountsByUser.has(uid)) accountsByUser.set(uid, [])
+          accountsByUser.get(uid)!.push(aid)
+        }
+      }
+
+      log.info('Processing contacts sync', { userCount: accountsByUser.size })
+
+      const MAX_CONCURRENT = 5
+      const DELAY_BETWEEN_BATCHES = 2000
+      const ACCOUNT_TIMEOUT_MS = 3 * 60 * 1000
+
+      const userIds = Array.from(accountsByUser.keys())
+      let succeeded = 0
+      let failed = 0
+
+      for (let i = 0; i < userIds.length; i += MAX_CONCURRENT) {
+        const userBatch = userIds.slice(i, i + MAX_CONCURRENT)
+
+        await Promise.all(
+          userBatch.map(async (uid) => {
+            const accountIds = accountsByUser.get(uid) ?? []
+            const aid = accountIds[0]
+            if (!aid) return
+
+            try {
+              const { syncGoogleContacts } = await import('./contacts/syncContacts.js')
+              const syncPromise = syncGoogleContacts(uid, aid)
+              const timeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('Contacts sync timeout')), ACCOUNT_TIMEOUT_MS)
+              )
+
+              const result = await Promise.race([syncPromise, timeoutPromise])
+              log.info('Contact sync succeeded', {
+                uid,
+                created: result.contactsCreated,
+                merged: result.contactsMerged,
+              })
+              succeeded++
+            } catch (error) {
+              log.error('Contact sync failed for user', error, { uid })
+              failed++
+            }
+          })
+        )
+
+        if (i + MAX_CONCURRENT < userIds.length) {
+          await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_BATCHES))
+        }
+      }
+
+      log.info('Scheduled contacts sync completed', { succeeded, failed })
+    } catch (error) {
+      log.error('Fatal error in scheduled contacts sync', error)
+    }
+  }
+)
+
+/**
+ * Batch email-to-contact lookup.
+ * POST /batchLookupContactEmailsCallable
+ * Body: { uid, emails: string[] }
+ */
+export const batchLookupContactEmailsCallable = onRequest(
+  {
+    ...FUNCTION_CONFIG.http,
+    cors: true,
+  },
+  async (request, response) => {
+    try {
+      const uid = String(request.body.uid ?? '')
+      const emails = (request.body.emails ?? []) as string[]
+
+      if (!uid) {
+        response.status(400).json({ error: 'Missing uid' })
+        return
+      }
+
+      if (!(await verifyAuth(request, response, uid))) return
+
+      if (!Array.isArray(emails) || emails.length === 0) {
+        response.status(400).json({ error: 'emails must be a non-empty array' })
+        return
+      }
+
+      const { batchLookupContactEmails } = await import('./contacts/batchLookupEmails.js')
+      const results = await batchLookupContactEmails(uid, emails)
+
+      response.json({ ok: true, results })
+    } catch (error) {
+      log.error('batchLookupContactEmails failed', error)
+      response.status(500).json({ error: (error as Error).message })
+    }
+  }
+)
+
+// ==================== Contact Linking (Phase 3) ====================
+
+/**
+ * Firestore trigger: link incoming mailbox messages to CRM contacts.
+ * When a message is created, looks up sender email in contactEmailIndex
+ * and creates an interaction + writes contactId back on the message.
+ */
+export const onMailboxMessageCreated = onDocumentCreated(
+  {
+    ...FUNCTION_CONFIG.http,
+    document: 'users/{uid}/mailboxMessages/{messageId}',
+  },
+  async (event) => {
+    const { handleMailboxMessageCreated } = await import('./contacts/onMailboxMessageCreated.js')
+    await handleMailboxMessageCreated(event)
+  }
+)
+
+/**
+ * Firestore trigger: link calendar event attendees to CRM contacts.
+ * When a canonical event is created, looks up attendee emails in contactEmailIndex
+ * and creates meeting interactions + writes linkedContactIds back on the event.
+ */
+export const onCalendarEventCreated = onDocumentCreated(
+  {
+    ...FUNCTION_CONFIG.http,
+    document: 'users/{uid}/canonicalEvents/{eventId}',
+  },
+  async (event) => {
+    const { handleCalendarEventCreated } = await import('./contacts/onCalendarEventCreated.js')
+    await handleCalendarEventCreated(event)
   }
 )
 
