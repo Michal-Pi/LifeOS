@@ -1,43 +1,43 @@
 /**
- * WorkspacesPage Component
+ * WorkflowsPage Component
  *
- * Main page for managing AI agent workspaces.
+ * Main page for managing AI agent workflows.
  * Features:
- * - List all workspaces
- * - Create, edit, delete workspaces
- * - View workspace details
- * - Navigate to workspace detail page
+ * - List all workflows
+ * - Create, edit, delete workflows
+ * - View workflow details
+ * - Navigate to workflow detail page
  */
 
 import { useState, useEffect, useRef } from 'react'
 import type { ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
-import { useWorkspaceTemplateOperations } from '@/hooks/useWorkspaceTemplateOperations'
+import { useWorkflowOperations } from '@/hooks/useWorkflowOperations'
+import { useWorkflowTemplateOperations } from '@/hooks/useWorkflowTemplateOperations'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
 import { useToolOperations } from '@/hooks/useToolOperations'
 import { usePromptLibrary } from '@/hooks/usePromptLibrary'
 import { useAuth } from '@/hooks/useAuth'
-import { WorkspaceFormModal } from '@/components/agents/WorkspaceFormModal'
+import { WorkflowFormModal } from '@/components/agents/WorkflowFormModal'
 import { TemplateSaveModal } from '@/components/agents/TemplateSaveModal'
 import { TemplateSelector } from '@/components/agents/TemplateSelector'
 import { PromptEditor } from '@/components/agents/PromptEditor'
-import { workspaceTemplatePresets } from '@/agents/templatePresets'
+import { workflowTemplatePresets } from '@/agents/templatePresets'
 import { contentTypePresets } from '@/agents/contentTypePresets'
 import { builtinTools } from '@/agents/builtinTools'
 import { instantiateTemplate } from '@/services/templateInstantiation'
-import type { Workspace, WorkspaceTemplate, PromptTemplate } from '@lifeos/agents'
+import type { Workflow, WorkflowTemplate, PromptTemplate } from '@lifeos/agents'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { useDialog } from '@/contexts/useDialog'
 
-type WorkspaceTemplateExport = {
+type WorkflowTemplateExport = {
   version: number
-  type: 'workspaceTemplates'
+  type: 'workflowTemplates'
   templates: Array<{
     name: string
     description?: string
-    workspaceConfig: WorkspaceTemplate['workspaceConfig']
+    workflowConfig: WorkflowTemplate['workflowConfig']
   }>
 }
 
@@ -51,19 +51,19 @@ const downloadJson = (filename: string, data: unknown) => {
   URL.revokeObjectURL(url)
 }
 
-export function WorkspacesPage() {
+export function WorkflowsPage() {
   const { confirm, alert: showAlert } = useDialog()
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { workspaces, isLoading, loadWorkspaces, deleteWorkspace, createWorkspace } =
-    useWorkspaceOperations()
+  const { workflows, isLoading, loadWorkflows, deleteWorkflow, createWorkflow } =
+    useWorkflowOperations()
   const {
-    templates: workspaceTemplates,
+    templates: workflowTemplates,
     isLoading: templatesLoading,
     loadTemplates,
     createTemplate,
     deleteTemplate,
-  } = useWorkspaceTemplateOperations()
+  } = useWorkflowTemplateOperations()
   const { agents, loadAgents, createAgent } = useAgentOperations()
   const { tools, loadTools } = useToolOperations()
   const {
@@ -71,100 +71,100 @@ export function WorkspacesPage() {
     loading: promptLoading,
     createTemplate: createPromptTemplate,
   } = usePromptLibrary()
-  const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null)
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null)
   const [showModal, setShowModal] = useState(false)
-  const [prefillWorkspace, setPrefillWorkspace] = useState<Partial<Workspace> | null>(null)
-  const [templateSourceWorkspace, setTemplateSourceWorkspace] = useState<Workspace | null>(null)
+  const [prefillWorkflow, setPrefillWorkflow] = useState<Partial<Workflow> | null>(null)
+  const [templateSourceWorkflow, setTemplateSourceWorkflow] = useState<Workflow | null>(null)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [templateModalKey, setTemplateModalKey] = useState(0)
   const importInputRef = useRef<HTMLInputElement | null>(null)
-  const [activeTab, setActiveTab] = useState<'workspaces' | 'templates'>('workspaces')
+  const [activeTab, setActiveTab] = useState<'workflows' | 'templates'>('workflows')
   const [isTemplateInstantiating, setIsTemplateInstantiating] = useState(false)
   const [promptEditorTemplate, setPromptEditorTemplate] = useState<PromptTemplate | null>(null)
 
   useEffect(() => {
-    void loadWorkspaces()
+    void loadWorkflows()
     void loadAgents()
     void loadTools()
-  }, [loadWorkspaces, loadAgents, loadTools])
+  }, [loadWorkflows, loadAgents, loadTools])
 
   useEffect(() => {
     void loadTemplates()
   }, [loadTemplates])
 
   const handleNew = () => {
-    setSelectedWorkspace(null)
-    setPrefillWorkspace(null)
+    setSelectedWorkflow(null)
+    setPrefillWorkflow(null)
     setShowModal(true)
   }
 
-  const handleEdit = (workspace: Workspace) => {
-    setSelectedWorkspace(workspace)
-    setPrefillWorkspace(null)
+  const handleEdit = (workflow: Workflow) => {
+    setSelectedWorkflow(workflow)
+    setPrefillWorkflow(null)
     setShowModal(true)
   }
 
-  const handleDelete = async (workspace: Workspace) => {
+  const handleDelete = async (workflow: Workflow) => {
     const confirmed = await confirm({
-      title: 'Delete workspace',
-      description: `Are you sure you want to delete workspace "${workspace.name}"? This cannot be undone.`,
+      title: 'Delete workflow',
+      description: `Are you sure you want to delete workflow "${workflow.name}"? This cannot be undone.`,
       confirmLabel: 'Delete',
       confirmVariant: 'danger',
     })
     if (!confirmed) return
 
     try {
-      await deleteWorkspace(workspace.workspaceId)
+      await deleteWorkflow(workflow.workflowId)
     } catch (err) {
-      console.error('Failed to delete workspace:', err)
+      console.error('Failed to delete workflow:', err)
     }
   }
 
   const handleModalClose = () => {
     setShowModal(false)
-    setSelectedWorkspace(null)
-    setPrefillWorkspace(null)
+    setSelectedWorkflow(null)
+    setPrefillWorkflow(null)
   }
 
   const handleModalSave = () => {
-    void loadWorkspaces()
+    void loadWorkflows()
   }
 
-  const handleSaveTemplate = (workspace: Workspace) => {
-    setTemplateSourceWorkspace(workspace)
+  const handleSaveTemplate = (workflow: Workflow) => {
+    setTemplateSourceWorkflow(workflow)
     setTemplateModalKey((prev) => prev + 1)
     setShowTemplateModal(true)
   }
 
   const handleTemplateClose = () => {
     setShowTemplateModal(false)
-    setTemplateSourceWorkspace(null)
+    setTemplateSourceWorkflow(null)
   }
 
   const handleTemplateSave = async (name: string, description?: string) => {
-    if (!templateSourceWorkspace) return
-    const workspaceConfig = {
-      name: templateSourceWorkspace.name,
-      description: templateSourceWorkspace.description,
-      agentIds: templateSourceWorkspace.agentIds,
-      defaultAgentId: templateSourceWorkspace.defaultAgentId,
-      workflowType: templateSourceWorkspace.workflowType,
-      maxIterations: templateSourceWorkspace.maxIterations,
-      memoryMessageLimit: templateSourceWorkspace.memoryMessageLimit,
+    if (!templateSourceWorkflow) return
+    const workflowConfig = {
+      name: templateSourceWorkflow.name,
+      description: templateSourceWorkflow.description,
+      agentIds: templateSourceWorkflow.agentIds,
+      defaultAgentId: templateSourceWorkflow.defaultAgentId,
+      workflowType: templateSourceWorkflow.workflowType,
+      maxIterations: templateSourceWorkflow.maxIterations,
+      memoryMessageLimit: templateSourceWorkflow.memoryMessageLimit,
     }
     try {
-      await createTemplate({ name, description, workspaceConfig })
+      await createTemplate({ name, description, workflowConfig })
     } catch {
       return
     }
     setShowTemplateModal(false)
-    setTemplateSourceWorkspace(null)
+    setTemplateSourceWorkflow(null)
   }
 
-  const handleUseTemplate = (template: WorkspaceTemplate) => {
+  const handleUseTemplate = (template: WorkflowTemplate) => {
     if (
-      template.workspaceConfig.workflowType === 'graph' &&
-      template.workspaceConfig.workflowGraph?.nodes.some(
+      template.workflowConfig.workflowType === 'graph' &&
+      template.workflowConfig.workflowGraph?.nodes.some(
         (node) => node.type === 'agent' && !node.agentId
       )
     ) {
@@ -175,13 +175,13 @@ export function WorkspacesPage() {
       })
       return
     }
-    setSelectedWorkspace(null)
-    setPrefillWorkspace(template.workspaceConfig)
+    setSelectedWorkflow(null)
+    setPrefillWorkflow(template.workflowConfig)
     setShowModal(true)
   }
 
   const handleInstantiatePreset = async (
-    preset: (typeof workspaceTemplatePresets)[number],
+    preset: (typeof workflowTemplatePresets)[number],
     options?: { contentType?: string }
   ) => {
     if (isTemplateInstantiating) return
@@ -195,20 +195,40 @@ export function WorkspacesPage() {
           description: tool.description ?? '',
         })),
       ]
-      const { workspace } = await instantiateTemplate({
+      const { workflow } = await instantiateTemplate({
         preset,
         customization: { contentType: options?.contentType },
+        existingAgents: agents,
         createAgent,
-        createWorkspace,
+        createWorkflow,
         availableTools,
+        onAgentConflict: async (conflicts) => {
+          // If there are modified agents, ask user what to do
+          const conflictNames = conflicts.map((c) => c.existingAgent.name).join(', ')
+          const useExisting = await confirm({
+            title: 'Existing Agents Found',
+            description: `The following agents exist but have been modified: ${conflictNames}. Use existing agents or create new ones from template?`,
+            confirmLabel: 'Use Existing',
+            cancelLabel: 'Create New',
+          })
+          const resolutions = new Map<string, 'reuse_existing' | 'create_from_template'>()
+          for (const conflict of conflicts) {
+            resolutions.set(
+              conflict.templateName,
+              useExisting ? 'reuse_existing' : 'create_from_template'
+            )
+          }
+          return resolutions
+        },
       })
-      await loadWorkspaces()
-      navigate(`/workspaces/${workspace.workspaceId}`)
+      await loadWorkflows()
+      await loadAgents()
+      navigate(`/workflows/${workflow.workflowId}`)
     } catch (error) {
       console.error('Failed to instantiate template', error)
       await showAlert({
         title: 'Template failed',
-        description: 'Unable to create workspace from template. Check logs for details.',
+        description: 'Unable to create workflow from template. Check logs for details.',
       })
     } finally {
       setIsTemplateInstantiating(false)
@@ -216,14 +236,14 @@ export function WorkspacesPage() {
   }
 
   const handleAddPresets = async () => {
-    const existingNames = new Set(workspaceTemplates.map((template) => template.name.toLowerCase()))
+    const existingNames = new Set(workflowTemplates.map((template) => template.name.toLowerCase()))
     let createdCount = 0
     let skippedCount = 0
-    for (const preset of workspaceTemplatePresets) {
+    for (const preset of workflowTemplatePresets) {
       if (existingNames.has(preset.name.toLowerCase())) {
         continue
       }
-      if (preset.workflowGraphTemplate) {
+      if (preset.workflowGraphTemplate || preset.agentTemplateNames?.length) {
         skippedCount += 1
         continue
       }
@@ -231,7 +251,7 @@ export function WorkspacesPage() {
         await createTemplate({
           name: preset.name,
           description: preset.description,
-          workspaceConfig: preset.workspaceConfig,
+          workflowConfig: preset.workflowConfig,
         })
         createdCount += 1
       } catch {
@@ -269,16 +289,16 @@ export function WorkspacesPage() {
   }
 
   const handleExportTemplates = () => {
-    const payload: WorkspaceTemplateExport = {
+    const payload: WorkflowTemplateExport = {
       version: 1,
-      type: 'workspaceTemplates',
-      templates: workspaceTemplates.map((template) => ({
+      type: 'workflowTemplates',
+      templates: workflowTemplates.map((template) => ({
         name: template.name,
         description: template.description,
-        workspaceConfig: template.workspaceConfig,
+        workflowConfig: template.workflowConfig,
       })),
     }
-    downloadJson('workspace-templates.json', payload)
+    downloadJson('workflow-templates.json', payload)
   }
 
   const handleImportTemplates = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -297,12 +317,12 @@ export function WorkspacesPage() {
         return
       }
       const existingNames = new Set(
-        workspaceTemplates.map((template) => template.name.toLowerCase())
+        workflowTemplates.map((template) => template.name.toLowerCase())
       )
       let importedCount = 0
       let skippedCount = 0
       for (const entry of templates) {
-        if (!entry?.name || !entry?.workspaceConfig) {
+        if (!entry?.name || !entry?.workflowConfig) {
           skippedCount += 1
           continue
         }
@@ -315,7 +335,7 @@ export function WorkspacesPage() {
           await createTemplate({
             name: String(entry.name),
             description: entry.description ? String(entry.description) : undefined,
-            workspaceConfig: entry.workspaceConfig,
+            workflowConfig: entry.workflowConfig,
           })
           existingNames.add(normalizedName)
           importedCount += 1
@@ -328,7 +348,7 @@ export function WorkspacesPage() {
         description: `Imported ${importedCount} templates. Skipped ${skippedCount}.`,
       })
     } catch (error) {
-      console.error('Failed to import workspace templates', error)
+      console.error('Failed to import workflow templates', error)
       await showAlert({
         title: 'Import failed',
         description: 'Import failed. Please check the JSON format.',
@@ -336,8 +356,8 @@ export function WorkspacesPage() {
     }
   }
 
-  const handleViewWorkspace = (workspaceId: string) => {
-    navigate(`/workspaces/${workspaceId}`)
+  const handleViewWorkflow = (workflowId: string) => {
+    navigate(`/workflows/${workflowId}`)
   }
 
   const getAgentName = (agentId: string) => {
@@ -349,19 +369,19 @@ export function WorkspacesPage() {
     <div className="page-container">
       <header className="page-header">
         <div>
-          <h1>Workspaces</h1>
+          <h1>Workflows</h1>
           <p>Orchestrate multiple agents to work together</p>
         </div>
-        <Button onClick={handleNew}>+ New Workspace</Button>
+        <Button onClick={handleNew}>+ New Workflow</Button>
       </header>
 
       <div className="section-tabs">
         <button
           type="button"
-          className={`section-tab ${activeTab === 'workspaces' ? 'active' : ''}`}
-          onClick={() => setActiveTab('workspaces')}
+          className={`section-tab ${activeTab === 'workflows' ? 'active' : ''}`}
+          onClick={() => setActiveTab('workflows')}
         >
-          Workspaces
+          Workflows
         </button>
         <button
           type="button"
@@ -372,17 +392,17 @@ export function WorkspacesPage() {
         </button>
       </div>
 
-      {activeTab === 'workspaces' && (
+      {activeTab === 'workflows' && (
         <>
           {isLoading ? (
-            <div className="loading">Loading workspaces...</div>
-          ) : workspaces.length === 0 ? (
+            <div className="loading">Loading workflows...</div>
+          ) : workflows.length === 0 ? (
             <EmptyState
-              label="Workspaces"
+              label="Workflows"
               title="System idle"
-              description="Workspaces orchestrate multiple agents to deliver complex outcomes."
+              description="Workflows orchestrate multiple agents to deliver complex outcomes."
               hint="Capability unlocked: multi-agent orchestration + shared memory."
-              actionLabel="Create Workspace"
+              actionLabel="Create Workflow"
               onAction={handleNew}
             >
               <div className="ghost-card-grid">
@@ -392,23 +412,23 @@ export function WorkspacesPage() {
               </div>
             </EmptyState>
           ) : (
-            <div className="workspaces-grid">
-              {workspaces.map((workspace) => (
-                <div key={workspace.workspaceId} className="workspace-card">
+            <div className="workflows-grid">
+              {workflows.map((workflow) => (
+                <div key={workflow.workflowId} className="workflow-card">
                   <div className="card-header">
-                    <h3>{workspace.name}</h3>
-                    <span className="badge">{workspace.workflowType}</span>
+                    <h3>{workflow.name}</h3>
+                    <span className="badge">{workflow.workflowType}</span>
                   </div>
 
-                  {workspace.description && <p className="description">{workspace.description}</p>}
+                  {workflow.description && <p className="description">{workflow.description}</p>}
 
                   <div className="card-meta">
                     <div>
-                      <strong>Agents:</strong> {workspace.agentIds.length}
+                      <strong>Agents:</strong> {workflow.agentIds.length}
                     </div>
-                    {workspace.maxIterations && (
+                    {workflow.maxIterations && (
                       <div>
-                        <strong>Max Iterations:</strong> {workspace.maxIterations}
+                        <strong>Max Iterations:</strong> {workflow.maxIterations}
                       </div>
                     )}
                   </div>
@@ -416,10 +436,10 @@ export function WorkspacesPage() {
                   <div className="agent-list">
                     <strong>Team:</strong>
                     <ul>
-                      {workspace.agentIds.map((agentId) => (
+                      {workflow.agentIds.map((agentId) => (
                         <li key={agentId}>
                           {getAgentName(agentId)}
-                          {workspace.defaultAgentId === agentId && (
+                          {workflow.defaultAgentId === agentId && (
                             <span className="badge-small">default</span>
                           )}
                         </li>
@@ -428,22 +448,19 @@ export function WorkspacesPage() {
                   </div>
 
                   <div className="card-actions">
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleViewWorkspace(workspace.workspaceId)}
-                    >
+                    <Button variant="ghost" onClick={() => handleViewWorkflow(workflow.workflowId)}>
                       View Details
                     </Button>
-                    <Button variant="ghost" onClick={() => handleEdit(workspace)}>
+                    <Button variant="ghost" onClick={() => handleEdit(workflow)}>
                       Edit
                     </Button>
-                    <Button variant="ghost" onClick={() => handleSaveTemplate(workspace)}>
+                    <Button variant="ghost" onClick={() => handleSaveTemplate(workflow)}>
                       Save Template
                     </Button>
                     <Button
                       variant="ghost"
                       className="danger"
-                      onClick={() => handleDelete(workspace)}
+                      onClick={() => handleDelete(workflow)}
                     >
                       Delete
                     </Button>
@@ -458,14 +475,14 @@ export function WorkspacesPage() {
       {activeTab === 'templates' && (
         <>
           <TemplateSelector
-            templates={workspaceTemplatePresets}
+            templates={workflowTemplatePresets}
             contentTypes={contentTypePresets}
             onUseTemplate={handleInstantiatePreset}
             isBusy={isTemplateInstantiating}
           />
           <div className="template-selector__notice">
             Graph-based blueprints are only available through the selector so we can bind agent IDs
-            before creating the workspace.
+            before creating the workflow.
           </div>
 
           <section className="settings-panel">
@@ -474,7 +491,7 @@ export function WorkspacesPage() {
                 <p className="section-label">Prompt Library</p>
                 <h2>Shared Prompts</h2>
                 <p className="settings-panel__meta">
-                  Manage reusable prompts with version history across workspaces.
+                  Manage reusable prompts with version history across workflows.
                 </p>
                 <div className="settings-panel__actions">
                   <Button variant="ghost" onClick={handleCreatePrompt} type="button">
@@ -490,12 +507,12 @@ export function WorkspacesPage() {
               <EmptyState
                 label="Prompts"
                 title="Prompt library empty"
-                description="Create a prompt to start sharing across workspaces."
+                description="Create a prompt to start sharing across workflows."
               />
             ) : (
-              <div className="workspaces-grid">
+              <div className="workflows-grid">
                 {promptTemplates.map((template) => (
-                  <div key={template.templateId} className="workspace-card">
+                  <div key={template.templateId} className="workflow-card">
                     <div className="card-header">
                       <h3>{template.name}</h3>
                       <span className="badge">{template.type}</span>
@@ -524,9 +541,9 @@ export function WorkspacesPage() {
             <header className="settings-panel__header">
               <div>
                 <p className="section-label">Templates</p>
-                <h2>Workspace Templates</h2>
+                <h2>Workflow Templates</h2>
                 <p className="settings-panel__meta">
-                  Reuse workspace setups for repeated workflows.
+                  Reuse workflow setups for repeated workflows.
                 </p>
                 <div className="settings-panel__actions">
                   <Button variant="ghost" onClick={handleAddPresets} type="button">
@@ -555,29 +572,29 @@ export function WorkspacesPage() {
 
             {templatesLoading ? (
               <div className="loading">Loading templates...</div>
-            ) : workspaceTemplates.length === 0 ? (
+            ) : workflowTemplates.length === 0 ? (
               <EmptyState
                 label="Templates"
                 title="System idle"
-                description="Save a template from an existing workspace to reuse later."
+                description="Save a template from an existing workflow to reuse later."
               />
             ) : (
-              <div className="workspaces-grid">
-                {workspaceTemplates.map((template) => (
-                  <div key={template.templateId} className="workspace-card">
+              <div className="workflows-grid">
+                {workflowTemplates.map((template) => (
+                  <div key={template.templateId} className="workflow-card">
                     <div className="template-thumb" aria-hidden="true" />
                     <div className="card-header">
                       <h3>{template.name}</h3>
-                      <span className="badge">{template.workspaceConfig.workflowType}</span>
+                      <span className="badge">{template.workflowConfig.workflowType}</span>
                     </div>
                     {template.description && <p className="description">{template.description}</p>}
                     <div className="card-meta">
                       <div>
-                        <strong>Agents:</strong> {template.workspaceConfig.agentIds.length}
+                        <strong>Agents:</strong> {template.workflowConfig.agentIds.length}
                       </div>
-                      {template.workspaceConfig.maxIterations && (
+                      {template.workflowConfig.maxIterations && (
                         <div>
-                          <strong>Max Iterations:</strong> {template.workspaceConfig.maxIterations}
+                          <strong>Max Iterations:</strong> {template.workflowConfig.maxIterations}
                         </div>
                       )}
                     </div>
@@ -611,20 +628,20 @@ export function WorkspacesPage() {
         </>
       )}
 
-      <WorkspaceFormModal
-        workspace={selectedWorkspace}
+      <WorkflowFormModal
+        workflow={selectedWorkflow}
         isOpen={showModal}
         onClose={handleModalClose}
         onSave={handleModalSave}
-        prefill={prefillWorkspace ?? undefined}
+        prefill={prefillWorkflow ?? undefined}
       />
 
       <TemplateSaveModal
         key={templateModalKey}
         isOpen={showTemplateModal}
-        title="Save Workspace Template"
-        initialName={templateSourceWorkspace?.name ?? ''}
-        initialDescription={templateSourceWorkspace?.description}
+        title="Save Workflow Template"
+        initialName={templateSourceWorkflow?.name ?? ''}
+        initialDescription={templateSourceWorkflow?.description}
         onClose={handleTemplateClose}
         onSave={handleTemplateSave}
       />
