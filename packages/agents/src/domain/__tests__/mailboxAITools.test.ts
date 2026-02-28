@@ -15,7 +15,12 @@ import {
 describe('mailboxAITools domain', () => {
   describe('MailboxAIToolId', () => {
     it('covers all 4 tool IDs', () => {
-      const ids: MailboxAIToolId[] = ['responseDraft', 'mailboxCleanup', 'senderResearch', 'extractActions']
+      const ids: MailboxAIToolId[] = [
+        'responseDraft',
+        'mailboxCleanup',
+        'senderResearch',
+        'extractActions',
+      ]
       expect(ids).toHaveLength(4)
       for (const id of ids) {
         expect(typeof id).toBe('string')
@@ -33,22 +38,24 @@ describe('mailboxAITools domain', () => {
       expect(keys).toHaveLength(4)
     })
 
-    it.each(['responseDraft', 'mailboxCleanup', 'senderResearch', 'extractActions'] as MailboxAIToolId[])(
-      '%s has required MailboxAIToolConfig fields',
-      (toolId) => {
-        const config: MailboxAIToolConfig = DEFAULT_MAILBOX_AI_TOOLS[toolId]
-        expect(config.toolId).toBe(toolId)
-        expect(typeof config.name).toBe('string')
-        expect(config.name.length).toBeGreaterThan(0)
-        expect(typeof config.description).toBe('string')
-        expect(config.description.length).toBeGreaterThan(0)
-        expect(typeof config.systemPrompt).toBe('string')
-        expect(config.systemPrompt.length).toBeGreaterThan(0)
-        expect(typeof config.modelName).toBe('string')
-        expect(config.maxTokens).toBeGreaterThan(0)
-        expect(config.enabled).toBe(true)
-      }
-    )
+    it.each([
+      'responseDraft',
+      'mailboxCleanup',
+      'senderResearch',
+      'extractActions',
+    ] as MailboxAIToolId[])('%s has required MailboxAIToolConfig fields', (toolId) => {
+      const config: MailboxAIToolConfig = DEFAULT_MAILBOX_AI_TOOLS[toolId]
+      expect(config.toolId).toBe(toolId)
+      expect(typeof config.name).toBe('string')
+      expect(config.name.length).toBeGreaterThan(0)
+      expect(typeof config.description).toBe('string')
+      expect(config.description.length).toBeGreaterThan(0)
+      expect(typeof config.systemPrompt).toBe('string')
+      expect(config.systemPrompt.length).toBeGreaterThan(0)
+      expect(typeof config.modelName).toBe('string')
+      expect(config.maxTokens).toBeGreaterThan(0)
+      expect(config.enabled).toBe(true)
+    })
 
     it('responseDraft uses claude-sonnet-4-5', () => {
       expect(DEFAULT_MAILBOX_AI_TOOLS.responseDraft.modelName).toBe('claude-sonnet-4-5')

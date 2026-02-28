@@ -99,9 +99,7 @@ describe('ActionExtraction', () => {
       makeAction({ type: 'contact_update', title: 'Update item' }),
     ]
 
-    const { container } = render(
-      <ActionPanel actions={actions} onCreateAction={vi.fn()} />
-    )
+    const { container } = render(<ActionPanel actions={actions} onCreateAction={vi.fn()} />)
 
     expect(screen.getByText('Task')).toBeInTheDocument()
     expect(screen.getByText('Event')).toBeInTheDocument()
@@ -128,9 +126,7 @@ describe('ActionExtraction', () => {
   })
 
   it('renders nothing when actions array is empty', () => {
-    const { container } = render(
-      <ActionPanel actions={[]} onCreateAction={vi.fn()} />
-    )
+    const { container } = render(<ActionPanel actions={[]} onCreateAction={vi.fn()} />)
 
     expect(container.querySelector('.action-panel')).toBeNull()
   })

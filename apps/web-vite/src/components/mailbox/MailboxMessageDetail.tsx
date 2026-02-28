@@ -33,7 +33,12 @@ interface MailboxMessageDetailProps {
     body: string
     source: MessageSource
   }) => void
-  onCreateTask?: (data: { title: string; dueDate?: string; description: string; sourceMessageId: string }) => void
+  onCreateTask?: (data: {
+    title: string
+    dueDate?: string
+    description: string
+    sourceMessageId: string
+  }) => void
   onCreateEvent?: (data: { title: string; description?: string }) => void
   onSetFollowUp?: (contactId: string, dueDate?: string) => void
   onEditContact?: (contactId: string, details?: string) => void
@@ -313,9 +318,7 @@ export function MailboxMessageDetail({
           ))}
         </div>
         {generating && <span className="draft-reply-generating">Generating...</span>}
-        {draftError && !generating && (
-          <span className="draft-reply-error">{draftError}</span>
-        )}
+        {draftError && !generating && <span className="draft-reply-error">{draftError}</span>}
         {draftResult && !generating && (
           <div className="draft-reply-preview">
             {draftResult.subject && (

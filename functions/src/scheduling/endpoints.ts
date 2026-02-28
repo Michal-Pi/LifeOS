@@ -166,11 +166,9 @@ export async function handleCreateBooking(req: Request, res: Response): Promise<
     const { slug, startTime, duration, guestName, guestEmail, guestNotes, timezone } = req.body
 
     if (!slug || !startTime || !duration || !guestName || !guestEmail) {
-      res
-        .status(400)
-        .json({
-          error: 'Missing required fields: slug, startTime, duration, guestName, guestEmail',
-        })
+      res.status(400).json({
+        error: 'Missing required fields: slug, startTime, duration, guestName, guestEmail',
+      })
       return
     }
 

@@ -7,7 +7,11 @@
 
 // ----- Tool IDs -----
 
-export type MailboxAIToolId = 'responseDraft' | 'mailboxCleanup' | 'senderResearch' | 'extractActions'
+export type MailboxAIToolId =
+  | 'responseDraft'
+  | 'mailboxCleanup'
+  | 'senderResearch'
+  | 'extractActions'
 
 // ----- Configuration -----
 
@@ -167,7 +171,8 @@ Guidelines:
   extractActions: {
     toolId: 'extractActions',
     name: 'Extract Actions',
-    description: 'Extract actionable items (tasks, events, follow-ups, contact updates) from a message',
+    description:
+      'Extract actionable items (tasks, events, follow-ups, contact updates) from a message',
     systemPrompt: `You are a productivity assistant that extracts actionable items from messages. Analyze the message content and identify concrete actions the user should take.
 
 Extract the following types of actions:

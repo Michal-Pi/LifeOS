@@ -107,7 +107,9 @@ describe('Message Triage', () => {
     const filtered = filterByTriage(messages, 'action')
 
     expect(filtered).toHaveLength(2)
-    expect(filtered.every((m) => m.triageCategory === 'urgent' || m.triageCategory === 'important')).toBe(true)
+    expect(
+      filtered.every((m) => m.triageCategory === 'urgent' || m.triageCategory === 'important')
+    ).toBe(true)
   })
 
   it('filter "all" shows everything', () => {

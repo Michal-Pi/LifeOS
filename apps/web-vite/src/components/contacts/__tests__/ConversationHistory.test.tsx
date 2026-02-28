@@ -80,8 +80,14 @@ function ConversationList({
       ) : (
         <div className="contact-conversations__list">
           {filteredMessages.map((msg) => (
-            <div key={msg.messageId} className="conversation-entry" data-testid="conversation-entry">
-              <span className={`conversation-entry__source conversation-entry__source--${msg.source}`}>
+            <div
+              key={msg.messageId}
+              className="conversation-entry"
+              data-testid="conversation-entry"
+            >
+              <span
+                className={`conversation-entry__source conversation-entry__source--${msg.source}`}
+              >
                 {msg.source}
               </span>
               <div className="conversation-entry__content">

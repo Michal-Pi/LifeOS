@@ -347,14 +347,14 @@ export function MailboxMessageList({
     <div className="mailbox-list">
       {/* Triage filter tabs */}
       <div className="mailbox-list__triage-tabs" role="tablist" aria-label="Triage filter">
-        {([
+        {[
           { value: 'action' as const, label: 'Needs Action' },
           { value: 'all' as const, label: 'All' },
           { value: 'urgent' as const, label: 'Urgent' },
           { value: 'important' as const, label: 'Important' },
           { value: 'fyi' as const, label: 'FYI' },
           { value: 'automated' as const, label: 'Auto' },
-        ]).map((tab) => (
+        ].map((tab) => (
           <button
             key={tab.value}
             type="button"

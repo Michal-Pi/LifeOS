@@ -368,9 +368,7 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
                     {msg.source}
                   </span>
                   <div className="conversation-entry__content">
-                    <span className="conversation-entry__subject">
-                      {msg.subject || msg.sender}
-                    </span>
+                    <span className="conversation-entry__subject">{msg.subject || msg.sender}</span>
                     <p className="conversation-entry__snippet">{msg.snippet}</p>
                   </div>
                   <span className="conversation-entry__date">
