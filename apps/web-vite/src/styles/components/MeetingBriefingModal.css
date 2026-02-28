@@ -14,13 +14,13 @@
 
 .meeting-briefing-modal__title {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: var(--text-lg);
   font-weight: 600;
 }
 
 .meeting-briefing-modal__time {
   margin: 0.25rem 0 0;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
 }
 
@@ -28,14 +28,14 @@
   text-align: center;
   padding: 2rem 0;
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: var(--text-base);
 }
 
 .meeting-briefing-modal__error {
   text-align: center;
   padding: 1.5rem 0;
   color: var(--error-color);
-  font-size: 0.875rem;
+  font-size: var(--text-base);
 }
 
 .meeting-briefing-modal__error p {
@@ -56,13 +56,13 @@
 
 .meeting-briefing-modal__contact-name {
   margin: 0 0 0.5rem;
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
   font-weight: 600;
 }
 
 .meeting-briefing-modal__context {
   margin: 0 0 0.5rem;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -70,7 +70,7 @@
 .meeting-briefing-modal__points {
   margin: 0;
   padding-left: 1.25rem;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   line-height: 1.6;
 }
 
@@ -85,13 +85,23 @@
 
 .meeting-briefing-modal__prep-title {
   margin: 0 0 0.5rem;
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   font-weight: 600;
   color: var(--text-secondary);
 }
 
 .meeting-briefing-modal__prep p {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .meeting-briefing-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    margin: 0;
+  }
 }

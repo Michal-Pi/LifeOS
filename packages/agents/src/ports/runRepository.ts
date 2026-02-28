@@ -1,17 +1,17 @@
-import type { Run, RunId, CreateRunInput, WorkspaceId, RunStatus } from '../domain/models'
+import type { Run, RunId, CreateRunInput, WorkflowId, RunStatus } from '../domain/models'
 
 export interface RunRepository {
   create(userId: string, input: CreateRunInput): Promise<Run>
   update(
     userId: string,
     runId: RunId,
-    updates: Partial<Omit<Run, 'runId' | 'userId' | 'workspaceId'>>
+    updates: Partial<Omit<Run, 'runId' | 'userId' | 'workflowId'>>
   ): Promise<Run>
   get(userId: string, runId: RunId): Promise<Run | null>
   list(
     userId: string,
     options?: {
-      workspaceId?: WorkspaceId
+      workflowId?: WorkflowId
       status?: RunStatus
       limit?: number
     }

@@ -1,0 +1,319 @@
+/* TaskFormModal - Design System Aligned */
+
+.task-form-modal {
+  max-width: 640px;
+  width: 100%;
+}
+
+/* Header */
+.task-form-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.task-form-modal .modal-header > div {
+  flex: 1;
+}
+
+.task-form-modal .modal-header h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Import Link */
+.import-tasks-link {
+  display: inline-block;
+  margin-top: var(--space-1);
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: var(--text-sm);
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+
+.import-tasks-link:hover {
+  color: var(--accent-hover);
+}
+
+/* Close Button */
+.task-form-modal .close-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-2xl);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--motion-ease);
+}
+
+.task-form-modal .close-button:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+/* Form */
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5);
+}
+
+/* Form Sections */
+.task-form .form-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.task-form .form-section .section-label {
+  margin: 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-label);
+}
+
+/* Form Row */
+.task-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 480px) {
+  .task-form .form-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+}
+
+/* Form Group */
+.task-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.task-form .form-group label {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-label);
+}
+
+/* Inputs */
+.task-form .form-group input[type='text'],
+.task-form .form-group input[type='number'],
+.task-form .form-group input[type='datetime-local'],
+.task-form .form-group textarea {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  min-height: 40px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  color: var(--foreground);
+  transition: all var(--motion-fast) var(--motion-ease);
+}
+
+.task-form .form-group input:hover,
+.task-form .form-group textarea:hover {
+  border-color: var(--border-strong);
+}
+
+.task-form .form-group input:focus,
+.task-form .form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.task-form .form-group input::placeholder,
+.task-form .form-group textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+.task-form .form-group textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Range Inputs */
+.task-form .form-group input[type='range'] {
+  width: 100%;
+  height: 4px;
+  margin: var(--space-2) 0;
+  background: var(--muted);
+  border: none;
+  border-radius: var(--radius-sm);
+  appearance: none;
+  cursor: pointer;
+}
+
+.task-form .form-group input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+
+.task-form .form-group input[type='range']::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.task-form .form-group input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+
+/* Helper Text */
+.task-form .helper-text {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* Datetime Input Group */
+.task-form .due-date-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.task-form .due-date-input-group input {
+  flex: 1;
+  padding-right: 2.5rem;
+}
+
+.task-form .clear-due-date-button {
+  position: absolute;
+  right: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xl);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--motion-ease);
+  z-index: 1;
+}
+
+.task-form .clear-due-date-button:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+/* Inline Inputs (hours/minutes) */
+.task-form .inline-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.task-form .input-with-suffix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.task-form .input-with-suffix input {
+  width: 100%;
+  padding-right: 3rem;
+}
+
+.task-form .input-suffix {
+  position: absolute;
+  right: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+/* Modal Actions */
+.task-form-modal .modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border);
+  background: var(--background-tertiary);
+}
+
+.modal-actions-right {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* Import Button in Footer */
+.task-form-modal .modal-actions .ghost-button .import-icon {
+  margin-right: var(--space-2);
+  font-size: var(--text-md);
+}
+
+/* Disabled States */
+.task-form .form-group input:disabled,
+.task-form .form-group textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--muted);
+}
+
+/* Select Trigger Override */
+.task-form .form-group .select-trigger {
+  min-height: 40px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .task-form-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .task-form {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .task-form-modal .modal-header,
+  .task-form-modal .modal-actions {
+    padding: var(--space-3) var(--space-4);
+  }
+}

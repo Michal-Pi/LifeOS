@@ -15,7 +15,7 @@
     "jsx": "preserve",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["apps/web/src/*"],
+      "@/*": ["apps/web-vite/src/*"],
       "@lifeos/*": ["packages/*/src"]
     }
   }

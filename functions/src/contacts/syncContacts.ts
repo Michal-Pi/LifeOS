@@ -60,9 +60,7 @@ function extractEmails(person: GooglePerson): string[] {
 }
 
 function extractPhones(person: GooglePerson): string[] {
-  return (person.phoneNumbers ?? [])
-    .map((p) => p.canonicalForm ?? p.value)
-    .filter(Boolean)
+  return (person.phoneNumbers ?? []).map((p) => p.canonicalForm ?? p.value).filter(Boolean)
 }
 
 /**

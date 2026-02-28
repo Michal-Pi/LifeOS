@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
-import type { DeepResearchRequest, RunId, WorkspaceId } from '@lifeos/agents'
+import type { DeepResearchRequest, RunId, WorkflowId } from '@lifeos/agents'
 import { useDeepResearch } from '@/hooks/useDeepResearch'
 import { ResearchUploadModal } from './ResearchUploadModal'
 import { Button } from '@/components/ui/button'
 
 interface ResearchQueueSidebarProps {
-  workspaceId: WorkspaceId
+  workflowId: WorkflowId
   runId?: RunId
   onOpenFullQueue?: () => void
 }
@@ -14,11 +14,11 @@ const formatStatus = (status: DeepResearchRequest['status']) =>
   status.replace('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase())
 
 export function ResearchQueueSidebar({
-  workspaceId,
+  workflowId,
   runId,
   onOpenFullQueue,
 }: ResearchQueueSidebarProps) {
-  const { requests, uploadResults } = useDeepResearch(workspaceId)
+  const { requests, uploadResults } = useDeepResearch(workflowId)
   const [selectedRequest, setSelectedRequest] = useState<DeepResearchRequest | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
 

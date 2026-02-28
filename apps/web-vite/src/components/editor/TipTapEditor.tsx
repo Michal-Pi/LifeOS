@@ -29,7 +29,7 @@ import { FontSize } from './extensions/FontSize'
 import { TextColor } from './extensions/TextColor'
 import { NoteLink } from './extensions/NoteLink'
 import { ParagraphTag } from './extensions/ParagraphTag'
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import type { Note, TopicId } from '@lifeos/notes'
 import { TipTapMenuBar } from './TipTapMenuBar'
 import { DragDropContext } from './ux/DragDropContext'
@@ -88,6 +88,25 @@ export function TipTapEditor({
     position: { x: number; y: number }
   } | null>(null)
   const lastCharRef = useRef<string>('') // Track last character for [[ detection
+  const updateTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const isInternalUpdate = useRef(false) // Track changes originating from the editor itself
+
+  // Debounced callback refs to avoid stale closures
+  const onChangeRef = useRef(onChange)
+  const onUpdateRef = useRef(onUpdate)
+  useEffect(() => {
+    onChangeRef.current = onChange
+    onUpdateRef.current = onUpdate
+  }, [onChange, onUpdate])
+
+  const flushEditorUpdate = useCallback((editorInstance: ReturnType<typeof useEditor>) => {
+    if (!editorInstance || editorInstance.isDestroyed) return
+    isInternalUpdate.current = true
+    const json = editorInstance.getJSON()
+    onChangeRef.current?.(json)
+    const html = editorInstance.getHTML()
+    onUpdateRef.current?.(html)
+  }, [])
 
   const extensions = useMemo(() => {
     return [
@@ -159,20 +178,10 @@ export function TipTapEditor({
     extensions,
     content,
     editable,
-    onUpdate: ({ editor }) => {
-      // Debounce updates for performance
-      const updateContent = () => {
-        // Get JSON content for storage
-        const json = editor.getJSON()
-        onChange?.(json)
-
-        // Get HTML for display/preview
-        const html = editor.getHTML()
-        onUpdate?.(html)
-      }
-
-      // Use requestAnimationFrame for smooth updates
-      requestAnimationFrame(updateContent)
+    onUpdate: ({ editor: ed }) => {
+      // Debounce serialization — getJSON()/getHTML() are expensive on large docs
+      if (updateTimerRef.current) clearTimeout(updateTimerRef.current)
+      updateTimerRef.current = setTimeout(() => flushEditorUpdate(ed), 300)
     },
     editorProps: {
       attributes: {
@@ -504,20 +513,22 @@ export function TipTapEditor({
     },
   })
 
-  // Update content when prop changes
+  // Update content when prop changes from an external source (e.g. switching notes)
+  // Skip when the change originated from the editor itself (avoids double-serialization)
   useEffect(() => {
+    if (isInternalUpdate.current) {
+      isInternalUpdate.current = false
+      return
+    }
     if (editor && content !== undefined && !editor.isDestroyed) {
-      const currentContent = editor.getJSON()
-      // Only update if content has actually changed to avoid cursor jumps
-      if (JSON.stringify(currentContent) !== JSON.stringify(content)) {
-        editor.commands.setContent(content)
-      }
+      editor.commands.setContent(content)
     }
   }, [editor, content])
 
-  // Cleanup editor on unmount
+  // Cleanup editor and debounce timer on unmount
   useEffect(() => {
     return () => {
+      if (updateTimerRef.current) clearTimeout(updateTimerRef.current)
       editor?.destroy()
     }
   }, [editor])

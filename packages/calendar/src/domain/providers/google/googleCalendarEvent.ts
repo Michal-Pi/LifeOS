@@ -120,7 +120,7 @@ function buildOccursOn(start: string, end: string, capDays = 60) {
   const days: string[] = []
   const startDate = new Date(start)
   const endDate = new Date(end)
-  let cursor = new Date(startDate)
+  const cursor = new Date(startDate)
   let iterations = 0
   while (cursor <= endDate && iterations < capDays) {
     days.push(cursor.toISOString().split('T')[0])

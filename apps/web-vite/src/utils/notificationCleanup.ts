@@ -7,6 +7,7 @@
 
 import { collection, query, where, getDocs, writeBatch } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
+import { logger } from '@/lib/logger'
 
 const CLEANUP_AGE_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
 
@@ -55,7 +56,7 @@ export async function cleanupOldNotifications(userId: string): Promise<number> {
       await batch.commit()
     }
 
-    console.log(`Cleaned up ${deletedCount} old notifications for user ${userId}`)
+    logger.debug(`Cleaned up ${deletedCount} old notifications for user ${userId}`)
     return deletedCount
   } catch (error) {
     console.error('Failed to cleanup old notifications:', error)

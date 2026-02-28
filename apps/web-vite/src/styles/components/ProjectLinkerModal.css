@@ -1,0 +1,133 @@
+/**
+ * ProjectLinkerModal Styles
+ */
+
+.project-linker-modal {
+  max-width: 480px;
+  width: 100%;
+}
+
+.linker-loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
+.linker-add-section {
+  margin-bottom: 1.5rem;
+}
+
+.linker-label {
+  display: block;
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--foreground);
+  margin-bottom: 0.5rem;
+}
+
+.linker-add-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.linker-add-row .select-trigger {
+  flex: 1;
+}
+
+.linker-add-row .primary-button {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0.5rem 1rem;
+}
+
+.linker-linked-section {
+  margin-top: 1rem;
+}
+
+.linker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.linker-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.linker-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.linker-item-title {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.linker-item-desc {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linker-item-remove {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  font-size: var(--text-xl);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--motion-fast) var(--motion-ease);
+}
+
+.linker-item-remove:hover {
+  background: var(--error-light, rgba(239, 68, 68, 0.1));
+  color: var(--error, #ef4444);
+}
+
+.linker-empty {
+  margin: 0;
+  padding: 1rem;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: var(--text-base);
+  background: var(--background-secondary);
+  border-radius: var(--radius-md);
+}
+
+.linker-empty-hint {
+  margin: 0;
+  padding: 1rem;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: var(--text-base);
+}
+
+@media (max-width: 640px) {
+  .project-linker-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    margin: 0;
+  }
+}

@@ -9,6 +9,9 @@
 import type { ModelProvider } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 import { RateLimitError } from './errorHandler.js'
+import { createLogger } from '../lib/logger.js'
+
+const log = createLogger('RateLimiter')
 
 /**
  * Rate limit record stored in Firestore
@@ -336,5 +339,5 @@ export async function updateDailyCostLimit(userId: string, newLimit: number): Pr
 
   await docRef.set(record)
 
-  console.log(`Updated daily cost limit for user ${userId} to $${newLimit.toFixed(2)}`)
+  log.info('Updated daily cost limit', { userId, newLimit: `$${newLimit.toFixed(2)}` })
 }

@@ -1,6 +1,6 @@
 # Test Scenarios & Use Cases: AI Agents & Workspaces
 
-**Version 1.5** | Last Updated: February 23, 2026
+**Version 1.6** | Last Updated: February 26, 2026
 
 ---
 
@@ -90,22 +90,28 @@ Each scenario includes:
 37. [Contradiction Tracking & Resolution](#scenario-37-contradiction-tracking-resolution)
 38. [Knowledge Hypergraph Retrieval](#scenario-38-knowledge-hypergraph-retrieval)
 
+### Automated Deep Research Scenarios
+
+39. [Deep Research KG + Dialectical Template](#scenario-39-deep-research-kg--dialectical-template)
+40. [Deep Research Budget Control](#scenario-40-deep-research-budget-control)
+41. [Deep Research Knowledge Graph Inspection](#scenario-41-deep-research-knowledge-graph-inspection)
+
 ### Channel Connection Scenarios
 
-39. [Connect LinkedIn Channel](#scenario-39-connect-linkedin-channel)
-40. [Connect Telegram Channel](#scenario-40-connect-telegram-channel)
-41. [Connect WhatsApp Channel](#scenario-41-connect-whatsapp-channel)
-42. [Channel Connection Error Handling](#scenario-42-channel-connection-error-handling)
+42. [Connect LinkedIn Channel](#scenario-39-connect-linkedin-channel)
+43. [Connect Telegram Channel](#scenario-40-connect-telegram-channel)
+44. [Connect WhatsApp Channel](#scenario-41-connect-whatsapp-channel)
+45. [Channel Connection Error Handling](#scenario-42-channel-connection-error-handling)
 
 ### Real-World Use Cases
 
-43. [Business Plan Development](#use-case-1-business-plan-development)
-44. [Technical Documentation Creation](#use-case-2-technical-documentation-creation)
-45. [Market Research Report](#use-case-3-market-research-report)
-46. [Content Marketing Pipeline](#use-case-4-content-marketing-pipeline)
-47. [Product Launch Strategy](#use-case-5-product-launch-strategy)
-48. [Supervisor-Driven Project Triage](#use-case-6-supervisor-driven-project-triage)
-49. [Dialectical Market Entry Analysis](#use-case-7-dialectical-market-entry-analysis)
+46. [Business Plan Development](#use-case-1-business-plan-development)
+47. [Technical Documentation Creation](#use-case-2-technical-documentation-creation)
+48. [Market Research Report](#use-case-3-market-research-report)
+49. [Content Marketing Pipeline](#use-case-4-content-marketing-pipeline)
+50. [Product Launch Strategy](#use-case-5-product-launch-strategy)
+51. [Supervisor-Driven Project Triage](#use-case-6-supervisor-driven-project-triage)
+52. [Dialectical Market Entry Analysis](#use-case-7-dialectical-market-entry-analysis)
 
 ---
 
@@ -2561,6 +2567,139 @@ These scenarios test the advanced Hegelian dialectical reasoning architecture in
 - Retrieved context improves output quality
 - New run adds to graph (not duplicating existing nodes)
 - Cross-topic insights discovered and utilized
+
+---
+
+## Automated Deep Research Scenarios
+
+### Scenario 39: Deep Research KG + Dialectical Template
+
+**Objective**: Test the full automated deep research pipeline — from template instantiation through search, claim extraction, KG construction, dialectical reasoning, gap analysis, and final answer generation.
+
+**Features Tested**:
+
+- Template instantiation with 9 agents and `deep_research` workflow type
+- LangGraph-based multi-phase execution
+- Knowledge Graph construction with claims, concepts, and causal links
+- Multi-lens dialectical reasoning (economic, systems, adversarial)
+- Budget-aware iteration with gap analysis
+- Structured answer generation with source traceability
+
+**Prerequisites**:
+
+- At least one AI provider key (OpenAI, Anthropic, or Google)
+- Search tool API keys configured (Serper recommended; Exa optional)
+- Tools `serp_search`, `semantic_search`, `read_url` available
+
+**Steps**:
+
+1. Go to **Agents** > **Workflows** tab
+2. Click **Create from Template**
+3. Select **"Deep Research (KG + Dialectical)"**
+4. Review the 9 pre-configured agents:
+   - 4 research agents (Planner, Claim Extractor, Gap Analyst, Answer Generator)
+   - 5 dialectical agents (Economic, Systems, Adversarial thesis + Synthesis + Meta-Reflection)
+5. Verify workflow type is `deep_research` (not `graph` or `sequential`)
+6. Click **Create Workspace**
+7. Start a run with a research-worthy question:
+   ```
+   What are the long-term economic and societal implications
+   of widespread AI adoption in healthcare diagnostics?
+   ```
+8. Observe the run log for phase events:
+   - `deep_research_phase: search_planning` — query decomposition
+   - `deep_research_phase: source_ingestion` — web/academic search execution
+   - `deep_research_phase: claim_extraction` — atomic claims from sources
+   - `deep_research_phase: dialectical` — multi-lens thesis generation and synthesis
+   - `deep_research_phase: gap_analysis` — coverage gap identification
+   - `deep_research_phase: answer_generation` — final report compilation
+9. If gap analysis triggers a new iteration, observe the loop back to source ingestion
+10. Wait for the final answer to be generated
+11. Review the output: structured sections, confidence levels, citations
+
+**Expected Results**:
+
+- ✅ Template creates workspace with 9 agents and correct workflow type
+- ✅ Run starts and progresses through named phases in the log
+- ✅ Search planning produces diverse queries (SERP + semantic + academic)
+- ✅ Claim extraction outputs atomic claims with evidence types and confidence scores
+- ✅ Knowledge Graph nodes appear (claims, concepts, causal links)
+- ✅ Dialectical phase produces thesis/antithesis/synthesis outputs
+- ✅ Gap analysis identifies missing perspectives and generates follow-up queries
+- ✅ Budget tracking prevents runaway costs (check `spentTokens`, `searchCallsUsed`)
+- ✅ Final answer includes sections, confidence levels, and source bibliography
+- ✅ Run completes with status `completed` (not stuck or errored)
+
+**Feedback Questions**:
+
+1. Are the phase transitions visible enough in the run log?
+2. Is the final report structured clearly?
+3. Does the dialectical reasoning add value over a simpler multi-source pipeline?
+4. Is the budget control transparent enough?
+
+---
+
+### Scenario 40: Deep Research Budget Control
+
+**Objective**: Verify that the budget system correctly limits execution and transitions between budget phases.
+
+**Prerequisites**: Same as Scenario 39
+
+**Steps**:
+
+1. Create a workspace from **"Deep Research (KG + Dialectical)"** template
+2. Start a run with a broad question that would require many iterations:
+   ```
+   Compare the educational philosophies of Montessori, Waldorf, Reggio Emilia,
+   and traditional schooling across cognitive development, social skills,
+   creativity, and long-term career outcomes.
+   ```
+3. Monitor the run log for budget-related events
+4. Observe the budget phase transitions:
+   - `full` → `reduced` → `minimal` as budget depletes
+5. Check that the run terminates gracefully when budget is exhausted
+6. Review the final answer — it should acknowledge remaining knowledge gaps
+
+**Expected Results**:
+
+- ✅ Run does not exceed configured budget (check `spentUsd` vs `maxBudgetUsd`)
+- ✅ Gap iterations stop when budget is insufficient for another cycle
+- ✅ Budget phase transitions are logged
+- ✅ Final answer is generated even under budget pressure (minimal phase)
+- ✅ Remaining gaps are disclosed in the output
+
+---
+
+### Scenario 41: Deep Research Knowledge Graph Inspection
+
+**Objective**: Verify that the Knowledge Graph is populated correctly during a deep research run.
+
+**Prerequisites**: Complete Scenario 39 first (need a completed deep research run)
+
+**Steps**:
+
+1. After a deep research run completes, navigate to the **Knowledge Graph** view
+2. Inspect claim nodes — each should have:
+   - Claim text (atomic assertion)
+   - Confidence score (0.0–1.0)
+   - Evidence type (empirical, theoretical, statistical, etc.)
+   - Source episode link
+3. Inspect concept nodes — extracted topics and domains
+4. Inspect edges:
+   - `supports` / `contradicts` between claims
+   - `causal_link` for cause-effect relationships
+   - `related_to` between concepts
+5. Check that `SourceRecord` data is attached to source nodes
+6. Verify no duplicate claims (normalized text deduplication)
+
+**Expected Results**:
+
+- ✅ Claim nodes contain structured metadata (confidence, evidence type, source quotes)
+- ✅ Concept nodes represent key topics from the research
+- ✅ Edge types include `supports`, `contradicts`, and `causal_link`
+- ✅ Source traceability: every claim links back to its source document
+- ✅ No duplicate claim nodes for the same assertion
+- ✅ Graph is navigable and relationships make semantic sense
 
 ---
 

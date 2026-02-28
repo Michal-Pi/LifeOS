@@ -2,10 +2,14 @@
 .message-carousel {
   background: var(--background-secondary);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   margin-bottom: 1.5rem;
   box-shadow: 0 2px 8px var(--shadow-soft);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .carousel-header {
@@ -19,7 +23,7 @@
 }
 
 .carousel-title {
-  font-size: 0.95rem;
+  font-size: var(--text-base);
   font-weight: 600;
   color: var(--foreground);
   display: flex;
@@ -39,7 +43,7 @@
   width: 8px;
   height: 8px;
   background: var(--success);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -58,35 +62,24 @@
   font-weight: 600;
 }
 
-.carousel-metrics {
-  display: flex;
-  gap: 1.5rem;
-  align-items: center;
-  font-size: 0.875rem;
-}
-
-.carousel-metrics .metric {
+.carousel-header-actions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.carousel-metrics .metric-label {
-  color: var(--muted-foreground);
-}
-
-.carousel-metrics .metric-value {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  color: var(--foreground);
+.add-all-button {
+  font-size: var(--text-sm) !important;
+  padding: 0.25rem 0.75rem !important;
+  height: auto !important;
 }
 
 .carousel-body {
   display: flex;
   align-items: stretch;
   position: relative;
-  min-height: 400px;
-  max-height: 600px;
+  flex: 1;
+  min-height: 300px;
 }
 
 .carousel-content {
@@ -95,9 +88,8 @@
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 1rem 1.5rem;
-  min-height: 400px;
-  max-height: 600px;
+  padding: 1rem 1.5rem 3%;
+  min-height: 0;
 }
 
 /* Custom scrollbar for carousel content */
@@ -111,7 +103,7 @@
 
 .carousel-content::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .carousel-content::-webkit-scrollbar-thumb:hover {
@@ -126,7 +118,7 @@
   background: var(--background-tertiary);
   border: none;
   color: var(--foreground);
-  font-size: 1.5rem;
+  font-size: var(--text-2xl);
   cursor: pointer;
   transition:
     background 160ms ease-in-out,
@@ -152,25 +144,68 @@
   border-left: 1px solid var(--border);
 }
 
-.message-meta {
+/* Per-message top bar */
+.message-topbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--border);
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
-.message-agent {
-  font-size: 0.875rem;
+.message-topbar-info {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--text-sm);
+  min-width: 0;
+}
+
+.message-topbar-author {
   font-weight: 600;
   color: var(--accent);
+  white-space: nowrap;
+}
+
+.message-topbar-arrow {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+
+.message-topbar-receiver {
+  color: var(--foreground);
+  white-space: nowrap;
 }
 
 .message-position {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: var(--muted-foreground);
   font-family: var(--font-mono);
+  margin-left: 0.5rem;
+  white-space: nowrap;
+}
+
+.message-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.message-topbar-metric {
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.message-topbar-save {
+  font-size: var(--text-xs) !important;
+  padding: 0.15rem 0.5rem !important;
+  height: auto !important;
 }
 
 .message-body {
@@ -193,7 +228,7 @@
   padding: 1rem;
   background: var(--info-light);
   border-left: 4px solid var(--info);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .question-input {
@@ -207,11 +242,11 @@
   min-height: 120px;
   padding: 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  font-size: 0.95rem;
+  font-size: var(--text-base);
   line-height: 1.5;
   resize: vertical;
   transition: border-color 160ms ease-in-out;
@@ -239,7 +274,7 @@
   display: flex;
   gap: 1rem;
   align-items: center;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--muted-foreground);
 }
 
@@ -249,7 +284,59 @@
 
 .keyboard-hint {
   color: var(--muted-foreground);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
+}
+
+/* Dialectical Workflow Message Styles */
+.message-carousel [data-message-type='dialectical_phase'] .message-topbar-author {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.message-carousel [data-message-type='dialectical_thesis'] .message-topbar-author {
+  color: var(--info);
+}
+
+.message-carousel [data-message-type='dialectical_thesis'] .message-topbar-receiver {
+  color: var(--info);
+  font-style: italic;
+}
+
+.message-carousel [data-message-type='dialectical_negation'] .message-topbar-author {
+  color: var(--warning);
+}
+
+.message-carousel [data-message-type='dialectical_negation'] .message-topbar-receiver {
+  color: var(--warning);
+  font-style: italic;
+}
+
+.message-carousel [data-message-type='dialectical_contradiction'] .message-topbar-author {
+  color: var(--danger);
+}
+
+.message-carousel [data-message-type='dialectical_synthesis'] .message-topbar-author {
+  color: var(--success);
+}
+
+.message-carousel [data-message-type='dialectical_meta'] .message-topbar-author {
+  color: var(--purple, #8b5cf6);
+}
+
+.message-carousel [data-message-type='error'] .message-topbar-author {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* Dialectical phase banner */
+.dialectical-phase-banner {
+  background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent-lighter) 100%);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  font-weight: 600;
 }
 
 /* Responsive adjustments */
@@ -258,24 +345,21 @@
     flex-wrap: wrap;
   }
 
-  .carousel-metrics {
+  .message-topbar {
     flex-direction: column;
-    gap: 0.5rem;
     align-items: flex-start;
   }
 
   .carousel-body {
-    min-height: 300px;
-    max-height: 500px;
+    min-height: 200px;
   }
 
   .carousel-content {
-    min-height: 300px;
-    max-height: 500px;
+    min-height: 0;
   }
 
   .carousel-nav {
     width: 40px;
-    font-size: 1.25rem;
+    font-size: var(--text-xl);
   }
 }

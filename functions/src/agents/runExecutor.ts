@@ -9,15 +9,17 @@ import { executeExpertCouncilUsecase } from '@lifeos/agents'
 import type {
   DeepResearchRequest,
   ExecutionMode,
+  ModelProvider,
   Run,
   RunId,
-  Workspace,
-  WorkspaceId,
+  Workflow,
+  WorkflowId,
   WorkflowState,
 } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore'
 
+import { createLogger } from '../lib/logger.js'
 import { wrapError } from './errorHandler.js'
 import {
   buildExpertCouncilContextHash,
@@ -25,20 +27,14 @@ import {
   createExpertCouncilRepository,
 } from './expertCouncil.js'
 import { buildConversationContext } from './messageStore.js'
-import {
-  loadProviderKeys,
-  loadSearchToolKeys,
-  OPENAI_API_KEY,
-  ANTHROPIC_API_KEY,
-  SERPER_API_KEY,
-  FIRECRAWL_API_KEY,
-  EXA_API_KEY,
-} from './providerKeys.js'
+import { loadProviderKeys, loadSearchToolKeys } from './providerKeys.js'
 import { checkQuota, updateQuota, shouldSendQuotaAlert } from './quotaManager.js'
 import { checkRunRateLimit, recordRunUsage } from './rateLimiter.js'
 import { createRunEventWriter } from './runEvents.js'
 import { loadToolRegistryForUser } from './toolExecutor.js'
 import { executeWorkflow } from './workflowExecutor.js'
+
+const log = createLogger('RunExecutor')
 
 type MemorySettings = {
   memoryMessageLimit?: number
@@ -46,55 +42,52 @@ type MemorySettings = {
 
 // Function configuration (matching existing patterns)
 const FUNCTION_CONFIG = {
-  timeoutSeconds: 300,
-  memory: '512MiB' as const,
+  timeoutSeconds: 540,
+  memory: '1GiB' as const,
 }
 
 /**
  * Firestore trigger that executes when a new run is created
  *
- * Document path: users/{userId}/workspaces/{workspaceId}/runs/{runId}
+ * Document path: users/{userId}/workflows/{workflowId}/runs/{runId}
  * Triggers when: A new run document is created with status 'pending'
  */
 export const onRunCreated = onDocumentCreated(
   {
     ...FUNCTION_CONFIG,
-    document: 'users/{userId}/workspaces/{workspaceId}/runs/{runId}',
-    secrets: [OPENAI_API_KEY, ANTHROPIC_API_KEY, SERPER_API_KEY, FIRECRAWL_API_KEY, EXA_API_KEY],
+    document: 'users/{userId}/workflows/{workflowId}/runs/{runId}',
   },
   async (event) => {
     const snapshot = event.data
     if (!snapshot) {
-      console.error('[onRunCreated] No snapshot data available')
+      log.error('No snapshot data available')
       return
     }
 
     const run = snapshot.data() as Run
-    const { userId, workspaceId, runId } = event.params
+    const { userId, workflowId, runId } = event.params
 
-    console.log(
-      `[onRunCreated] Processing run ${runId} for user ${userId} in workspace ${workspaceId}`
-    )
-    console.log(`[onRunCreated] Run status: ${run.status}, Goal: ${run.goal.substring(0, 50)}...`)
+    log.info(`Processing run ${runId} for user ${userId} in workflow ${workflowId}`)
+    log.info(`Run status: ${run.status}, Goal: ${run.goal.substring(0, 50)}...`)
 
     // Only process pending runs
     if (run.status !== 'pending') {
-      console.log(`[onRunCreated] Run ${runId} is not pending (status: ${run.status}), skipping`)
+      log.info(`Run ${runId} is not pending (status: ${run.status}), skipping`)
       return
     }
 
-    console.log(`[onRunCreated] Starting execution for run ${runId}`)
+    log.info(`Starting execution for run ${runId}`)
 
     try {
       await executeRun({
         run,
         userId,
-        workspaceId,
+        workflowId,
         runId,
       })
-      console.log(`[onRunCreated] Execution completed for run ${runId}`)
+      log.info(`Execution completed for run ${runId}`)
     } catch (error) {
-      console.error(`[onRunCreated] Execution failed for run ${runId}:`, error)
+      log.error(`Execution failed for run ${runId}`, error)
       throw error
     }
   }
@@ -103,14 +96,13 @@ export const onRunCreated = onDocumentCreated(
 /**
  * Firestore trigger that resumes runs waiting for user input.
  *
- * Document path: users/{userId}/workspaces/{workspaceId}/runs/{runId}
+ * Document path: users/{userId}/workflows/{workflowId}/runs/{runId}
  * Triggers when: status changes from waiting_for_input -> pending
  */
 export const onRunUpdated = onDocumentUpdated(
   {
     ...FUNCTION_CONFIG,
-    document: 'users/{userId}/workspaces/{workspaceId}/runs/{runId}',
-    secrets: [OPENAI_API_KEY, ANTHROPIC_API_KEY, SERPER_API_KEY, FIRECRAWL_API_KEY, EXA_API_KEY],
+    document: 'users/{userId}/workflows/{workflowId}/runs/{runId}',
   },
   async (event) => {
     const snapshot = event.data
@@ -120,18 +112,18 @@ export const onRunUpdated = onDocumentUpdated(
 
     const before = snapshot.before.data() as Run
     const after = snapshot.after.data() as Run
-    const { userId, workspaceId, runId } = event.params
+    const { userId, workflowId, runId } = event.params
 
     const resumableStatuses = new Set<Run['status']>(['waiting_for_input', 'paused'])
     if (!resumableStatuses.has(before.status) || after.status !== 'pending') {
       return
     }
 
-    console.log(`Resuming run ${runId} for user ${userId}`)
+    log.info(`Resuming run ${runId} for user ${userId}`)
     await executeRun({
       run: after,
       userId,
-      workspaceId,
+      workflowId,
       runId,
     })
   }
@@ -140,66 +132,66 @@ export const onRunUpdated = onDocumentUpdated(
 async function executeRun(params: {
   run: Run
   userId: string
-  workspaceId: string
+  workflowId: string
   runId: string
 }): Promise<void> {
-  const { run, userId, workspaceId, runId } = params
-  console.log(`[executeRun] Starting execution for run ${runId}`)
+  const { run, userId, workflowId, runId } = params
+  log.info(`Starting execution for run ${runId}`)
 
   const db = getFirestore()
-  const runRef = db.doc(`users/${userId}/workspaces/${workspaceId}/runs/${runId}`)
+  const runRef = db.doc(`users/${userId}/workflows/${workflowId}/runs/${runId}`)
 
   try {
-    console.log(`[executeRun] Creating event writer for run ${runId}`)
-    const eventWriter = createRunEventWriter({ userId, runId, workspaceId })
+    log.info(`Creating event writer for run ${runId}`)
+    const eventWriter = createRunEventWriter({ userId, runId, workflowId })
 
     // Phase 5E: Check rate limits and quotas before starting
-    console.log(`[executeRun] Checking rate limits for user ${userId}`)
+    log.info(`Checking rate limits for user ${userId}`)
     await checkRunRateLimit(userId)
 
-    console.log(`[executeRun] Checking quota for user ${userId}`)
+    log.info(`Checking quota for user ${userId}`)
     await checkQuota(userId)
 
     // Update status to running
-    console.log(`[executeRun] Updating run ${runId} status to 'running'`)
+    log.info(`Updating run ${runId} status to 'running'`)
     await runRef.update({
       status: 'running',
       currentStep: run.currentStep ?? 0,
       pendingInput: null,
     })
 
-    console.log(`[executeRun] Writing 'running' status event for run ${runId}`)
+    log.info(`Writing 'running' status event for run ${runId}`)
     await eventWriter.writeEvent({
       type: 'status',
-      workspaceId,
+      workflowId,
       status: 'running',
     })
 
-    // Load workspace configuration
-    console.log(`[executeRun] Loading workspace ${workspaceId}`)
-    const workspaceDoc = await db.doc(`users/${userId}/workspaces/${workspaceId}`).get()
-    if (!workspaceDoc.exists) {
-      throw new Error(`Workspace ${workspaceId} not found`)
+    // Load workflow configuration
+    log.info(`Loading workflow ${workflowId}`)
+    const workflowDoc = await db.doc(`users/${userId}/workflows/${workflowId}`).get()
+    if (!workflowDoc.exists) {
+      throw new Error(`Workflow ${workflowId} not found`)
     }
-    const workspace = workspaceDoc.data() as Workspace
-    console.log(`[executeRun] Workspace loaded: ${workspace.name}, type: ${workspace.workflowType}`)
+    const workflow = workflowDoc.data() as Workflow
+    log.info(`Workflow loaded: ${workflow.name}, type: ${workflow.workflowType}`)
 
-    console.log(`[executeRun] Loading provider keys for user ${userId}`)
+    log.info(`Loading provider keys for user ${userId}`)
     const providerKeys = await loadProviderKeys(userId)
-    console.log(
-      `[executeRun] Provider keys loaded. Available: ${Object.keys(providerKeys)
+    log.info(
+      `Provider keys loaded. Available: ${Object.keys(providerKeys)
         .filter((k) => providerKeys[k as keyof typeof providerKeys])
         .join(', ')}`
     )
 
-    console.log(`[executeRun] Loading memory settings for user ${userId}`)
+    log.info(`Loading memory settings for user ${userId}`)
     const memorySettings = await loadMemorySettings(userId)
 
-    console.log(`[executeRun] Loading tool registry for user ${userId}`)
+    log.info(`Loading tool registry for user ${userId}`)
     const toolRegistry = await loadToolRegistryForUser(userId)
-    console.log(`[executeRun] Tool registry loaded with ${Object.keys(toolRegistry).length} tools`)
+    log.info(`Tool registry loaded with ${Object.keys(toolRegistry).length} tools`)
 
-    console.log(`[executeRun] Loading search tool keys for user ${userId}`)
+    log.info(`Loading search tool keys for user ${userId}`)
     const searchToolKeys = await loadSearchToolKeys(userId)
 
     const resumeRunId =
@@ -210,8 +202,8 @@ async function executeRun(params: {
     const memoryMessageLimit =
       typeof run.memoryMessageLimit === 'number'
         ? run.memoryMessageLimit
-        : typeof workspace.memoryMessageLimit === 'number'
-          ? workspace.memoryMessageLimit
+        : typeof workflow.memoryMessageLimit === 'number'
+          ? workflow.memoryMessageLimit
           : memorySettings.memoryMessageLimit
 
     const conversationHistory =
@@ -232,10 +224,10 @@ async function executeRun(params: {
       runWithContext.context as Record<string, unknown>
     )
 
-    console.log(`[executeRun] Checking Expert Council configuration`)
-    const expertCouncilConfig = workspace.expertCouncilConfig
+    log.info('Checking Expert Council configuration')
+    const expertCouncilConfig = workflow.expertCouncilConfig
     if (expertCouncilConfig?.enabled) {
-      console.log(`[executeRun] Expert Council is ENABLED for workspace ${workspaceId}`)
+      log.info(`Expert Council is ENABLED for workflow ${workflowId}`)
       try {
         const modeCandidate =
           runWithContext.context &&
@@ -248,35 +240,33 @@ async function executeRun(params: {
             ? (modeCandidate as ExecutionMode)
             : undefined
 
-        console.log(
-          `[executeRun] Expert Council mode: ${modeOverride || expertCouncilConfig.defaultMode}`
-        )
+        log.info(`Expert Council mode: ${modeOverride || expertCouncilConfig.defaultMode}`)
 
-        console.log(`[executeRun] Creating Expert Council repository`)
+        log.info('Creating Expert Council repository')
         const repository = createExpertCouncilRepository()
 
-        console.log(`[executeRun] Creating Expert Council pipeline`)
+        log.info('Creating Expert Council pipeline')
         const pipeline = createExpertCouncilPipeline({
           apiKeys: providerKeys,
           context: runWithContext.context,
           eventWriter,
-          workspaceId,
+          workflowId,
         })
 
-        console.log(`[executeRun] Creating Expert Council use case`)
+        log.info('Creating Expert Council use case')
         const executeCouncil = executeExpertCouncilUsecase(repository, pipeline)
 
-        console.log(`[executeRun] Executing Expert Council for run ${runId}`)
+        log.info(`Executing Expert Council for run ${runId}`)
         const turn = await executeCouncil(
           userId,
           runId as RunId,
           runWithContext.goal,
           expertCouncilConfig,
           modeOverride,
-          workspaceId as WorkspaceId,
+          workflowId as WorkflowId,
           contextHash
         )
-        console.log(`[executeRun] Expert Council execution completed for run ${runId}`)
+        log.info(`Expert Council execution completed for run ${runId}`)
 
         const totalTokensUsed =
           turn.stage1.responses.reduce((sum, response) => sum + (response.tokensUsed ?? 0), 0) +
@@ -290,7 +280,7 @@ async function executeRun(params: {
 
         const alert = await shouldSendQuotaAlert(userId)
         if (alert) {
-          console.log(
+          log.info(
             `Quota alert for user ${userId}: ${alert.type} at ${alert.threshold}% (${alert.used}/${alert.limit})`
           )
         }
@@ -307,24 +297,23 @@ async function executeRun(params: {
 
         await eventWriter.writeEvent({
           type: 'final',
-          workspaceId,
+          workflowId,
           output: turn.stage3.finalResponse,
           status: 'completed',
         })
 
-        console.log(`Expert Council completed for run ${runId}`)
+        log.info(`Expert Council completed for run ${runId}`)
         return
       } catch (error) {
-        console.error('Expert Council failed; falling back to workflow.', {
+        log.error('Expert Council failed; falling back to workflow.', error, {
           runId,
-          workspaceId,
+          workflowId,
           userId,
-          error: error instanceof Error ? error.message : String(error),
           expertCouncilConfig,
         })
         await eventWriter.writeEvent({
           type: 'status',
-          workspaceId,
+          workflowId,
           status: 'expert_council_failed_fallback',
           details: {
             reason: error instanceof Error ? error.message : String(error),
@@ -334,18 +323,18 @@ async function executeRun(params: {
       }
     }
 
-    console.log(`[executeRun] Expert Council not enabled or failed, using workflow execution`)
+    log.info('Expert Council not enabled or failed, using workflow execution')
 
-    if (!workspace.agentIds || workspace.agentIds.length === 0) {
-      throw new Error('No agents configured in workspace')
+    if (!workflow.agentIds || workflow.agentIds.length === 0) {
+      throw new Error('No agents configured in workflow')
     }
-    console.log(`[executeRun] Workspace has ${workspace.agentIds.length} agents configured`)
+    log.info(`Workflow has ${workflow.agentIds.length} agents configured`)
 
     // Execute workflow with multi-agent orchestration
-    console.log(`[executeRun] Starting workflow execution for run ${runId}`)
+    log.info(`Starting workflow execution for run ${runId}`)
     const result = await executeWorkflow(
       userId,
-      workspace,
+      workflow,
       runWithContext,
       {
         openai: providerKeys.openai,
@@ -357,18 +346,26 @@ async function executeRun(params: {
       toolRegistry,
       searchToolKeys
     )
-    console.log(`[executeRun] Workflow execution completed for run ${runId}`)
+    log.info(`Workflow execution completed for run ${runId}`)
+
+    // Check for failed status returned by workflow executor (e.g. dialectical graph failures)
+    if (result.status === 'failed') {
+      throw new Error(
+        (result as unknown as { error?: string }).error || 'Workflow execution failed'
+      )
+    }
 
     if (result.status === 'waiting_for_input') {
       await recordRunUsage(userId, result.totalTokensUsed, result.totalEstimatedCost)
 
-      const firstAgent = await db.doc(`users/${userId}/agents/${workspace.agentIds[0]}`).get()
-      const provider = firstAgent.exists ? (firstAgent.data() as any).modelProvider : 'openai'
+      const firstAgent = await db.doc(`users/${userId}/agents/${workflow.agentIds[0]}`).get()
+      const agentData = firstAgent.data() as Record<string, unknown> | undefined
+      const provider = (agentData?.modelProvider as ModelProvider | undefined) ?? 'openai'
       await updateQuota(userId, provider, result.totalTokensUsed, result.totalEstimatedCost)
 
       const alert = await shouldSendQuotaAlert(userId)
       if (alert) {
-        console.log(
+        log.info(
           `Quota alert for user ${userId}: ${alert.type} at ${alert.threshold}% (${alert.used}/${alert.limit})`
         )
       }
@@ -386,11 +383,11 @@ async function executeRun(params: {
 
       await eventWriter.writeEvent({
         type: 'status',
-        workspaceId,
+        workflowId,
         status: 'waiting_for_input',
       })
 
-      console.log(`Run ${runId} is waiting for user input.`)
+      log.info(`Run ${runId} is waiting for user input.`)
       return
     }
 
@@ -439,13 +436,14 @@ async function executeRun(params: {
 
       await recordRunUsage(userId, result.totalTokensUsed, result.totalEstimatedCost)
 
-      const firstAgent = await db.doc(`users/${userId}/agents/${workspace.agentIds[0]}`).get()
-      const provider = firstAgent.exists ? (firstAgent.data() as any).modelProvider : 'openai'
+      const firstAgent = await db.doc(`users/${userId}/agents/${workflow.agentIds[0]}`).get()
+      const agentData = firstAgent.data() as Record<string, unknown> | undefined
+      const provider = (agentData?.modelProvider as ModelProvider | undefined) ?? 'openai'
       await updateQuota(userId, provider, result.totalTokensUsed, result.totalEstimatedCost)
 
       const alert = await shouldSendQuotaAlert(userId)
       if (alert) {
-        console.log(
+        log.info(
           `Quota alert for user ${userId}: ${alert.type} at ${alert.threshold}% (${alert.used}/${alert.limit})`
         )
       }
@@ -469,11 +467,11 @@ async function executeRun(params: {
 
       await eventWriter.writeEvent({
         type: 'status',
-        workspaceId,
+        workflowId,
         status: 'paused',
       })
 
-      console.log(`Run ${runId} paused for research delegation.`)
+      log.info(`Run ${runId} paused for research delegation.`)
       return
     }
 
@@ -481,14 +479,15 @@ async function executeRun(params: {
     await recordRunUsage(userId, result.totalTokensUsed, result.totalEstimatedCost)
 
     // Update quota with provider-specific usage (use first agent's provider as representative)
-    const firstAgent = await db.doc(`users/${userId}/agents/${workspace.agentIds[0]}`).get()
-    const provider = firstAgent.exists ? (firstAgent.data() as any).modelProvider : 'openai'
+    const firstAgent = await db.doc(`users/${userId}/agents/${workflow.agentIds[0]}`).get()
+    const agentData = firstAgent.data() as Record<string, unknown> | undefined
+    const provider = (agentData?.modelProvider as ModelProvider | undefined) ?? 'openai'
     await updateQuota(userId, provider, result.totalTokensUsed, result.totalEstimatedCost)
 
     // Check if quota alert should be sent
     const alert = await shouldSendQuotaAlert(userId)
     if (alert) {
-      console.log(
+      log.info(
         `Quota alert for user ${userId}: ${alert.type} at ${alert.threshold}% (${alert.used}/${alert.limit})`
       )
 
@@ -512,15 +511,15 @@ async function executeRun(params: {
         }
 
         await notificationRef.set(notification)
-        console.log(`Created quota alert notification for user ${userId}`)
+        log.info(`Created quota alert notification for user ${userId}`)
       } catch (error) {
-        console.error(`Failed to create quota alert notification:`, error)
+        log.error('Failed to create quota alert notification', error)
         // Don't throw - notification failure shouldn't break the run
       }
     }
 
     // Update run with successful result
-    console.log(`[executeRun] Updating run ${runId} status to 'completed'`)
+    log.info(`Updating run ${runId} status to 'completed'`)
     await runRef.update({
       status: 'completed',
       output: result.output,
@@ -531,32 +530,27 @@ async function executeRun(params: {
       currentStep: result.totalSteps,
     })
 
-    console.log(`[executeRun] Writing 'final' event for run ${runId}`)
+    log.info(`Writing 'final' event for run ${runId}`)
     await eventWriter.writeEvent({
       type: 'final',
-      workspaceId,
+      workflowId,
       output: result.output,
       status: 'completed',
     })
 
-    console.log(
-      `[executeRun] ✅ Run ${runId} completed successfully. Workflow: ${workspace.workflowType}, Steps: ${result.totalSteps}, Tokens: ${result.totalTokensUsed}, Cost: $${result.totalEstimatedCost.toFixed(4)}`
+    log.info(
+      `Run ${runId} completed successfully. Workflow: ${workflow.workflowType}, Steps: ${result.totalSteps}, Tokens: ${result.totalTokensUsed}, Cost: $${result.totalEstimatedCost.toFixed(4)}`
     )
   } catch (error) {
-    console.error(`[executeRun] ❌ Run ${runId} FAILED with error:`, error)
-    console.error(
-      `[executeRun] Error stack:`,
-      error instanceof Error ? error.stack : 'No stack trace'
-    )
+    log.error(`Run ${runId} FAILED with error`, error)
+    log.error(`Error stack: ${error instanceof Error ? error.stack : 'No stack trace'}`)
 
     // Phase 5E: Wrap error for better user messages
     const agentError = wrapError(error, 'run_execution')
-    console.error(
-      `[executeRun] Error category: ${agentError.category}, User message: ${agentError.userMessage}`
-    )
+    log.error(`Error category: ${agentError.category}, User message: ${agentError.userMessage}`)
 
     // Update run with error (including category and quota flag)
-    console.log(`[executeRun] Updating run ${runId} status to 'failed'`)
+    log.info(`Updating run ${runId} status to 'failed'`)
     await runRef.update({
       status: 'failed',
       error: agentError.userMessage,
@@ -566,17 +560,17 @@ async function executeRun(params: {
       completedAtMs: Date.now(),
     })
 
-    console.log(`[executeRun] Writing 'error' event for run ${runId}`)
-    const eventWriter = createRunEventWriter({ userId, runId, workspaceId })
+    log.info(`Writing 'error' event for run ${runId}`)
+    const eventWriter = createRunEventWriter({ userId, runId, workflowId })
     await eventWriter.writeEvent({
       type: 'error',
-      workspaceId,
+      workflowId,
       errorMessage: agentError.userMessage,
       errorCategory: agentError.category,
       status: 'failed',
     })
 
-    console.error(`[executeRun] Run ${runId} error handling complete`)
+    log.error(`Run ${runId} error handling complete`)
   }
 }
 

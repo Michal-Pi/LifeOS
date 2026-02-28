@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { deleteField, doc, onSnapshot, setDoc } from 'firebase/firestore'
 
 import { getFirestoreClient } from '@/lib/firestoreClient'
+import { getSetting, saveSetting } from '@/settings/offlineStore'
 
 export type SearchToolKeyType = 'serper' | 'firecrawl' | 'exa' | 'jina'
 
@@ -45,13 +46,21 @@ export function useSearchToolKeys(userId: string | null | undefined): UseSearchT
 
     const setupSubscription = async () => {
       try {
+        const cached = await getSetting(userId, 'searchToolKeys')
+        if (cached) {
+          setKeys(cached as SearchToolKeys)
+          setIsLoading(false)
+        }
+
         const db = await getFirestoreClient()
         const docRef = doc(db, `users/${userId}/settings/searchToolKeys`)
         unsubscribe = onSnapshot(
           docRef,
           (snapshot) => {
-            setKeys((snapshot.data() as SearchToolKeys) ?? {})
+            const data = (snapshot.data() as SearchToolKeys) ?? {}
+            setKeys(data)
             setIsLoading(false)
+            void saveSetting(userId, 'searchToolKeys', data as Record<string, unknown>)
           },
           (err) => {
             setError(err.message)

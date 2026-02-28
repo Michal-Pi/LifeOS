@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import type { CanonicalTask, CanonicalProject, CanonicalChapter } from '@/types/todo'
-import { groupTasksByBucket, PRIORITY_BUCKETS, type TaskFilters } from '@/lib/priorityBuckets'
+import { groupTasksByBucket, type TaskFilters, getEffectiveUrgency } from '@/lib/priorityBuckets'
 import { getProjectColor } from '@/config/domainColors'
 import { importanceLabel } from '@/lib/todoUi'
+import { calculatePriorityScore } from '@/lib/priority'
 
 interface PriorityViewProps {
   tasks: CanonicalTask[]
@@ -14,6 +15,13 @@ interface PriorityViewProps {
   selectedTaskId?: string
 }
 
+interface UrgencyBand {
+  key: string
+  label: string
+  color: string
+  tasks: CanonicalTask[]
+}
+
 export function PriorityView({
   tasks,
   projects,
@@ -22,28 +30,86 @@ export function PriorityView({
   onToggleComplete,
   selectedTaskId,
 }: PriorityViewProps) {
-  const groupedTasks = useMemo(() => {
-    return groupTasksByBucket(tasks, filters)
+  // Get filtered tasks from all buckets
+  const allFilteredTasks = useMemo(() => {
+    const grouped = groupTasksByBucket(tasks, filters)
+    const result: CanonicalTask[] = []
+    grouped.forEach((bucketTasks) => result.push(...bucketTasks))
+    return result
   }, [tasks, filters])
+
+  // Group filtered tasks into urgency bands
+  const urgencyBands: UrgencyBand[] = useMemo(() => {
+    const todayTasks: CanonicalTask[] = []
+    const thisWeekTasks: CanonicalTask[] = []
+    const thisMonthTasks: CanonicalTask[] = []
+    const laterTasks: CanonicalTask[] = []
+
+    for (const task of allFilteredTasks) {
+      const urgency = getEffectiveUrgency(task)
+      if (urgency === 'today') {
+        todayTasks.push(task)
+      } else if (urgency === 'next_3_days' || urgency === 'this_week') {
+        thisWeekTasks.push(task)
+      } else if (urgency === 'this_month') {
+        thisMonthTasks.push(task)
+      } else {
+        laterTasks.push(task)
+      }
+    }
+
+    const sortByPriority = (a: CanonicalTask, b: CanonicalTask) =>
+      calculatePriorityScore(b) - calculatePriorityScore(a)
+
+    return [
+      {
+        key: 'today',
+        label: 'Today',
+        color: 'var(--error-color)',
+        tasks: todayTasks.sort(sortByPriority),
+      },
+      {
+        key: 'this_week',
+        label: 'This Week',
+        color: 'var(--warning-color)',
+        tasks: thisWeekTasks.sort(sortByPriority),
+      },
+      {
+        key: 'this_month',
+        label: 'This Month',
+        color: 'var(--info-color)',
+        tasks: thisMonthTasks.sort(sortByPriority),
+      },
+      {
+        key: 'later',
+        label: 'Someday',
+        color: 'var(--text-tertiary)',
+        tasks: laterTasks.sort(sortByPriority),
+      },
+    ]
+  }, [allFilteredTasks])
 
   return (
     <div className="priority-view">
       <div className="priority-buckets">
-        {PRIORITY_BUCKETS.map((bucket) => {
-          const bucketTasks = groupedTasks.get(bucket.key) || []
-          if (bucketTasks.length === 0) return null
-
-          return (
-            <div key={bucket.key} className="priority-bucket">
-              <h3 className="bucket-header">
-                {bucket.label}
-                <span className="bucket-count">{bucketTasks.length}</span>
-              </h3>
-              <div className="bucket-tasks">
-                {bucketTasks.map((task) => {
+        {urgencyBands.map((band) => (
+          <details
+            key={band.key}
+            open={band.key === 'today' || band.key === 'this_week'}
+            className="priority-band"
+          >
+            <summary className="priority-band__header">
+              <span className="priority-band__dot" style={{ background: band.color }} />
+              <span className="priority-band__label">{band.label}</span>
+              <span className="priority-band__count">{band.tasks.length}</span>
+            </summary>
+            <div className="priority-band__tasks">
+              {band.tasks.length === 0 ? (
+                <div className="priority-band__empty">No tasks</div>
+              ) : (
+                band.tasks.map((task) => {
                   const project = projects.find((p) => p.id === task.projectId)
                   const taskColor = project ? getProjectColor(project.color, project.domain) : null
-                  // Badge shows project name if available, otherwise domain
                   const badgeLabel = project ? project.title : task.domain
 
                   return (
@@ -90,11 +156,11 @@ export function PriorityView({
                       </div>
                     </div>
                   )
-                })}
-              </div>
+                })
+              )}
             </div>
-          )
-        })}
+          </details>
+        ))}
       </div>
     </div>
   )

@@ -2,7 +2,20 @@
  * Workflow Executor
  *
  * Orchestrates multi-agent workflows with different execution patterns.
- * Supports sequential, parallel, and supervisor-based agent coordination.
+ * Supports sequential, parallel, supervisor-based, graph, and custom agent coordination.
+ *
+ * As of the LangGraph migration (Phase 0), this module now uses LangGraph for workflow
+ * execution when the USE_LANGGRAPH feature flag is enabled (default: true).
+ *
+ * LangGraph provides:
+ * - Unified state management across all workflow types
+ * - Conditional edges and cycles for complex workflows
+ * - Firestore checkpointing for resumable executions
+ * - Human-in-the-loop via interrupt() mechanism
+ * - Real-time streaming via state updates
+ *
+ * The legacy executors are kept as fallback and can be enabled by setting
+ * USE_LANGGRAPH=false environment variable.
  */
 
 import { randomUUID } from 'crypto'
@@ -11,7 +24,7 @@ import type {
   DeepResearchRequest,
   JoinAggregationMode,
   Run,
-  Workspace,
+  Workflow,
   WorkflowEdge,
   WorkflowNode,
   WorkflowState,
@@ -20,7 +33,13 @@ import { getFirestore } from 'firebase-admin/firestore'
 import { Graph } from 'graphlib'
 import jsonLogic from 'json-logic-js'
 
+import { createLogger } from '../lib/logger.js'
 import { assertValidResearchContext, normalizeResearchQuestions } from './deepResearchValidation.js'
+import {
+  executeLangGraphWorkflow,
+  isLangGraphSupported,
+  type LangGraphExecutionConfig,
+} from './langgraph/index.js'
 import { resolvePrompt } from './promptResolver.js'
 import type { SearchToolKeys } from './providerKeys.js'
 import type { ProviderKeys } from './providerService.js'
@@ -28,6 +47,18 @@ import { executeWithProvider, executeWithProviderStreaming } from './providerSer
 import type { RunEventWriter } from './runEvents.js'
 import type { StreamContext } from './streamingTypes.js'
 import type { ToolRegistry } from './toolExecutor.js'
+
+/**
+ * Feature flag to control LangGraph usage
+ *
+ * Set to true to use LangGraph for all supported workflow types.
+ * Set to false to use the legacy executors.
+ *
+ * This allows gradual rollout and easy rollback if issues are found.
+ */
+const log = createLogger('WorkflowExecutor')
+
+export const USE_LANGGRAPH = process.env.USE_LANGGRAPH !== 'false'
 
 /**
  * Result from a single agent execution within a workflow
@@ -61,7 +92,7 @@ export interface WorkflowExecutionResult {
  * Execute a sequential workflow
  * Agents execute one after another, each receiving the previous agent's output as context
  *
- * @param workspace Workspace configuration
+ * @param workflow Workflow configuration
  * @param agents Array of agent configurations in execution order
  * @param goal User's goal/task description
  * @param context Optional initial context
@@ -72,7 +103,7 @@ export interface WorkflowExecutionResult {
  * @returns Workflow execution result
  */
 export async function executeSequentialWorkflow(
-  workspace: Workspace,
+  workflow: Workflow,
   agents: AgentConfig[],
   goal: string,
   context: Record<string, unknown> | undefined,
@@ -89,15 +120,18 @@ export async function executeSequentialWorkflow(
   let currentGoal = goal
 
   // Limit iterations to prevent infinite loops
-  const iterationLimit = Math.min(maxIterations, workspace.maxIterations ?? 10)
+  const iterationLimit = Math.min(maxIterations, workflow.maxIterations ?? 10)
   const executionCount = Math.min(agents.length, iterationLimit)
 
   for (let i = 0; i < executionCount; i++) {
     const agent = agents[i]
 
-    console.log(
-      `Sequential workflow step ${i + 1}/${executionCount}: Executing agent ${agent.agentId} (${agent.name})`
-    )
+    log.info('Sequential workflow step', {
+      step: i + 1,
+      totalSteps: executionCount,
+      agentId: agent.agentId,
+      agentName: agent.name,
+    })
 
     // Build tool execution context if userId and runId are provided
     const toolContext =
@@ -105,7 +139,7 @@ export async function executeSequentialWorkflow(
         ? {
             userId,
             agentId: agent.agentId,
-            workspaceId: workspace.workspaceId,
+            workflowId: workflow.workflowId,
             runId,
             eventWriter,
             toolRegistry,
@@ -126,7 +160,7 @@ export async function executeSequentialWorkflow(
     if (eventWriter && toolContext) {
       await eventWriter.writeEvent({
         type: 'status',
-        workspaceId: workspace.workspaceId,
+        workflowId: workflow.workflowId,
         agentId: agent.agentId,
         agentName: agent.name,
         status: `agent_start:${i + 1}`,
@@ -137,7 +171,7 @@ export async function executeSequentialWorkflow(
       ? await executeWithProviderStreaming(
           agent,
           currentGoal,
-          { ...currentContext, ...buildProjectManagerContext(workspace, currentContext) },
+          { ...currentContext, ...buildProjectManagerContext(workflow, currentContext) },
           apiKeys,
           toolContext,
           streamContext
@@ -145,7 +179,7 @@ export async function executeSequentialWorkflow(
       : await executeWithProvider(
           agent,
           currentGoal,
-          { ...currentContext, ...buildProjectManagerContext(workspace, currentContext) },
+          { ...currentContext, ...buildProjectManagerContext(workflow, currentContext) },
           apiKeys,
           toolContext
         )
@@ -165,7 +199,7 @@ export async function executeSequentialWorkflow(
 
     if (eventWriter && toolContext) {
       await eventWriter.flushTokens({
-        workspaceId: workspace.workspaceId,
+        workflowId: workflow.workflowId,
         agentId: agent.agentId,
         agentName: agent.name,
         provider: result.provider,
@@ -174,7 +208,7 @@ export async function executeSequentialWorkflow(
       })
       await eventWriter.writeEvent({
         type: 'status',
-        workspaceId: workspace.workspaceId,
+        workflowId: workflow.workflowId,
         agentId: agent.agentId,
         agentName: agent.name,
         status: `agent_done:${i + 1}`,
@@ -211,7 +245,7 @@ export async function executeSequentialWorkflow(
  * Execute a parallel workflow
  * All agents execute concurrently with the same goal and context
  *
- * @param workspace Workspace configuration
+ * @param workflow Workflow configuration
  * @param agents Array of agent configurations
  * @param goal User's goal/task description
  * @param context Optional initial context
@@ -221,7 +255,7 @@ export async function executeSequentialWorkflow(
  * @returns Workflow execution result
  */
 export async function executeParallelWorkflow(
-  workspace: Workspace,
+  workflow: Workflow,
   agents: AgentConfig[],
   goal: string,
   context: Record<string, unknown> | undefined,
@@ -232,11 +266,11 @@ export async function executeParallelWorkflow(
   toolRegistry?: ToolRegistry,
   searchToolKeys?: SearchToolKeys
 ): Promise<WorkflowExecutionResult> {
-  console.log(`Parallel workflow: Executing ${agents.length} agents concurrently`)
+  log.info('Executing parallel workflow', { agentCount: agents.length })
 
   // Execute all agents in parallel
   const executionPromises = agents.map(async (agent) => {
-    console.log(`Parallel workflow: Starting agent ${agent.agentId} (${agent.name})`)
+    log.info('Parallel workflow starting agent', { agentId: agent.agentId, agentName: agent.name })
 
     // Build tool execution context if userId and runId are provided
     const toolContext =
@@ -244,7 +278,7 @@ export async function executeParallelWorkflow(
         ? {
             userId,
             agentId: agent.agentId,
-            workspaceId: workspace.workspaceId,
+            workflowId: workflow.workflowId,
             runId,
             eventWriter,
             toolRegistry,
@@ -264,7 +298,7 @@ export async function executeParallelWorkflow(
     if (eventWriter && toolContext) {
       await eventWriter.writeEvent({
         type: 'status',
-        workspaceId: workspace.workspaceId,
+        workflowId: workflow.workflowId,
         agentId: agent.agentId,
         agentName: agent.name,
         status: 'agent_start',
@@ -293,11 +327,11 @@ export async function executeParallelWorkflow(
       executedAtMs: Date.now(),
     }
 
-    console.log(`Parallel workflow: Completed agent ${agent.agentId} (${agent.name})`)
+    log.info('Parallel workflow completed agent', { agentId: agent.agentId, agentName: agent.name })
 
     if (eventWriter && toolContext) {
       await eventWriter.flushTokens({
-        workspaceId: workspace.workspaceId,
+        workflowId: workflow.workflowId,
         agentId: agent.agentId,
         agentName: agent.name,
         provider: result.provider,
@@ -305,7 +339,7 @@ export async function executeParallelWorkflow(
       })
       await eventWriter.writeEvent({
         type: 'status',
-        workspaceId: workspace.workspaceId,
+        workflowId: workflow.workflowId,
         agentId: agent.agentId,
         agentName: agent.name,
         status: 'agent_done',
@@ -339,8 +373,8 @@ export async function executeParallelWorkflow(
  * Execute a supervisor workflow
  * A supervisor agent coordinates and delegates tasks to worker agents
  *
- * @param workspace Workspace configuration
- * @param supervisorAgent The supervisor agent (should be first in workspace.agentIds)
+ * @param workflow Workflow configuration
+ * @param supervisorAgent The supervisor agent (should be first in workflow.agentIds)
  * @param workerAgents Array of worker agent configurations
  * @param goal User's goal/task description
  * @param context Optional initial context
@@ -351,7 +385,7 @@ export async function executeParallelWorkflow(
  * @returns Workflow execution result
  */
 export async function executeSupervisorWorkflow(
-  workspace: Workspace,
+  workflow: Workflow,
   supervisorAgent: AgentConfig,
   workerAgents: AgentConfig[],
   goal: string,
@@ -365,9 +399,9 @@ export async function executeSupervisorWorkflow(
   searchToolKeys?: SearchToolKeys
 ): Promise<WorkflowExecutionResult> {
   const steps: AgentExecutionStep[] = []
-  const iterationLimit = Math.min(maxIterations, workspace.maxIterations ?? 10)
+  const iterationLimit = Math.min(maxIterations, workflow.maxIterations ?? 10)
 
-  console.log(`Supervisor workflow: Starting with supervisor ${supervisorAgent.name}`)
+  log.info('Starting supervisor workflow', { supervisor: supervisorAgent.name })
 
   // Step 1: Supervisor creates execution plan
   const supervisorContext = {
@@ -387,7 +421,7 @@ export async function executeSupervisorWorkflow(
       ? {
           userId,
           agentId: supervisorAgent.agentId,
-          workspaceId: workspace.workspaceId,
+          workflowId: workflow.workflowId,
           runId,
           eventWriter,
           toolRegistry,
@@ -408,7 +442,7 @@ export async function executeSupervisorWorkflow(
   if (eventWriter && supervisorToolContext) {
     await eventWriter.writeEvent({
       type: 'status',
-      workspaceId: workspace.workspaceId,
+      workflowId: workflow.workflowId,
       agentId: supervisorAgent.agentId,
       agentName: supervisorAgent.name,
       status: 'agent_start:plan',
@@ -445,7 +479,7 @@ export async function executeSupervisorWorkflow(
 
   if (eventWriter && supervisorToolContext) {
     await eventWriter.flushTokens({
-      workspaceId: workspace.workspaceId,
+      workflowId: workflow.workflowId,
       agentId: supervisorAgent.agentId,
       agentName: supervisorAgent.name,
       provider: planResult.provider,
@@ -454,7 +488,7 @@ export async function executeSupervisorWorkflow(
     })
     await eventWriter.writeEvent({
       type: 'status',
-      workspaceId: workspace.workspaceId,
+      workflowId: workflow.workflowId,
       agentId: supervisorAgent.agentId,
       agentName: supervisorAgent.name,
       status: 'agent_done:plan',
@@ -470,9 +504,11 @@ export async function executeSupervisorWorkflow(
   for (let i = 0; i < Math.min(workerAgents.length, iterationLimit - 1); i++) {
     const worker = workerAgents[i]
 
-    console.log(
-      `Supervisor workflow: Executing worker ${i + 1}/${workerAgents.length}: ${worker.name}`
-    )
+    log.info('Supervisor workflow executing worker', {
+      worker: i + 1,
+      totalWorkers: workerAgents.length,
+      workerName: worker.name,
+    })
 
     // Build tool execution context for worker
     const workerToolContext =
@@ -480,7 +516,7 @@ export async function executeSupervisorWorkflow(
         ? {
             userId,
             agentId: worker.agentId,
-            workspaceId: workspace.workspaceId,
+            workflowId: workflow.workflowId,
             runId,
             eventWriter,
             toolRegistry,
@@ -501,7 +537,7 @@ export async function executeSupervisorWorkflow(
     if (eventWriter && workerToolContext) {
       await eventWriter.writeEvent({
         type: 'status',
-        workspaceId: workspace.workspaceId,
+        workflowId: workflow.workflowId,
         agentId: worker.agentId,
         agentName: worker.name,
         status: `agent_start:${i + 2}`,
@@ -532,7 +568,7 @@ export async function executeSupervisorWorkflow(
 
     if (eventWriter && workerToolContext) {
       await eventWriter.flushTokens({
-        workspaceId: workspace.workspaceId,
+        workflowId: workflow.workflowId,
         agentId: worker.agentId,
         agentName: worker.name,
         provider: result.provider,
@@ -541,7 +577,7 @@ export async function executeSupervisorWorkflow(
       })
       await eventWriter.writeEvent({
         type: 'status',
-        workspaceId: workspace.workspaceId,
+        workflowId: workflow.workflowId,
         agentId: worker.agentId,
         agentName: worker.name,
         status: `agent_done:${i + 2}`,
@@ -575,7 +611,7 @@ export async function executeSupervisorWorkflow(
   if (eventWriter && supervisorToolContext) {
     await eventWriter.writeEvent({
       type: 'status',
-      workspaceId: workspace.workspaceId,
+      workflowId: workflow.workflowId,
       agentId: supervisorAgent.agentId,
       agentName: supervisorAgent.name,
       status: 'agent_start:synthesis',
@@ -612,7 +648,7 @@ export async function executeSupervisorWorkflow(
 
   if (eventWriter && supervisorToolContext) {
     await eventWriter.flushTokens({
-      workspaceId: workspace.workspaceId,
+      workflowId: workflow.workflowId,
       agentId: supervisorAgent.agentId,
       agentName: supervisorAgent.name,
       provider: finalResult.provider,
@@ -621,7 +657,7 @@ export async function executeSupervisorWorkflow(
     })
     await eventWriter.writeEvent({
       type: 'status',
-      workspaceId: workspace.workspaceId,
+      workflowId: workflow.workflowId,
       agentId: supervisorAgent.agentId,
       agentName: supervisorAgent.name,
       status: 'agent_done:synthesis',
@@ -663,7 +699,11 @@ const resolveConditionValue = (
   }, data)
 }
 
-const evaluateCondition = (edge: WorkflowEdge, data: Record<string, unknown>): boolean => {
+const evaluateCondition = async (
+  edge: WorkflowEdge,
+  data: Record<string, unknown>,
+  providerKeys?: ProviderKeys
+): Promise<boolean> => {
   const { condition } = edge
   switch (condition.type) {
     case 'always':
@@ -682,6 +722,35 @@ const evaluateCondition = (edge: WorkflowEdge, data: Record<string, unknown>): b
       try {
         return new RegExp(condition.value).test(String(rawValue ?? ''))
       } catch {
+        return false
+      }
+    }
+    case 'llm_evaluate': {
+      if (!providerKeys || !condition.value) return false
+      try {
+        const dataSnippet = JSON.stringify(data).slice(0, 2000)
+        const evalAgent: AgentConfig = {
+          agentId: 'edge_evaluator' as AgentConfig['agentId'],
+          userId: '',
+          name: 'Edge Evaluator',
+          role: 'custom',
+          systemPrompt: 'You are a boolean evaluator. Respond with ONLY "yes" or "no".',
+          modelProvider: 'anthropic',
+          modelName: 'claude-haiku-4-5',
+          temperature: 0,
+          maxTokens: 10,
+          archived: false,
+          createdAtMs: 0,
+          updatedAtMs: 0,
+          syncState: 'synced',
+          version: 1,
+        }
+        const goal = `Given this data:\n\`\`\`json\n${dataSnippet}\n\`\`\`\n\nEvaluate: ${condition.value}\n\nRespond with ONLY "yes" or "no".`
+        const result = await executeWithProvider(evalAgent, goal, undefined, providerKeys)
+        const answer = (result.output ?? '').trim().toLowerCase()
+        return answer === 'yes' || answer === 'true'
+      } catch (err) {
+        console.warn('llm_evaluate condition failed', `${edge.from}->${edge.to}`, err)
         return false
       }
     }
@@ -768,29 +837,29 @@ type ResearchRequestConfig = NonNullable<WorkflowNode['requestConfig']> & {
   context?: Record<string, unknown>
 }
 
-type WorkspaceWithProjectManager = Workspace & {
+type WorkflowWithProjectManager = Workflow & {
   projectManagerConfig?: {
     enabled?: boolean
   }
 }
 
 const buildProjectManagerContext = (
-  workspace: Workspace,
+  workflow: Workflow,
   context?: Record<string, unknown>
 ): Record<string, unknown> => {
-  const workspaceWithPm = workspace as WorkspaceWithProjectManager
-  if (!workspaceWithPm.projectManagerConfig?.enabled) return {}
+  const workflowWithPm = workflow as WorkflowWithProjectManager
+  if (!workflowWithPm.projectManagerConfig?.enabled) return {}
   const existing = context?.projectManagerContext ?? context?.projectManager
   return {
     projectManager: {
-      config: workspaceWithPm.projectManagerConfig,
+      config: workflowWithPm.projectManagerConfig,
       context: existing,
     },
   }
 }
 
 export async function executeGraphWorkflow(
-  workspace: Workspace,
+  workflow: Workflow,
   agents: AgentConfig[],
   run: Run,
   apiKeys: ProviderKeys,
@@ -800,12 +869,12 @@ export async function executeGraphWorkflow(
   toolRegistry?: ToolRegistry,
   searchToolKeys?: SearchToolKeys
 ): Promise<WorkflowExecutionResult> {
-  if (!workspace.workflowGraph) {
-    throw new Error('Graph workflow configuration missing from workspace')
+  if (!workflow.workflowGraph) {
+    throw new Error('Graph workflow configuration missing from workflow')
   }
 
   const db = getFirestore()
-  const graphDef = workspace.workflowGraph
+  const graphDef = workflow.workflowGraph
   const graph = new Graph({ directed: true })
 
   graphDef.nodes.forEach((node) => graph.setNode(node.id, node))
@@ -838,14 +907,14 @@ export async function executeGraphWorkflow(
   const steps: AgentExecutionStep[] = []
   let lastOutput: unknown = run.output
 
-  const maxIterations = workspace.maxIterations ?? 10
+  const maxIterations = workflow.maxIterations ?? 10
   const maxNodeVisits = graphDef.limits?.maxNodeVisits ?? maxIterations
   const maxEdgeRepeats = graphDef.limits?.maxEdgeRepeats ?? maxIterations
   const edgeRepeatCount: Record<string, number> = {}
 
   const updateWorkflowState = async () => {
     if (!userId || !runId) return
-    await db.doc(`users/${userId}/workspaces/${workspace.workspaceId}/runs/${runId}`).update({
+    await db.doc(`users/${userId}/workflows/${workflow.workflowId}/runs/${runId}`).update({
       workflowState,
     })
   }
@@ -869,7 +938,7 @@ export async function executeGraphWorkflow(
     await docRef.set({
       workflowStepId: docRef.id,
       runId,
-      workspaceId: workspace.workspaceId,
+      workflowId: workflow.workflowId,
       userId,
       nodeId: params.node.id,
       nodeType: params.node.type,
@@ -985,7 +1054,7 @@ export async function executeGraphWorkflow(
           if (existingRequestId) {
             const requestDoc = await db
               .doc(
-                `users/${userId}/workspaces/${workspace.workspaceId}/deepResearchRequests/${existingRequestId}`
+                `users/${userId}/workflows/${workflow.workflowId}/deepResearchRequests/${existingRequestId}`
               )
               .get()
             if (requestDoc.exists) {
@@ -1001,7 +1070,7 @@ export async function executeGraphWorkflow(
             const requestId = `research:${randomUUID()}` as DeepResearchRequest['requestId']
             const createdRequest: DeepResearchRequest = {
               requestId,
-              workspaceId: workspace.workspaceId,
+              workflowId: workflow.workflowId,
               runId: run.runId,
               userId,
               topic,
@@ -1017,7 +1086,7 @@ export async function executeGraphWorkflow(
 
             await db
               .doc(
-                `users/${userId}/workspaces/${workspace.workspaceId}/deepResearchRequests/${requestId}`
+                `users/${userId}/workflows/${workflow.workflowId}/deepResearchRequests/${requestId}`
               )
               .set(createdRequest)
             request = createdRequest
@@ -1082,7 +1151,7 @@ export async function executeGraphWorkflow(
           }
           const agent =
             (node.agentId && agentsById.get(node.agentId)) ??
-            (workspace.defaultAgentId && agentsById.get(workspace.defaultAgentId)) ??
+            (workflow.defaultAgentId && agentsById.get(workflow.defaultAgentId)) ??
             agents[0]
           if (!agent) {
             throw new Error('No agent available for tool execution context')
@@ -1091,7 +1160,7 @@ export async function executeGraphWorkflow(
           const toolContext = {
             userId: userId ?? '',
             agentId: agent.agentId,
-            workspaceId: workspace.workspaceId,
+            workflowId: workflow.workflowId,
             runId: runId ?? '',
             provider: agent.modelProvider,
             modelName: agent.modelName,
@@ -1119,7 +1188,7 @@ export async function executeGraphWorkflow(
             ? {
                 userId,
                 agentId: agent.agentId,
-                workspaceId: workspace.workspaceId,
+                workflowId: workflow.workflowId,
                 runId,
                 eventWriter,
                 toolRegistry,
@@ -1140,7 +1209,7 @@ export async function executeGraphWorkflow(
         if (eventWriter && toolContext) {
           await eventWriter.writeEvent({
             type: 'status',
-            workspaceId: workspace.workspaceId,
+            workflowId: workflow.workflowId,
             agentId: agent.agentId,
             agentName: agent.name,
             status: `node_start:${nodeId}`,
@@ -1149,7 +1218,7 @@ export async function executeGraphWorkflow(
 
         const nodeContext = {
           ...run.context,
-          ...buildProjectManagerContext(workspace, run.context),
+          ...buildProjectManagerContext(workflow, run.context),
           workflowState: {
             namedOutputs: workflowState.namedOutputs ?? {},
             joinOutputs: workflowState.joinOutputs ?? {},
@@ -1186,7 +1255,7 @@ export async function executeGraphWorkflow(
 
         if (eventWriter && toolContext) {
           await eventWriter.flushTokens({
-            workspaceId: workspace.workspaceId,
+            workflowId: workflow.workflowId,
             agentId: agent.agentId,
             agentName: agent.name,
             provider: result.provider,
@@ -1195,7 +1264,7 @@ export async function executeGraphWorkflow(
           })
           await eventWriter.writeEvent({
             type: 'status',
-            workspaceId: workspace.workspaceId,
+            workflowId: workflow.workflowId,
             agentId: agent.agentId,
             agentName: agent.name,
             status: `node_done:${nodeId}`,
@@ -1246,9 +1315,13 @@ export async function executeGraphWorkflow(
       const edges =
         (graph.outEdges(result.node.id) as Array<{ v: string; w: string }> | undefined) ?? []
       const edgeValues = edges.map((edge) => graph.edge(edge) as WorkflowEdge)
-      const matches = edgeValues.filter((edge: WorkflowEdge) =>
-        evaluateCondition(edge, conditionData)
+      const evaluationResults = await Promise.all(
+        edgeValues.map(async (edge) => ({
+          edge,
+          match: await evaluateCondition(edge, conditionData, apiKeys),
+        }))
       )
+      const matches = evaluationResults.filter((r) => r.match).map((r) => r.edge)
 
       for (const edge of matches) {
         const edgeKey = `${edge.from}->${edge.to}`
@@ -1314,14 +1387,14 @@ export async function executeGraphWorkflow(
  * Main workflow executor that routes to appropriate workflow type
  *
  * @param userId User ID
- * @param workspace Workspace configuration
+ * @param workflow Workflow configuration
  * @param run Run configuration
  * @param apiKeys Provider API keys
  * @returns Workflow execution result
  */
 export async function executeWorkflow(
   userId: string,
-  workspace: Workspace,
+  workflow: Workflow,
   run: Run,
   apiKeys: ProviderKeys,
   eventWriter?: RunEventWriter,
@@ -1330,32 +1403,32 @@ export async function executeWorkflow(
 ): Promise<WorkflowExecutionResult> {
   const db = getFirestore()
 
-  // Load all agents in the workspace
+  // Load all agents in the workflow
   const agentDocs = await Promise.all(
-    workspace.agentIds.map((agentId) => db.doc(`users/${userId}/agents/${agentId}`).get())
+    workflow.agentIds.map((agentId) => db.doc(`users/${userId}/agents/${agentId}`).get())
   )
 
   const agents = agentDocs.filter((doc) => doc.exists).map((doc) => doc.data() as AgentConfig)
 
   if (agents.length === 0) {
-    throw new Error('No agents found in workspace')
+    throw new Error('No agents found in workflow')
   }
 
-  const promptConfig = workspace.promptConfig
+  const promptConfig = workflow.promptConfig
   const promptResolutionErrors: Run['promptResolutionErrors'] = []
-  const runRef = db.doc(`users/${userId}/workspaces/${workspace.workspaceId}/runs/${run.runId}`)
+  const runRef = db.doc(`users/${userId}/workflows/${workflow.workflowId}/runs/${run.runId}`)
   let tonePrompt: string | undefined
   if (promptConfig?.toneOfVoicePrompt) {
     try {
       tonePrompt = await resolvePrompt(userId, promptConfig.toneOfVoicePrompt, {
         goal: run.goal,
-        workspaceId: workspace.workspaceId,
-        workspaceName: workspace.name,
+        workflowId: workflow.workflowId,
+        workflowName: workflow.name,
         runId: run.runId,
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      console.warn('Unable to resolve tone-of-voice prompt.', error)
+      log.warn('Unable to resolve tone-of-voice prompt', { error: message })
       promptResolutionErrors.push({
         agentId: 'tone_of_voice',
         promptType: 'tone-of-voice',
@@ -1363,7 +1436,7 @@ export async function executeWorkflow(
       })
       await eventWriter?.writeEvent({
         type: 'status',
-        workspaceId: workspace.workspaceId,
+        workflowId: workflow.workflowId,
         status: 'prompt_resolution_failed',
         details: { agentId: 'tone_of_voice', error: message },
       })
@@ -1380,8 +1453,8 @@ export async function executeWorkflow(
         const resolvedPrompt = reference
           ? await resolvePrompt(userId, reference, {
               goal: run.goal,
-              workspaceId: workspace.workspaceId,
-              workspaceName: workspace.name,
+              workflowId: workflow.workflowId,
+              workflowName: workflow.name,
               runId: run.runId,
               agentName: agent.name,
               agentId: agent.agentId,
@@ -1396,7 +1469,7 @@ export async function executeWorkflow(
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        console.warn('Unable to resolve prompt for agent.', { agentId: agent.agentId, error })
+        log.warn('Unable to resolve prompt for agent', { agentId: agent.agentId, error: message })
         promptResolutionErrors.push({
           agentId: agent.agentId,
           promptType: 'agent',
@@ -1404,7 +1477,7 @@ export async function executeWorkflow(
         })
         await eventWriter?.writeEvent({
           type: 'status',
-          workspaceId: workspace.workspaceId,
+          workflowId: workflow.workflowId,
           status: 'prompt_resolution_failed',
           details: { agentId: agent.agentId, error: message },
         })
@@ -1417,17 +1490,81 @@ export async function executeWorkflow(
     await runRef.update({ promptResolutionErrors })
   }
 
+  // Strip research tools when skipResearch flag is set in run context
+  const RESEARCH_TOOL_IDS = new Set([
+    'tool:serp_search',
+    'tool:semantic_search',
+    'tool:search_scholar',
+    'tool:search_web',
+    'tool:read_url',
+    'tool:scrape_url',
+    'tool:crawl_website',
+    'tool:map_website',
+  ])
+
+  const skipResearch =
+    run.context && typeof run.context === 'object'
+      ? (run.context as Record<string, unknown>).skipResearch === true
+      : false
+
+  const finalAgents = skipResearch
+    ? resolvedAgents.map((agent) => ({
+        ...agent,
+        toolIds: (agent.toolIds ?? []).filter((id) => !RESEARCH_TOOL_IDS.has(id)),
+        systemPrompt: agent.systemPrompt
+          ? agent.systemPrompt +
+            '\n\nIMPORTANT: Research tools are disabled for this run. Do NOT attempt to use search tools. Generate your analysis using only the provided context and your existing knowledge.'
+          : agent.systemPrompt,
+      }))
+    : resolvedAgents
+
+  if (skipResearch) {
+    log.info('skipResearch enabled — stripped research tools', {
+      agentCount: resolvedAgents.length,
+    })
+  }
+
+  // Use LangGraph for supported workflow types when enabled
+  if (USE_LANGGRAPH && isLangGraphSupported(workflow.workflowType)) {
+    log.info('Executing workflow using LangGraph', { workflowType: workflow.workflowType })
+
+    const langGraphConfig: LangGraphExecutionConfig = {
+      workflow,
+      agents: finalAgents,
+      apiKeys,
+      userId,
+      runId: run.runId,
+      eventWriter,
+      toolRegistry,
+      searchToolKeys,
+    }
+
+    const result = await executeLangGraphWorkflow(langGraphConfig, run.goal, run.context)
+
+    return {
+      output: result.output,
+      steps: result.steps,
+      totalTokensUsed: result.totalTokensUsed,
+      totalEstimatedCost: result.totalEstimatedCost,
+      totalSteps: result.totalSteps,
+      status: result.status,
+      pendingInput: result.pendingInput,
+      workflowState: result.workflowState,
+    }
+  }
+
+  // Legacy executors (fallback when LangGraph is disabled or unsupported)
   // Route to appropriate workflow executor
-  switch (workspace.workflowType) {
+  switch (workflow.workflowType) {
     case 'sequential':
-      console.log('Executing sequential workflow')
+      log.info('Executing sequential workflow (legacy)')
       return executeSequentialWorkflow(
-        workspace,
-        resolvedAgents,
+        workflow,
+        finalAgents,
         run.goal,
         run.context,
         apiKeys,
-        workspace.maxIterations,
+        workflow.maxIterations,
         userId,
         run.runId,
         eventWriter,
@@ -1436,10 +1573,10 @@ export async function executeWorkflow(
       )
 
     case 'parallel':
-      console.log('Executing parallel workflow')
+      log.info('Executing parallel workflow (legacy)')
       return executeParallelWorkflow(
-        workspace,
-        resolvedAgents,
+        workflow,
+        finalAgents,
         run.goal,
         run.context,
         apiKeys,
@@ -1451,21 +1588,21 @@ export async function executeWorkflow(
       )
 
     case 'supervisor': {
-      console.log('Executing supervisor workflow')
-      if (resolvedAgents.length < 2) {
+      log.info('Executing supervisor workflow (legacy)')
+      if (finalAgents.length < 2) {
         throw new Error('Supervisor workflow requires at least 2 agents (1 supervisor + 1 worker)')
       }
       // First agent is supervisor, rest are workers
-      const supervisorAgent = resolvedAgents[0]
-      const workerAgents = resolvedAgents.slice(1)
+      const supervisorAgent = finalAgents[0]
+      const workerAgents = finalAgents.slice(1)
       return executeSupervisorWorkflow(
-        workspace,
+        workflow,
         supervisorAgent,
         workerAgents,
         run.goal,
         run.context,
         apiKeys,
-        workspace.maxIterations,
+        workflow.maxIterations,
         userId,
         run.runId,
         eventWriter,
@@ -1475,15 +1612,28 @@ export async function executeWorkflow(
     }
 
     case 'custom':
-      // For now, fall back to sequential for custom workflows
-      console.log('Custom workflow not yet implemented, falling back to sequential')
+      if (workflow.workflowGraph) {
+        log.info('Executing custom workflow via graph engine')
+        return executeGraphWorkflow(
+          workflow,
+          finalAgents,
+          run,
+          apiKeys,
+          userId,
+          run.runId,
+          eventWriter,
+          toolRegistry,
+          searchToolKeys
+        )
+      }
+      log.info('Custom workflow has no graph, falling back to sequential')
       return executeSequentialWorkflow(
-        workspace,
-        resolvedAgents,
+        workflow,
+        finalAgents,
         run.goal,
         run.context,
         apiKeys,
-        workspace.maxIterations,
+        workflow.maxIterations,
         userId,
         run.runId,
         eventWriter,
@@ -1492,10 +1642,10 @@ export async function executeWorkflow(
       )
 
     case 'graph':
-      console.log('Executing graph workflow')
+      log.info('Executing graph workflow (legacy)')
       return executeGraphWorkflow(
-        workspace,
-        resolvedAgents,
+        workflow,
+        finalAgents,
         run,
         apiKeys,
         userId,
@@ -1506,6 +1656,6 @@ export async function executeWorkflow(
       )
 
     default:
-      throw new Error(`Unsupported workflow type: ${workspace.workflowType}`)
+      throw new Error(`Unsupported workflow type: ${workflow.workflowType}`)
   }
 }

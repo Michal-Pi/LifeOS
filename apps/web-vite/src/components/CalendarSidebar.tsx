@@ -1,3 +1,5 @@
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type {
   CalendarAccountStatus,
   CanonicalAlert,
@@ -13,16 +15,23 @@ import {
   getEventRole,
   getPrimaryAlert,
 } from '@lifeos/calendar'
+import { CIRCLE_LABELS } from '@lifeos/agents'
+import type { Contact, DunbarCircle } from '@lifeos/agents'
+import type { CanonicalTask } from '@/types/todo'
 import { AlertSelector } from '@/components/AlertSelector'
 import { AttendeeList } from '@/components/AttendeeList'
 import type { CalendarsById } from '@lifeos/calendar'
 import { EmptyState } from '@/components/EmptyState'
+import { MeetingBriefingModal } from '@/components/contacts/MeetingBriefingModal'
 
 interface CalendarSidebarProps {
   selectedEvent: CanonicalCalendarEvent | null
   isOnline: boolean
   accountStatus: CalendarAccountStatus | null
   calendarsById: CalendarsById
+  contacts?: Contact[]
+  tasks?: CanonicalTask[]
+  selectedDayKey?: string
   onRSVP: (eventId: string, status: CanonicalResponseStatus) => void
   onAlertChange: (alert: CanonicalAlert | null) => void
   onRetryWriteback: () => void
@@ -35,6 +44,16 @@ const timeFormatter = new Intl.DateTimeFormat('en-US', {
   hour: 'numeric',
   minute: 'numeric',
 })
+
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+}
 
 function getSyncStateDisplay(syncState?: SyncState): {
   label: string
@@ -111,6 +130,9 @@ export function CalendarSidebar({
   isOnline,
   accountStatus,
   calendarsById,
+  contacts = [],
+  tasks = [],
+  selectedDayKey,
   onRSVP,
   onAlertChange,
   onRetryWriteback,
@@ -118,6 +140,52 @@ export function CalendarSidebar({
   onEdit,
   onDelete,
 }: CalendarSidebarProps) {
+  const [showBriefing, setShowBriefing] = useState(false)
+
+  // Match attendee emails against contacts
+  const attendees = selectedEvent?.attendees
+  const linkedContacts = useMemo(() => {
+    if (!attendees?.length || contacts.length === 0) return []
+
+    const attendeeEmails = new Set(
+      attendees.map((a) => a.email?.toLowerCase()).filter((e): e is string => Boolean(e))
+    )
+
+    return contacts.filter((contact) =>
+      contact.identifiers.emails.some((email) => attendeeEmails.has(email.toLowerCase()))
+    )
+  }, [attendees, contacts])
+
+  // Find tasks linked to this event via calendarEventIds
+  const eventId = selectedEvent?.canonicalEventId
+  const eventTitle = selectedEvent?.title
+  const relatedTasks = useMemo(() => {
+    if (!eventId || tasks.length === 0) return []
+
+    return tasks.filter(
+      (task) =>
+        task.calendarEventIds?.includes(eventId) ||
+        (!task.completed &&
+          task.title &&
+          eventTitle &&
+          task.title.toLowerCase() === eventTitle.toLowerCase())
+    )
+  }, [eventId, eventTitle, tasks])
+
+  // Find tasks due on the selected calendar day
+  const dayDueTasks = useMemo(() => {
+    if (!selectedDayKey || tasks.length === 0) return []
+
+    // Get IDs already shown in relatedTasks to avoid duplicates
+    const relatedIds = new Set(relatedTasks.map((t) => t.id))
+
+    return tasks.filter(
+      (task) => !task.archived && task.dueDate === selectedDayKey && !relatedIds.has(task.id)
+    )
+  }, [selectedDayKey, tasks, relatedTasks])
+
+  const hasLinkedContacts = linkedContacts.length > 0
+
   if (!selectedEvent) {
     return (
       <aside className="calendar-detail">
@@ -127,6 +195,26 @@ export function CalendarSidebar({
           description="Select an event from the timeline to inspect details and take action."
           hint="Unlocks: RSVP controls, alerts, and edit history."
         />
+
+        {dayDueTasks.length > 0 && (
+          <div className="calendar-detail__tasks">
+            <p className="section-label">Tasks Due {selectedDayKey}</p>
+            {dayDueTasks.map((task) => (
+              <Link
+                key={task.id}
+                to={`/planner?taskId=${task.id}`}
+                className="calendar-detail__task-link"
+              >
+                <span
+                  className={`calendar-detail__task-status ${task.completed ? 'completed' : ''}`}
+                >
+                  {task.completed ? '\u2713' : '\u25CB'}
+                </span>
+                <span>{task.title}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </aside>
     )
   }
@@ -191,6 +279,77 @@ export function CalendarSidebar({
         />
       )}
 
+      {/* Linked Contacts Section */}
+      {linkedContacts.length > 0 && (
+        <div className="calendar-detail__contacts">
+          <p className="section-label">Linked Contacts</p>
+          {linkedContacts.map((contact) => (
+            <Link
+              key={contact.contactId}
+              to={`/people?contactId=${contact.contactId}`}
+              className="calendar-detail__contact-link"
+            >
+              <span className="calendar-detail__contact-avatar">
+                {getInitials(contact.displayName)}
+              </span>
+              <span className="calendar-detail__contact-name">{contact.displayName}</span>
+              <span className="calendar-detail__contact-circle">
+                {CIRCLE_LABELS[contact.circle as DunbarCircle]}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* Related Tasks Section */}
+      {relatedTasks.length > 0 && (
+        <div className="calendar-detail__tasks">
+          <p className="section-label">Related Tasks</p>
+          {relatedTasks.map((task) => (
+            <Link
+              key={task.id}
+              to={`/planner?taskId=${task.id}`}
+              className="calendar-detail__task-link"
+            >
+              <span className={`calendar-detail__task-status ${task.completed ? 'completed' : ''}`}>
+                {task.completed ? '✓' : '○'}
+              </span>
+              <span>{task.title}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* Tasks Due on Selected Day */}
+      {dayDueTasks.length > 0 && (
+        <div className="calendar-detail__tasks">
+          <p className="section-label">Tasks Due {selectedDayKey}</p>
+          {dayDueTasks.map((task) => (
+            <Link
+              key={task.id}
+              to={`/planner?taskId=${task.id}`}
+              className="calendar-detail__task-link"
+            >
+              <span className={`calendar-detail__task-status ${task.completed ? 'completed' : ''}`}>
+                {task.completed ? '\u2713' : '\u25CB'}
+              </span>
+              <span>{task.title}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* Meeting Prep Button */}
+      {hasLinkedContacts && (
+        <button
+          className="primary-button calendar-detail__prep-btn"
+          type="button"
+          onClick={() => setShowBriefing(true)}
+        >
+          Prepare for Meeting
+        </button>
+      )}
+
       <AlertSelector
         currentAlert={getPrimaryAlert(selectedEvent)}
         onAlertChange={onAlertChange}
@@ -253,6 +412,21 @@ export function CalendarSidebar({
 
       {!selectedEventCanEdit && (
         <p className="read-only-indicator">👁 View only - you cannot edit this event</p>
+      )}
+
+      {/* Meeting Briefing Modal */}
+      {showBriefing && (
+        <MeetingBriefingModal
+          isOpen={showBriefing}
+          onClose={() => setShowBriefing(false)}
+          eventId={selectedEvent.canonicalEventId}
+          eventTitle={selectedEvent.title ?? 'Untitled event'}
+          eventTime={
+            selectedEvent.allDay
+              ? 'All day'
+              : `${timeFormatter.format(new Date(selectedEvent.startIso))} – ${timeFormatter.format(new Date(selectedEvent.endIso))}`
+          }
+        />
       )}
     </aside>
   )

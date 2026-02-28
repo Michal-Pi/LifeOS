@@ -1,7 +1,7 @@
 # LifeOS Manual Testing Guide & Onboarding
 
-**Version:** 1.3.1
-**Last Updated:** February 2, 2026
+**Version:** 1.4.0
+**Last Updated:** February 26, 2026
 **Application:** LifeOS Calendar & Productivity System (Vite SPA)
 
 ---
@@ -15,17 +15,18 @@
 5. [Calendar - Recurring Events](#5-calendar---recurring-events)
 6. [Attendees & RSVP](#6-attendees--rsvp)
 7. [Alerts & Notifications](#7-alerts--notifications)
-8. [Google Calendar Sync](#8-google-calendar-sync)
+8. [Google Integration & OAuth Scopes](#8-google-integration--oauth-scopes)
 9. [Offline & Outbox Functionality](#9-offline--outbox-functionality)
 10. [Today Dashboard](#10-today-dashboard)
 11. [Month View](#11-month-view)
 12. [Calendar View Toggles](#12-calendar-view-toggles)
 13. [Weekly View](#13-weekly-view)
 14. [Settings - Control Center](#14-settings---control-center)
-15. [Permissions & Security](#15-permissions--security)
-16. [Edge Cases & Special Scenarios](#16-edge-cases--special-scenarios)
-17. [Visual Spot-Check](#17-visual-spot-check)
-18. [Complete Testing Checklist](#18-complete-testing-checklist)
+15. [Contacts & CRM](#15-contacts--crm)
+16. [Permissions & Security](#16-permissions--security)
+17. [Edge Cases & Special Scenarios](#17-edge-cases--special-scenarios)
+18. [Visual Spot-Check](#18-visual-spot-check)
+19. [Complete Testing Checklist](#19-complete-testing-checklist)
 
 ---
 
@@ -43,9 +44,8 @@ LifeOS is a productivity application centered around calendar management with of
 - **Mind Page** - Interventions, sessions, summaries
 - **Training Page** - Exercise library, plans, workout sessions, analytics
 - **Agents Page** - AI agents, workspaces, runs, tool calling, workflows
+- **Contacts/CRM Page** - Google Contacts import, duplicate detection, merge, circle suggestions
 - **Settings Page** - Provider keys, memory span, quotes, system status, calendar sync
-
-People and Projects remain placeholder pages.
 
 ### Key Features
 
@@ -70,10 +70,9 @@ People and Projects remain placeholder pages.
 - AI agents, workspaces, and multi-provider runs
 - Tool calling with timeline visibility
 - Graph workflows with human-in-the-loop pauses
-
-❌ **Not Yet Implemented:**
-
-- People and Projects modules (placeholder pages only)
+- Google Contacts import and CRM sync
+- Contact duplicate detection and merge
+- AI meeting briefings and circle suggestions
 
 ---
 
@@ -82,8 +81,8 @@ People and Projects remain placeholder pages.
 ### Prerequisites
 
 - Modern web browser (Chrome 120+, Firefox 121+, Safari 17+, Edge 120+)
-- Internet connection for Google Calendar sync
-- Google Account (optional, for sync features)
+- Internet connection for Google Calendar sync and Contacts import
+- Google Account (optional, for sync features and Contacts import)
 
 ### Accessing the Application
 
@@ -132,11 +131,11 @@ verification and expected results. This path ensures all new features since Dec 
 
 ### 3.1 Calendar (Two Synced Calendars)
 
-**Setup requirement:** Connect a Google account with at least two calendars (primary + one secondary).
+**Setup requirement:** Connect a Google account with at least two calendars (primary + one secondary). The OAuth flow must grant all scopes (calendar, contacts, drive, gmail).
 
 **Steps (must complete in order):**
 
-1. Open **Settings → System → Calendar** and connect Google.
+1. Open **Settings → System → Calendar** and connect Google. Grant all requested permissions.
 2. Ensure **two calendars are selected** in calendar list (e.g., "Primary" + "Personal").
 3. Create Event A on Calendar 1 (title: "Cal-1 Test").
 4. Create Event B on Calendar 2 (title: "Cal-2 Test").
@@ -946,11 +945,44 @@ Private focus time  ← Shows instead of attendee list
 
 ---
 
-## 8. Google Calendar Sync
+## 8. Google Integration & OAuth Scopes
+
+### 8.0 Required Google Cloud Setup
+
+Before testing any Google integration, verify the following in the [Google Cloud Console](https://console.cloud.google.com):
+
+**APIs enabled** (APIs & Services > Library):
+
+- Google Calendar API
+- People API
+- Google Contacts API
+- Google Drive API
+- Gmail API
+
+**OAuth scopes** requested by the application:
+
+| Scope              | Access     | Used By                        |
+| ------------------ | ---------- | ------------------------------ |
+| `calendar`         | Read/write | Calendar sync, event writeback |
+| `calendar.events`  | Read/write | Event CRUD                     |
+| `contacts`         | Read/write | CRM import & sync              |
+| `drive`            | Read/write | Agent tools (file access)      |
+| `gmail.modify`     | Read/write | Agent tools (email read/send)  |
+| `userinfo.email`   | Read       | Authentication                 |
+| `userinfo.profile` | Read       | Display name                   |
+
+**Scope verification test:**
+
+1. Connect a Google account in Settings.
+2. Navigate to [Google Account > Security > Third-party access](https://myaccount.google.com/permissions).
+3. Find LifeOS and verify **all scopes above** are listed.
+4. If any are missing, disconnect in LifeOS Settings and reconnect.
+
+---
 
 ### 8.1 Connecting Google Account
 
-**Test Case:** Link Google Calendar account
+**Test Case:** Link Google account with full scope set
 
 **Location:** Calendar Header > "Connect Google" button
 
@@ -959,7 +991,7 @@ Private focus time  ← Shows instead of attendee list
 1. Click **"Connect Google"** button
 2. Browser redirects to Google OAuth consent screen
 3. Select Google account
-4. Grant calendar permissions
+4. Grant **all requested permissions** (calendar, contacts, drive, gmail)
 5. Redirected back to LifeOS app
 
 **Expected Output:**
@@ -993,9 +1025,11 @@ Calendar Header:
 
 **OAuth Flow Details:**
 
-- Requests calendar read/write permissions
+- Requests calendar, contacts, drive, and gmail permissions
 - Stores refresh token securely
 - Token auto-refreshes when expired
+- Uses `include_granted_scopes: true` for incremental consent
+- If scopes were recently upgraded, user must disconnect and reconnect to grant new scopes
 
 ---
 
@@ -1941,14 +1975,114 @@ Settings are organized into **Intelligence**, **Behavior**, **Experience**, and 
 
 ---
 
-## 15. Permissions & Security
+## 15. Contacts & CRM
+
+### 15.1 Google Contacts Import
+
+**Test Case:** Import contacts from Google People API
+
+**Prerequisites:**
+
+- Google account connected with `contacts` scope granted (see Section 8.0)
+- People API and Contacts API enabled in GCP
+- At least a few contacts in the connected Google account
+
+**Steps:**
+
+1. Navigate to the **Contacts / CRM** page.
+2. Click **"Import Google Contacts"** (or trigger sync from Settings).
+3. Wait for the sync to complete.
+
+**Expected Output:**
+
+- Contacts appear in the CRM list with name, email, phone, and organization.
+- Sync status shows number of contacts created/merged.
+- No "insufficient scopes" error.
+
+**Behavior:**
+
+- ✅ Contacts are fetched via the People API (`syncContactsNow` Cloud Function)
+- ✅ Duplicate contacts are detected via email index and merged
+- ✅ Contacts without email addresses are skipped (logged as `skippedNoEmail`)
+- ✅ Sync state is persisted (`contactSyncState` doc) with `lastSyncAt` and totals
+- ✅ Scheduled sync runs every 24 hours automatically (`scheduleContactsSync`)
+
+**Error Cases:**
+
+- **"Insufficient scopes"** → User must disconnect and reconnect Google account to grant `contacts` scope
+- **"Google account not connected"** → Connect Google in Settings first
+- **500 error** → Check Cloud Function logs; verify People API is enabled in GCP
+
+---
+
+### 15.2 Contact Deduplication
+
+**Test Case:** Detect and merge duplicate contacts
+
+**Steps:**
+
+1. Import contacts (or create some manually with overlapping emails).
+2. Navigate to the duplicate review UI.
+3. Review suggested duplicates.
+4. Merge a pair and verify the result.
+
+**Expected Output:**
+
+- Duplicate pairs are suggested based on email and name similarity.
+- Merging fills empty fields from the secondary contact into the primary.
+- The merged contact retains the primary contact's ID.
+- The secondary contact is deleted after merge.
+
+---
+
+### 15.3 Circle Suggestions & Meeting Briefings
+
+**Test Case:** Verify AI-powered contact features
+
+**Steps:**
+
+1. Ensure contacts have interaction history (calendar events, messages).
+2. Check that Dunbar circle suggestions appear on contact cards.
+3. Open a meeting briefing for an upcoming event with known attendees.
+
+**Expected Output:**
+
+- Circle badges (Inner, Close, Active, Extended, Acquaintance) display on contact cards.
+- Meeting briefing shows attendee context, recent interactions, and talking points.
+
+---
+
+### 15.4 Scope Upgrade Workflow
+
+**Test Case:** Verify re-authorization after scope changes
+
+**Scenario:** User previously connected Google with only calendar scopes; now contacts/drive/gmail write scopes are required.
+
+**Steps:**
+
+1. Open **Settings → System → Calendar**.
+2. Note the "missing scopes" indicator (if shown) for Drive, Gmail, or Contacts.
+3. Click **"Grant additional scopes"** or disconnect and reconnect.
+4. Complete the OAuth consent flow — verify all new scopes are listed.
+5. Verify contacts import, drive access, and gmail tools now work.
+
+**Expected Output:**
+
+- ✅ Re-auth flow requests only the missing scopes (incremental consent)
+- ✅ After granting, CalendarSettingsPanel no longer shows missing scopes
+- ✅ Contacts import succeeds
+- ✅ Agent tools using Drive and Gmail function correctly
+
+---
+
+## 16. Permissions & Security
 
 **Coverage checklist:**
 
-- Firestore rules allow user access to incantations, workout templates, and agent/run collections.
-- Firestore indexes are deployed for incantations, workout plans/templates, interventions, agents, and runs.
+- Firestore rules allow user access to incantations, workout templates, agent/run collections, and contacts collections.
+- Firestore indexes are deployed for incantations, workout plans/templates, interventions, agents, runs, and contacts.
 
-### 15.1 Calendar Permissions
+### 16.1 Calendar Permissions
 
 **Test Case:** View read-only calendar
 
@@ -1988,7 +2122,7 @@ Settings are organized into **Intelligence**, **Behavior**, **Experience**, and 
 
 ---
 
-### 15.2 Event-Level Permissions
+### 16.2 Event-Level Permissions
 
 **Permission Checks:**
 
@@ -2068,7 +2202,7 @@ const canCreateEvents = primaryCalendar?.canWrite ?? true
 
 ---
 
-## 16. Edge Cases & Special Scenarios
+## 17. Edge Cases & Special Scenarios
 
 ### 16.1 All-Day Events
 
@@ -2403,7 +2537,7 @@ function isDeleted(event) {
 
 ---
 
-## 17. Visual Spot-Check
+## 18. Visual Spot-Check
 
 **Goal:** Confirm the Quiet Cyberpunk system is applied consistently.
 
@@ -2418,7 +2552,7 @@ function isDeleted(event) {
 
 ---
 
-## 18. Complete Testing Checklist
+## 19. Complete Testing Checklist
 
 ### Core Event Management
 
@@ -2505,14 +2639,20 @@ function isDeleted(event) {
   - [ ] Refresh page - verify alert doesn't reappear
   - [ ] Verify multiple alerts stack
 
-### Google Calendar Sync
+### Google Integration & OAuth Scopes
 
-- [ ] **Connect account**
+- [ ] **Connect account with full scopes**
   - [ ] Click "Connect Google"
-  - [ ] Complete OAuth flow
+  - [ ] Complete OAuth flow — grant calendar, contacts, drive, gmail permissions
   - [ ] Verify status shows "Connected"
   - [ ] Verify button changes to "Disconnect"
   - [ ] Verify events sync from Google
+  - [ ] Check Google Account > Third-party access shows all scopes
+
+- [ ] **Scope upgrade (re-authorization)**
+  - [ ] If previously connected with old (readonly) scopes, disconnect
+  - [ ] Reconnect and verify consent screen shows new write scopes
+  - [ ] Verify CalendarSettingsPanel no longer shows "missing scopes" warning
 
 - [ ] **Sync operations**
   - [ ] Click "Sync now" - verify fetches latest
@@ -2526,6 +2666,34 @@ function isDeleted(event) {
   - [ ] Verify status shows "Not connected"
   - [ ] Verify local events remain visible
   - [ ] Verify sync stops
+
+### Contacts & CRM
+
+- [ ] **Google Contacts import**
+  - [ ] Trigger contacts sync (button or `syncContactsNow` endpoint)
+  - [ ] Verify contacts appear in CRM list with name, email, phone
+  - [ ] Verify sync result shows created/merged counts
+  - [ ] Verify contacts without email are skipped
+  - [ ] Verify no "insufficient scopes" error
+
+- [ ] **Duplicate detection & merge**
+  - [ ] Import contacts with overlapping emails
+  - [ ] Review duplicate suggestions
+  - [ ] Merge a pair and verify fields are combined
+  - [ ] Verify secondary contact is removed after merge
+
+- [ ] **Circle suggestions**
+  - [ ] Verify Dunbar circle badges appear on contact cards
+  - [ ] Verify circle assignment reflects interaction history
+
+- [ ] **Meeting briefings**
+  - [ ] Open briefing for upcoming event with known attendees
+  - [ ] Verify attendee context and recent interactions display
+
+- [ ] **Error handling**
+  - [ ] Attempt import without contacts scope — verify clear error message
+  - [ ] Attempt import without Google connection — verify "not connected" error
+  - [ ] Verify Cloud Function logs show meaningful error details
 
 ### Offline & Outbox
 
@@ -2968,22 +3136,28 @@ Collections: calendarEvents, calendars, syncStatus
 | Alert Scheduler   | [apps/web-vite/src/alerts/alertScheduler.ts](apps/web-vite/src/alerts/alertScheduler.ts)                                         |
 | Outbox Worker     | [apps/web-vite/src/outbox/worker.ts](apps/web-vite/src/outbox/worker.ts)                                                         |
 | Firestore Repo    | [apps/web-vite/src/adapters/firestoreCalendarEventRepository.ts](apps/web-vite/src/adapters/firestoreCalendarEventRepository.ts) |
+| Contacts Sync     | [functions/src/contacts/syncContacts.ts](functions/src/contacts/syncContacts.ts)                                                 |
+| Contact Dedup     | [functions/src/contacts/findDuplicates.ts](functions/src/contacts/findDuplicates.ts)                                             |
+| Contact Merge     | [functions/src/contacts/mergeContacts.ts](functions/src/contacts/mergeContacts.ts)                                               |
+| OAuth Scopes      | [functions/src/index.ts](functions/src/index.ts) (SCOPES array)                                                                  |
+| Scope Check (FE)  | [apps/web-vite/src/components/CalendarSettingsPanel.tsx](apps/web-vite/src/components/CalendarSettingsPanel.tsx)                 |
 | Design System CSS | [apps/web-vite/src/globals.css](apps/web-vite/src/globals.css)                                                                   |
 
 ---
 
 ## Document Version History
 
-| Version | Date         | Changes                                                |
-| ------- | ------------ | ------------------------------------------------------ |
-| 1.3.1   | Feb 2, 2026  | Updated settings onboarding + permissions/indexes      |
-| 1.3.0   | Feb 2, 2026  | Added Settings control center checks and system tone   |
-| 1.2.3   | Jan 1, 2026  | Added top nav verification and training access note    |
-| 1.2.2   | Jan 1, 2026  | Updated training access assumptions and login layout   |
-| 1.2.1   | Jan 1, 2026  | Added adoption testing steps and login layout check    |
-| 1.2.0   | Dec 30, 2025 | Added full ordered onboarding path and new modules     |
-| 1.1.0   | Dec 20, 2024 | Added Settings - Quote Management section (Section 11) |
-| 1.0.0   | Dec 20, 2024 | Initial comprehensive testing guide                    |
+| Version | Date         | Changes                                                                                         |
+| ------- | ------------ | ----------------------------------------------------------------------------------------------- |
+| 1.4.0   | Feb 26, 2026 | Added Contacts & CRM section, updated OAuth scopes to read/write, added scope verification test |
+| 1.3.1   | Feb 2, 2026  | Updated settings onboarding + permissions/indexes                                               |
+| 1.3.0   | Feb 2, 2026  | Added Settings control center checks and system tone                                            |
+| 1.2.3   | Jan 1, 2026  | Added top nav verification and training access note                                             |
+| 1.2.2   | Jan 1, 2026  | Updated training access assumptions and login layout                                            |
+| 1.2.1   | Jan 1, 2026  | Added adoption testing steps and login layout check                                             |
+| 1.2.0   | Dec 30, 2025 | Added full ordered onboarding path and new modules                                              |
+| 1.1.0   | Dec 20, 2024 | Added Settings - Quote Management section (Section 11)                                          |
+| 1.0.0   | Dec 20, 2024 | Initial comprehensive testing guide                                                             |
 
 ---
 

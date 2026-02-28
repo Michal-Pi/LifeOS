@@ -45,6 +45,7 @@ export const WorkflowTypeSchema = z.enum([
   'supervisor',
   'custom',
   'graph',
+  'dialectical',
 ])
 
 export const WorkflowNodeTypeSchema = z.enum([
@@ -158,7 +159,7 @@ export const ExpertCouncilConfigSchema = z.object({
 
 // ----- Tool Schemas -----
 
-export const ToolParameterSchema: z.ZodType<any> = z.lazy(() =>
+export const ToolParameterSchema: z.ZodType<unknown> = z.lazy(() =>
   z.object({
     type: z.enum(['string', 'number', 'boolean', 'object', 'array']),
     description: z.string(),
@@ -238,10 +239,10 @@ export const CreateAgentInputSchema = AgentConfigSchema.omit({
 
 export const UpdateAgentInputSchema = CreateAgentInputSchema.partial()
 
-// ----- Workspace -----
+// ----- Workflow -----
 
-export const WorkspaceSchema = z.object({
-  workspaceId: z.string(),
+export const WorkflowSchema = z.object({
+  workflowId: z.string(),
   userId: z.string(),
   name: z.string().min(1).max(200),
   description: z.string().max(1000).optional(),
@@ -315,7 +316,7 @@ export const WorkspaceSchema = z.object({
         .optional(),
     })
     .optional(),
-  maxIterations: z.number().int().positive().max(50).optional(),
+  maxIterations: z.number().int().positive().max(200).optional(),
   memoryMessageLimit: z.number().int().positive().max(200).optional(),
   archived: z.boolean(),
   createdAtMs: z.number().int().positive(),
@@ -342,13 +343,13 @@ export const AgentTemplateSchema = z.object({
   updatedAtMs: z.number().int().positive(),
 })
 
-export const WorkspaceTemplateSchema = z.object({
+export const WorkflowTemplateSchema = z.object({
   templateId: z.string(),
   userId: z.string(),
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional(),
-  workspaceConfig: WorkspaceSchema.omit({
-    workspaceId: true,
+  workflowConfig: WorkflowSchema.omit({
+    workflowId: true,
     userId: true,
     archived: true,
     createdAtMs: true,
@@ -360,8 +361,8 @@ export const WorkspaceTemplateSchema = z.object({
   updatedAtMs: z.number().int().positive(),
 })
 
-export const CreateWorkspaceInputSchema = WorkspaceSchema.omit({
-  workspaceId: true,
+export const CreateWorkflowInputSchema = WorkflowSchema.omit({
+  workflowId: true,
   userId: true,
   createdAtMs: true,
   updatedAtMs: true,
@@ -370,13 +371,13 @@ export const CreateWorkspaceInputSchema = WorkspaceSchema.omit({
   archived: true,
 })
 
-export const UpdateWorkspaceInputSchema = CreateWorkspaceInputSchema.partial()
+export const UpdateWorkflowInputSchema = CreateWorkflowInputSchema.partial()
 
 // ----- Run -----
 
 export const RunSchema = z.object({
   runId: z.string(),
-  workspaceId: z.string(),
+  workflowId: z.string(),
   userId: z.string(),
   goal: z.string().min(1),
   context: z.record(z.string(), z.unknown()).optional(),
@@ -448,7 +449,7 @@ export const DeepResearchResultSchema = z.object({
 
 export const DeepResearchRequestSchema = z.object({
   requestId: z.string(),
-  workspaceId: z.string(),
+  workflowId: z.string(),
   runId: z.string(),
   userId: z.string(),
   topic: z.string().min(1),
@@ -496,4 +497,157 @@ export const MessageSchema = z.object({
 export const CreateMessageInputSchema = MessageSchema.omit({
   messageId: true,
   timestampMs: true,
+})
+
+// ----- Agent Execution Step (for LangGraph) -----
+
+export const AgentExecutionStepSchema = z.object({
+  agentId: z.string(),
+  agentName: z.string(),
+  output: z.string(),
+  tokensUsed: z.number().int().nonnegative(),
+  estimatedCost: z.number().nonnegative(),
+  provider: z.string(),
+  model: z.string(),
+  executedAtMs: z.number().int().positive(),
+  durationMs: z.number().int().nonnegative().optional(),
+})
+
+// ----- LangGraph Checkpoint Schemas -----
+
+/**
+ * Schema for LangGraph Checkpoint data stored in Firestore.
+ * This validates the checkpoint structure when reading from persistence.
+ */
+export const CheckpointSchema = z.object({
+  id: z.string(),
+  v: z.number().int().optional(),
+  ts: z.string().optional(),
+  channel_values: z.record(z.string(), z.unknown()).optional(),
+  channel_versions: z.record(z.string(), z.unknown()).optional(),
+  versions_seen: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
+  pending_sends: z.array(z.unknown()).optional(),
+})
+
+export const CheckpointMetadataSchema = z.object({
+  source: z.enum(['input', 'loop', 'update']).optional(),
+  step: z.number().int().optional(),
+  writes: z.record(z.string(), z.unknown()).optional(),
+  parents: z.record(z.string(), z.string()).optional(),
+})
+
+export const CheckpointDocumentSchema = z.object({
+  checkpointId: z.string(),
+  checkpoint: CheckpointSchema,
+  metadata: CheckpointMetadataSchema.optional(),
+  parentConfig: z
+    .object({
+      configurable: z.object({
+        checkpoint_id: z.string().optional(),
+        thread_id: z.string().optional(),
+      }),
+    })
+    .optional(),
+  timestamp: z.number().int().positive(),
+  latestCheckpointId: z.string().optional(),
+})
+
+// ----- Parallel Graph Failed Agent Record -----
+
+export const FailedAgentRecordSchema = z.object({
+  agentId: z.string(),
+  agentName: z.string(),
+  error: z.string(),
+  errorCode: z.string().optional(),
+})
+
+// ----- Workflow Status Type -----
+
+export const WorkflowStatusTypeSchema = z.enum([
+  'running',
+  'completed',
+  'failed',
+  'paused',
+  'waiting_for_input',
+])
+
+// ----- Telemetry Schemas -----
+
+export const StepTelemetrySchema = z.object({
+  stepIndex: z.number().int().nonnegative(),
+  agentId: z.string().optional(),
+  agentName: z.string().optional(),
+  nodeId: z.string().optional(),
+  startedAtMs: z.number().int().positive(),
+  completedAtMs: z.number().int().positive().optional(),
+  durationMs: z.number().int().nonnegative().optional(),
+  tokensUsed: z.number().int().nonnegative().optional(),
+  estimatedCost: z.number().nonnegative().optional(),
+  provider: z.string().optional(),
+  model: z.string().optional(),
+  toolCalls: z
+    .array(
+      z.object({
+        toolId: z.string(),
+        toolName: z.string(),
+        success: z.boolean(),
+        latencyMs: z.number().int().nonnegative().optional(),
+      })
+    )
+    .optional(),
+  status: z.enum(['success', 'failed', 'skipped']).optional(),
+  errorMessage: z.string().optional(),
+})
+
+export const RunTelemetrySchema = z.object({
+  telemetryId: z.string(),
+  runId: z.string(),
+  workflowId: z.string(),
+  userId: z.string(),
+  workflowType: WorkflowTypeSchema,
+  startedAtMs: z.number().int().positive(),
+  completedAtMs: z.number().int().positive().optional(),
+  totalDurationMs: z.number().int().nonnegative().optional(),
+  totalTokensUsed: z.number().int().nonnegative(),
+  totalEstimatedCost: z.number().nonnegative(),
+  stepCount: z.number().int().nonnegative(),
+  steps: z.array(StepTelemetrySchema),
+  status: WorkflowStatusTypeSchema,
+  errorMessage: z.string().optional(),
+  errorCategory: z
+    .enum(['network', 'auth', 'rate_limit', 'validation', 'timeout', 'internal', 'quota'])
+    .optional(),
+})
+
+// ----- Evaluation Schemas -----
+
+export const EvalCriterionSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  weight: z.number().min(0).max(1),
+  minScore: z.number().int().min(1).max(10).optional(),
+  maxScore: z.number().int().min(1).max(10).optional(),
+})
+
+export const EvalRubricSchema = z.object({
+  rubricId: z.string(),
+  userId: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  workflowType: WorkflowTypeSchema,
+  criteria: z.array(EvalCriterionSchema),
+  createdAtMs: z.number().int().positive(),
+  updatedAtMs: z.number().int().positive(),
+})
+
+export const EvalResultSchema = z.object({
+  resultId: z.string(),
+  runId: z.string(),
+  rubricId: z.string(),
+  userId: z.string(),
+  scores: z.record(z.string(), z.number()),
+  aggregateScore: z.number(),
+  evaluatorModel: z.string(),
+  reasoning: z.string().optional(),
+  evaluatedAtMs: z.number().int().positive(),
 })

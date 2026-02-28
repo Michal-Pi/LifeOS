@@ -24,15 +24,6 @@ const log = createLogger('WorkoutAITools')
 
 // ----- Training Types (inlined to avoid vendor dependency) -----
 
-type ExerciseTypeCategory =
-  | 'lower_body'
-  | 'upper_body'
-  | 'arms'
-  | 'core'
-  | 'mobility_stability'
-  | 'cardio'
-  | 'yoga'
-
 type WorkoutContext = 'gym' | 'home' | 'road'
 
 interface ExerciseVariant {
@@ -45,17 +36,18 @@ interface ExerciseVariant {
 interface ExerciseLibraryItem {
   exerciseId: string
   userId: string
-  generic_name: string
-  target_muscle_group: string | string[]
-  category: ExerciseTypeCategory
-  gym: ExerciseVariant[]
-  home: ExerciseVariant[]
-  road: ExerciseVariant[]
+  generic_name?: string
+  name?: string // legacy field
+  target_muscle_group?: string | string[]
+  category: string
+  gym?: ExerciseVariant[]
+  home?: ExerciseVariant[]
+  road?: ExerciseVariant[]
   archived: boolean
 }
 
 interface DayExerciseBlock {
-  category: ExerciseTypeCategory
+  category: string
   timeMinutes: number
   exerciseIds?: string[]
 }
@@ -346,13 +338,15 @@ async function populateExercises(
       const exerciseList = exs
         .map((e) => {
           const variants = []
-          if (e.gym.length > 0)
+          if (e.gym && e.gym.length > 0)
             variants.push(`gym: ${e.gym.map((v: ExerciseVariant) => v.name).join(', ')}`)
-          if (e.home.length > 0)
+          if (e.home && e.home.length > 0)
             variants.push(`home: ${e.home.map((v: ExerciseVariant) => v.name).join(', ')}`)
-          if (e.road.length > 0)
+          if (e.road && e.road.length > 0)
             variants.push(`road: ${e.road.map((v: ExerciseVariant) => v.name).join(', ')}`)
-          return `  - ${e.generic_name} (${e.exerciseId}): ${variants.join(' | ')}`
+          const displayName = e.generic_name || e.name || 'Unknown'
+          const detail = variants.length > 0 ? `: ${variants.join(' | ')}` : ''
+          return `  - ${displayName} (${e.exerciseId})${detail}`
         })
         .join('\n')
       return `${category}:\n${exerciseList}`

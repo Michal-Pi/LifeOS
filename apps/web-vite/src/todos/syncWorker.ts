@@ -10,6 +10,7 @@
 
 import { createFirestoreTodoRepository } from '@/adapters/firestoreTodoRepository'
 import { isRecoverableFirestoreError } from '@/lib/firestoreErrorHandler'
+import { logger } from '@/lib/logger'
 
 import {
   saveProjectLocally,
@@ -31,15 +32,18 @@ import {
 
 import {
   listReadyProjectOps,
+  listPendingProjectOps,
   markProjectOpApplying,
   markProjectOpApplied,
   markProjectOpFailed,
   removeProjectOp,
   listReadyChapterOps,
+  listPendingChapterOps,
   markChapterOpApplying,
   markChapterOpApplied,
   markChapterOpFailed,
   listReadyTaskOps,
+  listPendingTaskOps,
   markTaskOpApplying,
   markTaskOpApplied,
   markTaskOpFailed,
@@ -398,13 +402,19 @@ async function pullRemoteProjects(userId: string): Promise<void> {
     const localProjects = await listProjectsLocally(userId)
     const localProjectMap = new Map(localProjects.map((p) => [p.id, p]))
 
+    // Get pending outbox operations to preserve 'pending' state
+    const pendingOps = await listPendingProjectOps(userId)
+    const projectsWithPendingOps = new Set(pendingOps.map((op) => op.projectId))
+
     // Update or add remote projects to local store
     for (const remoteProject of remoteProjects) {
       const localProject = localProjectMap.get(remoteProject.id)
 
       // Simple last-write-wins conflict resolution
       if (!localProject || remoteProject.updatedAt >= localProject.updatedAt) {
-        await saveProjectLocally({ ...remoteProject, syncState: 'synced' })
+        // Preserve 'pending' state if there are outbox operations for this project
+        const syncState = projectsWithPendingOps.has(remoteProject.id) ? 'pending' : 'synced'
+        await saveProjectLocally({ ...remoteProject, syncState })
       }
     }
 
@@ -431,13 +441,19 @@ async function pullRemoteChapters(userId: string): Promise<void> {
     const localChapterMap = new Map(localChapters.map((c) => [c.id, c]))
     const remoteChapterIds = new Set(remoteChapters.map((c) => c.id))
 
+    // Get pending outbox operations to preserve 'pending' state
+    const pendingOps = await listPendingChapterOps(userId)
+    const chaptersWithPendingOps = new Set(pendingOps.map((op) => op.chapterId))
+
     // Update or add remote chapters to local store with conflict resolution
     for (const remoteChapter of remoteChapters) {
       const localChapter = localChapterMap.get(remoteChapter.id)
 
       // Simple last-write-wins conflict resolution
       if (!localChapter || remoteChapter.updatedAt >= localChapter.updatedAt) {
-        await saveChapterLocally({ ...remoteChapter, syncState: 'synced' })
+        // Preserve 'pending' state if there are outbox operations for this chapter
+        const syncState = chaptersWithPendingOps.has(remoteChapter.id) ? 'pending' : 'synced'
+        await saveChapterLocally({ ...remoteChapter, syncState })
       }
     }
 
@@ -462,12 +478,18 @@ async function pullRemoteTasks(userId: string): Promise<void> {
     const localTasks = await listTasksLocally(userId)
     const localTaskMap = new Map(localTasks.map((t) => [t.id, t]))
 
+    // Get pending outbox operations to preserve 'pending' state
+    const pendingOps = await listPendingTaskOps(userId)
+    const tasksWithPendingOps = new Set(pendingOps.map((op) => op.taskId))
+
     for (const remoteTask of remoteTasks) {
       const localTask = localTaskMap.get(remoteTask.id)
 
       // Simple last-write-wins conflict resolution
       if (!localTask || remoteTask.updatedAt >= localTask.updatedAt) {
-        await saveTaskLocally({ ...remoteTask, syncState: 'synced' })
+        // Preserve 'pending' state if there are outbox operations for this task
+        const syncState = tasksWithPendingOps.has(remoteTask.id) ? 'pending' : 'synced'
+        await saveTaskLocally({ ...remoteTask, syncState })
       }
     }
 
@@ -494,9 +516,9 @@ async function pullRemoteTasks(userId: string): Promise<void> {
 export async function syncTodos(userId: string): Promise<void> {
   if (state.isRunning || state.isPaused) {
     if (state.isPaused) {
-      console.log('Sync paused (page hidden), skipping')
+      logger.debug('Sync paused (page hidden), skipping')
     } else {
-      console.log('Sync already running, skipping')
+      logger.debug('Sync already running, skipping')
     }
     return
   }
@@ -575,10 +597,10 @@ export function startTodoSyncWorker(
   // Handle page visibility changes
   const handleVisibilityChange = () => {
     if (document.hidden) {
-      console.log('Page hidden - pausing sync worker')
+      logger.debug('Page hidden - pausing sync worker')
       state.isPaused = true
     } else {
-      console.log('Page visible - resuming sync worker')
+      logger.debug('Page visible - resuming sync worker')
       state.isPaused = false
       state.retryCount = 0 // Reset retry count on resume
       // Always attempt sync when page becomes visible
@@ -592,7 +614,7 @@ export function startTodoSyncWorker(
 
   // Handle network connection changes
   const handleOnline = () => {
-    console.log('Connection restored - triggering immediate sync')
+    logger.debug('Connection restored - triggering immediate sync')
     state.retryCount = 0
     // Trigger immediate sync when connection is restored
     syncTodos(userId).catch((error) => {
@@ -601,7 +623,7 @@ export function startTodoSyncWorker(
   }
 
   const handleOffline = () => {
-    console.log('Connection lost - sync will continue to attempt and fail gracefully')
+    logger.debug('Connection lost - sync will continue to attempt and fail gracefully')
   }
 
   window.addEventListener('online', handleOnline)
@@ -619,7 +641,7 @@ export function startTodoSyncWorker(
     })
   }, intervalMs)
 
-  console.log(`Todo sync worker started (interval: ${intervalMs}ms)`)
+  logger.debug(`Todo sync worker started (interval: ${intervalMs}ms)`)
 
   // Store cleanup function
   state.cleanup = () => {
@@ -636,7 +658,7 @@ export function stopTodoSyncWorker(): void {
   if (state.syncIntervalId !== null) {
     clearInterval(state.syncIntervalId)
     state.syncIntervalId = null
-    console.log('Todo sync worker stopped')
+    logger.debug('Todo sync worker stopped')
   }
 
   // Clean up event listeners

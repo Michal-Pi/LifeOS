@@ -4,6 +4,7 @@
 
 import { useState, useCallback } from 'react'
 import { useContactDetail } from '@/hooks/useContactDetail'
+import { CircleSuggestionBadge } from './CircleSuggestionBadge'
 import { InteractionTimeline } from './InteractionTimeline'
 import type { ContactId, DunbarCircle, UpdateContactInput } from '@lifeos/agents'
 import { CIRCLE_LABELS, getFollowUpStatus, DEFAULT_FOLLOW_UP_DAYS } from '@lifeos/agents'
@@ -33,6 +34,16 @@ function formatRelativeDate(ms: number | undefined): string {
   if (days < 30) return `${days} days ago`
   if (days < 365) return `${Math.floor(days / 30)} months ago`
   return `${Math.floor(days / 365)} years ago`
+}
+
+function formatFollowUpCountdown(ms: number): string {
+  const days = Math.round((ms - Date.now()) / (24 * 60 * 60 * 1000))
+  if (days < -1) return `${Math.abs(days)} days overdue`
+  if (days === -1) return 'Yesterday'
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Tomorrow'
+  if (days < 30) return `in ${days} days`
+  return `in ${Math.floor(days / 30)} months`
 }
 
 const CIRCLES: DunbarCircle[] = [0, 1, 2, 3, 4]
@@ -83,9 +94,7 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
         </div>
         <div className="contact-detail__header-info">
           <h2 className="contact-detail__name">{contact.displayName}</h2>
-          {titleCompany && (
-            <div className="contact-detail__title-company">{titleCompany}</div>
-          )}
+          {titleCompany && <div className="contact-detail__title-company">{titleCompany}</div>}
           {contact.relationship && (
             <div className="contact-detail__relationship">{contact.relationship}</div>
           )}
@@ -107,6 +116,24 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
         </div>
       </div>
 
+      {/* Follow-up banner */}
+      {contact.nextFollowUpMs && (
+        <div
+          className={`contact-detail__followup-banner contact-detail__followup-banner--${getFollowUpStatus(contact)}`}
+        >
+          <span className="contact-detail__followup-label">
+            {followUpStatus === 'overdue'
+              ? 'Follow-up overdue'
+              : followUpStatus === 'due'
+                ? 'Follow-up due'
+                : 'Next follow-up'}
+          </span>
+          <span className="contact-detail__followup-countdown">
+            {formatFollowUpCountdown(contact.nextFollowUpMs)}
+          </span>
+        </div>
+      )}
+
       {/* Circle selector */}
       <div className="contact-detail__circle">
         <span className="contact-detail__section-label">Circle</span>
@@ -121,14 +148,23 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
             </button>
           ))}
         </div>
+        <CircleSuggestionBadge
+          contactId={contact.contactId}
+          currentCircle={contact.circle}
+          onAccept={handleCircleChange}
+        />
       </div>
 
       {/* Follow-up status */}
       <div className="contact-detail__followup">
         <span className="contact-detail__section-label">Follow-up</span>
         <div className="contact-detail__followup-info">
-          <span className={`contact-detail__followup-status contact-detail__followup-status--${followUpStatus}`}>
-            {followUpStatus === 'ok' ? 'On track' : followUpStatus.charAt(0).toUpperCase() + followUpStatus.slice(1)}
+          <span
+            className={`contact-detail__followup-status contact-detail__followup-status--${followUpStatus}`}
+          >
+            {followUpStatus === 'ok'
+              ? 'On track'
+              : followUpStatus.charAt(0).toUpperCase() + followUpStatus.slice(1)}
           </span>
           <span>Last contact: {formatRelativeDate(contact.lastInteractionMs)}</span>
           {cadenceDays > 0 && <span>({cadenceDays}d cadence)</span>}
@@ -161,8 +197,8 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
           )}
           {contact.identifiers.telegramUsername && (
             <div className="contact-detail__identifier">
-              <span className="contact-detail__identifier-icon">{'\u2708'}</span>
-              @{contact.identifiers.telegramUsername}
+              <span className="contact-detail__identifier-icon">{'\u2708'}</span>@
+              {contact.identifiers.telegramUsername}
             </div>
           )}
         </div>

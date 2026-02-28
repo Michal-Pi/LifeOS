@@ -7,8 +7,11 @@
 import vm from 'node:vm'
 import type { ToolDefinition as DomainToolDefinition, ToolParameter } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
+import { createLogger } from '../lib/logger.js'
 
 import type { ToolDefinition as ExecutorToolDefinition } from './toolExecutor.js'
+
+const log = createLogger('CustomTools')
 
 type CustomToolRecord = DomainToolDefinition
 
@@ -21,7 +24,31 @@ const BUILTIN_NAMES = new Set([
   'list_notes',
   'create_note',
   'read_note',
-  'web_search',
+  'analyze_note_paragraphs',
+  'tag_paragraph_with_note',
+  'create_deep_research_request',
+  'expert_council_execute',
+  'serp_search',
+  'read_url',
+  'scrape_url',
+  'semantic_search',
+  'parse_pdf',
+  'create_topic',
+  'create_todo',
+  'list_todos',
+  'search_google_drive',
+  'download_google_drive_file',
+  'list_gmail_messages',
+  'read_gmail_message',
+  'search_images',
+  'search_videos',
+  'search_scholar',
+  'search_places',
+  'find_similar',
+  'extract_structured_data',
+  'crawl_website',
+  'map_website',
+  'search_web',
 ])
 
 export async function loadCustomTools(userId: string): Promise<ExecutorToolDefinition[]> {
@@ -40,11 +67,11 @@ export async function loadCustomTools(userId: string): Promise<ExecutorToolDefin
       continue
     }
     if (BUILTIN_NAMES.has(data.name)) {
-      console.warn(`Custom tool name "${data.name}" conflicts with built-in tool. Skipping.`)
+      log.warn('Custom tool name conflicts with built-in tool, skipping', { toolName: data.name })
       continue
     }
     if (!data.implementation || data.implementation.type !== 'javascript') {
-      console.warn(`Custom tool "${data.name}" missing JavaScript implementation. Skipping.`)
+      log.warn('Custom tool missing JavaScript implementation, skipping', { toolName: data.name })
       continue
     }
 
@@ -59,7 +86,7 @@ export async function loadCustomTools(userId: string): Promise<ExecutorToolDefin
           context: {
             userId: context.userId,
             runId: context.runId,
-            workspaceId: context.workspaceId,
+            workflowId: context.workflowId,
             agentId: context.agentId,
           },
           fetch: globalThis.fetch,

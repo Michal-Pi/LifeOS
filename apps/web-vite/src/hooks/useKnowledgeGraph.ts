@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from 'firebase/firestore'
+import { collection, onSnapshot, query, orderBy, doc } from 'firebase/firestore'
 import { getFirestoreClient } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import type {
@@ -18,13 +18,11 @@ import type {
   Contradiction,
   Regime,
   Community,
-  BiTemporalEdge,
 } from '@lifeos/agents'
 import type {
   KGNode,
   KGEdge,
   KGNodeType,
-  KGEdgeType,
   KnowledgeGraphData,
 } from '@/components/agents/KnowledgeGraphExplorer'
 
@@ -103,10 +101,7 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
 
   // Load session metadata
   useEffect(() => {
-    if (!user || !sessionId) {
-      setSession(null)
-      return
-    }
+    if (!user || !sessionId) return
 
     const db = getFirestoreClient()
     const sessionRef = doc(db, `users/${user.uid}/dialectical/sessions`, sessionId)
@@ -129,17 +124,17 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
       }
     )
 
-    return () => unsubscribe()
+    return () => {
+      unsubscribe()
+      setSession(null)
+    }
   }, [user, sessionId])
 
   // Subscribe to claims
   useEffect(() => {
-    if (!basePath) {
-      setClaims([])
-      setLoadingStates((prev) => ({ ...prev, claims: false }))
-      return
-    }
+    if (!basePath) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting loading state before subscription is valid pattern
     setLoadingStates((prev) => ({ ...prev, claims: true }))
     const db = getFirestoreClient()
     const claimsRef = collection(db, `${basePath}/claims`)
@@ -148,7 +143,7 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const nextClaims = snapshot.docs.map((doc) => doc.data() as Claim)
+        const nextClaims = snapshot.docs.map((docSnap) => docSnap.data() as Claim)
         setClaims(nextClaims)
         setLoadingStates((prev) => ({ ...prev, claims: false }))
       },
@@ -158,17 +153,18 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
       }
     )
 
-    return () => unsubscribe()
+    return () => {
+      unsubscribe()
+      setClaims([])
+      setLoadingStates((prev) => ({ ...prev, claims: false }))
+    }
   }, [basePath, refreshTrigger])
 
   // Subscribe to concepts
   useEffect(() => {
-    if (!basePath) {
-      setConcepts([])
-      setLoadingStates((prev) => ({ ...prev, concepts: false }))
-      return
-    }
+    if (!basePath) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting loading state before subscription is valid pattern
     setLoadingStates((prev) => ({ ...prev, concepts: true }))
     const db = getFirestoreClient()
     const conceptsRef = collection(db, `${basePath}/concepts`)
@@ -177,7 +173,7 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const nextConcepts = snapshot.docs.map((doc) => doc.data() as Concept)
+        const nextConcepts = snapshot.docs.map((docSnap) => docSnap.data() as Concept)
         setConcepts(nextConcepts)
         setLoadingStates((prev) => ({ ...prev, concepts: false }))
       },
@@ -187,17 +183,18 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
       }
     )
 
-    return () => unsubscribe()
+    return () => {
+      unsubscribe()
+      setConcepts([])
+      setLoadingStates((prev) => ({ ...prev, concepts: false }))
+    }
   }, [basePath, refreshTrigger])
 
   // Subscribe to mechanisms
   useEffect(() => {
-    if (!basePath) {
-      setMechanisms([])
-      setLoadingStates((prev) => ({ ...prev, mechanisms: false }))
-      return
-    }
+    if (!basePath) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting loading state before subscription is valid pattern
     setLoadingStates((prev) => ({ ...prev, mechanisms: true }))
     const db = getFirestoreClient()
     const mechanismsRef = collection(db, `${basePath}/mechanisms`)
@@ -206,7 +203,7 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const nextMechanisms = snapshot.docs.map((doc) => doc.data() as Mechanism)
+        const nextMechanisms = snapshot.docs.map((docSnap) => docSnap.data() as Mechanism)
         setMechanisms(nextMechanisms)
         setLoadingStates((prev) => ({ ...prev, mechanisms: false }))
       },
@@ -216,17 +213,18 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
       }
     )
 
-    return () => unsubscribe()
+    return () => {
+      unsubscribe()
+      setMechanisms([])
+      setLoadingStates((prev) => ({ ...prev, mechanisms: false }))
+    }
   }, [basePath, refreshTrigger])
 
   // Subscribe to contradictions
   useEffect(() => {
-    if (!basePath) {
-      setContradictions([])
-      setLoadingStates((prev) => ({ ...prev, contradictions: false }))
-      return
-    }
+    if (!basePath) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting loading state before subscription is valid pattern
     setLoadingStates((prev) => ({ ...prev, contradictions: true }))
     const db = getFirestoreClient()
     const contradictionsRef = collection(db, `${basePath}/contradictions`)
@@ -235,7 +233,7 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const nextContradictions = snapshot.docs.map((doc) => doc.data() as Contradiction)
+        const nextContradictions = snapshot.docs.map((docSnap) => docSnap.data() as Contradiction)
         setContradictions(nextContradictions)
         setLoadingStates((prev) => ({ ...prev, contradictions: false }))
       },
@@ -245,17 +243,18 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
       }
     )
 
-    return () => unsubscribe()
+    return () => {
+      unsubscribe()
+      setContradictions([])
+      setLoadingStates((prev) => ({ ...prev, contradictions: false }))
+    }
   }, [basePath, refreshTrigger])
 
   // Subscribe to regimes
   useEffect(() => {
-    if (!basePath) {
-      setRegimes([])
-      setLoadingStates((prev) => ({ ...prev, regimes: false }))
-      return
-    }
+    if (!basePath) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting loading state before subscription is valid pattern
     setLoadingStates((prev) => ({ ...prev, regimes: true }))
     const db = getFirestoreClient()
     const regimesRef = collection(db, `${basePath}/regimes`)
@@ -264,7 +263,7 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const nextRegimes = snapshot.docs.map((doc) => doc.data() as Regime)
+        const nextRegimes = snapshot.docs.map((docSnap) => docSnap.data() as Regime)
         setRegimes(nextRegimes)
         setLoadingStates((prev) => ({ ...prev, regimes: false }))
       },
@@ -274,17 +273,18 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
       }
     )
 
-    return () => unsubscribe()
+    return () => {
+      unsubscribe()
+      setRegimes([])
+      setLoadingStates((prev) => ({ ...prev, regimes: false }))
+    }
   }, [basePath, refreshTrigger])
 
   // Subscribe to communities
   useEffect(() => {
-    if (!basePath) {
-      setCommunities([])
-      setLoadingStates((prev) => ({ ...prev, communities: false }))
-      return
-    }
+    if (!basePath) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Setting loading state before subscription is valid pattern
     setLoadingStates((prev) => ({ ...prev, communities: true }))
     const db = getFirestoreClient()
     const communitiesRef = collection(db, `${basePath}/communities`)
@@ -293,7 +293,7 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const nextCommunities = snapshot.docs.map((doc) => doc.data() as Community)
+        const nextCommunities = snapshot.docs.map((docSnap) => docSnap.data() as Community)
         setCommunities(nextCommunities)
         setLoadingStates((prev) => ({ ...prev, communities: false }))
       },
@@ -303,7 +303,11 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
       }
     )
 
-    return () => unsubscribe()
+    return () => {
+      unsubscribe()
+      setCommunities([])
+      setLoadingStates((prev) => ({ ...prev, communities: false }))
+    }
   }, [basePath, refreshTrigger])
 
   // Build graph data

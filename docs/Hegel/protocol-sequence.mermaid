@@ -1,0 +1,68 @@
+---
+title: "Dialectical Protocol — Sequence Flow"
+---
+sequenceDiagram
+    participant Q as Query/Context
+    participant RL as RL Retrieval Agent
+    participant KG as Knowledge Hypergraph
+    participant T as Thesis Agents (α,β,γ)
+    participant A as Antithesis Agents
+    participant CT as Contradiction Trackers
+    participant S as Synthesis Agents (α,β)
+    participant M as Meta-Reflection
+    participant SI as Schema Induction
+
+    Q->>RL: New decision context
+    RL->>KG: Think → Query → Retrieve subgraph
+    KG-->>RL: Concept neighborhood + alive claims + open contradictions
+    RL->>T: Retrieved context + prior contradictions
+
+    rect rgb(26, 21, 16)
+        Note over T,A: Phase 1-2: Thesis Generation & Cross-Negation
+        T->>T: Generate 2-5 competing framings<br/>(heterogeneous models)
+        T->>KG: Write concept subgraphs + claims + regime assumptions
+        T->>A: Each thesis exposes: categories, causal model, falsification criteria
+        A->>A: Structured negation per thesis
+        A->>KG: Write contradicts edges + category error annotations
+        A-->>T: "Your concept X conflates Y and Z"<br/>"Causal arrow reverses under regime R"
+    end
+
+    rect rgb(26, 16, 16)
+        Note over CT: Phase 3: Contradiction Crystallization
+        CT->>KG: Query all active contradiction edges
+        CT->>CT: LogicTracker: A ∧ ¬A patterns
+        CT->>CT: PragmaticTracker: action-incompatible claims
+        CT->>CT: SemanticTracker: concept equivocation
+        CT->>CT: BoundaryTracker: regime mismatch
+        CT->>CT: Cross-verification round
+        CT->>KG: Write ranked contradiction nodes<br/>with action_distance scores
+        CT-->>S: Minimal inconsistent set (MIS)
+    end
+
+    rect rgb(16, 26, 16)
+        Note over S,SI: Phase 4: Sublation (Aufhebung)
+        S->>S: Synthesizer α (parsimony) produces graph rewrites
+        S->>S: Synthesizer β (scope) produces graph rewrites
+        S->>S: Cross-negation of competing syntheses
+        S->>KG: Execute typed rewrite operators:<br/>SPLIT | MERGE | REVERSE_EDGE |<br/>ADD_MEDIATOR | SCOPE_TO_REGIME | TEMPORALIZE
+        S->>KG: Write supersedes edges + new claims
+        SI->>KG: Schema induction: auto-cluster new concepts<br/>Version ontology layer
+    end
+
+    rect rgb(26, 16, 26)
+        Note over M: Phase 5-6: Re-grounding & Meta-Reflection
+        S->>KG: New predictions with timestamps + test criteria
+        M->>KG: Check conceptual velocity (category ops per cycle)
+        M->>M: Stuck loop? Premature collapse?<br/>Epistemic vs ontic confusion?
+
+        alt Velocity > threshold
+            M-->>T: Continue: new thesis from sublated output
+        else Velocity flatlined 2+ cycles
+            M-->>Q: Terminate: output regime-scoped policies
+        else Stuck in binary oscillation
+            M-->>T: Re-specify: change unit of analysis<br/>or abstraction level
+        end
+    end
+
+    Note over KG: RL reward computed:<br/>R = α·contradiction_reduction +<br/>β·prediction_accuracy + γ·concept_parsimony
+    KG-->>RL: Reward signal → update retrieval policy

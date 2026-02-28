@@ -59,7 +59,7 @@ export function hasMeaningfulContent(content?: JSONContent): boolean {
   return Boolean(content.content?.some(hasMeaningfulContent))
 }
 
-function stripHtml(html: string | undefined): string {
+export function stripHtml(html: string | undefined): string {
   if (!html) return ''
   return html.replace(/<[^>]*>/g, '').trim()
 }

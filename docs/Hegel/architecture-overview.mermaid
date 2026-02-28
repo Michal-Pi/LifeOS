@@ -1,0 +1,107 @@
+---
+title: "Hegelian Multi-Agent Dialectical Architecture — System Overview"
+---
+graph TB
+    subgraph INPUT["🔵 Input Layer"]
+        Q[/"New Query / Decision Context"/]
+        EXT["External Evidence<br/>& Data Feeds"]
+    end
+
+    subgraph RETRIEVAL["🟡 RL-Trained Retrieval Agent"]
+        direction LR
+        THINK["Think"]
+        QUERY["Query<br/>Hypergraph"]
+        RETRIEVE["Retrieve<br/>Subgraph"]
+        RETHINK["Rethink &<br/>Re-query"]
+        THINK --> QUERY --> RETRIEVE --> RETHINK
+        RETHINK -.-> THINK
+    end
+
+    subgraph DIALECTIC["🟠 Dialectical Control Loop"]
+        direction TB
+        subgraph THESIS_LAYER["Phase 1: Thesis Generation"]
+            T1["Thesis Agent α<br/><i>Claude · Economic lens</i>"]
+            T2["Thesis Agent β<br/><i>GPT-4 · Systems lens</i>"]
+            T3["Thesis Agent γ<br/><i>Gemini · Adversarial lens</i>"]
+        end
+
+        subgraph ANTITHESIS_LAYER["Phase 2: Determinate Negation"]
+            A1["Antithesis Agent<br/><i>Internal inconsistency</i>"]
+            A2["Antithesis Agent<br/><i>Boundary conditions</i>"]
+            A3["Antithesis Agent<br/><i>Incentive analysis</i>"]
+        end
+
+        subgraph TRACKER_LAYER["Phase 3: Contradiction Crystallization"]
+            CT1["Logic<br/>Tracker"]
+            CT2["Pragmatic<br/>Tracker"]
+            CT3["Semantic<br/>Tracker"]
+            CT4["Boundary<br/>Tracker"]
+            XVERIFY["Cross-Verification"]
+            CT1 & CT2 & CT3 & CT4 --> XVERIFY
+        end
+
+        subgraph SYNTHESIS_LAYER["Phase 4: Sublation (Aufhebung)"]
+            S1["Synthesizer α<br/><i>Parsimony heuristic</i>"]
+            S2["Synthesizer β<br/><i>Explanatory scope</i>"]
+            SCOMPETE["Cross-Negation<br/>of Syntheses"]
+            S1 & S2 --> SCOMPETE
+        end
+
+        THESIS_LAYER --> ANTITHESIS_LAYER
+        ANTITHESIS_LAYER --> TRACKER_LAYER
+        TRACKER_LAYER --> SYNTHESIS_LAYER
+    end
+
+    subgraph META["🟣 Meta-Reflection Agent"]
+        MR["Process Monitor"]
+        CV["Conceptual Velocity<br/>Tracker"]
+        SC["Schema Induction<br/>Agent"]
+        MR --- CV
+        MR --- SC
+    end
+
+    subgraph KG["🟢 4-Layer Knowledge Hypergraph"]
+        direction TB
+        L3["Layer 3: Community Subgraph<br/><i>Auto-detected clusters + summaries</i>"]
+        L2["Layer 2: Ontology Graph<br/><i>Self-evolving schema · Concepts · Relations · Regimes</i>"]
+        L1["Layer 1: Semantic/Epistemic Hypergraph<br/><i>Claims · Mechanisms · Contradictions<br/>Bi-temporal edges · N-ary hyperedges</i>"]
+        L0["Layer 0: Episodic Memory<br/><i>Raw dialectical exchanges · Full provenance</i>"]
+        L3 --- L2 --- L1 --- L0
+    end
+
+    subgraph RL_LOOP["🔴 RL Feedback Loop"]
+        REWARD["Reward Signal<br/>R = α·contradiction_reduction<br/>+ β·prediction_accuracy<br/>+ γ·concept_parsimony"]
+    end
+
+    Q --> RETRIEVAL
+    EXT --> KG
+    RETRIEVAL --> DIALECTIC
+    DIALECTIC --> KG
+    KG --> RETRIEVAL
+    META -.->|"protocol override"| DIALECTIC
+    META -.->|"schema update"| KG
+    SYNTHESIS_LAYER -.->|"new thesis<br/>(sublated)"| THESIS_LAYER
+    KG --> RL_LOOP
+    RL_LOOP -.->|"train"| RETRIEVAL
+    RL_LOOP -.->|"train"| DIALECTIC
+
+    classDef inputStyle fill:#1a1a2e,stroke:#6a8fc4,color:#e8e4df
+    classDef retrievalStyle fill:#1a1a2e,stroke:#c4c46a,color:#e8e4df
+    classDef dialecticStyle fill:#12121a,stroke:#c4956a,color:#e8e4df
+    classDef thesisStyle fill:#1a1510,stroke:#c4956a,color:#c4956a
+    classDef antithesisStyle fill:#10151a,stroke:#6a8fc4,color:#6a8fc4
+    classDef trackerStyle fill:#1a1010,stroke:#c46a6a,color:#c46a6a
+    classDef synthesisStyle fill:#101a10,stroke:#8fc46a,color:#8fc46a
+    classDef metaStyle fill:#1a101a,stroke:#b06ac4,color:#b06ac4
+    classDef kgStyle fill:#101a1a,stroke:#6ac4b0,color:#6ac4b0
+    classDef rlStyle fill:#1a1a10,stroke:#c4c46a,color:#c4c46a
+
+    class Q,EXT inputStyle
+    class THINK,QUERY,RETRIEVE,RETHINK retrievalStyle
+    class T1,T2,T3 thesisStyle
+    class A1,A2,A3 antithesisStyle
+    class CT1,CT2,CT3,CT4,XVERIFY trackerStyle
+    class S1,S2,SCOMPETE synthesisStyle
+    class MR,CV,SC metaStyle
+    class L0,L1,L2,L3 kgStyle
+    class REWARD rlStyle

@@ -9,7 +9,7 @@
   background: var(--error-light);
   color: var(--error-color);
   border-radius: var(--radius-sm);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   margin-bottom: var(--space-4);
 }
 
@@ -21,7 +21,7 @@
 }
 
 .whatsapp-setup-text {
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   color: var(--text-secondary);
   line-height: 1.5;
   margin: 0;
@@ -44,12 +44,12 @@
 }
 
 .whatsapp-info-label {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
 }
 
 .whatsapp-info-value {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--foreground);
 }
 
@@ -72,7 +72,7 @@
 }
 
 .whatsapp-form-label {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--foreground);
 }
@@ -91,7 +91,7 @@
   background: var(--background-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   color: var(--foreground);
   transition: border-color var(--motion-fast);
 }
@@ -103,6 +103,7 @@
 .whatsapp-form-input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
 }
 
 .whatsapp-form-input:disabled {
@@ -111,7 +112,7 @@
 }
 
 .whatsapp-form-hint {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
   margin: 0;
 }
@@ -134,20 +135,20 @@
 }
 
 .whatsapp-qr-instructions {
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   color: var(--text-secondary);
   text-align: center;
   margin: 0;
 }
 
 .whatsapp-qr-steps {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
 }
 
 .whatsapp-qr-container {
   padding: var(--space-3);
-  background: white;
+  background: var(--card);
   border-radius: var(--radius-sm);
 }
 
@@ -158,7 +159,7 @@
 }
 
 .whatsapp-qr-waiting {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--text-tertiary);
   margin: 0;
   animation: whatsapp-pulse 2s ease-in-out infinite;
@@ -182,7 +183,7 @@
 }
 
 .whatsapp-help summary {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
@@ -196,7 +197,7 @@
 .whatsapp-help-list {
   margin: var(--space-3) 0 0;
   padding-left: var(--space-5);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: 1.6;
 }

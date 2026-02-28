@@ -5,6 +5,7 @@
 import { useState, useCallback } from 'react'
 import type { Contact, DunbarCircle, CreateContactInput, UpdateContactInput } from '@lifeos/agents'
 import { CIRCLE_LABELS, CIRCLE_TO_SIGNIFICANCE } from '@lifeos/agents'
+import { Modal } from '@/components/ui/Modal'
 import '@/styles/components/ContactFormModal.css'
 
 interface ContactFormModalProps {
@@ -103,28 +104,50 @@ export function ContactFormModal({ contact, onSave, onClose }: ContactFormModalP
       }
     },
     [
-      displayName, firstName, lastName, title, company, relationship,
-      circle, emails, phones, linkedinSlug, tags, notes,
-      isEditing, contact, onSave, onClose,
+      displayName,
+      firstName,
+      lastName,
+      title,
+      company,
+      relationship,
+      circle,
+      emails,
+      phones,
+      linkedinSlug,
+      tags,
+      notes,
+      isEditing,
+      contact,
+      onSave,
+      onClose,
     ]
   )
 
-  return (
-    <div className="contact-form-overlay" onClick={onClose}>
-      <form
-        className="contact-form"
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={handleSubmit}
+  const modalFooter = (
+    <>
+      <button type="button" className="contact-form__cancel-btn" onClick={onClose}>
+        Cancel
+      </button>
+      <button
+        type="submit"
+        form="contact-form"
+        className="contact-form__save-btn"
+        disabled={!displayName.trim() || saving}
       >
-        <div className="contact-form__header">
-          <h2 className="contact-form__title">
-            {isEditing ? 'Edit Contact' : 'Add Contact'}
-          </h2>
-          <button type="button" className="contact-form__close" onClick={onClose}>
-            &times;
-          </button>
-        </div>
+        {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Contact'}
+      </button>
+    </>
+  )
 
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      size="md"
+      title={isEditing ? 'Edit Contact' : 'Add Contact'}
+      footer={modalFooter}
+    >
+      <form id="contact-form" className="contact-form" onSubmit={handleSubmit}>
         <div className="contact-form__body">
           {/* Name */}
           <div className="contact-form__field">
@@ -264,20 +287,7 @@ export function ContactFormModal({ contact, onSave, onClose }: ContactFormModalP
             />
           </div>
         </div>
-
-        <div className="contact-form__footer">
-          <button type="button" className="contact-form__cancel-btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="contact-form__save-btn"
-            disabled={!displayName.trim() || saving}
-          >
-            {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Contact'}
-          </button>
-        </div>
       </form>
-    </div>
+    </Modal>
   )
 }

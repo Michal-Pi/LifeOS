@@ -3,7 +3,6 @@ import type {
   SessionId,
   CreateSessionInput,
   CompleteSessionInput,
-  FeelingState,
 } from '../domain/models'
 
 export interface SessionRepository {

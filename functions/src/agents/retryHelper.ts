@@ -44,17 +44,17 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
 export function isRetryableError(error: unknown): boolean {
   if (!error) return false
 
-  const err = error as any
+  const err = error as Record<string, unknown>
 
   // Network errors (Node.js error codes)
   const networkErrorCodes = ['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNRESET', 'EPIPE']
-  if (err.code && networkErrorCodes.includes(err.code)) {
+  if (typeof err.code === 'string' && networkErrorCodes.includes(err.code)) {
     return true
   }
 
   // HTTP status codes
   if (err.status || err.statusCode) {
-    const status = err.status || err.statusCode
+    const status = (err.status || err.statusCode) as number
     // Rate limits
     if (status === 429) return true
     // Server errors (5xx)
@@ -64,7 +64,7 @@ export function isRetryableError(error: unknown): boolean {
   }
 
   // Error message contains rate limit indicators
-  const message = err.message?.toLowerCase() || ''
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase()
   if (
     message.includes('rate limit') ||
     message.includes('too many requests') ||

@@ -122,10 +122,7 @@ const MIN_SCORE_THRESHOLD = 60
  * Compare two contacts for duplicate likelihood.
  * Returns a match result with score (0-100) and reasons, or null if below threshold.
  */
-export function compareContacts(
-  a: ContactForDedup,
-  b: ContactForDedup
-): DedupMatchResult | null {
+export function compareContacts(a: ContactForDedup, b: ContactForDedup): DedupMatchResult | null {
   // Never match a contact with itself
   if (a.contactId === b.contactId) return null
 
@@ -215,14 +212,8 @@ export function compareContacts(
       b.lastName &&
       !reasons.some((r) => r.type === 'name_similar')
     ) {
-      const firstSim = jaroWinklerSimilarity(
-        normalizeName(a.firstName),
-        normalizeName(b.firstName)
-      )
-      const lastSim = jaroWinklerSimilarity(
-        normalizeName(a.lastName),
-        normalizeName(b.lastName)
-      )
+      const firstSim = jaroWinklerSimilarity(normalizeName(a.firstName), normalizeName(b.firstName))
+      const lastSim = jaroWinklerSimilarity(normalizeName(a.lastName), normalizeName(b.lastName))
       if (firstSim >= 0.9 && lastSim >= 0.9) {
         reasons.push({
           type: 'name_similar',

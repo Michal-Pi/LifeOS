@@ -207,9 +207,9 @@ export function getHabitStatsUsecase(checkinRepo: CheckinRepository) {
 
     // Calculate metrics
     const totalCheckins = checkins.length
-    const doneCount = checkins.filter((c: any) => c.status === 'done').length
-    const tinyCount = checkins.filter((c: any) => c.status === 'tiny').length
-    const skipCount = checkins.filter((c: any) => c.status === 'skip').length
+    const doneCount = checkins.filter((c) => c.status === 'done').length
+    const tinyCount = checkins.filter((c) => c.status === 'tiny').length
+    const skipCount = checkins.filter((c) => c.status === 'skip').length
 
     // Calculate current streak
     let currentStreak = 0
@@ -218,7 +218,7 @@ export function getHabitStatsUsecase(checkinRepo: CheckinRepository) {
 
     while (true) {
       const dateKey = checkDate.toISOString().split('T')[0]
-      const checkin = checkins.find((c: any) => c.dateKey === dateKey)
+      const checkin = checkins.find((c) => c.dateKey === dateKey)
 
       if (!checkin || checkin.status === 'skip') {
         break

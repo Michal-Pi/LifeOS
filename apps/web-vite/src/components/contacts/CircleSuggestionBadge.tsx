@@ -82,7 +82,9 @@ export function CircleSuggestionBadge({
         <span className="circle-suggestion__label">
           AI suggests: <strong>{suggestedLabel}</strong>
         </span>
-        <span className={`circle-suggestion__confidence circle-suggestion__confidence--${suggestion.confidence}`}>
+        <span
+          className={`circle-suggestion__confidence circle-suggestion__confidence--${suggestion.confidence}`}
+        >
           {suggestion.confidence}
         </span>
       </div>

@@ -1,0 +1,48 @@
+---
+title: "Typed Rewrite Operators — Sublation as Graph Transformation"
+---
+graph LR
+    subgraph OPERATORS["Typed Rewrite Operators"]
+        direction TB
+        OP1["SPLIT(Concept)<br/>━━━━━━━━━━━━<br/>'Demand' → {'Latent Demand',<br/>'Effective Demand'}"]
+        OP2["MERGE(C1, C2)<br/>━━━━━━━━━━━━<br/>{'Price Signal', 'Market Signal'}<br/>→ 'Market Indicator'"]
+        OP3["REVERSE_EDGE(A→B)<br/>━━━━━━━━━━━━<br/>'Regulation → Innovation'<br/>becomes 'Innovation → Regulation'"]
+        OP4["ADD_MEDIATOR(A→B)<br/>━━━━━━━━━━━━<br/>'Rates → Layoffs' becomes<br/>'Rates → VC Burn → Layoffs'"]
+        OP5["SCOPE_TO_REGIME(Claim, R)<br/>━━━━━━━━━━━━<br/>'Growth slows' holds only in<br/>Regime: 'Post-tightening'"]
+        OP6["TEMPORALIZE(C1 vs C2)<br/>━━━━━━━━━━━━<br/>Contradiction becomes sequence:<br/>'Phase 1: C1' → 'Phase 2: C2'"]
+    end
+
+    subgraph BEFORE["Before Sublation"]
+        B1["Concept: 'Demand'"]
+        B2["Claim A: 'Demand rises'"]
+        B3["Claim B: 'Demand falls'"]
+        BCON["⚡ Contradiction"]
+        B2 --- BCON
+        B3 --- BCON
+    end
+
+    subgraph AFTER["After Sublation (SPLIT + SCOPE)"]
+        A1["Concept: 'Latent Demand'<br/><i>v2a — split from 'Demand'</i>"]
+        A2["Concept: 'Effective Demand'<br/><i>v2b — split from 'Demand'</i>"]
+        A3["Claim A': 'Latent demand rises'<br/><i>holds_in_regime: ALL</i>"]
+        A4["Claim B': 'Effective demand falls'<br/><i>holds_in_regime: 'Credit tightening'</i>"]
+        ARESOLVED["✓ Resolved:<br/>different concepts,<br/>different regimes"]
+        A1 --- A3
+        A2 --- A4
+        A3 --- ARESOLVED
+        A4 --- ARESOLVED
+    end
+
+    BEFORE -->|"SPLIT('Demand')<br/>+<br/>SCOPE_TO_REGIME(B, R)"| AFTER
+
+    classDef opStyle fill:#101a10,stroke:#8fc46a,color:#8fc46a
+    classDef beforeStyle fill:#1a1010,stroke:#c46a6a,color:#e8e4df
+    classDef afterStyle fill:#101a10,stroke:#8fc46a,color:#e8e4df
+    classDef contraStyle fill:#1a1010,stroke:#c46a6a,color:#c46a6a
+    classDef resolvedStyle fill:#101a10,stroke:#8fc46a,color:#8fc46a
+
+    class OP1,OP2,OP3,OP4,OP5,OP6 opStyle
+    class B1,B2,B3 beforeStyle
+    class BCON contraStyle
+    class A1,A2,A3,A4 afterStyle
+    class ARESOLVED resolvedStyle

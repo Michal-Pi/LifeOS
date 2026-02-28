@@ -2,17 +2,23 @@
  * ProjectSidebar Component
  *
  * Single-column navigation for Notes:
+ * - Pinned notes at top
  * - New Note, Search, Show Archived
- * - Projects (topics) -> Chapters (sections) -> Notes
- * - Hover menus for delete/duplicate actions
+ * - Projects (topics) -> Chapters (sections) -> Notes (sorted by last-edited)
+ * - Unassigned notes at bottom
+ * - Hover preview popover on note items
+ * - Context menus for delete/duplicate/pin actions
  */
 
-import { useMemo, useRef, useState, useEffect } from 'react'
+import { useMemo, useRef, useState, useEffect, useCallback } from 'react'
 import type { Note, SectionId, TopicId } from '@lifeos/notes'
+import { formatDistanceToNow } from 'date-fns'
 import { useTopics } from '@/hooks/useTopics'
 import { useSections } from '@/hooks/useSections'
+import { usePinnedNotes } from '@/hooks/usePinnedNotes'
 import { useDialog } from '@/contexts/useDialog'
 import { Menu, MenuItem } from '@/components/Menu'
+import { stripHtml } from '@/notes/noteContent'
 
 export interface ProjectSidebarProps {
   notes: Note[]
@@ -37,6 +43,19 @@ type MenuState = {
   y: number
 }
 
+type PreviewState = {
+  note: Note
+  rect: DOMRect
+} | null
+
+function formatRelative(ms: number): string {
+  return formatDistanceToNow(new Date(ms), { addSuffix: true })
+}
+
+function sortByUpdatedDesc(a: Note, b: Note): number {
+  return b.updatedAtMs - a.updatedAtMs
+}
+
 export function ProjectSidebar({
   notes,
   selectedTopicId,
@@ -55,10 +74,13 @@ export function ProjectSidebar({
   const { confirm } = useDialog()
   const { topics, createTopic, deleteTopic } = useTopics()
   const { sections, createSection, deleteSection } = useSections()
+  const { pinnedIds, togglePin, isPinned } = usePinnedNotes()
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set())
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
   const [showArchived, setShowArchived] = useState(false)
   const [menuState, setMenuState] = useState<MenuState | null>(null)
+  const [previewNote, setPreviewNote] = useState<PreviewState>(null)
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const sidebarRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -87,6 +109,11 @@ export function ProjectSidebar({
     return result
   }, [notes, searchQuery, showArchived])
 
+  const pinnedNotes = useMemo(
+    () => filteredNotes.filter((note) => pinnedIds.has(note.noteId)).sort(sortByUpdatedDesc),
+    [filteredNotes, pinnedIds]
+  )
+
   const notesBySection = useMemo(() => {
     const map = new Map<SectionId, Note[]>()
     for (const note of filteredNotes) {
@@ -94,6 +121,10 @@ export function ProjectSidebar({
       const current = map.get(note.sectionId) || []
       current.push(note)
       map.set(note.sectionId, current)
+    }
+    // Sort each section's notes by updatedAtMs desc
+    for (const [key, list] of map.entries()) {
+      map.set(key, list.sort(sortByUpdatedDesc))
     }
     return map
   }, [filteredNotes])
@@ -110,7 +141,7 @@ export function ProjectSidebar({
   }, [filteredNotes])
 
   const unassignedNotes = useMemo(
-    () => filteredNotes.filter((note) => !note.topicId),
+    () => filteredNotes.filter((note) => !note.topicId).sort(sortByUpdatedDesc),
     [filteredNotes]
   )
 
@@ -215,7 +246,7 @@ export function ProjectSidebar({
     }
   }
 
-  const deleteNote = async (noteId: string) => {
+  const handleDeleteNote = async (noteId: string) => {
     if (!onNoteDelete) return
     const confirmed = await confirm({
       title: 'Delete note',
@@ -231,6 +262,44 @@ export function ProjectSidebar({
     if (!onNoteDuplicate) return
     await onNoteDuplicate(noteId)
   }
+
+  // --- Hover preview handlers ---
+  const handleNoteMouseEnter = useCallback((e: React.MouseEvent, note: Note) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    hoverTimerRef.current = setTimeout(() => {
+      setPreviewNote({ note, rect })
+    }, 500)
+  }, [])
+
+  const handleNoteMouseLeave = useCallback(() => {
+    clearTimeout(hoverTimerRef.current)
+    setPreviewNote(null)
+  }, [])
+
+  // --- Note item renderer ---
+  const renderNoteItem = (note: Note) => (
+    <div
+      key={note.noteId}
+      className={`sidebar-row note ${selectedNoteId === note.noteId ? 'active' : ''}`}
+      onClick={() => onNoteSelect(note.noteId)}
+      onMouseEnter={(e) => handleNoteMouseEnter(e, note)}
+      onMouseLeave={handleNoteMouseLeave}
+    >
+      {isPinned(note.noteId) && (
+        <span className="note-pin-icon" aria-label="Pinned">
+          *
+        </span>
+      )}
+      <span className="row-label">{note.title}</span>
+      <button
+        className="row-menu"
+        type="button"
+        onClick={(event) => openMenu('note', note.noteId, event)}
+      >
+        …
+      </button>
+    </div>
+  )
 
   return (
     <aside className="notes-sidebar" ref={sidebarRef}>
@@ -263,10 +332,22 @@ export function ProjectSidebar({
       <div className="sidebar-divider" />
 
       <div className="sidebar-tree">
+        {/* Pinned Section */}
+        {pinnedNotes.length > 0 && (
+          <div className="sidebar-section sidebar-section--pinned">
+            <div className="sidebar-section__header">
+              <span className="sidebar-section__label">Pinned</span>
+              <span className="sidebar-section__count">{pinnedNotes.length}</span>
+            </div>
+            {pinnedNotes.map(renderNoteItem)}
+          </div>
+        )}
+
+        {/* Topic Tree */}
         {sortedTopics.map((topic) => {
           const topicNotes = notesByTopic.get(topic.topicId) || []
           const topicSections = sectionsByTopic.get(topic.topicId) || []
-          const directNotes = topicNotes.filter((note) => !note.sectionId)
+          const directNotes = topicNotes.filter((note) => !note.sectionId).sort(sortByUpdatedDesc)
           const hasMatches =
             topicNotes.length > 0 ||
             topicSections.some(
@@ -280,10 +361,28 @@ export function ProjectSidebar({
           const isExpanded = expandedTopics.has(topic.topicId) || selectedTopicId === topic.topicId
 
           return (
-            <div key={topic.topicId} className="sidebar-group">
-              <div
-                className={`sidebar-row ${selectedTopicId === topic.topicId && !selectedSectionId ? 'active' : ''}`}
-                onClick={() => {
+            <details
+              key={topic.topicId}
+              className="sidebar-topic"
+              open={isExpanded}
+              onToggle={(e) => {
+                // Sync React state with native <details> toggle
+                const open = (e.currentTarget as HTMLDetailsElement).open
+                setExpandedTopics((prev) => {
+                  const next = new Set(prev)
+                  if (open) {
+                    next.add(topic.topicId)
+                  } else {
+                    next.delete(topic.topicId)
+                  }
+                  return next
+                })
+              }}
+            >
+              <summary
+                className={`sidebar-topic__header ${selectedTopicId === topic.topicId && !selectedSectionId ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.preventDefault()
                   onTopicSelect(topic.topicId)
                   onSectionSelect(null, topic.topicId)
                   if (!isExpanded) {
@@ -291,29 +390,38 @@ export function ProjectSidebar({
                   }
                 }}
               >
-                <button
-                  className="chevron"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    toggleTopic(topic.topicId)
-                  }}
-                  type="button"
-                  aria-label={isExpanded ? 'Collapse project' : 'Expand project'}
-                >
-                  {isExpanded ? '▾' : '▸'}
-                </button>
-                <span className="row-label">{topic.name}</span>
+                <span className="sidebar-topic__arrow">
+                  <button
+                    className="chevron"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      event.preventDefault()
+                      toggleTopic(topic.topicId)
+                    }}
+                    type="button"
+                    aria-label={isExpanded ? 'Collapse project' : 'Expand project'}
+                  >
+                    {isExpanded ? '▾' : '▸'}
+                  </button>
+                </span>
+                <span className="sidebar-topic__name">{topic.name}</span>
+                <span className="sidebar-topic__count">{topicNotes.length}</span>
+                <span className="sidebar-topic__edited">{formatRelative(topic.updatedAtMs)}</span>
                 <button
                   className="row-menu"
                   type="button"
-                  onClick={(event) => openMenu('project', topic.topicId, event)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    event.preventDefault()
+                    openMenu('project', topic.topicId, event)
+                  }}
                 >
                   …
                 </button>
-              </div>
+              </summary>
 
               {isExpanded && (
-                <div className="sidebar-children">
+                <div className="sidebar-topic__children">
                   {topicSections.map((section) => {
                     const sectionNotes = notesBySection.get(section.sectionId) || []
                     if (searchQuery.trim() && sectionNotes.length === 0) {
@@ -323,15 +431,38 @@ export function ProjectSidebar({
                       expandedSections.has(section.sectionId) ||
                       selectedSectionId === section.sectionId
                     return (
-                      <div key={section.sectionId} className="sidebar-group">
-                        <div
-                          className={`sidebar-row chapter ${selectedSectionId === section.sectionId ? 'active' : ''}`}
-                          onClick={() => onSectionSelect(section.sectionId, topic.topicId)}
+                      <details
+                        key={section.sectionId}
+                        className="sidebar-section"
+                        open={isSectionExpanded}
+                        onToggle={(e) => {
+                          const open = (e.currentTarget as HTMLDetailsElement).open
+                          setExpandedSections((prev) => {
+                            const next = new Set(prev)
+                            if (open) {
+                              next.add(section.sectionId)
+                            } else {
+                              next.delete(section.sectionId)
+                            }
+                            return next
+                          })
+                        }}
+                      >
+                        <summary
+                          className={`sidebar-section__header ${selectedSectionId === section.sectionId ? 'active' : ''}`}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            onSectionSelect(section.sectionId, topic.topicId)
+                            if (!isSectionExpanded) {
+                              toggleSection(section.sectionId)
+                            }
+                          }}
                         >
                           <button
                             className="chevron"
                             onClick={(event) => {
                               event.stopPropagation()
+                              event.preventDefault()
                               toggleSection(section.sectionId)
                             }}
                             type="button"
@@ -339,92 +470,52 @@ export function ProjectSidebar({
                           >
                             {isSectionExpanded ? '▾' : '▸'}
                           </button>
-                          <span className="row-label">{section.name}</span>
+                          <span className="sidebar-section__name">{section.name}</span>
+                          <span className="sidebar-section__count">{sectionNotes.length}</span>
                           <button
                             className="row-menu"
                             type="button"
-                            onClick={(event) => openMenu('chapter', section.sectionId, event)}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              event.preventDefault()
+                              openMenu('chapter', section.sectionId, event)
+                            }}
                           >
                             …
                           </button>
-                        </div>
+                        </summary>
                         {isSectionExpanded && (
-                          <div className="sidebar-children notes">
-                            {sectionNotes.map((note) => (
-                              <div
-                                key={note.noteId}
-                                className={`sidebar-row note ${selectedNoteId === note.noteId ? 'active' : ''}`}
-                                onClick={() => onNoteSelect(note.noteId)}
-                              >
-                                <span className="row-label">{note.title}</span>
-                                <button
-                                  className="row-menu"
-                                  type="button"
-                                  onClick={(event) => openMenu('note', note.noteId, event)}
-                                >
-                                  …
-                                </button>
-                              </div>
-                            ))}
+                          <div className="sidebar-section__notes">
+                            {sectionNotes.map(renderNoteItem)}
                           </div>
                         )}
-                      </div>
+                      </details>
                     )
                   })}
                   {directNotes.length > 0 && (
                     <div className="sidebar-group">
                       <div className="sidebar-row chapter muted">General</div>
-                      <div className="sidebar-children notes">
-                        {directNotes.map((note) => (
-                          <div
-                            key={note.noteId}
-                            className={`sidebar-row note ${selectedNoteId === note.noteId ? 'active' : ''}`}
-                            onClick={() => onNoteSelect(note.noteId)}
-                          >
-                            <span className="row-label">{note.title}</span>
-                            <button
-                              className="row-menu"
-                              type="button"
-                              onClick={(event) => openMenu('note', note.noteId, event)}
-                            >
-                              …
-                            </button>
-                          </div>
-                        ))}
+                      <div className="sidebar-section__notes">
+                        {directNotes.map(renderNoteItem)}
                       </div>
                     </div>
                   )}
                 </div>
               )}
-            </div>
+            </details>
           )
         })}
 
+        {/* Unassigned Notes — always last */}
         {unassignedNotes.length > 0 && (
-          <div className="sidebar-group">
+          <div className="sidebar-group sidebar-group--unassigned">
             <div className="sidebar-row muted">Unassigned</div>
-            <div className="sidebar-children notes">
-              {unassignedNotes.map((note) => (
-                <div
-                  key={note.noteId}
-                  className={`sidebar-row note ${selectedNoteId === note.noteId ? 'active' : ''}`}
-                  onClick={() => onNoteSelect(note.noteId)}
-                >
-                  <span className="row-label">{note.title}</span>
-                  <button
-                    className="row-menu"
-                    type="button"
-                    onClick={(event) => openMenu('note', note.noteId, event)}
-                  >
-                    …
-                  </button>
-                </div>
-              ))}
-            </div>
+            <div className="sidebar-section__notes">{unassignedNotes.map(renderNoteItem)}</div>
           </div>
         )}
       </div>
 
+      {/* Context Menu */}
       {menuState && (
         <div className="sidebar-menu" style={{ top: menuState.y, left: menuState.x }} ref={menuRef}>
           <Menu>
@@ -472,6 +563,14 @@ export function ProjectSidebar({
               <>
                 <MenuItem
                   onSelect={() => {
+                    togglePin(menuState.id)
+                    setMenuState(null)
+                  }}
+                >
+                  {isPinned(menuState.id) ? 'Unpin note' : 'Pin note'}
+                </MenuItem>
+                <MenuItem
+                  onSelect={() => {
                     duplicateNote(menuState.id)
                     setMenuState(null)
                   }}
@@ -480,7 +579,7 @@ export function ProjectSidebar({
                 </MenuItem>
                 <MenuItem
                   onSelect={() => {
-                    deleteNote(menuState.id)
+                    handleDeleteNote(menuState.id)
                     setMenuState(null)
                   }}
                 >
@@ -489,6 +588,33 @@ export function ProjectSidebar({
               </>
             )}
           </Menu>
+        </div>
+      )}
+
+      {/* Hover Preview Popover */}
+      {previewNote && (
+        <div
+          className="note-preview"
+          style={{
+            top: previewNote.rect.top,
+            left: previewNote.rect.right + 8,
+          }}
+        >
+          <p className="note-preview__text">
+            {stripHtml(previewNote.note.contentHtml).slice(0, 200)}
+          </p>
+          {(previewNote.note.tags?.length ?? 0) > 0 && (
+            <div className="note-preview__tags">
+              {previewNote.note.tags.map((tag) => (
+                <span key={tag} className="note-preview__tag">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+          <p className="note-preview__date">
+            Edited {formatRelative(previewNote.note.updatedAtMs)}
+          </p>
         </div>
       )}
 
@@ -536,10 +662,159 @@ export function ProjectSidebar({
           padding: 0.75rem 0.5rem 1rem;
         }
 
+        /* --- Pinned Section --- */
+
+        .sidebar-section--pinned {
+          border-bottom: 1px solid var(--border);
+          padding-bottom: var(--space-2);
+          margin-bottom: var(--space-2);
+        }
+
+        .sidebar-section--pinned .sidebar-section__header {
+          display: flex;
+          align-items: center;
+          gap: var(--space-2);
+          padding: var(--space-1) var(--space-3);
+        }
+
+        .sidebar-section--pinned .sidebar-section__label {
+          font-size: var(--text-xs);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: var(--accent);
+        }
+
+        .sidebar-section--pinned .sidebar-section__count {
+          font-size: var(--text-xs);
+          font-family: var(--font-mono);
+          color: var(--text-tertiary);
+        }
+
+        /* --- Topic (details/summary) --- */
+
+        .sidebar-topic {
+          margin-bottom: 0.15rem;
+        }
+
+        .sidebar-topic__header {
+          display: flex;
+          align-items: center;
+          gap: var(--space-2);
+          padding: var(--space-2) var(--space-3);
+          cursor: pointer;
+          font-size: var(--text-sm);
+          font-weight: 600;
+          list-style: none;
+          border-radius: 10px;
+          transition: background var(--motion-fast) var(--motion-ease);
+        }
+
+        .sidebar-topic__header::-webkit-details-marker { display: none; }
+
+        .sidebar-topic__header:hover {
+          background: var(--background-tertiary);
+        }
+
+        .sidebar-topic__header.active {
+          background: var(--accent-subtle);
+          color: var(--foreground);
+        }
+
+        .sidebar-topic__arrow {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .sidebar-topic__name {
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .sidebar-topic__count {
+          font-size: var(--text-xs);
+          font-family: var(--font-mono);
+          color: var(--text-tertiary);
+          margin-left: auto;
+        }
+
+        .sidebar-topic__edited {
+          font-size: var(--text-xs);
+          color: var(--text-tertiary);
+          white-space: nowrap;
+        }
+
+        .sidebar-topic__children {
+          padding-left: var(--space-3);
+        }
+
+        /* --- Section (details/summary) --- */
+
+        .sidebar-section {
+          margin-bottom: 0.1rem;
+        }
+
+        .sidebar-section__header {
+          display: flex;
+          align-items: center;
+          gap: var(--space-2);
+          padding: var(--space-1) var(--space-3);
+          cursor: pointer;
+          font-size: var(--text-sm);
+          color: var(--text-secondary);
+          list-style: none;
+          border-radius: 10px;
+          transition: background var(--motion-fast) var(--motion-ease);
+        }
+
+        .sidebar-section__header::-webkit-details-marker { display: none; }
+
+        .sidebar-section__header:hover {
+          background: var(--background-secondary);
+        }
+
+        .sidebar-section__header.active {
+          background: var(--accent-subtle);
+          color: var(--foreground);
+        }
+
+        .sidebar-section__name {
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .sidebar-section__count {
+          font-size: var(--text-xs);
+          font-family: var(--font-mono);
+          color: var(--text-tertiary);
+          margin-left: auto;
+        }
+
+        .sidebar-section__notes {
+          padding-left: var(--space-3);
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+          margin-bottom: 0.4rem;
+        }
+
+        /* --- Shared row styles --- */
+
         .sidebar-group {
           display: flex;
           flex-direction: column;
           gap: 0.25rem;
+        }
+
+        .sidebar-group--unassigned {
+          margin-top: var(--space-2);
+          padding-top: var(--space-2);
+          border-top: 1px solid var(--border);
         }
 
         .sidebar-row {
@@ -580,6 +855,12 @@ export function ProjectSidebar({
           color: var(--text-secondary);
         }
 
+        .note-pin-icon {
+          font-size: 0.7rem;
+          color: var(--accent);
+          flex-shrink: 0;
+        }
+
         .chevron {
           width: 18px;
           height: 18px;
@@ -591,6 +872,7 @@ export function ProjectSidebar({
           align-items: center;
           justify-content: center;
           font-size: 0.7rem;
+          padding: 0;
         }
 
         .row-label {
@@ -608,9 +890,12 @@ export function ProjectSidebar({
           opacity: 0;
           transition: opacity var(--motion-fast) var(--motion-ease);
           font-size: 1rem;
+          padding: 0;
         }
 
-        .sidebar-row:hover .row-menu {
+        .sidebar-row:hover .row-menu,
+        .sidebar-topic__header:hover .row-menu,
+        .sidebar-section__header:hover .row-menu {
           opacity: 1;
         }
 
@@ -627,6 +912,55 @@ export function ProjectSidebar({
         .sidebar-menu {
           position: absolute;
           z-index: 20;
+        }
+
+        /* --- Hover Preview Popover --- */
+
+        .note-preview {
+          position: fixed;
+          z-index: 100;
+          width: 260px;
+          max-height: 160px;
+          padding: var(--space-3);
+          background: var(--card);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-md);
+          box-shadow: var(--shadow-lg);
+          pointer-events: none;
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-2);
+        }
+
+        .note-preview__text {
+          font-size: var(--text-sm);
+          color: var(--text-secondary);
+          line-height: 1.4;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          margin: 0;
+        }
+
+        .note-preview__tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: var(--space-1);
+        }
+
+        .note-preview__tag {
+          font-size: var(--text-xs);
+          padding: 1px 6px;
+          background: var(--accent-subtle);
+          color: var(--accent);
+          border-radius: var(--radius-full);
+        }
+
+        .note-preview__date {
+          font-size: var(--text-xs);
+          color: var(--text-tertiary);
+          margin: 0;
         }
       `}</style>
     </aside>

@@ -9,7 +9,7 @@ import type {
   DeepResearchRequestId,
   DeepResearchStatus,
   CreateDeepResearchRequestInput,
-  WorkspaceId,
+  WorkflowId,
   RunId,
 } from '../domain/models'
 import type { DeepResearchRepository } from '../ports/deepResearchRepository'
@@ -30,7 +30,7 @@ const assertValidResearchContext = (context: CreateDeepResearchRequestInput['con
     if (size > MAX_CONTEXT_BYTES) {
       throw new Error('Context size exceeds limit')
     }
-  } catch (error) {
+  } catch (_error) {
     throw new Error('Research request context must be JSON-serializable and under 100KB')
   }
 }
@@ -59,21 +59,21 @@ export function createDeepResearchRequestUsecase(repo: DeepResearchRepository) {
 export function updateDeepResearchRequestUsecase(repo: DeepResearchRepository) {
   return async (
     userId: string,
-    workspaceId: WorkspaceId,
+    workflowId: WorkflowId,
     requestId: DeepResearchRequestId,
-    updates: Partial<Omit<DeepResearchRequest, 'requestId' | 'userId' | 'workspaceId'>>
+    updates: Partial<Omit<DeepResearchRequest, 'requestId' | 'userId' | 'workflowId'>>
   ): Promise<DeepResearchRequest> => {
-    return await repo.update(userId, workspaceId, requestId, updates)
+    return await repo.update(userId, workflowId, requestId, updates)
   }
 }
 
 export function getDeepResearchRequestUsecase(repo: DeepResearchRepository) {
   return async (
     userId: string,
-    workspaceId: WorkspaceId,
+    workflowId: WorkflowId,
     requestId: DeepResearchRequestId
   ): Promise<DeepResearchRequest | null> => {
-    return await repo.get(userId, workspaceId, requestId)
+    return await repo.get(userId, workflowId, requestId)
   }
 }
 
@@ -81,7 +81,7 @@ export function listDeepResearchRequestsUsecase(repo: DeepResearchRepository) {
   return async (
     userId: string,
     options?: {
-      workspaceId?: WorkspaceId
+      workflowId?: WorkflowId
       status?: DeepResearchStatus
       runId?: RunId
       limit?: number

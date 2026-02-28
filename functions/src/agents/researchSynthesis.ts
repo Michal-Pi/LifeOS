@@ -2,8 +2,11 @@ import { randomUUID } from 'crypto'
 import type { AgentConfig, DeepResearchRequest } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
-import { ANTHROPIC_API_KEY, OPENAI_API_KEY, loadProviderKeys } from './providerKeys.js'
+import { createLogger } from '../lib/logger.js'
+import { loadProviderKeys } from './providerKeys.js'
 import { executeWithProvider } from './providerService.js'
+
+const log = createLogger('ResearchSynthesis')
 
 const buildSynthesisPrompt = (request: DeepResearchRequest): string => {
   const results = request.results ?? []
@@ -53,7 +56,7 @@ const fallbackSynthesis = (request: DeepResearchRequest): string => {
 const buildSynthesisAgent = (userId: string, provider: 'openai' | 'anthropic'): AgentConfig => {
   const now = Date.now()
   const agentId = `agent:research-synthesis:${randomUUID()}`
-  const modelName = provider === 'anthropic' ? 'claude-3-opus-20240229' : 'gpt-4o'
+  const modelName = provider === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-5.2'
   return {
     agentId: agentId as AgentConfig['agentId'],
     userId,
@@ -72,59 +75,56 @@ const buildSynthesisAgent = (userId: string, provider: 'openai' | 'anthropic'): 
   }
 }
 
-export const synthesizeResearch = onCall(
-  { secrets: [OPENAI_API_KEY, ANTHROPIC_API_KEY] },
-  async (request) => {
-    if (!request.auth?.uid) {
-      throw new HttpsError('unauthenticated', 'Authentication required.')
-    }
-
-    const { requestId } = request.data as { requestId?: string }
-    if (!requestId) {
-      throw new HttpsError('invalid-argument', 'requestId is required.')
-    }
-
-    const db = getFirestore()
-    const snapshot = await db
-      .collectionGroup('deepResearchRequests')
-      .where('requestId', '==', requestId)
-      .where('userId', '==', request.auth.uid)
-      .limit(1)
-      .get()
-
-    if (snapshot.empty) {
-      throw new HttpsError('not-found', 'Research request not found.')
-    }
-
-    const docRef = snapshot.docs[0].ref
-    const researchRequest = snapshot.docs[0].data() as DeepResearchRequest
-    const results = researchRequest.results ?? []
-    if (results.length === 0) {
-      throw new HttpsError('failed-precondition', 'No research results to synthesize.')
-    }
-
-    let synthesizedFindings = ''
-    try {
-      const apiKeys = await loadProviderKeys(request.auth.uid)
-      const provider = apiKeys.anthropic ? 'anthropic' : apiKeys.openai ? 'openai' : null
-      if (!provider) {
-        throw new Error('No synthesis provider configured')
-      }
-      const agent = buildSynthesisAgent(request.auth.uid, provider)
-      const prompt = buildSynthesisPrompt(researchRequest)
-      const result = await executeWithProvider(agent, prompt, undefined, apiKeys)
-      synthesizedFindings = result.output.trim()
-    } catch (error) {
-      console.error('AI synthesis failed, falling back to concatenation:', error)
-      synthesizedFindings = fallbackSynthesis(researchRequest)
-    }
-
-    await docRef.update({
-      synthesizedFindings,
-      status: 'completed',
-      integratedAtMs: Date.now(),
-    })
-
-    return { synthesizedFindings }
+export const synthesizeResearch = onCall({}, async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError('unauthenticated', 'Authentication required.')
   }
-)
+
+  const { requestId } = request.data as { requestId?: string }
+  if (!requestId) {
+    throw new HttpsError('invalid-argument', 'requestId is required.')
+  }
+
+  const db = getFirestore()
+  const snapshot = await db
+    .collectionGroup('deepResearchRequests')
+    .where('requestId', '==', requestId)
+    .where('userId', '==', request.auth.uid)
+    .limit(1)
+    .get()
+
+  if (snapshot.empty) {
+    throw new HttpsError('not-found', 'Research request not found.')
+  }
+
+  const docRef = snapshot.docs[0].ref
+  const researchRequest = snapshot.docs[0].data() as DeepResearchRequest
+  const results = researchRequest.results ?? []
+  if (results.length === 0) {
+    throw new HttpsError('failed-precondition', 'No research results to synthesize.')
+  }
+
+  let synthesizedFindings = ''
+  try {
+    const apiKeys = await loadProviderKeys(request.auth.uid)
+    const provider = apiKeys.anthropic ? 'anthropic' : apiKeys.openai ? 'openai' : null
+    if (!provider) {
+      throw new Error('No synthesis provider configured')
+    }
+    const agent = buildSynthesisAgent(request.auth.uid, provider)
+    const prompt = buildSynthesisPrompt(researchRequest)
+    const result = await executeWithProvider(agent, prompt, undefined, apiKeys)
+    synthesizedFindings = result.output.trim()
+  } catch (error) {
+    log.error('AI synthesis failed, falling back to concatenation', { error })
+    synthesizedFindings = fallbackSynthesis(researchRequest)
+  }
+
+  await docRef.update({
+    synthesizedFindings,
+    status: 'completed',
+    integratedAtMs: Date.now(),
+  })
+
+  return { synthesizedFindings }
+})

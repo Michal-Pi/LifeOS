@@ -46,6 +46,8 @@ const CONDITION_TYPE_OPTIONS: SelectOption[] = [
   { value: 'regex', label: 'Regex' },
 ]
 
+const NONE_AGENT_VALUE = '__none__'
+
 export function BuilderNodeProperties({
   node,
   agents,
@@ -62,7 +64,7 @@ export function BuilderNodeProperties({
   }
 
   const agentOptions: SelectOption[] = [
-    { value: '', label: 'None' },
+    { value: NONE_AGENT_VALUE, label: 'None' },
     ...agents.filter((a) => !a.archived).map((a) => ({ value: a.agentId, label: a.name })),
   ]
 
@@ -94,9 +96,11 @@ export function BuilderNodeProperties({
         <div className="node-properties__field">
           <label>Agent</label>
           <Select
-            value={node.agentId ?? ''}
+            value={node.agentId ?? NONE_AGENT_VALUE}
             onChange={(value) =>
-              onUpdate(node.id, { agentId: (value || undefined) as AgentId | undefined })
+              onUpdate(node.id, {
+                agentId: (value === NONE_AGENT_VALUE ? undefined : value) as AgentId | undefined,
+              })
             }
             options={agentOptions}
           />

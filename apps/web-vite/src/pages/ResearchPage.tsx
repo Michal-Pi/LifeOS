@@ -1,63 +1,62 @@
 import { useEffect, useMemo } from 'react'
 import type { ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { WorkspaceId } from '@lifeos/agents'
+import type { WorkflowId } from '@lifeos/agents'
 import { ResearchQueue } from '@/components/agents/ResearchQueue'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/EmptyState'
-import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
+import { useWorkflowOperations } from '@/hooks/useWorkflowOperations'
 
-const WORKSPACE_PARAM = 'workspaceId'
-const WORKSPACE_STORAGE_KEY = 'lifeos:lastResearchWorkspaceId'
+const WORKFLOW_PARAM = 'workflowId'
+const WORKFLOW_STORAGE_KEY = 'lifeos:lastResearchWorkflowId'
 
 export function ResearchPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { workspaces, isLoading, loadWorkspaces, error } = useWorkspaceOperations()
+  const { workflows, isLoading, loadWorkflows, error } = useWorkflowOperations()
 
   useEffect(() => {
-    void loadWorkspaces()
-  }, [loadWorkspaces])
+    void loadWorkflows()
+  }, [loadWorkflows])
 
-  const selectedWorkspaceId = useMemo<WorkspaceId | ''>(() => {
-    if (workspaces.length === 0) return ''
-    const paramId = searchParams.get(WORKSPACE_PARAM)
+  const selectedWorkflowId = useMemo<WorkflowId | ''>(() => {
+    if (workflows.length === 0) return ''
+    const paramId = searchParams.get(WORKFLOW_PARAM)
     const storedId =
-      typeof window !== 'undefined' ? window.localStorage.getItem(WORKSPACE_STORAGE_KEY) : null
-    const hasParamMatch =
-      !!paramId && workspaces.some((workspace) => workspace.workspaceId === paramId)
+      typeof window !== 'undefined' ? window.localStorage.getItem(WORKFLOW_STORAGE_KEY) : null
+    const hasParamMatch = !!paramId && workflows.some((workflow) => workflow.workflowId === paramId)
     const hasStoredMatch =
-      !!storedId && workspaces.some((workspace) => workspace.workspaceId === storedId)
-    if (hasParamMatch) return paramId as WorkspaceId
-    if (hasStoredMatch) return storedId as WorkspaceId
-    return workspaces[0].workspaceId
-  }, [searchParams, workspaces])
+      !!storedId && workflows.some((workflow) => workflow.workflowId === storedId)
+    if (hasParamMatch) return paramId as WorkflowId
+    if (hasStoredMatch) return storedId as WorkflowId
+    return workflows[0].workflowId
+  }, [searchParams, workflows])
 
   useEffect(() => {
-    if (!selectedWorkspaceId) return
+    if (!selectedWorkflowId) return
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(WORKSPACE_STORAGE_KEY, selectedWorkspaceId)
+      window.localStorage.setItem(WORKFLOW_STORAGE_KEY, selectedWorkflowId)
     }
-    const paramId = searchParams.get(WORKSPACE_PARAM)
-    if (paramId !== selectedWorkspaceId) {
+    const paramId = searchParams.get(WORKFLOW_PARAM)
+    if (paramId !== selectedWorkflowId) {
       const nextParams = new URLSearchParams(searchParams)
-      nextParams.set(WORKSPACE_PARAM, selectedWorkspaceId)
+      nextParams.set(WORKFLOW_PARAM, selectedWorkflowId)
       setSearchParams(nextParams, { replace: true })
     }
-  }, [searchParams, selectedWorkspaceId, setSearchParams])
+  }, [searchParams, selectedWorkflowId, setSearchParams])
 
-  const selectedWorkspace = useMemo(
-    () => workspaces.find((workspace) => workspace.workspaceId === selectedWorkspaceId) ?? null,
-    [workspaces, selectedWorkspaceId]
+  const selectedWorkflow = useMemo(
+    () => workflows.find((workflow) => workflow.workflowId === selectedWorkflowId) ?? null,
+    [workflows, selectedWorkflowId]
   )
 
-  const handleWorkspaceChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const nextId = event.target.value as WorkspaceId
+  const handleWorkflowChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const nextId = event.target.value as WorkflowId
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(WORKSPACE_STORAGE_KEY, nextId)
+      window.localStorage.setItem(WORKFLOW_STORAGE_KEY, nextId)
     }
     const nextParams = new URLSearchParams(searchParams)
-    nextParams.set(WORKSPACE_PARAM, nextId)
+    nextParams.set(WORKFLOW_PARAM, nextId)
     setSearchParams(nextParams)
   }
 
@@ -68,73 +67,73 @@ export function ResearchPage() {
           <h1>Research</h1>
           <p>Track deep research requests, upload findings, and complete workflows.</p>
         </div>
-        <Button variant="ghost" type="button" onClick={() => navigate('/workspaces')}>
-          Manage workspaces
+        <Button variant="ghost" type="button" onClick={() => navigate('/workflows')}>
+          Manage workflows
         </Button>
       </header>
 
-      {error && workspaces.length === 0 ? (
+      {error && workflows.length === 0 ? (
         <EmptyState
           label="Research"
-          title="Unable to load workspaces"
-          description="There was a problem fetching your workspaces."
+          title="Unable to load workflows"
+          description="There was a problem fetching your workflows."
           hint={error.message}
           actionLabel="Try again"
-          onAction={() => void loadWorkspaces()}
+          onAction={() => void loadWorkflows()}
         />
-      ) : isLoading && workspaces.length === 0 ? (
-        <div className="loading">Loading workspaces...</div>
-      ) : workspaces.length === 0 ? (
+      ) : isLoading && workflows.length === 0 ? (
+        <div className="loading">Loading workflows...</div>
+      ) : workflows.length === 0 ? (
         <EmptyState
           label="Research"
-          title="No workspaces yet"
-          description="Create a workspace to start collecting deep research requests."
-          actionLabel="Create workspace"
-          onAction={() => navigate('/workspaces')}
+          title="No workflows yet"
+          description="Create a workflow to start collecting deep research requests."
+          actionLabel="Create workflow"
+          onAction={() => navigate('/workflows')}
         />
       ) : (
         <>
           <div className="filters">
             <div>
-              <label htmlFor="researchWorkspace">Workspace</label>
+              <label htmlFor="researchWorkflow">Workflow</label>
               <select
-                id="researchWorkspace"
-                value={selectedWorkspaceId}
-                onChange={handleWorkspaceChange}
+                id="researchWorkflow"
+                value={selectedWorkflowId}
+                onChange={handleWorkflowChange}
               >
-                {workspaces.map((workspace) => (
-                  <option key={workspace.workspaceId} value={workspace.workspaceId}>
-                    {workspace.name}
+                {workflows.map((workflow) => (
+                  <option key={workflow.workflowId} value={workflow.workflowId}>
+                    {workflow.name}
                   </option>
                 ))}
               </select>
             </div>
-            {selectedWorkspace && (
+            {selectedWorkflow && (
               <div className="filter-summary">
-                <strong>{selectedWorkspace.agentIds.length}</strong> agents ·{' '}
-                <strong>{selectedWorkspace.workflowType}</strong> workflow
+                <strong>{selectedWorkflow.agentIds.length}</strong> agents ·{' '}
+                <strong>{selectedWorkflow.workflowType}</strong> workflow
               </div>
             )}
-            {selectedWorkspace && (
+            {selectedWorkflow && (
               <Button
                 variant="ghost"
                 type="button"
-                onClick={() => navigate(`/workspaces/${selectedWorkspace.workspaceId}`)}
+                onClick={() => navigate(`/workflows/${selectedWorkflow.workflowId}`)}
               >
-                Open workspace
+                Open workflow
               </Button>
             )}
           </div>
 
-          {selectedWorkspaceId && (
+          {selectedWorkflowId && (
             <div className="runs-section">
               <div className="section-header">
                 <h2>Research Queue</h2>
-                {selectedWorkspace?.description && (
-                  <p className="section-subtitle">{selectedWorkspace.description}</p>
+                {selectedWorkflow?.description && (
+                  <p className="section-subtitle">{selectedWorkflow.description}</p>
                 )}
               </div>
-              <ResearchQueue workspaceId={selectedWorkspaceId as WorkspaceId} />
+              <ResearchQueue workflowId={selectedWorkflowId as WorkflowId} />
             </div>
           )}
         </>

@@ -134,8 +134,9 @@ export const createFirestoreGraphRepository = (noteRepository: NoteRepository): 
         }
       }
 
-      // Shared projects (optimized: only create edge if ≥2 shared projects to reduce noise)
-      if (note.projectIds && note.projectIds.length > 0) {
+      // Shared projects (configurable threshold, default: 2)
+      const minSharedProjects = filters?.minSharedProjects ?? 2
+      if (minSharedProjects > 0 && note.projectIds && note.projectIds.length > 0) {
         for (const otherNote of filteredNotes) {
           if (otherNote.noteId === note.noteId) continue
           if (!otherNote.projectIds || otherNote.projectIds.length === 0) continue
@@ -143,8 +144,7 @@ export const createFirestoreGraphRepository = (noteRepository: NoteRepository): 
           const sharedProjects = note.projectIds.filter((pid) =>
             otherNote.projectIds!.includes(pid)
           )
-          // Only create edge if ≥2 shared projects to reduce noise
-          if (sharedProjects.length >= 2) {
+          if (sharedProjects.length >= minSharedProjects) {
             // Check if edge already exists
             const exists = edges.some(
               (e) =>
@@ -162,15 +162,15 @@ export const createFirestoreGraphRepository = (noteRepository: NoteRepository): 
         }
       }
 
-      // Shared tags (optimized: only create edge if ≥2 shared tags to reduce noise)
-      if (note.tags && note.tags.length > 0) {
+      // Shared tags (configurable threshold, default: 1 to show more tag connections)
+      const minSharedTags = filters?.minSharedTags ?? 1
+      if (minSharedTags > 0 && note.tags && note.tags.length > 0) {
         for (const otherNote of filteredNotes) {
           if (otherNote.noteId === note.noteId) continue
           if (!otherNote.tags || otherNote.tags.length === 0) continue
 
           const sharedTags = note.tags.filter((tag) => otherNote.tags!.includes(tag))
-          // Only create edge if ≥2 shared tags to reduce noise
-          if (sharedTags.length >= 2) {
+          if (sharedTags.length >= minSharedTags) {
             // Check if edge already exists
             const exists = edges.some(
               (e) =>

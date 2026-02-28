@@ -14,7 +14,7 @@ export const assertValidResearchContext = (context?: Record<string, unknown>) =>
     if (size > MAX_CONTEXT_BYTES) {
       throw new Error('Context size exceeds limit')
     }
-  } catch (error) {
+  } catch {
     throw new Error('Research request context must be JSON-serializable and under 100KB')
   }
 }

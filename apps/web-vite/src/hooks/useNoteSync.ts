@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './useAuth'
+import { logger } from '@/lib/logger'
 import {
   startNoteSyncWorker,
   stopNoteSyncWorker,
@@ -56,7 +57,7 @@ export function useNoteSync(): UseNoteSyncReturn {
   // Monitor online/offline status
   useEffect(() => {
     const handleOnline = () => {
-      console.log('Connection restored - triggering sync')
+      logger.debug('Connection restored - triggering sync')
       setIsOnline(true)
 
       // Trigger immediate sync when coming back online
@@ -68,7 +69,7 @@ export function useNoteSync(): UseNoteSyncReturn {
     }
 
     const handleOffline = () => {
-      console.log('Connection lost - entering offline mode')
+      logger.debug('Connection lost - entering offline mode')
       setIsOnline(false)
     }
 

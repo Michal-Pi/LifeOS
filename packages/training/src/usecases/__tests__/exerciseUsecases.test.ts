@@ -19,10 +19,12 @@ describe('exerciseUsecases', () => {
       const usecase = createExerciseUsecase(mockRepo)
 
       const input: Omit<CreateExerciseInput, 'userId'> = {
-        name: '   ', // Empty!
-        category: 'push',
-        equipment: ['barbell', 'bench'],
-        defaultMetrics: ['sets_reps_weight'],
+        generic_name: '   ',
+        target_muscle_group: 'Quadriceps',
+        category: 'lower_body',
+        gym: [{ name: 'Barbell Squat' }],
+        home: [],
+        road: [],
         archived: false,
       }
 
@@ -30,7 +32,7 @@ describe('exerciseUsecases', () => {
       expect(mockRepo.create).not.toHaveBeenCalled()
     })
 
-    it('validates at least one default metric', async () => {
+    it('validates at least one target muscle group', async () => {
       const mockRepo: ExerciseLibraryRepository = {
         create: vi.fn(),
       } as any
@@ -38,15 +40,17 @@ describe('exerciseUsecases', () => {
       const usecase = createExerciseUsecase(mockRepo)
 
       const input: Omit<CreateExerciseInput, 'userId'> = {
-        name: 'Bench Press',
-        category: 'push',
-        equipment: ['barbell', 'bench'],
-        defaultMetrics: [], // Empty!
+        generic_name: 'Bench Press',
+        target_muscle_group: '',
+        category: 'upper_body',
+        gym: [{ name: 'Flat Barbell Bench Press' }],
+        home: [],
+        road: [],
         archived: false,
       }
 
       await expect(usecase('user123', input)).rejects.toThrow(
-        'Exercise must have at least one default metric'
+        'Exercise must have at least one target muscle group'
       )
       expect(mockRepo.create).not.toHaveBeenCalled()
     })
@@ -55,10 +59,12 @@ describe('exerciseUsecases', () => {
       const mockExercise: ExerciseLibraryItem = {
         exerciseId: 'exercise:123' as any,
         userId: 'user123',
-        name: 'Bench Press',
-        category: 'push',
-        equipment: ['barbell', 'bench'],
-        defaultMetrics: ['sets_reps_weight'],
+        generic_name: 'Squat',
+        target_muscle_group: ['Quadriceps', 'Glutes'],
+        category: 'lower_body',
+        gym: [{ name: 'Barbell Back Squat', equipment: ['barbell', 'squat rack'] }],
+        home: [{ name: 'Bodyweight Squat' }],
+        road: [],
         archived: false,
         createdAtMs: Date.now(),
         updatedAtMs: Date.now(),
@@ -73,10 +79,12 @@ describe('exerciseUsecases', () => {
       const usecase = createExerciseUsecase(mockRepo)
 
       const input: Omit<CreateExerciseInput, 'userId'> = {
-        name: 'Bench Press',
-        category: 'push',
-        equipment: ['barbell', 'bench'],
-        defaultMetrics: ['sets_reps_weight'],
+        generic_name: 'Squat',
+        target_muscle_group: ['Quadriceps', 'Glutes'],
+        category: 'lower_body',
+        gym: [{ name: 'Barbell Back Squat', equipment: ['barbell', 'squat rack'] }],
+        home: [{ name: 'Bodyweight Squat' }],
+        road: [],
         archived: false,
       }
 
@@ -98,14 +106,14 @@ describe('exerciseUsecases', () => {
 
       const usecase = updateExerciseUsecase(mockRepo)
 
-      await expect(usecase('user123', 'exercise:123' as any, { name: '  ' })).rejects.toThrow(
-        'Exercise name cannot be empty'
-      )
+      await expect(
+        usecase('user123', 'exercise:123' as any, { generic_name: '  ' })
+      ).rejects.toThrow('Exercise name cannot be empty')
 
       expect(mockRepo.update).not.toHaveBeenCalled()
     })
 
-    it('validates metrics when updating', async () => {
+    it('validates target muscle group when updating', async () => {
       const mockRepo: ExerciseLibraryRepository = {
         update: vi.fn(),
       } as any
@@ -113,8 +121,8 @@ describe('exerciseUsecases', () => {
       const usecase = updateExerciseUsecase(mockRepo)
 
       await expect(
-        usecase('user123', 'exercise:123' as any, { defaultMetrics: [] })
-      ).rejects.toThrow('Exercise must have at least one default metric')
+        usecase('user123', 'exercise:123' as any, { target_muscle_group: [] })
+      ).rejects.toThrow('Exercise must have at least one target muscle group')
 
       expect(mockRepo.update).not.toHaveBeenCalled()
     })
@@ -123,10 +131,12 @@ describe('exerciseUsecases', () => {
       const mockExercise: ExerciseLibraryItem = {
         exerciseId: 'exercise:123' as any,
         userId: 'user123',
-        name: 'Incline Bench Press',
-        category: 'push',
-        equipment: ['barbell', 'bench'],
-        defaultMetrics: ['sets_reps_weight'],
+        generic_name: 'Incline Press',
+        target_muscle_group: 'Chest',
+        category: 'upper_body',
+        gym: [{ name: 'Incline Barbell Press' }],
+        home: [],
+        road: [],
         archived: false,
         createdAtMs: Date.now(),
         updatedAtMs: Date.now(),
@@ -141,12 +151,12 @@ describe('exerciseUsecases', () => {
       const usecase = updateExerciseUsecase(mockRepo)
 
       const result = await usecase('user123', 'exercise:123' as any, {
-        name: 'Incline Bench Press',
+        generic_name: 'Incline Press',
       })
 
       expect(result).toEqual(mockExercise)
       expect(mockRepo.update).toHaveBeenCalledWith('user123', 'exercise:123', {
-        name: 'Incline Bench Press',
+        generic_name: 'Incline Press',
       })
     })
   })
@@ -170,10 +180,12 @@ describe('exerciseUsecases', () => {
       const mockExercise: ExerciseLibraryItem = {
         exerciseId: 'exercise:123' as any,
         userId: 'user123',
-        name: 'Bench Press',
-        category: 'push',
-        equipment: ['barbell', 'bench'],
-        defaultMetrics: ['sets_reps_weight'],
+        generic_name: 'Squat',
+        target_muscle_group: 'Quadriceps',
+        category: 'lower_body',
+        gym: [{ name: 'Barbell Back Squat' }],
+        home: [],
+        road: [],
         archived: false,
         createdAtMs: Date.now(),
         updatedAtMs: Date.now(),
@@ -200,10 +212,12 @@ describe('exerciseUsecases', () => {
         {
           exerciseId: 'exercise:123' as any,
           userId: 'user123',
-          name: 'Bench Press',
-          category: 'push',
-          equipment: ['barbell', 'bench'],
-          defaultMetrics: ['sets_reps_weight'],
+          generic_name: 'Squat',
+          target_muscle_group: 'Quadriceps',
+          category: 'lower_body',
+          gym: [{ name: 'Barbell Back Squat' }],
+          home: [],
+          road: [],
           archived: false,
           createdAtMs: Date.now(),
           updatedAtMs: Date.now(),
@@ -218,10 +232,13 @@ describe('exerciseUsecases', () => {
 
       const usecase = listExercisesUsecase(mockRepo)
 
-      const result = await usecase('user123', { category: 'push', activeOnly: true })
+      const result = await usecase('user123', { category: 'lower_body', activeOnly: true })
 
       expect(result).toEqual(mockExercises)
-      expect(mockRepo.list).toHaveBeenCalledWith('user123', { category: 'push', activeOnly: true })
+      expect(mockRepo.list).toHaveBeenCalledWith('user123', {
+        category: 'lower_body',
+        activeOnly: true,
+      })
     })
   })
 })

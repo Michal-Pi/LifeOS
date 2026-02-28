@@ -82,7 +82,7 @@ export const createFirestoreAttachmentRepository = (): AttachmentRepository => {
     const normalizedRef = doc(db, `users/${userId}/${COLLECTION_ATTACHMENTS}/${legacyAttachmentId}`)
 
     // Omit localBlob from Firestore document
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const { localBlob: _localBlob, ...attachmentData } = normalizedAttachment
     await setDoc(normalizedRef, attachmentData)
 
@@ -108,7 +108,7 @@ export const createFirestoreAttachmentRepository = (): AttachmentRepository => {
 
     const ref = doc(db, `users/${userId}/${COLLECTION_ATTACHMENTS}/${attachmentId}`)
     // Don't persist Blob to Firestore - omit localBlob field
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const { localBlob: _localBlob, ...attachmentData } = attachment
     await setDoc(ref, attachmentData)
 
@@ -187,7 +187,7 @@ export const createFirestoreAttachmentRepository = (): AttachmentRepository => {
 
     const attachment = snapshot.data() as Attachment
     // Never persist blob - omit localBlob field
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const { localBlob: _localBlob, ...attachmentData } = attachment
     await setDoc(ref, {
       ...attachmentData,

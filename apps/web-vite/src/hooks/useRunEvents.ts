@@ -8,13 +8,26 @@ import { getFirestoreClient } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import type { RunId } from '@lifeos/agents'
 
-export type RunEventType = 'token' | 'tool_call' | 'tool_result' | 'status' | 'error' | 'final'
+export type RunEventType =
+  | 'token'
+  | 'tool_call'
+  | 'tool_result'
+  | 'status'
+  | 'error'
+  | 'final'
+  // Dialectical workflow events
+  | 'dialectical_phase'
+  | 'dialectical_thesis'
+  | 'dialectical_negation'
+  | 'dialectical_contradiction'
+  | 'dialectical_synthesis'
+  | 'dialectical_meta'
 
 export type RunEvent = {
   eventId: string
   type: RunEventType
   runId: string
-  workspaceId?: string
+  workflowId?: string
   agentId?: string
   agentName?: string
   provider?: string

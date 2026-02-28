@@ -11,6 +11,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { Unsubscribe } from 'firebase/firestore'
+import { logger } from '@/lib/logger'
 
 interface UseFirestoreListenerOptions {
   /**
@@ -169,7 +170,7 @@ export function useFirestoreListener(
       if (document.hidden) {
         // Page is hidden - pause listener
         if (unsubscribeRef.current && !stateRef.current.isPaused) {
-          console.log('Page hidden - pausing Firestore listener')
+          logger.debug('Page hidden - pausing Firestore listener')
           stateRef.current.isPaused = true
           setIsPaused(true)
           unsubscribeRef.current()
@@ -178,7 +179,7 @@ export function useFirestoreListener(
       } else {
         // Page is visible - resume listener
         if (stateRef.current.isPaused && enabled && stateRef.current.isActive) {
-          console.log('Page visible - resuming Firestore listener')
+          logger.debug('Page visible - resuming Firestore listener')
           stateRef.current.isPaused = false
           stateRef.current.retryCount = 0 // Reset retry count on resume
           setIsPaused(false)
@@ -197,7 +198,7 @@ export function useFirestoreListener(
   // Handle network connection changes
   useEffect(() => {
     const handleOnline = () => {
-      console.log('Network connection restored')
+      logger.debug('Network connection restored')
       setIsConnected(true)
       if (enabled && stateRef.current.isActive && !stateRef.current.isPaused) {
         stateRef.current.retryCount = 0 // Reset retry count on reconnect
@@ -207,7 +208,7 @@ export function useFirestoreListener(
     }
 
     const handleOffline = () => {
-      console.log('Network connection lost')
+      logger.debug('Network connection lost')
       setIsConnected(false)
       // Don't retry while offline
       if (retryTimeoutRef.current) {

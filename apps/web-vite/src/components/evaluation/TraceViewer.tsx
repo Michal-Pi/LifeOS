@@ -132,7 +132,7 @@ export function TraceViewer({
         memoryOperations,
       }
     })
-  }, [steps, componentTelemetry])
+  }, [steps, componentTelemetry, status])
 
   // Filter trace steps
   const filteredSteps = useMemo(() => {

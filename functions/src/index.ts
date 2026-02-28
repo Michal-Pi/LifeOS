@@ -3,8 +3,8 @@ import type { CanonicalCalendarEvent } from '@lifeos/calendar'
 import type { Request, Response } from 'express'
 import { getAuth } from 'firebase-admin/auth'
 import { Timestamp } from 'firebase-admin/firestore'
-import { onDocumentCreated } from 'firebase-functions/v2/firestore'
-import { onRequest } from 'firebase-functions/v2/https'
+import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore'
+import { onCall, onRequest } from 'firebase-functions/v2/https'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { OAuth2Client, type Credentials } from 'google-auth-library'
 import { recomputeComposites } from './composite/pipeline.js'
@@ -27,20 +27,103 @@ import {
 import { buildWritebackPayload } from './google/writebackPayload.js'
 import { firestore } from './lib/firebase.js'
 import { createLogger } from './lib/logger.js'
-export { synthesizeResearch } from './agents/researchSynthesis.js'
-export {
-  extractProjectManagerContext,
-  summarizeProjectManagerContext,
-  detectProjectManagerConflicts,
-} from './agents/projectManagerFunctions.js'
-export { testSearchToolKey, testAgentConfig } from './agents/testEndpoints.js'
-export { analyzeNoteWithAI } from './agents/noteAnalysis.js'
-export { analyzeWorkoutWithAI } from './agents/workoutAITools.js'
-export { mailboxAITool } from './agents/mailboxAITools.js'
-export { getMeetingBriefing, suggestCirclePlacement } from './contacts/contactAITools.js'
-export { findDuplicateContacts } from './contacts/findDuplicates.js'
-export { mergeContacts } from './contacts/mergeContacts.js'
-export { discoverModels } from './agents/modelDiscovery.js'
+// ── Lazy-loaded callable functions ──────────────────────────────────────
+// Dynamic imports keep function discovery (deploy) under the 10s timeout
+// by deferring heavy module loading (@lifeos/agents, AI SDKs) until invocation.
+
+export const synthesizeResearch = onCall({}, async (request) => {
+  const m = await import('./agents/researchSynthesis.js')
+  return m.synthesizeResearch.run(request)
+})
+
+export const extractProjectManagerContext = onCall({}, async (request) => {
+  const m = await import('./agents/projectManagerFunctions.js')
+  return m.extractProjectManagerContext.run(request)
+})
+
+export const summarizeProjectManagerContext = onCall({}, async (request) => {
+  const m = await import('./agents/projectManagerFunctions.js')
+  return m.summarizeProjectManagerContext.run(request)
+})
+
+export const detectProjectManagerConflicts = onCall({}, async (request) => {
+  const m = await import('./agents/projectManagerFunctions.js')
+  return m.detectProjectManagerConflicts.run(request)
+})
+
+export const testSearchToolKey = onCall({}, async (request) => {
+  const m = await import('./agents/testEndpoints.js')
+  return m.testSearchToolKey.run(request)
+})
+
+export const testAgentConfig = onCall({}, async (request) => {
+  const m = await import('./agents/testEndpoints.js')
+  return m.testAgentConfig.run(request)
+})
+
+export const analyzeNoteWithAI = onCall(
+  { timeoutSeconds: 540, memory: '512MiB' as const },
+  async (request): Promise<unknown> => {
+    const m = await import('./agents/noteAnalysis.js')
+    return m.analyzeNoteWithAI.run(request)
+  }
+)
+
+export const analyzeWorkoutWithAI = onCall(
+  { timeoutSeconds: 120, memory: '512MiB' as const },
+  async (request): Promise<unknown> => {
+    const m = await import('./agents/workoutAITools.js')
+    return m.analyzeWorkoutWithAI.run(request)
+  }
+)
+
+export const mailboxAITool = onCall(
+  { timeoutSeconds: 120, memory: '512MiB' as const },
+  async (request): Promise<unknown> => {
+    const m = await import('./agents/mailboxAITools.js')
+    return m.mailboxAITool.run(request)
+  }
+)
+
+export const getMeetingBriefing = onCall(
+  { timeoutSeconds: 120, memory: '512MiB' as const },
+  async (request) => {
+    const m = await import('./contacts/contactAITools.js')
+    return m.getMeetingBriefing.run(request)
+  }
+)
+
+export const suggestCirclePlacement = onCall(
+  { timeoutSeconds: 60, memory: '256MiB' as const },
+  async (request) => {
+    const m = await import('./contacts/contactAITools.js')
+    return m.suggestCirclePlacement.run(request)
+  }
+)
+
+export const findDuplicateContacts = onCall(
+  { timeoutSeconds: 120, memory: '512MiB' as const },
+  async (request) => {
+    const m = await import('./contacts/findDuplicates.js')
+    return m.findDuplicateContacts.run(request)
+  }
+)
+
+export const mergeContacts = onCall(
+  { timeoutSeconds: 120, memory: '512MiB' as const },
+  async (request) => {
+    const m = await import('./contacts/mergeContacts.js')
+    return m.mergeContacts.run(request)
+  }
+)
+
+export const discoverModels = onCall(
+  { timeoutSeconds: 120, memory: '256MiB' as const, cors: true },
+  async (request) => {
+    const m = await import('./agents/modelDiscovery.js')
+    return m.discoverModels.run(request)
+  }
+)
 
 const log = createLogger('Functions')
 
@@ -532,7 +615,17 @@ export const syncNow = onRequest(
       response.json({ ok: true, calendars })
     } catch (error) {
       log.error('syncNow failed', error)
-      response.status(500).json({ error: (error as Error).message })
+      const msg = ((error as Error).message ?? '').toLowerCase()
+      const isAuthError =
+        msg.includes('token') ||
+        msg.includes('auth') ||
+        msg.includes('refresh') ||
+        msg.includes('grant')
+      if (isAuthError) {
+        response.status(401).json({ error: 'auth_token_expired' })
+      } else {
+        response.status(500).json({ error: (error as Error).message })
+      }
     }
   }
 )
@@ -1726,8 +1819,31 @@ export const onCalendarEventCreated = onDocumentCreated(
 /**
  * Agent run execution trigger
  * Executes AI agent runs when they are created with 'pending' status
+ * Lazy-loaded to keep deploy discovery fast (runExecutor imports @lifeos/agents + heavy deps)
  */
-export { onRunCreated, onRunUpdated } from './agents/runExecutor.js'
+export const onRunCreated = onDocumentCreated(
+  {
+    timeoutSeconds: 540,
+    memory: '1GiB' as const,
+    document: 'users/{userId}/workflows/{workflowId}/runs/{runId}',
+  },
+  async (event) => {
+    const m = await import('./agents/runExecutor.js')
+    return m.onRunCreated.run(event)
+  }
+)
+
+export const onRunUpdated = onDocumentUpdated(
+  {
+    timeoutSeconds: 540,
+    memory: '1GiB' as const,
+    document: 'users/{userId}/workflows/{workflowId}/runs/{runId}',
+  },
+  async (event) => {
+    const m = await import('./agents/runExecutor.js')
+    return m.onRunUpdated.run(event)
+  }
+)
 
 // ==================== Slack Integration & Mailbox (Phase 2.3) ====================
 

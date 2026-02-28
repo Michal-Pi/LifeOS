@@ -15,6 +15,7 @@ export * from './domain/workflowState'
 export * from './domain/exampleLibrary'
 export * from './domain/evaluation'
 export * from './domain/dialectical'
+export * from './domain/deepResearchWorkflow'
 export * from './domain/optimization'
 
 // Validation schemas

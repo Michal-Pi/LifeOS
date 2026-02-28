@@ -10,7 +10,7 @@ import type {
   ExecutionMode,
   ModelProvider,
   RunId,
-  WorkspaceId,
+  WorkflowId,
 } from '../domain/models'
 import type { ExpertCouncilRepository } from '../ports/expertCouncilRepository'
 
@@ -87,11 +87,11 @@ export function generateCacheKey(
   prompt: string,
   config: ExpertCouncilConfig,
   executionMode: ExecutionMode,
-  workspaceId?: WorkspaceId,
+  workflowId?: WorkflowId,
   contextHash?: string
 ): string {
   const normalized = prompt.trim().toLowerCase()
-  const scope = workspaceId ? `user:${userId}:workspace:${workspaceId}` : `user:${userId}`
+  const scope = workflowId ? `user:${userId}:workflow:${workflowId}` : `user:${userId}`
   const councilModels = config.councilModels
     .map((model) =>
       [
@@ -359,7 +359,7 @@ export function executeExpertCouncilUsecase(
     prompt: string,
     config: ExpertCouncilConfig,
     mode?: ExecutionMode,
-    workspaceId?: WorkspaceId,
+    workflowId?: WorkflowId,
     contextHash?: string
   ): Promise<ExpertCouncilTurn> => {
     const executionMode = config.allowModeOverride
@@ -371,7 +371,7 @@ export function executeExpertCouncilUsecase(
       prompt,
       config,
       executionMode,
-      workspaceId,
+      workflowId,
       contextHash
     )
     if (config.enableCaching) {

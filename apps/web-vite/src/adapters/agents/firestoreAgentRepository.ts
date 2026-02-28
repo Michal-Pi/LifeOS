@@ -11,6 +11,11 @@ import type {
   ModelProvider,
 } from '@lifeos/agents'
 
+const normalizeAgent = (data: Record<string, unknown>): AgentConfig => ({
+  ...(data as AgentConfig),
+  role: (data.role as AgentConfig['role']) || 'custom',
+})
+
 export const createFirestoreAgentRepository = (): AgentRepository => {
   return {
     async create(userId: string, input: CreateAgentInput): Promise<AgentConfig> {
@@ -86,7 +91,7 @@ export const createFirestoreAgentRepository = (): AgentRepository => {
       const snapshot = await getDoc(agentDoc)
 
       if (!snapshot.exists()) return null
-      return snapshot.data() as AgentConfig
+      return normalizeAgent(snapshot.data())
     },
 
     async list(
@@ -113,7 +118,7 @@ export const createFirestoreAgentRepository = (): AgentRepository => {
       }
 
       const snapshot = await getDocs(q)
-      let agents = snapshot.docs.map((doc) => doc.data() as AgentConfig)
+      let agents = snapshot.docs.map((doc) => normalizeAgent(doc.data()))
 
       // Filter out archived agents by default
       if (options?.activeOnly !== false) {

@@ -343,6 +343,52 @@ These tools can be assigned to any agent via the Agent Builder's Tools tab. They
 
 ---
 
+## 7. Deep Research (KG + Dialectical) — Workflow Template (February 2026)
+
+**Workflow Type**: `deep_research` (dedicated LangGraph pipeline)
+**Category**: Research
+**Agents**: 9 (4 research + 5 dialectical)
+
+### What's New
+
+Unlike the existing Deep Research template (Scenario 26) which uses a `graph` workflow with human-in-the-loop checkpoints, this new template is a **fully automated pipeline** powered by a dedicated LangGraph executor. It introduces:
+
+- **Knowledge Graph construction** — Claims, concepts, and causal links extracted from sources
+- **Multi-lens dialectical reasoning** — Economic, systems, and adversarial thesis agents debate evidence
+- **Budget-aware iteration** — Automatic gap analysis and iterative search until budget exhaustion
+- **Source traceability** — Every claim links back to its source document and quote
+
+### Agents Included
+
+| Agent                          | Provider                      | Role               | Purpose                                        |
+| ------------------------------ | ----------------------------- | ------------------ | ---------------------------------------------- |
+| Deep Research Planner          | Anthropic (Claude Sonnet 4.5) | research_planner   | Query decomposition, search planning           |
+| Deep Research Claim Extractor  | OpenAI (GPT-4o-mini)          | claim_extractor    | Atomic claim extraction with evidence metadata |
+| Deep Research Gap Analyst      | OpenAI (GPT-4o-mini)          | gap_analyst        | Coverage gap identification, follow-up queries |
+| Deep Research Answer Generator | OpenAI (GPT-4o)               | answer_generator   | Final structured report synthesis              |
+| Dialectical Economic Thesis    | Anthropic (Claude Sonnet 4.5) | thesis_economic    | Economic lens analysis                         |
+| Dialectical Systems Thesis     | OpenAI (GPT-4o)               | thesis_systems     | Systems/complexity lens analysis               |
+| Dialectical Adversarial Thesis | Google (Gemini 1.5 Pro)       | thesis_adversarial | Adversarial/contrarian lens analysis           |
+| Dialectical Synthesis          | OpenAI (o3-mini)              | synthesis          | Contradiction resolution across lenses         |
+| Dialectical Meta-Reflection    | OpenAI (o3-mini)              | meta_reflection    | Reasoning quality assessment                   |
+
+### Pipeline Phases
+
+```
+Search Planning → Source Ingestion → Claim Extraction
+    → KG Construction → Dialectical Reasoning
+    → Gap Analysis → [Iterate] → Answer Generation
+```
+
+### Testing
+
+- See [Test Scenario 39: Deep Research KG + Dialectical Template](./TEST_SCENARIOS_WORKSPACES_AGENTS.md#scenario-39-deep-research-kg--dialectical-template)
+- See [Test Scenario 40: Deep Research Budget Control](./TEST_SCENARIOS_WORKSPACES_AGENTS.md#scenario-40-deep-research-budget-control)
+- See [Test Scenario 41: Deep Research Knowledge Graph Inspection](./TEST_SCENARIOS_WORKSPACES_AGENTS.md#scenario-41-deep-research-knowledge-graph-inspection)
+- See [Deep Research User Guide](./features/deep-research-user-guide.md)
+
+---
+
 ## Future Enhancements
 
 ### Potential Additions
@@ -361,6 +407,38 @@ These tools can be assigned to any agent via the Agent Builder's Tools tab. They
 ---
 
 ## Changelog
+
+**2026-02-26** - Automated Deep Research (KG + Dialectical) Pipeline
+
+- **New Workflow Template**: "Deep Research (KG + Dialectical)" — fully automated research pipeline
+- **9 new agent templates**: 4 research agents (Planner, Claim Extractor, Gap Analyst, Answer Generator) + 5 dialectical agents (Economic, Systems, Adversarial thesis + Synthesis + Meta-Reflection)
+- **New workflow type**: `deep_research` — dedicated LangGraph executor with phase-based execution
+- **Knowledge Graph**: Claims, concepts, mechanisms, contradictions, and causal links with source traceability
+- **Budget control**: Token/search/LLM call tracking with automatic phase downgrade (full → reduced → minimal)
+- **Gap analysis loop**: Identifies under-supported claims and generates targeted follow-up searches
+- **New run event type**: `deep_research_phase` for phase-level observability
+- **Updated documentation**: Deep Research User Guide v2.0, 3 new test scenarios (39–41)
+
+**2026-02-01** - Major Model & Tool Coverage Update
+
+- **Model Updates**: Added reasoning models (o1, o3-mini) and updated all agents with inline capability labels
+  - Added OpenAI o1, o3-mini reasoning models for complex tasks
+  - Added Gemini 2.0 Flash experimental model
+  - Updated all agent names with inline labels: (Thinking), (Balanced), (Fast), (Fast/Low-Cost), (Real-Time)
+- **Agent Model Optimizations**:
+  - Updated Project Structure Planner to o3-mini (Thinking)
+  - Updated Risk Analyst to o3-mini (Thinking)
+  - Updated Plan Quality Reviewer to o1 (Thinking)
+  - All other agents optimized for cost/performance balance
+- **New Tool-Specific Agents** (Complete tool coverage):
+  - Calendar Assistant (Fast/Low-Cost) — Gemini 1.5 Flash with calendar tools
+  - Meeting Coordinator (Balanced) — GPT-4o with calendar + notes
+  - Knowledge Manager (Balanced) — Claude 3.5 Sonnet with note analysis/tagging
+  - Personal Data Analyst (Balanced) — GPT-4o with Firestore + calculations
+  - Quick Calculator (Fast/Low-Cost) — GPT-4o-mini for fast math
+  - Time-Aware Planner (Balanced) — GPT-4o with time + calendar awareness
+- **UI Fix**: Agent template cards now have buttons anchored to bottom
+- **Documentation**: Updated model comparison tables and cost guidance
 
 **2026-01-30**
 
@@ -383,7 +461,9 @@ These tools can be assigned to any agent via the Agent Builder's Tools tab. They
 - Updated comprehensive documentation
 - Updated Expert Council configurations with consistent naming
 
-**Model Count**: 18 → 20 agent templates (+2)
-**Workspace Templates**: 2 → 4 workspace templates (+2)
-**Search Tools**: 1 → 5 search/research tools (+4)
+**Model Count**: 18 → 20 (+2) → 27 (+7) → 33 (+6) → 42 (+9) agent templates
+**Workspace Templates**: 2 → 4 → 5 workspace templates
+**Search Tools**: 1 → 5 search/research tools
+**Workflow Types**: sequential, parallel, supervisor, graph, custom, **deep_research** (new)
 **Provider Coverage**: 4 providers (OpenAI, Anthropic, Google, xAI)
+**Tool Coverage**: 100% - Every tool has at least one dedicated agent

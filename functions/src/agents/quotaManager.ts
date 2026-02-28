@@ -10,6 +10,9 @@ import type { ModelProvider } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 import { AgentError } from './errorHandler.js'
 import { updateDailyCostLimit } from './rateLimiter.js'
+import { createLogger } from '../lib/logger.js'
+
+const log = createLogger('QuotaManager')
 
 /**
  * Usage by provider
@@ -418,5 +421,5 @@ export async function updateDailyCostQuota(userId: string, newLimit: number): Pr
 
   await updateDailyCostLimit(userId, newLimit)
 
-  console.log(`Updated daily cost quota for user ${userId} to $${newLimit.toFixed(2)}`)
+  log.info('Updated daily cost quota', { userId, newLimit: `$${newLimit.toFixed(2)}` })
 }

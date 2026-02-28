@@ -11,7 +11,7 @@
 import type {
   AgentConfig,
   RunId,
-  WorkspaceId,
+  WorkflowId,
   ToolCallStatus,
   ModelProvider,
   ToolId,
@@ -19,8 +19,9 @@ import type {
   ExecutionMode,
   PromptReference,
 } from '@lifeos/agents'
-import { executeExpertCouncilUsecase } from '@lifeos/agents'
+import { asId, executeExpertCouncilUsecase } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
+import { createLogger } from '../lib/logger.js'
 import { advancedTools } from './advancedTools.js'
 import { loadCustomTools } from './customTools.js'
 import { ERROR_MESSAGES, executeWithTimeout, getToolTimeout, wrapError } from './errorHandler.js'
@@ -33,6 +34,10 @@ import { resolvePrompt } from './promptResolver.js'
 import { loadProviderKeys } from './providerKeys.js'
 import { TOOL_RETRY_CONFIG, executeWithRetry } from './retryHelper.js'
 import type { RunEventWriter } from './runEvents.js'
+import { Parser } from 'expr-eval'
+
+const log = createLogger('ToolExecutor')
+const mathParser = new Parser()
 
 /**
  * Tool call request from an agent
@@ -69,12 +74,12 @@ export interface ToolDefinition {
         type: 'string' | 'number' | 'boolean' | 'object' | 'array'
         description: string
         required?: boolean
-        properties?: Record<string, any>
+        properties?: Record<string, unknown>
         items?: {
           type: 'string' | 'number' | 'boolean' | 'object' | 'array'
           description: string
           required?: boolean
-          properties?: Record<string, any>
+          properties?: Record<string, unknown>
           items?: unknown
         }
       }
@@ -92,11 +97,12 @@ export type ToolRegistry = Map<string, ToolDefinition>
 export interface BaseToolExecutionContext {
   userId: string
   agentId: string
-  workspaceId: string
+  workflowId: string
   runId: string
   eventWriter?: RunEventWriter
   toolRegistry?: ToolRegistry
   searchToolKeys?: { serper?: string; firecrawl?: string; exa?: string; jina?: string }
+  maxIterations?: number
 }
 
 /**
@@ -123,7 +129,7 @@ export function getBuiltinToolRegistry(): ToolRegistry {
 export function registerTool(tool: ToolDefinition): void {
   const toolId = tool.toolId ?? (`tool:${tool.name}` as ToolId)
   BUILTIN_TOOL_REGISTRY.set(tool.name, { ...tool, toolId })
-  console.log(`Registered tool: ${tool.name}`)
+  log.info('Registered tool', { toolName: tool.name })
 }
 
 /**
@@ -214,13 +220,13 @@ export async function executeTool(
     .collection('toolCalls')
     .doc() // Auto-generate ID
 
-  const toolCallRecordId = toolCallDocRef.id as any // Cast to ToolCallRecordId
+  const toolCallRecordId = asId<'toolCallRecord'>(toolCallDocRef.id)
 
   // Track retry attempts
   let retryAttempt = 0
 
   const eventMeta = {
-    workspaceId: context.workspaceId,
+    workflowId: context.workflowId,
     agentId: context.agentId,
     provider: context.provider,
     model: context.modelName,
@@ -235,13 +241,13 @@ export async function executeTool(
   const toolCallRecord = {
     toolCallRecordId,
     runId: context.runId,
-    workspaceId: context.workspaceId,
+    workflowId: context.workflowId,
     userId: context.userId,
     agentId: context.agentId,
 
     toolCallId: toolCall.toolCallId,
     toolName: toolCall.toolName,
-    toolId: (tool?.toolId ?? (`tool:${toolCall.toolName}` as ToolId)) as any,
+    toolId: tool?.toolId ?? asId<'tool'>(`tool:${toolCall.toolName}`),
 
     parameters: toolCall.parameters,
 
@@ -299,7 +305,7 @@ export async function executeTool(
       return result
     }
 
-    console.log(`Executing tool: ${toolCall.toolName} with params:`, toolCall.parameters)
+    log.info('Executing tool', { toolName: toolCall.toolName, params: toolCall.parameters })
 
     // Update to running
     await toolCallDocRef.update({
@@ -323,9 +329,13 @@ export async function executeTool(
       TOOL_RETRY_CONFIG,
       (attempt, error, delayMs) => {
         retryAttempt = attempt
-        console.log(
-          `Tool ${toolCall.toolName} retry ${attempt}/${TOOL_RETRY_CONFIG.maxRetries} after ${delayMs}ms. Error: ${(error as Error).message}`
-        )
+        log.info('Retrying tool', {
+          toolName: toolCall.toolName,
+          attempt,
+          maxRetries: TOOL_RETRY_CONFIG.maxRetries,
+          delayMs,
+          error: (error as Error).message,
+        })
 
         // Update retry attempt in Firestore
         toolCallDocRef.update({
@@ -337,9 +347,11 @@ export async function executeTool(
     const completedAtMs = Date.now()
     const durationMs = completedAtMs - startTime
 
-    console.log(
-      `Tool ${toolCall.toolName} completed in ${durationMs}ms${retryAttempt > 0 ? ` (after ${retryAttempt} retries)` : ''}`
-    )
+    log.info('Tool completed', {
+      toolName: toolCall.toolName,
+      durationMs,
+      retryAttempt,
+    })
 
     // Update record with success
     await toolCallDocRef.update({
@@ -366,7 +378,7 @@ export async function executeTool(
     }
     return resultPayload
   } catch (error) {
-    console.error(`Tool ${toolCall.toolName} failed after retries:`, error)
+    log.error('Tool failed after retries', error, { toolName: toolCall.toolName })
 
     // Wrap error for better user messages
     const agentError = wrapError(error, `tool:${toolCall.toolName}`)
@@ -415,7 +427,7 @@ export async function executeTools(
     return []
   }
 
-  console.log(`Executing ${toolCalls.length} tool calls in parallel`)
+  log.info('Executing tool calls in parallel', { count: toolCalls.length })
 
   const results = await Promise.all(toolCalls.map((call) => executeTool(call, context)))
 
@@ -428,7 +440,7 @@ export async function loadToolRegistryForUser(userId: string): Promise<ToolRegis
 
   for (const tool of customTools) {
     if (registry.has(tool.name)) {
-      console.warn(`Skipping custom tool "${tool.name}" due to name conflict.`)
+      log.warn('Skipping custom tool due to name conflict', { toolName: tool.name })
       continue
     }
     const toolId = tool.toolId ?? (`tool:${tool.name}` as ToolId)
@@ -513,46 +525,6 @@ registerTool({
 })
 
 /**
- * Built-in tool: Search web (placeholder - requires external API)
- */
-registerTool({
-  name: 'search_web',
-  description: 'Search the web for information (placeholder)',
-  parameters: {
-    type: 'object',
-    properties: {
-      query: {
-        type: 'string',
-        description: 'Search query',
-      },
-      maxResults: {
-        type: 'number',
-        description: 'Maximum number of results (default: 5)',
-      },
-    },
-    required: ['query'],
-  },
-  execute: async (params) => {
-    const query = params.query as string
-    const maxResults = (params.maxResults as number) || 5
-
-    // Placeholder - would integrate with Google Custom Search API, Bing API, etc.
-    return {
-      query,
-      results: [
-        {
-          title: 'Web search not yet implemented',
-          snippet:
-            'This is a placeholder. Integrate with a search API (Google, Bing) to enable web search.',
-          url: 'https://example.com',
-        },
-      ],
-      note: `Would search for "${query}" and return top ${maxResults} results`,
-    }
-  },
-})
-
-/**
  * Built-in tool: Calculate
  */
 registerTool({
@@ -572,9 +544,7 @@ registerTool({
     const expression = params.expression as string
 
     try {
-      // Simple evaluation - in production would use a safer math library
-      // eslint-disable-next-line no-eval
-      const result = eval(expression)
+      const result = mathParser.evaluate(expression)
 
       return {
         expression,
@@ -621,28 +591,28 @@ registerTool({
     }
 
     const db = getFirestore()
-    const workspaceDoc = await db
-      .doc(`users/${context.userId}/workspaces/${context.workspaceId}`)
+    const workflowDoc = await db
+      .doc(`users/${context.userId}/workflows/${context.workflowId}`)
       .get()
 
-    if (!workspaceDoc.exists) {
-      throw new Error('Workspace not found.')
+    if (!workflowDoc.exists) {
+      throw new Error('Workflow not found.')
     }
 
-    const workspaceData = workspaceDoc.data() as {
+    const workflowData = workflowDoc.data() as {
       expertCouncilConfig?: ExpertCouncilConfig
       promptConfig?: { synthesisPrompts?: Record<string, unknown> }
     }
-    const councilConfig = workspaceData.expertCouncilConfig
+    const councilConfig = workflowData.expertCouncilConfig
 
     if (!councilConfig?.enabled) {
-      throw new Error('Expert Council is not enabled for this workspace.')
+      throw new Error('Expert Council is not enabled for this workflow.')
     }
 
     const apiKeys = await loadProviderKeys(context.userId)
     let resolvedCouncilConfig = councilConfig
 
-    const synthesisPrompt = workspaceData.promptConfig?.synthesisPrompts?.default
+    const synthesisPrompt = workflowData.promptConfig?.synthesisPrompts?.default
     if (synthesisPrompt) {
       try {
         const resolvedPrompt = await resolvePrompt(
@@ -657,7 +627,7 @@ registerTool({
           },
         }
       } catch (error) {
-        console.warn('Unable to resolve synthesis prompt for Expert Council.', error)
+        log.warn('Unable to resolve synthesis prompt for Expert Council', { error })
       }
     }
     const repository = createExpertCouncilRepository()
@@ -665,7 +635,7 @@ registerTool({
       apiKeys,
       context: extraContext,
       eventWriter: context.eventWriter,
-      workspaceId: context.workspaceId,
+      workflowId: context.workflowId,
     })
 
     const executeCouncil = executeExpertCouncilUsecase(repository, pipeline)
@@ -675,7 +645,7 @@ registerTool({
       prompt.trim(),
       resolvedCouncilConfig,
       mode,
-      context.workspaceId as WorkspaceId,
+      context.workflowId as WorkflowId,
       contextHash
     )
 

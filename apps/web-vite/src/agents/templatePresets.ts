@@ -3181,6 +3181,117 @@ Be decisive. Do not continue cycles that produce diminishing returns. Two produc
       toolIds: [],
     },
   },
+
+  // ── Deep Research (KG + Dialectical) Agents ──
+
+  {
+    name: 'Deep Research Planner (Anthropic)',
+    description:
+      'Analyzes research queries, identifies domains, and generates multi-source search plans for SERP, academic, and semantic search.',
+    agentConfig: {
+      name: 'Deep Research Planner (Anthropic)',
+      role: 'research_planner',
+      systemPrompt: `You are a RESEARCH PLANNER for a deep research pipeline with knowledge graph construction.
+
+Your job is to:
+1. Disambiguate the research query — identify core questions and sub-questions
+2. Identify key domains, concepts, and relevant academic fields
+3. Generate diverse search queries:
+   - SERP queries for web sources
+   - Academic queries for Google Scholar
+   - Semantic queries for similarity-based search (Exa)
+4. Plan target source count based on query complexity
+
+Be specific in your queries. Target different aspects of the topic to maximize coverage.
+Include both foundational and cutting-edge sources.
+Output valid JSON.`,
+      modelProvider: 'anthropic',
+      modelName: 'claude-sonnet-4-5-20250514',
+      temperature: 0.4,
+      maxTokens: 2000,
+      description: 'Sense-making and search planning for deep research.',
+      toolIds: ['tool:serp_search', 'tool:semantic_search', 'tool:search_scholar'],
+    },
+  },
+  {
+    name: 'Deep Research Claim Extractor (Fast)',
+    description:
+      'Extracts atomic, verifiable claims from source documents with epistemic metadata (evidence type, confidence, source quotes).',
+    agentConfig: {
+      name: 'Deep Research Claim Extractor (Fast)',
+      role: 'claim_extractor',
+      systemPrompt: `You are a CLAIM EXTRACTION agent. Extract atomic, verifiable claims from text.
+
+Rules:
+1. Each claim must be a single, self-contained assertion
+2. Do NOT infer beyond what the text explicitly states
+3. Preserve uncertainty language ("may", "suggests", "correlates with")
+4. Include the exact quote supporting each claim
+5. Classify evidence type: empirical, theoretical, anecdotal, expert_opinion, meta_analysis, statistical, review
+6. Assign confidence based on evidence strength (1.0 = definitive, 0.5 = suggestive)
+
+Output valid JSON only.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.2,
+      maxTokens: 2000,
+      description: 'Extracts atomic claims with epistemic metadata from sources.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'Deep Research Gap Analyst (Fast)',
+    description:
+      'Analyzes knowledge graph state to identify missing evidence, single-source claims, unresolved contradictions, and knowledge gaps.',
+    agentConfig: {
+      name: 'Deep Research Gap Analyst (Fast)',
+      role: 'gap_analyst',
+      systemPrompt: `You are a KNOWLEDGE GAP ANALYST examining a research knowledge graph.
+
+Focus on:
+1. Claims supported by only one source (fragile evidence)
+2. Important subtopics not yet covered
+3. Unresolved contradictions needing more evidence
+4. Areas where confidence is low
+5. Missing perspectives (only one viewpoint exists)
+
+For each gap, suggest specific search queries to fill it.
+Assess overall coverage (0-1) and whether more research is needed.
+Output valid JSON only.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.3,
+      maxTokens: 1500,
+      description: 'Identifies knowledge gaps and generates follow-up search queries.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'Deep Research Answer Generator (Strong)',
+    description:
+      'Synthesizes evidence from the knowledge graph into a structured, well-cited research answer with confidence assessments.',
+    agentConfig: {
+      name: 'Deep Research Answer Generator (Strong)',
+      role: 'answer_generator',
+      systemPrompt: `You are a RESEARCH ANSWER GENERATOR. Synthesize evidence from a knowledge graph into a structured answer.
+
+Rules:
+1. Only make claims supported by provided evidence
+2. Distinguish high-confidence from low-confidence claims clearly
+3. Present counterclaims and unresolved contradictions honestly
+4. Cite sources for every claim
+5. Identify remaining uncertainties and areas needing more research
+
+Structure: direct answer, supporting claims with citations, counterclaims, open uncertainties, confidence assessment.
+Output valid JSON only.`,
+      modelProvider: 'anthropic',
+      modelName: 'claude-opus-4-6',
+      temperature: 0.4,
+      maxTokens: 4000,
+      description: 'Generates structured research answers with full source traceability.',
+      toolIds: [],
+    },
+  },
 ]
 
 export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
@@ -4248,6 +4359,54 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
       workflowType: 'dialectical',
       maxIterations: 80,
       memoryMessageLimit: 300,
+    },
+  },
+
+  // ── Deep Research (KG + Dialectical) ──
+  {
+    name: 'Deep Research (KG + Dialectical)',
+    description:
+      'Budget-aware deep research pipeline that searches web + academic sources, extracts atomic claims into a Knowledge Graph, runs multi-lens dialectical reasoning on extracted evidence, iteratively identifies and fills knowledge gaps, and produces structured answers with full source traceability and confidence assessments.',
+    category: 'research',
+    icon: 'RESEARCH',
+    tags: [
+      'deep-research',
+      'knowledge-graph',
+      'dialectical',
+      'budget-aware',
+      'claim-extraction',
+      'gap-analysis',
+      'multi-source',
+    ],
+    featureBadges: [
+      'Knowledge Graph',
+      'Dialectical Reasoning',
+      'Budget Control',
+      'Gap Analysis',
+      'Claim Extraction',
+      'Source Traceability',
+    ],
+    agentTemplateNames: [
+      'Deep Research Planner (Anthropic)',
+      'Deep Research Claim Extractor (Fast)',
+      'Deep Research Gap Analyst (Fast)',
+      'Deep Research Answer Generator (Strong)',
+      'Dialectical Economic Thesis Agent (Anthropic)',
+      'Dialectical Systems Thesis Agent (OpenAI)',
+      'Dialectical Adversarial Thesis Agent (Google)',
+      'Dialectical Synthesis Agent (Thinking)',
+      'Dialectical Meta-Reflection Agent (Thinking)',
+    ],
+    defaultAgentTemplateName: 'Deep Research Answer Generator (Strong)',
+    workflowConfig: {
+      name: 'Deep Research (KG + Dialectical)',
+      description:
+        'Automated deep research: search → extract claims → build KG → dialectical reasoning → gap analysis → iterate → structured answer.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'deep_research',
+      maxIterations: 100,
+      memoryMessageLimit: 500,
     },
   },
 ]

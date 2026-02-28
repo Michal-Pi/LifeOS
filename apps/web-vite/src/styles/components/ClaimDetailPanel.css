@@ -1,0 +1,368 @@
+/* ClaimDetailPanel Component Styles */
+
+.claim-detail-panel {
+  width: 360px;
+  height: 100%;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slide-in-right var(--motion-standard) var(--motion-ease);
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.claim-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.claim-detail-back {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  transition: all var(--motion-standard) var(--motion-ease);
+}
+
+.claim-detail-back:hover {
+  background: var(--background-hover);
+  color: var(--text-primary);
+}
+
+.claim-detail-title {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Body */
+.claim-detail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Claim text */
+.claim-detail-text {
+  font-size: var(--text-base);
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+/* Metadata row */
+.claim-detail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Confidence */
+.claim-confidence {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.claim-confidence-label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.claim-confidence-bar {
+  flex: 1;
+  height: 6px;
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.claim-confidence-fill {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  transition: width var(--motion-slow) var(--motion-ease);
+}
+
+.claim-confidence-fill.confidence-high {
+  background: var(--success);
+}
+
+.claim-confidence-fill.confidence-medium {
+  background: var(--warning);
+}
+
+.claim-confidence-fill.confidence-low {
+  background: var(--error);
+}
+
+.claim-confidence-value {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+/* Evidence type badge */
+.claim-evidence-badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  width: fit-content;
+}
+
+.claim-evidence-badge.evidence-empirical {
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  color: var(--success);
+}
+
+.claim-evidence-badge.evidence-theoretical {
+  background: color-mix(in srgb, var(--evidence-testimonial) 15%, transparent);
+  color: var(--evidence-testimonial);
+}
+
+.claim-evidence-badge.evidence-anecdotal {
+  background: color-mix(in srgb, var(--evidence-statistical) 15%, transparent);
+  color: var(--evidence-statistical);
+}
+
+.claim-evidence-badge.evidence-expert_opinion {
+  background: color-mix(in srgb, var(--evidence-empirical) 15%, transparent);
+  color: var(--evidence-empirical);
+}
+
+.claim-evidence-badge.evidence-meta_analysis {
+  background: color-mix(in srgb, var(--evidence-analytical) 15%, transparent);
+  color: var(--evidence-analytical);
+}
+
+.claim-evidence-badge.evidence-statistical {
+  background: color-mix(in srgb, var(--evidence-anecdotal) 15%, transparent);
+  color: var(--evidence-anecdotal);
+}
+
+.claim-evidence-badge.evidence-review {
+  background: color-mix(in srgb, var(--evidence-expert) 15%, transparent);
+  color: var(--evidence-expert);
+}
+
+/* Sections */
+.claim-detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.claim-detail-section h4 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Source blockquote */
+.claim-source-quote {
+  margin: 0;
+  padding: var(--space-3);
+  border-left: 3px solid var(--accent);
+  background: var(--muted);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: var(--text-sm);
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* Source info */
+.claim-source-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.claim-source-title {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.claim-source-url {
+  font-size: var(--text-xs);
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.claim-source-url:hover {
+  text-decoration: underline;
+}
+
+/* Source type badge */
+.claim-source-type-badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  width: fit-content;
+}
+
+.claim-source-type-badge.type-web {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+}
+
+.claim-source-type-badge.type-academic {
+  background: color-mix(in srgb, var(--evidence-testimonial) 15%, transparent);
+  color: var(--evidence-testimonial);
+}
+
+.claim-source-type-badge.type-pdf {
+  background: color-mix(in srgb, var(--evidence-statistical) 15%, transparent);
+  color: var(--evidence-statistical);
+}
+
+.claim-source-type-badge.type-crawled {
+  background: color-mix(in srgb, #64748b 15%, transparent);
+  color: #64748b;
+}
+
+/* Scholar metadata */
+.claim-scholar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* Related claims */
+.claim-related-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.claim-related-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  transition: all var(--motion-standard) var(--motion-ease);
+}
+
+.claim-related-item:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, var(--muted));
+}
+
+.claim-related-text {
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.claim-related-confidence {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* Step badge */
+.claim-step-badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  background: var(--muted);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border);
+}
+
+/* Relationship label */
+.claim-related-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+/* Concept tags */
+.claim-concept-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.claim-concept-tag {
+  padding: 2px var(--space-2);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all var(--motion-standard) var(--motion-ease);
+}
+
+.claim-concept-tag:hover {
+  background: var(--accent);
+  color: var(--surface);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .claim-detail-panel {
+    width: 100%;
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+  }
+}

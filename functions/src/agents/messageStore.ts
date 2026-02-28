@@ -39,7 +39,7 @@ export async function recordMessage(
   const messageId = docRef.id || randomUUID()
 
   // Build message document, omitting undefined fields
-  const messageDoc: any = {
+  const messageDoc: Record<string, unknown> = {
     messageId,
     runId: input.runId,
     role: input.role,

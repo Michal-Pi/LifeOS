@@ -5,11 +5,17 @@
  * Manages UI state (loading, error) and delegates business logic to domain layer.
  */
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { useAuth } from './useAuth'
 import { createLogger } from '@lifeos/core'
 import { createFirestoreAgentRepository } from '@/adapters/agents/firestoreAgentRepository'
+import {
+  listAgentsLocally,
+  bulkSaveAgentsLocally,
+  saveAgentLocally,
+  deleteAgentLocally,
+} from '@/agents/offlineStore'
 import {
   createAgentUsecase,
   updateAgentUsecase,
@@ -60,6 +66,11 @@ export function useAgentOperations(): UseAgentOperationsReturn {
 
   const userId = user?.uid
 
+  // Ref for accessing current state in catch blocks without adding state to
+  // useCallback dependency arrays (which would cause infinite re-render loops).
+  const agentsRef = useRef(agents)
+  agentsRef.current = agents
+
   // Initialize usecases with repository
   const usecases = useMemo(
     () => ({
@@ -83,6 +94,7 @@ export function useAgentOperations(): UseAgentOperationsReturn {
       try {
         const agent = await usecases.createAgent(userId, input)
         setAgents((prev) => [agent, ...prev])
+        void saveAgentLocally(agent)
         toast.success('Agent created successfully')
         logger.info('Agent created', { agentId: agent.agentId })
         return agent
@@ -108,6 +120,7 @@ export function useAgentOperations(): UseAgentOperationsReturn {
       try {
         const updated = await usecases.updateAgent(userId, agentId, updates)
         setAgents((prev) => prev.map((agent) => (agent.agentId === agentId ? updated : agent)))
+        void saveAgentLocally(updated)
         toast.success('Agent updated successfully')
         logger.info('Agent updated', { agentId })
         return updated
@@ -133,6 +146,7 @@ export function useAgentOperations(): UseAgentOperationsReturn {
       try {
         await usecases.deleteAgent(userId, agentId)
         setAgents((prev) => prev.filter((agent) => agent.agentId !== agentId))
+        void deleteAgentLocally(agentId)
         toast.success('Agent deleted successfully')
         logger.info('Agent deleted', { agentId })
       } catch (err) {
@@ -180,10 +194,22 @@ export function useAgentOperations(): UseAgentOperationsReturn {
       setError(null)
 
       try {
+        // Local cache first
+        const local = await listAgentsLocally(userId)
+        if (local.length > 0) {
+          const filtered = options?.activeOnly !== false ? local.filter((a) => !a.archived) : local
+          setAgents(filtered)
+        }
+
         const result = await usecases.listAgents(userId, options)
         setAgents(result)
+        void bulkSaveAgentsLocally(result)
         return result
       } catch (err) {
+        if (agentsRef.current.length > 0) {
+          logger.warn('Firestore fetch failed, using cached agents')
+          return agentsRef.current
+        }
         const error = err as Error
         setError(error)
         logger.error('Failed to list agents', error)

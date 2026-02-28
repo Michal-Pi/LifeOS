@@ -2,7 +2,7 @@
  * Tool Call Record Repository Port
  *
  * Repository interface for persisting and querying tool call execution records.
- * Follows the established repository pattern from agentRepository, workspaceRepository, and runRepository.
+ * Follows the established repository pattern from agentRepository, workflowRepository, and runRepository.
  */
 
 import type {
@@ -10,7 +10,7 @@ import type {
   RunId,
   ToolCallRecord,
   ToolCallRecordId,
-  WorkspaceId,
+  WorkflowId,
 } from '../domain/models.js'
 
 export interface ToolCallRecordRepository {
@@ -38,12 +38,12 @@ export interface ToolCallRecordRepository {
   getToolCallRecordsByRun(runId: RunId): Promise<ToolCallRecord[]>
 
   /**
-   * Get all tool call records for a specific workspace (across all runs)
+   * Get all tool call records for a specific workflow (across all runs)
    */
-  getToolCallRecordsByWorkspace(workspaceId: WorkspaceId): Promise<ToolCallRecord[]>
+  getToolCallRecordsByWorkflow(workflowId: WorkflowId): Promise<ToolCallRecord[]>
 
   /**
-   * Get all tool call records for a user (across all workspaces and runs)
+   * Get all tool call records for a user (across all workflows and runs)
    */
   getToolCallRecordsByUser(userId: string): Promise<ToolCallRecord[]>
 

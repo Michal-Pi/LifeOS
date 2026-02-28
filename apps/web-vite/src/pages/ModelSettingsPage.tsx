@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useModelSettings } from '@/hooks/useModelSettings'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/Select'
 import { MODEL_PRICING } from '@lifeos/agents'
 import type { ModelProvider, ProviderModelConfig } from '@lifeos/agents'
+import { discoverModels, type DiscoveredModel } from '@/lib/callables'
 import '@/styles/pages/ModelSettingsPage.css'
 
 const PROVIDER_LABELS: Record<ModelProvider, string> = {
@@ -117,6 +118,108 @@ function ProviderCard({ provider, config, onUpdate }: ProviderCardProps) {
   )
 }
 
+function ModelDiscoveryPanel() {
+  const [isSearching, setIsSearching] = useState(false)
+  const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>([])
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null)
+
+  const handleDiscover = useCallback(async () => {
+    setIsSearching(true)
+    setSearchError(null)
+    try {
+      const result = await discoverModels()
+      setDiscoveredModels(result.data.models)
+      setLastUpdated(result.data.updatedAtMs)
+    } catch (err) {
+      setSearchError((err as Error).message)
+    } finally {
+      setIsSearching(false)
+    }
+  }, [])
+
+  const groupedModels = discoveredModels.reduce(
+    (acc, model) => {
+      if (!acc[model.provider]) {
+        acc[model.provider] = []
+      }
+      acc[model.provider].push(model)
+      return acc
+    },
+    {} as Record<string, DiscoveredModel[]>
+  )
+
+  return (
+    <div className="model-discovery-panel">
+      <div className="model-discovery-header">
+        <div>
+          <h3>Model Discovery</h3>
+          <p className="panel-description">
+            Search the internet for up-to-date model information from OpenAI, Anthropic, Google, and
+            xAI.
+          </p>
+        </div>
+        <Button onClick={handleDiscover} disabled={isSearching}>
+          {isSearching ? 'Searching...' : 'Search for Models'}
+        </Button>
+      </div>
+
+      {searchError && (
+        <div className="discovery-error">
+          <p>{searchError}</p>
+          <p className="error-hint">Make sure you have a Serper API key configured in Settings.</p>
+        </div>
+      )}
+
+      {lastUpdated && (
+        <p className="discovery-timestamp">
+          Last searched: {new Date(lastUpdated).toLocaleString()}
+        </p>
+      )}
+
+      {discoveredModels.length > 0 && (
+        <div className="discovered-models">
+          {Object.entries(groupedModels).map(([provider, models]) => (
+            <div key={provider} className="discovered-provider-group">
+              <h4>{PROVIDER_LABELS[provider as ModelProvider] || provider}</h4>
+              <table className="models-table">
+                <thead>
+                  <tr>
+                    <th>Model Name</th>
+                    <th>API Alias</th>
+                    <th>Input Cost</th>
+                    <th>Output Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {models.map((model, idx) => (
+                    <tr key={`${model.modelName}-${idx}`}>
+                      <td className="model-name-cell">{model.modelName}</td>
+                      <td className="api-alias-cell">{model.apiAlias}</td>
+                      <td className="cost-cell">
+                        {model.inputCostPer1M !== null ? `$${model.inputCostPer1M}` : '—'}
+                      </td>
+                      <td className="cost-cell">
+                        {model.outputCostPer1M !== null ? `$${model.outputCostPer1M}` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!isSearching && discoveredModels.length === 0 && !searchError && (
+        <div className="discovery-empty">
+          <p>Click "Search for Models" to discover available models from AI providers.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function ModelSettingsPage() {
   const { settings, isLoading, error, updateProviderConfig, resetToDefaults } = useModelSettings()
   const [isResetting, setIsResetting] = useState(false)
@@ -164,7 +267,7 @@ export function ModelSettingsPage() {
           <h1>Model Settings</h1>
           <p className="page-description">
             Configure default models for each AI provider. These settings apply when creating new
-            agents and workspaces.
+            agents and workflows.
           </p>
         </div>
         <Button variant="ghost" onClick={handleReset} disabled={isResetting}>
@@ -183,11 +286,13 @@ export function ModelSettingsPage() {
         ))}
       </div>
 
+      <ModelDiscoveryPanel />
+
       <div className="info-card">
-        <h3>💡 About Model Settings</h3>
+        <h3>About Model Settings</h3>
         <ul>
           <li>
-            <strong>Default Models</strong> are used when creating new agents or workspaces
+            <strong>Default Models</strong> are used when creating new agents or workflows
           </li>
           <li>
             <strong>Existing agents</strong> will continue to use their configured models

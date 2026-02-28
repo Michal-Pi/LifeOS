@@ -13,7 +13,9 @@ import type {
   JoinAggregationMode,
   AgentId,
   ToolId,
+  WorkflowId,
 } from '@lifeos/agents'
+import { computeWorkflowLayout, computeDagreLayout, WORKFLOW_LAYOUT } from './workflowLayoutUtils'
 
 export interface BuilderNode {
   id: string
@@ -24,8 +26,16 @@ export interface BuilderNode {
   outputKey?: string
   aggregationMode?: JoinAggregationMode
   requestConfig?: WorkflowNode['requestConfig']
+  /** Reference to another workflow (for subworkflow nodes) */
+  subworkflowId?: WorkflowId
   column: number
   row: number
+  /** When true the node is bypassed (pass-through) during execution */
+  bypassed?: boolean
+  /** When true the node is muted (skipped silently) during execution */
+  muted?: boolean
+  /** Optional group identifier for visually grouping nodes together */
+  groupId?: string
 }
 
 export interface BuilderEdge {
@@ -39,6 +49,12 @@ export interface BuilderState {
   edges: BuilderEdge[]
   startNodeId: string
   selectedNodeId: string | null
+  /** IDs of all currently selected nodes (multi-select) */
+  selectedNodeIds: string[]
+  /** True if user has manually repositioned any nodes (disables auto-layout on structural changes) */
+  hasManualPositions: boolean
+  /** Transient clipboard for copy/paste – not persisted to the workflow graph */
+  clipboard: { nodes: BuilderNode[]; edges: BuilderEdge[] } | null
 }
 
 export type BuilderAction =
@@ -60,6 +76,16 @@ export type BuilderAction =
       branches: Array<{ label: string; condition: WorkflowEdgeCondition }>
     }
   | { type: 'ADD_AGENT_NODE_AFTER'; afterNodeId: string; agentId: AgentId; agentName: string }
+  | { type: 'SET_NODE_POSITION'; nodeId: string; column: number; row: number }
+  | { type: 'AUTO_LAYOUT' }
+  | { type: 'SELECT_NODES'; nodeIds: string[] }
+  | { type: 'REMOVE_NODES'; nodeIds: string[] }
+  | { type: 'COPY_NODES'; nodeIds: string[] }
+  | { type: 'PASTE_NODES' }
+  | { type: 'TOGGLE_BYPASS'; nodeId: string }
+  | { type: 'TOGGLE_MUTE'; nodeId: string }
+  | { type: 'GROUP_NODES'; nodeIds: string[]; groupLabel: string }
+  | { type: 'UNGROUP_NODES'; groupId: string }
   | { type: 'LOAD_GRAPH'; graph: WorkflowGraph }
   | { type: 'RESET' }
 
@@ -78,7 +104,10 @@ export function createInitialState(): BuilderState {
     ],
     edges: [{ from: startId, to: endId, condition: { type: 'always' } }],
     startNodeId: startId,
-    selectedNodeId: null,
+    selectedNodeId: startId, // Auto-select start node so options are not greyed out
+    selectedNodeIds: [startId],
+    hasManualPositions: false,
+    clipboard: null,
   })
 }
 
@@ -94,6 +123,7 @@ export function builderStateToGraph(state: BuilderState): WorkflowGraph {
       if (n.outputKey) node.outputKey = n.outputKey
       if (n.aggregationMode) node.aggregationMode = n.aggregationMode
       if (n.requestConfig) node.requestConfig = n.requestConfig
+      if (n.subworkflowId) node.subworkflowId = n.subworkflowId
       return node
     }),
     edges: state.edges.map((e) => ({
@@ -114,6 +144,7 @@ function graphToBuilderState(graph: WorkflowGraph): BuilderState {
     outputKey: n.outputKey,
     aggregationMode: n.aggregationMode,
     requestConfig: n.requestConfig,
+    subworkflowId: n.subworkflowId,
     column: 0,
     row: 0,
   }))
@@ -128,62 +159,45 @@ function graphToBuilderState(graph: WorkflowGraph): BuilderState {
     nodes,
     edges,
     startNodeId: graph.startNodeId,
-    selectedNodeId: null,
+    selectedNodeId: graph.startNodeId,
+    selectedNodeIds: [graph.startNodeId],
+    hasManualPositions: false,
+    clipboard: null,
   })
 }
 
 /**
- * Compute structured grid layout using BFS from the start node.
- * Assigns column (depth) and row (sibling index at that depth).
+ * Compute structured layout using dagre for optimal node positioning.
+ * Falls back to BFS-based grid layout if dagre produces empty results.
  */
 function computeLayout(state: BuilderState): BuilderState {
   const { nodes, edges, startNodeId } = state
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]))
-  const adjacency = new Map<string, string[]>()
 
-  for (const edge of edges) {
-    const existing = adjacency.get(edge.from) ?? []
-    existing.push(edge.to)
-    adjacency.set(edge.from, existing)
+  // Use dagre for better layout
+  const positions = computeDagreLayout(nodes, edges, startNodeId)
+
+  if (positions.size === 0) {
+    // Fallback to BFS layout
+    const { depths, nodesByDepth } = computeWorkflowLayout(nodes, edges, startNodeId)
+    const updatedNodes = nodes.map((node) => {
+      const depth = depths.get(node.id) ?? 0
+      const group = nodesByDepth.get(depth) ?? [node.id]
+      const row = group.indexOf(node.id)
+      return { ...node, column: depth, row: row === -1 ? 0 : row }
+    })
+    return { ...state, nodes: updatedNodes }
   }
 
-  const depths = new Map<string, number>()
-  const queue: string[] = []
+  // Convert dagre pixel positions back to grid columns/rows for the builder
+  const colWidth = WORKFLOW_LAYOUT.node.width + WORKFLOW_LAYOUT.gap.column
+  const rowHeight = WORKFLOW_LAYOUT.node.height + WORKFLOW_LAYOUT.gap.row
 
-  if (nodeMap.has(startNodeId)) {
-    depths.set(startNodeId, 0)
-    queue.push(startNodeId)
-  }
-
-  // BFS to assign depths
-  while (queue.length > 0) {
-    const current = queue.shift()!
-    const currentDepth = depths.get(current) ?? 0
-    const children = adjacency.get(current) ?? []
-
-    for (const child of children) {
-      const existingDepth = depths.get(child)
-      if (existingDepth === undefined || existingDepth < currentDepth + 1) {
-        depths.set(child, currentDepth + 1)
-        queue.push(child)
-      }
-    }
-  }
-
-  // Group nodes by column (depth)
-  const columnGroups = new Map<number, string[]>()
-  for (const [nodeId, depth] of depths) {
-    const group = columnGroups.get(depth) ?? []
-    group.push(nodeId)
-    columnGroups.set(depth, group)
-  }
-
-  // Assign row within each column
   const updatedNodes = nodes.map((node) => {
-    const depth = depths.get(node.id) ?? 0
-    const group = columnGroups.get(depth) ?? [node.id]
-    const row = group.indexOf(node.id)
-    return { ...node, column: depth, row: row === -1 ? 0 : row }
+    const pos = positions.get(node.id)
+    if (!pos) return node
+    const column = Math.max(0, Math.round(pos.x / colWidth))
+    const row = Math.max(0, Math.round(pos.y / rowHeight))
+    return { ...node, column, row }
   })
 
   return { ...state, nodes: updatedNodes }
@@ -320,7 +334,46 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
     }
 
     case 'SELECT_NODE': {
-      return { ...state, selectedNodeId: action.nodeId }
+      return {
+        ...state,
+        selectedNodeId: action.nodeId,
+        selectedNodeIds: action.nodeId ? [action.nodeId] : [],
+      }
+    }
+
+    case 'SELECT_NODES': {
+      return {
+        ...state,
+        selectedNodeIds: action.nodeIds,
+        selectedNodeId: action.nodeIds[0] ?? null,
+      }
+    }
+
+    case 'REMOVE_NODES': {
+      // Filter out protected nodes (start node, and keep at least 2 nodes)
+      const removable = action.nodeIds.filter((id) => id !== state.startNodeId)
+      if (removable.length === 0) return state
+
+      let result = state
+      for (const nodeId of removable) {
+        if (result.nodes.length <= 2) break
+        result = builderReducer(result, { type: 'REMOVE_NODE', nodeId })
+      }
+      return { ...result, selectedNodeIds: [], selectedNodeId: null }
+    }
+
+    case 'SET_NODE_POSITION': {
+      return {
+        ...state,
+        hasManualPositions: true,
+        nodes: state.nodes.map((n) =>
+          n.id === action.nodeId ? { ...n, column: action.column, row: action.row } : n
+        ),
+      }
+    }
+
+    case 'AUTO_LAYOUT': {
+      return { ...computeLayout(state), hasManualPositions: false }
     }
 
     case 'SPLIT_PARALLEL': {
@@ -420,6 +473,89 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
         edges: [...otherEdges, ...branchEdges],
         selectedNodeId: branchNodes[0]?.id ?? null,
       })
+    }
+
+    case 'COPY_NODES': {
+      const nodeIdSet = new Set(action.nodeIds)
+      const copiedNodes = state.nodes.filter((n) => nodeIdSet.has(n.id))
+      // Only include edges that are internal to the copied set
+      const copiedEdges = state.edges.filter((e) => nodeIdSet.has(e.from) && nodeIdSet.has(e.to))
+      return {
+        ...state,
+        clipboard: { nodes: copiedNodes, edges: copiedEdges },
+      }
+    }
+
+    case 'PASTE_NODES': {
+      if (!state.clipboard || state.clipboard.nodes.length === 0) return state
+
+      // Build old-id -> new-id mapping
+      const idMap = new Map<string, string>()
+      for (const node of state.clipboard.nodes) {
+        idMap.set(node.id, generateNodeId())
+      }
+
+      // Duplicate nodes with new IDs and offset column by +1
+      const pastedNodes: BuilderNode[] = state.clipboard.nodes
+        .filter((n) => idMap.has(n.id))
+        .map((n) => ({
+          ...n,
+          id: idMap.get(n.id) as string,
+          column: n.column + 1,
+        }))
+
+      // Re-wire internal edges to use new IDs (only if both endpoints mapped)
+      const pastedEdges: BuilderEdge[] = state.clipboard.edges
+        .filter((e) => idMap.has(e.from) && idMap.has(e.to))
+        .map((e) => ({
+          from: idMap.get(e.from) as string,
+          to: idMap.get(e.to) as string,
+          condition: e.condition,
+        }))
+
+      const pastedIds = pastedNodes.map((n) => n.id)
+
+      return computeLayout({
+        ...state,
+        nodes: [...state.nodes, ...pastedNodes],
+        edges: [...state.edges, ...pastedEdges],
+        selectedNodeIds: pastedIds,
+        selectedNodeId: pastedIds[0] ?? null,
+      })
+    }
+
+    case 'TOGGLE_BYPASS': {
+      return {
+        ...state,
+        nodes: state.nodes.map((n) =>
+          n.id === action.nodeId ? { ...n, bypassed: !n.bypassed } : n
+        ),
+      }
+    }
+
+    case 'TOGGLE_MUTE': {
+      return {
+        ...state,
+        nodes: state.nodes.map((n) => (n.id === action.nodeId ? { ...n, muted: !n.muted } : n)),
+      }
+    }
+
+    case 'GROUP_NODES': {
+      const groupId = generateNodeId()
+      const groupSet = new Set(action.nodeIds)
+      return {
+        ...state,
+        nodes: state.nodes.map((n) => (groupSet.has(n.id) ? { ...n, groupId } : n)),
+      }
+    }
+
+    case 'UNGROUP_NODES': {
+      return {
+        ...state,
+        nodes: state.nodes.map((n) =>
+          n.groupId === action.groupId ? { ...n, groupId: undefined } : n
+        ),
+      }
     }
 
     case 'LOAD_GRAPH': {

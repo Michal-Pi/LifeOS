@@ -16,7 +16,7 @@ import {
   DEFAULT_AI_TOOLS,
   type AIToolSettings,
   type AIToolId,
-  type ExtractedClaim,
+  type FactCheckClaim,
 } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
@@ -43,7 +43,7 @@ interface AIToolRequest {
   context?: {
     availableTopics?: Array<{ id: string; name: string }>
     availableNotes?: Array<{ id: string; title: string }>
-    selectedClaims?: ExtractedClaim[]
+    selectedClaims?: FactCheckClaim[]
   }
 }
 
@@ -322,7 +322,7 @@ async function extractClaims(
   client: Anthropic,
   content: string,
   toolSettings: AIToolSettings
-): Promise<ToolResult<ExtractedClaim[]>> {
+): Promise<ToolResult<FactCheckClaim[]>> {
   const config = toolSettings.tools.factCheck
 
   const extractionPrompt = `${config.systemPrompt}
@@ -356,7 +356,7 @@ Respond in JSON format:
     const jsonStr = extractJson(result.content, 'array')
     if (jsonStr) {
       return {
-        data: JSON.parse(jsonStr) as ExtractedClaim[],
+        data: JSON.parse(jsonStr) as FactCheckClaim[],
         inputTokens: result.inputTokens,
         outputTokens: result.outputTokens,
       }
@@ -371,7 +371,7 @@ Respond in JSON format:
  * Phase 2: Verify claims against the web using SERP and/or semantic search.
  */
 async function verifyClaimsWithSearch(
-  claims: ExtractedClaim[],
+  claims: FactCheckClaim[],
   userId: string,
   searchToolKeys: SearchToolKeys
 ): Promise<Map<number, SearchResult[]>> {
@@ -414,7 +414,7 @@ async function verifyClaimsWithSearch(
  */
 async function synthesizeFactCheck(
   client: Anthropic,
-  claims: ExtractedClaim[],
+  claims: FactCheckClaim[],
   searchResults: Map<number, SearchResult[]>,
   toolSettings: AIToolSettings
 ): Promise<ToolResult<FactCheckResult[]>> {

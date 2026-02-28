@@ -12,7 +12,7 @@
   max-height: 80vh;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: 0 8px 24px var(--shadow-soft);
   z-index: 2000;
   display: flex;
@@ -29,14 +29,14 @@
 
 .ai-analysis-panel__header h3 {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: var(--text-lg);
   font-weight: 600;
 }
 
 .ai-analysis-panel__close {
   background: none;
   border: none;
-  font-size: 1.5rem;
+  font-size: var(--text-2xl);
   cursor: pointer;
   color: var(--text-secondary);
   padding: 0;
@@ -45,7 +45,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .ai-analysis-panel__close:hover {
@@ -70,9 +70,9 @@
   background: var(--accent);
   color: var(--accent-foreground);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   font-weight: 500;
 }
 
@@ -95,7 +95,7 @@
 .ai-analysis-panel__paragraph {
   padding: 1rem;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--background);
 }
 
@@ -118,7 +118,7 @@
 }
 
 .ai-analysis-panel__tag-group label {
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -132,11 +132,11 @@
 .ai-analysis-panel__tag {
   padding: 0.375rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--background);
   color: var(--foreground);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   transition: all var(--motion-fast) var(--motion-ease);
 }
 
@@ -163,9 +163,9 @@
   background: var(--accent);
   color: var(--accent-foreground);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   font-weight: 500;
 }
 
@@ -182,7 +182,7 @@
   padding: 1rem;
   background: var(--error-light);
   border: 1px solid var(--error);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--error);
   margin-bottom: 1rem;
 }
@@ -194,11 +194,11 @@
 .ai-analysis-panel__retry-btn {
   padding: 0.375rem 0.75rem;
   background: var(--error);
-  color: white;
+  color: var(--accent-foreground);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--text-base);
 }
 
 .ai-analysis-panel__retry-btn:hover {

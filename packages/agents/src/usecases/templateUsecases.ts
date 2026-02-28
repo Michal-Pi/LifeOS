@@ -2,20 +2,20 @@ import type {
   AgentTemplate,
   AgentTemplateId,
   CreateAgentTemplateInput,
-  WorkspaceTemplate,
-  WorkspaceTemplateId,
-  CreateWorkspaceTemplateInput,
+  WorkflowTemplate,
+  WorkflowTemplateId,
+  CreateWorkflowTemplateInput,
 } from '../domain/models'
 import type { AgentTemplateRepository } from '../ports/agentTemplateRepository'
-import type { WorkspaceTemplateRepository } from '../ports/workspaceTemplateRepository'
+import type { WorkflowTemplateRepository } from '../ports/workflowTemplateRepository'
 
 type CreateAgentTemplatePayload = Omit<
   CreateAgentTemplateInput,
   'userId' | 'createdAtMs' | 'updatedAtMs'
 >
 
-type CreateWorkspaceTemplatePayload = Omit<
-  CreateWorkspaceTemplateInput,
+type CreateWorkflowTemplatePayload = Omit<
+  CreateWorkflowTemplateInput,
   'userId' | 'createdAtMs' | 'updatedAtMs'
 >
 
@@ -59,11 +59,11 @@ export const listAgentTemplatesUsecase = (repo: AgentTemplateRepository) => {
   }
 }
 
-export const createWorkspaceTemplateUsecase = (repo: WorkspaceTemplateRepository) => {
+export const createWorkflowTemplateUsecase = (repo: WorkflowTemplateRepository) => {
   return async (
     userId: string,
-    input: CreateWorkspaceTemplatePayload
-  ): Promise<WorkspaceTemplate> => {
+    input: CreateWorkflowTemplatePayload
+  ): Promise<WorkflowTemplate> => {
     return repo.create({
       ...input,
       userId,
@@ -71,12 +71,12 @@ export const createWorkspaceTemplateUsecase = (repo: WorkspaceTemplateRepository
   }
 }
 
-export const updateWorkspaceTemplateUsecase = (repo: WorkspaceTemplateRepository) => {
+export const updateWorkflowTemplateUsecase = (repo: WorkflowTemplateRepository) => {
   return async (
     userId: string,
-    templateId: WorkspaceTemplateId,
-    updates: Partial<CreateWorkspaceTemplatePayload>
-  ): Promise<WorkspaceTemplate> => {
+    templateId: WorkflowTemplateId,
+    updates: Partial<CreateWorkflowTemplatePayload>
+  ): Promise<WorkflowTemplate> => {
     return repo.update(templateId, {
       ...updates,
       userId,
@@ -84,23 +84,23 @@ export const updateWorkspaceTemplateUsecase = (repo: WorkspaceTemplateRepository
   }
 }
 
-export const deleteWorkspaceTemplateUsecase = (repo: WorkspaceTemplateRepository) => {
-  return async (userId: string, templateId: WorkspaceTemplateId): Promise<void> => {
+export const deleteWorkflowTemplateUsecase = (repo: WorkflowTemplateRepository) => {
+  return async (userId: string, templateId: WorkflowTemplateId): Promise<void> => {
     return repo.delete(userId, templateId)
   }
 }
 
-export const getWorkspaceTemplateUsecase = (repo: WorkspaceTemplateRepository) => {
+export const getWorkflowTemplateUsecase = (repo: WorkflowTemplateRepository) => {
   return async (
     userId: string,
-    templateId: WorkspaceTemplateId
-  ): Promise<WorkspaceTemplate | null> => {
+    templateId: WorkflowTemplateId
+  ): Promise<WorkflowTemplate | null> => {
     return repo.get(userId, templateId)
   }
 }
 
-export const listWorkspaceTemplatesUsecase = (repo: WorkspaceTemplateRepository) => {
-  return async (userId: string): Promise<WorkspaceTemplate[]> => {
+export const listWorkflowTemplatesUsecase = (repo: WorkflowTemplateRepository) => {
+  return async (userId: string): Promise<WorkflowTemplate[]> => {
     return repo.list(userId)
   }
 }

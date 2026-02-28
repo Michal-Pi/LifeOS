@@ -1,22 +1,34 @@
 /**
- * useWorkspaceOperations Hook
+ * useWorkflowOperations Hook
  *
- * React wrapper around workspace usecases.
+ * React wrapper around workflow usecases.
  * Manages UI state (loading, error) and delegates business logic to domain layer.
  */
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { useAuth } from './useAuth'
 import { createLogger } from '@lifeos/core'
-import { createFirestoreWorkspaceRepository } from '@/adapters/agents/firestoreWorkspaceRepository'
+import { createFirestoreWorkflowRepository } from '@/adapters/agents/firestoreWorkflowRepository'
 import { createFirestoreRunRepository } from '@/adapters/agents/firestoreRunRepository'
 import {
-  createWorkspaceUsecase,
-  updateWorkspaceUsecase,
-  deleteWorkspaceUsecase,
-  getWorkspaceUsecase,
-  listWorkspacesUsecase,
+  listWorkflowsLocally,
+  bulkSaveWorkflowsLocally,
+  saveWorkflowLocally,
+  deleteWorkflowLocally,
+  getWorkflowLocally,
+  listRunsLocally,
+  listRunsByWorkflowLocally,
+  bulkSaveRunsLocally,
+  saveRunLocally,
+  deleteRunLocally,
+} from '@/agents/offlineStore'
+import {
+  createWorkflowUsecase,
+  updateWorkflowUsecase,
+  deleteWorkflowUsecase,
+  getWorkflowUsecase,
+  listWorkflowsUsecase,
   createRunUsecase,
   updateRunUsecase,
   getRunUsecase,
@@ -24,74 +36,81 @@ import {
   deleteRunUsecase,
 } from '@lifeos/agents'
 import type {
-  Workspace,
-  WorkspaceId,
-  CreateWorkspaceInput,
-  UpdateWorkspaceInput,
+  Workflow,
+  WorkflowId,
+  CreateWorkflowInput,
+  UpdateWorkflowInput,
   Run,
   RunId,
   CreateRunInput,
   RunStatus,
 } from '@lifeos/agents'
 
-const logger = createLogger('useWorkspaceOperations')
+const logger = createLogger('useWorkflowOperations')
 
-export interface UseWorkspaceOperationsReturn {
-  workspaces: Workspace[]
-  workspace: Workspace | null // Current workspace for detail view
+export interface UseWorkflowOperationsReturn {
+  workflows: Workflow[]
+  workflow: Workflow | null // Current workflow for detail view
   runs: Run[]
   isLoading: boolean
   error: Error | null
 
-  // Workspace operations
-  createWorkspace: (input: CreateWorkspaceInput) => Promise<Workspace>
-  updateWorkspace: (workspaceId: WorkspaceId, updates: UpdateWorkspaceInput) => Promise<Workspace>
-  deleteWorkspace: (workspaceId: WorkspaceId) => Promise<void>
-  getWorkspace: (workspaceId: WorkspaceId) => Promise<Workspace | null>
-  listWorkspaces: (options?: { activeOnly?: boolean }) => Promise<Workspace[]>
-  loadWorkspaces: () => Promise<void>
+  // Workflow operations
+  createWorkflow: (input: CreateWorkflowInput) => Promise<Workflow>
+  updateWorkflow: (workflowId: WorkflowId, updates: UpdateWorkflowInput) => Promise<Workflow>
+  deleteWorkflow: (workflowId: WorkflowId) => Promise<void>
+  getWorkflow: (workflowId: WorkflowId) => Promise<Workflow | null>
+  listWorkflows: (options?: { activeOnly?: boolean }) => Promise<Workflow[]>
+  loadWorkflows: () => Promise<void>
 
   // Run operations
   createRun: (input: CreateRunInput) => Promise<Run>
   updateRun: (
     runId: RunId,
-    updates: Partial<Omit<Run, 'runId' | 'userId' | 'workspaceId'>>
+    updates: Partial<Omit<Run, 'runId' | 'userId' | 'workflowId'>>
   ) => Promise<Run>
   getRun: (runId: RunId) => Promise<Run | null>
   listRuns: (options?: {
-    workspaceId?: WorkspaceId
+    workflowId?: WorkflowId
     status?: RunStatus
     limit?: number
   }) => Promise<Run[]>
   deleteRun: (runId: RunId) => Promise<void>
-  loadRuns: (workspaceId?: WorkspaceId) => Promise<void>
+  loadRuns: (workflowId?: WorkflowId) => Promise<void>
 }
 
-const workspaceRepository = createFirestoreWorkspaceRepository()
+const workflowRepository = createFirestoreWorkflowRepository()
 const runRepository = createFirestoreRunRepository()
 
 /**
- * Hook for managing AI workspaces and runs
+ * Hook for managing AI workflows and runs
  * Thin wrapper around usecases - handles React state, delegates business logic to domain
  */
-export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
+export function useWorkflowOperations(): UseWorkflowOperationsReturn {
   const { user } = useAuth()
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([])
-  const [workspace, setWorkspace] = useState<Workspace | null>(null) // Current workspace for detail view
+  const [workflows, setWorkflows] = useState<Workflow[]>([])
+  const [workflow, setWorkflow] = useState<Workflow | null>(null) // Current workflow for detail view
   const [runs, setRuns] = useState<Run[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
   const userId = user?.uid
 
+  // Refs for accessing current state in catch blocks without adding state to
+  // useCallback dependency arrays (which would cause infinite re-render loops).
+  const workflowsRef = useRef(workflows)
+  workflowsRef.current = workflows
+  const runsRef = useRef(runs)
+  runsRef.current = runs
+
   // Initialize usecases with repositories
   const usecases = useMemo(
     () => ({
-      createWorkspace: createWorkspaceUsecase(workspaceRepository),
-      updateWorkspace: updateWorkspaceUsecase(workspaceRepository),
-      deleteWorkspace: deleteWorkspaceUsecase(workspaceRepository),
-      getWorkspace: getWorkspaceUsecase(workspaceRepository),
-      listWorkspaces: listWorkspacesUsecase(workspaceRepository),
+      createWorkflow: createWorkflowUsecase(workflowRepository),
+      updateWorkflow: updateWorkflowUsecase(workflowRepository),
+      deleteWorkflow: deleteWorkflowUsecase(workflowRepository),
+      getWorkflow: getWorkflowUsecase(workflowRepository),
+      listWorkflows: listWorkflowsUsecase(workflowRepository),
       createRun: createRunUsecase(runRepository),
       updateRun: updateRunUsecase(runRepository),
       getRun: getRunUsecase(runRepository),
@@ -101,25 +120,26 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
     []
   )
 
-  // ========== Workspace Operations ==========
+  // ========== Workflow Operations ==========
 
-  const createWorkspace = useCallback(
-    async (input: CreateWorkspaceInput): Promise<Workspace> => {
+  const createWorkflow = useCallback(
+    async (input: CreateWorkflowInput): Promise<Workflow> => {
       if (!userId) throw new Error('User not authenticated')
       setIsLoading(true)
       setError(null)
 
       try {
-        const workspace = await usecases.createWorkspace(userId, input)
-        setWorkspaces((prev) => [workspace, ...prev])
-        toast.success('Workspace created successfully')
-        logger.info('Workspace created', { workspaceId: workspace.workspaceId })
-        return workspace
+        const workflow = await usecases.createWorkflow(userId, input)
+        setWorkflows((prev) => [workflow, ...prev])
+        void saveWorkflowLocally(workflow)
+        toast.success('Workflow created successfully')
+        logger.info('Workflow created', { workflowId: workflow.workflowId })
+        return workflow
       } catch (err) {
         const error = err as Error
         setError(error)
-        logger.error('Failed to create workspace', error)
-        toast.error('Failed to create workspace', { description: error.message })
+        logger.error('Failed to create workflow', error)
+        toast.error('Failed to create workflow', { description: error.message })
         throw err
       } finally {
         setIsLoading(false)
@@ -128,25 +148,26 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
     [userId, usecases]
   )
 
-  const updateWorkspace = useCallback(
-    async (workspaceId: WorkspaceId, updates: UpdateWorkspaceInput): Promise<Workspace> => {
+  const updateWorkflow = useCallback(
+    async (workflowId: WorkflowId, updates: UpdateWorkflowInput): Promise<Workflow> => {
       if (!userId) throw new Error('User not authenticated')
       setIsLoading(true)
       setError(null)
 
       try {
-        const updated = await usecases.updateWorkspace(userId, workspaceId, updates)
-        setWorkspaces((prev) =>
-          prev.map((workspace) => (workspace.workspaceId === workspaceId ? updated : workspace))
+        const updated = await usecases.updateWorkflow(userId, workflowId, updates)
+        setWorkflows((prev) =>
+          prev.map((workflow) => (workflow.workflowId === workflowId ? updated : workflow))
         )
-        toast.success('Workspace updated successfully')
-        logger.info('Workspace updated', { workspaceId })
+        void saveWorkflowLocally(updated)
+        toast.success('Workflow updated successfully')
+        logger.info('Workflow updated', { workflowId })
         return updated
       } catch (err) {
         const error = err as Error
         setError(error)
-        logger.error('Failed to update workspace', error, { workspaceId })
-        toast.error('Failed to update workspace', { description: error.message })
+        logger.error('Failed to update workflow', error, { workflowId })
+        toast.error('Failed to update workflow', { description: error.message })
         throw err
       } finally {
         setIsLoading(false)
@@ -155,22 +176,23 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
     [userId, usecases]
   )
 
-  const deleteWorkspace = useCallback(
-    async (workspaceId: WorkspaceId): Promise<void> => {
+  const deleteWorkflow = useCallback(
+    async (workflowId: WorkflowId): Promise<void> => {
       if (!userId) throw new Error('User not authenticated')
       setIsLoading(true)
       setError(null)
 
       try {
-        await usecases.deleteWorkspace(userId, workspaceId)
-        setWorkspaces((prev) => prev.filter((workspace) => workspace.workspaceId !== workspaceId))
-        toast.success('Workspace deleted successfully')
-        logger.info('Workspace deleted', { workspaceId })
+        await usecases.deleteWorkflow(userId, workflowId)
+        setWorkflows((prev) => prev.filter((workflow) => workflow.workflowId !== workflowId))
+        void deleteWorkflowLocally(workflowId)
+        toast.success('Workflow deleted successfully')
+        logger.info('Workflow deleted', { workflowId })
       } catch (err) {
         const error = err as Error
         setError(error)
-        logger.error('Failed to delete workspace', error, { workspaceId })
-        toast.error('Failed to delete workspace', { description: error.message })
+        logger.error('Failed to delete workflow', error, { workflowId })
+        toast.error('Failed to delete workflow', { description: error.message })
         throw err
       } finally {
         setIsLoading(false)
@@ -179,20 +201,31 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
     [userId, usecases]
   )
 
-  const getWorkspace = useCallback(
-    async (workspaceId: WorkspaceId): Promise<Workspace | null> => {
+  const getWorkflow = useCallback(
+    async (workflowId: WorkflowId): Promise<Workflow | null> => {
       if (!userId) throw new Error('User not authenticated')
       setIsLoading(true)
       setError(null)
 
       try {
-        const fetchedWorkspace = await usecases.getWorkspace(userId, workspaceId)
-        setWorkspace(fetchedWorkspace) // Update state for detail view
-        return fetchedWorkspace
+        // Try local cache first
+        const local = await getWorkflowLocally(workflowId)
+        if (local) setWorkflow(local)
+
+        const fetchedWorkflow = await usecases.getWorkflow(userId, workflowId)
+        setWorkflow(fetchedWorkflow)
+        if (fetchedWorkflow) void saveWorkflowLocally(fetchedWorkflow)
+        return fetchedWorkflow
       } catch (err) {
+        // If Firestore fails but we have local data, return it
+        const local = await getWorkflowLocally(workflowId).catch(() => undefined)
+        if (local) {
+          setWorkflow(local)
+          return local
+        }
         const error = err as Error
         setError(error)
-        logger.error('Failed to get workspace', error, { workspaceId })
+        logger.error('Failed to get workflow', error, { workflowId })
         throw err
       } finally {
         setIsLoading(false)
@@ -201,20 +234,34 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
     [userId, usecases]
   )
 
-  const listWorkspaces = useCallback(
-    async (options?: { activeOnly?: boolean }): Promise<Workspace[]> => {
+  const listWorkflows = useCallback(
+    async (options?: { activeOnly?: boolean }): Promise<Workflow[]> => {
       if (!userId) throw new Error('User not authenticated')
       setIsLoading(true)
       setError(null)
 
       try {
-        const result = await usecases.listWorkspaces(userId, options)
-        setWorkspaces(result)
+        // Read from local cache first for instant display
+        const local = await listWorkflowsLocally(userId)
+        if (local.length > 0) {
+          const filtered = options?.activeOnly !== false ? local.filter((w) => !w.archived) : local
+          setWorkflows(filtered)
+        }
+
+        // Fetch from Firestore in background and update cache
+        const result = await usecases.listWorkflows(userId, options)
+        setWorkflows(result)
+        void bulkSaveWorkflowsLocally(result)
         return result
       } catch (err) {
+        // If Firestore fails but we have local data, keep it
+        if (workflowsRef.current.length > 0) {
+          logger.warn('Firestore fetch failed, using cached workflows')
+          return workflowsRef.current
+        }
         const error = err as Error
         setError(error)
-        logger.error('Failed to list workspaces', error)
+        logger.error('Failed to list workflows', error)
         throw err
       } finally {
         setIsLoading(false)
@@ -223,10 +270,10 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
     [userId, usecases]
   )
 
-  const loadWorkspaces = useCallback(async (): Promise<void> => {
+  const loadWorkflows = useCallback(async (): Promise<void> => {
     if (!userId) return
-    await listWorkspaces({ activeOnly: true })
-  }, [userId, listWorkspaces])
+    await listWorkflows({ activeOnly: true })
+  }, [userId, listWorkflows])
 
   // ========== Run Operations ==========
 
@@ -239,6 +286,7 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
       try {
         const run = await usecases.createRun(userId, input)
         setRuns((prev) => [run, ...prev])
+        void saveRunLocally(run)
         toast.success('Run started successfully')
         logger.info('Run created', { runId: run.runId })
         return run
@@ -258,7 +306,7 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
   const updateRun = useCallback(
     async (
       runId: RunId,
-      updates: Partial<Omit<Run, 'runId' | 'userId' | 'workspaceId'>>
+      updates: Partial<Omit<Run, 'runId' | 'userId' | 'workflowId'>>
     ): Promise<Run> => {
       if (!userId) throw new Error('User not authenticated')
       setIsLoading(true)
@@ -267,6 +315,7 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
       try {
         const updated = await usecases.updateRun(userId, runId, updates)
         setRuns((prev) => prev.map((run) => (run.runId === runId ? updated : run)))
+        void saveRunLocally(updated)
         logger.info('Run updated', { runId })
         return updated
       } catch (err) {
@@ -305,7 +354,7 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
 
   const listRuns = useCallback(
     async (options?: {
-      workspaceId?: WorkspaceId
+      workflowId?: WorkflowId
       status?: RunStatus
       limit?: number
     }): Promise<Run[]> => {
@@ -314,10 +363,23 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
       setError(null)
 
       try {
+        // Read from local cache first
+        const local = options?.workflowId
+          ? await listRunsByWorkflowLocally(options.workflowId)
+          : await listRunsLocally(userId)
+        if (local.length > 0) {
+          setRuns(local.sort((a, b) => b.startedAtMs - a.startedAtMs))
+        }
+
         const result = await usecases.listRuns(userId, options)
         setRuns(result)
+        void bulkSaveRunsLocally(result)
         return result
       } catch (err) {
+        if (runsRef.current.length > 0) {
+          logger.warn('Firestore fetch failed, using cached runs')
+          return runsRef.current
+        }
         const error = err as Error
         setError(error)
         logger.error('Failed to list runs', error)
@@ -338,6 +400,7 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
       try {
         await usecases.deleteRun(userId, runId)
         setRuns((prev) => prev.filter((run) => run.runId !== runId))
+        void deleteRunLocally(runId)
         toast.success('Run deleted successfully')
         logger.info('Run deleted', { runId })
       } catch (err) {
@@ -354,25 +417,25 @@ export function useWorkspaceOperations(): UseWorkspaceOperationsReturn {
   )
 
   const loadRuns = useCallback(
-    async (workspaceId?: WorkspaceId): Promise<void> => {
+    async (workflowId?: WorkflowId): Promise<void> => {
       if (!userId) return
-      await listRuns({ workspaceId, limit: 50 })
+      await listRuns({ workflowId, limit: 50 })
     },
     [userId, listRuns]
   )
 
   return {
-    workspaces,
-    workspace,
+    workflows,
+    workflow,
     runs,
     isLoading,
     error,
-    createWorkspace,
-    updateWorkspace,
-    deleteWorkspace,
-    getWorkspace,
-    listWorkspaces,
-    loadWorkspaces,
+    createWorkflow,
+    updateWorkflow,
+    deleteWorkflow,
+    getWorkflow,
+    listWorkflows,
+    loadWorkflows,
     createRun,
     updateRun,
     getRun,

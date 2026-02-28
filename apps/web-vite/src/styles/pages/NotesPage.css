@@ -1,0 +1,294 @@
+.notes-page {
+  height: calc(100vh - var(--nav-height) - 20px);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  background: var(--background);
+  background-image: var(--background-texture);
+  background-size: auto;
+  background-position: top center;
+}
+
+.sync-banner {
+  flex-shrink: 0;
+}
+
+.notes-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  overflow: hidden;
+}
+
+.notes-editor-container {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--background);
+  min-height: 0;
+}
+
+.editor-header {
+  flex-shrink: 0;
+  padding: var(--space-6) var(--space-7) 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.editor-header-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.editor-header-content > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.editor-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.editor-overflow-wrap {
+  position: relative;
+}
+
+.editor-overflow-trigger {
+  font-size: var(--text-lg);
+  letter-spacing: 0.15em;
+  line-height: 1;
+  padding: 0.45rem 0.6rem !important;
+}
+
+.editor-overflow-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 50;
+  min-width: 160px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px var(--shadow-soft);
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-overflow-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: var(--text-sm);
+  color: var(--foreground);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+
+.editor-overflow-item:hover {
+  background: var(--background-secondary);
+}
+
+/* Style ExportMenu inside overflow to match items */
+.editor-overflow-menu .notes-header-export .export-button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: var(--text-sm);
+  min-height: unset;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  color: var(--foreground);
+  letter-spacing: normal;
+}
+
+.editor-overflow-menu .notes-header-export .export-button:hover {
+  background: var(--background-secondary);
+}
+
+.editor-status {
+  min-height: 0.9rem;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.notes-header-button,
+.notes-header-export .export-button {
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-md);
+  letter-spacing: 0.04em;
+  background: transparent;
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.notes-header-button:hover,
+.notes-header-export .export-button:hover {
+  background: var(--background-tertiary);
+  border-color: var(--border-strong);
+}
+
+.editor-wrapper {
+  flex: 1;
+  overflow: hidden;
+  padding: var(--space-6) var(--space-7);
+  background: var(--card);
+  min-height: 0;
+  display: flex;
+  position: relative;
+}
+
+.editor-linker-panel {
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--background-secondary);
+  box-shadow: 0 8px 20px var(--shadow-soft);
+  max-width: 720px;
+  width: 100%;
+}
+
+.editor-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: var(--card);
+}
+
+.placeholder-content {
+  text-align: center;
+  max-width: 500px;
+  padding: var(--space-8) var(--space-6);
+}
+
+.placeholder-icon {
+  font-size: var(--text-icon-lg);
+  margin-bottom: 1.5rem;
+  opacity: 0.5;
+}
+
+.placeholder-content h2 {
+  margin: 0 0 0.75rem 0;
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.placeholder-content p {
+  margin: 0 0 1.5rem 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-base);
+  line-height: 1.6;
+}
+
+.placeholder-hint {
+  margin-top: 1rem !important;
+  font-size: var(--text-sm) !important;
+  color: var(--muted-foreground) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.primary-button {
+  padding: 0.625rem 1.25rem;
+  min-height: 40px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-base);
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    box-shadow var(--motion-standard) var(--motion-ease),
+    opacity var(--motion-standard) var(--motion-ease);
+}
+
+.primary-button:hover:not(:disabled) {
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primary-button.small {
+  padding: 0.5rem 1rem;
+  min-height: 32px;
+  font-size: var(--text-sm);
+}
+
+/* --- Note Metadata Bar --- */
+
+.note-meta-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-3);
+}
+
+.note-meta-bar__item {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.note-meta-bar__project {
+  font-size: var(--text-xs);
+  padding: 1px 6px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-radius: var(--radius-full);
+  font-weight: 500;
+}
+
+.note-meta-bar__tag {
+  font-size: var(--text-xs);
+  padding: 1px 6px;
+  background: var(--background-tertiary);
+  color: var(--text-secondary);
+  border-radius: var(--radius-full);
+}
+
+@media (max-width: 768px) {
+  .notes-layout {
+    grid-template-columns: 1fr;
+  }
+  .notes-sidebar {
+    display: none;
+  }
+  .editor-header {
+    padding: var(--space-4);
+  }
+  .editor-wrapper {
+    padding: var(--space-4);
+  }
+}

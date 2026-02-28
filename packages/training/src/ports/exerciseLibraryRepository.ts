@@ -4,6 +4,7 @@ import type {
   CreateExerciseInput,
   UpdateExerciseInput,
   ExerciseCategory,
+  ExerciseTypeCategory,
 } from '../domain/models'
 
 export interface ExerciseLibraryRepository {
@@ -17,6 +18,10 @@ export interface ExerciseLibraryRepository {
   get(userId: string, exerciseId: ExerciseId): Promise<ExerciseLibraryItem | null>
   list(
     userId: string,
-    options?: { category?: ExerciseCategory; activeOnly?: boolean }
+    options?: {
+      category?: ExerciseTypeCategory
+      legacyCategory?: ExerciseCategory // For backwards compatibility
+      activeOnly?: boolean
+    }
   ): Promise<ExerciseLibraryItem[]>
 }

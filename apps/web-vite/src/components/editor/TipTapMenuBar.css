@@ -36,11 +36,11 @@
   height: 32px;
   padding: 0 0.5rem;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--foreground);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   font-weight: 500;
   transition:
     background-color var(--motion-fast) var(--motion-ease),
@@ -88,30 +88,30 @@
 
 .menu-button code {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 
 .menu-button-subscript {
-  font-size: 0.7em;
+  font-size: var(--text-xs);
   vertical-align: sub;
   margin-left: 0.125rem;
 }
 
 .menu-arrow {
-  font-size: 0.625rem;
+  font-size: var(--text-xs);
   margin-left: 0.25rem;
   opacity: 0.6;
 }
 
 .menu-icon {
-  font-size: 1rem;
+  font-size: var(--text-md);
   line-height: 1;
 }
 
 .menu-color-dot {
   width: 14px;
   height: 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: 1px solid var(--border);
   background: transparent;
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--background) 75%, transparent);
@@ -133,7 +133,7 @@
 }
 
 .menu-color-label {
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-label);
@@ -149,7 +149,7 @@
   width: 32px;
   height: 32px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   padding: 0;
   cursor: pointer;
@@ -161,16 +161,16 @@
 
 .menu-color-controls input[type='color']::-webkit-color-swatch {
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .menu-color-hex {
   flex: 1;
   min-width: 90px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 0.4rem 0.5rem;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   background: var(--background-secondary);
   color: var(--foreground);
   font-family: var(--font-mono);
@@ -185,7 +185,7 @@
 .menu-color-swatch {
   width: 28px;
   height: 28px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: 1px solid var(--border);
   cursor: pointer;
   background: transparent;
@@ -209,7 +209,7 @@
   min-width: 180px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: 0 4px 12px var(--shadow-soft);
   z-index: 100;
   padding: 0.25rem;
@@ -223,11 +223,11 @@
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--foreground);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   text-align: left;
   transition: background-color var(--motion-fast) var(--motion-ease);
 }
@@ -247,14 +247,14 @@
 }
 
 .menu-item-preview {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   opacity: 0.6;
   margin-left: 0.5rem;
   font-weight: 600;
 }
 
 .menu-item-icon {
-  font-size: 1rem;
+  font-size: var(--text-md);
   margin-left: 0.5rem;
   opacity: 0.7;
 }

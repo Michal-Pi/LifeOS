@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { doc, onSnapshot, setDoc, deleteField } from 'firebase/firestore'
 
 import { getFirestoreClient } from '@/lib/firestoreClient'
+import { getSetting, saveSetting } from '@/settings/offlineStore'
 
 export interface AgentMemorySettings {
   memoryMessageLimit?: number
@@ -35,13 +36,21 @@ export function useAgentMemorySettings(
 
     const setupSubscription = async () => {
       try {
+        const cached = await getSetting(userId, 'agentMemorySettings')
+        if (cached) {
+          setSettings(cached as AgentMemorySettings)
+          setIsLoading(false)
+        }
+
         const db = await getFirestoreClient()
         const docRef = doc(db, `users/${userId}/settings/agentMemorySettings`)
         unsubscribe = onSnapshot(
           docRef,
           (snapshot) => {
-            setSettings((snapshot.data() as AgentMemorySettings) ?? {})
+            const data = (snapshot.data() as AgentMemorySettings) ?? {}
+            setSettings(data)
             setIsLoading(false)
+            void saveSetting(userId, 'agentMemorySettings', data as Record<string, unknown>)
           },
           (err) => {
             setError(err.message)

@@ -1,7 +1,10 @@
+import { createLogger } from '../lib/logger.js'
 import { randomUUID } from 'node:crypto'
 import { firestore } from '../lib/firebase.js'
 import { fetchCalendarList, normalizeGoogleCalendar } from './calendarApi.js'
 import { accountRef, privateAccountRef, calendarRef } from './paths.js'
+
+const log = createLogger('GoogleSync')
 
 export interface SyncResult {
   ok: boolean
@@ -70,7 +73,7 @@ export async function syncGoogleCalendars(uid: string, accountId: string): Promi
     updated++
   }
 
-  console.log(`[syncGoogleCalendars] Updated ${updated} calendars for user ${uid}`)
+  log.info(`Updated ${updated} calendars for user ${uid}`)
   return updated
 }
 
@@ -85,7 +88,7 @@ export async function syncGoogleAccount(uid: string, accountId: string): Promise
   try {
     calendarsUpdated = await syncGoogleCalendars(uid, accountId)
   } catch (error) {
-    console.error('[syncGoogleAccount] Failed to sync calendars:', error)
+    log.error('Failed to sync calendars', error)
     // Continue with event sync even if calendar sync fails
   }
 

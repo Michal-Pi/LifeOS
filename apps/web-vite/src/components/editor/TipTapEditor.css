@@ -12,15 +12,19 @@
   max-width: none;
   margin: 0;
   height: 100%;
-  min-height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .editor-content-wrapper {
   position: relative;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  /* No left padding — the gutter for the block handle button
+     is provided by .editor-wrapper padding in NotesPage */
   /* Enable smooth scrolling for large documents */
   scroll-behavior: smooth;
   /* Optimize scrolling performance */
@@ -30,7 +34,10 @@
 .virtualized-editor-container {
   position: relative;
   width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   /* Enable hardware acceleration */
   transform: translateZ(0);
   -webkit-overflow-scrolling: touch;
@@ -38,10 +45,10 @@
 
 .tiptap-editor {
   flex: 1;
-  padding: 1.5rem 0 2.5rem 2rem;
+  padding: 1.5rem 0 2.5rem 0;
   outline: none;
   color: var(--foreground);
-  font-size: 16px;
+  font-size: var(--text-base);
   line-height: 1.6;
   min-height: 100%;
   overflow-y: visible;
@@ -54,7 +61,7 @@
 
 /* Headings - Notion-like spacing */
 .tiptap-editor h1 {
-  font-size: 2em;
+  font-size: var(--text-4xl);
   font-weight: 700;
   margin: 2em 0 0.5em;
   line-height: 1.2;
@@ -62,7 +69,7 @@
 }
 
 .tiptap-editor h2 {
-  font-size: 1.5em;
+  font-size: var(--text-2xl);
   font-weight: 700;
   margin: 1.5em 0 0.5em;
   line-height: 1.3;
@@ -70,14 +77,14 @@
 }
 
 .tiptap-editor h3 {
-  font-size: 1.25em;
+  font-size: var(--text-xl);
   font-weight: 600;
   margin: 1.25em 0 0.5em;
   line-height: 1.4;
 }
 
 .tiptap-editor h4 {
-  font-size: 1.125em;
+  font-size: var(--text-lg);
   font-weight: 600;
   margin: 1em 0 0.5em;
   line-height: 1.4;
@@ -85,7 +92,7 @@
 
 .tiptap-editor h5,
 .tiptap-editor h6 {
-  font-size: 1em;
+  font-size: var(--text-base);
   font-weight: 600;
   margin: 0.875em 0 0.5em;
   line-height: 1.4;
@@ -141,11 +148,11 @@
 .tiptap-editor .code-block {
   background: var(--background-secondary);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 1rem;
   margin: 1.5em 0;
   font-family: var(--font-mono);
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   overflow-x: auto;
   line-height: 1.5;
   position: relative;
@@ -175,7 +182,7 @@
   position: absolute;
   top: 0.5rem;
   right: 0.75rem;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-label);
   text-transform: uppercase;
   font-weight: 500;
@@ -190,10 +197,10 @@
 
 .tiptap-editor code {
   background: var(--background-secondary);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 0.2em 0.4em;
   font-family: var(--font-mono);
-  font-size: 0.9em;
+  font-size: var(--text-sm);
 }
 
 .tiptap-editor pre code {
@@ -226,7 +233,7 @@
   background-color: var(--warning-light);
   color: inherit;
   padding: 0.1em 0.2em;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
 }
 
 /* Tables - Notion-like with better manipulation */
@@ -235,7 +242,7 @@
   margin: 1.5em 0;
   width: 100%;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border);
   position: relative;
 }
@@ -269,7 +276,7 @@
 .tiptap-editor img.tiptap-image {
   max-width: 100%;
   height: auto;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   margin: 1.5em 0;
   display: block;
   cursor: pointer;
@@ -323,10 +330,10 @@
 
 .tiptap-editor > *:hover {
   background-color: var(--background-secondary);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .tiptap-editor > *.ProseMirror-selectednode {
   background-color: var(--accent-subtle);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }

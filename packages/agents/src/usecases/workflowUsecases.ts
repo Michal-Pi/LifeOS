@@ -1,17 +1,16 @@
 /**
- * Workspace Usecases
+ * Workflow Usecases
  *
- * Pure business logic for workspace operations.
+ * Pure business logic for workflow operations.
  * Independent of UI framework and data layer.
  */
 
-import { newId } from '@lifeos/core'
-import type { WorkspaceRepository } from '../ports/workspaceRepository'
+import type { WorkflowRepository } from '../ports/workflowRepository'
 import type {
-  Workspace,
-  WorkspaceId,
-  CreateWorkspaceInput,
-  UpdateWorkspaceInput,
+  Workflow,
+  WorkflowId,
+  CreateWorkflowInput,
+  UpdateWorkflowInput,
   ExpertCouncilConfig,
   ProjectManagerConfig,
 } from '../domain/models'
@@ -50,31 +49,31 @@ const validateProjectManagerConfig = (config: ProjectManagerConfig): void => {
 }
 
 /**
- * Create a new workspace with validation
+ * Create a new workflow with validation
  */
-export function createWorkspaceUsecase(workspaceRepo: WorkspaceRepository) {
-  return async (userId: string, input: CreateWorkspaceInput): Promise<Workspace> => {
-    // Business rule: Workspace name must not be empty
+export function createWorkflowUsecase(workflowRepo: WorkflowRepository) {
+  return async (userId: string, input: CreateWorkflowInput): Promise<Workflow> => {
+    // Business rule: Workflow name must not be empty
     if (!input.name.trim()) {
-      throw new Error('Workspace name is required')
+      throw new Error('Workflow name is required')
     }
 
     // Business rule: Must have at least one agent
     if (input.agentIds.length === 0) {
-      throw new Error('Workspace must have at least one agent')
+      throw new Error('Workflow must have at least one agent')
     }
 
     // Business rule: If default agent is set, it must be in the agent list
     if (input.defaultAgentId && !input.agentIds.includes(input.defaultAgentId)) {
-      throw new Error('Default agent must be in the workspace agent list')
+      throw new Error('Default agent must be in the workflow agent list')
     }
 
     // Business rule: Max iterations must be reasonable if provided
     if (
       input.maxIterations !== undefined &&
-      (input.maxIterations < 1 || input.maxIterations > 50)
+      (input.maxIterations < 1 || input.maxIterations > 200)
     ) {
-      throw new Error('Max iterations must be between 1 and 50')
+      throw new Error('Max iterations must be between 1 and 200')
     }
 
     if (input.expertCouncilConfig) {
@@ -84,27 +83,27 @@ export function createWorkspaceUsecase(workspaceRepo: WorkspaceRepository) {
       validateProjectManagerConfig(input.projectManagerConfig)
     }
 
-    return await workspaceRepo.create(userId, input)
+    return await workflowRepo.create(userId, input)
   }
 }
 
 /**
- * Update an existing workspace with validation
+ * Update an existing workflow with validation
  */
-export function updateWorkspaceUsecase(workspaceRepo: WorkspaceRepository) {
+export function updateWorkflowUsecase(workflowRepo: WorkflowRepository) {
   return async (
     userId: string,
-    workspaceId: WorkspaceId,
-    updates: UpdateWorkspaceInput
-  ): Promise<Workspace> => {
+    workflowId: WorkflowId,
+    updates: UpdateWorkflowInput
+  ): Promise<Workflow> => {
     // Business rule: If updating name, ensure it's not empty
     if (updates.name !== undefined && !updates.name.trim()) {
-      throw new Error('Workspace name cannot be empty')
+      throw new Error('Workflow name cannot be empty')
     }
 
     // Business rule: If updating agents, must have at least one
     if (updates.agentIds !== undefined && updates.agentIds.length === 0) {
-      throw new Error('Workspace must have at least one agent')
+      throw new Error('Workflow must have at least one agent')
     }
 
     // Business rule: If updating default agent, validate it's in the list
@@ -113,15 +112,15 @@ export function updateWorkspaceUsecase(workspaceRepo: WorkspaceRepository) {
       updates.agentIds &&
       !updates.agentIds.includes(updates.defaultAgentId)
     ) {
-      throw new Error('Default agent must be in the workspace agent list')
+      throw new Error('Default agent must be in the workflow agent list')
     }
 
     // Business rule: Max iterations validation
     if (
       updates.maxIterations !== undefined &&
-      (updates.maxIterations < 1 || updates.maxIterations > 50)
+      (updates.maxIterations < 1 || updates.maxIterations > 200)
     ) {
-      throw new Error('Max iterations must be between 1 and 50')
+      throw new Error('Max iterations must be between 1 and 200')
     }
 
     if (updates.expertCouncilConfig) {
@@ -131,33 +130,33 @@ export function updateWorkspaceUsecase(workspaceRepo: WorkspaceRepository) {
       validateProjectManagerConfig(updates.projectManagerConfig)
     }
 
-    return await workspaceRepo.update(userId, workspaceId, updates)
+    return await workflowRepo.update(userId, workflowId, updates)
   }
 }
 
 /**
- * Delete a workspace
+ * Delete a workflow
  */
-export function deleteWorkspaceUsecase(workspaceRepo: WorkspaceRepository) {
-  return async (userId: string, workspaceId: WorkspaceId): Promise<void> => {
-    await workspaceRepo.delete(userId, workspaceId)
+export function deleteWorkflowUsecase(workflowRepo: WorkflowRepository) {
+  return async (userId: string, workflowId: WorkflowId): Promise<void> => {
+    await workflowRepo.delete(userId, workflowId)
   }
 }
 
 /**
- * Get a single workspace
+ * Get a single workflow
  */
-export function getWorkspaceUsecase(workspaceRepo: WorkspaceRepository) {
-  return async (userId: string, workspaceId: WorkspaceId): Promise<Workspace | null> => {
-    return await workspaceRepo.get(userId, workspaceId)
+export function getWorkflowUsecase(workflowRepo: WorkflowRepository) {
+  return async (userId: string, workflowId: WorkflowId): Promise<Workflow | null> => {
+    return await workflowRepo.get(userId, workflowId)
   }
 }
 
 /**
- * List all workspaces for a user with optional filtering
+ * List all workflows for a user with optional filtering
  */
-export function listWorkspacesUsecase(workspaceRepo: WorkspaceRepository) {
-  return async (userId: string, options?: { activeOnly?: boolean }): Promise<Workspace[]> => {
-    return await workspaceRepo.list(userId, options)
+export function listWorkflowsUsecase(workflowRepo: WorkflowRepository) {
+  return async (userId: string, options?: { activeOnly?: boolean }): Promise<Workflow[]> => {
+    return await workflowRepo.list(userId, options)
   }
 }

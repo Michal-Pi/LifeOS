@@ -69,10 +69,10 @@ export function useTrainingToday(dateKey: string): UseTrainingTodayReturn {
       for (const context of contexts) {
         const templateId =
           context === 'gym'
-            ? schedule?.variants.gymTemplateId
+            ? schedule?.variants?.gymTemplateId
             : context === 'home'
-              ? schedule?.variants.homeTemplateId
-              : schedule?.variants.roadTemplateId
+              ? schedule?.variants?.homeTemplateId
+              : schedule?.variants?.roadTemplateId
 
         const [template, session] = await Promise.all([
           templateId ? templateRepository.get(userId, templateId) : Promise.resolve(null),

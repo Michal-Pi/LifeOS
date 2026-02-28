@@ -10,6 +10,7 @@
 
 import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logger'
 
 interface Recommendation {
   type: 'shrink' | 'anchor_change' | 'friction_removal' | 'calendar_block' | 'celebration'
@@ -158,7 +159,7 @@ export function HabitRecommendations({ stats, interventionCount }: HabitRecommen
               className="rec-action-btn"
               onClick={() => {
                 // Would trigger appropriate action (edit habit, create todo, etc.)
-                console.log(`Action: ${rec.actionLabel} for ${rec.habitTitle}`)
+                logger.debug(`Action: ${rec.actionLabel} for ${rec.habitTitle}`)
               }}
             >
               {rec.actionLabel}

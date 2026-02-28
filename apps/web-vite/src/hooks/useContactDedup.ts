@@ -57,8 +57,7 @@ export function useContactDedup(): UseContactDedupResult {
         // Remove merged candidates from the list
         setCandidates((prev) =>
           prev.filter(
-            (c) =>
-              !secondaryIds.includes(c.contactIdA) && !secondaryIds.includes(c.contactIdB)
+            (c) => !secondaryIds.includes(c.contactIdA) && !secondaryIds.includes(c.contactIdB)
           )
         )
         toast.success('Contacts merged', {

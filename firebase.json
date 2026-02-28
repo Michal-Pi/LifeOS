@@ -24,7 +24,7 @@
     {
       "source": "functions",
       "codebase": "functions",
-      "runtime": "nodejs20",
+      "runtime": "nodejs22",
       "predeploy": ["cd functions && ./prepare-deploy.sh"],
       "ignore": [".git", "firebase-debug.log", "firebase-debug.*.log", "*.local", "src"]
     }

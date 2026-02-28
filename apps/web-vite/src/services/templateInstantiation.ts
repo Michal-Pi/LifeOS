@@ -1,7 +1,7 @@
-import type { AgentConfig, CreateAgentInput, CreateWorkspaceInput, Workspace } from '@lifeos/agents'
-import type { WorkspaceTemplatePreset, WorkflowGraphTemplate } from '@/agents/templatePresets'
+import type { AgentConfig, CreateAgentInput, CreateWorkflowInput, Workflow } from '@lifeos/agents'
+import type { WorkflowTemplatePreset, WorkflowGraphTemplate } from '@/agents/templatePresets'
 import type { BuiltinToolMeta } from '@/agents/builtinTools'
-import { agentTemplatePresets } from '@/agents/templatePresets'
+import { agentTemplatePresets, type AgentTemplatePreset } from '@/agents/templatePresets'
 import { applyContentTypeCustomization } from '@/services/contentTypeCustomizer'
 
 type TemplateCustomization = {
@@ -9,12 +9,23 @@ type TemplateCustomization = {
   contentType?: string
 }
 
+export type AgentMatchResult = {
+  templateName: string
+  templateAgent: AgentTemplatePreset
+  existingAgent: AgentConfig
+  isExactMatch: boolean
+}
+
+export type AgentConflictResolution = 'reuse_existing' | 'create_from_template'
+
 type InstantiateTemplateParams = {
-  preset: WorkspaceTemplatePreset
+  preset: WorkflowTemplatePreset
   customization?: TemplateCustomization
+  existingAgents: AgentConfig[]
   createAgent: (input: CreateAgentInput) => Promise<AgentConfig>
-  createWorkspace: (input: CreateWorkspaceInput) => Promise<Workspace>
+  createWorkflow: (input: CreateWorkflowInput) => Promise<Workflow>
   availableTools: BuiltinToolMeta[]
+  onAgentConflict?: (conflicts: AgentMatchResult[]) => Promise<Map<string, AgentConflictResolution>>
 }
 
 const resolveAgentTemplate = (name: string) => {
@@ -25,11 +36,45 @@ const resolveAgentTemplate = (name: string) => {
   return template
 }
 
+/**
+ * Check if an existing agent exactly matches a template agent config
+ */
+function isExactAgentMatch(existing: AgentConfig, templateConfig: CreateAgentInput): boolean {
+  // Compare core properties that define the agent's behavior
+  return (
+    existing.name === templateConfig.name &&
+    existing.role === templateConfig.role &&
+    existing.systemPrompt === templateConfig.systemPrompt &&
+    existing.modelProvider === templateConfig.modelProvider &&
+    existing.modelName === templateConfig.modelName &&
+    existing.temperature === templateConfig.temperature &&
+    existing.maxTokens === templateConfig.maxTokens &&
+    arraysEqual(existing.toolIds ?? [], templateConfig.toolIds ?? [])
+  )
+}
+
+/**
+ * Check if an existing agent has the same name as template (possible modified version)
+ */
+function findMatchingAgent(
+  existingAgents: AgentConfig[],
+  templateConfig: CreateAgentInput
+): AgentConfig | undefined {
+  return existingAgents.find((agent) => !agent.archived && agent.name === templateConfig.name)
+}
+
+function arraysEqual<T>(a: T[], b: T[]): boolean {
+  if (a.length !== b.length) return false
+  const sortedA = [...a].sort()
+  const sortedB = [...b].sort()
+  return sortedA.every((val, idx) => val === sortedB[idx])
+}
+
 const buildWorkflowGraph = (
   template: WorkflowGraphTemplate | undefined,
   agentIdByTemplateName: Map<string, string>,
-  workspaceTemplateName: string
-): Workspace['workflowGraph'] => {
+  workflowTemplateName: string
+): Workflow['workflowGraph'] => {
   if (!template) return undefined
 
   return {
@@ -42,7 +87,7 @@ const buildWorkflowGraph = (
       if (node.agentTemplateName && !agentId) {
         throw new Error(
           `Workflow graph node '${node.id}' references agent template '${node.agentTemplateName}' ` +
-            `which is not in the workspace template '${workspaceTemplateName}' agentTemplateNames list.`
+            `which is not in the workflow template '${workflowTemplateName}' agentTemplateNames list.`
         )
       }
 
@@ -65,10 +110,12 @@ const buildWorkflowGraph = (
 export async function instantiateTemplate({
   preset,
   customization,
+  existingAgents,
   createAgent,
-  createWorkspace,
+  createWorkflow,
   availableTools,
-}: InstantiateTemplateParams): Promise<{ workspace: Workspace; agents: AgentConfig[] }> {
+  onAgentConflict,
+}: InstantiateTemplateParams): Promise<{ workflow: Workflow; agents: AgentConfig[] }> {
   if (!preset.agentTemplateNames || preset.agentTemplateNames.length === 0) {
     throw new Error('Template does not define agent templates')
   }
@@ -77,14 +124,22 @@ export async function instantiateTemplate({
   const baseCustomization = Boolean(customization?.contentType && preset.supportsContentTypes)
   const availableToolIds = new Set(availableTools.map((tool) => tool.toolId))
 
-  const createdAgents: AgentConfig[] = []
+  // First pass: build agent configs and find matches
+  const templateAgentConfigs: Array<{
+    templateName: string
+    template: AgentTemplatePreset
+    agentInput: CreateAgentInput
+    existingMatch: AgentConfig | undefined
+    isExactMatch: boolean
+  }> = []
+
   for (const templateName of preset.agentTemplateNames) {
     const template = resolveAgentTemplate(templateName)
     const toolIds = template.agentConfig.toolIds ?? []
     const missingTools = toolIds.filter((toolId) => !availableToolIds.has(toolId))
     if (missingTools.length > 0) {
       throw new Error(
-        `Workspace template '${preset.name}' references unavailable tool(s) for agent template ` +
+        `Workflow template '${preset.name}' references unavailable tool(s) for agent template ` +
           `'${template.name}': ${missingTools.join(', ')}`
       )
     }
@@ -103,17 +158,67 @@ export async function instantiateTemplate({
       name: `${template.agentConfig.name}${agentSuffix}`,
     }
 
-    const agent = await createAgent(agentInput)
-    createdAgents.push(agent)
+    const existingMatch = findMatchingAgent(existingAgents, agentInput)
+    const isExactMatch = existingMatch ? isExactAgentMatch(existingMatch, agentInput) : false
+
+    templateAgentConfigs.push({
+      templateName,
+      template,
+      agentInput,
+      existingMatch,
+      isExactMatch,
+    })
+  }
+
+  // Collect conflicts (modified agents that need user decision)
+  const conflicts: AgentMatchResult[] = templateAgentConfigs
+    .filter((config) => config.existingMatch && !config.isExactMatch)
+    .map((config) => ({
+      templateName: config.templateName,
+      templateAgent: config.template,
+      existingAgent: config.existingMatch!,
+      isExactMatch: false,
+    }))
+
+  // Get resolution for conflicts if any
+  let conflictResolutions = new Map<string, AgentConflictResolution>()
+  if (conflicts.length > 0 && onAgentConflict) {
+    conflictResolutions = await onAgentConflict(conflicts)
+  }
+
+  // Second pass: create or reuse agents based on matching and resolution
+  const resultAgents: AgentConfig[] = []
+  for (const config of templateAgentConfigs) {
+    if (config.isExactMatch && config.existingMatch) {
+      // Exact match - always reuse
+      resultAgents.push(config.existingMatch)
+    } else if (config.existingMatch && !config.isExactMatch) {
+      // Modified agent - check resolution
+      const resolution = conflictResolutions.get(config.templateName) ?? 'reuse_existing'
+      if (resolution === 'reuse_existing') {
+        resultAgents.push(config.existingMatch)
+      } else {
+        // Create new agent with a suffix to avoid name collision
+        const agent = await createAgent({
+          ...config.agentInput,
+          name: `${config.agentInput.name} (Template)`,
+        })
+        resultAgents.push(agent)
+      }
+    } else {
+      // No match - create new agent
+      const agent = await createAgent(config.agentInput)
+      resultAgents.push(agent)
+    }
   }
 
   const agentIdByTemplateName = new Map(
-    preset.agentTemplateNames.map((name, index) => [name, createdAgents[index]?.agentId])
+    preset.agentTemplateNames.map((name, index) => [name, resultAgents[index]?.agentId])
   )
 
   const defaultAgentId = preset.defaultAgentTemplateName
     ? agentIdByTemplateName.get(preset.defaultAgentTemplateName)
-    : createdAgents[0]?.agentId
+    : resultAgents[0]?.agentId
 
   const workflowGraph = buildWorkflowGraph(
     preset.workflowGraphTemplate,
@@ -121,14 +226,14 @@ export async function instantiateTemplate({
     preset.name
   )
 
-  const workspaceInput: CreateWorkspaceInput = {
-    ...preset.workspaceConfig,
-    name: customization?.name ?? preset.workspaceConfig.name,
-    agentIds: createdAgents.map((agent) => agent.agentId),
+  const workflowInput: CreateWorkflowInput = {
+    ...preset.workflowConfig,
+    name: customization?.name ?? preset.workflowConfig.name,
+    agentIds: resultAgents.map((agent) => agent.agentId),
     defaultAgentId,
-    workflowGraph: workflowGraph ?? preset.workspaceConfig.workflowGraph,
+    workflowGraph: workflowGraph ?? preset.workflowConfig.workflowGraph,
   }
 
-  const workspace = await createWorkspace(workspaceInput)
-  return { workspace, agents: createdAgents }
+  const workflow = await createWorkflow(workflowInput)
+  return { workflow, agents: resultAgents }
 }

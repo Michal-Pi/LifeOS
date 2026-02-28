@@ -51,13 +51,13 @@ const ROLE_ICON_MAP: Record<AgentRole, { light: string; dark: string }> = {
 }
 
 const ROLE_LABELS: Record<AgentRole, string> = {
-  researcher: '🔍 Researcher',
-  planner: '📋 Planner',
-  critic: '⚖️ Critic',
-  synthesizer: '🧩 Synthesizer',
-  executor: '⚙️ Executor',
-  supervisor: '👔 Supervisor',
-  custom: '🎯 Custom',
+  researcher: 'Researcher',
+  planner: 'Planner',
+  critic: 'Critic',
+  synthesizer: 'Synthesizer',
+  executor: 'Executor',
+  supervisor: 'Supervisor',
+  custom: 'Custom',
 }
 
 const truncate = (text: string, maxLength: number) => {
@@ -66,7 +66,7 @@ const truncate = (text: string, maxLength: number) => {
 }
 
 export function AgentCard({ agent, onEdit, onSaveTemplate, onDelete }: AgentCardProps) {
-  const icon = ROLE_ICON_MAP[agent.role]
+  const icon = ROLE_ICON_MAP[agent.role] ?? ROLE_ICON_MAP.custom
 
   return (
     <article className="agent-card">
@@ -79,7 +79,7 @@ export function AgentCard({ agent, onEdit, onSaveTemplate, onDelete }: AgentCard
         </div>
         <div className="agent-card__info">
           <h3 className="agent-card__title">{truncate(agent.name, 35)}</h3>
-          <span className="agent-card__role">{ROLE_LABELS[agent.role]}</span>
+          <span className="agent-card__role">{ROLE_LABELS[agent.role] ?? 'Custom'}</span>
         </div>
       </div>
 

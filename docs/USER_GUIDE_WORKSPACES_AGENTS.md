@@ -1,6 +1,6 @@
 # Complete User Guide: AI Agents & Workspaces
 
-**Version 1.1** | Last Updated: January 30, 2026
+**Version 1.3** | Last Updated: February 8, 2026
 
 ---
 
@@ -12,7 +12,8 @@
 4. [Runs: Executing Workflows](#runs-executing-workflows)
 5. [Templates: Reusable Configurations](#templates-reusable-configurations)
 6. [Advanced Features](#advanced-features)
-7. [Every Button Explained](#every-button-explained)
+7. [Hegelian Dialectical Architecture](#hegelian-dialectical-architecture)
+8. [Every Button Explained](#every-button-explained)
 
 ---
 
@@ -58,6 +59,7 @@ An **Agent** is a configured AI assistant with:
 | **Critic**      | Quality assurance     | Reviews work for gaps, risks, and improvements          |
 | **Synthesizer** | Content creation      | Combines inputs into coherent final outputs             |
 | **Executor**    | Action-taking         | Performs specific tasks, uses tools                     |
+| **Supervisor**  | Coordination          | Delegates and coordinates work across agents            |
 | **Custom**      | User-defined          | Any specialized role you define                         |
 
 ### Agent Configuration
@@ -68,7 +70,7 @@ An **Agent** is a configured AI assistant with:
 - **Role**: Select from predefined roles or choose "Custom"
 - **System Prompt**: Instructions that define the agent's personality, expertise, and behavior
 - **Model Provider**: OpenAI, Anthropic, Google, or xAI (Grok)
-- **Model Name**: Specific model (e.g., gpt-4o, claude-3-5-haiku, gemini-1.5-pro, grok-4)
+- **Model Name**: Specific model (e.g., gpt-4.1, claude-sonnet-4-5, gemini-2.5-flash, grok-4)
 
 #### Optional Fields:
 
@@ -79,15 +81,31 @@ An **Agent** is a configured AI assistant with:
 
 ### Model Selection Guide
 
-| Provider      | Model                   | Best For                         | Cost      | Speed     |
-| ------------- | ----------------------- | -------------------------------- | --------- | --------- |
-| **OpenAI**    | gpt-4o                  | General-purpose, reliable        | Medium    | Fast      |
-| **OpenAI**    | gpt-4o-mini             | Simple tasks, cost-sensitive     | Very Low  | Very Fast |
-| **Anthropic** | claude-3-5-haiku        | Detail work, cost-effective      | Low       | Fast      |
-| **Google**    | gemini-1.5-pro          | Synthesis, editing               | Low       | Fast      |
-| **Google**    | gemini-1.5-flash        | High-speed, structured output    | Very Low  | Very Fast |
-| **xAI**       | grok-4                  | Real-time data, trends           | High      | Fast      |
-| **xAI**       | grok-4-1-fast-reasoning | Deep reasoning, complex planning | Very High | Medium    |
+| Provider      | Model                      | Best For                           | Cost      | Speed     | Label         |
+| ------------- | -------------------------- | ---------------------------------- | --------- | --------- | ------------- |
+| **OpenAI**    | o3                         | Complex reasoning, deep analysis   | Medium    | Medium    | Thinking      |
+| **OpenAI**    | o4-mini                    | Reasoning, cost-effective          | Low       | Medium    | Thinking      |
+| **OpenAI**    | gpt-4.1                    | General-purpose, reliable (1M ctx) | Medium    | Fast      | Balanced      |
+| **OpenAI**    | gpt-4.1-mini               | Fast & cost-effective (1M ctx)     | Low       | Very Fast | Fast          |
+| **OpenAI**    | gpt-4.1-nano               | Ultra-low-cost (1M ctx)            | Very Low  | Very Fast | Fast/Low-Cost |
+| **Anthropic** | claude-opus-4-5-20251101   | Premium, maximum intelligence      | Very High | Slow      | Premium       |
+| **Anthropic** | claude-sonnet-4-5-20250929 | Balanced flagship                  | Medium    | Fast      | Balanced      |
+| **Anthropic** | claude-haiku-4-5-20251001  | Fast & cost-effective              | Low       | Fast      | Fast          |
+| **Google**    | gemini-2.5-pro             | Advanced reasoning & coding        | Medium    | Fast      | Balanced      |
+| **Google**    | gemini-2.5-flash           | Balanced flagship                  | Very Low  | Very Fast | Fast          |
+| **Google**    | gemini-2.5-flash-lite      | Fast & cost-effective              | Very Low  | Very Fast | Fast/Low-Cost |
+| **xAI**       | grok-4                     | Real-time data, trends             | Medium    | Fast      | Real-Time     |
+| **xAI**       | grok-3-mini                | Fast & cost-effective              | Low       | Very Fast | Fast          |
+| **xAI**       | grok-code-fast-1           | Code-focused tasks                 | Low       | Very Fast | Fast          |
+
+**Model Labels** help you quickly identify the right model:
+
+- **Thinking**: Advanced reasoning for complex tasks (o3, o4-mini)
+- **Balanced**: Cost/performance optimized (gpt-4.1, claude-sonnet-4-5, gemini-2.5-pro)
+- **Fast**: Quick responses, cost-effective (claude-haiku-4-5, gemini-2.5-flash, gpt-4.1-mini)
+- **Fast/Low-Cost**: Fastest, cheapest for high-volume (gpt-4.1-nano, gemini-2.5-flash-lite)
+- **Real-Time**: Real-time data access (grok-4)
+- **Premium**: Maximum intelligence, highest quality (claude-opus-4-5)
 
 ---
 
@@ -321,10 +339,10 @@ Templates are saved, reusable configurations:
 13. **Real-Time News Analyst** - Analyzes current events (Grok 4) + `serp_search`
 14. **Trend Analyst** - Identifies emerging patterns (Grok 4) + `semantic_search`
 15. **Technical Documentation Writer** - Creates clear technical docs (Gemini)
-16. **Quick Summarizer** - Fast, concise summaries (GPT-4o-mini)
+16. **Quick Summarizer** - Fast, concise summaries (GPT-4.1-nano)
 17. **X (Twitter) Analyst** - Real-time X analysis for trends, sentiment, brand monitoring (Grok 4)
-18. **Quick Search Analyst** - Fast sourced answers (Gemini 1.5 Flash) with `serp_search` + `read_url`
-19. **Deep Research Analyst** - Multi-angle deep research (GPT-4o) with all search tools
+18. **Quick Search Analyst** - Fast sourced answers (Gemini 2.5 Flash Lite) with `serp_search` + `read_url`
+19. **Deep Research Analyst** - Multi-angle deep research (GPT-4.1) with all search tools
 
 #### Workspace Templates (4 Pre-built):
 
@@ -413,9 +431,9 @@ The Expert Council is a multi-model deliberation system:
 
 1. Complex decision is presented to council
 2. Four AI models from different providers deliberate:
-   - OpenAI GPT-4o (structured, reliable)
-   - Anthropic Claude Haiku (detail-oriented)
-   - Google Gemini 1.5 Pro (synthesis-focused)
+   - OpenAI GPT-4.1 (structured, reliable)
+   - Anthropic Claude Haiku 4.5 (detail-oriented)
+   - Google Gemini 2.5 Flash (synthesis-focused)
    - xAI Grok 4 (real-time, unconventional)
 3. Each provides their perspective and reasoning
 4. Chairman model synthesizes into final recommendation
@@ -625,6 +643,115 @@ In workspace with `supportsContentTypes: true`, select content type when creatin
 
 ---
 
+## Hegelian Dialectical Architecture
+
+LifeOS includes an advanced Hegelian dialectical reasoning system for navigating deep uncertainty and making complex decisions. This system implements Hegelian logic (thesis → antithesis → synthesis) as a structured reasoning protocol.
+
+### What is Dialectical Reasoning?
+
+Unlike conventional multi-agent debate that converges via voting or averaging, dialectical reasoning:
+
+- **Treats contradiction as signal**: Tensions between viewpoints drive conceptual progress
+- **Forces concept revision**: Not just belief adjustment, but actual category change
+- **Makes analysis revisable**: The object of analysis itself can change during reasoning
+
+### The 6-Phase Dialectical Cycle
+
+Each cycle consists of:
+
+| Phase | Name                              | Description                                                                         |
+| ----- | --------------------------------- | ----------------------------------------------------------------------------------- |
+| 1     | **Retrieve Context**              | Query the knowledge hypergraph for relevant claims, concepts, and mechanisms        |
+| 2     | **Thesis Generation**             | 2-5 heterogeneous agents generate competing framings from different perspectives    |
+| 3     | **Cross-Negation**                | Each thesis is critiqued with determinate negation (specific, structure-preserving) |
+| 4     | **Contradiction Crystallization** | 4 specialized trackers surface and rank contradictions                              |
+| 5     | **Sublation (Synthesis)**         | 2 synthesizers propose concept graph rewrites to resolve contradictions             |
+| 6     | **Meta-Reflection**               | Evaluate cycle quality and decide: continue, terminate, or respecify                |
+
+### Agent Types in Dialectical Workflow
+
+**Thesis Agents (World-Positing)**
+
+- Use heterogeneous models (Claude, GPT-4, Gemini, Grok) — model diversity is architecturally required
+- Each assigned an explicit lens: economic, systems, adversarial, behavioral, institutional
+- Output includes: concept graph, causal model, falsification criteria, decision implications
+
+**Antithesis Agents (Determinate Negation)**
+
+- Specialized in: internal inconsistency, boundary conditions, incentive analysis, measurement validity
+- Must specify a typed rewrite operator: SPLIT, MERGE, REVERSE_EDGE, ADD_MEDIATOR, SCOPE_TO_REGIME, TEMPORALIZE
+- Free-form text negation is not accepted
+
+**Contradiction Trackers (4 specialized sub-agents)**
+
+| Tracker              | Detection Method                                                           |
+| -------------------- | -------------------------------------------------------------------------- |
+| **LogicTracker**     | Formal contradiction detection (A ∧ ¬A)                                    |
+| **PragmaticTracker** | Action-incompatibility (claims that can't jointly guide the same decision) |
+| **SemanticTracker**  | Category equivocation and concept drift                                    |
+| **BoundaryTracker**  | Assumption/regime mismatch (claim valid in R1 applied to R2)               |
+
+**Synthesis Agents (Aufhebung Engine)**
+
+- 2 competing synthesizers with different heuristics (parsimony vs explanatory scope)
+- Express synthesis as typed rewrite operators on the concept graph
+- Outputs cross-negated before next cycle
+
+### 4-Layer Knowledge Hypergraph
+
+The dialectical system is powered by a persistent knowledge graph:
+
+| Layer | Name               | Contents                                                  | Change Rate |
+| ----- | ------------------ | --------------------------------------------------------- | ----------- |
+| 0     | Episodic Memory    | Raw dialectical exchanges, timestamps, full agent outputs | Append-only |
+| 1     | Semantic/Epistemic | Claims, mechanisms, contradictions, evidence, decisions   | Fast        |
+| 2     | Ontology Graph     | Concepts, relations, regimes — self-evolving schema       | Slow        |
+| 3     | Community Subgraph | Auto-detected clusters of related entities                | Periodic    |
+
+### Retrieval Strategy: Heuristic with Template Learning
+
+Context retrieval uses a heuristic agent with template-based optimization:
+
+**Four Retrieval Strategies:**
+
+| Strategy      | Behavior                                            | Best For                                   |
+| ------------- | --------------------------------------------------- | ------------------------------------------ |
+| `focused`     | Direct concept lookup, narrow traversal             | Specific claims, mechanism chains          |
+| `exploratory` | Broad traversal, community-level exploration        | Early cycles, understanding problem space  |
+| `contrastive` | Retrieve claims supporting AND contradicting thesis | Cross-negation phase, contradiction mining |
+| `historical`  | Time-ordered traversal, regime evolution            | Temporal patterns, regime shift detection  |
+
+**Progressive Attenuation:** Early cycles use exploratory strategy (broad context), later cycles use focused strategy (narrow, action-relevant).
+
+### When to Use Dialectical Reasoning
+
+**Good Use Cases:**
+
+- Strategic decisions with genuine uncertainty (market entry, competitive strategy)
+- Forecasting with conflicting signals (product adoption, geopolitics)
+- Complex problems with multiple valid framings (architecture decisions, policy analysis)
+- Situations where contradictions exist that need resolution, not compromise
+
+**Not Recommended For:**
+
+- Simple factual lookups
+- Tasks with clear right/wrong answers
+- Time-sensitive decisions requiring quick convergence
+- Tasks where multi-model deliberation cost is not justified
+
+### Cost Considerations
+
+Dialectical reasoning uses multiple models across multiple cycles:
+
+- **Model heterogeneity requirement**: Each thesis agent uses a different model
+- **Cycle count**: Typically 3-7 cycles depending on complexity
+- **Retrieval overhead**: Knowledge graph queries add latency and tokens
+- **Contradiction tracking**: 4 parallel trackers per cycle
+
+**Recommendation:** Reserve dialectical workflows for high-stakes decisions where conceptual clarity is worth the additional cost.
+
+---
+
 ## Every Button Explained
 
 ### Agents Page (`/agents`)
@@ -655,7 +782,7 @@ In workspace with `supportsContentTypes: true`, select content type when creatin
 
 - **Name**: Agent's display name
 - **Role Badge**: Visual indicator of agent role
-- **Model**: Shows provider and model (e.g., "OpenAI GPT-4o")
+- **Model**: Shows provider and model (e.g., "OpenAI GPT-4.1")
 - **Description**: Agent's purpose (if set)
 - **Tools**: List of tools agent can use
 - **Temperature**: Creativity setting (0.0 - 2.0)
@@ -891,7 +1018,7 @@ Or **Use Prompt-to-Graph**:
 - **Default Mode Dropdown**: Full, Quick, Single
 - **Allow Mode Override Toggle**: Can runs change mode?
 - **Council Models**: Select/configure participating models
-  - Default: gpt-4o, claude-haiku, gemini-1.5-pro, grok-4
+  - Default: gpt-4.1, claude-haiku-4-5, gemini-2.5-flash, grok-4
   - Can customize per model (temperature, etc.)
 - **Chairman Model Dropdown**: Which model synthesizes
 - **Self-Exclusion Toggle**: Exclude agent's model from council
@@ -1176,6 +1303,38 @@ For each provider (OpenAI, Anthropic, Google, xAI):
 3. **Quality Gates**: Use Project Manager with high thresholds
 4. **Critic Agents**: Include reviewer/critic in workflows
 5. **Expert Council**: Use for validation of critical outputs
+
+---
+
+## Developer Console Cleanup Scripts
+
+When you need to reset agent data (e.g., after updating model presets or during development), the app exposes cleanup functions on the browser `window` object. Open the browser DevTools console and run any of the following:
+
+### Available Commands
+
+| Command                                   | What It Does                                                                                                                                             |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `await window.cleanupOldAgentTemplates()` | Deletes **all agent templates** from `users/{uid}/agentTemplates`. Returns the number of deleted templates.                                              |
+| `await window.cleanupAllAgents()`         | Deletes **all agents** from `users/{uid}/agents`. Logs each agent name as it is deleted. Returns the number of deleted agents.                           |
+| `await window.cleanupAllWorkflows()`      | Deletes **all workflows** from `users/{uid}/workflows`. Logs each workflow name as it is deleted. Returns the number of deleted workflows.               |
+| `await window.cleanupAllAgentData()`      | Runs **all three** cleanups above in sequence (agents → templates → workflows). Returns a summary object `{ agents, templates, workflows }` with counts. |
+
+### Typical Workflow: Refreshing Presets After a Model Update
+
+Agent templates and agents are persisted in Firestore. Changing the hardcoded presets in code does **not** retroactively update existing Firestore documents. To pick up new presets:
+
+1. Open the browser console (F12 → Console)
+2. Run `await window.cleanupOldAgentTemplates()` to remove stale templates
+3. Optionally run `await window.cleanupAllAgents()` to remove agents created from old templates
+4. Go to the Agents page and click **"Add Presets"** to re-import the updated templates
+5. Create new agents from the refreshed templates
+
+### Notes
+
+- All commands require an authenticated user session (you must be logged in).
+- Deletions use Firestore batch writes (batches of 500) for efficiency.
+- Progress is logged to the console as each batch completes.
+- These functions are registered in `apps/web-vite/src/lib/cleanupOldTemplates.ts` and imported at app startup via `main.tsx`.
 
 ---
 

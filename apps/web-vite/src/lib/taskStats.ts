@@ -15,8 +15,9 @@ export interface TaskStatistics {
   }
 }
 
-export function calculateTaskStatistics(tasks: CanonicalTask[]): TaskStatistics {
+export function calculateTaskStatistics(tasks: CanonicalTask[], allTasks?: CanonicalTask[]): TaskStatistics {
   const incompleteTasks = tasks.filter((t) => !t.completed && !t.archived)
+  const activitySource = allTasks ?? tasks
 
   // Tasks remaining
   const tasksRemaining = incompleteTasks.length
@@ -73,13 +74,13 @@ export function calculateTaskStatistics(tasks: CanonicalTask[]): TaskStatistics 
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
   sevenDaysAgo.setHours(0, 0, 0, 0)
 
-  const tasksCreatedLast7Days = tasks.filter((task) => {
+  const tasksCreatedLast7Days = activitySource.filter((task) => {
     if (!task.createdAt) return false
     const createdDate = new Date(task.createdAt)
     return createdDate >= sevenDaysAgo
   })
 
-  const tasksCompletedLast7Days = tasks.filter((task) => {
+  const tasksCompletedLast7Days = activitySource.filter((task) => {
     if (!task.completedAt) return false
     const completedDate = new Date(task.completedAt)
     return completedDate >= sevenDaysAgo

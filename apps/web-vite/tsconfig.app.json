@@ -20,10 +20,15 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@lifeos/agents": ["../../packages/agents/src"],
       "@lifeos/calendar": ["../../packages/calendar/src"],
       "@lifeos/core": ["../../packages/core/src"],
+      "@lifeos/habits": ["../../packages/habits/src"],
+      "@lifeos/mind": ["../../packages/mind/src"],
       "@lifeos/notes": ["../../packages/notes/src"],
-      "@lifeos/platform-web": ["../../packages/platform-web/src"]
+      "@lifeos/platform-web": ["../../packages/platform-web/src"],
+      "@lifeos/todos": ["../../packages/todos/src"],
+      "@lifeos/training": ["../../packages/training/src"]
     },
 
     /* Linting */

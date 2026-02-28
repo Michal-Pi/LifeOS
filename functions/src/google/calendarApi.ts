@@ -1,4 +1,4 @@
-import { OAuth2Client } from 'google-auth-library'
+import { OAuth2Client, type Credentials } from 'google-auth-library'
 import { privateAccountRef, accountRef } from './paths.js'
 
 const env = typeof globalThis.process !== 'undefined' ? globalThis.process.env : {}
@@ -106,7 +106,21 @@ export async function getValidAccessToken(uid: string, accountId: string): Promi
   const oauthClient = getOAuthClient()
   oauthClient.setCredentials({ refresh_token: refreshToken })
 
-  const { credentials } = await oauthClient.refreshAccessToken()
+  let credentials: Credentials
+  try {
+    const result = await oauthClient.refreshAccessToken()
+    credentials = result.credentials
+  } catch (refreshError) {
+    const err = refreshError as Error & { response?: { data?: { error?: string } } }
+    const errMsg = String(err?.response?.data?.error ?? err.message ?? '')
+    if (errMsg.includes('invalid_grant')) {
+      await accountRef(uid, accountId).set(
+        { status: 'needs_attention', updatedAt: new Date().toISOString() },
+        { merge: true }
+      )
+    }
+    throw refreshError
+  }
 
   // Store updated tokens
   await privateAccountRef(uid, accountId).set(
@@ -498,13 +512,14 @@ export async function fetchCalendarEvents(
       nextPageToken: response.nextPageToken,
       nextSyncToken: response.nextSyncToken,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle syncToken invalidation (410 Gone)
     // This happens when:
     // - syncToken is too old (>30 days)
     // - Calendar was deleted and recreated
     // - Major changes to calendar structure
-    if (error.statusCode === 410 || error.code === 410) {
+    const err = error as Record<string, unknown>
+    if (err.statusCode === 410 || err.code === 410) {
       const invalidError = new Error('SYNC_TOKEN_INVALID') as Error & { code: string }
       invalidError.code = 'SYNC_TOKEN_INVALID'
       throw invalidError

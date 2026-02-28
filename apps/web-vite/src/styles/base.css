@@ -1,0 +1,334 @@
+/* ============================================
+   BASE -- Resets, fonts, body, scrollbar, typography, form resets
+   ============================================ */
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/Fonts/Satoshi_Complete/Fonts/WEB/fonts/Satoshi-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/Fonts/Satoshi_Complete/Fonts/WEB/fonts/Satoshi-Italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/Fonts/Satoshi_Complete/Fonts/WEB/fonts/Satoshi-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/Fonts/Satoshi_Complete/Fonts/WEB/fonts/Satoshi-MediumItalic.woff2') format('woff2');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/Fonts/Satoshi_Complete/Fonts/WEB/fonts/Satoshi-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/Fonts/Satoshi_Complete/Fonts/WEB/fonts/Satoshi-BoldItalic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/Fonts/JetBrainsMono-2.304/fonts/webfonts/JetBrainsMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/Fonts/JetBrainsMono-2.304/fonts/webfonts/JetBrainsMono-Italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/Fonts/JetBrainsMono-2.304/fonts/webfonts/JetBrainsMono-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/Fonts/JetBrainsMono-2.304/fonts/webfonts/JetBrainsMono-MediumItalic.woff2')
+    format('woff2');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/Fonts/JetBrainsMono-2.304/fonts/webfonts/JetBrainsMono-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/Fonts/JetBrainsMono-2.304/fonts/webfonts/JetBrainsMono-BoldItalic.woff2')
+    format('woff2');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+.dark .top-nav {
+  background: var(--surface-muted);
+}
+
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  background: var(--background);
+  background-image: var(--background-texture);
+  background-size:
+    auto,
+    32px 32px,
+    32px 32px;
+  background-position:
+    top left,
+    top left,
+    top left;
+  color: var(--foreground);
+  margin: 0;
+  min-height: 100vh;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 5px var(--accent);
+}
+
+a:focus-visible {
+  outline: none;
+  box-shadow: 0 0 5px var(--accent);
+}
+
+button {
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    opacity var(--motion-fast) var(--motion-ease);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+button[aria-busy='true'] {
+  cursor: progress;
+}
+
+textarea::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.75;
+}
+
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+  outline: none;
+  margin: 0.5rem 0;
+  cursor: pointer;
+}
+
+input[type='range']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* Webkit (Chrome, Safari, Edge) */
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--card);
+  box-shadow: 0 1px 3px var(--shadow-soft);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+input[type='range']::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 6px var(--shadow-soft);
+}
+
+input[type='range']:disabled::-webkit-slider-thumb {
+  background: var(--muted-foreground);
+  cursor: not-allowed;
+}
+
+/* Firefox */
+
+input[type='range']::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--card);
+  box-shadow: 0 1px 3px var(--shadow-soft);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+input[type='range']::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 6px var(--shadow-soft);
+}
+
+input[type='range']:disabled::-moz-range-thumb {
+  background: var(--muted-foreground);
+  cursor: not-allowed;
+}
+
+input[type='range']::-moz-range-track {
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+}
+
+input[type='range']:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Status colors */
+
+:root {
+  --status-accepted: var(--success);
+  --status-tentative: var(--warning);
+  --status-declined: var(--error);
+  --status-pending: var(--muted-foreground);
+}
+
+.dark {
+  --status-accepted: var(--success);
+  --status-tentative: var(--warning);
+  --status-declined: var(--error);
+  --status-pending: var(--muted-foreground);
+}
+
+/* Dark mode adjustments */
+
+.dark .priority-badge-p1 {
+  background: color-mix(in srgb, var(--error) 20%, transparent);
+  color: var(--error);
+}
+
+.dark .priority-badge-p2 {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+}
+
+.dark .priority-badge-p3 {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+}
+
+/* Dark mode adjustments */
+
+.dark .error-banner {
+  background: color-mix(in srgb, var(--error) 15%, transparent);
+  border-color: color-mix(in srgb, var(--error) 40%, transparent);
+  color: var(--error);
+}
+
+.dark .error-banner button {
+  color: var(--error);
+}
+
+.dark .quote-card-editing {
+  background: var(--background-secondary);
+}
+
+.dark .quote-input {
+  background: var(--muted);
+}
+
+.dark .login-page {
+  background: var(--background);
+}
+
+.dark .login-error {
+  background: color-mix(in srgb, var(--error) 15%, transparent);
+  color: var(--error);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  button,
+  [role='button'],
+  a,
+  input,
+  select,
+  textarea,
+  .ghost-button,
+  .primary-button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .ghost-button.small {
+    min-height: 36px;
+    min-width: 36px;
+  }
+}

@@ -15,9 +15,10 @@ interface TaskListProps {
   onToggleComplete: (task: CanonicalTask) => void
   selectedTaskId?: string
   onCreateTask?: () => void
+  completionFilter?: 'todo' | 'completed' | 'all'
 }
 
-type SortField = 'priority' | 'urgency' | 'importance' | 'dueDate' | 'title'
+type SortField = 'priority' | 'urgency' | 'importance' | 'dueDate' | 'title' | 'completedAt'
 type SortDirection = 'asc' | 'desc'
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -37,11 +38,45 @@ export const TaskList = React.memo(function TaskList({
   onToggleComplete,
   selectedTaskId,
   onCreateTask,
+  completionFilter = 'todo',
 }: TaskListProps) {
-  const [sortField, setSortField] = useState<SortField>('priority')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
-  const [currentPage, setCurrentPage] = useState(1)
+  const isCompletedView = completionFilter === 'completed'
+  const defaultSortField: SortField = isCompletedView ? 'completedAt' : 'priority'
+
+  // Track user overrides keyed by completionFilter so they reset on view switch
+  const [sortOverride, setSortOverride] = useState<{
+    key: string
+    field: SortField
+    direction: SortDirection
+    page: number
+  }>({ key: completionFilter, field: defaultSortField, direction: 'desc', page: 1 })
+
+  // Reset when completionFilter changes
+  const sort =
+    sortOverride.key === completionFilter
+      ? sortOverride
+      : {
+          key: completionFilter,
+          field: defaultSortField,
+          direction: 'desc' as SortDirection,
+          page: 1,
+        }
+
+  const sortField = sort.field
+  const sortDirection = sort.direction
+  const currentPage = sort.page
   const ROWS_PER_PAGE = 20
+
+  const setSortField = (field: SortField) =>
+    setSortOverride((prev) => ({ ...prev, key: completionFilter, field }))
+  const setSortDirection = (direction: SortDirection | ((prev: SortDirection) => SortDirection)) =>
+    setSortOverride((prev) => ({
+      ...prev,
+      key: completionFilter,
+      direction: typeof direction === 'function' ? direction(prev.direction) : direction,
+    }))
+  const setCurrentPage = (page: number) =>
+    setSortOverride((prev) => ({ ...prev, key: completionFilter, page }))
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -88,6 +123,11 @@ export const TaskList = React.memo(function TaskList({
         case 'title':
           comparison = a.title.localeCompare(b.title)
           break
+        case 'completedAt':
+          if (!a.completedAt) return 1
+          if (!b.completedAt) return -1
+          comparison = a.completedAt.localeCompare(b.completedAt)
+          break
       }
 
       return sortDirection === 'asc' ? comparison : -comparison
@@ -129,6 +169,7 @@ export const TaskList = React.memo(function TaskList({
     onSelectTask: (task: CanonicalTask) => void
     onToggleComplete: (task: CanonicalTask) => void
     selectedTaskId?: string
+    isCompletedView: boolean
   }
 
   const Row = ({
@@ -139,6 +180,7 @@ export const TaskList = React.memo(function TaskList({
     onSelectTask,
     onToggleComplete,
     selectedTaskId,
+    isCompletedView,
   }: RowComponentProps<RowProps>) => {
     const task = tasks[index]
     if (!task) return null
@@ -190,7 +232,13 @@ export const TaskList = React.memo(function TaskList({
             <span className="priority-score">{calculatePriorityScore(task)}</span>
           </div>
           <div className="task-cell meta-cell w-32">
-            {task.urgency ? (
+            {isCompletedView ? (
+              task.completedAt ? (
+                <span className="completed-date">{task.completedAt}</span>
+              ) : (
+                '-'
+              )
+            ) : task.urgency ? (
               <span className={`urgency-badge ${effectiveUrgency}`}>
                 {urgencyLabel(task.urgency)}
               </span>
@@ -222,8 +270,13 @@ export const TaskList = React.memo(function TaskList({
         <div className="task-header-cell sortable w-24" onClick={() => handleSort('priority')}>
           Score {sortField === 'priority' && (sortDirection === 'asc' ? '↑' : '↓')}
         </div>
-        <div className="task-header-cell sortable w-32" onClick={() => handleSort('urgency')}>
-          Urgency {sortField === 'urgency' && (sortDirection === 'asc' ? '↑' : '↓')}
+        <div
+          className="task-header-cell sortable w-32"
+          onClick={() => handleSort(isCompletedView ? 'completedAt' : 'urgency')}
+        >
+          {isCompletedView ? 'Completed' : 'Urgency'}{' '}
+          {(sortField === 'urgency' || sortField === 'completedAt') &&
+            (sortDirection === 'asc' ? '↑' : '↓')}
         </div>
         <div className="task-header-cell sortable w-24" onClick={() => handleSort('importance')}>
           Imp. {sortField === 'importance' && (sortDirection === 'asc' ? '↑' : '↓')}
@@ -243,6 +296,7 @@ export const TaskList = React.memo(function TaskList({
             onSelectTask,
             onToggleComplete,
             selectedTaskId,
+            isCompletedView,
           }}
           style={{ height: listHeight, width: '100%' }}
         />

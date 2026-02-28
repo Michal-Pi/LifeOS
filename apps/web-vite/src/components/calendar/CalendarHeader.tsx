@@ -3,9 +3,11 @@
  *
  * Displays calendar header with:
  * - Current date/time information
- * - View type toggles (Day/Week/Month/Agenda)
+ * - View type toggles (Day/Week/Month/Agenda) using SegmentedControl
  * - Timezone display
  */
+
+import { SegmentedControl } from '@/components/SegmentedControl'
 
 type ViewType = 'daily' | 'weekly' | 'monthly' | 'agenda'
 
@@ -23,6 +25,13 @@ const timeFormatter = new Intl.DateTimeFormat('en-US', {
   hour: 'numeric',
   minute: 'numeric',
 })
+
+const VIEW_OPTIONS = [
+  { value: 'daily', label: 'Day' },
+  { value: 'weekly', label: 'Week' },
+  { value: 'monthly', label: 'Month' },
+  { value: 'agenda', label: 'Agenda' },
+]
 
 export function CalendarHeader({
   viewType,
@@ -45,32 +54,11 @@ export function CalendarHeader({
         </p>
       </div>
 
-      <div className="view-toggles">
-        <button
-          className={`view-toggle ${viewType === 'daily' ? 'active' : ''}`}
-          onClick={() => onViewTypeChange('daily')}
-        >
-          Day
-        </button>
-        <button
-          className={`view-toggle ${viewType === 'weekly' ? 'active' : ''}`}
-          onClick={() => onViewTypeChange('weekly')}
-        >
-          Week
-        </button>
-        <button
-          className={`view-toggle ${viewType === 'monthly' ? 'active' : ''}`}
-          onClick={() => onViewTypeChange('monthly')}
-        >
-          Month
-        </button>
-        <button
-          className={`view-toggle ${viewType === 'agenda' ? 'active' : ''}`}
-          onClick={() => onViewTypeChange('agenda')}
-        >
-          Agenda
-        </button>
-      </div>
+      <SegmentedControl
+        value={viewType}
+        options={VIEW_OPTIONS}
+        onChange={(value) => onViewTypeChange(value as ViewType)}
+      />
     </>
   )
 }

@@ -4,11 +4,17 @@
  * React wrapper around tool usecases.
  */
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { createLogger } from '@lifeos/core'
 import { useAuth } from './useAuth'
 import { createFirestoreToolRepository } from '@/adapters/agents/firestoreToolRepository'
+import {
+  listToolsLocally,
+  bulkSaveToolsLocally,
+  saveToolLocally,
+  deleteToolLocally,
+} from '@/agents/offlineStore'
 import {
   createToolUsecase,
   updateToolUsecase,
@@ -46,6 +52,9 @@ export function useToolOperations(): UseToolOperationsReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
+  const toolsRef = useRef(tools)
+  toolsRef.current = tools
+
   const usecases = useMemo(
     () => ({
       createTool: createToolUsecase(toolRepository),
@@ -62,9 +71,14 @@ export function useToolOperations(): UseToolOperationsReturn {
     setIsLoading(true)
     setError(null)
     try {
+      const local = await listToolsLocally(userId)
+      if (local.length > 0) setTools(local)
+
       const data = await usecases.listTools(userId)
       setTools(data)
+      void bulkSaveToolsLocally(data)
     } catch (err) {
+      if (toolsRef.current.length > 0) return
       const error = err as Error
       setError(error)
       logger.error('Failed to load tools', error)
@@ -84,6 +98,7 @@ export function useToolOperations(): UseToolOperationsReturn {
       try {
         const tool = await usecases.createTool(userId, input)
         setTools((prev) => [tool, ...prev])
+        void saveToolLocally(tool)
         toast.success('Tool created successfully')
         logger.info('Tool created', { toolId: tool.toolId })
         return tool
@@ -112,6 +127,7 @@ export function useToolOperations(): UseToolOperationsReturn {
       try {
         const updated = await usecases.updateTool(userId, toolId, updates)
         setTools((prev) => prev.map((tool) => (tool.toolId === toolId ? updated : tool)))
+        void saveToolLocally(updated)
         toast.success('Tool updated successfully')
         logger.info('Tool updated', { toolId })
         return updated
@@ -137,6 +153,7 @@ export function useToolOperations(): UseToolOperationsReturn {
       try {
         await usecases.deleteTool(userId, toolId)
         setTools((prev) => prev.filter((tool) => tool.toolId !== toolId))
+        void deleteToolLocally(toolId)
         toast.success('Tool deleted successfully')
         logger.info('Tool deleted', { toolId })
       } catch (err) {

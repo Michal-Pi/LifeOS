@@ -1,20 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import {
   validateInterventionPreset,
-  validateCreateInterventionInput,
   validateInterventionStep,
   validateInterventionSession,
   validateCreateSessionInput,
-  validateCompleteSessionInput,
   isValidFeelingState,
   isValidInterventionType,
 } from '../validation'
 import type {
   CanonicalInterventionPreset,
-  CreateInterventionInput,
   CanonicalInterventionSession,
   CreateSessionInput,
-  CompleteSessionInput,
   InterventionStep,
 } from '../models'
 import { asId } from '@lifeos/core'

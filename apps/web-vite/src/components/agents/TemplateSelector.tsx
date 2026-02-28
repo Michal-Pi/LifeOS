@@ -1,15 +1,15 @@
 import { useMemo, useState } from 'react'
-import type { WorkspaceTemplatePreset } from '@/agents/templatePresets'
+import type { WorkflowTemplatePreset } from '@/agents/templatePresets'
 import type { ContentTypePreset } from '@/agents/contentTypePresets'
-import { WorkspaceBlueprint } from './WorkspaceBlueprint'
+import { WorkflowBlueprint } from './WorkflowBlueprint'
 import type { SelectOption } from '@/components/Select'
 import './TemplateSelector.css'
 
 type TemplateSelectorProps = {
-  templates: WorkspaceTemplatePreset[]
+  templates: WorkflowTemplatePreset[]
   contentTypes: ContentTypePreset[]
   onUseTemplate: (
-    template: WorkspaceTemplatePreset,
+    template: WorkflowTemplatePreset,
     options?: {
       contentType?: string
     }
@@ -45,7 +45,7 @@ export function TemplateSelector({
     <section className="template-selector">
       <header className="template-selector__header">
         <p className="section-label">Template Presets</p>
-        <h2>Workspace Blueprints</h2>
+        <h2>Workflow Blueprints</h2>
         <p className="template-selector__subhead">
           Spin up specialized teams with expert workflows, tools, and governance already wired.
         </p>
@@ -55,7 +55,7 @@ export function TemplateSelector({
         {availableTemplates.map((template) => {
           const contentType = getContentType(template.name)
           return (
-            <WorkspaceBlueprint
+            <WorkflowBlueprint
               key={template.name}
               template={template}
               contentTypes={contentTypeOptions}

@@ -6,6 +6,7 @@ import {
   createLogger,
 } from '@lifeos/calendar'
 import { createFirestoreCalendarEventRepository } from '@/adapters/firestoreCalendarEventRepository'
+import { listEventsByRangeLocally, bulkSaveEventsLocally } from '@/calendar/offlineStore'
 import { collection, query, onSnapshot, type Unsubscribe } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { toast } from 'sonner'
@@ -40,6 +41,18 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
 
     setLoading(true)
     try {
+      // 1. Read from IndexedDB first for instant display
+      try {
+        const localEvents = await listEventsByRangeLocally(userId, range.startMs, range.endMs)
+        if (localEvents.length > 0) {
+          setEvents(localEvents)
+          setLoading(false)
+        }
+      } catch {
+        /* ignore local read failure */
+      }
+
+      // 2. Fetch from Firestore in background
       const items = await listEventsWithRecurrence(
         { repository: calendarRepository },
         { userId, startMs: range.startMs, endMs: range.endMs }
@@ -56,10 +69,15 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
         }
       }
 
-      setEvents(Array.from(eventMap.values()))
+      const freshEvents = Array.from(eventMap.values())
+      setEvents(freshEvents)
       setInstances(nextInstances)
+
+      // 3. Cache results locally
+      void bulkSaveEventsLocally(freshEvents)
     } catch (error) {
-      logger.error('Failed to load events', error)
+      logger.error('Failed to load events from Firestore', error)
+      // Keep whatever we already have (local cache or empty)
     } finally {
       setLoading(false)
     }
@@ -96,59 +114,45 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
       const db = await getDb()
       const eventsCol = collection(db, 'users', userId, 'calendarEvents')
 
-      // Listen to all events in the collection to detect deletions
-      // We could optimize this by filtering, but for deletions we need broad coverage
       const q = query(eventsCol)
 
       const unsubscribe = onSnapshot(
         q,
         (snapshot) => {
-          if (!active) {
-            logger.info('Listener fired but component inactive, skipping')
-            return
-          }
+          if (!active) return
 
-          // Track initial snapshot to detect catch-up phase
           if (isInitialSnapshot) {
             isInitialSnapshot = false
             initialSnapshotTime = Date.now()
             initialTotalCount = snapshot.size
             lastTotalCount = snapshot.size
-            // Suppress verbose logging for initial snapshot - it's just catching up
             return
           }
 
-          // Only reload if there were deletions
-          // Ignore additions (sync operations) to prevent reload loops
           const changes = snapshot.docChanges()
           const hasRemovals = changes.some((change) => change.type === 'removed')
           const removedCount = changes.filter((c) => c.type === 'removed').length
           const addedCount = changes.filter((c) => c.type === 'added').length
           const currentTotal = snapshot.size
 
-          // If we're still in catch-up phase (first few seconds after initial snapshot),
-          // suppress verbose logging for bulk operations that are likely historical
-          // Historical bulk deletes are detected by: catch-up phase + large removals + total decreasing from initial
-          const isCatchUpPhase = Date.now() - initialSnapshotTime < 5000 // 5 seconds catch-up window
+          const isCatchUpPhase = Date.now() - initialSnapshotTime < 5000
           const isHistoricalBulkDelete =
             isCatchUpPhase &&
             removedCount >= 25 &&
             currentTotal < initialTotalCount &&
             currentTotal <= lastTotalCount
 
-          // Detect start of bulk sync (many additions)
+          // Detect start of bulk sync
           if (addedCount >= 50 && syncStartCount === 0) {
             syncStartCount = currentTotal - addedCount
             syncNotificationShown = false
           }
 
-          // Detect bulk delete: large number of removals or significant drop in total count
           const isBulkDelete =
             removedCount >= 25 || (lastTotalCount > 0 && lastTotalCount - currentTotal >= 25)
 
           if (isBulkDelete && !bulkDeleteInProgress) {
             bulkDeleteInProgress = true
-            // Only log if not a historical catch-up
             if (!isHistoricalBulkDelete) {
               logger.info('Bulk delete detected, suppressing reloads temporarily', {
                 removedCount,
@@ -158,14 +162,12 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
             }
           }
 
-          // Detect sync in progress: active additions happening
+          // Sync progress tracking
           const syncInProgress = addedCount >= 10
 
           if (syncInProgress) {
-            // Update sync progress indicator
             setSyncProgress({ total: currentTotal, isActive: true })
           } else if (syncStartCount > 0 && currentTotal > syncStartCount + 100) {
-            // Large sync complete (1000+ events)
             if (!syncNotificationShown) {
               const totalSynced = currentTotal - syncStartCount
               if (totalSynced > 1000) {
@@ -174,17 +176,13 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
               syncNotificationShown = true
             }
             syncStartCount = 0
-            // Clear progress indicator after a delay
             setTimeout(() => setSyncProgress(null), 2000)
           } else if (lastAddedCount >= 10 && addedCount < 10) {
-            // Sync just finished (transition from active to inactive)
             setTimeout(() => setSyncProgress(null), 2000)
           } else if (addedCount === 0 && lastAddedCount > 0) {
-            // No more additions - sync is complete
             setTimeout(() => setSyncProgress(null), 2000)
           }
 
-          // Suppress verbose logging during catch-up phase for historical bulk deletes
           if (!isHistoricalBulkDelete) {
             logger.info('Events snapshot received', {
               total: currentTotal,
@@ -199,7 +197,6 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
               active,
             })
           } else {
-            // Only log a summary for historical catch-up
             logger.debug('Catching up with historical deletions', {
               total: currentTotal,
               removed: removedCount,
@@ -211,7 +208,6 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
 
           if (hasRemovals && !bulkDeleteInProgress) {
             logger.info('Events deleted, reloading')
-            // Debounce reload to handle batch deletions
             if (reloadTimeout) {
               clearTimeout(reloadTimeout)
             }
@@ -221,24 +217,20 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
               }
             }, 500)
           } else if (hasRemovals && bulkDeleteInProgress) {
-            // During bulk delete, use a longer debounce and only reload once at the end
             if (reloadTimeout) {
               clearTimeout(reloadTimeout)
             }
             reloadTimeout = setTimeout(() => {
               if (active) {
                 bulkDeleteInProgress = false
-                // Only log if not a historical catch-up
                 if (!isHistoricalBulkDelete) {
                   logger.info('Bulk delete complete, reloading events')
                 }
                 void loadEvents()
               }
-            }, 2000) // Longer debounce for bulk operations
+            }, 2000)
           } else if (!hasRemovals && bulkDeleteInProgress) {
-            // No more removals, bulk delete is complete
             bulkDeleteInProgress = false
-            // Only log if not a historical catch-up
             if (!isHistoricalBulkDelete) {
               logger.info('Bulk delete finished, reloading events')
             }
@@ -283,24 +275,5 @@ export function useCalendarEvents(userId: string, dayKeys: string[]) {
     void loadEvents()
   }, [loadEvents])
 
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      location: 'useCalendarEvents.ts:286',
-      message: 'Returning from useCalendarEvents',
-      data: {
-        loadingType: typeof loading,
-        loadingValue: loading,
-        hasLoading: loading !== undefined,
-      },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      runId: 'run1',
-      hypothesisId: 'A',
-    }),
-  }).catch(() => {})
-  // #endregion
   return { events, instances, setEvents, loading, reload: loadEvents, syncProgress }
 }

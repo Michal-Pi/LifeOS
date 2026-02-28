@@ -5,9 +5,8 @@
  * Independent of UI framework and data layer.
  */
 
-import { newId } from '@lifeos/core'
 import type { RunRepository } from '../ports/runRepository'
-import type { Run, RunId, CreateRunInput, WorkspaceId, RunStatus } from '../domain/models'
+import type { Run, RunId, CreateRunInput, WorkflowId, RunStatus } from '../domain/models'
 
 /**
  * Create a new run (execution)
@@ -30,7 +29,7 @@ export function updateRunUsecase(runRepo: RunRepository) {
   return async (
     userId: string,
     runId: RunId,
-    updates: Partial<Omit<Run, 'runId' | 'userId' | 'workspaceId'>>
+    updates: Partial<Omit<Run, 'runId' | 'userId' | 'workflowId'>>
   ): Promise<Run> => {
     return await runRepo.update(userId, runId, updates)
   }
@@ -52,7 +51,7 @@ export function listRunsUsecase(runRepo: RunRepository) {
   return async (
     userId: string,
     options?: {
-      workspaceId?: WorkspaceId
+      workflowId?: WorkflowId
       status?: RunStatus
       limit?: number
     }

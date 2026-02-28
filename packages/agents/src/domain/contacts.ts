@@ -195,10 +195,7 @@ export function getFollowUpStatus(contact: Contact, nowMs: number = Date.now()):
 /**
  * Compute the next follow-up timestamp based on circle cadence
  */
-export function computeNextFollowUp(
-  contact: Contact,
-  interactionMs: number
-): number | undefined {
+export function computeNextFollowUp(contact: Contact, interactionMs: number): number | undefined {
   const cadence = contact.followUpCadenceDays ?? DEFAULT_FOLLOW_UP_DAYS[contact.circle]
   if (cadence <= 0) return undefined
   return interactionMs + cadence * 24 * 60 * 60 * 1000

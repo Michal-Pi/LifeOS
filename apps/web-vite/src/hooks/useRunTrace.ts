@@ -6,10 +6,10 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { collection, doc, getDoc, getDocs, query, where, orderBy } from 'firebase/firestore'
+import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'
 import { getFirestoreClient } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
-import type { RunTelemetry, StepTelemetry, ComponentTelemetry, RunId } from '@lifeos/agents'
+import type { RunTelemetry, ComponentTelemetry, RunId } from '@lifeos/agents'
 import type { TraceStep } from '@/components/evaluation/TraceViewer'
 
 // ----- Types -----
@@ -243,6 +243,9 @@ export function useRunTraces(options: UseRunTracesOptions): UseRunTracesReturn {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Stable key for runIds array to use in dependency array
+  const runIdsKey = useMemo(() => JSON.stringify(runIds), [runIds])
+
   useEffect(() => {
     if (!user || runIds.length === 0) {
       setTraces(new Map())
@@ -307,8 +310,8 @@ export function useRunTraces(options: UseRunTracesOptions): UseRunTracesReturn {
     }
 
     loadTraces()
-    // Use JSON.stringify for stable dependency comparison
-  }, [user, JSON.stringify(runIds), includeComponentTelemetry])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Using JSON.stringify for stable array comparison
+  }, [user, runIdsKey, includeComponentTelemetry])
 
   return {
     traces,

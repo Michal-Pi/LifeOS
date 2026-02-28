@@ -85,7 +85,10 @@ export async function handleMailboxMessageCreated(event: {
       userId: uid,
       type: interactionType,
       summary:
-        (message.subject as string) || (message.snippet as string) || (message.aiSummary as string) || 'New message',
+        (message.subject as string) ||
+        (message.snippet as string) ||
+        (message.aiSummary as string) ||
+        'New message',
       source: source as ContactSource,
       sourceId: (message.originalMessageId as string) ?? messageId,
       direction: 'inbound',

@@ -1,41 +1,44 @@
 /**
  * RunCard Component
  *
- * Displays details for a single run including tool calls.
+ * Compact summary card for a single run. Opens RunDetailModal for
+ * full message carousel, final output, and Save as Note.
  */
 
+import '@/styles/components/RunCard.css'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToolCallOperations } from '@/hooks/useToolCallOperations'
-import { useRunEvents } from '@/hooks/useRunEvents'
 import { useRunMessages } from '@/hooks/useRunMessages'
 import { useWorkflowSteps } from '@/hooks/useWorkflowSteps'
 import { useExpertCouncilTurns } from '@/hooks/useExpertCouncilTurns'
 import { useProjectManager } from '@/hooks/useProjectManager'
-import { useNoteOperations } from '@/hooks/useNoteOperations'
-import { useAuth } from '@/hooks/useAuth'
+import { useDialecticalState, isDialecticalWorkflow } from '@/hooks/useDialecticalState'
 import { ToolCallTimeline } from './ToolCallTimeline'
 import { ExpertCouncilInspector } from './ExpertCouncilInspector'
 import { ProjectManagerChat } from './ProjectManagerChat'
 import { InteractiveWorkflowGraph } from './InteractiveWorkflowGraph'
+import { ExecutionReplayControls } from './ExecutionReplayControls'
+import { useExecutionReplay } from '@/hooks/useExecutionReplay'
 import { WorkflowNodeModal } from './WorkflowNodeModal'
-import { MessageCarousel } from './MessageCarousel'
+import { RunDetailModal } from './RunDetailModal'
+import { DialecticalCycleVisualization } from './DialecticalCycleVisualization'
+import { DeepResearchViewer } from './DeepResearchViewer'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
 import type {
   DeepResearchRequest,
   Run,
   RunStatus,
-  Workspace,
-  WorkspaceId,
+  Workflow,
+  WorkflowId,
   WorkflowStep,
   WorkflowGraphNode,
 } from '@lifeos/agents'
 
 interface RunCardProps {
   run: Run
-  workspace: Workspace
-  workspaceId: WorkspaceId
+  workflow: Workflow
+  workflowId: WorkflowId
   researchRequests: DeepResearchRequest[]
   currentTime: number
   showProjectManager: boolean
@@ -43,13 +46,14 @@ interface RunCardProps {
   onResume?: (runId: string) => void
   onProvideInput?: (runId: string, nodeId: string, response: string) => Promise<void>
   onRunAgain?: (runId: string) => void
+  onContinue?: (runId: string) => void
   onStop?: (runId: string) => Promise<void>
 }
 
 export function RunCard({
   run,
-  workspace,
-  workspaceId,
+  workflow,
+  workflowId,
   researchRequests,
   currentTime,
   showProjectManager,
@@ -57,38 +61,38 @@ export function RunCard({
   onResume,
   onProvideInput,
   onRunAgain,
+  onContinue,
   onStop,
 }: RunCardProps) {
   const navigate = useNavigate()
-  const { user } = useAuth()
-  const { createNote } = useNoteOperations()
-  const [isSubmittingInput, setIsSubmittingInput] = useState(false)
-  const [isSavingNote, setIsSavingNote] = useState(false)
   const [selectedNode, setSelectedNode] = useState<{
     node: WorkflowGraphNode | null
     step?: WorkflowStep
   } | null>(null)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [showResearchViewer, setShowResearchViewer] = useState(false)
 
   // Lazy load data only when sections are expanded
   const [workflowExpanded, setWorkflowExpanded] = useState(false)
-  const [messagesExpanded, setMessagesExpanded] = useState(false)
   const [expertCouncilExpanded, setExpertCouncilExpanded] = useState(false)
   const [projectManagerExpanded, setProjectManagerExpanded] = useState(false)
+  const [dialecticalExpanded, setDialecticalExpanded] = useState(false)
+
+  // Dialectical workflow state
+  const isDialectical = isDialecticalWorkflow(workflow.workflowType)
+  const dialecticalState = useDialecticalState(isDialectical ? run : null)
 
   // Only fetch when running or when explicitly expanded
-  const shouldLoadToolCalls = run.status === 'running' || workflowExpanded || messagesExpanded
-  const shouldLoadMessages = run.status === 'running' || messagesExpanded || workflowExpanded
-  const shouldLoadEvents = run.status === 'running'
+  const shouldLoadToolCalls = run.status === 'running' || workflowExpanded
+  const shouldLoadMessages = run.status === 'running' || workflowExpanded
   const shouldLoadWorkflowSteps = run.status === 'running' || workflowExpanded
   const shouldLoadExpertCouncil = run.status === 'running' || expertCouncilExpanded
   const shouldLoadProjectManager = projectManagerExpanded && showProjectManager
 
   const { toolCalls } = useToolCallOperations(shouldLoadToolCalls ? run.runId : '')
-  const { messages, hasMore, isLoadingMore, loadMore } = useRunMessages(
-    shouldLoadMessages ? run.runId : ''
-  )
-  const { events } = useRunEvents(shouldLoadEvents ? run.runId : '')
+  const { messages } = useRunMessages(shouldLoadMessages ? run.runId : '')
   const { steps: workflowSteps } = useWorkflowSteps(shouldLoadWorkflowSteps ? run.runId : '')
+  const replay = useExecutionReplay(workflowSteps)
   const { latestTurn } = useExpertCouncilTurns(shouldLoadExpertCouncil ? run.runId : '')
   const {
     context: projectManagerContext,
@@ -97,7 +101,7 @@ export function RunCard({
     recordInteraction,
     profile,
   } = useProjectManager(
-    shouldLoadProjectManager ? workspaceId : ('' as WorkspaceId),
+    shouldLoadProjectManager ? workflowId : ('' as WorkflowId),
     shouldLoadProjectManager ? run.runId : ''
   )
   const deepResearch =
@@ -112,12 +116,21 @@ export function RunCard({
           | undefined)
       : undefined
 
-  const streamingOutput = events
-    .filter((event) => event.type === 'token')
-    .map((event) => event.delta ?? '')
-    .join('')
-  const finalEvent = [...events].reverse().find((event) => event.type === 'final')
-  const displayOutput = run.output ?? finalEvent?.output ?? streamingOutput
+  // Deep research budget from workflowState
+  const drWorkflowState = run.workflowState as
+    | {
+        budget?: { spentUsd: number; maxBudgetUsd: number; phase: string }
+        sources?: unknown[]
+        extractedClaims?: unknown[]
+        kgSnapshots?: unknown[]
+        gapIterationsUsed?: number
+      }
+    | undefined
+  const drBudget = drWorkflowState?.budget
+  const isDeepResearchWorkflow = workflow.workflowType === 'deep_research'
+
+  // Compact output preview
+  const displayOutput = run.output
 
   const runResearchRequests = useMemo(
     () => researchRequests.filter((request) => request.runId === run.runId),
@@ -125,7 +138,7 @@ export function RunCard({
   )
   const pendingResearch = runResearchRequests.filter((request) => request.status === 'pending')
 
-  const projectManagerEnabled = Boolean(workspace.projectManagerConfig?.enabled)
+  const projectManagerEnabled = Boolean(workflow.projectManagerConfig?.enabled)
   const projectManagerVisible = projectManagerEnabled && showProjectManager
   const pendingDecisions = projectManagerContext?.decisions?.filter(
     (decision) => decision.status === 'pending'
@@ -191,80 +204,14 @@ export function RunCard({
     }
   }
 
-  const getAgentNameFromMessages = () => {
-    // Get the last assistant message to find the agent asking the question
-    const lastAssistantMessage = [...messages].reverse().find((msg) => msg.role === 'assistant')
-
-    // Try to extract agent name from agentId if available
-    if (lastAssistantMessage && 'agentId' in lastAssistantMessage) {
-      const agentId = lastAssistantMessage.agentId as string
-      const agent = workspace.agentIds?.find((id) => id === agentId)
-      if (agent) {
-        // Extract agent name from ID (format: "agent:uuid")
-        return agentId.split(':')[0] || 'Agent'
-      }
-    }
-
-    return 'Project Manager'
-  }
-
-  const handleSaveAsNote = async () => {
-    if (!displayOutput || !user) return
-
-    setIsSavingNote(true)
-    try {
-      // Extract title from first line or use goal
-      const firstLine = displayOutput.split('\n')[0]
-      const title = firstLine.length > 100 ? `Run: ${run.goal}` : firstLine || run.goal
-
-      // Create note with output content
-      const note = await createNote({
-        title,
-        content: displayOutput,
-        context: {
-          source: 'workspace-run',
-          workspaceId: workspace.workspaceId,
-          workspaceName: workspace.name,
-          runId: run.runId,
-          goal: run.goal,
-        },
-      })
-
-      toast.success('Note created!', {
-        description: 'Click to view note',
-        action: {
-          label: 'View',
-          onClick: () => navigate(`/notes?noteId=${note.noteId}`),
-        },
-      })
-    } catch (error) {
-      toast.error('Failed to create note', {
-        description: (error as Error).message,
-      })
-    } finally {
-      setIsSavingNote(false)
-    }
-  }
-
   const handleNodeClick = (nodeId: string, step?: WorkflowStep) => {
-    // Find the node definition from the workflow graph
-    const node = workspace.workflowGraph?.nodes.find((n) => n.id === nodeId)
+    const node = workflow.workflowGraph?.nodes.find((n) => n.id === nodeId)
     if (node) {
       setSelectedNode({ node, step })
     }
   }
 
-  const handleStop = async () => {
-    if (!onStop) return
-    try {
-      await onStop(run.runId)
-      toast.success('Run stopped')
-    } catch (error) {
-      toast.error('Failed to stop run', {
-        description: (error as Error).message,
-      })
-    }
-  }
+  const isRunning = run.status === 'running' || run.status === 'waiting_for_input'
 
   return (
     <div className="run-card">
@@ -282,10 +229,10 @@ export function RunCard({
               type="button"
               className="run-research-indicator"
               onClick={() =>
-                navigate(`/agents/research?workspaceId=${workspaceId}&runId=${run.runId}`)
+                navigate(`/agents/research?workflowId=${workflowId}&runId=${run.runId}`)
               }
             >
-              🔬 {pendingResearch.length} pending
+              {pendingResearch.length} pending
             </button>
           )}
         </div>
@@ -295,32 +242,6 @@ export function RunCard({
           <small>Duration: {formatDuration(run.startedAtMs, run.completedAtMs)}</small>
         </div>
       </div>
-
-      {/* Message Carousel - Live View & Agent Questions */}
-      {(run.status === 'running' || run.status === 'waiting_for_input') && (
-        <MessageCarousel
-          run={run}
-          events={events}
-          messages={messages}
-          workflowGraph={workspace.workflowGraph}
-          onStop={onStop ? handleStop : undefined}
-          onProvideInput={
-            onProvideInput && run.pendingInput
-              ? async (response) => {
-                  try {
-                    setIsSubmittingInput(true)
-                    await onProvideInput(run.runId, run.pendingInput!.nodeId, response)
-                  } finally {
-                    setIsSubmittingInput(false)
-                  }
-                }
-              : undefined
-          }
-          isSubmittingInput={isSubmittingInput}
-          pendingInput={run.pendingInput}
-          agentName={getAgentNameFromMessages()}
-        />
-      )}
 
       <div className="run-progress">
         <strong>Progress:</strong> Step {run.currentStep}
@@ -343,18 +264,58 @@ export function RunCard({
         </div>
       )}
 
-      {/* Final Output Box - Shows after run completion */}
-      {displayOutput && (
-        <div className="run-output">
-          <div className="run-output-header">
-            <strong>{run.status === 'running' ? 'Partial Output:' : 'Final Output:'}</strong>
-            {run.status === 'completed' && (
-              <Button variant="ghost" size="sm" onClick={handleSaveAsNote} disabled={isSavingNote}>
-                {isSavingNote ? 'Saving...' : '📝 Save as Note'}
-              </Button>
+      {/* Deep Research Budget Progress */}
+      {isDeepResearchWorkflow && drBudget && (
+        <button
+          type="button"
+          className="dr-budget-progress"
+          onClick={() => setShowResearchViewer(true)}
+          title="Click to open Deep Research Viewer"
+        >
+          <div className="dr-budget-header">
+            <strong>Budget:</strong>
+            <span>
+              ${drBudget.spentUsd.toFixed(2)} / ${drBudget.maxBudgetUsd.toFixed(2)}
+            </span>
+            <span className={`dr-phase-badge dr-phase-${drBudget.phase}`}>{drBudget.phase}</span>
+          </div>
+          <div className="dr-budget-bar">
+            <div
+              className={`dr-budget-fill dr-phase-${drBudget.phase}`}
+              style={{
+                width: `${Math.min(100, (drBudget.spentUsd / drBudget.maxBudgetUsd) * 100)}%`,
+              }}
+            />
+          </div>
+          <div className="dr-budget-stats">
+            {drWorkflowState.sources && (
+              <span>Sources: {(drWorkflowState.sources as unknown[]).length}</span>
+            )}
+            {drWorkflowState.extractedClaims && (
+              <span>Claims: {(drWorkflowState.extractedClaims as unknown[]).length}</span>
+            )}
+            {drWorkflowState.gapIterationsUsed !== undefined && (
+              <span>Iterations: {drWorkflowState.gapIterationsUsed}</span>
             )}
           </div>
-          <p>{displayOutput}</p>
+        </button>
+      )}
+
+      {/* Deep Research Viewer (expanded) */}
+      {showResearchViewer && isDeepResearchWorkflow && (
+        <details className="run-context" open>
+          <summary onClick={() => setShowResearchViewer(false)}>Deep Research Viewer</summary>
+          <DeepResearchViewer run={run} workflow={workflow} />
+        </details>
+      )}
+
+      {/* Compact output preview */}
+      {displayOutput && !isRunning && (
+        <div className="run-output-preview">
+          <span className="run-output-preview-text">
+            {displayOutput.slice(0, 200)}
+            {displayOutput.length > 200 ? '...' : ''}
+          </span>
         </div>
       )}
 
@@ -386,7 +347,7 @@ export function RunCard({
         </details>
       )}
 
-      {workspace.workflowGraph && (
+      {workflow.workflowGraph && (
         <details
           className="run-context"
           onToggle={(e) => setWorkflowExpanded((e.target as HTMLDetailsElement).open)}
@@ -396,15 +357,34 @@ export function RunCard({
           </summary>
           {workflowExpanded && workflowSteps.length > 0 && (
             <>
-              <div className="workflow-graph-container">
+              <div className="workflow-graph-container" style={{ position: 'relative' }}>
                 <InteractiveWorkflowGraph
-                  graph={workspace.workflowGraph}
+                  graph={workflow.workflowGraph}
                   workflowSteps={workflowSteps}
                   messages={messages}
                   onNodeClick={handleNodeClick}
+                  replayStepIndex={replay.currentStepIndex}
                 />
+                {workflowSteps.length > 1 && run.status !== 'running' && (
+                  <ExecutionReplayControls
+                    steps={workflowSteps}
+                    currentStepIndex={replay.currentStepIndex}
+                    isReplaying={replay.isReplaying}
+                    onStepChange={replay.goToStep}
+                    onToggleReplay={replay.toggleReplay}
+                    speed={replay.speed}
+                    onSpeedChange={replay.setSpeed}
+                    onStepForward={replay.stepForward}
+                    onStepBack={replay.stepBack}
+                  />
+                )}
               </div>
-              <p className="workflow-hint">💡 Click on a node to view its execution details</p>
+              <p className="workflow-hint">
+                Click on a node to view details
+                {workflowSteps.length > 1 && run.status !== 'running'
+                  ? ' · Use replay controls to time-travel'
+                  : ''}
+              </p>
             </>
           )}
           {workflowExpanded && workflowSteps.length === 0 && (
@@ -422,6 +402,34 @@ export function RunCard({
           {expertCouncilExpanded && latestTurn && <ExpertCouncilInspector turn={latestTurn} />}
           {expertCouncilExpanded && !latestTurn && (
             <p className="no-data">No expert council data yet</p>
+          )}
+        </details>
+      )}
+
+      {/* Dialectical Workflow Visualization */}
+      {isDialectical && (
+        <details
+          className="run-context"
+          open={run.status === 'running'}
+          onToggle={(e) => setDialecticalExpanded((e.target as HTMLDetailsElement).open)}
+        >
+          <summary>
+            Dialectical Cycle
+            {dialecticalState && (
+              <span className="badge">
+                Cycle {dialecticalState.cycleNumber} - {dialecticalState.phase.replace(/_/g, ' ')}
+              </span>
+            )}
+          </summary>
+          {(dialecticalExpanded || run.status === 'running') && dialecticalState && (
+            <DialecticalCycleVisualization
+              state={dialecticalState}
+              maxCycles={workflow.maxIterations ?? 10}
+              velocityThreshold={0.2}
+            />
+          )}
+          {(dialecticalExpanded || run.status === 'running') && !dialecticalState && (
+            <p className="no-data">No dialectical state data yet</p>
           )}
         </details>
       )}
@@ -465,40 +473,6 @@ export function RunCard({
         </details>
       )}
 
-      <details
-        className="run-messages"
-        onToggle={(e) => setMessagesExpanded((e.target as HTMLDetailsElement).open)}
-      >
-        <summary>
-          Messages {messages.length > 0 ? `(${messages.length}${hasMore ? '+' : ''})` : ''}
-        </summary>
-        {messagesExpanded && messages.length > 0 && (
-          <>
-            <div className="run-messages-list">
-              {messages.map((message) => (
-                <div key={message.messageId} className={`run-message run-message--${message.role}`}>
-                  <div className="run-message-meta">
-                    <span className="run-message-role">{message.role}</span>
-                    <span className="run-message-time">
-                      {new Date(message.timestampMs).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <div className="run-message-content">{message.content}</div>
-                </div>
-              ))}
-            </div>
-            {hasMore && (
-              <div className="run-messages-actions">
-                <Button variant="ghost" type="button" onClick={loadMore} disabled={isLoadingMore}>
-                  {isLoadingMore ? 'Loading...' : 'Load older messages'}
-                </Button>
-              </div>
-            )}
-          </>
-        )}
-        {messagesExpanded && messages.length === 0 && <p className="no-data">No messages yet</p>}
-      </details>
-
       {/* Tool Call Timeline */}
       {toolCalls.length > 0 && (
         <div className="run-tool-calls">
@@ -520,17 +494,28 @@ export function RunCard({
       </div>
 
       <div className="run-actions">
-        {onResume &&
-          run.status !== 'running' &&
-          run.status !== 'pending' &&
-          run.status !== 'waiting_for_input' && (
-            <Button variant="ghost" onClick={() => onResume(run.runId)}>
-              Resume
-            </Button>
+        <Button variant="ghost" size="sm" onClick={() => setShowDetailModal(true)}>
+          {isRunning ? (
+            <>
+              <span className="live-dot" /> Live View
+            </>
+          ) : (
+            'View Details'
           )}
+        </Button>
         {onRunAgain && (run.status === 'completed' || run.status === 'failed') && (
           <Button variant="ghost" onClick={() => onRunAgain(run.runId)}>
-            🔄 Run Again
+            Run Again
+          </Button>
+        )}
+        {onResume && run.status === 'failed' && (
+          <Button variant="ghost" onClick={() => onResume(run.runId)}>
+            Resume
+          </Button>
+        )}
+        {onContinue && (run.status === 'completed' || run.status === 'failed') && (
+          <Button variant="ghost" onClick={() => onContinue(run.runId)}>
+            Continue
           </Button>
         )}
         <Button variant="ghost" className="danger" onClick={() => onDelete(run.runId)}>
@@ -546,6 +531,16 @@ export function RunCard({
         toolCalls={toolCalls}
         isOpen={!!selectedNode}
         onClose={() => setSelectedNode(null)}
+      />
+
+      {/* Run Detail Modal */}
+      <RunDetailModal
+        run={run}
+        workflow={workflow}
+        isOpen={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+        onProvideInput={onProvideInput}
+        onStop={onStop}
       />
     </div>
   )

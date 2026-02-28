@@ -6,6 +6,8 @@
  * @deprecated Import from './knowledge-graph' instead
  */
 
+/* eslint-disable react-refresh/only-export-components */
+
 export {
   KnowledgeGraphExplorer,
   default,

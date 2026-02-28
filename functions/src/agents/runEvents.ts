@@ -6,12 +6,27 @@
 
 import { getFirestore } from 'firebase-admin/firestore'
 
-export type RunEventType = 'token' | 'tool_call' | 'tool_result' | 'status' | 'error' | 'final'
+export type RunEventType =
+  | 'token'
+  | 'tool_call'
+  | 'tool_result'
+  | 'status'
+  | 'error'
+  | 'final'
+  // Deep research events
+  | 'deep_research_phase'
+  // Dialectical workflow events
+  | 'dialectical_phase'
+  | 'dialectical_thesis'
+  | 'dialectical_negation'
+  | 'dialectical_contradiction'
+  | 'dialectical_synthesis'
+  | 'dialectical_meta'
 
 export type RunEvent = {
   type: RunEventType
   runId: string
-  workspaceId?: string
+  workflowId?: string
   agentId?: string
   agentName?: string
   provider?: string
@@ -44,7 +59,7 @@ const TOKEN_FLUSH_SIZE = 200
 export function createRunEventWriter(params: {
   userId: string
   runId: string
-  workspaceId?: string
+  workflowId?: string
 }): RunEventWriter {
   const db = getFirestore()
   const eventsRef = db.collection(`users/${params.userId}/runs/${params.runId}/events`)
@@ -56,7 +71,7 @@ export function createRunEventWriter(params: {
     await eventsRef.add({
       ...event,
       runId: params.runId,
-      workspaceId: params.workspaceId,
+      workflowId: params.workflowId,
       timestampMs: Date.now(),
     })
   }

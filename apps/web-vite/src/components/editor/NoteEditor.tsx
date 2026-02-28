@@ -21,6 +21,7 @@ import { AttachmentUploader } from '@/components/notes/AttachmentUploader'
 import { TagEditor } from '@/components/notes/TagEditor'
 import { BacklinksPanel } from '@/components/notes/BacklinksPanel'
 import { useTopics } from '@/hooks/useTopics'
+import { logger } from '@/lib/logger'
 import type { Note, AttachmentId, NoteId } from '@lifeos/notes'
 
 export interface NoteEditorProps {
@@ -189,7 +190,7 @@ export function NoteEditor({
         }}
         onParagraphTag={(tagType, id) => {
           // Handle paragraph tagging - this will be synced when content changes
-          console.log('Paragraph tagged:', tagType, id)
+          logger.debug('Paragraph tagged:', tagType, id)
         }}
       />
 

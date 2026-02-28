@@ -15,7 +15,8 @@
  */
 
 import type { CanonicalCalendarEvent, RecurrenceInstance } from '@lifeos/calendar'
-import React, { useMemo, useEffect, useRef } from 'react'
+import React, { useMemo, useEffect, useRef, useState, useCallback } from 'react'
+import { QuickEventCreate } from '@/components/calendar/QuickEventCreate'
 
 interface DailyViewProps {
   /** Date to display */
@@ -32,6 +33,10 @@ interface DailyViewProps {
   calendarsById?: Map<string, { calendarId: string; name: string; color?: string }>
   /** Loading state */
   loading?: boolean
+  /** Callback when quick-create saves a new event */
+  onQuickCreate?: (data: { title: string; startMs: number; endMs: number }) => void
+  /** Callback when "More options" is clicked from quick-create */
+  onQuickCreateMore?: (data: { title: string; startMs: number; endMs: number }) => void
 }
 
 const timeFormatter = new Intl.DateTimeFormat('en-US', {
@@ -146,9 +151,18 @@ export function DailyView({
   selectedEventId,
   calendarsById = new Map(),
   loading = false,
+  onQuickCreate,
+  onQuickCreateMore,
 }: DailyViewProps) {
   const timelineRef = useRef<HTMLDivElement>(null)
   const now = useMemo(() => new Date(), [])
+
+  // Quick-create popover state
+  const [quickCreate, setQuickCreate] = useState<{
+    startTime: Date
+    endTime: Date
+    position: { top: number; left: number }
+  } | null>(null)
 
   // Calculate responsive timeline height based on viewport
   const timelineHeight = useMemo(() => {
@@ -266,6 +280,34 @@ export function DailyView({
     }
   }, [date, now])
 
+  // Handle click on empty time slot to show quick-create popover
+  const handleTimelineClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      // Don't trigger when clicking on an event card
+      if ((e.target as HTMLElement).closest('.daily-event-card')) return
+      if (!onQuickCreate) return
+
+      const container = timelineRef.current
+      if (!container) return
+
+      const rect = container.getBoundingClientRect()
+      const clickY = e.clientY - rect.top + container.scrollTop
+      const hour = Math.max(0, Math.min(23, Math.floor((clickY / timelineHeight) * 24)))
+
+      const startTime = new Date(date)
+      startTime.setHours(hour, 0, 0, 0)
+      const endTime = new Date(date)
+      endTime.setHours(hour + 1, 0, 0, 0)
+
+      setQuickCreate({
+        startTime,
+        endTime,
+        position: { top: e.clientY, left: rect.left + rect.width / 2 - 140 },
+      })
+    },
+    [date, onQuickCreate, timelineHeight]
+  )
+
   // Helper to check if two dates are the same day
   function isSameDay(date1: Date, date2: Date): boolean {
     return (
@@ -347,10 +389,12 @@ export function DailyView({
       <div
         className="daily-timeline-container"
         ref={timelineRef}
+        onClick={handleTimelineClick}
         style={
           {
             '--timeline-height': `${timelineHeight}px`,
             '--hour-height': `${hourHeight}px`,
+            cursor: onQuickCreate ? 'crosshair' : undefined,
           } as React.CSSProperties
         }
       >
@@ -448,8 +492,26 @@ export function DailyView({
       {dayEvents.length === 0 && (
         <div className="daily-empty-state">
           <p className="section-label">No events scheduled</p>
-          <p>This day is free. Add an event to get started.</p>
+          <p>This day is free. Click a time slot to create an event.</p>
         </div>
+      )}
+
+      {/* Quick-create popover */}
+      {quickCreate && onQuickCreate && (
+        <QuickEventCreate
+          startTime={quickCreate.startTime}
+          endTime={quickCreate.endTime}
+          position={quickCreate.position}
+          onSave={(data) => {
+            onQuickCreate(data)
+            setQuickCreate(null)
+          }}
+          onMoreOptions={(data) => {
+            onQuickCreateMore?.(data)
+            setQuickCreate(null)
+          }}
+          onClose={() => setQuickCreate(null)}
+        />
       )}
 
       <style>

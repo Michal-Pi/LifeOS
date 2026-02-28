@@ -30,7 +30,7 @@ const MODE_ROWS: ModeRow[] = [
   {
     mode: 'custom',
     label: 'Custom',
-    description: 'Workspace-specific blend of stages.',
+    description: 'Workflow-specific blend of stages.',
     stages: ['Stage 1: Opinions', 'Stage 2: Peer Review', 'Stage 3: Synthesis'],
   },
 ]

@@ -9,7 +9,7 @@
   background: var(--error-light);
   color: var(--error-color);
   border-radius: var(--radius-sm);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   margin-bottom: var(--space-4);
 }
 
@@ -21,7 +21,7 @@
 }
 
 .telegram-setup-text {
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   color: var(--text-secondary);
   line-height: 1.5;
   margin: 0;
@@ -44,12 +44,12 @@
 }
 
 .telegram-info-label {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
 }
 
 .telegram-info-value {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--foreground);
 }
 
@@ -72,7 +72,7 @@
 }
 
 .telegram-form-label {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--foreground);
 }
@@ -87,7 +87,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   color: var(--foreground);
   transition: border-color var(--motion-fast);
 }
@@ -99,6 +99,7 @@
 .telegram-form-input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
 }
 
 .telegram-form-input:disabled {
@@ -107,7 +108,7 @@
 }
 
 .telegram-form-hint {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
   margin: 0;
 }
@@ -125,7 +126,7 @@
 }
 
 .telegram-help summary {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
@@ -139,7 +140,7 @@
 .telegram-help-list {
   margin: var(--space-3) 0 0;
   padding-left: var(--space-5);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   line-height: 1.6;
 }
@@ -153,5 +154,5 @@
   background: var(--background-tertiary);
   border-radius: var(--radius-xs);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }

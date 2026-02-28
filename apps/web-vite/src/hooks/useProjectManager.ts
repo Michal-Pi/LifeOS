@@ -7,14 +7,14 @@ import { summarizeContext, shouldSummarize } from '@/services/projectManager/con
 import { updateProfileFromInteraction } from '@/services/projectManager/userProfiler'
 import type { ConversationContext, UserProfile } from '@lifeos/agents'
 
-export function useProjectManager(workspaceId?: string, runId?: string) {
+export function useProjectManager(workflowId?: string, runId?: string) {
   const { user } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [contextState, setContextState] = useState<{
     key: string | null
     context: ConversationContext | null
   }>({ key: null, context: null })
-  const activeKey = user ? `${user.uid}:${workspaceId ?? ''}` : null
+  const activeKey = user ? `${user.uid}:${workflowId ?? ''}` : null
 
   const repository = useMemo(() => createFirestoreProjectManagerRepository(), [])
   const usecases = useMemo(
@@ -32,14 +32,14 @@ export function useProjectManager(workspaceId?: string, runId?: string) {
       return
     }
     repository
-      .getActiveContext(user.uid, workspaceId)
+      .getActiveContext(user.uid, workflowId)
       .then((ctx) => {
         setContextState({ key: activeKey, context: ctx })
       })
       .catch(() => {
         // Silently fail if context loading fails
       })
-  }, [activeKey, repository, user, workspaceId])
+  }, [activeKey, repository, user, workflowId])
 
   useEffect(() => {
     if (!user) return
@@ -48,12 +48,12 @@ export function useProjectManager(workspaceId?: string, runId?: string) {
 
   const startConversation = useCallback(async () => {
     if (!user) return null
-    const ctx = await usecases.startConversation(user.uid, workspaceId, runId)
+    const ctx = await usecases.startConversation(user.uid, workflowId, runId)
     if (activeKey) {
       setContextState({ key: activeKey, context: ctx })
     }
     return ctx
-  }, [activeKey, runId, usecases, user, workspaceId])
+  }, [activeKey, runId, usecases, user, workflowId])
 
   const addTurn = useCallback(
     async (userMessage: string, pmResponse: string) => {

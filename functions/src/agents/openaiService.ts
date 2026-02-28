@@ -7,9 +7,10 @@
  */
 
 import type { AgentConfig } from '@lifeos/agents'
-import { MODEL_PRICING } from '@lifeos/agents'
+import { asId, MODEL_PRICING } from '@lifeos/agents'
 import OpenAI from 'openai'
 
+import { createLogger } from '../lib/logger.js'
 import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
 import { recordMessage } from './messageStore.js'
 import { checkProviderRateLimit } from './rateLimiter.js'
@@ -17,6 +18,8 @@ import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
 import type { StreamContext } from './streamingTypes.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
 import { executeTools, getAgentToolsFromRegistry, getBuiltinToolRegistry } from './toolExecutor.js'
+
+const log = createLogger('OpenAIService')
 
 /**
  * Initialize OpenAI client with API key from Firebase secrets
@@ -34,6 +37,7 @@ export interface OpenAIExecutionResult {
   output: string
   tokensUsed: number
   estimatedCost: number
+  iterationsUsed: number
 }
 
 /**
@@ -63,7 +67,7 @@ export async function executeWithOpenAI(
   context?: Record<string, unknown>,
   toolContext?: BaseToolExecutionContext
 ): Promise<OpenAIExecutionResult> {
-  const modelName = agent.modelName ?? 'gpt-4o-mini'
+  const modelName = agent.modelName ?? 'gpt-5-mini'
 
   try {
     // Build the prompt
@@ -106,14 +110,14 @@ export async function executeWithOpenAI(
     let totalInputTokens = 0
     let totalOutputTokens = 0
 
-    // Iterative execution loop (max 5 iterations to prevent infinite loops)
-    const MAX_ITERATIONS = 5
+    // Iterative execution loop (configurable, default 5)
+    const MAX_ITERATIONS = toolContext?.maxIterations ?? 5
     let iteration = 0
     let finalOutput = ''
 
     while (iteration < MAX_ITERATIONS) {
       iteration++
-      console.log(`OpenAI iteration ${iteration}/${MAX_ITERATIONS}`)
+      log.info('Iteration started', { iteration, maxIterations: MAX_ITERATIONS })
 
       // Call OpenAI API
       const response = await executeWithRetry(
@@ -137,9 +141,12 @@ export async function executeWithOpenAI(
         },
         PROVIDER_RETRY_CONFIG,
         (attempt, error, delayMs) => {
-          console.log(
-            `OpenAI retry ${attempt}/${PROVIDER_RETRY_CONFIG.maxRetries} after ${delayMs}ms: ${(error as Error).message}`
-          )
+          log.info('Retrying request', {
+            attempt,
+            maxRetries: PROVIDER_RETRY_CONFIG.maxRetries,
+            delayMs,
+            error: (error as Error).message,
+          })
         }
       )
 
@@ -158,7 +165,7 @@ export async function executeWithOpenAI(
 
       // Check if agent wants to call tools
       if (message.tool_calls && message.tool_calls.length > 0 && toolContext) {
-        console.log(`Agent requesting ${message.tool_calls.length} tool calls`)
+        log.info('Agent requesting tool calls', { toolCallCount: message.tool_calls.length })
 
         // Execute all tool calls in parallel
         const toolCalls = message.tool_calls
@@ -178,7 +185,7 @@ export async function executeWithOpenAI(
 
         const toolCallRecords = toolCalls.map((call) => ({
           toolCallId: call.toolCallId,
-          toolId: `tool:${call.toolName}` as any,
+          toolId: asId<'tool'>(`tool:${call.toolName}`),
           toolName: call.toolName,
           parameters: call.parameters,
         }))
@@ -220,7 +227,23 @@ export async function executeWithOpenAI(
           })
         }
 
-        console.log(`Executed ${toolResults.length} tools, continuing agent iteration`)
+        log.info('Tools executed, continuing iteration', { toolCount: toolResults.length })
+
+        // Budget warning: on penultimate iteration, tell agent to synthesize
+        if (iteration === MAX_ITERATIONS - 1) {
+          log.info('Budget warning, injecting synthesis prompt', {
+            iteration,
+            maxIterations: MAX_ITERATIONS,
+          })
+          messages.push({
+            role: 'user',
+            content:
+              'IMPORTANT: You are at your tool-calling budget limit. ' +
+              'You MUST synthesize your findings into a complete response NOW. ' +
+              'Do NOT make additional tool calls. Provide your best output with what you have gathered.',
+          })
+        }
+
         // Continue loop to get agent's response with tool results
       } else {
         // No tool calls, agent provided final output
@@ -234,17 +257,22 @@ export async function executeWithOpenAI(
             content: finalOutput,
           })
         }
-        console.log(`Agent completed in ${iteration} iterations (no more tool calls)`)
+        log.info('Agent completed, no more tool calls', { iterationsUsed: iteration })
         break
       }
     }
 
-    if (iteration >= MAX_ITERATIONS) {
-      console.warn(`Agent reached max iterations (${MAX_ITERATIONS}) with tool calls`)
-      // Use last message content as final output
-      finalOutput =
-        messages[messages.length - 1]?.content?.toString() ??
-        'Agent reached max iterations without providing final output'
+    if (iteration >= MAX_ITERATIONS && !finalOutput) {
+      log.warn('Agent reached max iterations with tool calls', { maxIterations: MAX_ITERATIONS })
+      const lastContent = messages[messages.length - 1]?.content?.toString() ?? ''
+      if (!lastContent || lastContent.startsWith('{') || lastContent.startsWith('[')) {
+        finalOutput =
+          `[PARTIAL RESULT - iteration budget exhausted after ${iteration} tool calls]\n\n` +
+          `The agent gathered research data but could not complete synthesis. ` +
+          `Consider increasing the iteration budget for tool-heavy agents.`
+      } else {
+        finalOutput = lastContent
+      }
       if (toolContext) {
         await recordMessage({
           userId: toolContext.userId,
@@ -264,9 +292,10 @@ export async function executeWithOpenAI(
       output: finalOutput,
       tokensUsed,
       estimatedCost,
+      iterationsUsed: iteration,
     }
   } catch (error) {
-    console.error('OpenAI execution error:', error)
+    log.error('Execution error', error)
     const agentError = wrapError(error, 'openai')
     agentError.details = {
       ...agentError.details,
@@ -289,7 +318,7 @@ export async function executeWithOpenAIStreaming(
   toolContext: BaseToolExecutionContext | undefined,
   stream: StreamContext
 ): Promise<OpenAIExecutionResult> {
-  const modelName = agent.modelName ?? 'gpt-4o-mini'
+  const modelName = agent.modelName ?? 'gpt-5-mini'
   const tools = toolContext
     ? getAgentToolsFromRegistry(agent, toolContext.toolRegistry ?? getBuiltinToolRegistry())
     : []
@@ -351,9 +380,12 @@ export async function executeWithOpenAIStreaming(
       },
       PROVIDER_RETRY_CONFIG,
       (attempt, error, delayMs) => {
-        console.log(
-          `OpenAI retry ${attempt}/${PROVIDER_RETRY_CONFIG.maxRetries} after ${delayMs}ms: ${(error as Error).message}`
-        )
+        log.info('Retrying streaming request', {
+          attempt,
+          maxRetries: PROVIDER_RETRY_CONFIG.maxRetries,
+          delayMs,
+          error: (error as Error).message,
+        })
       }
     )
 
@@ -362,7 +394,7 @@ export async function executeWithOpenAIStreaming(
       if (delta) {
         finalOutput += delta
         await stream.eventWriter.appendToken(delta, {
-          workspaceId: toolContext?.workspaceId,
+          workflowId: toolContext?.workflowId,
           agentId: stream.agentId,
           agentName: stream.agentName,
           provider: 'openai',
@@ -379,7 +411,7 @@ export async function executeWithOpenAIStreaming(
     }
 
     await stream.eventWriter.flushTokens({
-      workspaceId: toolContext?.workspaceId,
+      workflowId: toolContext?.workflowId,
       agentId: stream.agentId,
       agentName: stream.agentName,
       provider: 'openai',
@@ -406,9 +438,10 @@ export async function executeWithOpenAIStreaming(
       output: finalOutput,
       tokensUsed,
       estimatedCost,
+      iterationsUsed: 1,
     }
   } catch (error) {
-    console.error('OpenAI streaming execution error:', error)
+    log.error('Streaming execution error', error)
     const agentError = wrapError(error, 'openai')
     agentError.details = {
       ...agentError.details,

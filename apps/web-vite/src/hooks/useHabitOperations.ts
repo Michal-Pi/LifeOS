@@ -5,10 +5,22 @@
  * Manages UI state (loading, error) and delegates business logic to domain layer.
  */
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from './useAuth'
 import { createFirestoreHabitRepository } from '@/adapters/habits/firestoreHabitRepository'
 import { createFirestoreCheckinRepository } from '@/adapters/habits/firestoreCheckinRepository'
+import {
+  listHabitsLocally,
+  listHabitsForDateLocally,
+  saveHabitLocally,
+  deleteHabitLocally,
+  listCheckinsForDateLocally,
+  listCheckinsForHabitLocally,
+  listCheckinsForDateRangeLocally,
+  saveCheckinLocally,
+  deleteCheckinLocally,
+  getCheckinByHabitAndDateLocally,
+} from '@/habits/offlineStore'
 import {
   createHabitUsecase,
   updateHabitUsecase,
@@ -83,14 +95,19 @@ const checkinRepository = createFirestoreCheckinRepository()
  * Hook for managing habit and check-in operations
  * Thin wrapper around usecases - handles React state, delegates business logic to domain
  */
-export function useHabitOperations(): UseHabitOperationsReturn {
+export function useHabitOperations(options?: { userId?: string }): UseHabitOperationsReturn {
   const { user } = useAuth()
   const [habits, setHabits] = useState<CanonicalHabit[]>([])
   const [checkins, setCheckins] = useState<CanonicalHabitCheckin[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  const userId = user?.uid
+  const userId = options?.userId ?? user?.uid
+
+  // Ref for accessing current state in catch blocks without adding state to
+  // useCallback dependency arrays (which would cause infinite re-render loops).
+  const habitsRef = useRef(habits)
+  habitsRef.current = habits
 
   // Initialize usecases with repositories
   const usecases = useMemo(
@@ -128,9 +145,9 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
-        // Delegate to usecase (contains business logic and validation)
         const habit = await usecases.createHabit(userId, input)
         setHabits((prev) => [habit, ...prev])
+        void saveHabitLocally({ ...habit, syncState: 'synced' })
         return habit
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to create habit')
@@ -155,6 +172,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       try {
         const updatedHabit = await usecases.updateHabit(userId, habitId, updates)
         setHabits((prev) => prev.map((h) => (h.habitId === habitId ? updatedHabit : h)))
+        void saveHabitLocally({ ...updatedHabit, syncState: 'synced' })
         return updatedHabit
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to update habit')
@@ -179,6 +197,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       try {
         await usecases.deleteHabit(userId, habitId)
         setHabits((prev) => prev.filter((h) => h.habitId !== habitId))
+        void deleteHabitLocally(habitId)
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to delete habit')
         setError(error)
@@ -223,10 +242,24 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
+        // Local cache first
+        const local = await listHabitsLocally(userId)
+        if (local.length > 0) {
+          const filtered = options?.status
+            ? local.filter((h) => h.status === options.status)
+            : local
+          setHabits(filtered)
+        }
+
+        // Firestore in background, cache results
         const fetchedHabits = await usecases.listHabits(userId, options)
         setHabits(fetchedHabits)
+        for (const h of fetchedHabits) {
+          void saveHabitLocally({ ...h, syncState: 'synced' })
+        }
         return fetchedHabits
       } catch (err) {
+        if (habitsRef.current.length > 0) return habitsRef.current
         const error = err instanceof Error ? err : new Error('Failed to list habits')
         setError(error)
         throw error
@@ -247,9 +280,18 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       setError(null)
 
       try {
+        // Try local first
+        const local = await listHabitsForDateLocally(userId, dateKey)
+        if (local.length > 0) {
+          setIsLoading(false)
+        }
+
         const fetchedHabits = await usecases.listHabitsForDate(userId, dateKey)
-        return fetchedHabits
+        return fetchedHabits.length > 0 ? fetchedHabits : local
       } catch (err) {
+        // Fall back to local
+        const local = await listHabitsForDateLocally(userId, dateKey).catch(() => [])
+        if (local.length > 0) return local
         const error = err instanceof Error ? err : new Error('Failed to list habits for date')
         setError(error)
         throw error
@@ -276,7 +318,6 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       try {
         const checkin = await usecases.upsertCheckin(userId, input)
 
-        // Update local state
         setCheckins((prev) => {
           const existingIndex = prev.findIndex((c) => c.checkinId === checkin.checkinId)
           if (existingIndex >= 0) {
@@ -286,6 +327,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
           }
           return [checkin, ...prev]
         })
+        void saveCheckinLocally({ ...checkin, syncState: 'synced' })
 
         return checkin
       } catch (err) {
@@ -311,6 +353,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       try {
         const updatedCheckin = await usecases.updateCheckin(userId, checkinId, updates)
         setCheckins((prev) => prev.map((c) => (c.checkinId === checkinId ? updatedCheckin : c)))
+        void saveCheckinLocally({ ...updatedCheckin, syncState: 'synced' })
         return updatedCheckin
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to update checkin')
@@ -335,6 +378,7 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       try {
         await usecases.deleteCheckin(userId, checkinId)
         setCheckins((prev) => prev.filter((c) => c.checkinId !== checkinId))
+        void deleteCheckinLocally(checkinId)
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Failed to delete checkin')
         setError(error)
@@ -380,8 +424,14 @@ export function useHabitOperations(): UseHabitOperationsReturn {
 
       try {
         const checkin = await usecases.getCheckinByHabitAndDate(userId, habitId, dateKey)
+        if (checkin) void saveCheckinLocally({ ...checkin, syncState: 'synced' })
         return checkin
       } catch (err) {
+        // Fall back to local
+        const local = await getCheckinByHabitAndDateLocally(userId, habitId, dateKey).catch(
+          () => undefined
+        )
+        if (local) return local
         const error =
           err instanceof Error ? err : new Error('Failed to get checkin by habit and date')
         setError(error)
@@ -404,8 +454,11 @@ export function useHabitOperations(): UseHabitOperationsReturn {
 
       try {
         const fetchedCheckins = await usecases.listCheckinsForDate(userId, dateKey)
+        for (const c of fetchedCheckins) void saveCheckinLocally({ ...c, syncState: 'synced' })
         return fetchedCheckins
       } catch (err) {
+        const local = await listCheckinsForDateLocally(userId, dateKey).catch(() => [])
+        if (local.length > 0) return local
         const error = err instanceof Error ? err : new Error('Failed to list checkins for date')
         setError(error)
         throw error
@@ -430,8 +483,11 @@ export function useHabitOperations(): UseHabitOperationsReturn {
 
       try {
         const fetchedCheckins = await usecases.listCheckinsForHabit(userId, habitId, options)
+        for (const c of fetchedCheckins) void saveCheckinLocally({ ...c, syncState: 'synced' })
         return fetchedCheckins
       } catch (err) {
+        const local = await listCheckinsForHabitLocally(userId, habitId).catch(() => [])
+        if (local.length > 0) return local
         const error = err instanceof Error ? err : new Error('Failed to list checkins for habit')
         setError(error)
         throw error
@@ -454,8 +510,16 @@ export function useHabitOperations(): UseHabitOperationsReturn {
       try {
         const fetchedCheckins = await usecases.listCheckinsForDateRange(userId, startDate, endDate)
         setCheckins(fetchedCheckins)
+        for (const c of fetchedCheckins) void saveCheckinLocally({ ...c, syncState: 'synced' })
         return fetchedCheckins
       } catch (err) {
+        const local = await listCheckinsForDateRangeLocally(userId, startDate, endDate).catch(
+          () => []
+        )
+        if (local.length > 0) {
+          setCheckins(local)
+          return local
+        }
         const error =
           err instanceof Error ? err : new Error('Failed to list checkins for date range')
         setError(error)

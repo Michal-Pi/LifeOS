@@ -55,10 +55,7 @@ export function MeetingBriefingModal({
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div
-        className="modal-content meeting-briefing-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="modal-content meeting-briefing-modal" onClick={(e) => e.stopPropagation()}>
         <div className="meeting-briefing-modal__header">
           <div>
             <h2 className="meeting-briefing-modal__title">{eventTitle}</h2>

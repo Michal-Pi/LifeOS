@@ -6,16 +6,36 @@
  */
 
 import type { JSONContent } from '@tiptap/core'
+import type { FactCheckClaim } from '@lifeos/agents'
 import { httpsCallable, getFunctions } from 'firebase/functions'
 import { jsonContentToPlainText } from './noteExport'
 
+export type { FactCheckClaim }
+
 // ----- Types -----
+
+export interface FactCheckSource {
+  title: string
+  url: string
+  snippet: string
+  supports: boolean
+}
 
 export interface FactCheckResult {
   claim: string
+  verdict?: 'verified' | 'likely_true' | 'disputed' | 'likely_false' | 'unverifiable'
   confidence: 'high' | 'medium' | 'low' | 'uncertain'
   explanation: string
+  sources?: FactCheckSource[]
+  webSearchUsed?: boolean
   suggestedSources?: string[]
+}
+
+export interface LinkedInTrendingContext {
+  isTrending: boolean
+  trendScore: number
+  relatedNews: Array<{ title: string; url: string; date?: string }>
+  relatedPosts: Array<{ title: string; url: string; snippet: string }>
 }
 
 export interface LinkedInAnalysis {
@@ -24,6 +44,10 @@ export interface LinkedInAnalysis {
   suggestedHashtags: string[]
   quotableLines: string[]
   improvements: string[]
+  trendingContext?: LinkedInTrendingContext
+  timingAdvice?: string
+  competitiveAnalysis?: string
+  webSearchUsed?: boolean
 }
 
 export interface ParagraphTagSuggestion {
@@ -36,22 +60,38 @@ export interface ParagraphTagSuggestion {
 }
 
 export interface AIToolRequest {
-  tool: 'summarize' | 'factCheck' | 'linkedIn' | 'writeWithAI' | 'tagWithAI' | 'suggestNoteTags'
+  tool:
+    | 'summarize'
+    | 'factCheck'
+    | 'factCheckExtract'
+    | 'factCheckVerify'
+    | 'linkedIn'
+    | 'writeWithAI'
+    | 'tagWithAI'
+    | 'suggestNoteTags'
   content: string
   prompt?: string
   context?: {
     availableTopics?: Array<{ id: string; name: string }>
     availableNotes?: Array<{ id: string; title: string }>
+    selectedClaims?: FactCheckClaim[]
   }
+}
+
+export interface AIToolUsage {
+  inputTokens: number
+  outputTokens: number
 }
 
 export interface AIToolResponse {
   tool: string
   result: unknown
-  usage?: {
-    inputTokens: number
-    outputTokens: number
-  }
+  usage?: AIToolUsage
+}
+
+export interface AIToolResultWithUsage<T> {
+  data: T
+  usage?: AIToolUsage
 }
 
 // ----- Helper Functions -----
@@ -125,11 +165,11 @@ async function callAITool(request: AIToolRequest): Promise<AIToolResponse> {
 /**
  * Summarize note content
  */
-export async function summarizeNote(content: JSONContent): Promise<string> {
+export async function summarizeNote(content: JSONContent): Promise<AIToolResultWithUsage<string>> {
   const text = extractTextForAI(content)
 
   if (text.length < 100) {
-    return 'Note is too short to summarize. Add more content first.'
+    return { data: 'Note is too short to summarize. Add more content first.' }
   }
 
   const response = await callAITool({
@@ -137,17 +177,19 @@ export async function summarizeNote(content: JSONContent): Promise<string> {
     content: text,
   })
 
-  return response.result as string
+  return { data: response.result as string, usage: response.usage }
 }
 
 /**
  * Fact-check claims in the note
  */
-export async function factCheckNote(content: JSONContent): Promise<FactCheckResult[]> {
+export async function factCheckNote(
+  content: JSONContent
+): Promise<AIToolResultWithUsage<FactCheckResult[]>> {
   const text = extractTextForAI(content)
 
   if (text.length < 50) {
-    return []
+    return { data: [] }
   }
 
   const response = await callAITool({
@@ -155,22 +197,64 @@ export async function factCheckNote(content: JSONContent): Promise<FactCheckResu
     content: text,
   })
 
-  return response.result as FactCheckResult[]
+  return { data: response.result as FactCheckResult[], usage: response.usage }
+}
+
+/**
+ * Phase 1: Extract claims from note for interactive fact-checking
+ */
+export async function factCheckExtract(
+  content: JSONContent
+): Promise<AIToolResultWithUsage<FactCheckClaim[]>> {
+  const text = extractTextForAI(content)
+
+  if (text.length < 50) {
+    return { data: [] }
+  }
+
+  const response = await callAITool({
+    tool: 'factCheckExtract',
+    content: text,
+  })
+
+  return { data: response.result as FactCheckClaim[], usage: response.usage }
+}
+
+/**
+ * Phase 2+3: Verify selected claims with web search and synthesize results
+ */
+export async function factCheckVerify(
+  content: JSONContent,
+  selectedClaims: FactCheckClaim[]
+): Promise<AIToolResultWithUsage<FactCheckResult[]>> {
+  const text = extractTextForAI(content)
+
+  const response = await callAITool({
+    tool: 'factCheckVerify',
+    content: text,
+    context: { selectedClaims },
+  })
+
+  return { data: response.result as FactCheckResult[], usage: response.usage }
 }
 
 /**
  * Analyze note for LinkedIn post potential
  */
-export async function analyzeForLinkedIn(content: JSONContent): Promise<LinkedInAnalysis> {
+export async function analyzeForLinkedIn(
+  content: JSONContent
+): Promise<AIToolResultWithUsage<LinkedInAnalysis>> {
   const text = extractTextForAI(content)
 
   if (text.length < 50) {
     return {
-      overallScore: 0,
-      hooks: [],
-      suggestedHashtags: [],
-      quotableLines: [],
-      improvements: ['Add more content to analyze'],
+      data: {
+        overallScore: 0,
+        hooks: [],
+        suggestedHashtags: [],
+        quotableLines: [],
+        improvements: ['Add more content to analyze'],
+      },
     }
   }
 
@@ -179,13 +263,16 @@ export async function analyzeForLinkedIn(content: JSONContent): Promise<LinkedIn
     content: text,
   })
 
-  return response.result as LinkedInAnalysis
+  return { data: response.result as LinkedInAnalysis, usage: response.usage }
 }
 
 /**
  * Generate new content based on existing note and user prompt
  */
-export async function writeWithAI(content: JSONContent, prompt: string): Promise<string> {
+export async function writeWithAI(
+  content: JSONContent,
+  prompt: string
+): Promise<AIToolResultWithUsage<string>> {
   const text = extractTextForAI(content)
 
   if (!prompt.trim()) {
@@ -198,7 +285,7 @@ export async function writeWithAI(content: JSONContent, prompt: string): Promise
     prompt,
   })
 
-  return response.result as string
+  return { data: response.result as string, usage: response.usage }
 }
 
 /**
@@ -208,11 +295,11 @@ export async function tagParagraphsWithAI(
   content: JSONContent,
   availableTopics: Array<{ id: string; name: string }>,
   availableNotes: Array<{ id: string; title: string }>
-): Promise<ParagraphTagSuggestion[]> {
+): Promise<AIToolResultWithUsage<ParagraphTagSuggestion[]>> {
   const paragraphs = extractParagraphsWithPaths(content)
 
   if (paragraphs.length === 0) {
-    return []
+    return { data: [] }
   }
 
   // Format paragraphs for AI analysis
@@ -229,7 +316,7 @@ export async function tagParagraphsWithAI(
     },
   })
 
-  return response.result as ParagraphTagSuggestion[]
+  return { data: response.result as ParagraphTagSuggestion[], usage: response.usage }
 }
 
 /**
@@ -238,11 +325,11 @@ export async function tagParagraphsWithAI(
 export async function suggestNoteTags(
   content: JSONContent,
   existingTags: string[]
-): Promise<string[]> {
+): Promise<AIToolResultWithUsage<string[]>> {
   const text = extractTextForAI(content)
 
   if (text.length < 50) {
-    return []
+    return { data: [] }
   }
 
   const response = await callAITool({
@@ -253,5 +340,5 @@ export async function suggestNoteTags(
     },
   })
 
-  return response.result as string[]
+  return { data: response.result as string[], usage: response.usage }
 }

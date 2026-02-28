@@ -6,7 +6,7 @@
   gap: 1rem;
   background: var(--background-secondary);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 1.5rem;
   transition:
     border-color 0.2s ease-in-out,
@@ -36,7 +36,7 @@
   justify-content: center;
   background: var(--background-tertiary);
   border: 1px solid var(--border-dark);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -63,7 +63,7 @@
 }
 
 .agent-card__title {
-  font-size: 1.05rem;
+  font-size: var(--text-md);
   font-weight: 600;
   color: var(--foreground);
   margin: 0;
@@ -74,7 +74,7 @@
 }
 
 .agent-card__role {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--accent);
   display: inline-flex;
@@ -90,7 +90,7 @@
 }
 
 .agent-card__description p {
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   color: var(--muted-foreground);
   line-height: 1.5;
   margin: 0;
@@ -117,7 +117,7 @@
 }
 
 .agent-card__label {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -125,7 +125,7 @@
 }
 
 .agent-card__value {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--foreground);
   font-weight: 500;
   overflow: hidden;
@@ -144,8 +144,8 @@
 }
 
 .agent-card__prompt-preview {
-  font-size: 0.8rem;
-  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  color: var(--foreground);
   line-height: 1.4;
   margin: 0;
   overflow: hidden;
@@ -154,10 +154,10 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   font-family: var(--font-mono);
-  background: var(--background-tertiary);
+  background: var(--card);
   padding: 0.5rem;
-  border-radius: 4px;
-  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
 }
 
 /* Footer Section */
@@ -171,7 +171,7 @@
 
 .agent-card__footer button {
   flex: 1;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   padding: 0.5rem 0.75rem;
 }
 
@@ -187,7 +187,7 @@
 /* Responsive Adjustments */
 @media (max-width: 768px) {
   .agent-card {
-    min-height: 380px;
+    min-height: auto;
   }
 
   .agent-card__header {
@@ -201,7 +201,7 @@
   }
 
   .agent-card__title {
-    font-size: 1rem;
+    font-size: var(--text-md);
   }
 
   .agent-card__meta {

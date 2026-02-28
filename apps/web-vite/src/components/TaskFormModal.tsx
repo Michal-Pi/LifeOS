@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createLogger } from '@lifeos/core'
+import { Modal } from '@/components/ui/Modal'
+import '@/styles/components/TaskFormModal.css'
 
 const logger = createLogger('TaskFormModal')
 import type {
@@ -20,6 +22,7 @@ import {
   importanceLabel,
   importanceToSlider,
 } from '@/lib/todoUi'
+import { DateTimePicker } from './DateTimePicker'
 import { Select, type SelectOption } from './Select'
 import { TaskBulkImportModal } from './TaskBulkImportModal'
 
@@ -267,26 +270,42 @@ export function TaskFormModal({
     }
   }
 
-  if (!isOpen) return null
+  const modalFooter = (
+    <div className="modal-actions">
+      {!initialTask && (
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={handleImportClick}
+          aria-label="Import Tasks"
+        >
+          <span className="import-icon">📄</span>
+          Import Tasks
+        </button>
+      )}
+      <div className="modal-actions-right">
+        <button type="button" className="ghost-button" onClick={onClose}>
+          Cancel
+        </button>
+        <button type="submit" form="task-form" className="primary-button" disabled={isSubmitting}>
+          {initialTask ? 'Save Changes' : 'Create Task'}
+        </button>
+      </div>
+    </div>
+  )
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content task-form-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div>
-            <h2>{initialTask ? 'Edit Task' : 'New Task'}</h2>
-            {!initialTask && (
-              <button type="button" className="import-tasks-link" onClick={handleImportClick}>
-                Import Tasks
-              </button>
-            )}
-          </div>
-          <button className="close-button" onClick={onClose}>
-            ×
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="task-form">
+    <>
+      <Modal
+        open={isOpen}
+        onClose={onClose}
+        size="lg"
+        title={initialTask ? 'Edit Task' : 'New Task'}
+        subtitle={!initialTask ? undefined : undefined}
+        footer={modalFooter}
+        className="task-form-modal"
+      >
+        <form id="task-form" onSubmit={handleSubmit} className="task-form">
           {/* Basic Info Section */}
           <div className="form-section">
             <div className="form-group">
@@ -434,39 +453,27 @@ export function TaskFormModal({
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="task-due-datetime">Due Date & Time</label>
-                <div className="due-date-input-group">
-                  <input
-                    id="task-due-datetime"
-                    type="datetime-local"
-                    value={dueDateTime}
-                    onChange={(e) => {
-                      setDueDateChangedManually(true)
-                      const newDateTime = e.target.value
-                      setDueDateTime(newDateTime)
-                      if (newDateTime) {
-                        // Extract date part (YYYY-MM-DD) for dueDate field
-                        const datePart = newDateTime.split('T')[0]
-                        setDueDate(datePart)
-                      } else {
-                        setDueDate('')
-                      }
-                    }}
-                  />
-                  {dueDate && (
-                    <button
-                      type="button"
-                      className="clear-due-date-button"
-                      onClick={() => {
-                        setDueDate('')
-                        setDueDateTime('')
-                        setDueDateChangedManually(true)
-                      }}
-                      aria-label="Clear due date"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
+                <DateTimePicker
+                  value={dueDateTime || null}
+                  onChange={(value) => {
+                    setDueDateChangedManually(true)
+                    if (value) {
+                      const date = new Date(value)
+                      const dateStr = date.toISOString().split('T')[0]
+                      setDueDate(dateStr)
+                      // Store in datetime-local format for internal state
+                      const localDateTime = new Date(
+                        date.getTime() - date.getTimezoneOffset() * 60000
+                      )
+                      setDueDateTime(localDateTime.toISOString().slice(0, 16))
+                    } else {
+                      setDueDate('')
+                      setDueDateTime('')
+                    }
+                  }}
+                  placeholder="Select due date and time"
+                  showTime
+                />
                 <p className="helper-text">
                   {dueDate
                     ? `Auto urgency: ${urgencyLabel(effectiveUrgency)}`
@@ -531,72 +538,8 @@ export function TaskFormModal({
               </div>
             </div>
           </div>
-
-          <div className="modal-actions">
-            {!initialTask && (
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={handleImportClick}
-                aria-label="Import Tasks"
-              >
-                <span className="import-icon">📄</span>
-                Import Tasks
-              </button>
-            )}
-            <div className="modal-actions-right">
-              <button type="button" className="ghost-button" onClick={onClose}>
-                Cancel
-              </button>
-              <button type="submit" className="primary-button" disabled={isSubmitting}>
-                {initialTask ? 'Save Changes' : 'Create Task'}
-              </button>
-            </div>
-          </div>
         </form>
-
-        <style>{`
-          .task-form-modal .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-          }
-
-          .task-form-modal .modal-header > div {
-            flex: 1;
-          }
-
-          .import-tasks-link {
-            margin-top: 0.25rem;
-            padding: 0;
-            background: none;
-            border: none;
-            font-size: 0.875rem;
-            color: var(--accent);
-            cursor: pointer;
-            text-decoration: underline;
-            transition: color var(--motion-fast) var(--motion-ease);
-          }
-
-          .import-tasks-link:hover {
-            color: var(--accent-hover);
-          }
-
-          .import-icon {
-            margin-right: 0.5rem;
-            font-size: 1rem;
-          }
-
-          .task-form-modal .modal-actions {
-            justify-content: space-between;
-          }
-
-          .modal-actions-right {
-            display: flex;
-            gap: 0.75rem;
-          }
-        `}</style>
-      </div>
+      </Modal>
 
       <TaskBulkImportModal
         isOpen={showBulkImport}
@@ -610,6 +553,6 @@ export function TaskFormModal({
         projects={projects}
         chapters={chapters}
       />
-    </div>
+    </>
   )
 }

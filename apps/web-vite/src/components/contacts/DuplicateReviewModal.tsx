@@ -7,7 +7,12 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useContactDedup } from '@/hooks/useContactDedup'
-import { CIRCLE_LABELS, type Contact, type ContactId, type DuplicateCandidate } from '@lifeos/agents'
+import {
+  CIRCLE_LABELS,
+  type Contact,
+  type ContactId,
+  type DuplicateCandidate,
+} from '@lifeos/agents'
 import '@/styles/components/DuplicateReviewModal.css'
 
 interface DuplicateReviewModalProps {
@@ -93,15 +98,12 @@ export function DuplicateReviewModal({
     [contacts]
   )
 
-  const handleSelectPrimary = useCallback(
-    (candidate: DuplicateCandidate, primaryId: ContactId) => {
-      setPrimarySelections((prev) => ({
-        ...prev,
-        [pairKey(candidate.contactIdA, candidate.contactIdB)]: primaryId,
-      }))
-    },
-    []
-  )
+  const handleSelectPrimary = useCallback((candidate: DuplicateCandidate, primaryId: ContactId) => {
+    setPrimarySelections((prev) => ({
+      ...prev,
+      [pairKey(candidate.contactIdA, candidate.contactIdB)]: primaryId,
+    }))
+  }, [])
 
   const handleMerge = useCallback(
     async (candidate: DuplicateCandidate) => {
@@ -151,14 +153,18 @@ export function DuplicateReviewModal({
           <div className="duplicate-pair__name">{contact.displayName}</div>
           {titleCompany && <div className="duplicate-pair__title">{titleCompany}</div>}
           <div className="duplicate-pair__meta">
-            <span className="duplicate-pair__circle">
-              {CIRCLE_LABELS[contact.circle]}
-            </span>
+            <span className="duplicate-pair__circle">{CIRCLE_LABELS[contact.circle]}</span>
             {contact.identifiers.emails.length > 0 && (
-              <span>{contact.identifiers.emails.length} email{contact.identifiers.emails.length > 1 ? 's' : ''}</span>
+              <span>
+                {contact.identifiers.emails.length} email
+                {contact.identifiers.emails.length > 1 ? 's' : ''}
+              </span>
             )}
             {contact.identifiers.phones.length > 0 && (
-              <span>{contact.identifiers.phones.length} phone{contact.identifiers.phones.length > 1 ? 's' : ''}</span>
+              <span>
+                {contact.identifiers.phones.length} phone
+                {contact.identifiers.phones.length > 1 ? 's' : ''}
+              </span>
             )}
           </div>
         </div>

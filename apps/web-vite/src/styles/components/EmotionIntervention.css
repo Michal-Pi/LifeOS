@@ -1,0 +1,84 @@
+/* EmotionIntervention - Design System Aligned */
+
+.emotion-intervention {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--panel-shadow);
+}
+
+.emotion-intervention-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--background-tertiary);
+  border-bottom: 1px solid var(--border);
+}
+
+.emotion-intervention-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.emotion-intervention-emoji {
+  font-size: var(--text-xl);
+}
+
+.emotion-intervention-content {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.intervention-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.intervention-section .section-label {
+  font-size: var(--text-xs);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-label);
+  margin: 0;
+}
+
+.intervention-text {
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.emotion-intervention-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  background: var(--background-tertiary);
+}
+
+/* Animation */
+.emotion-intervention {
+  animation: slideIn var(--motion-slow) var(--motion-ease);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

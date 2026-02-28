@@ -1,16 +1,16 @@
 import type {
-  WorkspaceTemplate,
-  WorkspaceTemplateId,
-  CreateWorkspaceTemplateInput,
+  WorkflowTemplate,
+  WorkflowTemplateId,
+  CreateWorkflowTemplateInput,
 } from '../domain/models'
 
-export interface WorkspaceTemplateRepository {
-  create(input: CreateWorkspaceTemplateInput): Promise<WorkspaceTemplate>
+export interface WorkflowTemplateRepository {
+  create(input: CreateWorkflowTemplateInput): Promise<WorkflowTemplate>
   update(
-    templateId: WorkspaceTemplateId,
-    updates: Partial<CreateWorkspaceTemplateInput>
-  ): Promise<WorkspaceTemplate>
-  get(userId: string, templateId: WorkspaceTemplateId): Promise<WorkspaceTemplate | null>
-  list(userId: string): Promise<WorkspaceTemplate[]>
-  delete(userId: string, templateId: WorkspaceTemplateId): Promise<void>
+    templateId: WorkflowTemplateId,
+    updates: Partial<CreateWorkflowTemplateInput>
+  ): Promise<WorkflowTemplate>
+  get(userId: string, templateId: WorkflowTemplateId): Promise<WorkflowTemplate | null>
+  list(userId: string): Promise<WorkflowTemplate[]>
+  delete(userId: string, templateId: WorkflowTemplateId): Promise<void>
 }

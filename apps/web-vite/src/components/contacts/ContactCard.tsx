@@ -30,10 +30,7 @@ export function ContactCard({ contact, selected, onClick }: ContactCardProps) {
   const meta = [contact.title, contact.company].filter(Boolean).join(' at ')
 
   return (
-    <div
-      className={`contact-card${selected ? ' contact-card--selected' : ''}`}
-      onClick={onClick}
-    >
+    <div className={`contact-card${selected ? ' contact-card--selected' : ''}`} onClick={onClick}>
       <div className="contact-card__avatar">
         {contact.avatarUrl ? (
           <img src={contact.avatarUrl} alt={contact.displayName} />
@@ -52,7 +49,9 @@ export function ContactCard({ contact, selected, onClick }: ContactCardProps) {
 
       <div className="contact-card__badges">
         {FOLLOW_UP_VISIBLE.includes(followUpStatus) && (
-          <span className={`contact-card__followup-dot contact-card__followup-dot--${followUpStatus}`} />
+          <span
+            className={`contact-card__followup-dot contact-card__followup-dot--${followUpStatus}`}
+          />
         )}
         <span
           className={`contact-card__circle-badge contact-card__circle-badge--${contact.circle}`}

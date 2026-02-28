@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, getDoc, setDoc, query, where, orderBy } from 'firebase/firestore'
+import { collection, doc, getDocs, getDoc, setDoc, query, where } from 'firebase/firestore'
 import { newId } from '@lifeos/core'
 import { getFirestoreClient } from '@/lib/firestoreClient'
 import type {
@@ -8,11 +8,17 @@ import type {
   CreateExerciseInput,
   UpdateExerciseInput,
   ExerciseCategory,
+  ExerciseTypeCategory,
 } from '@lifeos/training'
 
 export const createFirestoreExerciseLibraryRepository = (): ExerciseLibraryRepository => {
   return {
     async create(userId: string, input: CreateExerciseInput): Promise<ExerciseLibraryItem> {
+      // Validate required fields
+      if (!input.generic_name && !input.name) {
+        throw new Error('Exercise must have a generic_name or name')
+      }
+
       const db = await getFirestoreClient()
       const exerciseId = newId('exercise')
 
@@ -89,16 +95,25 @@ export const createFirestoreExerciseLibraryRepository = (): ExerciseLibraryRepos
 
     async list(
       userId: string,
-      options?: { category?: ExerciseCategory; activeOnly?: boolean }
+      options?: {
+        category?: ExerciseTypeCategory
+        legacyCategory?: ExerciseCategory
+        activeOnly?: boolean
+      }
     ): Promise<ExerciseLibraryItem[]> {
       const db = await getFirestoreClient()
       const exercisesCol = collection(db, `users/${userId}/exerciseLibrary`)
 
-      let q = query(exercisesCol, orderBy('name', 'asc'))
+      // Start with base query - no ordering to support both old and new schemas
+      let q = query(exercisesCol)
 
-      // Filter by category if specified
+      // Filter by new category if specified
       if (options?.category) {
-        q = query(exercisesCol, where('category', '==', options.category), orderBy('name', 'asc'))
+        q = query(exercisesCol, where('category', '==', options.category))
+      }
+      // Filter by legacy category if specified (for backwards compatibility)
+      else if (options?.legacyCategory) {
+        q = query(exercisesCol, where('legacyCategory', '==', options.legacyCategory))
       }
 
       const snapshot = await getDocs(q)
@@ -108,6 +123,16 @@ export const createFirestoreExerciseLibraryRepository = (): ExerciseLibraryRepos
       if (options?.activeOnly !== false) {
         exercises = exercises.filter((exercise) => !exercise.archived)
       }
+
+      // Filter out stale exercises without a valid name
+      exercises = exercises.filter((exercise) => exercise.generic_name || exercise.name)
+
+      // Sort by generic_name (new schema) or name (old schema)
+      exercises.sort((a, b) => {
+        const nameA = String(a.generic_name ?? a.name ?? '')
+        const nameB = String(b.generic_name ?? b.name ?? '')
+        return nameA.localeCompare(nameB)
+      })
 
       return exercises
     },

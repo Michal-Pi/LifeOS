@@ -6,13 +6,26 @@
   --core-cyber-teal: #34e5c3;
   --core-terminal-green: #39ff14;
 
+  /* Typography scale */
+  --text-xs: 0.75rem; /* 12px — captions, badges */
+  --text-sm: 0.8125rem; /* 13px — labels, helper text */
+  --text-base: 0.875rem; /* 14px — body text default */
+  --text-md: 1rem; /* 16px — emphasized body */
+  --text-lg: 1.125rem; /* 18px — card titles, sub-headings */
+  --text-xl: 1.25rem; /* 20px — section headings */
+  --text-2xl: 1.5rem; /* 24px — page titles */
+  --text-3xl: 2rem; /* 32px — hero / dashboard headings */
+  --text-4xl: 2rem; /* 32px — h1 headings */
+  --text-icon: 3rem; /* 48px — decorative icons */
+  --text-icon-lg: 4rem; /* 64px — large decorative icons */
+
   --background: #f4f6ff;
   --background-secondary: #ffffff;
   --background-tertiary: #e8ebff;
   --foreground: #070f34;
   --secondary-foreground: #2f3768;
   --muted: #e8ebff;
-  --muted-foreground: #6e77a6;
+  --muted-foreground: #5f6893;
   --card: #ffffff;
   --card-foreground: #070f34;
   --border: #d2d7ff;
@@ -41,16 +54,19 @@
   --glow-violet: 0 0 12px rgba(146, 1, 203, 0.4);
   --glow-magenta: 0 0 12px rgba(247, 21, 171, 0.35);
   --glow-green: 0 0 10px rgba(57, 255, 20, 0.4);
+  --shadow-sm: 0 1px 3px rgba(7, 15, 52, 0.06), 0 1px 2px rgba(7, 15, 52, 0.04);
+  --shadow-md: 0 4px 12px rgba(7, 15, 52, 0.08);
+  --shadow-lg: 0 10px 24px rgba(3, 19, 166, 0.08);
   --shadow-soft: rgba(7, 15, 52, 0.12);
   --overlay: rgba(7, 15, 52, 0.6);
   --panel-edge: rgba(3, 19, 166, 0.14);
-  --panel-shadow: 0 10px 24px rgba(3, 19, 166, 0.08);
+  --panel-shadow: var(--shadow-lg);
   --panel-sheen: linear-gradient(180deg, rgba(3, 19, 166, 0.06), transparent 45%);
   --background-texture:
     linear-gradient(180deg, rgba(3, 19, 166, 0.05), transparent 42%),
     linear-gradient(90deg, rgba(3, 19, 166, 0.05) 1px, transparent 1px),
     linear-gradient(rgba(3, 19, 166, 0.05) 1px, transparent 1px);
-  --radius: 8px;
+  --radius: var(--radius-md);
   --spacing: 24px;
   --font-sans: 'Satoshi', 'General Sans', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
@@ -63,15 +79,22 @@
   --text-primary: var(--foreground);
   --text-secondary: var(--secondary-foreground);
   --text-tertiary: var(--muted-foreground);
-  --text-label: #7a83b2;
+  --text-label: #6b749f;
   --primary-color: var(--accent);
   --primary-hover: var(--accent);
   --primary-light: var(--accent-subtle);
   --background-hover: var(--background-tertiary);
+
+  /* Breakpoints (for reference — use in @media queries directly):
+     --breakpoint-sm: 640px;
+     --breakpoint-md: 768px;
+     --breakpoint-lg: 1024px;
+  */
   --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 8px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
   --radius-full: 999px;
+  --space-0: 0;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -80,12 +103,24 @@
   --space-6: 32px;
   --space-7: 40px;
   --space-8: 48px;
+  --space-10: 64px;
+  --space-12: 80px;
   --error-color: var(--error);
   --danger-color: var(--error);
   --surface: var(--card);
   --surface-muted: var(--background-secondary);
   --nav-height: 52px;
   --container-max: 1200px;
+
+  /* Accent & status subtles */
+  --accent-light: rgba(3, 19, 166, 0.08);
+  --accent-lighter: rgba(3, 19, 166, 0.04);
+  --accent-darker: #020a6b;
+  --destructive-light: rgba(247, 21, 171, 0.1);
+  --destructive-foreground: #ffffff;
+  --success-subtle: rgba(15, 191, 74, 0.08);
+  --error-subtle: rgba(255, 59, 59, 0.08);
+  --warning-subtle: rgba(255, 214, 10, 0.1);
 
   /* Semantic color tokens for status indicators */
   --success-light: rgba(15, 191, 74, 0.12);
@@ -126,9 +161,47 @@
   --priority-low-bg: #dbeafe;
   --priority-low-text: #1e40af;
   --priority-low-border: #3b82f6;
+
+  /* Channel brand colors (do not change between light/dark) */
+  --channel-gmail: #ea4335;
+  --channel-slack: #4a154b;
+  --channel-linkedin: #0a66c2;
+  --channel-whatsapp: #25d366;
+  --channel-telegram: #0088cc;
+
+  /* Circle badge colors — Dunbar layers */
+  --circle-0-bg: #f0e6ff;
+  --circle-0-text: #7c3aed;
+  --circle-1-bg: #dbeafe;
+  --circle-1-text: #2563eb;
+  --circle-2-bg: #d1fae5;
+  --circle-2-text: #059669;
+  --circle-3-bg: #fef3c7;
+  --circle-3-text: #b45309;
+
+  /* Evidence type colors */
+  --evidence-empirical: #3b82f6;
+  --evidence-testimonial: #8b5cf6;
+  --evidence-analytical: #06b6d4;
+  --evidence-statistical: #f59e0b;
+  --evidence-anecdotal: #ec4899;
+  --evidence-expert: #a855f7;
 }
 
 .dark {
+  /* Typography scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2rem;
+  --text-icon: 3rem;
+  --text-icon-lg: 4rem;
+
   --background: #050814;
   --background-secondary: #0d1340;
   --background-tertiary: #141c66;
@@ -164,11 +237,14 @@
   --glow-violet: 0 0 12px rgba(146, 1, 203, 0.6);
   --glow-magenta: 0 0 12px rgba(247, 21, 171, 0.6);
   --glow-green: 0 0 10px rgba(57, 255, 20, 0.7);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 28px rgba(2, 6, 23, 0.5);
   --shadow-soft: rgba(0, 0, 0, 0.45);
   --overlay: rgba(2, 6, 23, 0.72);
   --panel-edge: rgba(255, 255, 255, 0.08);
-  --panel-shadow: 0 12px 28px rgba(2, 6, 23, 0.5);
-  --panel-sheen: none;
+  --panel-shadow: var(--shadow-lg);
+  --panel-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 45%);
   --background-texture: none;
   --card-background: var(--card);
   --border-color: var(--border);
@@ -181,9 +257,10 @@
   --primary-light: var(--accent-subtle);
   --background-hover: var(--background-tertiary);
   --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 8px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
   --radius-full: 999px;
+  --space-0: 0;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -192,12 +269,24 @@
   --space-6: 32px;
   --space-7: 40px;
   --space-8: 48px;
+  --space-10: 64px;
+  --space-12: 80px;
   --error-color: var(--error);
   --danger-color: var(--error);
   --surface: var(--card);
   --surface-muted: var(--background-secondary);
   --nav-height: 52px;
   --container-max: 1200px;
+
+  /* Accent & status subtles */
+  --accent-light: rgba(146, 1, 203, 0.12);
+  --accent-lighter: rgba(146, 1, 203, 0.06);
+  --accent-darker: #6a01a0;
+  --destructive-light: rgba(247, 21, 171, 0.15);
+  --destructive-foreground: #ffffff;
+  --success-subtle: rgba(57, 255, 20, 0.1);
+  --error-subtle: rgba(255, 59, 59, 0.12);
+  --warning-subtle: rgba(255, 214, 10, 0.12);
 
   /* Semantic color tokens for status indicators */
   --success-light: rgba(57, 255, 20, 0.16);
@@ -228,14 +317,32 @@
   --domain-wellbeing-bg: rgba(247, 21, 171, 0.18);
   --domain-wellbeing-text: #f715ab;
 
-  /* Priority badge tokens - adjusted for dark mode */
+  /* Priority badge tokens - adjusted for dark mode + improved contrast */
   --priority-high-bg: rgba(254, 202, 202, 0.2);
-  --priority-high-text: #fca5a5;
+  --priority-high-text: #fecaca;
   --priority-high-border: #ef4444;
   --priority-medium-bg: rgba(254, 215, 170, 0.2);
-  --priority-medium-text: #fdba74;
+  --priority-medium-text: #fed7aa;
   --priority-medium-border: #f59e0b;
   --priority-low-bg: rgba(219, 234, 254, 0.2);
-  --priority-low-text: #93c5fd;
+  --priority-low-text: #bfdbfe;
   --priority-low-border: #3b82f6;
+
+  /* Circle badge colors — Dunbar layers (dark mode) */
+  --circle-0-bg: rgba(124, 58, 237, 0.2);
+  --circle-0-text: #a78bfa;
+  --circle-1-bg: rgba(37, 99, 235, 0.2);
+  --circle-1-text: #93c5fd;
+  --circle-2-bg: rgba(5, 150, 105, 0.2);
+  --circle-2-text: #6ee7b7;
+  --circle-3-bg: rgba(180, 83, 9, 0.2);
+  --circle-3-text: #fcd34d;
+
+  /* Evidence type colors (dark mode — same hues, slightly lighter) */
+  --evidence-empirical: #60a5fa;
+  --evidence-testimonial: #a78bfa;
+  --evidence-analytical: #22d3ee;
+  --evidence-statistical: #fbbf24;
+  --evidence-anecdotal: #f472b6;
+  --evidence-expert: #c084fc;
 }

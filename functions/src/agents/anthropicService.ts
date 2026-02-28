@@ -8,8 +8,9 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import type { AgentConfig } from '@lifeos/agents'
-import { MODEL_PRICING } from '@lifeos/agents'
+import { asId, MODEL_PRICING } from '@lifeos/agents'
 
+import { createLogger } from '../lib/logger.js'
 import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
 import { recordMessage } from './messageStore.js'
 import { checkProviderRateLimit } from './rateLimiter.js'
@@ -17,6 +18,8 @@ import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
 import type { StreamContext } from './streamingTypes.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
 import { executeTools, getAgentToolsFromRegistry, getBuiltinToolRegistry } from './toolExecutor.js'
+
+const log = createLogger('AnthropicService')
 
 /**
  * Initialize Anthropic client with API key from Firebase secrets
@@ -34,6 +37,7 @@ export interface AnthropicExecutionResult {
   output: string
   tokensUsed: number
   estimatedCost: number
+  iterationsUsed: number
 }
 
 /**
@@ -83,7 +87,7 @@ export async function executeWithAnthropic(
   context?: Record<string, unknown>,
   toolContext?: BaseToolExecutionContext
 ): Promise<AnthropicExecutionResult> {
-  const modelName = agent.modelName ?? 'claude-3-5-haiku-20241022'
+  const modelName = agent.modelName ?? 'claude-haiku-4-5'
 
   try {
     // Build the prompt
@@ -130,14 +134,14 @@ export async function executeWithAnthropic(
     let totalInputTokens = 0
     let totalOutputTokens = 0
 
-    // Iterative execution loop (max 5 iterations to prevent infinite loops)
-    const MAX_ITERATIONS = 5
+    // Iterative execution loop (configurable, default 5)
+    const MAX_ITERATIONS = toolContext?.maxIterations ?? 5
     let iteration = 0
     let finalOutput = ''
 
     while (iteration < MAX_ITERATIONS) {
       iteration++
-      console.log(`Anthropic iteration ${iteration}/${MAX_ITERATIONS}`)
+      log.info('Iteration started', { iteration, maxIterations: MAX_ITERATIONS })
 
       // Call Anthropic API
       const response = await executeWithRetry(
@@ -161,9 +165,12 @@ export async function executeWithAnthropic(
         },
         PROVIDER_RETRY_CONFIG,
         (attempt, error, delayMs) => {
-          console.log(
-            `Anthropic retry ${attempt}/${PROVIDER_RETRY_CONFIG.maxRetries} after ${delayMs}ms: ${(error as Error).message}`
-          )
+          log.info('Retrying request', {
+            attempt,
+            maxRetries: PROVIDER_RETRY_CONFIG.maxRetries,
+            delayMs,
+            error: (error as Error).message,
+          })
         }
       )
 
@@ -173,7 +180,7 @@ export async function executeWithAnthropic(
 
       // Check stop reason
       if (response.stop_reason === 'tool_use' && toolContext) {
-        console.log(`Agent requesting tool calls`)
+        log.info('Agent requesting tool calls')
 
         // Extract tool use content blocks
         const toolUseBlocks = response.content.filter((block) => block.type === 'tool_use')
@@ -198,7 +205,7 @@ export async function executeWithAnthropic(
 
           const toolCallRecords = toolCalls.map((call) => ({
             toolCallId: call.toolCallId,
-            toolId: `tool:${call.toolName}` as any,
+            toolId: asId<'tool'>(`tool:${call.toolName}`),
             toolName: call.toolName,
             parameters: call.parameters,
           }))
@@ -258,7 +265,23 @@ export async function executeWithAnthropic(
             })
           }
 
-          console.log(`Executed ${toolResults.length} tools, continuing agent iteration`)
+          log.info('Tools executed, continuing iteration', { toolCount: toolResults.length })
+
+          // Budget warning: on penultimate iteration, tell agent to synthesize
+          if (iteration === MAX_ITERATIONS - 1) {
+            log.info('Budget warning, injecting synthesis prompt', {
+              iteration,
+              maxIterations: MAX_ITERATIONS,
+            })
+            messages.push({
+              role: 'user',
+              content:
+                'IMPORTANT: You are at your tool-calling budget limit. ' +
+                'You MUST synthesize your findings into a complete response NOW. ' +
+                'Do NOT make additional tool calls. Provide your best output with what you have gathered.',
+            })
+          }
+
           // Continue loop to get agent's response with tool results
         } else {
           // No tool use blocks found (shouldn't happen with tool_use stop_reason)
@@ -279,24 +302,28 @@ export async function executeWithAnthropic(
             content: finalOutput,
           })
         }
-        console.log(`Agent completed in ${iteration} iterations (no more tool calls)`)
+        log.info('Agent completed, no more tool calls', { iterationsUsed: iteration })
         break
       }
     }
 
-    if (iteration >= MAX_ITERATIONS) {
-      console.warn(`Agent reached max iterations (${MAX_ITERATIONS}) with tool calls`)
-      // Use last message content as final output
+    if (iteration >= MAX_ITERATIONS && !finalOutput) {
+      log.warn('Agent reached max iterations with tool calls', { maxIterations: MAX_ITERATIONS })
       const lastMessage = messages[messages.length - 1]
+      let lastText = ''
       if (lastMessage && lastMessage.role === 'assistant') {
         const lastContent = Array.isArray(lastMessage.content)
           ? lastMessage.content
           : [{ type: 'text' as const, text: lastMessage.content }]
+        lastText = lastContent.find((block) => block.type === 'text')?.text ?? ''
+      }
+      if (!lastText || lastText.startsWith('{') || lastText.startsWith('[')) {
         finalOutput =
-          lastContent.find((block) => block.type === 'text')?.text ??
-          'Agent reached max iterations without providing final output'
+          `[PARTIAL RESULT - iteration budget exhausted after ${iteration} tool calls]\n\n` +
+          `The agent gathered research data but could not complete synthesis. ` +
+          `Consider increasing the iteration budget for tool-heavy agents.`
       } else {
-        finalOutput = 'Agent reached max iterations without providing final output'
+        finalOutput = lastText
       }
       if (toolContext) {
         await recordMessage({
@@ -317,9 +344,10 @@ export async function executeWithAnthropic(
       output: finalOutput,
       tokensUsed,
       estimatedCost,
+      iterationsUsed: iteration,
     }
   } catch (error) {
-    console.error('Anthropic execution error:', error)
+    log.error('Execution error', error)
     const agentError = wrapError(error, 'anthropic')
     agentError.details = {
       ...agentError.details,
@@ -342,7 +370,7 @@ export async function executeWithAnthropicStreaming(
   toolContext: BaseToolExecutionContext | undefined,
   stream: StreamContext
 ): Promise<AnthropicExecutionResult> {
-  const modelName = agent.modelName ?? 'claude-3-5-haiku-20241022'
+  const modelName = agent.modelName ?? 'claude-haiku-4-5'
   const toolsOpenAIFormat = toolContext
     ? getAgentToolsFromRegistry(agent, toolContext.toolRegistry ?? getBuiltinToolRegistry())
     : []
@@ -402,9 +430,12 @@ export async function executeWithAnthropicStreaming(
       },
       PROVIDER_RETRY_CONFIG,
       (attempt, error, delayMs) => {
-        console.log(
-          `Anthropic retry ${attempt}/${PROVIDER_RETRY_CONFIG.maxRetries} after ${delayMs}ms: ${(error as Error).message}`
-        )
+        log.info('Retrying streaming request', {
+          attempt,
+          maxRetries: PROVIDER_RETRY_CONFIG.maxRetries,
+          delayMs,
+          error: (error as Error).message,
+        })
       }
     )
 
@@ -414,7 +445,7 @@ export async function executeWithAnthropicStreaming(
         if (delta) {
           finalOutput += delta
           await stream.eventWriter.appendToken(delta, {
-            workspaceId: toolContext?.workspaceId,
+            workflowId: toolContext?.workflowId,
             agentId: stream.agentId,
             agentName: stream.agentName,
             provider: 'anthropic',
@@ -426,7 +457,7 @@ export async function executeWithAnthropicStreaming(
     }
 
     await stream.eventWriter.flushTokens({
-      workspaceId: toolContext?.workspaceId,
+      workflowId: toolContext?.workflowId,
       agentId: stream.agentId,
       agentName: stream.agentName,
       provider: 'anthropic',
@@ -455,9 +486,10 @@ export async function executeWithAnthropicStreaming(
       output: finalOutput,
       tokensUsed,
       estimatedCost,
+      iterationsUsed: 1,
     }
   } catch (error) {
-    console.error('Anthropic streaming execution error:', error)
+    log.error('Streaming execution error', error)
     const agentError = wrapError(error, 'anthropic')
     agentError.details = {
       ...agentError.details,

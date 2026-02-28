@@ -1,0 +1,63 @@
+---
+title: "Dialectical Cycle — State Machine"
+---
+stateDiagram-v2
+    [*] --> ContextRetrieval: New query arrives
+
+    ContextRetrieval --> ThesisGeneration: KG context assembled
+    note right of ContextRetrieval
+        RL agent performs multi-hop
+        think-query-retrieve-rethink
+        over knowledge hypergraph
+    end note
+
+    ThesisGeneration --> CrossNegation: 2-5 theses generated
+    note right of ThesisGeneration
+        Heterogeneous models (Claude, GPT-4, Gemini)
+        Each declares: categories, causal model,
+        falsification criteria, regime assumptions
+    end note
+
+    CrossNegation --> ContradictionCrystallization: Negation edges written
+    note right of CrossNegation
+        Must use typed rewrite operators:
+        SPLIT, MERGE, REVERSE, ADD_MEDIATOR,
+        SCOPE_TO_REGIME, TEMPORALIZE
+    end note
+
+    ContradictionCrystallization --> Sublation: MIS computed
+    note right of ContradictionCrystallization
+        4 specialized trackers + cross-verification
+        Contradictions scored by action-distance
+    end note
+
+    Sublation --> MetaReflection: Graph rewrites executed
+    note right of Sublation
+        2 competing synthesizers
+        Cross-negation of syntheses
+        Schema induction triggered
+    end note
+
+    state MetaReflection {
+        [*] --> CheckVelocity
+        CheckVelocity --> Progressing: velocity > threshold
+        CheckVelocity --> Stalled: velocity < threshold for 2+ cycles
+        CheckVelocity --> Stuck: binary oscillation detected
+
+        Progressing --> [*]
+        Stalled --> [*]
+        Stuck --> ReSpecify: change unit of analysis
+        ReSpecify --> [*]
+    }
+
+    MetaReflection --> ThesisGeneration: CONTINUE (sublated output becomes new thesis)
+    MetaReflection --> RegimeScopedOutput: TERMINATE (contradictions bounded)
+    MetaReflection --> ContextRetrieval: RE-SPECIFY (change abstraction level)
+
+    RegimeScopedOutput --> [*]: Deliver policies per regime
+
+    note right of RegimeScopedOutput
+        Output: regime-scoped decision policies
+        Each policy traces back through
+        KG provenance to evidence + episodes
+    end note

@@ -204,5 +204,9 @@ function filterExercises(
   if (options?.activeOnly !== false) {
     list = list.filter((item) => !item.archived)
   }
-  return list.sort((a, b) => a.name.localeCompare(b.name))
+  return list.sort((a, b) => {
+    const nameA = String(a.generic_name ?? a.name ?? '')
+    const nameB = String(b.generic_name ?? b.name ?? '')
+    return nameA.localeCompare(nameB)
+  })
 }

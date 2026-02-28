@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './globals.css'
+import './lib/cleanupOldTemplates' // Expose cleanup function to window
 import './styles/habits-mind.css'
 import './styles/training.css'
 
@@ -17,13 +18,36 @@ if (typeof window !== 'undefined') {
   const originalWarn = console.warn
   const originalError = console.error
 
-  const isLeaseMessage = (msg: string) =>
-    msg.includes('Failed to obtain primary lease') ||
-    msg.includes('Backfill Indexes') ||
-    msg.includes('Apply remote event') ||
-    msg.includes('Collect garbage')
+  const extractLogText = (args: unknown[]): string =>
+    args
+      .map((arg) => {
+        if (typeof arg === 'string') return arg
+        if (arg && typeof arg === 'object' && 'message' in arg) {
+          const value = (arg as { message?: unknown }).message
+          return typeof value === 'string' ? value : ''
+        }
+        return ''
+      })
+      .filter(Boolean)
+      .join(' ')
+
+  const isLeaseMessage = (msg: string) => {
+    const lower = msg.toLowerCase()
+    return (
+      lower.includes('failed to obtain primary lease') ||
+      lower.includes('maybegarbagecollectmulticlientstate') ||
+      lower.includes('backfill indexes') ||
+      lower.includes('apply remote event') ||
+      lower.includes('collect garbage')
+    )
+  }
 
   const routeLeaseError = (msg: string) => {
+    // This specific action is expected in secondary tabs and not actionable.
+    if (msg.toLowerCase().includes('maybegarbagecollectmulticlientstate')) {
+      return
+    }
+
     import('./lib/firestoreLifecycle').then(({ reportLeaseError }) => {
       import('./lib/firebase').then(({ getFirestoreClient }) => {
         try {
@@ -42,8 +66,8 @@ if (typeof window !== 'undefined') {
   }
 
   console.warn = (...args: unknown[]) => {
-    const message = args[0]
-    if (typeof message === 'string') {
+    const message = extractLogText(args)
+    if (message) {
       if (isLeaseMessage(message)) {
         routeLeaseError(message)
         return
@@ -58,8 +82,8 @@ if (typeof window !== 'undefined') {
   // Suppress expected Firebase network errors when offline.
   // Route lease errors to lifecycle manager for recovery.
   console.error = (...args: unknown[]) => {
-    const message = args[0]
-    if (typeof message === 'string') {
+    const message = extractLogText(args)
+    if (message) {
       if (isLeaseMessage(message)) {
         routeLeaseError(message)
         return

@@ -3,8 +3,8 @@
   z-index: 100;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -32,7 +32,7 @@
 }
 
 .table-control-label {
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--muted-foreground);
   text-transform: uppercase;
@@ -44,12 +44,12 @@
   flex: 1;
   min-width: 55px;
   padding: 6px 8px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
   background: var(--background-secondary);
   color: var(--foreground);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;

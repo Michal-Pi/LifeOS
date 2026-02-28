@@ -9,7 +9,6 @@ import { useState, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
 import type { JSONContent } from '@tiptap/core'
 import { importFile, mergeJsonContent, detectFileType } from '@/lib/noteImport'
-import { jsonContentToPlainText } from '@/lib/noteExport'
 import '@/styles/components/ImportModal.css'
 
 interface ImportModalProps {
@@ -179,16 +178,6 @@ export function ImportModal({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
-  const getPreviewText = (): string => {
-    if (!parsedContent) return ''
-    const text = jsonContentToPlainText(parsedContent)
-    // Limit preview to first 500 chars
-    if (text.length > 500) {
-      return text.slice(0, 500) + '...'
-    }
-    return text
-  }
-
   if (!isOpen) return null
 
   return (
@@ -211,7 +200,6 @@ export function ImportModal({
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
             >
-              <div className="drop-zone-icon">📄</div>
               <p className="drop-zone-text">
                 {isDragging ? 'Drop your file here' : 'Click to upload or drag and drop'}
               </p>
@@ -232,7 +220,6 @@ export function ImportModal({
           {/* Error Display */}
           {state === 'error' && error && (
             <div className="import-error">
-              <span className="error-icon">⚠️</span>
               <span>{error}</span>
             </div>
           )}
@@ -250,7 +237,6 @@ export function ImportModal({
             <div className="import-preview">
               {/* File Info */}
               <div className="import-file-info">
-                <div className="file-info-icon">📄</div>
                 <div className="file-info-details">
                   <span className="file-info-name">{fileInfo.name}</span>
                   <span className="file-info-meta">
@@ -324,14 +310,6 @@ export function ImportModal({
                   </label>
                 </div>
               </div>
-
-              {/* Content Preview */}
-              <div className="import-field">
-                <label>Preview</label>
-                <div className="import-content-preview">
-                  {getPreviewText() || <em>No text content</em>}
-                </div>
-              </div>
             </div>
           )}
 
@@ -346,7 +324,6 @@ export function ImportModal({
           {/* Success State */}
           {state === 'success' && (
             <div className="import-success">
-              <span className="success-icon">✓</span>
               <p>Import completed!</p>
             </div>
           )}

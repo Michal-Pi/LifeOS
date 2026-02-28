@@ -44,7 +44,7 @@
   justify-content: center;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: grab;
   color: var(--text-secondary);
   transition:
@@ -88,7 +88,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--background-secondary);
   color: var(--text-secondary);
@@ -113,7 +113,7 @@
 .drag-overlay-node {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 1rem;
   box-shadow: 0 4px 12px var(--shadow-soft);
   opacity: 0.9;
@@ -121,7 +121,7 @@
 
 .drag-overlay-content {
   color: var(--foreground);
-  font-size: 0.875rem;
+  font-size: var(--text-base);
 }
 
 /* Add button controls */
@@ -145,7 +145,7 @@
   justify-content: center;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-secondary);
   transition:
@@ -164,22 +164,18 @@
 }
 
 .node-add-button-container {
-  position: absolute;
-  bottom: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
+  position: sticky;
+  bottom: 1rem;
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
   opacity: 0;
   transition: opacity var(--motion-fast) var(--motion-ease);
   pointer-events: none;
   z-index: 10;
 }
 
-.node-dividers-container:hover .node-add-button-container,
-.editor-content-wrapper:hover .node-add-button-container {
-  opacity: 1;
-  pointer-events: all;
-}
-
+.editor-content-wrapper:hover .node-add-button-container,
 .node-add-button-container:hover {
   opacity: 1;
   pointer-events: all;

@@ -60,7 +60,9 @@ export function AIToolsPanel({
   const {
     state,
     runSummarize,
-    runFactCheck,
+    runFactCheckExtract,
+    toggleClaimSelection,
+    runFactCheckVerify,
     runLinkedIn,
     runWriteWithAI,
     runTagWithAI,
@@ -88,7 +90,7 @@ export function AIToolsPanel({
           void runSummarize(content)
           break
         case 'factCheck':
-          void runFactCheck(content)
+          void runFactCheckExtract(content)
           break
         case 'linkedIn':
           void runLinkedIn(content)
@@ -113,7 +115,7 @@ export function AIToolsPanel({
       availableNotes,
       setActiveTool,
       runSummarize,
-      runFactCheck,
+      runFactCheckExtract,
       runLinkedIn,
       runTagWithAI,
       runSuggestNoteTags,
@@ -149,7 +151,215 @@ export function AIToolsPanel({
     }
   }, [])
 
+  const selectedCount = state.selectedClaimFlags.filter(Boolean).length
+
+  const renderFactCheckResult = () => {
+    const { factCheckStep, extractedClaims, selectedClaimFlags, factCheckResults } = state
+
+    if (factCheckStep === 'extracting') {
+      return (
+        <div className="ai-tools-panel__loading">
+          <div className="ai-tools-panel__loading-spinner" />
+          <p>Extracting claims...</p>
+        </div>
+      )
+    }
+
+    if (factCheckStep === 'verifying') {
+      return (
+        <div className="ai-tools-panel__loading">
+          <div className="ai-tools-panel__loading-spinner" />
+          <p>
+            Verifying {selectedCount} claim{selectedCount !== 1 ? 's' : ''}...
+          </p>
+        </div>
+      )
+    }
+
+    if (factCheckStep === 'selecting' && extractedClaims) {
+      return (
+        <div className="ai-tools-panel__result">
+          <h4>Fact Check</h4>
+          <p className="ai-tools-panel__claim-select-header">
+            Found {extractedClaims.length} claim{extractedClaims.length !== 1 ? 's' : ''}. Uncheck
+            any you trust.
+          </p>
+          {state.error && (
+            <div className="ai-tools-panel__error" style={{ marginBottom: '0.5rem' }}>
+              <p>{state.error}</p>
+            </div>
+          )}
+          <div className="ai-tools-panel__claim-checkbox-list">
+            {extractedClaims.map((claim, i) => (
+              <label
+                key={i}
+                className={`ai-tools-panel__claim-checkbox-item ${selectedClaimFlags[i] ? 'is-selected' : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  className="ai-tools-panel__claim-checkbox"
+                  checked={selectedClaimFlags[i] ?? true}
+                  onChange={() => toggleClaimSelection(i)}
+                />
+                <div className="ai-tools-panel__claim-content">
+                  <div className="ai-tools-panel__claim-text">{claim.claim}</div>
+                  <div className="ai-tools-panel__claim-meta">
+                    <span
+                      className={`ai-tools-panel__claim-confidence confidence-${claim.confidence}`}
+                    >
+                      {claim.confidence}
+                    </span>
+                  </div>
+                  <div className="ai-tools-panel__claim-explanation">{claim.explanation}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+          <div className="ai-tools-panel__claim-actions">
+            <div className="ai-tools-panel__claim-bulk-actions">
+              <button
+                type="button"
+                className="ghost-button small"
+                onClick={() =>
+                  extractedClaims.forEach((_, i) => {
+                    if (!selectedClaimFlags[i]) toggleClaimSelection(i)
+                  })
+                }
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                className="ghost-button small"
+                onClick={() =>
+                  extractedClaims.forEach((_, i) => {
+                    if (selectedClaimFlags[i]) toggleClaimSelection(i)
+                  })
+                }
+              >
+                Deselect All
+              </button>
+            </div>
+            <button
+              type="button"
+              className="primary-button small"
+              onClick={() => void runFactCheckVerify(note.content as JSONContent)}
+            >
+              {selectedCount === 0 ? 'Skip' : `Verify (${selectedCount})`}
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    if (factCheckStep === 'done' && factCheckResults) {
+      if (factCheckResults.length === 0) {
+        return (
+          <div className="ai-tools-panel__result">
+            <h4>Fact Check Results</h4>
+            <p className="ai-tools-panel__empty-result">No factual claims identified.</p>
+          </div>
+        )
+      }
+
+      const verified = factCheckResults.filter((r) => r.webSearchUsed !== false)
+      const userConfirmed = factCheckResults.filter((r) => r.webSearchUsed === false)
+
+      return (
+        <div className="ai-tools-panel__result">
+          <h4>Fact Check Results</h4>
+          <div className="ai-tools-panel__fact-list">
+            {verified.length > 0 && (
+              <>
+                {userConfirmed.length > 0 && (
+                  <div className="ai-tools-panel__results-group-header">Verified</div>
+                )}
+                {verified.map((result, i) => (
+                  <div
+                    key={`v-${i}`}
+                    className={`ai-tools-panel__fact-item ${result.verdict ? `verdict-${result.verdict}` : `confidence-${result.confidence}`}`}
+                  >
+                    <div className="ai-tools-panel__fact-header">
+                      <div className="ai-tools-panel__fact-claim">"{result.claim}"</div>
+                      {result.verdict && (
+                        <span className={`ai-tools-panel__fact-verdict verdict-${result.verdict}`}>
+                          {result.verdict.replaceAll('_', ' ')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="ai-tools-panel__fact-confidence">
+                      Confidence: <span>{result.confidence}</span>
+                    </div>
+                    <div className="ai-tools-panel__fact-explanation">{result.explanation}</div>
+                    {result.sources && result.sources.length > 0 && (
+                      <div className="ai-tools-panel__fact-sources">
+                        <strong>Sources:</strong>
+                        <ul className="ai-tools-panel__source-list">
+                          {result.sources.map((source, j) => (
+                            <li
+                              key={j}
+                              className={source.supports ? 'source-supports' : 'source-contradicts'}
+                            >
+                              <a href={source.url} target="_blank" rel="noopener noreferrer">
+                                {source.title}
+                              </a>
+                              <span className="ai-tools-panel__source-indicator">
+                                {source.supports ? ' (supports)' : ' (contradicts)'}
+                              </span>
+                              {source.snippet && (
+                                <p className="ai-tools-panel__source-snippet">{source.snippet}</p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {!result.sources?.length &&
+                      result.suggestedSources &&
+                      result.suggestedSources.length > 0 && (
+                        <div className="ai-tools-panel__fact-sources">
+                          Verify with: {result.suggestedSources.join(', ')}
+                        </div>
+                      )}
+                  </div>
+                ))}
+              </>
+            )}
+            {userConfirmed.length > 0 && (
+              <>
+                {verified.length > 0 && (
+                  <div className="ai-tools-panel__results-group-header">User Confirmed</div>
+                )}
+                {userConfirmed.map((result, i) => (
+                  <div key={`uc-${i}`} className="ai-tools-panel__fact-item verdict-user_confirmed">
+                    <div className="ai-tools-panel__fact-header">
+                      <div className="ai-tools-panel__fact-claim">"{result.claim}"</div>
+                      <span className="ai-tools-panel__fact-verdict verdict-user_confirmed">
+                        user confirmed
+                      </span>
+                    </div>
+                    <div className="ai-tools-panel__fact-confidence">
+                      Confidence: <span>{result.confidence}</span>
+                    </div>
+                    <div className="ai-tools-panel__fact-explanation">{result.explanation}</div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      )
+    }
+
+    return null
+  }
+
   const renderToolResult = () => {
+    // For factCheck, delegate to step-aware renderer
+    if (state.activeTool === 'factCheck') {
+      return renderFactCheckResult()
+    }
+
     if (state.isLoading) {
       return (
         <div className="ai-tools-panel__loading">
@@ -195,49 +405,97 @@ export function AIToolsPanel({
         }
         break
 
-      case 'factCheck':
-        if (state.factCheckResults) {
-          return (
-            <div className="ai-tools-panel__result">
-              <h4>Fact Check Results</h4>
-              {state.factCheckResults.length === 0 ? (
-                <p className="ai-tools-panel__empty-result">No factual claims identified.</p>
-              ) : (
-                <div className="ai-tools-panel__fact-list">
-                  {state.factCheckResults.map((result, i) => (
-                    <div
-                      key={i}
-                      className={`ai-tools-panel__fact-item confidence-${result.confidence}`}
-                    >
-                      <div className="ai-tools-panel__fact-claim">"{result.claim}"</div>
-                      <div className="ai-tools-panel__fact-confidence">
-                        Confidence: <span>{result.confidence}</span>
-                      </div>
-                      <div className="ai-tools-panel__fact-explanation">{result.explanation}</div>
-                      {result.suggestedSources && result.suggestedSources.length > 0 && (
-                        <div className="ai-tools-panel__fact-sources">
-                          Verify with: {result.suggestedSources.join(', ')}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        }
-        break
-
       case 'linkedIn':
         if (state.linkedInResult) {
-          const { overallScore, hooks, suggestedHashtags, quotableLines, improvements } =
-            state.linkedInResult
+          const {
+            overallScore,
+            hooks,
+            suggestedHashtags,
+            quotableLines,
+            improvements,
+            trendingContext,
+            timingAdvice,
+            competitiveAnalysis,
+            webSearchUsed,
+          } = state.linkedInResult
           return (
             <div className="ai-tools-panel__result">
               <h4>LinkedIn Analysis</h4>
               <div className="ai-tools-panel__linkedin-score">
                 Score: <strong>{overallScore}/10</strong>
+                {webSearchUsed && (
+                  <span
+                    className="ai-tools-panel__web-badge ai-tools-panel__web-badge--verified"
+                    style={{ marginLeft: 8, fontSize: '0.75rem' }}
+                  >
+                    Trend data included
+                  </span>
+                )}
               </div>
+
+              {trendingContext && (
+                <div className="ai-tools-panel__linkedin-section ai-tools-panel__trending">
+                  <h5>Topic Trending Analysis</h5>
+                  <div className="ai-tools-panel__trend-header">
+                    <span
+                      className={`ai-tools-panel__trend-badge ${trendingContext.isTrending ? 'trending' : 'not-trending'}`}
+                    >
+                      {trendingContext.isTrending ? 'Trending' : 'Not trending'}
+                    </span>
+                    <span className="ai-tools-panel__trend-score">
+                      Trend score: <strong>{trendingContext.trendScore}/10</strong>
+                    </span>
+                  </div>
+                  {trendingContext.relatedNews.length > 0 && (
+                    <div className="ai-tools-panel__trend-section">
+                      <strong>Related News:</strong>
+                      <ul>
+                        {trendingContext.relatedNews.slice(0, 3).map((news, i) => (
+                          <li key={i}>
+                            <a href={news.url} target="_blank" rel="noopener noreferrer">
+                              {news.title}
+                            </a>
+                            {news.date && (
+                              <span className="ai-tools-panel__trend-date"> ({news.date})</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {trendingContext.relatedPosts.length > 0 && (
+                    <div className="ai-tools-panel__trend-section">
+                      <strong>Similar LinkedIn Posts:</strong>
+                      <ul>
+                        {trendingContext.relatedPosts.slice(0, 3).map((post, i) => (
+                          <li key={i}>
+                            <a href={post.url} target="_blank" rel="noopener noreferrer">
+                              {post.title}
+                            </a>
+                            {post.snippet && (
+                              <p className="ai-tools-panel__source-snippet">{post.snippet}</p>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {timingAdvice && (
+                <div className="ai-tools-panel__linkedin-section">
+                  <h5>Timing Advice</h5>
+                  <p>{timingAdvice}</p>
+                </div>
+              )}
+
+              {competitiveAnalysis && (
+                <div className="ai-tools-panel__linkedin-section">
+                  <h5>Competitive Analysis</h5>
+                  <p>{competitiveAnalysis}</p>
+                </div>
+              )}
 
               {hooks.length > 0 && (
                 <div className="ai-tools-panel__linkedin-section">
@@ -350,7 +608,9 @@ export function AIToolsPanel({
                 <div className="ai-tools-panel__tag-suggestions">
                   {state.tagSuggestions.map((suggestion, i) => (
                     <div key={i} className="ai-tools-panel__tag-suggestion">
-                      <div className="ai-tools-panel__tag-paragraph">{suggestion.paragraphText}</div>
+                      <div className="ai-tools-panel__tag-paragraph">
+                        {suggestion.paragraphText}
+                      </div>
                       <div className="ai-tools-panel__tag-pills">
                         {suggestion.suggestedTags.map((tag, j) => (
                           <span key={j} className="ai-tools-panel__tag-pill freeform">

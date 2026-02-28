@@ -1,29 +1,32 @@
 /**
- * ProjectLinker Component
+ * ProjectLinkerModal Component
  *
- * Allows linking and unlinking projects to/from a note.
- * Displays currently linked projects with remove buttons.
- * Provides a dropdown to add new project links.
+ * Modal dialog for linking and unlinking projects to/from a note.
+ * Uses design system Select component for project selection.
  */
 
 import { useState } from 'react'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
 import { useAuth } from '@/hooks/useAuth'
+import { Select } from '@/components/Select'
+import '@/styles/components/ProjectLinkerModal.css'
 
 export interface ProjectLinkerProps {
+  isOpen: boolean
+  onClose: () => void
   linkedProjectIds: string[]
   onProjectsChange: (projectIds: string[]) => void
-  className?: string
 }
 
 export function ProjectLinker({
+  isOpen,
+  onClose,
   linkedProjectIds,
   onProjectsChange,
-  className = '',
 }: ProjectLinkerProps) {
   const { user } = useAuth()
   const { projects, loading } = useTodoOperations({ userId: user?.uid || '' })
-  const [showDropdown, setShowDropdown] = useState(false)
+  const [selectedProjectId, setSelectedProjectId] = useState('')
 
   // Get linked projects
   const linkedProjects = projects.filter((p) => linkedProjectIds.includes(p.id))
@@ -31,266 +34,106 @@ export function ProjectLinker({
   // Get available projects (not yet linked)
   const availableProjects = projects.filter((p) => !linkedProjectIds.includes(p.id))
 
-  const handleAddProject = (projectId: string) => {
-    if (!linkedProjectIds.includes(projectId)) {
-      onProjectsChange([...linkedProjectIds, projectId])
+  const handleAddProject = () => {
+    if (selectedProjectId && !linkedProjectIds.includes(selectedProjectId)) {
+      onProjectsChange([...linkedProjectIds, selectedProjectId])
+      setSelectedProjectId('')
     }
-    setShowDropdown(false)
   }
 
   const handleRemoveProject = (projectId: string) => {
     onProjectsChange(linkedProjectIds.filter((id) => id !== projectId))
   }
 
-  if (loading) {
-    return <div className={`project-linker ${className}`}>Loading projects...</div>
-  }
+  if (!isOpen) return null
 
   return (
-    <div className={`project-linker ${className}`}>
-      <div className="linker-header">
-        <h3>Linked Projects</h3>
-        {availableProjects.length > 0 && (
-          <button
-            onClick={() => setShowDropdown(!showDropdown)}
-            className="btn-add"
-            aria-label="Add project link"
-          >
-            + Link Project
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content project-linker-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Link to Projects</h2>
+          <button type="button" className="close-button" onClick={onClose} aria-label="Close">
+            ×
           </button>
-        )}
+        </div>
+
+        <div className="modal-body">
+          {loading ? (
+            <div className="linker-loading">Loading projects...</div>
+          ) : (
+            <>
+              {/* Add Project Section */}
+              {availableProjects.length > 0 ? (
+                <div className="linker-add-section">
+                  <label htmlFor="project-select" className="linker-label">
+                    Add a project link
+                  </label>
+                  <div className="linker-add-row">
+                    <Select
+                      id="project-select"
+                      value={selectedProjectId}
+                      onChange={setSelectedProjectId}
+                      placeholder="Select a project..."
+                      options={availableProjects.map((p) => ({
+                        value: p.id,
+                        label: p.title,
+                      }))}
+                    />
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={handleAddProject}
+                      disabled={!selectedProjectId}
+                    >
+                      Link
+                    </button>
+                  </div>
+                </div>
+              ) : linkedProjects.length === 0 ? (
+                <p className="linker-empty-hint">
+                  No projects available. Create a project first to link notes.
+                </p>
+              ) : null}
+
+              {/* Linked Projects List */}
+              <div className="linker-linked-section">
+                <label className="linker-label">Linked projects</label>
+                {linkedProjects.length > 0 ? (
+                  <div className="linker-list">
+                    {linkedProjects.map((project) => (
+                      <div key={project.id} className="linker-item">
+                        <div className="linker-item-info">
+                          <span className="linker-item-title">{project.title}</span>
+                          {project.description && (
+                            <span className="linker-item-desc">{project.description}</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProject(project.id)}
+                          className="linker-item-remove"
+                          aria-label={`Unlink ${project.title}`}
+                          title="Unlink project"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="linker-empty">No projects linked to this note.</p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="modal-actions">
+          <button type="button" className="ghost-button" onClick={onClose}>
+            Done
+          </button>
+        </div>
       </div>
-
-      {/* Linked Projects List */}
-      {linkedProjects.length > 0 ? (
-        <div className="linked-list">
-          {linkedProjects.map((project) => (
-            <div key={project.id} className="linked-item">
-              <div className="project-info">
-                <span className="project-icon">📁</span>
-                <div className="project-details">
-                  <span className="project-title">{project.title}</span>
-                  {project.description && (
-                    <span className="project-description">{project.description}</span>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => handleRemoveProject(project.id)}
-                className="btn-remove"
-                aria-label={`Remove ${project.title}`}
-                title="Unlink project"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="empty-state">No projects linked yet.</p>
-      )}
-
-      {/* Dropdown to Add Projects */}
-      {showDropdown && availableProjects.length > 0 && (
-        <div className="dropdown">
-          <div className="dropdown-header">
-            <span>Select a project to link</span>
-            <button onClick={() => setShowDropdown(false)} className="btn-close" aria-label="Close">
-              ×
-            </button>
-          </div>
-          <div className="dropdown-list">
-            {availableProjects.map((project) => (
-              <div
-                key={project.id}
-                className="dropdown-item"
-                onClick={() => handleAddProject(project.id)}
-              >
-                <span className="project-icon">📁</span>
-                <div className="project-details">
-                  <span className="project-title">{project.title}</span>
-                  {project.description && (
-                    <span className="project-description">{project.description}</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        .project-linker {
-          position: relative;
-          padding: 16px;
-          border: 1px solid var(--border);
-          border-radius: 16px;
-          background: var(--card);
-        }
-
-        .linker-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 12px;
-        }
-
-        .linker-header h3 {
-          margin: 0;
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--foreground);
-        }
-
-        .btn-add {
-          padding: 6px 12px;
-          background: transparent;
-          color: var(--accent);
-          border: 1px solid var(--accent);
-          border-radius: 10px;
-          cursor: pointer;
-          font-size: 12px;
-          font-weight: 500;
-          transition: box-shadow var(--motion-standard) var(--motion-ease);
-        }
-
-        .btn-add:hover {
-          box-shadow: 0 0 0 3px var(--accent-subtle);
-        }
-
-        .linked-list {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .linked-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 8px 12px;
-          background: var(--background-secondary);
-          border-radius: 10px;
-          border: 1px solid var(--border);
-        }
-
-        .project-info {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          flex: 1;
-        }
-
-        .project-icon {
-          font-size: 16px;
-        }
-
-        .project-details {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          flex: 1;
-        }
-
-        .project-title {
-          font-size: 14px;
-          font-weight: 500;
-          color: var(--foreground);
-        }
-
-        .project-description {
-          font-size: 12px;
-          color: var(--muted-foreground);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .btn-remove {
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          border: none;
-          background: var(--background-secondary);
-          color: var(--foreground);
-          cursor: pointer;
-          font-size: 18px;
-          line-height: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .btn-remove:hover {
-          background: var(--error-light);
-          color: var(--error);
-        }
-
-        .empty-state {
-          margin: 0;
-          padding: 16px;
-          text-align: center;
-          color: var(--muted-foreground);
-          font-size: 14px;
-        }
-
-        .dropdown {
-          position: absolute;
-          top: 100%;
-          left: 0;
-          right: 0;
-          margin-top: 8px;
-          background: var(--card);
-          border: 1px solid var(--border);
-          border-radius: 16px;
-          z-index: 10;
-          max-height: 300px;
-          overflow-y: auto;
-        }
-
-        .dropdown-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 12px;
-          border-bottom: 1px solid var(--border);
-          font-size: 14px;
-          font-weight: 500;
-        }
-
-        .btn-close {
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          border: none;
-          background: transparent;
-          color: var(--foreground);
-          cursor: pointer;
-          font-size: 20px;
-          line-height: 1;
-        }
-
-        .btn-close:hover {
-          background: var(--background-tertiary);
-        }
-
-        .dropdown-list {
-          padding: 4px;
-        }
-
-        .dropdown-item {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 12px;
-          cursor: pointer;
-          border-radius: 4px;
-        }
-
-        .dropdown-item:hover {
-          background: var(--muted);
-        }
-      `}</style>
     </div>
   )
 }

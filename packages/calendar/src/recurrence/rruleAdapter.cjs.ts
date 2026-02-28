@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="./rrule.d.ts" />
 import rruleModule from 'rrule/dist/es5/rrule.js'
 

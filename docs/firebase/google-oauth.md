@@ -2,13 +2,46 @@
 
 This document outlines how the Firebase Cloud Functions handle Google Calendar connections and where tokens live.
 
+## OAuth Scopes
+
+The application requests the following Google OAuth scopes (defined in `functions/src/index.ts`):
+
+| Scope              | Access     | Purpose                                |
+| ------------------ | ---------- | -------------------------------------- |
+| `calendar`         | Read/write | Full calendar management               |
+| `calendar.events`  | Read/write | Event CRUD and sync                    |
+| `contacts`         | Read/write | Google Contacts import and CRM sync    |
+| `drive`            | Read/write | Drive file access for agent tools      |
+| `gmail.modify`     | Read/write | Email read, send, and label management |
+| `userinfo.email`   | Read       | User email for authentication          |
+| `userinfo.profile` | Read       | User profile for display               |
+| `openid`           | Read       | OpenID Connect identity                |
+
+### GCP Prerequisites
+
+Before OAuth will work for all features, ensure the following are enabled in the [Google Cloud Console](https://console.cloud.google.com):
+
+1. **APIs & Services > Library** — Enable:
+   - Google Calendar API
+   - People API
+   - Google Contacts API
+   - Google Drive API
+   - Gmail API
+2. **APIs & Services > OAuth consent screen** — Ensure all scopes above are listed under approved scopes. If the app is in "Testing" mode, test users must be added explicitly.
+
+### Re-authorization
+
+When scopes are added or upgraded (e.g., `drive.readonly` → `drive`), existing users must re-authorize. The OAuth flow uses `include_granted_scopes: true` for incremental consent, but the new scopes must still be presented to the user. To force re-auth: disconnect the Google account in Settings, then reconnect.
+
 ## Endpoints
 
 - `googleAuthStart`: Called from the web client (`apps/web-vite`) with `uid` and optional `accountId`. Returns an authorization URL for redirect.
 - `googleAuthCallback`: Google redirects to this endpoint with a `code` and the previously-generated `state`. The function exchanges the code for tokens and stores them in Firestore.
 - `googleDisconnect`: Deletes the stored tokens and marks the calendar account as disconnected.
+- `syncContactsNow`: On-demand Google Contacts sync. Called with `uid` and `accountId`. Fetches contacts via the People API and merges them into the CRM.
+- `scheduleContactsSync`: Scheduled function that runs every 24 hours to sync contacts for all connected accounts.
 
-> All endpoints are implemented in `functions/src/index.ts` and use Firebase Functions v2 via `onRequest`.
+> All endpoints are implemented in `functions/src/index.ts` and use Firebase Functions v2 via `onRequest` / `onSchedule`.
 
 ## Firestore storage
 

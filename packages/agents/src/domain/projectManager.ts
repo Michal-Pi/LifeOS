@@ -1,5 +1,5 @@
 import type { Id } from '@lifeos/core'
-import type { RunId, WorkspaceId } from './models'
+import type { RunId, WorkflowId } from './models'
 
 export type ConversationContextId = Id<'pmContext'>
 export type UserProfileId = Id<'pmProfile'>
@@ -84,7 +84,7 @@ export interface ConversationTurn {
 export interface ConversationContext {
   contextId: ConversationContextId
   userId: string
-  workspaceId?: WorkspaceId
+  workflowId?: WorkflowId
   runId?: RunId
   requirements: Requirement[]
   assumptions: Assumption[]

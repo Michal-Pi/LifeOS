@@ -16,10 +16,15 @@ import type {
   EvalResult,
   EvalResultId,
   EvalCriterion,
+  ModelProvider,
 } from '@lifeos/agents'
+import { asId } from '@lifeos/agents'
 import type { RunId } from '@lifeos/agents'
 import { randomUUID } from 'crypto'
+import { createLogger } from '../../lib/logger.js'
 import { executeWithProvider } from '../providerService.js'
+
+const log = createLogger('LLMJudge')
 import type { ProviderKeys } from '../providerService.js'
 
 // ----- Collection Paths -----
@@ -215,7 +220,7 @@ export async function createRubric(
     workflowType: input.workflowType,
     taskType: input.taskType,
     criteria,
-    judgeModel: input.judgeModel || 'gpt-4o',
+    judgeModel: input.judgeModel || 'gpt-5.2',
     judgeProvider: input.judgeProvider || 'openai',
     systemPrompt: input.systemPrompt,
     isDefault: input.isDefault || false,
@@ -400,7 +405,7 @@ function parseJudgeResponse(
       reasoning: parsed.overall_reasoning || '',
     }
   } catch (error) {
-    console.error('Failed to parse judge response:', error)
+    log.error('Failed to parse judge response', { error })
     // Return default scores if parsing fails
     const criterionScores: Record<string, number> = {}
     for (const criterion of rubric.criteria) {
@@ -467,14 +472,14 @@ export async function evaluateOutput(
 
   // Create a minimal agent config for the judge
   const judgeAgent = {
-    agentId: 'judge' as any,
+    agentId: asId<'agent'>('agent:judge'),
     userId,
     name: 'Quality Judge',
     role: 'critic' as const,
     systemPrompt:
       rubric.systemPrompt ||
       'You are an expert evaluator. Be fair, consistent, and thorough in your assessments.',
-    modelProvider: rubric.judgeProvider as any,
+    modelProvider: rubric.judgeProvider as ModelProvider,
     modelName: rubric.judgeModel,
     temperature: 0.3, // Low temperature for consistency
     archived: false,
@@ -487,8 +492,8 @@ export async function evaluateOutput(
   // Execute the judge
   const result = await executeWithProvider(judgeAgent, judgePrompt, {}, apiKeys, {
     userId,
-    agentId: 'judge' as any,
-    workflowId: 'eval' as any,
+    agentId: asId<'agent'>('agent:judge'),
+    workflowId: asId<'workflow'>('workflow:eval'),
     runId,
   })
 

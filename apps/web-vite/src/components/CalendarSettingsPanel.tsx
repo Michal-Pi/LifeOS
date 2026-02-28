@@ -1,9 +1,11 @@
 import type { CanonicalCalendar } from '@lifeos/calendar'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { collection, getDocs } from 'firebase/firestore'
 import { createFirestoreCalendarListRepository } from '@/adapters/firestoreCalendarListRepository'
 import { useAuth } from '@/hooks/useAuth'
 import { functionUrl } from '@/lib/functionsUrl'
 import { authenticatedFetch } from '@/lib/authenticatedFetch'
+import { getFirestoreClient } from '@/lib/firestoreClient'
 import { DeleteAllCalendarDataSection } from './DeleteAllCalendarDataSection'
 import { CleanupOrphanedDataSection } from './CleanupOrphanedDataSection'
 import { useDialog } from '@/contexts/useDialog'
@@ -14,6 +16,13 @@ const calendarListRepository = createFirestoreCalendarListRepository()
 
 type WritebackVisibility = 'default' | 'private'
 
+/** Scopes required for Drive, Gmail, and Contacts agent tools */
+const REQUIRED_SCOPES = [
+  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/gmail.modify',
+  'https://www.googleapis.com/auth/contacts',
+]
+
 export function CalendarSettingsPanel() {
   const { user } = useAuth()
   const { confirm, alert: showAlert } = useDialog()
@@ -22,6 +31,7 @@ export function CalendarSettingsPanel() {
   const [calendars, setCalendars] = useState<CanonicalCalendar[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [accountScopes, setAccountScopes] = useState<Map<string, string>>(new Map())
   const defaultColor = useMemo(() => {
     void theme
     return getDefaultCalendarHex()
@@ -62,6 +72,30 @@ export function CalendarSettingsPanel() {
     })
     return unsubscribe
   }, [userId])
+
+  // Load granted scopes from calendarAccounts docs
+  const loadAccountScopes = useCallback(async () => {
+    if (!userId) return
+    try {
+      const db = await getFirestoreClient()
+      const snapshot = await getDocs(collection(db, 'users', userId, 'calendarAccounts'))
+      const scopes = new Map<string, string>()
+      for (const doc of snapshot.docs) {
+        const data = doc.data()
+        if (data.grantedScopes) {
+          scopes.set(doc.id, data.grantedScopes)
+        }
+      }
+      setAccountScopes(scopes)
+    } catch {
+      // Non-critical — button still works without scope info
+    }
+  }, [userId])
+
+  useEffect(() => {
+    if (!userId) return
+    void loadAccountScopes()
+  }, [userId, loadAccountScopes])
 
   const updateCalendar = useCallback(
     async (calendarId: string, patch: Partial<CanonicalCalendar>) => {
@@ -118,6 +152,29 @@ export function CalendarSettingsPanel() {
     try {
       // Generate a unique account ID based on timestamp
       const accountId = `account_${Date.now()}`
+      const response = await authenticatedFetch(
+        functionUrl(`googleAuthStart?uid=${userId}&accountId=${accountId}`)
+      )
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.error ?? 'Unable to start OAuth flow')
+      }
+      const { url } = await response.json()
+      if (typeof url === 'string' && typeof window !== 'undefined') {
+        window.location.assign(url)
+      }
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  const getMissingScopes = (accountId: string): string[] => {
+    const granted = accountScopes.get(accountId) ?? ''
+    return REQUIRED_SCOPES.filter((scope) => !granted.includes(scope))
+  }
+
+  const handleRefreshPermissions = async (accountId: string) => {
+    try {
       const response = await authenticatedFetch(
         functionUrl(`googleAuthStart?uid=${userId}&accountId=${accountId}`)
       )
@@ -257,12 +314,28 @@ export function CalendarSettingsPanel() {
                   <h3>{accountId === 'primary' ? 'Primary Account' : accountId}</h3>
                   <p className="calendar-settings__meta">{accountCalendars.length} calendars</p>
                 </div>
-                <button
-                  className="ghost-button danger"
-                  onClick={() => handleDisconnectAccount(accountId)}
-                >
-                  Disconnect Account
-                </button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {getMissingScopes(accountId).length > 0 && (
+                    <span
+                      className="calendar-settings__meta"
+                      style={{ color: 'var(--warning)', fontSize: '0.75rem' }}
+                    >
+                      Missing Drive/Gmail permissions
+                    </span>
+                  )}
+                  <button
+                    className="ghost-button"
+                    onClick={() => handleRefreshPermissions(accountId)}
+                  >
+                    Refresh Permissions
+                  </button>
+                  <button
+                    className="ghost-button danger"
+                    onClick={() => handleDisconnectAccount(accountId)}
+                  >
+                    Disconnect Account
+                  </button>
+                </div>
               </div>
 
               {accountCalendars.map((calendar) => {

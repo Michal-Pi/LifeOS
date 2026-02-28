@@ -16,11 +16,14 @@ import type {
   ExecutionMode,
   ModelProvider,
   RunId,
-  WorkspaceId,
+  WorkflowId,
 } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 
+import { createLogger } from '../lib/logger.js'
 import type { ProviderKeys } from './providerService.js'
+
+const log = createLogger('ExpertCouncil')
 import { executeWithProvider, executeWithProviderStreaming } from './providerService.js'
 import type { RunEventWriter } from './runEvents.js'
 
@@ -77,7 +80,7 @@ export function buildExpertCouncilContextHash(
     }
     return hashString(serialized)
   } catch (error) {
-    console.warn('Unable to hash Expert Council context.', error)
+    log.warn('Unable to hash context', { error })
     return undefined
   }
 }
@@ -266,15 +269,15 @@ export function createExpertCouncilPipeline(params: {
   apiKeys: ProviderKeys
   context?: Record<string, unknown>
   eventWriter?: RunEventWriter
-  workspaceId?: string
+  workflowId?: string
 }): ExpertCouncilPipeline {
-  const { apiKeys, context, eventWriter, workspaceId } = params
+  const { apiKeys, context, eventWriter, workflowId } = params
 
   const writeStatus = async (status: string): Promise<void> => {
     if (!eventWriter) return
     await eventWriter.writeEvent({
       type: 'status',
-      workspaceId,
+      workflowId,
       status,
     })
   }
@@ -574,7 +577,7 @@ export function createExpertCouncilPipeline(params: {
             estimatedCost: result.estimatedCost,
             timestampMs: Date.now(),
           }
-        } catch (error) {
+        } catch {
           retryCount = 1
           await delay(5000)
           try {
@@ -641,9 +644,9 @@ export function createExpertCouncilPipeline(params: {
 export function createExpertCouncilRepository(): ExpertCouncilRepository {
   const db = getFirestore()
 
-  const defaultAnalytics = (userId: string, workspaceId: WorkspaceId): CouncilAnalytics => ({
+  const defaultAnalytics = (userId: string, workflowId: WorkflowId): CouncilAnalytics => ({
     userId,
-    workspaceId,
+    workflowId,
     totalTurns: 0,
     turnsByMode: { full: 0, quick: 0, single: 0, custom: 0 },
     cacheHitRate: 0,
@@ -724,11 +727,11 @@ export function createExpertCouncilRepository(): ExpertCouncilRepository {
       await db.collection(`users/${userId}/councilCache`).doc(cacheKey).delete()
     },
 
-    async getAnalytics(userId: string, workspaceId: WorkspaceId): Promise<CouncilAnalytics> {
-      const analyticsRef = db.doc(`users/${userId}/councilAnalytics/${workspaceId}`)
+    async getAnalytics(userId: string, workflowId: WorkflowId): Promise<CouncilAnalytics> {
+      const analyticsRef = db.doc(`users/${userId}/councilAnalytics/${workflowId}`)
       const snapshot = await analyticsRef.get()
       if (!snapshot.exists) {
-        return defaultAnalytics(userId, workspaceId)
+        return defaultAnalytics(userId, workflowId)
       }
       return snapshot.data() as CouncilAnalytics
     },

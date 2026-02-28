@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   AgentConfigSchema,
   CreateAgentInputSchema,
-  WorkspaceSchema,
-  CreateWorkspaceInputSchema,
+  WorkflowSchema,
   RunSchema,
   MessageSchema,
   ToolDefinitionSchema,
@@ -105,12 +104,12 @@ describe('validation schemas', () => {
     })
   })
 
-  describe('WorkspaceSchema', () => {
-    it('validates valid workspace', () => {
-      const validWorkspace = {
-        workspaceId: 'workspace:123',
+  describe('WorkflowSchema', () => {
+    it('validates valid workflow', () => {
+      const validWorkflow = {
+        workflowId: 'workflow:123',
         userId: 'user123',
-        name: 'Test Workspace',
+        name: 'Test Workflow',
         agentIds: ['agent:123'],
         workflowType: 'sequential',
         archived: false,
@@ -120,18 +119,18 @@ describe('validation schemas', () => {
         version: 1,
       }
 
-      const result = WorkspaceSchema.safeParse(validWorkspace)
+      const result = WorkflowSchema.safeParse(validWorkflow)
       expect(result.success).toBe(true)
     })
 
-    it('rejects workspace with invalid max iterations', () => {
-      const invalidWorkspace = {
-        workspaceId: 'workspace:123',
+    it('rejects workflow with invalid max iterations', () => {
+      const invalidWorkflow = {
+        workflowId: 'workflow:123',
         userId: 'user123',
-        name: 'Test Workspace',
+        name: 'Test Workflow',
         agentIds: ['agent:123'],
         workflowType: 'sequential',
-        maxIterations: 100, // Too high!
+        maxIterations: 300, // Too high!
         archived: false,
         createdAtMs: Date.now(),
         updatedAtMs: Date.now(),
@@ -139,7 +138,7 @@ describe('validation schemas', () => {
         version: 1,
       }
 
-      const result = WorkspaceSchema.safeParse(invalidWorkspace)
+      const result = WorkflowSchema.safeParse(invalidWorkflow)
       expect(result.success).toBe(false)
     })
   })
@@ -148,7 +147,7 @@ describe('validation schemas', () => {
     it('validates valid run', () => {
       const validRun = {
         runId: 'run:123',
-        workspaceId: 'workspace:123',
+        workflowId: 'workflow:123',
         userId: 'user123',
         goal: 'Create a workout plan',
         status: 'completed',
@@ -168,7 +167,7 @@ describe('validation schemas', () => {
     it('rejects run with empty goal', () => {
       const invalidRun = {
         runId: 'run:123',
-        workspaceId: 'workspace:123',
+        workflowId: 'workflow:123',
         userId: 'user123',
         goal: '', // Empty!
         status: 'completed',

@@ -101,12 +101,12 @@ export function wrapError(error: unknown, operation: string): AgentError {
     return error
   }
 
-  const err = error as any
-  const message = err?.message || String(error)
+  const err = error as Record<string, unknown>
+  const message = error instanceof Error ? error.message : String(error)
 
   // Network errors
   if (
-    err?.code &&
+    typeof err?.code === 'string' &&
     ['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNRESET', 'EPIPE'].includes(err.code)
   ) {
     return new AgentError(
@@ -219,7 +219,7 @@ export const TIMEOUTS = {
   // Tool execution timeouts (per tool type)
   TOOL: {
     default: 30000, // 30 seconds
-    web_search: 15000, // 15 seconds (faster timeout for web searches)
+    serp_search: 15000, // 15 seconds (web search via Serper)
     query_firestore: 10000, // 10 seconds
     list_calendar_events: 10000,
     create_calendar_event: 10000,
@@ -228,6 +228,14 @@ export const TIMEOUTS = {
     read_note: 10000,
     calculate: 5000, // 5 seconds (simple calculations)
     get_current_time: 5000,
+    parse_pdf: 60000, // 60 seconds (large PDFs)
+    create_topic: 10000,
+    create_todo: 10000,
+    list_todos: 10000,
+    search_google_drive: 15000,
+    download_google_drive_file: 60000, // 60 seconds (large files)
+    list_gmail_messages: 15000,
+    read_gmail_message: 15000,
   },
 
   // Provider API call timeout
@@ -244,7 +252,7 @@ export const TIMEOUTS = {
  * @returns Timeout in milliseconds
  */
 export function getToolTimeout(toolName: string): number {
-  return (TIMEOUTS.TOOL as any)[toolName] || TIMEOUTS.TOOL.default
+  return (TIMEOUTS.TOOL as Record<string, number>)[toolName] || TIMEOUTS.TOOL.default
 }
 
 /**
@@ -266,14 +274,14 @@ export const ERROR_MESSAGES = {
     userMessage: `${provider} is not configured. Please add API key in settings.`,
   }),
 
-  WORKSPACE_NOT_FOUND: (workspaceId: string) => ({
-    message: `Workspace ${workspaceId} not found`,
-    userMessage: 'Workspace not found. It may have been deleted.',
+  WORKFLOW_NOT_FOUND: (workflowId: string) => ({
+    message: `Workflow ${workflowId} not found`,
+    userMessage: 'Workflow not found. It may have been deleted.',
   }),
 
   NO_AGENTS_CONFIGURED: () => ({
-    message: 'No agents configured in workspace',
-    userMessage: 'No agents found. Please add at least one agent to the workspace.',
+    message: 'No agents configured in workflow',
+    userMessage: 'No agents found. Please add at least one agent to the workflow.',
   }),
 
   INVALID_WORKFLOW_TYPE: (workflowType: string) => ({

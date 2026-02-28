@@ -12,10 +12,14 @@ import { NoteGraphView } from '@/components/notes/NoteGraphView'
 import { GraphSearch } from '@/components/notes/GraphSearch'
 import { GraphStats } from '@/components/notes/GraphStats'
 import type { GraphFilters } from '@lifeos/notes'
+import '@/styles/pages/NoteGraphPage.css'
 
 export function NoteGraphPage() {
   const navigate = useNavigate()
-  const [filters, setFilters] = useState<GraphFilters>({})
+  const [filters, setFilters] = useState<GraphFilters>({
+    minSharedTags: 1, // Default to 1 for better tag-based connections
+    minSharedProjects: 2,
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedNoteIds, setExpandedNoteIds] = useState<Set<string>>(new Set())
   const { graph, isLoading, error } = useNoteGraph(filters)
@@ -131,6 +135,44 @@ export function NoteGraphPage() {
                     Include orphan notes
                   </label>
                 </div>
+                <div className="note-graph-page__filter-group">
+                  <label htmlFor="min-shared-tags">Min shared tags:</label>
+                  <select
+                    id="min-shared-tags"
+                    value={filters.minSharedTags ?? 1}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        minSharedTags: parseInt(e.target.value, 10),
+                      }))
+                    }
+                    className="note-graph-page__filter-select"
+                  >
+                    <option value="0">Off</option>
+                    <option value="1">1 tag</option>
+                    <option value="2">2 tags</option>
+                    <option value="3">3 tags</option>
+                  </select>
+                </div>
+                <div className="note-graph-page__filter-group">
+                  <label htmlFor="min-shared-projects">Min shared projects:</label>
+                  <select
+                    id="min-shared-projects"
+                    value={filters.minSharedProjects ?? 2}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        minSharedProjects: parseInt(e.target.value, 10),
+                      }))
+                    }
+                    className="note-graph-page__filter-select"
+                  >
+                    <option value="0">Off</option>
+                    <option value="1">1 project</option>
+                    <option value="2">2 projects</option>
+                    <option value="3">3 projects</option>
+                  </select>
+                </div>
               </div>
               {graph && (
                 <GraphSearch
@@ -156,20 +198,24 @@ export function NoteGraphPage() {
                   />
                   <span>Mentions</span>
                 </div>
-                <div className="note-graph-page__legend-item">
-                  <span
-                    className="note-graph-page__legend-color"
-                    style={{ backgroundColor: 'var(--info)' }}
-                  />
-                  <span>Shared Projects (≥2)</span>
-                </div>
-                <div className="note-graph-page__legend-item">
-                  <span
-                    className="note-graph-page__legend-color"
-                    style={{ backgroundColor: 'var(--warning)' }}
-                  />
-                  <span>Shared Tags (≥2)</span>
-                </div>
+                {(filters.minSharedProjects ?? 2) > 0 && (
+                  <div className="note-graph-page__legend-item">
+                    <span
+                      className="note-graph-page__legend-color"
+                      style={{ backgroundColor: 'var(--info)' }}
+                    />
+                    <span>Shared Projects (≥{filters.minSharedProjects ?? 2})</span>
+                  </div>
+                )}
+                {(filters.minSharedTags ?? 1) > 0 && (
+                  <div className="note-graph-page__legend-item">
+                    <span
+                      className="note-graph-page__legend-color"
+                      style={{ backgroundColor: 'var(--warning)' }}
+                    />
+                    <span>Shared Tags (≥{filters.minSharedTags ?? 1})</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="note-graph-page__graph">
@@ -182,130 +228,6 @@ export function NoteGraphPage() {
           </>
         )}
       </div>
-
-      <style>{`
-        .note-graph-page {
-          height: 100vh;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          background: var(--background);
-        }
-        .note-graph-page__header {
-          flex-shrink: 0;
-          padding: 1.5rem 2rem;
-          border-bottom: 1px solid var(--border);
-          background: var(--card);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 1rem;
-        }
-        .note-graph-page__header h1 {
-          margin: 0;
-          font-size: 1.5rem;
-          font-weight: 600;
-          color: var(--foreground);
-        }
-        .note-graph-page__controls {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-        .note-graph-page__back-button {
-          padding: 0.5rem 1rem;
-          background: var(--accent);
-          color: var(--accent-foreground);
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 0.875rem;
-          font-weight: 500;
-        }
-        .note-graph-page__back-button:hover {
-          opacity: 0.9;
-        }
-        .note-graph-page__content {
-          flex: 1;
-          display: grid;
-          grid-template-columns: 280px 1fr;
-          overflow: hidden;
-        }
-        .note-graph-page__sidebar {
-          border-right: 1px solid var(--border);
-          padding: 1.5rem;
-          overflow-y: auto;
-          background: var(--card);
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-        .note-graph-page__filters h3 {
-          margin: 0 0 0.75rem 0;
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: var(--foreground);
-        }
-        .note-graph-page__filter-group {
-          margin-bottom: 0.75rem;
-          font-size: 0.8125rem;
-        }
-        .note-graph-page__filter-group label {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: var(--muted-foreground);
-          cursor: pointer;
-        }
-        .note-graph-page__filter-select {
-          width: 100%;
-          padding: 0.5rem;
-          border: 1px solid var(--border);
-          border-radius: 6px;
-          font-size: 0.8125rem;
-          margin-top: 0.25rem;
-        }
-        .note-graph-page__legend {
-          margin-top: 1.5rem;
-          padding-top: 1.5rem;
-          border-top: 1px solid var(--border);
-        }
-        .note-graph-page__legend h4 {
-          margin: 0 0 0.75rem 0;
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: var(--foreground);
-        }
-        .note-graph-page__legend-item {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 0.5rem;
-          font-size: 0.8125rem;
-          color: var(--muted-foreground);
-        }
-        .note-graph-page__legend-color {
-          width: 12px;
-          height: 12px;
-          border-radius: 2px;
-        }
-        .note-graph-page__graph {
-          overflow: hidden;
-          background: var(--background);
-        }
-        .note-graph-page__loading,
-        .note-graph-page__error {
-          grid-column: 1 / -1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 2rem;
-          color: var(--muted-foreground);
-        }
-        .note-graph-page__error {
-          color: var(--error);
-        }
-      `}</style>
     </div>
   )
 }

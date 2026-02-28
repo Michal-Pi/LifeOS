@@ -32,20 +32,20 @@
 }
 
 .supervisor-preview__name {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   fill: var(--foreground);
 }
 
 .supervisor-preview__role {
-  font-size: 9px;
+  font-size: var(--text-xs);
   font-weight: 600;
   fill: var(--muted-foreground);
   letter-spacing: 0.05em;
 }
 
 .supervisor-preview__tools {
-  font-size: 8px;
+  font-size: var(--text-xs);
   fill: var(--muted-foreground);
   font-style: italic;
 }
@@ -53,6 +53,6 @@
 .supervisor-preview__empty {
   text-align: center;
   color: var(--muted-foreground);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   padding: 1.5rem 1rem;
 }

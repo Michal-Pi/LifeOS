@@ -17,7 +17,7 @@ import type {
   Run,
   RunId,
   CreateRunInput,
-  WorkspaceId,
+  WorkflowId,
   RunStatus,
 } from '@lifeos/agents'
 
@@ -38,7 +38,7 @@ export const createFirestoreRunRepository = (): RunRepository => {
         version: 1,
       }
 
-      const runDoc = doc(db, `users/${userId}/workspaces/${input.workspaceId}/runs/${runId}`)
+      const runDoc = doc(db, `users/${userId}/workflows/${input.workflowId}/runs/${runId}`)
       await setDoc(runDoc, run)
 
       return run
@@ -47,16 +47,16 @@ export const createFirestoreRunRepository = (): RunRepository => {
     async update(
       userId: string,
       runId: RunId,
-      updates: Partial<Omit<Run, 'runId' | 'userId' | 'workspaceId'>>
+      updates: Partial<Omit<Run, 'runId' | 'userId' | 'workflowId'>>
     ): Promise<Run> {
       const db = await getDb()
 
-      // Find the run across all workspaces
-      const workspacesCol = collection(db, `users/${userId}/workspaces`)
-      const workspacesSnapshot = await getDocs(workspacesCol)
+      // Find the run across all workflows
+      const workflowsCol = collection(db, `users/${userId}/workflows`)
+      const workflowsSnapshot = await getDocs(workflowsCol)
 
-      for (const workspaceDoc of workspacesSnapshot.docs) {
-        const runDoc = doc(db, `users/${userId}/workspaces/${workspaceDoc.id}/runs/${runId}`)
+      for (const workflowDoc of workflowsSnapshot.docs) {
+        const runDoc = doc(db, `users/${userId}/workflows/${workflowDoc.id}/runs/${runId}`)
         const existing = await getDoc(runDoc)
 
         if (existing.exists()) {
@@ -78,12 +78,12 @@ export const createFirestoreRunRepository = (): RunRepository => {
     async get(userId: string, runId: RunId): Promise<Run | null> {
       const db = await getDb()
 
-      // Find the run across all workspaces
-      const workspacesCol = collection(db, `users/${userId}/workspaces`)
-      const workspacesSnapshot = await getDocs(workspacesCol)
+      // Find the run across all workflows
+      const workflowsCol = collection(db, `users/${userId}/workflows`)
+      const workflowsSnapshot = await getDocs(workflowsCol)
 
-      for (const workspaceDoc of workspacesSnapshot.docs) {
-        const runDoc = doc(db, `users/${userId}/workspaces/${workspaceDoc.id}/runs/${runId}`)
+      for (const workflowDoc of workflowsSnapshot.docs) {
+        const runDoc = doc(db, `users/${userId}/workflows/${workflowDoc.id}/runs/${runId}`)
         const snapshot = await getDoc(runDoc)
 
         if (snapshot.exists()) {
@@ -97,7 +97,7 @@ export const createFirestoreRunRepository = (): RunRepository => {
     async list(
       userId: string,
       options?: {
-        workspaceId?: WorkspaceId
+        workflowId?: WorkflowId
         status?: RunStatus
         limit?: number
       }
@@ -105,9 +105,9 @@ export const createFirestoreRunRepository = (): RunRepository => {
       const db = await getDb()
       const runs: Run[] = []
 
-      if (options?.workspaceId) {
-        // List runs for specific workspace
-        const runsCol = collection(db, `users/${userId}/workspaces/${options.workspaceId}/runs`)
+      if (options?.workflowId) {
+        // List runs for specific workflow
+        const runsCol = collection(db, `users/${userId}/workflows/${options.workflowId}/runs`)
         let q = query(runsCol, orderBy('startedAtMs', 'desc'))
 
         if (options.status) {
@@ -121,12 +121,12 @@ export const createFirestoreRunRepository = (): RunRepository => {
         const snapshot = await getDocs(q)
         runs.push(...snapshot.docs.map((doc) => doc.data() as Run))
       } else {
-        // List runs across all workspaces
-        const workspacesCol = collection(db, `users/${userId}/workspaces`)
-        const workspacesSnapshot = await getDocs(workspacesCol)
+        // List runs across all workflows
+        const workflowsCol = collection(db, `users/${userId}/workflows`)
+        const workflowsSnapshot = await getDocs(workflowsCol)
 
-        for (const workspaceDoc of workspacesSnapshot.docs) {
-          const runsCol = collection(db, `users/${userId}/workspaces/${workspaceDoc.id}/runs`)
+        for (const workflowDoc of workflowsSnapshot.docs) {
+          const runsCol = collection(db, `users/${userId}/workflows/${workflowDoc.id}/runs`)
           let q = query(runsCol, orderBy('startedAtMs', 'desc'))
 
           if (options?.status) {
@@ -156,12 +156,12 @@ export const createFirestoreRunRepository = (): RunRepository => {
     async delete(userId: string, runId: RunId): Promise<void> {
       const db = await getDb()
 
-      // Find and delete the run across all workspaces
-      const workspacesCol = collection(db, `users/${userId}/workspaces`)
-      const workspacesSnapshot = await getDocs(workspacesCol)
+      // Find and delete the run across all workflows
+      const workflowsCol = collection(db, `users/${userId}/workflows`)
+      const workflowsSnapshot = await getDocs(workflowsCol)
 
-      for (const workspaceDoc of workspacesSnapshot.docs) {
-        const runDoc = doc(db, `users/${userId}/workspaces/${workspaceDoc.id}/runs/${runId}`)
+      for (const workflowDoc of workflowsSnapshot.docs) {
+        const runDoc = doc(db, `users/${userId}/workflows/${workflowDoc.id}/runs/${runId}`)
         const existing = await getDoc(runDoc)
 
         if (existing.exists()) {

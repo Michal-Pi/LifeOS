@@ -5,7 +5,6 @@ import type {
   HabitDomain,
   HabitStatus,
   CheckinStatus,
-  HabitAnchor,
   TimeWindowAnchor,
   AfterEventAnchor,
 } from '../models'

@@ -1,21 +1,45 @@
 import { NavLink } from 'react-router-dom'
 import { GlobalSearch } from './GlobalSearch'
+import { useMessageMailbox } from '@/hooks/useMessageMailbox'
 
-const primaryLinks = [
-  { to: '/today', label: 'Today' },
-  { to: '/calendar', label: 'Calendar' },
-  { to: '/planner', label: 'Planner' },
-  { to: '/notes', label: 'Notes' },
-  { to: '/habits', label: 'Habits' },
-  { to: '/workspaces', label: 'Workspaces' },
-]
+interface NavGroup {
+  label: string
+  links: Array<{ to: string; label: string }>
+}
 
-const secondaryLinks = [
-  { to: '/agents', label: 'Agents' },
-  { to: '/review', label: 'Review' },
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: 'Daily',
+    links: [
+      { to: '/today', label: 'Today' },
+      { to: '/calendar', label: 'Calendar' },
+    ],
+  },
+  {
+    label: 'Organize',
+    links: [
+      { to: '/planner', label: 'Planner' },
+      { to: '/notes', label: 'Notes' },
+      { to: '/people', label: 'People' },
+    ],
+  },
+  {
+    label: 'Communicate',
+    links: [{ to: '/mailbox', label: 'Mailbox' }],
+  },
+  {
+    label: 'Automate',
+    links: [
+      { to: '/workflows', label: 'Workflows' },
+      { to: '/agents', label: 'Agents' },
+    ],
+  },
 ]
 
 export function TopNav() {
+  const { messages } = useMessageMailbox({ autoSync: false, maxMessages: 50 })
+  const unreadCount = messages.filter((m) => !m.isRead && !m.isDismissed).length
+
   return (
     <header className="top-nav">
       <div className="top-nav__inner">
@@ -24,16 +48,24 @@ export function TopNav() {
         </div>
 
         <nav className="top-nav__links">
-          {primaryLinks.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) =>
-                `top-nav__link${isActive ? ' top-nav__link--active' : ''}`
-              }
-            >
-              {link.label}
-            </NavLink>
+          {NAV_GROUPS.map((group, groupIndex) => (
+            <div key={group.label} className="top-nav__group">
+              {groupIndex > 0 && <span className="top-nav__separator" />}
+              {group.links.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  className={({ isActive }) =>
+                    `top-nav__link${isActive ? ' top-nav__link--active' : ''}`
+                  }
+                >
+                  {link.label}
+                  {link.to === '/mailbox' && unreadCount > 0 && (
+                    <span className="top-nav__badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                  )}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
 
@@ -42,17 +74,6 @@ export function TopNav() {
         </div>
 
         <div className="top-nav__actions">
-          {secondaryLinks.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) =>
-                `top-nav__link${isActive ? ' top-nav__link--active' : ''}`
-              }
-            >
-              {link.label}
-            </NavLink>
-          ))}
           <NavLink
             to="/settings"
             className={({ isActive }) => `top-nav__link${isActive ? ' top-nav__link--active' : ''}`}

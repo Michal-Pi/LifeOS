@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore'
 import { getFirestoreClient } from '@/lib/firebase'
 import { useAuth } from './useAuth'
-import type { DeepResearchRequest, DeepResearchSource, Run, WorkspaceId } from '@lifeos/agents'
+import type { DeepResearchRequest, DeepResearchSource, Run, WorkflowId } from '@lifeos/agents'
 import {
   createResearchResult,
   synthesizeResearchFindings,
@@ -40,28 +40,28 @@ export type UseDeepResearchReturn = {
   synthesizeRequest: (request: DeepResearchRequest) => Promise<void>
   updateRequest: (
     request: DeepResearchRequest,
-    updates: Partial<Omit<DeepResearchRequest, 'requestId' | 'workspaceId' | 'userId'>>
+    updates: Partial<Omit<DeepResearchRequest, 'requestId' | 'workflowId' | 'userId'>>
   ) => Promise<void>
 }
 
-export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResearchReturn {
+export function useDeepResearch(workflowId?: WorkflowId | null): UseDeepResearchReturn {
   const { user } = useAuth()
   const [requestState, setRequestState] = useState<{
     key: string | null
     requests: DeepResearchRequest[]
   }>({ key: null, requests: [] })
   const [error, setError] = useState<Error | null>(null)
-  const activeKey = user && workspaceId ? `${user.uid}:${workspaceId}` : null
+  const activeKey = user && workflowId ? `${user.uid}:${workflowId}` : null
 
   useEffect(() => {
-    if (!user || !workspaceId || !activeKey) {
+    if (!user || !workflowId || !activeKey) {
       return
     }
 
     const db = getFirestoreClient()
     const requestsRef = collection(
       db,
-      `users/${user.uid}/workspaces/${workspaceId}/deepResearchRequests`
+      `users/${user.uid}/workflows/${workflowId}/deepResearchRequests`
     )
     const q = query(requestsRef, orderBy('createdAtMs', 'desc'))
 
@@ -80,18 +80,18 @@ export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResear
     )
 
     return () => unsubscribe()
-  }, [activeKey, user, workspaceId])
+  }, [activeKey, user, workflowId])
 
   const updateRequest = useCallback(
     async (
       request: DeepResearchRequest,
-      updates: Partial<Omit<DeepResearchRequest, 'requestId' | 'workspaceId' | 'userId'>>
+      updates: Partial<Omit<DeepResearchRequest, 'requestId' | 'workflowId' | 'userId'>>
     ) => {
       if (!user) return
       const db = getFirestoreClient()
       const docRef = doc(
         db,
-        `users/${user.uid}/workspaces/${request.workspaceId}/deepResearchRequests/${request.requestId}`
+        `users/${user.uid}/workflows/${request.workflowId}/deepResearchRequests/${request.requestId}`
       )
       await updateDoc(docRef, updates)
     },
@@ -115,7 +115,7 @@ export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResear
       })
       const requestDoc = doc(
         db,
-        `users/${user.uid}/workspaces/${request.workspaceId}/deepResearchRequests/${request.requestId}`
+        `users/${user.uid}/workflows/${request.workflowId}/deepResearchRequests/${request.requestId}`
       )
 
       await updateDoc(requestDoc, {
@@ -157,7 +157,7 @@ export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResear
       if (shouldComplete) {
         const runRef = doc(
           db,
-          `users/${user.uid}/workspaces/${request.workspaceId}/runs/${request.runId}`
+          `users/${user.uid}/workflows/${request.workflowId}/runs/${request.runId}`
         )
         const runSnap = await getDoc(runRef)
         if (runSnap.exists()) {
@@ -243,7 +243,7 @@ export function useDeepResearch(workspaceId?: WorkspaceId | null): UseDeepResear
       const db = getFirestoreClient()
       const docRef = doc(
         db,
-        `users/${user.uid}/workspaces/${request.workspaceId}/deepResearchRequests/${request.requestId}`
+        `users/${user.uid}/workflows/${request.workflowId}/deepResearchRequests/${request.requestId}`
       )
       await updateDoc(docRef, {
         synthesizedFindings,

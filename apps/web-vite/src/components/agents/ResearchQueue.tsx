@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { DeepResearchRequest, DeepResearchSource, WorkspaceId } from '@lifeos/agents'
+import type { DeepResearchRequest, DeepResearchSource, WorkflowId } from '@lifeos/agents'
 import { toast } from 'sonner'
 import { useDeepResearch } from '@/hooks/useDeepResearch'
 import {
@@ -15,7 +15,7 @@ import { ResearchUploadModal } from './ResearchUploadModal'
 import styles from './ResearchQueue.module.css'
 
 interface ResearchQueueProps {
-  workspaceId: WorkspaceId
+  workflowId: WorkflowId
 }
 
 const formatStatus = (status: DeepResearchRequest['status']) =>
@@ -33,9 +33,9 @@ const STATUS_FILTER_OPTIONS: SelectOption[] = [
   { value: 'cancelled', label: 'Cancelled' },
 ]
 
-export function ResearchQueue({ workspaceId }: ResearchQueueProps) {
+export function ResearchQueue({ workflowId }: ResearchQueueProps) {
   const { requests, isLoading, uploadResults, updateRequest, synthesizeRequest } =
-    useDeepResearch(workspaceId)
+    useDeepResearch(workflowId)
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | DeepResearchRequest['status']>('all')
   const [search, setSearch] = useState('')

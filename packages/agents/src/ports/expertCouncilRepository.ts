@@ -1,4 +1,4 @@
-import type { ExpertCouncilTurn, RunId, WorkspaceId, CouncilAnalytics } from '../domain/models'
+import type { ExpertCouncilTurn, RunId, WorkflowId, CouncilAnalytics } from '../domain/models'
 
 export interface ExpertCouncilRepository {
   // Turn management
@@ -17,7 +17,7 @@ export interface ExpertCouncilRepository {
   invalidateCache(userId: string, cacheKey: string): Promise<void>
 
   // Analytics
-  getAnalytics(userId: string, workspaceId: WorkspaceId): Promise<CouncilAnalytics>
+  getAnalytics(userId: string, workflowId: WorkflowId): Promise<CouncilAnalytics>
   recordFeedback(
     userId: string,
     runId: RunId,

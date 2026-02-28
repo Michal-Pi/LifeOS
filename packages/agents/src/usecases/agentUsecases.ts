@@ -5,7 +5,6 @@
  * Independent of UI framework and data layer.
  */
 
-import { newId } from '@lifeos/core'
 import type { AgentRepository } from '../ports/agentRepository'
 import type {
   AgentConfig,

@@ -238,7 +238,7 @@ export function validateInterventionStep(step: InterventionStep): ValidationResu
       break
 
     default:
-      errors.push(`Unknown step kind: ${(step as any).kind}`)
+      errors.push(`Unknown step kind: ${(step as Record<string, unknown>).kind}`)
   }
 
   return {

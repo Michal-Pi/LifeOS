@@ -303,7 +303,11 @@ ${contact.notes ? `**Notes:** ${contact.notes}` : ''}
 - Total interactions: ${interactions.length}
 - Last 30 days: ${last30}
 - Last 90 days: ${last90}
-- By type: ${Object.entries(typeCounts).map(([t, c]) => `${t}: ${c}`).join(', ') || 'none'}
+- By type: ${
+      Object.entries(typeCounts)
+        .map(([t, c]) => `${t}: ${c}`)
+        .join(', ') || 'none'
+    }
 - Last interaction: ${contact.lastInteractionMs ? new Date(contact.lastInteractionMs).toLocaleDateString() : 'never'}
 - Contact created: ${new Date(contact.createdAtMs).toLocaleDateString()}
 

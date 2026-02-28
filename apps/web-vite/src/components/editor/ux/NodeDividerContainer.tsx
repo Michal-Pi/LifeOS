@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import type { Editor } from '@tiptap/react'
 import { NodeDivider } from './NodeDivider'
 import { BlockMenu } from './BlockMenu'
@@ -30,6 +31,8 @@ export function NodeDividerContainer({ editor }: NodeDividerContainerProps) {
   } | null>(null)
   const lastHoverPositionRef = useRef<number | null>(null)
   const hoverLockRef = useRef(false)
+  const clearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
 
   // Update nodes when editor content changes
   useEffect(() => {
@@ -48,27 +51,52 @@ export function NodeDividerContainer({ editor }: NodeDividerContainerProps) {
 
   useEffect(() => {
     const view = editor.view
-    const container = view.dom.closest('.editor-content-wrapper') as HTMLElement | null
-    if (!container) return
+    const contentWrapper = view.dom.closest('.editor-content-wrapper') as HTMLElement | null
+    if (!contentWrapper) return
+    // .editor-wrapper is the outer container whose left padding forms the
+    // gutter between the sidebar and the article content. We attach mouse
+    // listeners there so the gutter is included in hover tracking, and we
+    // portal the hover button into it so it isn't clipped by inner overflow.
+    const outerWrapper = contentWrapper.closest('.editor-wrapper') as HTMLElement | null
+    const hoverTarget = outerWrapper || contentWrapper
+    queueMicrotask(() => setPortalTarget(outerWrapper))
+
+    const cancelPendingClear = () => {
+      if (clearTimeoutRef.current) {
+        clearTimeout(clearTimeoutRef.current)
+        clearTimeoutRef.current = null
+      }
+    }
 
     const clearHover = () => {
       if (hoverLockRef.current) return
-      lastHoverPositionRef.current = null
-      setHoverButton(null)
+      cancelPendingClear()
+      clearTimeoutRef.current = setTimeout(() => {
+        if (!hoverLockRef.current) {
+          lastHoverPositionRef.current = null
+          setHoverButton(null)
+        }
+        clearTimeoutRef.current = null
+      }, 400)
     }
 
     const handleMouseMove = (event: MouseEvent) => {
+      // Don't update position while mouse is over the hover button
+      if (hoverLockRef.current) return
+
       const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })
       if (!pos) {
-        clearHover()
+        // Mouse is in the gutter area — keep the current hover button visible
         return
       }
 
       const nodeInfo = getTopLevelNodeAt(editor, pos.pos)
       if (!nodeInfo) {
-        clearHover()
         return
       }
+
+      // Valid node found — cancel any pending clear
+      cancelPendingClear()
 
       if (lastHoverPositionRef.current === nodeInfo.position) {
         return
@@ -76,24 +104,30 @@ export function NodeDividerContainer({ editor }: NodeDividerContainerProps) {
 
       try {
         const coords = view.coordsAtPos(nodeInfo.position)
-        const containerRect = view.dom.getBoundingClientRect()
+        const targetRect = hoverTarget.getBoundingClientRect()
         const lineHeight = Math.max(0, coords.bottom - coords.top)
-        const x = Math.max(8, coords.left - containerRect.left - 36)
-        const y = coords.top - containerRect.top + Math.max(0, (lineHeight - 24) / 2)
+        // Center the 24px button in the gutter (space between sidebar and article).
+        // The gutter = the left padding of .editor-wrapper (3rem ≈ 48px).
+        const gutterWidth = contentWrapper.getBoundingClientRect().left - targetRect.left
+        const x = Math.round((gutterWidth - 24) / 2)
+        const y =
+          coords.top - targetRect.top + hoverTarget.scrollTop + Math.max(0, (lineHeight - 24) / 2)
 
         lastHoverPositionRef.current = nodeInfo.position
         setHoverButton({ nodePosition: nodeInfo.position, x, y })
       } catch {
-        clearHover()
+        // ignore
       }
     }
 
-    container.addEventListener('mousemove', handleMouseMove)
-    container.addEventListener('mouseleave', clearHover)
+    hoverTarget.addEventListener('mousemove', handleMouseMove)
+    hoverTarget.addEventListener('mouseleave', clearHover)
 
     return () => {
-      container.removeEventListener('mousemove', handleMouseMove)
-      container.removeEventListener('mouseleave', clearHover)
+      hoverTarget.removeEventListener('mousemove', handleMouseMove)
+      hoverTarget.removeEventListener('mouseleave', clearHover)
+      queueMicrotask(() => setPortalTarget(null))
+      cancelPendingClear()
     }
   }, [editor])
 
@@ -148,39 +182,70 @@ export function NodeDividerContainer({ editor }: NodeDividerContainerProps) {
     }
   }
 
+  const hoverButtonRef = useRef<HTMLButtonElement>(null)
+
+  const hoverButtonEl = hoverButton && (
+    <button
+      ref={hoverButtonRef}
+      className="node-hover-button"
+      style={{ top: hoverButton.y, left: hoverButton.x }}
+      onClick={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        // Position the menu to the right of the button, vertically centered
+        const btn = hoverButtonRef.current
+        if (btn) {
+          const rect = btn.getBoundingClientRect()
+          setMenuState({
+            isOpen: true,
+            nodePosition: hoverButton.nodePosition,
+            position: {
+              x: rect.right + 4,
+              y: rect.top + rect.height / 2,
+            },
+          })
+        } else {
+          handleMenuOpen(hoverButton.nodePosition, event.nativeEvent)
+        }
+      }}
+      onMouseEnter={() => {
+        if (clearTimeoutRef.current) {
+          clearTimeout(clearTimeoutRef.current)
+          clearTimeoutRef.current = null
+        }
+        hoverLockRef.current = true
+      }}
+      onMouseLeave={() => {
+        hoverLockRef.current = false
+        lastHoverPositionRef.current = null
+        setHoverButton(null)
+      }}
+      title="Block menu"
+      type="button"
+    >
+      {/* 6-dot grip handle (2 columns × 3 rows) */}
+      <svg
+        width="10"
+        height="14"
+        viewBox="0 0 10 14"
+        fill="currentColor"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle cx="3" cy="2" r="1.25" />
+        <circle cx="7" cy="2" r="1.25" />
+        <circle cx="3" cy="7" r="1.25" />
+        <circle cx="7" cy="7" r="1.25" />
+        <circle cx="3" cy="12" r="1.25" />
+        <circle cx="7" cy="12" r="1.25" />
+      </svg>
+    </button>
+  )
+
   return (
     <>
-      {hoverButton && (
-        <button
-          className="node-hover-button"
-          style={{ top: hoverButton.y, left: hoverButton.x }}
-          onClick={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            handleMenuOpen(hoverButton.nodePosition, event.nativeEvent)
-          }}
-          onMouseEnter={() => {
-            hoverLockRef.current = true
-          }}
-          onMouseLeave={() => {
-            hoverLockRef.current = false
-            lastHoverPositionRef.current = null
-            setHoverButton(null)
-          }}
-          title="Block menu"
-          type="button"
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
-      )}
+      {/* Portal the hover button into .editor-wrapper so it sits in the
+          outer gutter and isn't clipped by inner overflow containers */}
+      {hoverButtonEl && (portalTarget ? createPortal(hoverButtonEl, portalTarget) : hoverButtonEl)}
       <div className="node-dividers-container">
         {topLevelNodes.map((nodeInfo, index) => {
           // Only show divider if not the last node
@@ -198,33 +263,34 @@ export function NodeDividerContainer({ editor }: NodeDividerContainerProps) {
             />
           )
         })}
-        {/* Add button after last node */}
-        {topLevelNodes.length > 0 && (
-          <div className="node-add-button-container">
-            <button
-              className="node-add-button"
-              onClick={handleInsertBlockAfterLast}
-              title="Add block"
-              type="button"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M8 3v10M3 8h10"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-          </div>
-        )}
       </div>
+      {/* Add button after last node — rendered outside the absolute overlay
+          so it participates in normal flow and can use sticky positioning */}
+      {topLevelNodes.length > 0 && (
+        <div className="node-add-button-container">
+          <button
+            className="node-add-button"
+            onClick={handleInsertBlockAfterLast}
+            title="Add block"
+            type="button"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M8 3v10M3 8h10"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
       {menuState && (
         <BlockMenu
           editor={editor}

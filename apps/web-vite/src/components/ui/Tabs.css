@@ -1,0 +1,44 @@
+.ui-tabs-list {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ui-tab {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--muted-foreground);
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+
+.ui-tab:hover {
+  color: var(--foreground);
+}
+
+.ui-tab--active {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.ui-tab--active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.ui-tab-panel {
+  outline: none;
+}

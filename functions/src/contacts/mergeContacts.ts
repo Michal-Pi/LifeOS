@@ -19,11 +19,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { firestore } from '../lib/firebase.js'
 import { createLogger } from '../lib/logger.js'
-import {
-  contactRef,
-  interactionsCollection,
-  contactEmailIndexRef,
-} from './paths.js'
+import { contactRef, interactionsCollection, contactEmailIndexRef } from './paths.js'
 import {
   normalizeEmail,
   computeNextFollowUp,

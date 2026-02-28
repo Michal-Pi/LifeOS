@@ -8,16 +8,16 @@ import type {
   Requirement,
   UserProfile,
 } from '../domain/projectManager'
-import type { WorkspaceId, RunId } from '../domain/models'
+import type { WorkflowId, RunId } from '../domain/models'
 
 export interface ProjectManagerRepository {
   createContext(
     userId: string,
-    workspaceId?: WorkspaceId,
+    workflowId?: WorkflowId,
     runId?: RunId
   ): Promise<ConversationContext>
   getContext(userId: string, contextId: ConversationContextId): Promise<ConversationContext | null>
-  getActiveContext(userId: string, workspaceId?: WorkspaceId): Promise<ConversationContext | null>
+  getActiveContext(userId: string, workflowId?: WorkflowId): Promise<ConversationContext | null>
   updateContext(
     userId: string,
     contextId: ConversationContextId,

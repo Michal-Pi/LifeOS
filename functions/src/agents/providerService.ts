@@ -81,9 +81,7 @@ export async function executeWithProvider(
           provider: 'anthropic',
         })
       }
-      const { createAnthropicClient, executeWithAnthropic } = await import(
-        './anthropicService.js'
-      )
+      const { createAnthropicClient, executeWithAnthropic } = await import('./anthropicService.js')
       const client = createAnthropicClient(apiKeys.anthropic)
       const result = await executeWithAnthropic(client, agent, goal, context, toolContext)
       return {
@@ -153,9 +151,7 @@ export async function executeWithProviderStreaming(
           provider: 'openai',
         })
       }
-      const { createOpenAIClient, executeWithOpenAIStreaming } = await import(
-        './openaiService.js'
-      )
+      const { createOpenAIClient, executeWithOpenAIStreaming } = await import('./openaiService.js')
       const client = createOpenAIClient(apiKeys.openai)
       const result = await executeWithOpenAIStreaming(
         client,
@@ -179,9 +175,8 @@ export async function executeWithProviderStreaming(
           provider: 'anthropic',
         })
       }
-      const { createAnthropicClient, executeWithAnthropicStreaming } = await import(
-        './anthropicService.js'
-      )
+      const { createAnthropicClient, executeWithAnthropicStreaming } =
+        await import('./anthropicService.js')
       const client = createAnthropicClient(apiKeys.anthropic)
       const result = await executeWithAnthropicStreaming(
         client,

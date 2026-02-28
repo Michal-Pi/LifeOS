@@ -1,61 +1,24 @@
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import js from '@eslint/js'
-import tsParser from '@typescript-eslint/parser'
-import tsPlugin from '@typescript-eslint/eslint-plugin'
-import importPlugin from 'eslint-plugin-import'
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+import tseslint from 'typescript-eslint'
 
-const projectPaths = [
-  path.resolve(__dirname, 'tsconfig.base.json'),
-  path.resolve(__dirname, 'apps/web-vite/tsconfig.json'),
-  path.resolve(__dirname, 'packages/core/tsconfig.json'),
-  path.resolve(__dirname, 'packages/platform-web/tsconfig.json'),
-  path.resolve(__dirname, 'packages/calendar/tsconfig.json'),
-  path.resolve(__dirname, 'packages/todos/tsconfig.json'),
-]
-
-const resolverSettings = {
-  'import/resolver': {
-    typescript: {
-      project: projectPaths,
-    },
-  },
-}
-
-const languageOptions = {
-  parser: tsParser,
-  parserOptions: {
-    project: projectPaths,
-    tsconfigRootDir: __dirname,
-    sourceType: 'module',
-  },
-}
-
-export default [
+export default tseslint.config(
   {
     ignores: [
       '**/node_modules/**',
       '**/.next/**',
       '**/.turbo/**',
       '**/dist/**',
+      '**/lib/**',
       'out',
       'apps/web-vite/out',
+      'functions/vendor/**',
     ],
   },
   js.configs.recommended,
+  ...tseslint.configs.recommended,
   {
-    ignores: ['**/node_modules/**', '**/.next/**', '**/.turbo/**', '**/dist/**'],
-    files: ['**/*.{ts,tsx,js,jsx}'],
-    languageOptions,
-    settings: resolverSettings,
-    plugins: {
-      '@typescript-eslint': tsPlugin,
-      import: importPlugin,
-    },
+    files: ['**/*.{ts,tsx}'],
     rules: {
-      'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -65,31 +28,11 @@ export default [
         },
       ],
       '@typescript-eslint/no-empty-interface': 'off',
-      'import/order': [
-        'error',
-        {
-          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
-          alphabetize: { order: 'asc', caseInsensitive: true },
-          pathGroups: [
-            {
-              pattern: '@lifeos/**',
-              group: 'internal',
-              position: 'before',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ['packages/**'],
-    rules: {
-      'import/no-extraneous-dependencies': 'off',
     },
   },
   // Node.js environment for functions
   {
-    files: ['functions/**/*.{ts,tsx,js,jsx}'],
+    files: ['functions/**/*.{ts,js}'],
     languageOptions: {
       globals: {
         Buffer: 'readonly',
@@ -107,9 +50,16 @@ export default [
       },
     },
   },
+  // Allow `any` in test files (mocks, stubs, etc.)
+  {
+    files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
   // Browser globals for packages that may use them
   {
-    files: ['packages/**/*.{ts,tsx,js,jsx}'],
+    files: ['packages/**/*.{ts,tsx}'],
     languageOptions: {
       globals: {
         crypto: 'readonly',
@@ -121,5 +71,5 @@ export default [
         clearInterval: 'readonly',
       },
     },
-  },
-]
+  }
+)

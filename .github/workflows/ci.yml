@@ -85,13 +85,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: pnpm test || true # Allow tests to fail for now since coverage is minimal
+        run: pnpm test
 
   # Job 4: Build all packages
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, typecheck] # Only build if lint and typecheck pass
+    needs: [lint, typecheck, test] # Only build if lint, typecheck, and tests pass
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

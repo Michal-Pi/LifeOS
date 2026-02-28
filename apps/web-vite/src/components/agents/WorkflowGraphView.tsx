@@ -8,87 +8,46 @@ import { useMemo } from 'react'
 import { useTheme } from '@/contexts/useTheme'
 import { ReactFlow, Background, Controls, type Edge, type Node } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import type { WorkflowGraph, WorkflowNodeType } from '@lifeos/agents'
+import type { WorkflowGraph } from '@lifeos/agents'
+import {
+  computeWorkflowLayout,
+  getNodePosition,
+  getNodeDimensions,
+  NODE_TYPE_COLORS,
+  type LayoutPreset,
+} from './workflowLayoutUtils'
 
 type WorkflowGraphViewProps = {
   graph: WorkflowGraph
+  compact?: boolean
 }
 
-const NODE_WIDTH = 240
-const NODE_HEIGHT = 90
-const COLUMN_GAP = 60
-const ROW_GAP = 40
-
-const NODE_COLORS: Record<WorkflowNodeType, { background: string; border: string }> = {
-  agent: { background: 'var(--info-light)', border: 'var(--info)' },
-  tool: { background: 'var(--warning-light)', border: 'var(--warning)' },
-  human_input: { background: 'var(--error-light)', border: 'var(--error)' },
-  join: { background: 'var(--accent-subtle)', border: 'var(--accent-secondary)' },
-  end: { background: 'var(--background-secondary)', border: 'var(--border-strong)' },
-  research_request: { background: 'var(--success-light)', border: 'var(--success)' },
-}
-
-export function WorkflowGraphView({ graph }: WorkflowGraphViewProps) {
+export function WorkflowGraphView({ graph, compact = false }: WorkflowGraphViewProps) {
   const { theme } = useTheme()
+  const preset: LayoutPreset = compact ? 'compact' : 'default'
+  const { width: nw, height: nh } = getNodeDimensions(preset)
+
   const { nodes, edges } = useMemo(() => {
-    const nodeById = new Map(graph.nodes.map((node) => [node.id, node]))
-    const depths = new Map<string, number>()
-    const queue: string[] = []
-
-    if (nodeById.has(graph.startNodeId)) {
-      depths.set(graph.startNodeId, 0)
-      queue.push(graph.startNodeId)
-    }
-
-    while (queue.length > 0) {
-      const current = queue.shift()
-      if (!current) break
-      const currentDepth = depths.get(current) ?? 0
-      const outgoing = graph.edges.filter((edge) => edge.from === current)
-
-      for (const edge of outgoing) {
-        const nextDepth = currentDepth + 1
-        const existing = depths.get(edge.to)
-        if (existing === undefined || nextDepth > existing) {
-          depths.set(edge.to, nextDepth)
-        }
-        if (!queue.includes(edge.to)) {
-          queue.push(edge.to)
-        }
-      }
-    }
-
-    for (const node of graph.nodes) {
-      if (!depths.has(node.id)) {
-        depths.set(node.id, 0)
-      }
-    }
-
-    const nodesByDepth = new Map<number, string[]>()
-    for (const [nodeId, depth] of depths.entries()) {
-      const bucket = nodesByDepth.get(depth) ?? []
-      bucket.push(nodeId)
-      nodesByDepth.set(depth, bucket)
-    }
-
-    for (const bucket of nodesByDepth.values()) {
-      bucket.sort((a, b) => a.localeCompare(b))
-    }
+    const { depths, nodesByDepth, backEdges } = computeWorkflowLayout(
+      graph.nodes,
+      graph.edges,
+      graph.startNodeId
+    )
 
     const nodes: Node[] = graph.nodes.map((node) => {
       const depth = depths.get(node.id) ?? 0
-      const column = depth
       const row = (nodesByDepth.get(depth) ?? []).indexOf(node.id)
-      const x = column * (NODE_WIDTH + COLUMN_GAP)
-      const y = row * (NODE_HEIGHT + ROW_GAP)
+      const { x, y } = getNodePosition(depth, row, preset)
       const label = node.label ?? node.id
-      const color = NODE_COLORS[node.type]
-      const meta = [
-        node.outputKey ? `output: ${node.outputKey}` : null,
-        node.type === 'join' && node.aggregationMode ? `mode: ${node.aggregationMode}` : null,
-      ]
-        .filter(Boolean)
-        .join(' · ')
+      const color = NODE_TYPE_COLORS[node.type]
+      const meta = compact
+        ? ''
+        : [
+            node.outputKey ? `output: ${node.outputKey}` : null,
+            node.type === 'join' && node.aggregationMode ? `mode: ${node.aggregationMode}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')
 
       return {
         id: node.id,
@@ -96,28 +55,31 @@ export function WorkflowGraphView({ graph }: WorkflowGraphViewProps) {
           label: (
             <div className="workflow-node">
               <div className="workflow-node__title">{label}</div>
-              <div className="workflow-node__meta">
-                {node.type.replace('_', ' ')}
-                {meta ? ` · ${meta}` : ''}
-              </div>
+              {!compact && (
+                <div className="workflow-node__meta">
+                  {node.type.replace('_', ' ')}
+                  {meta ? ` · ${meta}` : ''}
+                </div>
+              )}
             </div>
           ),
         },
         position: { x, y },
         style: {
-          width: NODE_WIDTH,
-          minHeight: NODE_HEIGHT,
-          borderRadius: 14,
+          width: nw,
+          minHeight: nh,
+          borderRadius: compact ? 8 : 14,
           border: `1px solid ${color.border}`,
-          padding: '10px 12px',
-          fontSize: 12,
+          padding: compact ? '4px 8px' : '10px 12px',
+          fontSize: compact ? 10 : 12,
           background: color.background,
-          boxShadow: '0 6px 18px var(--shadow-soft)',
+          boxShadow: compact ? 'none' : '0 6px 18px var(--shadow-soft)',
         },
       }
     })
 
     const edges: Edge[] = graph.edges.map((edge) => {
+      const isBack = backEdges.has(`${edge.from}->${edge.to}`)
       const conditionLabel =
         edge.condition.type === 'always'
           ? ''
@@ -130,14 +92,17 @@ export function WorkflowGraphView({ graph }: WorkflowGraphViewProps) {
         source: edge.from,
         target: edge.to,
         label: conditionLabel,
-        animated: edge.condition.type === 'always',
-        style: { stroke: 'var(--border-strong)' },
+        animated: edge.condition.type === 'always' && !isBack,
+        style: {
+          stroke: isBack ? 'var(--warning)' : 'var(--border-strong)',
+          strokeDasharray: isBack ? '6 3' : undefined,
+        },
         labelStyle: { fill: 'var(--muted-foreground)', fontSize: 11 },
       }
     })
 
     return { nodes, edges }
-  }, [graph])
+  }, [graph, compact, preset, nw, nh])
 
   const gridColor = useMemo(() => {
     void theme
@@ -152,14 +117,14 @@ export function WorkflowGraphView({ graph }: WorkflowGraphViewProps) {
         nodes={nodes}
         edges={edges}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={{ padding: compact ? 0.1 : 0.2 }}
         nodesDraggable={false}
         nodesConnectable={false}
-        zoomOnScroll
-        panOnDrag
+        zoomOnScroll={!compact}
+        panOnDrag={!compact}
       >
-        <Background gap={24} size={1} color={gridColor} />
-        <Controls showInteractive={false} />
+        <Background gap={compact ? 16 : 24} size={1} color={gridColor} />
+        {!compact && <Controls showInteractive={false} />}
       </ReactFlow>
     </div>
   )

@@ -1,20 +1,58 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi } from 'vitest'
+
 vi.mock('./GlobalSearch', () => ({
   GlobalSearch: () => <div data-testid="global-search" />,
 }))
+vi.mock('@/hooks/useMessageMailbox', () => ({
+  useMessageMailbox: () => ({ messages: [], loading: false }),
+}))
 
 describe('TopNav', () => {
-  it('renders the Notes link', async () => {
+  async function renderNav() {
     const { TopNav } = await import('./TopNav')
-
-    render(
+    return render(
       <MemoryRouter>
         <TopNav />
       </MemoryRouter>
     )
+  }
 
-    expect(screen.getByRole('link', { name: 'Notes' })).toBeInTheDocument()
+  it('renders 4 nav groups', async () => {
+    const { container } = await renderNav()
+    const groups = container.querySelectorAll('.top-nav__group')
+    expect(groups.length).toBe(4)
+  })
+
+  it('renders 3 separators between groups', async () => {
+    const { container } = await renderNav()
+    const separators = container.querySelectorAll('.top-nav__separator')
+    expect(separators.length).toBe(3)
+  })
+
+  it('renders all expected navigation links', async () => {
+    await renderNav()
+    const expectedLinks = [
+      'Today',
+      'Calendar',
+      'Planner',
+      'Notes',
+      'People',
+      'Mailbox',
+      'Workflows',
+      'Agents',
+    ]
+    for (const label of expectedLinks) {
+      expect(screen.getByRole('link', { name: label })).toBeInTheDocument()
+    }
+  })
+
+  it('renders Settings link in actions area', async () => {
+    const { container } = await renderNav()
+    const actionsArea = container.querySelector('.top-nav__actions')
+    expect(actionsArea).not.toBeNull()
+    const settingsLink = screen.getByRole('link', { name: 'Settings' })
+    expect(actionsArea!.contains(settingsLink)).toBe(true)
   })
 })

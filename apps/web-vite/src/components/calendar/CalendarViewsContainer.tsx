@@ -53,6 +53,10 @@ interface CalendarViewsContainerProps {
   // Event handlers
   onDateSelect: (date: Date | null) => void
   onEventSelect: (event: CanonicalCalendarEvent) => void
+
+  // Quick-create callbacks
+  onQuickCreate?: (data: { title: string; startMs: number; endMs: number }) => void
+  onQuickCreateMore?: (data: { title: string; startMs: number; endMs: number }) => void
 }
 
 /**
@@ -98,6 +102,8 @@ export function CalendarViewsContainer({
   pendingOps,
   onDateSelect,
   onEventSelect,
+  onQuickCreate,
+  onQuickCreateMore,
 }: CalendarViewsContainerProps) {
   // Create calendar lookup map
   const calendarsById = useMemo(() => {
@@ -214,6 +220,8 @@ export function CalendarViewsContainer({
           selectedEventId={selectedEvent?.canonicalEventId}
           calendarsById={calendarsById}
           loading={loading}
+          onQuickCreate={onQuickCreate}
+          onQuickCreateMore={onQuickCreateMore}
         />
       )}
 

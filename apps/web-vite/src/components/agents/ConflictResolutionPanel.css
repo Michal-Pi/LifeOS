@@ -14,7 +14,7 @@
 }
 
 .conflict-icon {
-  font-size: 20px;
+  font-size: var(--text-xl);
 }
 
 .conflict-list {
@@ -33,7 +33,7 @@
 }
 
 .conflict-severity {
-  font-size: 12px;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 600;

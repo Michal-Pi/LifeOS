@@ -59,7 +59,7 @@
 
 .pm-section pre {
   white-space: pre-wrap;
-  font-size: 12px;
+  font-size: var(--text-xs);
   background: var(--muted);
   padding: var(--space-3);
   border-radius: var(--radius-sm);

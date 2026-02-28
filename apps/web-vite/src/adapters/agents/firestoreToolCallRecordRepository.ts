@@ -16,7 +16,7 @@ import type {
   ToolCallRecordId,
   CreateToolCallRecordInput,
   RunId,
-  WorkspaceId,
+  WorkflowId,
 } from '@lifeos/agents'
 
 export const createFirestoreToolCallRecordRepository = (): ToolCallRecordRepository => {
@@ -128,11 +128,11 @@ export const createFirestoreToolCallRecordRepository = (): ToolCallRecordReposit
       return toolCalls
     },
 
-    async getToolCallRecordsByWorkspace(workspaceId: WorkspaceId): Promise<ToolCallRecord[]> {
+    async getToolCallRecordsByWorkflow(workflowId: WorkflowId): Promise<ToolCallRecord[]> {
       const db = await getDb()
       const toolCalls: ToolCallRecord[] = []
 
-      // Find all runs for this workspace across all users
+      // Find all runs for this workflow across all users
       const usersCol = collection(db, 'users')
       const usersSnapshot = await getDocs(usersCol)
 
@@ -142,8 +142,8 @@ export const createFirestoreToolCallRecordRepository = (): ToolCallRecordReposit
 
         for (const runDoc of runsSnapshot.docs) {
           const runData = runDoc.data()
-          if (runData.workspaceId === workspaceId) {
-            // This run belongs to the workspace
+          if (runData.workflowId === workflowId) {
+            // This run belongs to the workflow
             const toolCallsCol = collection(db, `users/${userDoc.id}/runs/${runDoc.id}/toolCalls`)
             const q = query(toolCallsCol, orderBy('startedAtMs', 'asc'))
             const snapshot = await getDocs(q)

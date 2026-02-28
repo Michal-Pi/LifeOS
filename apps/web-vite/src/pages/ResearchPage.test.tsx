@@ -2,28 +2,28 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Workspace } from '@lifeos/agents'
+import type { Workflow } from '@lifeos/agents'
 import { ResearchPage } from './ResearchPage'
-import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
+import { useWorkflowOperations } from '@/hooks/useWorkflowOperations'
 
 vi.mock('@/components/agents/ResearchQueue', () => ({
-  ResearchQueue: ({ workspaceId }: { workspaceId: string }) => (
-    <div data-testid="research-queue" data-workspace-id={workspaceId} />
+  ResearchQueue: ({ workflowId }: { workflowId: string }) => (
+    <div data-testid="research-queue" data-workflow-id={workflowId} />
   ),
 }))
 
-vi.mock('@/hooks/useWorkspaceOperations', () => ({
-  useWorkspaceOperations: vi.fn(),
+vi.mock('@/hooks/useWorkflowOperations', () => ({
+  useWorkflowOperations: vi.fn(),
 }))
 
-const createWorkspace = (params: {
-  workspaceId: string
+const createWorkflow = (params: {
+  workflowId: string
   name: string
-  workflowType: Workspace['workflowType']
+  workflowType: Workflow['workflowType']
   agentIds: string[]
-}): Workspace =>
+}): Workflow =>
   ({
-    workspaceId: params.workspaceId,
+    workflowId: params.workflowId,
     userId: 'user-1',
     name: params.name,
     agentIds: params.agentIds,
@@ -33,22 +33,22 @@ const createWorkspace = (params: {
     updatedAtMs: Date.now(),
     syncState: 'synced',
     version: 1,
-  }) as Workspace
+  }) as Workflow
 
 describe('ResearchPage', () => {
-  const mockUseWorkspaceOperations = vi.mocked(useWorkspaceOperations)
+  const mockUseWorkflowOperations = vi.mocked(useWorkflowOperations)
 
   beforeEach(() => {
-    mockUseWorkspaceOperations.mockReturnValue({
-      workspaces: [
-        createWorkspace({
-          workspaceId: 'ws-1',
+    mockUseWorkflowOperations.mockReturnValue({
+      workflows: [
+        createWorkflow({
+          workflowId: 'ws-1',
           name: 'Alpha',
           workflowType: 'sequential',
           agentIds: ['agent-1'],
         }),
-        createWorkspace({
-          workspaceId: 'ws-2',
+        createWorkflow({
+          workflowId: 'ws-2',
           name: 'Beta',
           workflowType: 'graph',
           agentIds: ['agent-1', 'agent-2'],
@@ -56,12 +56,12 @@ describe('ResearchPage', () => {
       ],
       isLoading: false,
       error: null,
-      loadWorkspaces: vi.fn(),
-      deleteWorkspace: vi.fn(),
-      createWorkspace: vi.fn(),
-      updateWorkspace: vi.fn(),
-      getWorkspace: vi.fn(),
-      listWorkspaces: vi.fn(),
+      loadWorkflows: vi.fn(),
+      deleteWorkflow: vi.fn(),
+      createWorkflow: vi.fn(),
+      updateWorkflow: vi.fn(),
+      getWorkflow: vi.fn(),
+      listWorkflows: vi.fn(),
       runs: [],
       createRun: vi.fn(),
       updateRun: vi.fn(),
@@ -73,8 +73,8 @@ describe('ResearchPage', () => {
     window.localStorage.clear()
   })
 
-  it('prefers persisted workspace when no query param is set', async () => {
-    window.localStorage.setItem('lifeos:lastResearchWorkspaceId', 'ws-2')
+  it('prefers persisted workflow when no query param is set', async () => {
+    window.localStorage.setItem('lifeos:lastResearchWorkflowId', 'ws-2')
 
     render(
       <MemoryRouter initialEntries={['/research']}>
@@ -82,12 +82,12 @@ describe('ResearchPage', () => {
       </MemoryRouter>
     )
 
-    const select = await screen.findByLabelText('Workspace')
+    const select = await screen.findByLabelText('Workflow')
     expect(select).toHaveValue('ws-2')
-    expect(screen.getByTestId('research-queue')).toHaveAttribute('data-workspace-id', 'ws-2')
+    expect(screen.getByTestId('research-queue')).toHaveAttribute('data-workflow-id', 'ws-2')
   })
 
-  it('updates persisted workspace when selection changes', async () => {
+  it('updates persisted workflow when selection changes', async () => {
     const user = userEvent.setup()
 
     render(
@@ -96,10 +96,10 @@ describe('ResearchPage', () => {
       </MemoryRouter>
     )
 
-    const select = await screen.findByLabelText('Workspace')
+    const select = await screen.findByLabelText('Workflow')
     await user.selectOptions(select, 'ws-2')
 
-    expect(window.localStorage.getItem('lifeos:lastResearchWorkspaceId')).toBe('ws-2')
-    expect(screen.getByTestId('research-queue')).toHaveAttribute('data-workspace-id', 'ws-2')
+    expect(window.localStorage.getItem('lifeos:lastResearchWorkflowId')).toBe('ws-2')
+    expect(screen.getByTestId('research-queue')).toHaveAttribute('data-workflow-id', 'ws-2')
   })
 })

@@ -16,13 +16,15 @@ const MAX_BATCH_OPS = 100 // More conservative than 500 to account for event siz
 /**
  * Remove undefined fields recursively to prevent Firestore errors
  */
-function removeUndefined(obj: any): any {
-  if (obj === null || obj === undefined) return null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function removeUndefined(obj: Record<string, any>): Record<string, any> {
+  if (obj === null || obj === undefined) return null as never
   if (Array.isArray(obj)) {
     return obj.map(removeUndefined).filter((item) => item !== null)
   }
   if (typeof obj === 'object') {
-    const cleaned: any = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cleaned: Record<string, any> = {}
     for (const [key, value] of Object.entries(obj)) {
       if (value !== undefined) {
         const cleanedValue = removeUndefined(value)

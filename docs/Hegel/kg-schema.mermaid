@@ -1,0 +1,77 @@
+---
+title: "4-Layer Knowledge Hypergraph — Schema & Data Flow"
+---
+graph TB
+    subgraph LAYER3["Layer 3: Community Subgraph"]
+        direction LR
+        COM1["Community Node<br/><i>Cluster of connected entities</i><br/>props: summary, members, coherence_score"]
+        COM2["Community Node<br/><i>High-level domain summary</i>"]
+        COM1 ---|"community_edge"| COM2
+    end
+
+    subgraph LAYER2["Layer 2: Ontology Graph (Self-Evolving)"]
+        direction LR
+        CON1["Concept v1<br/><i>'Demand'</i>"]
+        CON2["Concept v2a<br/><i>'Latent Demand'</i>"]
+        CON3["Concept v2b<br/><i>'Effective Demand'</i>"]
+        REL1["Relation<br/><i>causes / enables / blocks</i><br/>props: direction, strength,<br/>regime_scope"]
+        REG1["Regime<br/><i>'High-regulation env'</i><br/>props: conditions, indicators,<br/>active_probability"]
+        CON1 -->|"split_into<br/>(versioned)"| CON2
+        CON1 -->|"split_into<br/>(versioned)"| CON3
+        CON2 --- REL1
+        REL1 ---|"holds_in_regime"| REG1
+    end
+
+    subgraph LAYER1["Layer 1: Semantic / Epistemic Hypergraph"]
+        direction LR
+        subgraph HYPEREDGE["N-ary Hyperedge Example"]
+            HE["Mechanism Hyperedge<br/><i>'rates↑ → VC burn↓ → layoffs'</i><br/>participants: [Rate, VCBurn, Layoffs]<br/>regime_scope: R1<br/>evidence_set: [E1, E2]"]
+        end
+
+        CLAIM1["Claim Node<br/><i>'Regulation tightens 6-12mo'</i><br/>confidence: 0.72<br/>status: ALIVE"]
+        CLAIM2["Claim Node<br/><i>'Market self-corrects'</i><br/>confidence: 0.45<br/>status: SUPERSEDED"]
+        CONTRA["Contradiction Node<br/>type: SYNCHRONIC<br/>action_distance: 2<br/>severity: HIGH"]
+        EVID["Evidence Node<br/>source: 'Q3 Report'<br/>recency: 2025-01<br/>quality: HIGH"]
+        DEC["Decision Node<br/><i>'Hedge position X'</i><br/>reversibility: MEDIUM"]
+
+        CLAIM1 ---|"contradicts"| CONTRA
+        CLAIM2 ---|"contradicts"| CONTRA
+        EVID ---|"supports"| CLAIM1
+        EVID ---|"undermines"| CLAIM2
+        CLAIM2 ---|"superseded_by"| CLAIM1
+        CLAIM1 ---|"implies"| DEC
+    end
+
+    subgraph LAYER0["Layer 0: Episodic Memory"]
+        direction LR
+        EP1["Episode Node<br/><i>Dialectical Cycle #7</i><br/>timestamp: 2025-01-15T14:30<br/>raw_thesis: '...'<br/>raw_antithesis: '...'<br/>raw_synthesis: '...'"]
+        EP2["Episode Node<br/><i>Dialectical Cycle #8</i><br/>timestamp: 2025-01-16T09:00"]
+        EP1 -->|"temporal_next"| EP2
+    end
+
+    subgraph BITEMPORAL["Bi-Temporal Edge Schema"]
+        direction LR
+        BT["Every Edge Carries:<br/>━━━━━━━━━━━━━━━<br/>t_valid: when fact became true<br/>t_invalid: when fact stopped being true<br/>t_created: when system learned it<br/>t_expired: when system invalidated it<br/>source_episode: link to Episode Node"]
+    end
+
+    LAYER3 ---|"community_detection"| LAYER2
+    LAYER2 ---|"concept_grounding"| LAYER1
+    LAYER1 ---|"semantic_extraction"| LAYER0
+    EP1 -.->|"episodic_edge<br/>(bidirectional)"| CLAIM1
+    EP1 -.->|"episodic_edge"| CONTRA
+
+    classDef layer3 fill:#1a101a,stroke:#b06ac4,color:#e8e4df
+    classDef layer2 fill:#101a1a,stroke:#6ac4b0,color:#e8e4df
+    classDef layer1 fill:#10151a,stroke:#6a8fc4,color:#e8e4df
+    classDef layer0 fill:#1a1510,stroke:#c4956a,color:#e8e4df
+    classDef bitemporal fill:#1a1a10,stroke:#6ac4c4,color:#e8e4df
+    classDef hyperedge fill:#101a10,stroke:#8fc46a,color:#e8e4df
+    classDef contradiction fill:#1a1010,stroke:#c46a6a,color:#e8e4df
+
+    class COM1,COM2 layer3
+    class CON1,CON2,CON3,REL1,REG1 layer2
+    class CLAIM1,CLAIM2,EVID,DEC layer1
+    class HE hyperedge
+    class CONTRA contradiction
+    class EP1,EP2 layer0
+    class BT bitemporal

@@ -1,0 +1,66 @@
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.ui-badge--sm {
+  padding: 1px 6px;
+  font-size: var(--text-xs);
+}
+
+/* Variants */
+.ui-badge--default {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.ui-badge--success {
+  background: var(--success-light);
+  color: var(--success-color);
+}
+.ui-badge--warning {
+  background: var(--warning-light);
+  color: var(--warning-color);
+}
+.ui-badge--error {
+  background: var(--error-light);
+  color: var(--error-color);
+}
+.ui-badge--info {
+  background: var(--info-light);
+  color: var(--info-color);
+}
+.ui-badge--outline {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+/* Domain variants */
+.ui-badge--work {
+  background: var(--domain-work-bg);
+  color: var(--domain-work-text);
+}
+.ui-badge--projects {
+  background: var(--domain-projects-bg);
+  color: var(--domain-projects-text);
+}
+.ui-badge--life {
+  background: var(--domain-life-bg);
+  color: var(--domain-life-text);
+}
+.ui-badge--learning {
+  background: var(--domain-learning-bg);
+  color: var(--domain-learning-text);
+}
+.ui-badge--wellbeing {
+  background: var(--domain-wellbeing-bg);
+  color: var(--domain-wellbeing-text);
+}

@@ -6,14 +6,14 @@ export type { ProjectManagerConfig } from './projectManager'
 // ----- IDs -----
 
 export type AgentId = Id<'agent'>
-export type WorkspaceId = Id<'workspace'>
+export type WorkflowId = Id<'workflow'>
 export type RunId = Id<'run'>
 export type MessageId = Id<'message'>
 export type ToolId = Id<'tool'>
 export type ToolCallRecordId = Id<'toolCallRecord'>
 export type WorkflowStepId = Id<'workflowStep'>
 export type AgentTemplateId = Id<'agentTemplate'>
-export type WorkspaceTemplateId = Id<'workspaceTemplate'>
+export type WorkflowTemplateId = Id<'workflowTemplate'>
 export type DeepResearchRequestId = Id<'research'>
 
 // ----- Sync State -----
@@ -30,6 +30,18 @@ export type AgentRole =
   | 'executor'
   | 'supervisor'
   | 'custom'
+  // Dialectical roles
+  | 'thesis_generator'
+  | 'antithesis_agent'
+  | 'contradiction_tracker'
+  | 'synthesis_agent'
+  | 'meta_reflection'
+  | 'schema_induction'
+  // Deep research roles
+  | 'research_planner'
+  | 'claim_extractor'
+  | 'gap_analyst'
+  | 'answer_generator'
 
 export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'xai'
 
@@ -52,8 +64,26 @@ export type WorkflowNodeType =
   | 'join'
   | 'end'
   | 'research_request'
+  // Dialectical phase nodes
+  | 'retrieve_context'
+  | 'generate_theses'
+  | 'cross_negation'
+  | 'crystallize_contradictions'
+  | 'sublate'
+  | 'meta_reflect'
+  // Deep research phase nodes
+  | 'sense_making'
+  | 'search_planning'
+  | 'search_execution'
+  | 'source_ingestion'
+  | 'claim_extraction'
+  | 'kg_construction'
+  | 'gap_analysis'
+  | 'answer_generation'
+  // Composition node
+  | 'subworkflow'
 
-export type WorkflowEdgeConditionType = 'always' | 'equals' | 'contains' | 'regex'
+export type WorkflowEdgeConditionType = 'always' | 'equals' | 'contains' | 'regex' | 'llm_evaluate'
 
 export type JoinAggregationMode = 'list' | 'ranked' | 'consensus' | 'synthesize' | 'dedup_combine'
 
@@ -92,17 +122,17 @@ export interface AgentConfig {
   version: number
 }
 
-// ----- Workspace -----
+// ----- Workflow -----
 
-export interface Workspace {
-  workspaceId: WorkspaceId
+export interface Workflow {
+  workflowId: WorkflowId
   userId: string
 
   name: string
   description?: string
 
   // Agent configuration
-  agentIds: AgentId[] // Agents available in this workspace
+  agentIds: AgentId[] // Agents available in this workflow
   defaultAgentId?: AgentId // Agent that starts the workflow
 
   // Expert Council configuration (optional)
@@ -117,7 +147,14 @@ export interface Workspace {
   }
 
   // Workflow configuration
-  workflowType: 'sequential' | 'parallel' | 'supervisor' | 'custom' | 'graph'
+  workflowType:
+    | 'sequential'
+    | 'parallel'
+    | 'supervisor'
+    | 'custom'
+    | 'graph'
+    | 'dialectical'
+    | 'deep_research'
   workflowGraph?: WorkflowGraph
   parallelMergeStrategy?: JoinAggregationMode // Only used when workflowType === 'parallel'
   maxIterations?: number // Prevent infinite loops, default 10
@@ -152,16 +189,16 @@ export interface AgentTemplate {
   updatedAtMs: number
 }
 
-export interface WorkspaceTemplate {
-  templateId: WorkspaceTemplateId
+export interface WorkflowTemplate {
+  templateId: WorkflowTemplateId
   userId: string
 
   name: string
   description?: string
 
-  workspaceConfig: Omit<
-    Workspace,
-    'workspaceId' | 'userId' | 'archived' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
+  workflowConfig: Omit<
+    Workflow,
+    'workflowId' | 'userId' | 'archived' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
   >
 
   createdAtMs: number
@@ -172,7 +209,7 @@ export interface WorkspaceTemplate {
 
 export interface Run {
   runId: RunId
-  workspaceId: WorkspaceId
+  workflowId: WorkflowId
   userId: string
 
   // Input
@@ -234,7 +271,7 @@ export interface DeepResearchResult {
 
 export interface DeepResearchRequest {
   requestId: DeepResearchRequestId
-  workspaceId: WorkspaceId
+  workflowId: WorkflowId
   runId: RunId
   userId: string
   topic: string
@@ -288,6 +325,8 @@ export interface WorkflowEdgeCondition {
   type: WorkflowEdgeConditionType
   key?: string
   value?: string
+  /** Prompt for llm_evaluate condition type — the LLM decides yes/no based on this prompt */
+  prompt?: string
 }
 
 export interface WorkflowNode {
@@ -298,6 +337,8 @@ export interface WorkflowNode {
   label?: string
   outputKey?: string
   aggregationMode?: JoinAggregationMode
+  /** Reference to another workflow (for subworkflow nodes) */
+  subworkflowId?: WorkflowId
   requestConfig?: {
     topic: string
     questions: string[]
@@ -334,6 +375,24 @@ export interface WorkflowState {
   namedOutputs?: Record<string, unknown>
   pendingResearchRequestId?: string
   pendingResearchOutputKey?: string
+
+  // Dialectical workflow state (Hegel)
+  dialectical?: {
+    cycleNumber: number
+    phase: import('./workflowState').DialecticalPhase
+    theses: import('./workflowState').ThesisOutput[]
+    negations: import('./workflowState').NegationOutput[]
+    contradictions: import('./workflowState').ContradictionOutput[]
+    synthesis: import('./workflowState').SublationOutput | null
+    conceptualVelocity: number
+    velocityHistory: number[]
+    contradictionDensity: number
+    densityHistory: number[]
+    metaDecision: import('./workflowState').MetaDecision | null
+    tokensUsed: number
+    estimatedCost: number
+    startedAtMs: number
+  }
 }
 
 // ----- Tool Definition -----
@@ -377,7 +436,7 @@ export interface ToolDefinition {
 export interface ToolCallRecord {
   toolCallRecordId: ToolCallRecordId
   runId: RunId
-  workspaceId: WorkspaceId
+  workflowId: WorkflowId
   userId: string
   agentId: AgentId
 
@@ -540,7 +599,7 @@ export interface ExpertCouncilTurn {
 
 export interface CouncilAnalytics {
   userId: string
-  workspaceId: WorkspaceId
+  workflowId: WorkflowId
 
   totalTurns: number
   turnsByMode: Record<ExecutionMode, number>
@@ -581,7 +640,7 @@ export interface CouncilAnalytics {
 export interface WorkflowStep {
   workflowStepId: WorkflowStepId
   runId: RunId
-  workspaceId: WorkspaceId
+  workflowId: WorkflowId
   userId: string
   nodeId: string
   nodeType: WorkflowNodeType
@@ -604,16 +663,13 @@ export type UpdateAgentInput = Partial<
   Omit<AgentConfig, 'agentId' | 'userId' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'>
 >
 
-export type CreateWorkspaceInput = Omit<
-  Workspace,
-  'workspaceId' | 'userId' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version' | 'archived'
+export type CreateWorkflowInput = Omit<
+  Workflow,
+  'workflowId' | 'userId' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version' | 'archived'
 >
 
-export type UpdateWorkspaceInput = Partial<
-  Omit<
-    Workspace,
-    'workspaceId' | 'userId' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
-  >
+export type UpdateWorkflowInput = Partial<
+  Omit<Workflow, 'workflowId' | 'userId' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'>
 >
 
 export type CreateRunInput = Omit<
@@ -637,8 +693,8 @@ export type CreateAgentTemplateInput = Omit<
   'templateId' | 'createdAtMs' | 'updatedAtMs'
 >
 
-export type CreateWorkspaceTemplateInput = Omit<
-  WorkspaceTemplate,
+export type CreateWorkflowTemplateInput = Omit<
+  WorkflowTemplate,
   'templateId' | 'createdAtMs' | 'updatedAtMs'
 >
 

@@ -1,0 +1,250 @@
+/* CheckInHistoryModal - Design System Aligned */
+
+.checkin-history-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+  animation: historyFadeIn 0.2s ease;
+}
+
+@keyframes historyFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.checkin-history-modal {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 800px;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  animation: historySlideUp 0.25s ease;
+}
+
+@keyframes historySlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Modal Header */
+.checkin-history-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.checkin-history-modal-title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.checkin-history-modal-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-tertiary);
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+}
+
+.checkin-history-modal-close:hover {
+  background: var(--background-hover);
+  color: var(--foreground);
+}
+
+/* Modal Content */
+.checkin-history-modal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-5);
+}
+
+/* Empty State */
+.checkin-history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-10) var(--space-5);
+  text-align: center;
+}
+
+.checkin-history-empty p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-md);
+}
+
+.checkin-history-empty-hint {
+  margin-top: var(--space-2) !important;
+  font-size: var(--text-base) !important;
+  color: var(--text-tertiary) !important;
+}
+
+/* Graph Sections */
+.checkin-history-section {
+  margin-bottom: var(--space-6);
+}
+
+.checkin-history-section:last-child {
+  margin-bottom: 0;
+}
+
+.checkin-history-section-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-3) 0;
+}
+
+/* Graph Container */
+.checkin-history-graph-container {
+  background: var(--background-tertiary);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  overflow-x: auto;
+}
+
+.checkin-history-graph {
+  width: 100%;
+  min-width: 600px;
+  height: auto;
+}
+
+/* Graph Elements */
+.graph-gridline {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.graph-y-label {
+  font-size: var(--text-xs);
+  fill: var(--text-secondary);
+  dominant-baseline: middle;
+}
+
+.graph-x-label {
+  font-size: var(--text-xs);
+  fill: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.graph-date-label {
+  font-size: var(--text-xs);
+  fill: var(--text-secondary);
+  font-weight: 500;
+}
+
+.graph-line {
+  stroke: var(--border-strong);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.5;
+}
+
+.graph-point {
+  transition: transform 0.15s ease;
+  cursor: pointer;
+}
+
+.graph-point-group:hover .graph-point {
+  transform: scale(1.2);
+  filter: brightness(1.1);
+}
+
+.graph-point-label {
+  font-size: var(--text-xs);
+  fill: var(--foreground);
+  font-weight: 500;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.graph-point-group:hover .graph-point-label {
+  opacity: 1;
+}
+
+/* Scrollbar Styling */
+.checkin-history-modal-content::-webkit-scrollbar,
+.checkin-history-graph-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.checkin-history-modal-content::-webkit-scrollbar-track,
+.checkin-history-graph-container::-webkit-scrollbar-track {
+  background: var(--background-tertiary);
+  border-radius: var(--radius-full);
+}
+
+.checkin-history-modal-content::-webkit-scrollbar-thumb,
+.checkin-history-graph-container::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+}
+
+.checkin-history-modal-content::-webkit-scrollbar-thumb:hover,
+.checkin-history-graph-container::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .checkin-history-modal-header {
+    padding: var(--space-4);
+  }
+
+  .checkin-history-modal-content {
+    padding: var(--space-4);
+  }
+
+  .checkin-history-graph-container {
+    padding: var(--space-3);
+  }
+}
+
+@media (max-width: 640px) {
+  .checkin-history-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    margin: 0;
+  }
+}

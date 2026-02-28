@@ -19,7 +19,7 @@ export function ProjectManagerConfig({ value, onChange }: ProjectManagerConfigPr
             checked={value.enabled}
             onChange={(event) => onChange({ enabled: event.target.checked })}
           />
-          <span>Activate PM orchestration for this workspace</span>
+          <span>Activate PM orchestration for this workflow</span>
         </label>
       </div>
 

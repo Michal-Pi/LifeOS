@@ -15,6 +15,7 @@ interface BuilderNodePaletteProps {
   onSplitParallel: (branchCount: number) => void
   onAddConditional: () => void
   onDeleteNode: () => void
+  onEditNodeProperties?: () => void
   agents?: AgentConfig[]
 }
 
@@ -25,6 +26,7 @@ const NODE_TYPE_OPTIONS: { type: WorkflowNodeType; label: string; description: s
   { type: 'join', label: 'Join', description: 'Merge parallel branches' },
   { type: 'end', label: 'End', description: 'Terminal node' },
   { type: 'research_request', label: 'Research', description: 'Deep research request' },
+  { type: 'subworkflow', label: 'Sub-Workflow', description: 'Embed another workflow' },
 ]
 
 export function BuilderNodePalette({
@@ -34,6 +36,7 @@ export function BuilderNodePalette({
   onSplitParallel,
   onAddConditional,
   onDeleteNode,
+  onEditNodeProperties,
   agents,
 }: BuilderNodePaletteProps) {
   const [branchCount, setBranchCount] = useState(2)
@@ -61,7 +64,7 @@ export function BuilderNodePalette({
 
       {agents && agents.length > 0 && (
         <div className="node-palette__section">
-          <div className="node-palette__label">Workspace Agents</div>
+          <div className="node-palette__label">Workflow Agents</div>
           {agents.map((agent) => (
             <button
               key={agent.agentId}
@@ -120,14 +123,20 @@ export function BuilderNodePalette({
       {selectedNodeId && (
         <div className="node-palette__section">
           <div className="node-palette__label">Actions</div>
+          {onEditNodeProperties && (
+            <Button variant="outline" type="button" onClick={onEditNodeProperties}>
+              Edit Properties
+            </Button>
+          )}
           <Button
             variant="ghost"
             type="button"
             className="node-palette__delete-btn"
             onClick={onDeleteNode}
           >
-            Delete Selected Node
+            Delete Node
           </Button>
+          <span className="node-palette__hint">Press Delete key to remove</span>
         </div>
       )}
     </div>

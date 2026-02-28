@@ -13,10 +13,7 @@ import { createLogger } from '../lib/logger.js'
 import { randomUUID } from 'node:crypto'
 import { getFirestore } from 'firebase-admin/firestore'
 import type { MailboxSyncTrigger, MailboxSyncStats, ChannelConnectionId } from '@lifeos/agents'
-import type {
-  PrioritizedMessage as AnalyzedMessage,
-  RawMessage,
-} from '../slack/messageAnalyzer.js'
+import type { PrioritizedMessage as AnalyzedMessage, RawMessage } from '../slack/messageAnalyzer.js'
 import { NoAPIKeyConfiguredError } from '../agents/providerKeys.js'
 import {
   mailboxSyncRef,
@@ -48,6 +45,23 @@ async function loadAdapters() {
 }
 
 const log = createLogger('UnifiedSync')
+
+function isRateLimitedError(error: unknown): boolean {
+  if (!error) return false
+
+  const err = error as Record<string, unknown>
+  const status = Number(err.status ?? err.statusCode)
+  if (status === 429) return true
+
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase()
+  return (
+    message.includes('rate limit') ||
+    message.includes('rate_limit') ||
+    message.includes('too many requests') ||
+    message.includes('status 429') ||
+    message.includes(' 429 ')
+  )
+}
 
 // ----- Types -----
 
@@ -251,11 +265,21 @@ export async function runUnifiedSync(
 
     // Generic error handling
     log.error('Sync error', err)
-    await mailboxSyncRef(userId, syncId).update({
-      status: 'failed',
-      completedAtMs: Date.now(),
-      error: (err as Error).message,
-    })
+    await mailboxSyncRef(userId, syncId).update(
+      isRateLimitedError(err)
+        ? {
+            status: 'failed',
+            completedAtMs: Date.now(),
+            error: 'RATE_LIMITED',
+            retryable: true,
+            retryAfterSeconds: 60,
+          }
+        : {
+            status: 'failed',
+            completedAtMs: Date.now(),
+            error: (err as Error).message,
+          }
+    )
     throw err
   }
 }

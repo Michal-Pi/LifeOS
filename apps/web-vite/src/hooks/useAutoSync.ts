@@ -28,12 +28,12 @@ async function getLatestSyncTimestamp(userId: string): Promise<number> {
   return latest
 }
 
-async function accountExists(userId: string, accountId: string): Promise<boolean> {
+async function accountIsConnected(userId: string, accountId: string): Promise<boolean> {
   try {
     const db = getFirestoreClient()
     const accountRef = doc(db, 'users', userId, 'calendarAccounts', accountId)
     const snapshot = await getDoc(accountRef)
-    return snapshot.exists()
+    return snapshot.exists() && snapshot.data()?.status === 'connected'
   } catch {
     return false
   }
@@ -46,9 +46,9 @@ export function useAutoSync(userId: string, accountId: string): void {
 
     const maybeSync = async () => {
       try {
-        // Check if account exists before attempting sync
-        const exists = await accountExists(userId, accountId)
-        if (cancelled || !exists) return
+        // Check if account is connected before attempting sync
+        const connected = await accountIsConnected(userId, accountId)
+        if (cancelled || !connected) return
 
         const latest = await getLatestSyncTimestamp(userId)
         if (cancelled) return
@@ -56,13 +56,28 @@ export function useAutoSync(userId: string, accountId: string): void {
         if (!needsSync) return
 
         const response = await authenticatedFetch(
-          functionUrl(`syncNow?uid=${userId}&accountId=${accountId}`)
+          functionUrl(`syncNow?uid=${userId}&accountId=${accountId}`),
+          { showErrorToast: false }
         )
 
         if (response.ok) {
           const result = await response.json()
           if (result.ok && result.calendars) {
             toast.success(`Calendar sync complete - ${result.calendars.length} calendars updated`)
+          }
+        } else if (response.status === 401) {
+          const body = await response.json().catch(() => ({}))
+          if (body.error === 'auth_token_expired') {
+            toast.warning('Google connection expired', {
+              description: 'Your Google account needs to be reconnected to sync your calendar.',
+              action: {
+                label: 'Reconnect',
+                onClick: () => {
+                  window.location.assign('/calendar')
+                },
+              },
+              duration: Infinity,
+            })
           }
         }
       } catch {

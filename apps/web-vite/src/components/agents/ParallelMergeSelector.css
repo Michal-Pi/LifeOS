@@ -29,12 +29,12 @@
 
 .merge-option__label {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
   color: var(--foreground);
 }
 
 .merge-option__description {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--muted-foreground);
   margin-top: 0.25rem;
   line-height: 1.4;
@@ -42,7 +42,7 @@
 
 .merge-selector__warning {
   grid-column: 1 / -1;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--destructive);
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--destructive);
@@ -52,7 +52,7 @@
 
 .merge-selector__hint {
   grid-column: 1 / -1;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--muted-foreground);
   line-height: 1.4;
 }

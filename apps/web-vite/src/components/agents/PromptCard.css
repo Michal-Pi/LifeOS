@@ -6,7 +6,7 @@
   gap: 1rem;
   background: var(--background-secondary);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 1.5rem;
   transition:
     border-color 0.2s ease-in-out,
@@ -36,7 +36,7 @@
   justify-content: center;
   background: var(--background-tertiary);
   border: 1px solid var(--border-dark);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -63,7 +63,7 @@
 }
 
 .prompt-card__title {
-  font-size: 1.05rem;
+  font-size: var(--text-md);
   font-weight: 600;
   color: var(--foreground);
   margin: 0;
@@ -74,7 +74,7 @@
 }
 
 .prompt-card__type {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--accent);
   display: inline-flex;
@@ -82,23 +82,37 @@
   gap: 0.25rem;
 }
 
-/* Description Section - Fixed Height */
+/* Description Section */
 .prompt-card__description {
   min-height: 60px;
-  max-height: 60px;
-  overflow: hidden;
 }
 
 .prompt-card__description p {
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   color: var(--muted-foreground);
   line-height: 1.5;
   margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.prompt-card__description--clamped {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.prompt-card__expand {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--text-xs);
+  color: var(--accent);
+  cursor: pointer;
+  margin-top: var(--space-1);
+}
+
+.prompt-card__expand:hover {
+  text-decoration: underline;
 }
 
 /* Meta Section */
@@ -117,7 +131,7 @@
 }
 
 .prompt-card__label {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -125,7 +139,7 @@
 }
 
 .prompt-card__value {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--foreground);
   font-weight: 500;
   overflow: hidden;
@@ -144,12 +158,12 @@
 }
 
 .prompt-card__tag {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 500;
   color: var(--accent-dark);
   background: var(--accent-light);
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 0.2rem 0.5rem;
   text-transform: lowercase;
   white-space: nowrap;
@@ -173,7 +187,7 @@
 
 .prompt-card__footer button {
   flex: 1;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   padding: 0.5rem 0.75rem;
 }
 
@@ -203,7 +217,7 @@
   }
 
   .prompt-card__title {
-    font-size: 1rem;
+    font-size: var(--text-md);
   }
 
   .prompt-card__meta {

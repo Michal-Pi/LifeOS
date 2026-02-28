@@ -10,6 +10,7 @@
 
 import { useState, useCallback } from 'react'
 import { useAuth } from './useAuth'
+import { logger } from '@/lib/logger'
 import { getStorageClient } from '@/lib/firebase'
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { createFirestoreAttachmentRepository } from '@/adapters/notes/firestoreAttachmentRepository'
@@ -69,7 +70,7 @@ export function useAttachments(): UseAttachmentsReturn {
             'state_changed',
             (snapshot) => {
               const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-              console.log('Upload progress:', progress)
+              logger.debug('Upload progress:', progress)
             },
             (error) => {
               reject(error)

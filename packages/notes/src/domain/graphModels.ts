@@ -52,4 +52,6 @@ export interface GraphFilters {
     endMs?: number
   }
   includeOrphans?: boolean // Include notes with no connections
+  minSharedTags?: number // Minimum shared tags to create edge (default: 2)
+  minSharedProjects?: number // Minimum shared projects to create edge (default: 2)
 }

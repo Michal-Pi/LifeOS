@@ -8,6 +8,7 @@ import { PromptCard } from '@/components/agents/PromptCard'
 import { EmptyState } from '@/components/EmptyState'
 import { SegmentedControl } from '@/components/SegmentedControl'
 import { useDialog } from '@/contexts/useDialog'
+import './PromptLibraryPage.css'
 
 const PROMPT_TYPES: Array<PromptType | 'all'> = [
   'all',
@@ -28,6 +29,23 @@ const PROMPT_CATEGORIES: Array<PromptCategory | 'all'> = [
   'general',
 ]
 
+const TYPE_DISPLAY_LABELS: Record<PromptType, string> = {
+  agent: 'Agent',
+  tool: 'Tool',
+  workflow: 'Workflow',
+  synthesis: 'Synthesis',
+  'tone-of-voice': 'Tone of Voice',
+}
+
+const CATEGORY_DISPLAY_LABELS: Record<PromptCategory, string> = {
+  'project-management': 'Project Mgmt',
+  'content-creation': 'Content',
+  research: 'Research',
+  review: 'Review',
+  coordination: 'Coordination',
+  general: 'General',
+}
+
 type EditorState =
   | { mode: 'create'; template?: Partial<PromptTemplate> }
   | { mode: 'edit'; template: PromptTemplate }
@@ -38,6 +56,7 @@ export function PromptLibraryPage() {
   const { confirm } = useDialog()
   const [typeFilter, setTypeFilter] = useState<PromptType | 'all'>('all')
   const [categoryFilter, setCategoryFilter] = useState<PromptCategory | 'all'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [editorState, setEditorState] = useState<EditorState | null>(null)
   const [usageStats, setUsageStats] = useState<
     Array<{ templateId: string; name: string; usageCount: number }>
@@ -62,6 +81,17 @@ export function PromptLibraryPage() {
     if (!user) return
     void getUsageStats().then(setUsageStats)
   }, [getUsageStats, user])
+
+  const displayedTemplates = useMemo(() => {
+    if (!searchQuery.trim()) return templates
+    const q = searchQuery.toLowerCase()
+    return templates.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) ||
+        (t.tags || []).some((tag) => tag.toLowerCase().includes(q))
+    )
+  }, [templates, searchQuery])
 
   const sortedLeastUsed = useMemo(() => {
     return [...usageStats].sort((a, b) => a.usageCount - b.usageCount).slice(0, 5)
@@ -103,145 +133,185 @@ export function PromptLibraryPage() {
         </div>
       </header>
 
-      <div className="filters">
-        <div>
-          <label htmlFor="promptTypeFilter">Type</label>
-          <select
-            id="promptTypeFilter"
-            value={typeFilter}
-            onChange={(event) => setTypeFilter(event.target.value as PromptType | 'all')}
-          >
-            {PROMPT_TYPES.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+      <div className="prompt-filters">
+        <div className="prompt-filters__search">
+          <input
+            type="text"
+            className="prompt-filters__search-input"
+            placeholder="Search prompts by name, description, or tag..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <span className="prompt-filters__count">
+            {displayedTemplates.length} prompt{displayedTemplates.length === 1 ? '' : 's'}
+          </span>
         </div>
-        <div>
-          <label htmlFor="promptCategoryFilter">Category</label>
-          <select
-            id="promptCategoryFilter"
-            value={categoryFilter}
-            onChange={(event) => setCategoryFilter(event.target.value as PromptCategory | 'all')}
-          >
-            {PROMPT_CATEGORIES.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
+        <div className="prompt-filters__row">
+          <span className="prompt-filters__label">Type</span>
+          <div className="prompt-filters__chips">
+            {PROMPT_TYPES.map((type) => (
+              <button
+                key={type}
+                className={`filter-chip ${typeFilter === type ? 'filter-chip--active' : ''}`}
+                onClick={() => setTypeFilter(type)}
+              >
+                {type === 'all' ? 'All Types' : TYPE_DISPLAY_LABELS[type]}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
-        <div className="filter-summary">
-          Showing {templates.length} prompt{templates.length === 1 ? '' : 's'}
+        <div className="prompt-filters__row">
+          <span className="prompt-filters__label">Category</span>
+          <div className="prompt-filters__chips">
+            {PROMPT_CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                className={`filter-chip ${categoryFilter === cat ? 'filter-chip--active' : ''}`}
+                onClick={() => setCategoryFilter(cat)}
+              >
+                {cat === 'all' ? 'All Categories' : CATEGORY_DISPLAY_LABELS[cat]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <section className="settings-panel">
-        <header className="settings-panel__header">
-          <div>
-            <p className="section-label">Library</p>
-            <h2>Prompt Templates</h2>
-            <p className="settings-panel__meta">
-              Filter by type and category to locate reusable prompts.
-            </p>
-          </div>
-        </header>
+      <div
+        className={`prompt-library-layout ${editorState ? 'prompt-library-layout--panel-open' : ''}`}
+      >
+        <div className="prompt-library-main">
+          <section className="settings-panel">
+            <header className="settings-panel__header">
+              <div>
+                <p className="section-label">Library</p>
+                <h2>Prompt Templates</h2>
+                <p className="settings-panel__meta">
+                  Filter by type and category to locate reusable prompts.
+                </p>
+              </div>
+            </header>
 
-        {loading ? (
-          <div className="loading">Loading prompts...</div>
-        ) : templates.length === 0 ? (
-          <EmptyState
-            label="Prompts"
-            title="No prompts yet"
-            description="Create your first prompt template to reuse across runs."
-          />
-        ) : (
-          <div className="prompts-grid">
-            {templates.map((template) => (
-              <PromptCard
-                key={template.templateId}
-                template={template}
-                onEdit={(template) => setEditorState({ mode: 'edit', template })}
-                onDelete={async (template) => {
-                  const confirmed = await confirm({
-                    title: 'Delete prompt',
-                    description: `Delete prompt "${template.name}"? This action cannot be undone.`,
-                    confirmLabel: 'Delete',
-                    confirmVariant: 'danger',
-                  })
-                  if (confirmed) {
-                    void deleteTemplate(template.templateId)
-                  }
+            {loading ? (
+              <div className="loading">Loading prompts...</div>
+            ) : displayedTemplates.length === 0 ? (
+              <EmptyState
+                label="Prompts"
+                title="No prompts yet"
+                description="Create your first prompt template to reuse across runs."
+              />
+            ) : (
+              <div className="prompts-grid">
+                {displayedTemplates.map((template) => (
+                  <PromptCard
+                    key={template.templateId}
+                    template={template}
+                    onClick={(t) => setEditorState({ mode: 'edit', template: t })}
+                    onEdit={(t) => setEditorState({ mode: 'edit', template: t })}
+                    onDelete={async (t) => {
+                      const confirmed = await confirm({
+                        title: 'Delete prompt',
+                        description: `Delete prompt "${t.name}"? This action cannot be undone.`,
+                        confirmLabel: 'Delete',
+                        confirmVariant: 'danger',
+                      })
+                      if (confirmed) {
+                        void deleteTemplate(t.templateId)
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="settings-panel">
+            <header className="settings-panel__header">
+              <div>
+                <p className="section-label">Analytics</p>
+                <h2>Usage Statistics</h2>
+                <p className="settings-panel__meta">
+                  Track the prompts that see the most (and least) activity.
+                </p>
+              </div>
+            </header>
+
+            {usageStats.length === 0 ? (
+              <div className="empty-state">
+                <p>No usage data yet.</p>
+              </div>
+            ) : (
+              <div className="workflows-grid">
+                <div className="workflow-card">
+                  <h3>Most Used</h3>
+                  <ul className="list">
+                    {sortedMostUsed.map((entry) => (
+                      <li key={entry.templateId}>
+                        {entry.name} · {entry.usageCount}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="workflow-card">
+                  <h3>Least Used</h3>
+                  <ul className="list">
+                    {sortedLeastUsed.map((entry) => (
+                      <li key={entry.templateId}>
+                        {entry.name} · {entry.usageCount}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {editorState && user?.uid && (
+          <aside className="prompt-preview-panel">
+            <div className="prompt-preview-panel__header">
+              <h3>{editorState.mode === 'edit' ? 'Edit Prompt' : 'New Prompt'}</h3>
+              <button
+                className="ghost-button"
+                onClick={() => setEditorState(null)}
+                aria-label="Close panel"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="prompt-preview-panel__body">
+              <PromptEditor
+                userId={user.uid}
+                mode={editorState.mode}
+                templateId={
+                  editorState.mode === 'edit' ? editorState.template.templateId : undefined
+                }
+                initialTemplate={editorState.template}
+                onClose={() => setEditorState(null)}
+                onSaved={() => {
+                  void loadTemplates()
+                  void getUsageStats().then(setUsageStats)
+                }}
+                onDeleted={() => {
+                  void loadTemplates()
+                  void getUsageStats().then(setUsageStats)
                 }}
               />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="settings-panel">
-        <header className="settings-panel__header">
-          <div>
-            <p className="section-label">Analytics</p>
-            <h2>Usage Statistics</h2>
-            <p className="settings-panel__meta">
-              Track the prompts that see the most (and least) activity.
-            </p>
-          </div>
-        </header>
-
-        {usageStats.length === 0 ? (
-          <div className="empty-state">
-            <p>No usage data yet.</p>
-          </div>
-        ) : (
-          <div className="workspaces-grid">
-            <div className="workspace-card">
-              <h3>Most Used</h3>
-              <ul className="list">
-                {sortedMostUsed.map((entry) => (
-                  <li key={entry.templateId}>
-                    {entry.name} · {entry.usageCount}
-                  </li>
-                ))}
-              </ul>
             </div>
-            <div className="workspace-card">
-              <h3>Least Used</h3>
-              <ul className="list">
-                {sortedLeastUsed.map((entry) => (
-                  <li key={entry.templateId}>
-                    {entry.name} · {entry.usageCount}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+            {editorState.mode === 'edit' && (
+              <div className="prompt-preview-panel__actions">
+                <button
+                  className="primary-button"
+                  onClick={() => {
+                    navigate(`/workflows?promptId=${editorState.template.templateId}`)
+                  }}
+                >
+                  Use in Workflow
+                </button>
+              </div>
+            )}
+          </aside>
         )}
-      </section>
-
-      {editorState && user?.uid && (
-        <div className="modal-overlay" onClick={() => setEditorState(null)}>
-          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
-            <PromptEditor
-              userId={user.uid}
-              mode={editorState.mode}
-              templateId={editorState.mode === 'edit' ? editorState.template.templateId : undefined}
-              initialTemplate={editorState.template}
-              onClose={() => setEditorState(null)}
-              onSaved={() => {
-                void loadTemplates()
-                void getUsageStats().then(setUsageStats)
-              }}
-              onDeleted={() => {
-                void loadTemplates()
-                void getUsageStats().then(setUsageStats)
-              }}
-            />
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   )
 }

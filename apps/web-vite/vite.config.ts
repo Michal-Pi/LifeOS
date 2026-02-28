@@ -5,6 +5,10 @@ import path from 'path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Enable sourcemaps for CSS during development
+  css: {
+    devSourcemap: true,
+  },
   resolve: {
     alias: [
       // Use exact match for workspace packages to ensure source files are used
@@ -45,6 +49,9 @@ export default defineConfig({
     conditions: ['import', 'module', 'browser', 'default'],
   },
   build: {
+    // Disable CSS code splitting to avoid offline preload failures
+    // All CSS will be bundled into the main stylesheet
+    cssCodeSplit: false,
     rollupOptions: {
       output: {
         manualChunks: (id) => {
@@ -59,8 +66,12 @@ export default defineConfig({
           if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) {
             return 'firebase-vendor'
           }
+          // KaTeX math rendering (only needed for math equations)
+          if (id.includes('node_modules/katex')) {
+            return 'katex-vendor'
+          }
           // TipTap editor (Notes feature only)
-          if (id.includes('node_modules/@tiptap') || id.includes('node_modules/katex')) {
+          if (id.includes('node_modules/@tiptap')) {
             return 'tiptap-vendor'
           }
           // UI libraries

@@ -2,10 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   createSessionUsecase,
   updateSessionUsecase,
-  deleteSessionUsecase,
-  getSessionUsecase,
   getSessionsByDateUsecase,
-  getSessionByDateAndContextUsecase,
   listSessionsForDateRangeUsecase,
   calculateWorkoutStats,
 } from '../sessionUsecases'

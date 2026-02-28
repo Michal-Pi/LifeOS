@@ -4,7 +4,7 @@
  * Context menu for block operations: duplicate, delete, convert, move.
  */
 
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useState, useMemo } from 'react'
 import type { Editor } from '@tiptap/react'
 import { duplicateNode, deleteNode } from './nodeOperations'
 import { getTopLevelNodeAt } from './nodeDetection'
@@ -21,19 +21,48 @@ export interface BlockMenuProps {
 
 export function BlockMenu({ editor, nodePosition, isOpen, onClose, position }: BlockMenuProps) {
   const { confirm } = useDialog()
-  const menuRef = useRef<HTMLDivElement>(null)
+  const menuElRef = useRef<HTMLDivElement | null>(null)
+  const [clampedPos, setClampedPos] = useState<{ x: number; y: number } | null>(null)
 
   // Compute node info during render instead of in effect
   const nodeInfo = useMemo(() => {
     return getTopLevelNodeAt(editor, nodePosition)
   }, [editor, nodePosition])
 
+  // Measure the menu element after mount and clamp to viewport.
+  // Using a callback ref avoids synchronous setState inside a useEffect body.
+  const menuRef = useMemo(() => {
+    return (el: HTMLDivElement | null) => {
+      menuElRef.current = el
+      if (!el || !isOpen) {
+        setClampedPos(null)
+        return
+      }
+      const rect = el.getBoundingClientRect()
+      const pad = 8
+      let { x, y } = position
+      y = y - rect.height / 2
+      if (x + rect.width > window.innerWidth - pad) {
+        x = window.innerWidth - rect.width - pad
+      }
+      if (x < pad) x = pad
+      if (y + rect.height > window.innerHeight - pad) {
+        y = window.innerHeight - rect.height - pad
+      }
+      if (y < pad) y = pad
+      setClampedPos({ x, y })
+    }
+  }, [isOpen, position])
+
+  // Use clamped position when available, fall back to raw position
+  const adjustedPos = clampedPos ?? position
+
   // Close menu when clicking outside
   useEffect(() => {
     if (!isOpen) return
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      if (menuElRef.current && !menuElRef.current.contains(event.target as Node)) {
         onClose()
       }
     }
@@ -170,8 +199,8 @@ export function BlockMenu({ editor, nodePosition, isOpen, onClose, position }: B
       className="block-menu"
       style={{
         position: 'fixed',
-        left: `${position.x}px`,
-        top: `${position.y}px`,
+        left: `${adjustedPos.x}px`,
+        top: `${adjustedPos.y}px`,
       }}
     >
       <div className="block-menu-section">

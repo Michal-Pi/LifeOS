@@ -6,7 +6,7 @@
   width: 360px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 8px 24px var(--shadow-soft);
   z-index: 1002;
   color: var(--foreground);
@@ -25,14 +25,14 @@
 
 .math-inline-title {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
 }
 
 .math-inline-close {
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 1.1rem;
+  font-size: var(--text-lg);
   cursor: pointer;
 }
 
@@ -49,9 +49,9 @@
   border: 1px solid var(--border);
   background: var(--background);
   color: var(--foreground);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 0.55rem 0.65rem;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
 }
 
 .math-inline-section {
@@ -61,7 +61,7 @@
 }
 
 .math-inline-section-header {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--text-label);
@@ -76,14 +76,14 @@
 .math-inline-helper {
   border: 1px solid var(--border);
   background: var(--background-secondary);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 0.45rem 0.6rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--foreground);
 }
 
@@ -113,7 +113,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
 }
 
@@ -121,11 +121,11 @@
 .math-inline-field select {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--background);
   color: var(--foreground);
   padding: 0.4rem 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .math-inline-matrix-insert {
@@ -133,9 +133,9 @@
   border: 1px solid var(--accent);
   background: var(--accent-subtle);
   color: var(--accent);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 0.45rem 0.6rem;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   cursor: pointer;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -148,13 +148,13 @@
 }
 
 .math-inline-matrix-hint {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
 }
 
 .math-inline-preview {
   border: 1px dashed var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 0.6rem 0.75rem;
   background: var(--background-secondary);
   display: flex;
@@ -164,19 +164,19 @@
 }
 
 .math-inline-preview-label {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-label);
 }
 
 .math-inline-preview-value {
-  font-size: 1.1rem;
+  font-size: var(--text-lg);
 }
 
 .math-inline-preview-placeholder {
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .math-inline-footer {
@@ -189,10 +189,10 @@
 
 .math-inline-cancel,
 .math-inline-insert {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border);
   padding: 0.45rem 0.9rem;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 

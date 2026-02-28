@@ -2,11 +2,11 @@ import { collection, doc, getDocs, getDoc, setDoc, query, orderBy } from 'fireba
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
-  WorkspaceRepository,
-  Workspace,
-  WorkspaceId,
-  CreateWorkspaceInput,
-  UpdateWorkspaceInput,
+  WorkflowRepository,
+  Workflow,
+  WorkflowId,
+  CreateWorkflowInput,
+  UpdateWorkflowInput,
 } from '@lifeos/agents'
 
 const stripUndefined = <T>(value: T): T => {
@@ -44,15 +44,15 @@ const collectUndefinedPaths = (value: unknown, path = ''): string[] => {
   return []
 }
 
-export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
+export const createFirestoreWorkflowRepository = (): WorkflowRepository => {
   return {
-    async create(userId: string, input: CreateWorkspaceInput): Promise<Workspace> {
+    async create(userId: string, input: CreateWorkflowInput): Promise<Workflow> {
       const db = await getDb()
-      const workspaceId = newId('workspace')
+      const workflowId = newId('workflow')
 
-      const workspace: Workspace = {
+      const workflow: Workflow = {
         ...input,
-        workspaceId,
+        workflowId,
         userId,
         archived: false,
         createdAtMs: Date.now(),
@@ -62,36 +62,36 @@ export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
       }
 
       // Remove undefined values before saving to Firestore (deeply, including nested objects/arrays).
-      const cleanedWorkspace = stripUndefined(workspace)
-      const undefinedPaths = collectUndefinedPaths(workspace)
+      const cleanedWorkflow = stripUndefined(workflow)
+      const undefinedPaths = collectUndefinedPaths(workflow)
       if (undefinedPaths.length > 0) {
-        console.warn('[WorkspaceRepository] Stripped undefined fields from workspace payload', {
-          workspaceId,
+        console.warn('[WorkflowRepository] Stripped undefined fields from workflow payload', {
+          workflowId,
           undefinedPaths,
         })
       }
 
-      const workspaceDoc = doc(db, `users/${userId}/workspaces/${workspaceId}`)
-      await setDoc(workspaceDoc, cleanedWorkspace)
+      const workflowDoc = doc(db, `users/${userId}/workflows/${workflowId}`)
+      await setDoc(workflowDoc, cleanedWorkflow)
 
-      return workspace
+      return workflow
     },
 
     async update(
       userId: string,
-      workspaceId: WorkspaceId,
-      updates: UpdateWorkspaceInput
-    ): Promise<Workspace> {
+      workflowId: WorkflowId,
+      updates: UpdateWorkflowInput
+    ): Promise<Workflow> {
       const db = await getDb()
-      const workspaceDoc = doc(db, `users/${userId}/workspaces/${workspaceId}`)
+      const workflowDoc = doc(db, `users/${userId}/workflows/${workflowId}`)
 
-      const existing = await getDoc(workspaceDoc)
+      const existing = await getDoc(workflowDoc)
       if (!existing.exists()) {
-        throw new Error(`Workspace ${workspaceId} not found`)
+        throw new Error(`Workflow ${workflowId} not found`)
       }
 
-      const updated: Workspace = {
-        ...(existing.data() as Workspace),
+      const updated: Workflow = {
+        ...(existing.data() as Workflow),
         ...updates,
         updatedAtMs: Date.now(),
         version: (existing.data()?.version ?? 0) + 1,
@@ -101,22 +101,22 @@ export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
       // Remove undefined values before saving to Firestore (deeply, including nested objects/arrays).
       const cleanedUpdated = stripUndefined(updated)
 
-      await setDoc(workspaceDoc, cleanedUpdated)
+      await setDoc(workflowDoc, cleanedUpdated)
       return updated
     },
 
-    async delete(userId: string, workspaceId: WorkspaceId): Promise<void> {
+    async delete(userId: string, workflowId: WorkflowId): Promise<void> {
       const db = await getDb()
-      const workspaceDoc = doc(db, `users/${userId}/workspaces/${workspaceId}`)
+      const workflowDoc = doc(db, `users/${userId}/workflows/${workflowId}`)
 
-      const existing = await getDoc(workspaceDoc)
+      const existing = await getDoc(workflowDoc)
       if (!existing.exists()) {
-        throw new Error(`Workspace ${workspaceId} not found`)
+        throw new Error(`Workflow ${workflowId} not found`)
       }
 
       // Soft delete by marking as archived
-      const updated: Workspace = {
-        ...(existing.data() as Workspace),
+      const updated: Workflow = {
+        ...(existing.data() as Workflow),
         archived: true,
         updatedAtMs: Date.now(),
         version: (existing.data()?.version ?? 0) + 1,
@@ -126,33 +126,33 @@ export const createFirestoreWorkspaceRepository = (): WorkspaceRepository => {
       // Remove undefined values before saving to Firestore (deeply, including nested objects/arrays).
       const cleanedUpdated = stripUndefined(updated)
 
-      await setDoc(workspaceDoc, cleanedUpdated)
+      await setDoc(workflowDoc, cleanedUpdated)
     },
 
-    async get(userId: string, workspaceId: WorkspaceId): Promise<Workspace | null> {
+    async get(userId: string, workflowId: WorkflowId): Promise<Workflow | null> {
       const db = await getDb()
-      const workspaceDoc = doc(db, `users/${userId}/workspaces/${workspaceId}`)
-      const snapshot = await getDoc(workspaceDoc)
+      const workflowDoc = doc(db, `users/${userId}/workflows/${workflowId}`)
+      const snapshot = await getDoc(workflowDoc)
 
       if (!snapshot.exists()) return null
-      return snapshot.data() as Workspace
+      return snapshot.data() as Workflow
     },
 
-    async list(userId: string, options?: { activeOnly?: boolean }): Promise<Workspace[]> {
+    async list(userId: string, options?: { activeOnly?: boolean }): Promise<Workflow[]> {
       const db = await getDb()
-      const workspacesCol = collection(db, `users/${userId}/workspaces`)
+      const workflowsCol = collection(db, `users/${userId}/workflows`)
 
-      const q = query(workspacesCol, orderBy('name', 'asc'))
+      const q = query(workflowsCol, orderBy('name', 'asc'))
 
       const snapshot = await getDocs(q)
-      let workspaces = snapshot.docs.map((doc) => doc.data() as Workspace)
+      let workflows = snapshot.docs.map((doc) => doc.data() as Workflow)
 
-      // Filter out archived workspaces by default
+      // Filter out archived workflows by default
       if (options?.activeOnly !== false) {
-        workspaces = workspaces.filter((workspace) => !workspace.archived)
+        workflows = workflows.filter((workflow) => !workflow.archived)
       }
 
-      return workspaces
+      return workflows
     },
   }
 }

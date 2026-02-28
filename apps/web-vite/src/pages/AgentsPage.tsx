@@ -1,7 +1,7 @@
 /**
  * AgentsPage Component
  *
- * Main page for managing AI agents and workspaces.
+ * Main page for managing AI agents and workflows.
  * Features:
  * - List all agents
  * - Create, edit, delete agents
@@ -53,12 +53,14 @@ const downloadJson = (filename: string, data: unknown) => {
   URL.revokeObjectURL(url)
 }
 
+type AgentsTab = 'agents' | 'templates' | 'tools'
+
 export function AgentsPage() {
   const { confirm, alert: showAlert } = useDialog()
   const navigate = useNavigate()
   const location = useLocation()
   const currentView = location.pathname === '/agents/prompts' ? 'prompts' : 'agents'
-  const { agents, isLoading, loadAgents, deleteAgent } = useAgentOperations()
+  const { agents, isLoading, loadAgents, deleteAgent, createAgent } = useAgentOperations()
   const {
     templates: agentTemplates,
     isLoading: templatesLoading,
@@ -74,8 +76,10 @@ export function AgentsPage() {
     updateTool,
     deleteTool,
   } = useToolOperations()
+  const [activeTab, setActiveTab] = useState<AgentsTab>('agents')
   const [selectedAgent, setSelectedAgent] = useState<AgentConfig | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [modalKey, setModalKey] = useState(0)
   const [prefillAgent, setPrefillAgent] = useState<Partial<AgentConfig> | null>(null)
   const [templateSourceAgent, setTemplateSourceAgent] = useState<AgentConfig | null>(null)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
@@ -84,6 +88,9 @@ export function AgentsPage() {
   const [showToolModal, setShowToolModal] = useState(false)
   const [roleFilter, setRoleFilter] = useState<AgentRole | 'all'>('all')
   const [providerFilter, setProviderFilter] = useState<ModelProvider | 'all'>('all')
+  const [batchMode, setBatchMode] = useState(false)
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set())
+  const [batchCreating, setBatchCreating] = useState(false)
   const importInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -101,12 +108,14 @@ export function AgentsPage() {
   const handleNew = () => {
     setSelectedAgent(null)
     setPrefillAgent(null)
+    setModalKey((k) => k + 1)
     setShowModal(true)
   }
 
   const handleEdit = (agent: AgentConfig) => {
     setSelectedAgent(agent)
     setPrefillAgent(null)
+    setModalKey((k) => k + 1)
     setShowModal(true)
   }
 
@@ -156,6 +165,7 @@ export function AgentsPage() {
   const handleUseTemplate = (template: AgentTemplate) => {
     setSelectedAgent(null)
     setPrefillAgent(template.agentConfig)
+    setModalKey((k) => k + 1)
     setShowModal(true)
   }
 
@@ -181,6 +191,64 @@ export function AgentsPage() {
       await showAlert({
         title: 'Presets already added',
         description: 'All presets already exist.',
+      })
+    }
+  }
+
+  const toggleBatchMode = () => {
+    if (batchMode) {
+      // Exiting batch mode — clear selections
+      setBatchMode(false)
+      setSelectedTemplateIds(new Set())
+    } else {
+      setBatchMode(true)
+    }
+  }
+
+  const toggleTemplateSelection = (templateId: string) => {
+    setSelectedTemplateIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(templateId)) {
+        next.delete(templateId)
+      } else {
+        next.add(templateId)
+      }
+      return next
+    })
+  }
+
+  const handleBatchCreate = async () => {
+    if (selectedTemplateIds.size === 0) return
+    setBatchCreating(true)
+    let createdCount = 0
+    let failedCount = 0
+    for (const templateId of selectedTemplateIds) {
+      const template = agentTemplates.find((t) => t.templateId === templateId)
+      if (!template) continue
+      try {
+        await createAgent({
+          name: template.agentConfig.name ?? template.name,
+          role: template.agentConfig.role ?? 'custom',
+          systemPrompt: template.agentConfig.systemPrompt ?? '',
+          modelProvider: template.agentConfig.modelProvider ?? 'openai',
+          modelName: template.agentConfig.modelName ?? 'gpt-4.1',
+          temperature: template.agentConfig.temperature ?? 0.7,
+          maxTokens: template.agentConfig.maxTokens ?? 2000,
+          description: template.agentConfig.description,
+          toolIds: template.agentConfig.toolIds,
+        })
+        createdCount += 1
+      } catch {
+        failedCount += 1
+      }
+    }
+    setBatchCreating(false)
+    setBatchMode(false)
+    setSelectedTemplateIds(new Set())
+    if (failedCount > 0) {
+      await showAlert({
+        title: 'Batch create complete',
+        description: `Created ${createdCount} agents. ${failedCount} failed.`,
       })
     }
   }
@@ -303,8 +371,8 @@ export function AgentsPage() {
     <div className="page-container">
       <header className="page-header">
         <div>
+          <p className="section-label">Automation</p>
           <h1>AI Agents</h1>
-          <p>Configure and manage your AI assistants</p>
         </div>
         <div className="page-header__actions">
           <SegmentedControl
@@ -315,123 +383,154 @@ export function AgentsPage() {
               { value: 'prompts', label: 'Prompts' },
             ]}
           />
-          <Button onClick={handleNew}>+ New Agent</Button>
+          {activeTab === 'agents' && <Button onClick={handleNew}>+ New Agent</Button>}
+          {activeTab === 'tools' && <Button onClick={handleNewTool}>+ New Tool</Button>}
         </div>
       </header>
 
-      <div className="filters">
-        <div>
-          <label htmlFor="roleFilter">Role:</label>
-          <select
-            id="roleFilter"
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as AgentRole | 'all')}
-          >
-            <option value="all">All Roles</option>
-            <option value="planner">Planner</option>
-            <option value="researcher">Researcher</option>
-            <option value="critic">Critic</option>
-            <option value="synthesizer">Synthesizer</option>
-            <option value="executor">Executor</option>
-            <option value="custom">Custom</option>
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="providerFilter">Provider:</label>
-          <select
-            id="providerFilter"
-            value={providerFilter}
-            onChange={(e) => setProviderFilter(e.target.value as ModelProvider | 'all')}
-          >
-            <option value="all">All Providers</option>
-            <option value="openai">OpenAI</option>
-            <option value="anthropic">Anthropic</option>
-            <option value="google">Google</option>
-            <option value="xai">Grok (xAI)</option>
-          </select>
-        </div>
-
-        <div className="filter-summary">
-          Showing {filteredAgents.length} of {agents.length} agents
-        </div>
+      {/* Tab bar */}
+      <div className="agents-page__tabs">
+        <button
+          className={`agents-page__tab ${activeTab === 'agents' ? 'agents-page__tab--active' : ''}`}
+          onClick={() => setActiveTab('agents')}
+        >
+          My Agents <span className="agents-page__tab-count">{agents.length}</span>
+        </button>
+        <button
+          className={`agents-page__tab ${activeTab === 'templates' ? 'agents-page__tab--active' : ''}`}
+          onClick={() => setActiveTab('templates')}
+        >
+          Templates <span className="agents-page__tab-count">{agentTemplates.length}</span>
+        </button>
+        <button
+          className={`agents-page__tab ${activeTab === 'tools' ? 'agents-page__tab--active' : ''}`}
+          onClick={() => setActiveTab('tools')}
+        >
+          Tools <span className="agents-page__tab-count">{allDisplayTools.length}</span>
+        </button>
       </div>
 
-      {isLoading ? (
-        <div className="loading">Loading agents...</div>
-      ) : filteredAgents.length === 0 ? (
-        <EmptyState
-          label="Agents"
-          title="System idle"
-          description="Agents are specialized intelligences. Create one to automate research, planning, and execution."
-          hint="Capability unlocked: reusable workflows + delegated thinking."
-          actionLabel="Create Agent"
-          onAction={handleNew}
-        >
-          <div className="ghost-card-grid">
-            <div className="ghost-card" />
-            <div className="ghost-card" />
-            <div className="ghost-card" />
+      {/* Tab content: My Agents */}
+      {activeTab === 'agents' && (
+        <>
+          <div className="filters">
+            <div>
+              <label htmlFor="roleFilter">Role:</label>
+              <select
+                id="roleFilter"
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value as AgentRole | 'all')}
+              >
+                <option value="all">All Roles</option>
+                <option value="planner">Planner</option>
+                <option value="researcher">Researcher</option>
+                <option value="critic">Critic</option>
+                <option value="synthesizer">Synthesizer</option>
+                <option value="executor">Executor</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="providerFilter">Provider:</label>
+              <select
+                id="providerFilter"
+                value={providerFilter}
+                onChange={(e) => setProviderFilter(e.target.value as ModelProvider | 'all')}
+              >
+                <option value="all">All Providers</option>
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="google">Google</option>
+                <option value="xai">Grok (xAI)</option>
+              </select>
+            </div>
+
+            <div className="filter-summary">
+              Showing {filteredAgents.length} of {agents.length} agents
+            </div>
           </div>
-        </EmptyState>
-      ) : (
-        <div className="agents-grid">
-          {filteredAgents.map((agent) => (
-            <AgentCard
-              key={agent.agentId}
-              agent={agent}
-              onEdit={handleEdit}
-              onSaveTemplate={handleSaveTemplate}
-              onDelete={async (agent) => {
-                const confirmed = await confirm({
-                  title: 'Delete agent',
-                  description: `Delete agent "${agent.name}"? This cannot be undone. Workspaces using this agent will need to be updated.`,
-                  confirmLabel: 'Delete',
-                  confirmVariant: 'danger',
-                })
-                if (confirmed) {
-                  void deleteAgent(agent.agentId)
-                }
-              }}
-            />
-          ))}
-        </div>
+
+          {isLoading ? (
+            <div className="loading">Loading agents...</div>
+          ) : filteredAgents.length === 0 ? (
+            <EmptyState
+              label="Agents"
+              title="System idle"
+              description="Agents are specialized intelligences. Create one to automate research, planning, and execution."
+              hint="Capability unlocked: reusable workflows + delegated thinking."
+              actionLabel="Create Agent"
+              onAction={handleNew}
+            >
+              <div className="ghost-card-grid">
+                <div className="ghost-card" />
+                <div className="ghost-card" />
+                <div className="ghost-card" />
+              </div>
+            </EmptyState>
+          ) : (
+            <div className="agents-grid">
+              {filteredAgents.map((agent) => (
+                <AgentCard
+                  key={agent.agentId}
+                  agent={agent}
+                  onEdit={handleEdit}
+                  onSaveTemplate={handleSaveTemplate}
+                  onDelete={async (agent) => {
+                    const confirmed = await confirm({
+                      title: 'Delete agent',
+                      description: `Delete agent "${agent.name}"? This cannot be undone. Workflows using this agent will need to be updated.`,
+                      confirmLabel: 'Delete',
+                      confirmVariant: 'danger',
+                    })
+                    if (confirmed) {
+                      void deleteAgent(agent.agentId)
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      <details className="collapsible-section" open>
-        <summary className="collapsible-summary">
-          <span>Templates</span>
-        </summary>
-        <section className="settings-panel">
-          <header className="settings-panel__header">
-            <div>
-              <p className="section-label">Templates</p>
-              <h2>Agent Templates</h2>
-              <p className="settings-panel__meta">Save reusable agent setups and start faster.</p>
-              <div className="settings-panel__actions">
-                <Button variant="ghost" onClick={handleAddPresets} type="button">
-                  Add Presets
-                </Button>
-                <Button variant="ghost" onClick={handleExportTemplates} type="button">
-                  Export
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => importInputRef.current?.click()}
-                  type="button"
-                >
-                  Import
-                </Button>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept="application/json"
-                  onChange={handleImportTemplates}
-                  hidden
-                />
-              </div>
-            </div>
-          </header>
+      {/* Tab content: Templates */}
+      {activeTab === 'templates' && (
+        <section>
+          <div className="agents-page__tab-toolbar">
+            <Button
+              variant={batchMode ? 'default' : 'ghost'}
+              onClick={
+                batchMode && selectedTemplateIds.size > 0 ? handleBatchCreate : toggleBatchMode
+              }
+              type="button"
+              disabled={batchCreating}
+            >
+              {batchCreating
+                ? 'Creating...'
+                : batchMode
+                  ? selectedTemplateIds.size > 0
+                    ? `Create (${selectedTemplateIds.size})`
+                    : 'Cancel'
+                  : 'Batch'}
+            </Button>
+            <Button variant="ghost" onClick={handleAddPresets} type="button">
+              Add Presets
+            </Button>
+            <Button variant="ghost" onClick={handleExportTemplates} type="button">
+              Export
+            </Button>
+            <Button variant="ghost" onClick={() => importInputRef.current?.click()} type="button">
+              Import
+            </Button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json"
+              onChange={handleImportTemplates}
+              hidden
+            />
+          </div>
 
           {templatesLoading ? (
             <div className="loading">Loading templates...</div>
@@ -444,7 +543,24 @@ export function AgentsPage() {
           ) : (
             <div className="agents-grid">
               {agentTemplates.map((template) => (
-                <div key={template.templateId} className="agent-card">
+                <div
+                  key={template.templateId}
+                  className={`agent-card${batchMode && selectedTemplateIds.has(template.templateId) ? ' agent-card--selected' : ''}`}
+                  onClick={
+                    batchMode ? () => toggleTemplateSelection(template.templateId) : undefined
+                  }
+                  style={batchMode ? { cursor: 'pointer' } : undefined}
+                >
+                  {batchMode && (
+                    <div className="batch-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedTemplateIds.has(template.templateId)}
+                        onChange={() => toggleTemplateSelection(template.templateId)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  )}
                   <div className="card-header">
                     <h3>{template.name}</h3>
                     <span className="badge">{template.agentConfig.role}</span>
@@ -461,51 +577,40 @@ export function AgentsPage() {
                       <strong>Tools:</strong> {template.agentConfig.toolIds?.length ?? 0}
                     </div>
                   </div>
-                  <div className="card-actions">
-                    <Button variant="ghost" onClick={() => handleUseTemplate(template)}>
-                      Use Template
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={async () => {
-                        const confirmed = await confirm({
-                          title: 'Delete template',
-                          description: `Delete template "${template.name}"?`,
-                          confirmLabel: 'Delete',
-                          confirmVariant: 'danger',
-                        })
-                        if (confirmed) {
-                          void deleteTemplate(template.templateId)
-                        }
-                      }}
-                      className="danger"
-                    >
-                      Delete
-                    </Button>
-                  </div>
+                  {!batchMode && (
+                    <div className="card-actions">
+                      <Button variant="ghost" onClick={() => handleUseTemplate(template)}>
+                        Use Template
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={async () => {
+                          const confirmed = await confirm({
+                            title: 'Delete template',
+                            description: `Delete template "${template.name}"?`,
+                            confirmLabel: 'Delete',
+                            confirmVariant: 'danger',
+                          })
+                          if (confirmed) {
+                            void deleteTemplate(template.templateId)
+                          }
+                        }}
+                        className="danger"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </section>
-      </details>
+      )}
 
-      <details className="collapsible-section">
-        <summary className="collapsible-summary">
-          <span>Tools</span>
-        </summary>
-        <section className="settings-panel">
-          <header className="settings-panel__header">
-            <div>
-              <p className="section-label">Tools</p>
-              <h2>Tools</h2>
-              <p className="settings-panel__meta">
-                Build reusable tools that agents can call during execution.
-              </p>
-            </div>
-            <Button onClick={handleNewTool}>+ New Tool</Button>
-          </header>
-
+      {/* Tab content: Tools */}
+      {activeTab === 'tools' && (
+        <section>
           {toolsLoading ? (
             <div className="loading">Loading tools...</div>
           ) : allDisplayTools.length === 0 ? (
@@ -565,9 +670,10 @@ export function AgentsPage() {
             </div>
           )}
         </section>
-      </details>
+      )}
 
       <AgentBuilderModal
+        key={modalKey}
         agent={selectedAgent}
         isOpen={showModal}
         onClose={handleModalClose}

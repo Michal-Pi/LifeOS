@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { formatDistanceToNow } from 'date-fns'
 import { NoteEditor } from '@/components/editor'
 import { ProjectSidebar } from '@/components/notes/ProjectSidebar'
 import { NoteTitleEditor } from '@/components/notes/NoteTitleEditor'
@@ -22,9 +23,11 @@ import { AIToolsDropdown } from '@/components/notes/AIToolsDropdown'
 import { useNoteOperations } from '@/hooks/useNoteOperations'
 import { useTopics } from '@/hooks/useTopics'
 import { useNoteSync } from '@/hooks/useNoteSync'
+import { stripHtml } from '@/notes/noteContent'
 import type { AttachmentId } from '@lifeos/notes'
 import type { JSONContent } from '@tiptap/core'
 import { useNoteMetadataCache } from '@/hooks/useNoteMetadataCache'
+import '@/styles/pages/NotesPage.css'
 
 export function NotesPage() {
   // Initialize cache hook (refreshes cache on mount and user changes)
@@ -199,8 +202,10 @@ export function NotesPage() {
       })
       setSelectedNoteId(newNote.noteId)
       setCurrentNote(newNote)
+      // Refresh note list so sidebar shows new note
+      await listNotes()
     },
-    [createNote, currentNote, setCurrentNote]
+    [createNote, currentNote, setCurrentNote, listNotes]
   )
 
   const handleImportAppend = useCallback(
@@ -250,6 +255,14 @@ export function NotesPage() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [showOverflowMenu])
+
+  const wordCount = currentNote?.contentHtml
+    ? stripHtml(currentNote.contentHtml).split(/\s+/).filter(Boolean).length
+    : 0
+
+  const currentTopicName = currentNote?.topicId
+    ? (topics.find((t) => t.topicId === currentNote.topicId)?.name ?? null)
+    : null
 
   const pendingCount =
     (stats?.notes.pending || 0) + (stats?.topics.pending || 0) + (stats?.sections.pending || 0)
@@ -315,6 +328,21 @@ export function NotesPage() {
                     onSave={handleTitleChange}
                     placeholder="Untitled"
                   />
+                  <div className="note-meta-bar">
+                    <span className="note-meta-bar__item">{wordCount} words</span>
+                    <span className="note-meta-bar__item">
+                      Edited{' '}
+                      {formatDistanceToNow(new Date(currentNote.updatedAtMs), { addSuffix: true })}
+                    </span>
+                    {currentTopicName && (
+                      <span className="note-meta-bar__project">{currentTopicName}</span>
+                    )}
+                    {currentNote.tags?.map((tag) => (
+                      <span key={tag} className="note-meta-bar__tag">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                   <div className="editor-actions">
                     <div className="editor-actions-row">
                       <AIToolsDropdown
@@ -366,7 +394,7 @@ export function NotesPage() {
                             <button
                               className="editor-overflow-item"
                               onClick={() => {
-                                setShowProjectLinker((prev) => !prev)
+                                setShowProjectLinker(true)
                                 setShowOverflowMenu(false)
                               }}
                               type="button"
@@ -390,14 +418,6 @@ export function NotesPage() {
                     <div className="editor-status" id="note-status-anchor" />
                   </div>
                 </div>
-                {showProjectLinker && (
-                  <div className="editor-linker-panel">
-                    <ProjectLinker
-                      linkedProjectIds={currentNote.projectIds || []}
-                      onProjectsChange={handleProjectsChange}
-                    />
-                  </div>
-                )}
                 {showOKRLinker && (
                   <div className="editor-linker-panel">
                     <OKRLinker
@@ -462,254 +482,6 @@ export function NotesPage() {
         </div>
       </div>
 
-      <style>{`
-        .notes-page {
-          height: calc(100vh - var(--nav-height) - 20px);
-          display: flex;
-          flex-direction: column;
-          gap: 0;
-          overflow: hidden;
-          background: var(--background);
-          background-image: var(--background-texture);
-          background-size: auto;
-          background-position: top center;
-        }
-
-        .sync-banner {
-          flex-shrink: 0;
-        }
-
-        .notes-layout {
-          flex: 1;
-          display: grid;
-          grid-template-columns: 280px 1fr;
-          overflow: hidden;
-        }
-
-        .notes-editor-container {
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          background: var(--background);
-          min-height: 0;
-        }
-
-        .editor-header {
-          flex-shrink: 0;
-          padding: 2rem 3rem 1rem;
-          border-bottom: 1px solid var(--border);
-          background: var(--card);
-        }
-
-        .editor-header-content {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 1rem;
-          width: 100%;
-        }
-
-        .editor-header-content > :first-child {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .editor-actions {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          gap: 0.25rem;
-          flex-shrink: 0;
-        }
-
-        .editor-actions-row {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .editor-overflow-wrap {
-          position: relative;
-        }
-
-        .editor-overflow-trigger {
-          font-size: 1.1rem;
-          letter-spacing: 0.15em;
-          line-height: 1;
-          padding: 0.45rem 0.6rem !important;
-        }
-
-        .editor-overflow-menu {
-          position: absolute;
-          top: calc(100% + 4px);
-          right: 0;
-          z-index: 50;
-          min-width: 160px;
-          background: var(--card);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          box-shadow: 0 8px 24px var(--shadow-soft);
-          padding: 0.35rem;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .editor-overflow-item {
-          display: block;
-          width: 100%;
-          text-align: left;
-          padding: 0.5rem 0.75rem;
-          font-size: 0.8rem;
-          color: var(--foreground);
-          background: none;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          transition: background var(--motion-fast) var(--motion-ease);
-        }
-
-        .editor-overflow-item:hover {
-          background: var(--background-secondary);
-        }
-
-        /* Style ExportMenu inside overflow to match items */
-        .editor-overflow-menu .notes-header-export .export-button {
-          display: block;
-          width: 100%;
-          text-align: left;
-          padding: 0.5rem 0.75rem;
-          font-size: 0.8rem;
-          min-height: unset;
-          border-radius: 6px;
-          border: none;
-          background: none;
-          color: var(--foreground);
-          letter-spacing: normal;
-        }
-
-        .editor-overflow-menu .notes-header-export .export-button:hover {
-          background: var(--background-secondary);
-        }
-
-        .editor-status {
-          min-height: 0.9rem;
-          font-size: 0.7rem;
-          color: var(--text-secondary);
-          line-height: 1;
-        }
-
-        .notes-header-button,
-        .notes-header-export .export-button {
-          min-height: 32px;
-          padding: 0.45rem 0.85rem;
-          font-size: 0.8rem;
-          border-radius: 8px;
-          letter-spacing: 0.04em;
-          background: transparent;
-          border-color: var(--border);
-          color: var(--foreground);
-        }
-
-        .notes-header-button:hover,
-        .notes-header-export .export-button:hover {
-          background: var(--background-tertiary);
-          border-color: var(--border-strong);
-        }
-
-        .editor-wrapper {
-          flex: 1;
-          overflow: hidden;
-          padding: 2rem 3rem;
-          background: var(--card);
-          min-height: 0;
-          display: flex;
-          position: relative;
-        }
-
-        .editor-linker-panel {
-          margin-top: 1rem;
-          padding: 1rem 1.25rem;
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          background: var(--background-secondary);
-          box-shadow: 0 8px 20px var(--shadow-soft);
-          max-width: 720px;
-          width: 100%;
-        }
-
-        .editor-placeholder {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 100%;
-          background: var(--card);
-        }
-
-        .placeholder-content {
-          text-align: center;
-          max-width: 500px;
-          padding: 4rem 2rem;
-        }
-
-        .placeholder-icon {
-          font-size: 4rem;
-          margin-bottom: 1.5rem;
-          opacity: 0.5;
-        }
-
-        .placeholder-content h2 {
-          margin: 0 0 0.75rem 0;
-          font-size: 1.5rem;
-          font-weight: 600;
-          color: var(--foreground);
-        }
-
-        .placeholder-content p {
-          margin: 0 0 1.5rem 0;
-          color: var(--muted-foreground);
-          font-size: 0.875rem;
-          line-height: 1.6;
-        }
-
-        .placeholder-hint {
-          margin-top: 1rem !important;
-          font-size: 0.8125rem !important;
-          color: var(--muted-foreground) !important;
-          font-family: var(--font-mono) !important;
-        }
-
-        .primary-button {
-          padding: 0.625rem 1.25rem;
-          min-height: 40px;
-          background: var(--accent);
-          color: var(--accent-foreground);
-          border: 1px solid var(--accent);
-          border-radius: 8px;
-          cursor: pointer;
-          font-size: 0.875rem;
-          font-weight: 600;
-          white-space: nowrap;
-          transition:
-            box-shadow var(--motion-standard) var(--motion-ease),
-            opacity var(--motion-standard) var(--motion-ease);
-        }
-
-        .primary-button:hover:not(:disabled) {
-          box-shadow: 0 0 0 3px var(--accent-subtle);
-        }
-
-        .primary-button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .primary-button.small {
-          padding: 0.5rem 1rem;
-          min-height: 32px;
-          font-size: 0.8125rem;
-        }
-      `}</style>
-
       {/* Import Modal */}
       <ImportModal
         isOpen={showImportModal}
@@ -719,6 +491,16 @@ export function NotesPage() {
         currentNoteExists={!!currentNote}
         currentNoteContent={currentNote?.content as JSONContent | undefined}
       />
+
+      {/* Project Linker Modal */}
+      {currentNote && (
+        <ProjectLinker
+          isOpen={showProjectLinker}
+          onClose={() => setShowProjectLinker(false)}
+          linkedProjectIds={currentNote.projectIds || []}
+          onProjectsChange={handleProjectsChange}
+        />
+      )}
     </div>
   )
 }

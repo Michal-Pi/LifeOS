@@ -1,0 +1,143 @@
+/* CheckInCard - Design System Aligned */
+
+.checkin-card {
+  /* Grid position set by .today-grid-checkin in parent */
+}
+
+.checkin-card-inner {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(280px, 1.5fr);
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+  align-items: stretch;
+}
+
+.checkin-energy-section,
+.checkin-emotion-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.checkin-emotion-section {
+  align-items: stretch;
+}
+
+.checkin-subsection-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: left;
+}
+
+.checkin-subsection-header .section-hint {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+/* Energy Toggle Group */
+.energy-toggle-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--background-tertiary);
+  border-radius: var(--radius-md);
+  flex: 1;
+}
+
+.energy-toggle-group .energy-toggle {
+  flex: 1;
+}
+
+.energy-toggle {
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--motion-fast);
+  text-align: left;
+}
+
+.energy-toggle:hover {
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.energy-toggle.active {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Check-in Status */
+.checkin-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--background-tertiary);
+  border-radius: var(--radius-full);
+}
+
+.checkin-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.checkin-status-text {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+/* Check-in Actions */
+.checkin-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+/* Loading State */
+.checkin-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: var(--text-tertiary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .checkin-card-inner {
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+  }
+
+  .checkin-emotion-section {
+    order: -1; /* Wheel first on mobile */
+  }
+
+  .checkin-subsection-header {
+    text-align: center;
+  }
+
+  .energy-toggle-group {
+    flex-direction: row;
+  }
+
+  .energy-toggle {
+    flex: 1;
+    text-align: center;
+  }
+}

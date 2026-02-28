@@ -107,7 +107,7 @@ export function ResearchUploadModal({
               type="text"
               value={model}
               onChange={(event) => setModel(event.target.value)}
-              placeholder="e.g. gpt-4o, claude-3-opus"
+              placeholder="e.g. gpt-5.2, claude-sonnet-4-5"
             />
           </label>
         </div>

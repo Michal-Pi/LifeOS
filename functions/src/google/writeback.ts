@@ -1,3 +1,4 @@
+import { createLogger } from '../lib/logger.js'
 import { FieldValue } from 'firebase-admin/firestore'
 import {
   insertEvent,
@@ -13,6 +14,8 @@ import {
   accountRef,
   instanceMapRef,
 } from './paths.js'
+
+const log = createLogger('GoogleWriteback')
 
 /**
  * Writeback job status
@@ -653,7 +656,7 @@ export async function resolveInstanceId(
 
     return null
   } catch (error) {
-    console.error('Failed to resolve instance ID:', error)
+    log.error('Failed to resolve instance ID', error)
     return null
   }
 }

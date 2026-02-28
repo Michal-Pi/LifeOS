@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { deleteField, doc, onSnapshot, setDoc } from 'firebase/firestore'
 
 import { getFirestoreClient } from '@/lib/firestoreClient'
+import { getSetting, saveSetting } from '@/settings/offlineStore'
 
 export type AiProviderKeyType = 'openai' | 'anthropic' | 'google' | 'xai'
 
@@ -45,13 +46,22 @@ export function useAiProviderKeys(userId: string | null | undefined): UseAiProvi
 
     const setupSubscription = async () => {
       try {
+        // Load from local cache first
+        const cached = await getSetting(userId, 'aiProviderKeys')
+        if (cached) {
+          setKeys(cached as AiProviderKeys)
+          setIsLoading(false)
+        }
+
         const db = await getFirestoreClient()
         const docRef = doc(db, `users/${userId}/settings/aiProviderKeys`)
         unsubscribe = onSnapshot(
           docRef,
           (snapshot) => {
-            setKeys((snapshot.data() as AiProviderKeys) ?? {})
+            const data = (snapshot.data() as AiProviderKeys) ?? {}
+            setKeys(data)
             setIsLoading(false)
+            void saveSetting(userId, 'aiProviderKeys', data as Record<string, unknown>)
           },
           (err) => {
             setError(err.message)

@@ -2,6 +2,7 @@ import type { CanonicalCalendarEvent } from '@lifeos/calendar'
 import { getOrCreateDeviceId, createLogger } from '@lifeos/calendar'
 
 import { createFirestoreCalendarEventRepository } from '@/adapters/firestoreCalendarEventRepository'
+import { saveEventLocally, deleteEventLocally } from '@/calendar/offlineStore'
 import { functionUrl } from '@/lib/functionsUrl'
 import { authenticatedFetch } from '@/lib/authenticatedFetch'
 
@@ -101,32 +102,10 @@ async function applyOp(op: OutboxOp): Promise<boolean> {
         updatedByDeviceId: op.deviceId,
       }
       await repository.createEvent(op.userId, eventWithMetadata)
-      // Trigger writeback after successful canonical write
+      void saveEventLocally(eventWithMetadata)
       await triggerWriteback(op.userId, op.eventId, 'create')
     } else if (op.type === 'update') {
       const payload = op.payload as UpdatePayload
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          location: 'worker.ts:109',
-          message: 'Before updateEventWithConflictResolution',
-          data: {
-            userId: op.userId,
-            eventId: op.eventId,
-            hasEvent: !!payload.event,
-            baseRev: op.baseRev,
-            deviceId: op.deviceId,
-            eventKeys: payload.event ? Object.keys(payload.event) : [],
-          },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'C',
-        }),
-      }).catch(() => {})
-      // #endregion
       // Use transaction-based update with conflict resolution
       await repository.updateEventWithConflictResolution(
         op.userId,
@@ -135,13 +114,13 @@ async function applyOp(op: OutboxOp): Promise<boolean> {
         op.baseRev,
         op.deviceId
       )
+      void saveEventLocally(payload.event)
       const writebackOp = payload.writebackOp ?? 'update'
       const writebackMeta = payload.writebackMeta
-      // Trigger writeback after successful canonical write
       await triggerWriteback(op.userId, op.eventId, writebackOp, writebackMeta)
     } else if (op.type === 'delete') {
       await repository.deleteEvent(op.userId, op.eventId, op.baseUpdatedAtMs)
-      // Trigger writeback after successful canonical write
+      void deleteEventLocally(op.eventId)
       await triggerWriteback(op.userId, op.eventId, 'delete')
     }
 
@@ -173,29 +152,6 @@ async function applyOp(op: OutboxOp): Promise<boolean> {
     // Calculate actual attempt count (network errors don't increment)
     const actualAttempts = isNetworkError ? op.attempts : op.attempts + 1
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        location: 'worker.ts:138',
-        message: 'Outbox op failed',
-        data: {
-          errorCode: errorCode,
-          errorMessage: err.message,
-          eventId: op.eventId,
-          opType: op.type,
-          attempt: actualAttempts,
-          isNetworkError: isNetworkError,
-          userId: op.userId,
-        },
-        timestamp: Date.now(),
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'D',
-      }),
-    }).catch(() => {})
-    // #endregion
     logger.warn(`Failed ${op.type} for event`, {
       error: err,
       eventId: op.eventId,

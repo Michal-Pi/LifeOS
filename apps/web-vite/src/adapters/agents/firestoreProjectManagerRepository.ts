@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
-import type { WorkspaceId, RunId } from '@lifeos/agents'
+import type { WorkflowId, RunId } from '@lifeos/agents'
 import type {
   Assumption,
   Conflict,
@@ -40,7 +40,7 @@ export const createFirestoreProjectManagerRepository = (): ProjectManagerReposit
   return {
     async createContext(
       userId: string,
-      workspaceId?: WorkspaceId,
+      workflowId?: WorkflowId,
       runId?: RunId
     ): Promise<ConversationContext> {
       const db = await getDb()
@@ -49,7 +49,7 @@ export const createFirestoreProjectManagerRepository = (): ProjectManagerReposit
       const context: ConversationContext = {
         contextId,
         userId,
-        workspaceId,
+        workflowId,
         runId,
         requirements: [],
         assumptions: [],
@@ -94,7 +94,7 @@ export const createFirestoreProjectManagerRepository = (): ProjectManagerReposit
 
     async getActiveContext(
       userId: string,
-      workspaceId?: WorkspaceId
+      workflowId?: WorkflowId
     ): Promise<ConversationContext | null> {
       const db = await getDb()
       let q = query(
@@ -102,10 +102,10 @@ export const createFirestoreProjectManagerRepository = (): ProjectManagerReposit
         orderBy('lastUpdatedAtMs', 'desc'),
         firestoreLimit(1)
       )
-      if (workspaceId) {
+      if (workflowId) {
         q = query(
           collection(db, `users/${userId}/pmContexts`),
-          where('workspaceId', '==', workspaceId),
+          where('workflowId', '==', workflowId),
           orderBy('lastUpdatedAtMs', 'desc'),
           firestoreLimit(1)
         )

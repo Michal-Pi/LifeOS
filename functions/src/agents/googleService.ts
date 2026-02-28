@@ -9,14 +9,17 @@
 import type { Tool, Schema } from '@google/generative-ai'
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai'
 import type { AgentConfig } from '@lifeos/agents'
-import { MODEL_PRICING } from '@lifeos/agents'
+import { asId, MODEL_PRICING } from '@lifeos/agents'
 
+import { createLogger } from '../lib/logger.js'
 import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
 import { recordMessage } from './messageStore.js'
 import { checkProviderRateLimit } from './rateLimiter.js'
 import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
 import { executeTools, getAgentToolsFromRegistry, getBuiltinToolRegistry } from './toolExecutor.js'
+
+const log = createLogger('GoogleService')
 
 /**
  * Initialize Google AI client with API key from Firebase secrets
@@ -32,6 +35,7 @@ export interface GoogleExecutionResult {
   output: string
   tokensUsed: number
   estimatedCost: number
+  iterationsUsed: number
 }
 
 /**
@@ -135,7 +139,7 @@ export async function executeWithGoogle(
   context?: Record<string, unknown>,
   toolContext?: BaseToolExecutionContext
 ): Promise<GoogleExecutionResult> {
-  const modelName = agent.modelName ?? 'gemini-1.5-flash'
+  const modelName = agent.modelName ?? 'gemini-3-flash'
 
   try {
     // Build the prompt
@@ -170,10 +174,11 @@ export async function executeWithGoogle(
     let totalInputChars = 0
     let totalOutputChars = 0
 
-    // Iterative execution loop (max 5 iterations)
-    const MAX_ITERATIONS = 5
+    // Iterative execution loop (configurable, default 5)
+    const MAX_ITERATIONS = toolContext?.maxIterations ?? 5
     let iteration = 0
     let finalOutput = ''
+    let nextMessage = ''
 
     // Send initial message
     totalInputChars += userPrompt.length
@@ -196,9 +201,11 @@ export async function executeWithGoogle(
 
     while (iteration < MAX_ITERATIONS) {
       iteration++
-      console.log(`Google iteration ${iteration}/${MAX_ITERATIONS}`)
+      log.info('Iteration started', { iteration, maxIterations: MAX_ITERATIONS })
 
-      // Send message (first iteration uses userPrompt, subsequent use empty to continue)
+      // Send message (first iteration uses userPrompt, subsequent use nextMessage or empty)
+      const messageToSend = iteration === 1 ? userPrompt : nextMessage || ''
+      nextMessage = '' // Reset for next iteration
       const result = await executeWithRetry(
         async () => {
           if (toolContext?.userId) {
@@ -206,16 +213,19 @@ export async function executeWithGoogle(
           }
 
           return executeWithTimeout(
-            iteration === 1 ? chat.sendMessage(userPrompt) : chat.sendMessage(''),
+            chat.sendMessage(messageToSend),
             TIMEOUTS.PROVIDER,
             'google.chat.sendMessage'
           )
         },
         PROVIDER_RETRY_CONFIG,
         (attempt, error, delayMs) => {
-          console.log(
-            `Google retry ${attempt}/${PROVIDER_RETRY_CONFIG.maxRetries} after ${delayMs}ms: ${(error as Error).message}`
-          )
+          log.info('Retrying request', {
+            attempt,
+            maxRetries: PROVIDER_RETRY_CONFIG.maxRetries,
+            delayMs,
+            error: (error as Error).message,
+          })
         }
       )
       const response = result.response
@@ -226,7 +236,7 @@ export async function executeWithGoogle(
       const functionCalls = response.functionCalls()
 
       if (functionCalls && functionCalls.length > 0 && toolContext) {
-        console.log(`Agent requesting ${functionCalls.length} tool calls`)
+        log.info('Agent requesting tool calls', { toolCallCount: functionCalls.length })
 
         // Execute all tool calls in parallel
         const toolCalls = functionCalls.map((fc) => ({
@@ -244,7 +254,7 @@ export async function executeWithGoogle(
 
         const toolCallRecords = toolCalls.map((call) => ({
           toolCallId: call.toolCallId,
-          toolId: `tool:${call.toolName}` as any,
+          toolId: asId<'tool'>(`tool:${call.toolName}`),
           toolName: call.toolName,
           parameters: call.parameters,
         }))
@@ -274,7 +284,7 @@ export async function executeWithGoogle(
         }
 
         totalInputChars += JSON.stringify(functionResponseMessage).length
-        console.log(`Executed ${toolResults.length} tools, continuing agent iteration`)
+        log.info('Tools executed, continuing iteration', { toolCount: toolResults.length })
 
         for (const toolResult of toolResults) {
           await recordMessage({
@@ -295,8 +305,20 @@ export async function executeWithGoogle(
           })
         }
 
+        // Budget warning: on penultimate iteration, tell agent to synthesize
+        if (iteration === MAX_ITERATIONS - 1) {
+          log.info('Budget warning, injecting synthesis prompt', {
+            iteration,
+            maxIterations: MAX_ITERATIONS,
+          })
+          nextMessage =
+            'IMPORTANT: You are at your tool-calling budget limit. ' +
+            'You MUST synthesize your findings into a complete response NOW. ' +
+            'Do NOT make additional tool calls. Provide your best output with what you have gathered.'
+        }
+
         // Continue loop to get agent's response with tool results
-        // Next iteration will send empty message to continue conversation
+        // Next iteration will send nextMessage or empty to continue conversation
       } else {
         // No tool calls, agent provided final output
         finalOutput = response.text()
@@ -309,14 +331,17 @@ export async function executeWithGoogle(
             content: finalOutput,
           })
         }
-        console.log(`Agent completed in ${iteration} iterations (no more tool calls)`)
+        log.info('Agent completed, no more tool calls', { iterationsUsed: iteration })
         break
       }
     }
 
-    if (iteration >= MAX_ITERATIONS) {
-      console.warn(`Agent reached max iterations (${MAX_ITERATIONS}) with tool calls`)
-      finalOutput = 'Agent reached max iterations without providing final output'
+    if (iteration >= MAX_ITERATIONS && !finalOutput) {
+      log.warn('Agent reached max iterations with tool calls', { maxIterations: MAX_ITERATIONS })
+      finalOutput =
+        `[PARTIAL RESULT - iteration budget exhausted after ${iteration} tool calls]\n\n` +
+        `The agent gathered research data but could not complete synthesis. ` +
+        `Consider increasing the iteration budget for tool-heavy agents.`
       if (toolContext) {
         await recordMessage({
           userId: toolContext.userId,
@@ -340,9 +365,10 @@ export async function executeWithGoogle(
       output: finalOutput,
       tokensUsed,
       estimatedCost,
+      iterationsUsed: iteration,
     }
   } catch (error) {
-    console.error('Google Gemini execution error:', error)
+    log.error('Execution error', error)
     const agentError = wrapError(error, 'google')
     agentError.details = {
       ...agentError.details,

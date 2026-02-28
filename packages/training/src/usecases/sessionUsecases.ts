@@ -12,7 +12,6 @@ import type {
   CreateSessionInput,
   UpdateSessionInput,
   WorkoutContext,
-  SessionStatus,
 } from '../domain/models'
 
 /**

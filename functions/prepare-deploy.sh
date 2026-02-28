@@ -5,65 +5,9 @@ set -e
 
 echo "Preparing functions for deployment..."
 
-# Vendor workspace packages for deploy (must be done before build)
+# Rebuild workspace packages and copy dist into vendor/
 echo "Vendoring workspace dependencies..."
-VENDOR_DIR="./vendor"
-CALENDAR_VENDOR="${VENDOR_DIR}/lifeos-calendar"
-AGENTS_VENDOR="${VENDOR_DIR}/lifeos-agents"
-CORE_VENDOR="${VENDOR_DIR}/lifeos-core"
-mkdir -p "${CALENDAR_VENDOR}"
-mkdir -p "${AGENTS_VENDOR}"
-mkdir -p "${CORE_VENDOR}"
-
-# Copy built calendar package into vendor directory
-if [[ ! -d "../packages/calendar/dist" ]]; then
-  echo "Calendar dist not found. Run: pnpm --filter @lifeos/calendar build"
-  exit 1
-fi
-
-# Copy built agents package into vendor directory
-if [[ ! -d "../packages/agents/dist" ]]; then
-  echo "Agents dist not found. Run: pnpm --filter @lifeos/agents build"
-  exit 1
-fi
-
-# Copy built core package into vendor directory (agents depends on it)
-if [[ ! -d "../packages/core/dist" ]]; then
-  echo "Core dist not found. Run: pnpm --filter @lifeos/core build"
-  exit 1
-fi
-
-rm -rf "${CALENDAR_VENDOR}"
-mkdir -p "${CALENDAR_VENDOR}"
-cp "../packages/calendar/package.json" "${CALENDAR_VENDOR}/package.json"
-cp -R "../packages/calendar/dist" "${CALENDAR_VENDOR}/dist"
-
-rm -rf "${AGENTS_VENDOR}"
-mkdir -p "${AGENTS_VENDOR}"
-cp "../packages/agents/package.json" "${AGENTS_VENDOR}/package.json"
-cp -R "../packages/agents/dist" "${AGENTS_VENDOR}/dist"
-
-rm -rf "${CORE_VENDOR}"
-mkdir -p "${CORE_VENDOR}"
-cp "../packages/core/package.json" "${CORE_VENDOR}/package.json"
-cp -R "../packages/core/dist" "${CORE_VENDOR}/dist"
-
-# Update workspace dependencies in vendored package.json files to use file paths
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  # Replace @lifeos/core workspace dependency with file path in agents package.json
-  sed -i '' 's/"@lifeos\/core": "workspace:\*"/"@lifeos\/core": "file:..\/lifeos-core"/' "${AGENTS_VENDOR}/package.json"
-  # Remove any other workspace dependencies
-  sed -i '' '/"workspace:\*"/d' "${AGENTS_VENDOR}/package.json"
-  sed -i '' '/"workspace:\*"/d' "${CALENDAR_VENDOR}/package.json"
-  sed -i '' '/"workspace:\*"/d' "${CORE_VENDOR}/package.json"
-else
-  # Replace @lifeos/core workspace dependency with file path in agents package.json
-  sed -i 's/"@lifeos\/core": "workspace:\*"/"@lifeos\/core": "file:..\/lifeos-core"/' "${AGENTS_VENDOR}/package.json"
-  # Remove any other workspace dependencies
-  sed -i '/"workspace:\*"/d' "${AGENTS_VENDOR}/package.json"
-  sed -i '/"workspace:\*"/d' "${CALENDAR_VENDOR}/package.json"
-  sed -i '/"workspace:\*"/d' "${CORE_VENDOR}/package.json"
-fi
+bash vendor.sh
 
 echo "Updating workspace dependencies for deploy..."
 # Create a backup of package.json
@@ -74,11 +18,13 @@ cp package.json package.json.backup
 if [[ "$OSTYPE" == "darwin"* ]]; then
   sed -i '' 's/"@lifeos\/agents": "workspace:\*"/"@lifeos\/agents": "file:.\/vendor\/lifeos-agents"/' package.json
   sed -i '' 's/"@lifeos\/calendar": "workspace:\*"/"@lifeos\/calendar": "file:.\/vendor\/lifeos-calendar"/' package.json
+  sed -i '' 's/"@lifeos\/training": "workspace:\*"/"@lifeos\/training": "file:.\/vendor\/lifeos-training"/' package.json
   # Remove any remaining workspace: dependencies (but preserve other dependencies)
   sed -i '' '/"workspace:\*"/d' package.json
 else
   sed -i 's/"@lifeos\/agents": "workspace:\*"/"@lifeos\/agents": "file:.\/vendor\/lifeos-agents"/' package.json
   sed -i 's/"@lifeos\/calendar": "workspace:\*"/"@lifeos\/calendar": "file:.\/vendor\/lifeos-calendar"/' package.json
+  sed -i 's/"@lifeos\/training": "workspace:\*"/"@lifeos\/training": "file:.\/vendor\/lifeos-training"/' package.json
   # Remove any remaining workspace: dependencies (but preserve other dependencies)
   sed -i '/"workspace:\*"/d' package.json
 fi
@@ -92,9 +38,11 @@ if ! grep -q '"firebase-admin"' package.json; then
   if [[ "$OSTYPE" == "darwin"* ]]; then
     sed -i '' 's/"@lifeos\/agents": "workspace:\*"/"@lifeos\/agents": "file:.\/vendor\/lifeos-agents"/' package.json
     sed -i '' 's/"@lifeos\/calendar": "workspace:\*"/"@lifeos\/calendar": "file:.\/vendor\/lifeos-calendar"/' package.json
+    sed -i '' 's/"@lifeos\/training": "workspace:\*"/"@lifeos\/training": "file:.\/vendor\/lifeos-training"/' package.json
   else
     sed -i 's/"@lifeos\/agents": "workspace:\*"/"@lifeos\/agents": "file:.\/vendor\/lifeos-agents"/' package.json
     sed -i 's/"@lifeos\/calendar": "workspace:\*"/"@lifeos\/calendar": "file:.\/vendor\/lifeos-calendar"/' package.json
+    sed -i 's/"@lifeos\/training": "workspace:\*"/"@lifeos\/training": "file:.\/vendor\/lifeos-training"/' package.json
   fi
 fi
 
@@ -107,9 +55,11 @@ if ! node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8'))" 2>
   if [[ "$OSTYPE" == "darwin"* ]]; then
     sed -i '' 's/"@lifeos\/agents": "workspace:\*"/"@lifeos\/agents": "file:.\/vendor\/lifeos-agents"/' package.json
     sed -i '' 's/"@lifeos\/calendar": "workspace:\*"/"@lifeos\/calendar": "file:.\/vendor\/lifeos-calendar"/' package.json
+    sed -i '' 's/"@lifeos\/training": "workspace:\*"/"@lifeos\/training": "file:.\/vendor\/lifeos-training"/' package.json
   else
     sed -i 's/"@lifeos\/agents": "workspace:\*"/"@lifeos\/agents": "file:.\/vendor\/lifeos-agents"/' package.json
     sed -i 's/"@lifeos\/calendar": "workspace:\*"/"@lifeos\/calendar": "file:.\/vendor\/lifeos-calendar"/' package.json
+    sed -i 's/"@lifeos\/training": "workspace:\*"/"@lifeos\/training": "file:.\/vendor\/lifeos-training"/' package.json
   fi
 fi
 

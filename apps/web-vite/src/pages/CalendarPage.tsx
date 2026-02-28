@@ -70,6 +70,8 @@ import { minutesAgo } from '@/utils/timeFormatters'
 import { useAuth } from '@/hooks/useAuth'
 import { useEventOperations } from '@/hooks/useEventOperations'
 import { useCalendarEvents } from '@/hooks/useCalendarEvents'
+import { useContacts } from '@/hooks/useContacts'
+import { useTodoOperations } from '@/hooks/useTodoOperations'
 import { useOutbox } from '@/hooks/useOutbox'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { useEventAlerts } from '@/hooks/useEventAlerts'
@@ -124,6 +126,15 @@ export function CalendarPage() {
   const { pendingOps, failedOps, isOnline, retryAll: handleRetryAll } = useOutbox(userId)
   useAutoSync(userId, ACCOUNT_ID)
 
+  // Contacts & tasks for sidebar enrichment
+  const { contacts } = useContacts()
+  const { tasks, loadData: loadTodoData } = useTodoOperations({ userId })
+
+  // Load tasks for sidebar enrichment
+  useEffect(() => {
+    if (userId) void loadTodoData({ includeTasks: true })
+  }, [userId, loadTodoData])
+
   // Modal management via ref
   const modalsRef = useRef<EventModalsContainerHandle>(null)
 
@@ -131,8 +142,16 @@ export function CalendarPage() {
   const today = useMemo(() => new Date(), [])
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
-  // View state
-  const [viewType, setViewType] = useState<'daily' | 'weekly' | 'monthly' | 'agenda'>('monthly')
+  // View state (persisted to localStorage)
+  type ViewType = 'daily' | 'weekly' | 'monthly' | 'agenda'
+  const [viewType, setViewType] = useState<ViewType>(() => {
+    return (localStorage.getItem('calendar-view') as ViewType) || 'monthly'
+  })
+
+  const handleViewTypeChange = useCallback((type: ViewType) => {
+    setViewType(type)
+    localStorage.setItem('calendar-view', type)
+  }, [])
   const [selectedMonthDate, setSelectedMonthDate] = useState<Date | null>(null)
   const currentMonth = today.getMonth()
   const currentYear = today.getFullYear()
@@ -180,57 +199,14 @@ export function CalendarPage() {
   }, [selectedDayKey, viewType, selectedMonthDate, today, currentYear, currentMonth])
 
   // Load events via hook
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      location: 'CalendarPage.tsx:183',
-      message: 'About to call useCalendarEvents',
-      data: { userId, displayDayKeysLength: displayDayKeys.length },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      runId: 'run1',
-      hypothesisId: 'B',
-    }),
-  }).catch(() => {})
-  // #endregion
-  const hookResult = useCalendarEvents(userId, displayDayKeys)
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      location: 'CalendarPage.tsx:190',
-      message: 'useCalendarEvents returned',
-      data: {
-        hasLoading: 'loading' in hookResult,
-        hasEvents: 'events' in hookResult,
-        keys: Object.keys(hookResult),
-      },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      runId: 'run1',
-      hypothesisId: 'A',
-    }),
-  }).catch(() => {})
-  // #endregion
-  const { events, instances, setEvents, loading, reload: reloadEvents, syncProgress } = hookResult
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/2bddec7c-aa7e-4f19-a8ce-8da88e49811f', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      location: 'CalendarPage.tsx:197',
-      message: 'After destructuring loading',
-      data: { loadingType: typeof loading, loadingValue: loading },
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      runId: 'run1',
-      hypothesisId: 'D',
-    }),
-  }).catch(() => {})
-  // #endregion
+  const {
+    events,
+    instances,
+    setEvents,
+    loading,
+    reload: reloadEvents,
+    syncProgress,
+  } = useCalendarEvents(userId, displayDayKeys)
 
   // Event operations hook
   const { createEvent, updateEvent, deleteEvent, retryWriteback, rsvpEvent } = useEventOperations({
@@ -293,7 +269,7 @@ export function CalendarPage() {
     let active = true
     const loadAccountStatus = async () => {
       const allStatuses = await fetchAllCalendarAccountStatuses(userId)
-      console.log('[CalendarPage] fetchAllCalendarAccountStatuses returned:', {
+      logger.debug('[CalendarPage] fetchAllCalendarAccountStatuses returned:', {
         count: allStatuses.length,
         accounts: allStatuses,
         connectedCount: allStatuses.filter((s) => s.status === 'connected').length,
@@ -301,7 +277,7 @@ export function CalendarPage() {
       if (active) {
         // Find first connected account, or use null if none connected
         const connectedAccount = allStatuses.find((s) => s.status === 'connected')
-        console.log('[CalendarPage] Setting accountStatus to:', connectedAccount)
+        logger.debug('[CalendarPage] Setting accountStatus to:', connectedAccount)
         setAccountStatus(connectedAccount ?? null)
       }
     }
@@ -461,6 +437,30 @@ export function CalendarPage() {
     modalsRef.current?.openDeleteModal()
   }, [])
 
+  // Quick-create from time slot click
+  const handleQuickCreate = useCallback(
+    async (data: { title: string; startMs: number; endMs: number }) => {
+      const result = await createEvent({
+        title: data.title,
+        startDate: new Date(data.startMs).toISOString().split('T')[0],
+        startTime: new Date(data.startMs).toTimeString().slice(0, 5),
+        endDate: new Date(data.endMs).toISOString().split('T')[0],
+        endTime: new Date(data.endMs).toTimeString().slice(0, 5),
+        allDay: false,
+        timezone,
+      })
+      if (result) setSelectedEvent(result)
+    },
+    [createEvent, timezone, setSelectedEvent]
+  )
+
+  const handleQuickCreateMore = useCallback(
+    (data: { title: string; startMs: number; endMs: number }) => {
+      modalsRef.current?.openCreateModal(data)
+    },
+    []
+  )
+
   // Permission checks (Phase 2.6)
   const primaryCalendar = calendars.find((c) => c.isPrimary)
   const canCreateEvents = primaryCalendar?.canWrite ?? true // Optimistic if no calendar data yet
@@ -495,7 +495,7 @@ export function CalendarPage() {
             </p>
             <CalendarHeader
               viewType={viewType}
-              onViewTypeChange={setViewType}
+              onViewTypeChange={handleViewTypeChange}
               selectedMonthDate={selectedMonthDate}
               timezone={timezone}
             />
@@ -561,6 +561,8 @@ export function CalendarPage() {
               pendingOps={pendingOps}
               onDateSelect={setSelectedMonthDate}
               onEventSelect={setSelectedEvent}
+              onQuickCreate={handleQuickCreate}
+              onQuickCreateMore={handleQuickCreateMore}
             />
           </div>
 
@@ -569,6 +571,9 @@ export function CalendarPage() {
             isOnline={isOnline}
             accountStatus={accountStatus}
             calendarsById={calendarsById}
+            contacts={contacts}
+            tasks={tasks}
+            selectedDayKey={selectedDayKey}
             onRSVP={(eventId, status) => rsvpEvent(eventId, status, events)}
             onAlertChange={handleAlertChange}
             onRetryWriteback={retryWriteback}

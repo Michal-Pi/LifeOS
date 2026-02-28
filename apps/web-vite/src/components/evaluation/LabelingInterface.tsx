@@ -181,8 +181,6 @@ interface TraceSnapshotProps {
 function TraceSnapshot({ trace }: TraceSnapshotProps) {
   const [expanded, setExpanded] = useState(false)
 
-  if (trace.length === 0) return null
-
   const summary = useMemo(() => {
     const routerCount = trace.filter((t) => t.componentType === 'router').length
     const toolCount = trace.filter((t) => t.componentType === 'tool').length
@@ -190,6 +188,8 @@ function TraceSnapshot({ trace }: TraceSnapshotProps) {
     const totalDuration = trace.reduce((sum, t) => sum + t.durationMs, 0)
     return { routerCount, toolCount, memoryCount, totalDuration }
   }, [trace])
+
+  if (trace.length === 0) return null
 
   return (
     <div className="trace-snapshot">
@@ -297,6 +297,29 @@ function formatAnswer(value: unknown, type: LabelingQuestion['type']): string {
   }
 }
 
+function TaskExpiryStatus({ expiresAtMs }: { expiresAtMs?: number }) {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!expiresAtMs) return
+    // Set up interval to update current time
+    const interval = setInterval(() => {
+      setNow(Date.now())
+    }, 60000) // Check every minute
+    return () => clearInterval(interval)
+  }, [expiresAtMs])
+
+  if (!expiresAtMs) return null
+
+  const isExpired = expiresAtMs < now
+
+  return (
+    <span className={`expires-at ${isExpired ? 'expired' : ''}`}>
+      {isExpired ? 'Expired' : `Expires: ${new Date(expiresAtMs).toLocaleString()}`}
+    </span>
+  )
+}
+
 // ----- Main Component -----
 
 export function LabelingInterface({
@@ -330,6 +353,7 @@ export function LabelingInterface({
       setShowSkipDialog(false)
       setSkipReason('')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Reset form when task changes, don't trigger on task object reference changes
   }, [task?.taskId])
 
   // Validation
@@ -594,13 +618,7 @@ export function LabelingInterface({
         <span className="task-id">Task: {task.taskId.slice(0, 8)}...</span>
         <span className="run-id">Run: {task.runId.slice(0, 8)}...</span>
         <span className="created-at">Created: {new Date(task.createdAtMs).toLocaleString()}</span>
-        {task.expiresAtMs && (
-          <span className={`expires-at ${task.expiresAtMs < Date.now() ? 'expired' : ''}`}>
-            {task.expiresAtMs < Date.now()
-              ? 'Expired'
-              : `Expires: ${new Date(task.expiresAtMs).toLocaleString()}`}
-          </span>
-        )}
+        <TaskExpiryStatus expiresAtMs={task.expiresAtMs} />
         <span className="labels-count">
           {task.labels.length} / {task.requiredLabels} labels
         </span>

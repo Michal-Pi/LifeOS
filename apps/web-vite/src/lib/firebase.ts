@@ -320,7 +320,8 @@ export function getFirestoreClient(): Firestore {
   try {
     firestoreInstance = initializeFirestore(firebaseApp, {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-      experimentalAutoDetectLongPolling: true
+      experimentalAutoDetectLongPolling: true,
+      ignoreUndefinedProperties: true,
     })
     logger.info('Firestore initialized with multi-tab persistence')
   } catch {

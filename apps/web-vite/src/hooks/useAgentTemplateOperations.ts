@@ -2,11 +2,17 @@
  * useAgentTemplateOperations Hook
  */
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { createLogger } from '@lifeos/core'
 import { useAuth } from './useAuth'
 import { createFirestoreAgentTemplateRepository } from '@/adapters/agents/firestoreAgentTemplateRepository'
+import {
+  listAgentTemplatesLocally,
+  bulkSaveAgentTemplatesLocally,
+  saveAgentTemplateLocally,
+  deleteAgentTemplateLocally,
+} from '@/agents/offlineStore'
 import {
   createAgentTemplateUsecase,
   updateAgentTemplateUsecase,
@@ -44,6 +50,9 @@ export function useAgentTemplateOperations(): UseAgentTemplateOperationsReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
+  const templatesRef = useRef(templates)
+  templatesRef.current = templates
+
   const usecases = useMemo(
     () => ({
       create: createAgentTemplateUsecase(repository),
@@ -60,9 +69,14 @@ export function useAgentTemplateOperations(): UseAgentTemplateOperationsReturn {
     setIsLoading(true)
     setError(null)
     try {
+      const local = await listAgentTemplatesLocally(userId)
+      if (local.length > 0) setTemplates(local)
+
       const data = await usecases.list(userId)
       setTemplates(data)
+      void bulkSaveAgentTemplatesLocally(data)
     } catch (err) {
+      if (templatesRef.current.length > 0) return
       const error = err as Error
       setError(error)
       logger.error('Failed to load agent templates', error)
@@ -81,6 +95,7 @@ export function useAgentTemplateOperations(): UseAgentTemplateOperationsReturn {
       try {
         const template = await usecases.create(userId, input)
         setTemplates((prev) => [template, ...prev])
+        void saveAgentTemplateLocally(template)
         toast.success('Agent template saved')
         return template
       } catch (err) {
@@ -108,6 +123,7 @@ export function useAgentTemplateOperations(): UseAgentTemplateOperationsReturn {
         setTemplates((prev) =>
           prev.map((template) => (template.templateId === templateId ? updated : template))
         )
+        void saveAgentTemplateLocally(updated)
         toast.success('Agent template updated')
         return updated
       } catch (err) {
@@ -130,6 +146,7 @@ export function useAgentTemplateOperations(): UseAgentTemplateOperationsReturn {
       try {
         await usecases.delete(userId, templateId)
         setTemplates((prev) => prev.filter((template) => template.templateId !== templateId))
+        void deleteAgentTemplateLocally(templateId)
         toast.success('Agent template deleted')
       } catch (err) {
         const error = err as Error

@@ -7,6 +7,7 @@
 
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
+import type { EditorView } from '@tiptap/pm/view'
 import type { Note } from '@lifeos/notes'
 
 export interface NoteLinkOptions {
@@ -75,8 +76,7 @@ export const NoteLink = Extension.create<NoteLinkOptions>({
       new Plugin({
         key: new PluginKey('noteLinkClickHandler'),
         props: {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          handleClick: (view: any, pos: number, event: MouseEvent) => {
+          handleClick: (view: EditorView, pos: number, event: MouseEvent) => {
             try {
               const { state } = view
               const { schema } = state

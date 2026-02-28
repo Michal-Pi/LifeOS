@@ -27,6 +27,7 @@ import {
 } from './offlineStore'
 import { isRecoverableFirestoreError } from '@/lib/firestoreErrorHandler'
 import { isNoteEmptyDraft, sanitizeNoteContent } from './noteContent'
+import { logger } from '@/lib/logger'
 
 import {
   listReadyNoteOps,
@@ -118,7 +119,12 @@ async function processNoteOp(userId: string, op: NoteOutboxOp): Promise<void> {
           attachmentIds: baseNote.attachmentIds,
         })
 
-        // Update local store with server version
+        // The server generates a new noteId. Remove the old local copy
+        // (which has the client-generated ID) to prevent duplicates in
+        // IndexedDB, then save the server version.
+        if (created.noteId !== baseNote.noteId) {
+          await deleteNoteLocally(baseNote.noteId)
+        }
         await saveNoteLocally({ ...created, syncState: 'synced' })
         break
       }
@@ -163,6 +169,10 @@ async function processNoteOp(userId: string, op: NoteOutboxOp): Promise<void> {
             tags: nextNote.tags,
             attachmentIds: nextNote.attachmentIds,
           })
+          // Remove old local copy to prevent duplicates (server generates new ID)
+          if (created.noteId !== op.noteId) {
+            await deleteNoteLocally(op.noteId)
+          }
           await saveNoteLocally({ ...created, syncState: 'synced' })
           await markNoteOpApplied(op.opId)
           await removeNoteOp(op.opId)
@@ -338,11 +348,15 @@ async function pullRemoteNotes(userId: string): Promise<void> {
       }
     }
 
-    // Detect deleted notes (exist locally but not remotely)
+    // Detect deleted notes (exist locally but not remotely).
+    // Clean up notes in 'synced' or 'syncing' state — the latter handles
+    // orphaned local copies left when the server assigned a new noteId.
     const remoteNoteIds = new Set(remoteNotes.map((n) => n.noteId))
     for (const localNote of localNotes) {
-      if (!remoteNoteIds.has(localNote.noteId) && localNote.syncState === 'synced') {
-        // Note was deleted on server
+      if (
+        !remoteNoteIds.has(localNote.noteId) &&
+        (localNote.syncState === 'synced' || localNote.syncState === 'syncing')
+      ) {
         await deleteNoteLocally(localNote.noteId)
       }
     }
@@ -418,9 +432,9 @@ async function pullRemoteSections(userId: string, topicIds: TopicId[]): Promise<
 export async function syncNotes(userId: string): Promise<void> {
   if (state.isRunning || state.isPaused) {
     if (state.isPaused) {
-      console.log('Sync paused (page hidden), skipping')
+      logger.debug('Sync paused (page hidden), skipping')
     } else {
-      console.log('Sync already running, skipping')
+      logger.debug('Sync already running, skipping')
     }
     return
   }
@@ -501,10 +515,10 @@ export function startNoteSyncWorker(
   // Handle page visibility changes
   const handleVisibilityChange = () => {
     if (document.hidden) {
-      console.log('Page hidden - pausing sync worker')
+      logger.debug('Page hidden - pausing sync worker')
       state.isPaused = true
     } else {
-      console.log('Page visible - resuming sync worker')
+      logger.debug('Page visible - resuming sync worker')
       state.isPaused = false
       state.retryCount = 0 // Reset retry count on resume
       // Always attempt sync when page becomes visible
@@ -518,7 +532,7 @@ export function startNoteSyncWorker(
 
   // Handle network connection changes
   const handleOnline = () => {
-    console.log('Connection restored - triggering immediate sync')
+    logger.debug('Connection restored - triggering immediate sync')
     state.retryCount = 0
     // Trigger immediate sync when connection is restored
     syncNotes(userId).catch((error) => {
@@ -527,7 +541,7 @@ export function startNoteSyncWorker(
   }
 
   const handleOffline = () => {
-    console.log('Connection lost - sync will continue to attempt and fail gracefully')
+    logger.debug('Connection lost - sync will continue to attempt and fail gracefully')
   }
 
   window.addEventListener('online', handleOnline)
@@ -545,7 +559,7 @@ export function startNoteSyncWorker(
     })
   }, intervalMs)
 
-  console.log(`Note sync worker started (interval: ${intervalMs}ms)`)
+  logger.debug(`Note sync worker started (interval: ${intervalMs}ms)`)
 
   // Store cleanup function
   state.cleanup = () => {
@@ -562,7 +576,7 @@ export function stopNoteSyncWorker(): void {
   if (state.syncIntervalId !== null) {
     clearInterval(state.syncIntervalId)
     state.syncIntervalId = null
-    console.log('Note sync worker stopped')
+    logger.debug('Note sync worker stopped')
   }
 
   // Clean up event listeners

@@ -1,15 +1,18 @@
+/**
+ * Provider Keys
+ *
+ * Loads AI provider API keys from user settings ONLY.
+ * No fallback to system secrets - users must configure their own keys.
+ *
+ * This ensures:
+ * 1. Users control their own API costs
+ * 2. No unexpected charges on system secrets
+ * 3. Clear error messages directing users to configure keys
+ */
+
 import { getFirestore } from 'firebase-admin/firestore'
-import { defineSecret } from 'firebase-functions/params'
 
 import type { ProviderKeys } from './providerService.js'
-
-export const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY')
-export const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY')
-
-// Search & Research tool API keys
-export const SERPER_API_KEY = defineSecret('SERPER_API_KEY')
-export const FIRECRAWL_API_KEY = defineSecret('FIRECRAWL_API_KEY')
-export const EXA_API_KEY = defineSecret('EXA_API_KEY')
 
 export interface SearchToolKeys {
   serper?: string
@@ -18,6 +21,9 @@ export interface SearchToolKeys {
   jina?: string
 }
 
+/**
+ * Load search tool keys from user settings only (no system fallbacks)
+ */
 export async function loadSearchToolKeys(userId: string): Promise<SearchToolKeys> {
   const db = getFirestore()
   const docRef = db.doc(`users/${userId}/settings/searchToolKeys`)
@@ -32,17 +38,19 @@ export async function loadSearchToolKeys(userId: string): Promise<SearchToolKeys
     : {}
 
   return {
-    serper: userKeys.serperKey || SERPER_API_KEY.value() || process.env.SERPER_API_KEY || undefined,
-    firecrawl:
-      userKeys.firecrawlKey ||
-      FIRECRAWL_API_KEY.value() ||
-      process.env.FIRECRAWL_API_KEY ||
-      undefined,
-    exa: userKeys.exaKey || EXA_API_KEY.value() || process.env.EXA_API_KEY || undefined,
-    jina: userKeys.jinaKey || process.env.JINA_API_KEY || undefined,
+    serper: userKeys.serperKey || undefined,
+    firecrawl: userKeys.firecrawlKey || undefined,
+    exa: userKeys.exaKey || undefined,
+    jina: userKeys.jinaKey || undefined,
   }
 }
 
+/**
+ * Load AI provider keys from user settings only (no system fallbacks)
+ *
+ * Users must configure their own API keys in Settings > Model Settings.
+ * This prevents unexpected charges on system secrets.
+ */
 export async function loadProviderKeys(userId: string): Promise<ProviderKeys> {
   const db = getFirestore()
   const docRef = db.doc(`users/${userId}/settings/aiProviderKeys`)
@@ -56,17 +64,81 @@ export async function loadProviderKeys(userId: string): Promise<ProviderKeys> {
       })
     : {}
 
-  const fallbackKeys: ProviderKeys = {
-    openai: OPENAI_API_KEY.value() || process.env.OPENAI_API_KEY,
-    anthropic: ANTHROPIC_API_KEY.value() || process.env.ANTHROPIC_API_KEY,
-    google: process.env.GOOGLE_AI_API_KEY,
-    grok: process.env.XAI_API_KEY,
-  }
-
   return {
-    openai: userKeys.openaiKey || fallbackKeys.openai || undefined,
-    anthropic: userKeys.anthropicKey || fallbackKeys.anthropic || undefined,
-    google: userKeys.googleKey || fallbackKeys.google || undefined,
-    grok: userKeys.xaiKey || fallbackKeys.grok || undefined,
+    openai: userKeys.openaiKey || undefined,
+    anthropic: userKeys.anthropicKey || undefined,
+    google: userKeys.googleKey || undefined,
+    grok: userKeys.xaiKey || undefined,
   }
+}
+
+/**
+ * Provider preference order for automatic fallback
+ */
+export type ProviderType = 'anthropic' | 'openai' | 'google' | 'grok'
+
+const DEFAULT_PROVIDER_ORDER: ProviderType[] = ['anthropic', 'openai', 'google', 'grok']
+
+/**
+ * Get the first available provider from user's configured keys
+ *
+ * Tries providers in order: Anthropic → OpenAI → Google → Grok
+ * Returns null if no provider is configured
+ */
+export function getFirstAvailableProvider(
+  keys: ProviderKeys,
+  preferredOrder: ProviderType[] = DEFAULT_PROVIDER_ORDER
+): { provider: ProviderType; apiKey: string } | null {
+  for (const provider of preferredOrder) {
+    const key = keys[provider === 'grok' ? 'grok' : provider]
+    if (key) {
+      return { provider, apiKey: key }
+    }
+  }
+  return null
+}
+
+/**
+ * Check if user has any AI provider configured
+ */
+export function hasAnyProviderConfigured(keys: ProviderKeys): boolean {
+  return !!(keys.anthropic || keys.openai || keys.google || keys.grok)
+}
+
+/**
+ * Get list of configured providers
+ */
+export function getConfiguredProviders(keys: ProviderKeys): ProviderType[] {
+  const configured: ProviderType[] = []
+  if (keys.anthropic) configured.push('anthropic')
+  if (keys.openai) configured.push('openai')
+  if (keys.google) configured.push('google')
+  if (keys.grok) configured.push('grok')
+  return configured
+}
+
+/**
+ * Error class for missing API key configuration
+ * Frontend can detect this error type and show appropriate UI
+ */
+export class NoAPIKeyConfiguredError extends Error {
+  readonly code = 'NO_API_KEY_CONFIGURED'
+  readonly isRetryable = false
+
+  constructor(
+    message: string = 'No AI provider API key configured. Please add your API key in Settings → Model Settings.'
+  ) {
+    super(message)
+    this.name = 'NoAPIKeyConfiguredError'
+  }
+}
+
+/**
+ * Default model names for each provider (used for fallback)
+ */
+export const DEFAULT_MODELS: Record<ProviderType, string> = {
+  anthropic: 'claude-haiku-4-5',
+  openai: 'gpt-5-mini',
+  google: 'gemini-3-flash',
+  grok: 'grok-3-mini',
 }

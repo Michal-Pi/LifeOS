@@ -17,7 +17,7 @@ import type {
   DeepResearchRequestId,
   DeepResearchStatus,
   CreateDeepResearchRequestInput,
-  WorkspaceId,
+  WorkflowId,
   RunId,
 } from '@lifeos/agents'
 
@@ -40,7 +40,7 @@ export const createFirestoreDeepResearchRepository = (): DeepResearchRepository 
 
       const requestDoc = doc(
         db,
-        `users/${userId}/workspaces/${input.workspaceId}/deepResearchRequests/${requestId}`
+        `users/${userId}/workflows/${input.workflowId}/deepResearchRequests/${requestId}`
       )
       await setDoc(requestDoc, request)
 
@@ -49,14 +49,14 @@ export const createFirestoreDeepResearchRepository = (): DeepResearchRepository 
 
     async update(
       userId: string,
-      workspaceId: WorkspaceId,
+      workflowId: WorkflowId,
       requestId: DeepResearchRequestId,
-      updates: Partial<Omit<DeepResearchRequest, 'requestId' | 'userId' | 'workspaceId'>>
+      updates: Partial<Omit<DeepResearchRequest, 'requestId' | 'userId' | 'workflowId'>>
     ): Promise<DeepResearchRequest> {
       const db = await getDb()
       const requestDoc = doc(
         db,
-        `users/${userId}/workspaces/${workspaceId}/deepResearchRequests/${requestId}`
+        `users/${userId}/workflows/${workflowId}/deepResearchRequests/${requestId}`
       )
 
       const existing = await getDoc(requestDoc)
@@ -75,13 +75,13 @@ export const createFirestoreDeepResearchRepository = (): DeepResearchRepository 
 
     async get(
       userId: string,
-      workspaceId: WorkspaceId,
+      workflowId: WorkflowId,
       requestId: DeepResearchRequestId
     ): Promise<DeepResearchRequest | null> {
       const db = await getDb()
       const requestDoc = doc(
         db,
-        `users/${userId}/workspaces/${workspaceId}/deepResearchRequests/${requestId}`
+        `users/${userId}/workflows/${workflowId}/deepResearchRequests/${requestId}`
       )
       const snapshot = await getDoc(requestDoc)
       if (!snapshot.exists()) return null
@@ -91,20 +91,20 @@ export const createFirestoreDeepResearchRepository = (): DeepResearchRepository 
     async list(
       userId: string,
       options?: {
-        workspaceId?: WorkspaceId
+        workflowId?: WorkflowId
         status?: DeepResearchStatus
         runId?: RunId
         limit?: number
       }
     ): Promise<DeepResearchRequest[]> {
-      if (!options?.workspaceId) {
+      if (!options?.workflowId) {
         return []
       }
 
       const db = await getDb()
       const requestsCol = collection(
         db,
-        `users/${userId}/workspaces/${options.workspaceId}/deepResearchRequests`
+        `users/${userId}/workflows/${options.workflowId}/deepResearchRequests`
       )
 
       let q = query(requestsCol, orderBy('createdAtMs', 'desc'))

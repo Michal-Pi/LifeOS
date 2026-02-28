@@ -7,12 +7,13 @@
 /**
  * Debounce function for editor updates
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function debounceUpdate<T extends (...args: any[]) => any>(func: T, wait: number = 100): T {
+export function debounceUpdate<T extends (...args: unknown[]) => unknown>(
+  func: T,
+  wait: number = 100
+): T {
   let timeoutId: ReturnType<typeof setTimeout> | null = null
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((...args: any[]) => {
+  return ((...args: Parameters<T>) => {
     if (timeoutId) {
       clearTimeout(timeoutId)
     }
@@ -26,11 +27,12 @@ export function debounceUpdate<T extends (...args: any[]) => any>(func: T, wait:
 /**
  * Throttle function for scroll events
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function throttle<T extends (...args: any[]) => any>(func: T, limit: number = 100): T {
+export function throttle<T extends (...args: unknown[]) => unknown>(
+  func: T,
+  limit: number = 100
+): T {
   let inThrottle: boolean
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((...args: any[]) => {
+  return ((...args: Parameters<T>) => {
     if (!inThrottle) {
       func(...args)
       inThrottle = true

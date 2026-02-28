@@ -198,7 +198,11 @@ describe('handleCalendarEventCreated', () => {
         startMs: 1700500000000,
         attendees: [
           { email: 'me@myself.com', self: true, responseStatus: 'accepted' },
-          { email: 'room-b2@resource.calendar.google.com', resource: true, responseStatus: 'accepted' },
+          {
+            email: 'room-b2@resource.calendar.google.com',
+            resource: true,
+            responseStatus: 'accepted',
+          },
           { email: 'alice@example.com', responseStatus: 'accepted' },
         ],
       })

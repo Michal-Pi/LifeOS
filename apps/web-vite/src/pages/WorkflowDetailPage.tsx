@@ -1,43 +1,45 @@
 /**
- * WorkspaceDetailPage Component
+ * WorkflowDetailPage Component
  *
- * Detailed view of a single workspace with run history.
+ * Detailed view of a single workflow with run history.
  * Features:
- * - View workspace configuration
- * - List all runs for this workspace
+ * - View workflow configuration
+ * - List all runs for this workflow
  * - Start new runs
  * - View run details
  * - Filter runs by status
  */
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore'
 import { getFirestoreClient } from '@/lib/firebase'
-import { useWorkspaceOperations } from '@/hooks/useWorkspaceOperations'
+import { useWorkflowOperations } from '@/hooks/useWorkflowOperations'
 import { useDeepResearch } from '@/hooks/useDeepResearch'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
 import { useProjectManager } from '@/hooks/useProjectManager'
 import { useAuth } from '@/hooks/useAuth'
-import { RunWorkspaceModal } from '@/components/agents/RunWorkspaceModal'
+import { RunWorkflowModal } from '@/components/agents/RunWorkflowModal'
 import { RunCard } from '@/components/agents/RunCard'
 import { WorkflowGraphView } from '@/components/agents/WorkflowGraphView'
+import { CustomWorkflowBuilder } from '@/components/agents/CustomWorkflowBuilder'
 import { ResearchQueue } from '@/components/agents/ResearchQueue'
 import { Button } from '@/components/ui/button'
 import { Select, type SelectOption } from '@/components/Select'
-import type { WorkspaceId, RunStatus, Run, RunId } from '@lifeos/agents'
+import type { WorkflowId, RunStatus, Run, RunId } from '@lifeos/agents'
 import { useDialog } from '@/contexts/useDialog'
+import { logger } from '@/lib/logger'
 import { toast } from 'sonner'
 
-export function WorkspaceDetailPage() {
+export function WorkflowDetailPage() {
   const { confirm } = useDialog()
   const { user } = useAuth()
-  const { workspaceId } = useParams<{ workspaceId: string }>()
+  const { workflowId } = useParams<{ workflowId: string }>()
   const navigate = useNavigate()
-  const { workspace, isLoading, getWorkspace, deleteRun, updateRun } = useWorkspaceOperations()
+  const { workflow, getWorkflow, deleteRun, updateRun, updateWorkflow } = useWorkflowOperations()
   const { agents, loadAgents } = useAgentOperations()
-  const { requests: researchRequests } = useDeepResearch(workspaceId as WorkspaceId)
-  const { profile: projectManagerProfile } = useProjectManager(workspaceId as WorkspaceId)
+  const { requests: researchRequests } = useDeepResearch(workflowId as WorkflowId)
+  const { profile: projectManagerProfile } = useProjectManager(workflowId as WorkflowId)
 
   const [showRunModal, setShowRunModal] = useState(false)
   const [resumeSeed, setResumeSeed] = useState<{
@@ -47,40 +49,85 @@ export function WorkspaceDetailPage() {
   const [statusFilter, setStatusFilter] = useState<RunStatus | 'all'>('all')
   const [currentTime, setCurrentTime] = useState(() => Date.now())
   const [showProjectManager, setShowProjectManager] = useState(true)
+  const [showFullGraphPreview, setShowFullGraphPreview] = useState(false)
+  const [showGraphEditor, setShowGraphEditor] = useState(false)
   const [runs, setRuns] = useState<Run[]>([])
+  const [pageLoading, setPageLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
+  // Refs for stable callbacks in effects (avoids re-triggering on identity changes)
+  const getWorkflowRef = useRef(getWorkflow)
+  getWorkflowRef.current = getWorkflow
+  const loadAgentsRef = useRef(loadAgents)
+  loadAgentsRef.current = loadAgents
+
+  // Load workflow + agents when workflowId or user changes
   useEffect(() => {
-    if (workspaceId) {
-      void getWorkspace(workspaceId as WorkspaceId)
-      void loadAgents()
+    const uid = user?.uid
+    if (!workflowId || !uid) return
+
+    let cancelled = false
+    setPageLoading(true)
+    setLoadError(null)
+
+    const load = async () => {
+      try {
+        const [ws] = await Promise.all([
+          getWorkflowRef.current(workflowId as WorkflowId),
+          loadAgentsRef.current(),
+        ])
+        if (cancelled) return
+        if (!ws) {
+          setLoadError('Workflow not found')
+        }
+      } catch (err) {
+        if (cancelled) return
+        console.error('[WorkflowDetailPage] Failed to load workflow:', err)
+        setLoadError((err as Error).message || 'Failed to load workflow')
+      } finally {
+        if (!cancelled) {
+          setPageLoading(false)
+        }
+      }
     }
-  }, [workspaceId, getWorkspace, loadAgents])
 
-  // Real-time subscription to runs for this workspace
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [workflowId, user?.uid])
+
+  // Real-time subscription to runs for this workflow
   useEffect(() => {
-    if (!user || !workspaceId) {
+    if (!user || !workflowId) {
       return
     }
 
-    const db = getFirestoreClient()
-    const runsRef = collection(db, `users/${user.uid}/workspaces/${workspaceId}/runs`)
+    let db
+    try {
+      db = getFirestoreClient()
+    } catch (err) {
+      console.error('[WorkflowDetailPage] Firestore not ready:', err)
+      return
+    }
+    const runsRef = collection(db, `users/${user.uid}/workflows/${workflowId}/runs`)
     const q = query(runsRef, orderBy('startedAtMs', 'desc'), limit(50))
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         const updatedRuns = snapshot.docs.map((doc) => doc.data() as Run)
-        console.log(`[WorkspaceDetailPage] Received ${updatedRuns.length} runs from Firestore`)
+        logger.debug(`[WorkflowDetailPage] Received ${updatedRuns.length} runs from Firestore`)
         setRuns(updatedRuns)
       },
       (err) => {
-        console.error('[WorkspaceDetailPage] Error subscribing to runs:', err)
+        console.error('[WorkflowDetailPage] Error subscribing to runs:', err)
         toast.error('Failed to load runs')
       }
     )
 
     return () => unsubscribe()
-  }, [user, workspaceId])
+  }, [user, workflowId])
 
   // Update current time every second for running task durations
   useEffect(() => {
@@ -136,10 +183,22 @@ export function WorkspaceDetailPage() {
   const handleRunAgain = (runId: string) => {
     const runToRerun = runs.find((run) => run.runId === runId)
     if (!runToRerun) return
-    // Pre-fill with same workspace settings, but clear goal for new prompt
     setResumeSeed({
-      goal: '', // Empty goal field ready for new prompt
-      context: runToRerun.context, // Keep the same context structure
+      goal: runToRerun.goal,
+      context: runToRerun.context,
+    })
+    setShowRunModal(true)
+  }
+
+  const handleContinue = (runId: string) => {
+    const runToContinue = runs.find((run) => run.runId === runId)
+    if (!runToContinue) return
+    setResumeSeed({
+      goal: runToContinue.goal,
+      context: {
+        ...(runToContinue.context ?? {}),
+        resumeRunId: runToContinue.runId,
+      },
     })
     setShowRunModal(true)
   }
@@ -197,17 +256,17 @@ export function WorkspaceDetailPage() {
     return true
   })
 
-  if (isLoading) {
-    return <div className="loading">Loading workspace...</div>
+  if (pageLoading) {
+    return <div className="loading">Loading workflow...</div>
   }
 
-  if (!workspace) {
+  if (loadError || !workflow) {
     return (
       <div className="page-container">
         <div className="error-state">
-          <p>Workspace not found</p>
-          <Button variant="ghost" onClick={() => navigate('/workspaces')}>
-            Back to Workspaces
+          <p>{loadError || 'Workflow not found'}</p>
+          <Button variant="ghost" onClick={() => navigate('/workflows')}>
+            Back to Workflows
           </Button>
         </div>
       </div>
@@ -218,38 +277,97 @@ export function WorkspaceDetailPage() {
     <div className="page-container">
       <header className="page-header">
         <div>
-          <Button variant="ghost" onClick={() => navigate('/workspaces')} className="back-button">
+          <Button variant="ghost" onClick={() => navigate('/workflows')} className="back-button">
             ← Back
           </Button>
-          <h1>{workspace.name}</h1>
-          {workspace.description && <p>{workspace.description}</p>}
+          <h1>{workflow.name}</h1>
+          {workflow.description && <p>{workflow.description}</p>}
         </div>
         <Button onClick={handleStartRun}>+ Start Run</Button>
       </header>
 
-      <div className="workspace-info">
-        <div className="info-card">
+      {/* Configuration section */}
+      <details className="workflow-section">
+        <summary className="workflow-section__header">
           <h3>Configuration</h3>
-          <div className="info-row">
-            <strong>Workflow Type:</strong> <span className="badge">{workspace.workflowType}</span>
-          </div>
-          <div className="info-row">
-            <strong>Max Iterations:</strong> {workspace.maxIterations ?? 10}
-          </div>
-          <div className="info-row">
-            <strong>Message Window:</strong>{' '}
-            {workspace.memoryMessageLimit
-              ? `${workspace.memoryMessageLimit} msgs`
-              : 'Global default'}
-          </div>
-          <div className="info-row">
-            <strong>Agents:</strong> {workspace.agentIds.length}
+          <span className="workflow-section__summary">
+            {workflow.workflowType} · {workflow.agentIds.length} agents
+          </span>
+        </summary>
+        <div className="workflow-section__body">
+          <div className="workflow-info">
+            <div className="info-card">
+              <div className="info-row">
+                <strong>Workflow Type:</strong>{' '}
+                <span className="badge">{workflow.workflowType}</span>
+              </div>
+              <div className="info-row">
+                <strong>Max Iterations:</strong> {workflow.maxIterations ?? 10}
+              </div>
+              <div className="info-row">
+                <strong>Message Window:</strong>{' '}
+                {workflow.memoryMessageLimit
+                  ? `${workflow.memoryMessageLimit} msgs`
+                  : 'Global default'}
+              </div>
+              <div className="info-row">
+                <strong>Agents:</strong> {workflow.agentIds.length}
+              </div>
+            </div>
+
+            {workflow.workflowGraph && (
+              <div className="info-card">
+                <h3>Workflow Graph</h3>
+                <div className="info-row">
+                  <strong>Start Node:</strong> {workflow.workflowGraph.startNodeId}
+                </div>
+                <WorkflowGraphView graph={workflow.workflowGraph} />
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                  <Button variant="secondary" onClick={() => setShowFullGraphPreview(true)}>
+                    View Full Workflow
+                  </Button>
+                  <Button variant="secondary" onClick={() => setShowGraphEditor(true)}>
+                    Edit in Visual Builder
+                  </Button>
+                </div>
+                <details className="run-context">
+                  <summary>Nodes ({workflow.workflowGraph.nodes.length})</summary>
+                  <pre>{JSON.stringify(workflow.workflowGraph.nodes, null, 2)}</pre>
+                </details>
+                <details className="run-context">
+                  <summary>Edges ({workflow.workflowGraph.edges.length})</summary>
+                  <pre>{JSON.stringify(workflow.workflowGraph.edges, null, 2)}</pre>
+                </details>
+              </div>
+            )}
+
+            <div className="info-card">
+              <h3>Team</h3>
+              <ul className="agent-team-list">
+                {workflow.agentIds.map((agentId) => (
+                  <li key={agentId}>
+                    {getAgentName(agentId)}
+                    {workflow.defaultAgentId === agentId && (
+                      <span className="badge-small">default</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
+      </details>
 
-        {workspace.projectManagerConfig?.enabled && (
-          <div className="info-card">
+      {/* Project Manager section */}
+      {workflow.projectManagerConfig?.enabled && (
+        <details className="workflow-section">
+          <summary className="workflow-section__header">
             <h3>Project Manager</h3>
+            <span className="workflow-section__summary">
+              {projectManagerProfile?.expertiseLevel ?? 'Enabled'}
+            </span>
+          </summary>
+          <div className="workflow-section__body">
             <div className="info-row">
               <strong>Status:</strong> <span className="badge">Enabled</span>
             </div>
@@ -269,91 +387,74 @@ export function WorkspaceDetailPage() {
               </div>
             )}
           </div>
-        )}
+        </details>
+      )}
 
-        {workspace.workflowGraph && (
-          <div className="info-card">
-            <h3>Workflow Graph</h3>
-            <div className="info-row">
-              <strong>Start Node:</strong> {workspace.workflowGraph.startNodeId}
-            </div>
-            <WorkflowGraphView graph={workspace.workflowGraph} />
-            <details className="run-context">
-              <summary>Nodes ({workspace.workflowGraph.nodes.length})</summary>
-              <pre>{JSON.stringify(workspace.workflowGraph.nodes, null, 2)}</pre>
-            </details>
-            <details className="run-context">
-              <summary>Edges ({workspace.workflowGraph.edges.length})</summary>
-              <pre>{JSON.stringify(workspace.workflowGraph.edges, null, 2)}</pre>
-            </details>
+      {/* Research section */}
+      {researchRequests.length > 0 && (
+        <details className="workflow-section">
+          <summary className="workflow-section__header">
+            <h3>Research</h3>
+            <span className="workflow-section__summary">
+              {researchRequests.filter((r) => r.status === 'pending').length} pending
+            </span>
+          </summary>
+          <div className="workflow-section__body">
+            <ResearchQueue workflowId={workflowId as WorkflowId} />
           </div>
-        )}
+        </details>
+      )}
 
-        <div className="info-card">
-          <h3>Team</h3>
-          <ul className="agent-team-list">
-            {workspace.agentIds.map((agentId) => (
-              <li key={agentId}>
-                {getAgentName(agentId)}
-                {workspace.defaultAgentId === agentId && (
-                  <span className="badge-small">default</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <div className="runs-section">
-        <div className="section-header">
-          <h2>Research Queue</h2>
-        </div>
-        <ResearchQueue workspaceId={workspaceId as WorkspaceId} />
-      </div>
-
-      <div className="runs-section">
-        <div className="section-header">
-          <h2>Run History</h2>
-          <div className="filters">
-            <label htmlFor="statusFilter">Status:</label>
-            <Select
-              value={statusFilter}
-              onChange={(value) => setStatusFilter(value as RunStatus | 'all')}
-              options={statusOptions}
-              placeholder="Filter by status..."
-            />
-          </div>
-        </div>
-
-        {filteredRuns.length === 0 ? (
-          <div className="empty-state">
-            <p>System idle. No runs yet.</p>
-            <Button onClick={handleStartRun}>Start your first run</Button>
-          </div>
-        ) : (
-          <div className="runs-list">
-            {filteredRuns.map((run) => (
-              <RunCard
-                key={run.runId}
-                run={run}
-                workspace={workspace}
-                workspaceId={workspaceId as WorkspaceId}
-                researchRequests={researchRequests}
-                currentTime={currentTime}
-                showProjectManager={showProjectManager}
-                onDelete={handleDeleteRun}
-                onResume={handleResumeRun}
-                onProvideInput={handleProvideInput}
-                onRunAgain={handleRunAgain}
-                onStop={handleStopRun}
+      {/* Runs section - open by default */}
+      <details className="workflow-section" open>
+        <summary className="workflow-section__header">
+          <h3>Runs</h3>
+          <span className="workflow-section__summary">{runs.length} runs</span>
+        </summary>
+        <div className="workflow-section__body">
+          <div className="section-header">
+            <div className="filters">
+              <label htmlFor="statusFilter">Status:</label>
+              <Select
+                value={statusFilter}
+                onChange={(value) => setStatusFilter(value as RunStatus | 'all')}
+                options={statusOptions}
+                placeholder="Filter by status..."
               />
-            ))}
+            </div>
           </div>
-        )}
-      </div>
 
-      <RunWorkspaceModal
-        workspace={workspace}
+          {filteredRuns.length === 0 ? (
+            <div className="empty-state">
+              <p>System idle. No runs yet.</p>
+              <Button onClick={handleStartRun}>Start your first run</Button>
+            </div>
+          ) : (
+            <div className="runs-list">
+              {filteredRuns.map((run) => (
+                <RunCard
+                  key={run.runId}
+                  run={run}
+                  workflow={workflow}
+                  workflowId={workflowId as WorkflowId}
+                  researchRequests={researchRequests}
+                  currentTime={currentTime}
+                  showProjectManager={showProjectManager}
+                  onDelete={handleDeleteRun}
+                  onResume={handleResumeRun}
+                  onProvideInput={handleProvideInput}
+                  onRunAgain={handleRunAgain}
+                  onContinue={handleContinue}
+                  onStop={handleStopRun}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </details>
+
+      <RunWorkflowModal
+        workflow={workflow}
         agents={agents}
         isOpen={showRunModal}
         onClose={() => {
@@ -364,6 +465,53 @@ export function WorkspaceDetailPage() {
         initialGoal={resumeSeed?.goal}
         initialContext={resumeSeed?.context}
       />
+
+      {showFullGraphPreview && workflow.workflowGraph && (
+        <div
+          className="modal-overlay"
+          style={{ zIndex: 1100 }}
+          onClick={() => setShowFullGraphPreview(false)}
+        >
+          <div
+            className="modal-content"
+            style={{ width: '90vw', maxWidth: 1100, height: '75vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '0.75rem 1rem',
+                borderBottom: '1px solid var(--border)',
+              }}
+            >
+              <h3 style={{ margin: 0 }}>Workflow Preview</h3>
+              <Button variant="secondary" onClick={() => setShowFullGraphPreview(false)}>
+                Close
+              </Button>
+            </div>
+            <div style={{ flex: 1, height: 'calc(100% - 52px)' }}>
+              <WorkflowGraphView graph={workflow.workflowGraph} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {workflow.workflowGraph && (
+        <CustomWorkflowBuilder
+          isOpen={showGraphEditor}
+          onClose={() => setShowGraphEditor(false)}
+          initialGraph={workflow.workflowGraph}
+          agents={agents}
+          onSave={async (graph) => {
+            await updateWorkflow(workflow.workflowId, { workflowGraph: graph })
+            setShowGraphEditor(false)
+            void getWorkflow(workflow.workflowId)
+            toast.success('Workflow graph updated')
+          }}
+        />
+      )}
     </div>
   )
 }

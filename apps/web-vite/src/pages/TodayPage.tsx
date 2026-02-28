@@ -24,23 +24,30 @@ import { isDeleted, listEvents } from '@lifeos/calendar'
 import type { CanonicalCalendarEvent } from '@lifeos/calendar'
 import { createLogger, getDefaultQuotes, getQuoteForDate } from '@lifeos/core'
 import type { Quote } from '@lifeos/core'
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { createFirestoreCalendarEventRepository } from '@/adapters/firestoreCalendarEventRepository'
 import { createFirestoreQuoteRepository } from '@/adapters/firestoreQuoteRepository'
+import { listEventsByDayKeysLocally, bulkSaveEventsLocally } from '@/calendar/offlineStore'
+import { getQuotesLocally, saveQuotesLocally } from '@/quotes/offlineStore'
 import { HabitCheckInCard } from '@/components/habits/HabitCheckInCard'
 import { IncantationDisplay } from '@/components/habits/IncantationDisplay'
+import { CheckInCard } from '@/components/mind/CheckInCard'
 import { MindInterventionModal } from '@/components/mind/MindInterventionModal'
 import { TodayWorkout } from '@/components/training/TodayWorkout'
 import { WorkoutSessionCard } from '@/components/training/WorkoutSessionCard'
+import { FollowUpWidget } from '@/components/contacts/FollowUpWidget'
+import { MeetingBriefingModal } from '@/components/contacts/MeetingBriefingModal'
+import { MessageMailbox } from '@/components/mailbox/MessageMailbox'
 import { StatusBar } from '@/components/StatusBar'
 import { StatusDot } from '@/components/StatusDot'
-import { TelemetryBar } from '@/components/TelemetryBar'
-import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import { useAutoSync } from '@/hooks/useAutoSync'
+import { useCalendarAccountStatus } from '@/hooks/useCalendarAccountStatus'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
+import { useTrainingToday } from '@/hooks/useTrainingToday'
 import { calculatePriorityScore } from '@/lib/priority'
+import { seedDemoTrainingData } from '@/utils/seedDemoTraining'
 
 const logger = createLogger('TodayPage')
 
@@ -69,19 +76,32 @@ export function TodayPage() {
   const { user } = useAuth()
   const userId = user?.uid ?? ''
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   useAutoSync(userId, 'primary')
+  const { accountStatus } = useCalendarAccountStatus(userId)
+  const needsReconnect = accountStatus?.status === 'needs_attention'
+
+  // Seed demo training data when ?demo=true is in URL
+  useEffect(() => {
+    if (!userId || searchParams.get('demo') !== 'true') return
+    void seedDemoTrainingData(userId, new Date().toISOString().split('T')[0])
+  }, [userId, searchParams])
 
   const [quote, setQuote] = useState<Quote | null>(null)
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState<CanonicalCalendarEvent[]>([])
   const [, setEventsLoading] = useState(true)
   const [isMindModalOpen, setIsMindModalOpen] = useState(false)
-  const [energyLevel, setEnergyLevel] = useState<'low' | 'med' | 'high'>('med')
+  const [briefingEvent, setBriefingEvent] = useState<{
+    id: string
+    title: string
+    time: string
+  } | null>(null)
   const [quickTaskTitle, setQuickTaskTitle] = useState('')
   const [quickEventTitle, setQuickEventTitle] = useState('')
 
   // Load tasks
-  const { tasks, loadData: loadTasks, createTask } = useTodoOperations({ userId })
+  const { tasks, loadData: loadTasks, createTask, updateTask } = useTodoOperations({ userId })
 
   const activeTasks = useMemo(() => {
     return tasks.filter((t) => !t.completed && !t.archived)
@@ -104,61 +124,144 @@ export function TodayPage() {
   }, [frogTask, todayTasks])
   const showTasksEmptyState = !frogTask && todayTasksWithoutFrog.length === 0
 
-  const today = useMemo(() => new Date(), [])
-  const todayKey = today.toISOString().split('T')[0]
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+  const todayKey = now.toISOString().split('T')[0]
 
+  // Load quotes independently (local-first)
   useEffect(() => {
     if (!userId) return
 
-    const loadData = async () => {
-      try {
-        setLoading(true)
-        setEventsLoading(true)
+    // 1. Read from IndexedDB first for instant display
+    getQuotesLocally(userId)
+      .then((localQuotes) => {
+        if (localQuotes.length > 0) {
+          setQuote(getQuoteForDate(localQuotes, todayKey))
+          setLoading(false)
+        }
+      })
+      .catch(() => {
+        /* ignore local read failure */
+      })
 
-        // Load quotes
-        const userQuotes = await quoteRepository.getQuotes(userId)
+    // 2. Fetch from Firestore in background and cache
+    quoteRepository
+      .getQuotes(userId)
+      .then((userQuotes) => {
         const quotesToUse = userQuotes.length > 0 ? userQuotes : getDefaultQuotes()
-        const dailyQuote = getQuoteForDate(quotesToUse, todayKey)
-        setQuote(dailyQuote)
+        setQuote(getQuoteForDate(quotesToUse, todayKey))
+        if (userQuotes.length > 0) {
+          void saveQuotesLocally(userId, userQuotes)
+        }
+      })
+      .catch((error) => {
+        logger.error('Failed to load quotes from Firestore:', error)
+        // Only fall back to defaults if we don't already have a quote displayed
+        setQuote((prev) => prev ?? getDefaultQuotes()[0])
+      })
+      .finally(() => setLoading(false))
+  }, [userId, todayKey])
 
-        // Load real calendar events
-        const canonicalEvents = await listEvents(
-          { repository: calendarRepository },
-          { userId, dayKeys: [todayKey] }
-        )
-        const filteredEvents = canonicalEvents.filter((e) => !isDeleted(e))
-        setEvents(filteredEvents)
+  // Load calendar events independently (local-first)
+  useEffect(() => {
+    if (!userId) return
 
-        // Load tasks
-        void loadTasks()
-      } catch (error) {
-        logger.error('Failed to load data:', error)
-        // Fallback to first default quote
-        const defaults = getDefaultQuotes()
-        setQuote(defaults[0])
-      } finally {
-        setLoading(false)
-        setEventsLoading(false)
-      }
-    }
+    // 1. Read from IndexedDB first for instant display
+    listEventsByDayKeysLocally(userId, [todayKey])
+      .then((localEvents) => {
+        if (localEvents.length > 0) {
+          setEvents(localEvents.filter((e) => !isDeleted(e)))
+          setEventsLoading(false)
+        }
+      })
+      .catch(() => {
+        /* ignore local read failure */
+      })
 
-    void loadData()
-  }, [userId, todayKey, loadTasks])
+    // 2. Fetch from Firestore in background and cache
+    listEvents({ repository: calendarRepository }, { userId, dayKeys: [todayKey] })
+      .then((canonicalEvents) => {
+        const freshEvents = canonicalEvents.filter((e) => !isDeleted(e))
+        setEvents(freshEvents)
+        void bulkSaveEventsLocally(canonicalEvents)
+      })
+      .catch((error) => {
+        logger.error('Failed to load calendar events from Firestore:', error)
+        // Keep local data if we already have it
+        setEvents((prev) => (prev.length > 0 ? prev : []))
+      })
+      .finally(() => setEventsLoading(false))
+  }, [userId, todayKey])
+
+  // Load tasks independently (already offline-first via useTodoOperations)
+  useEffect(() => {
+    if (!userId) return
+    void loadTasks()
+  }, [userId, loadTasks])
+
+  // Load today's training data for exercise time metric
+  const { variants: trainingVariants } = useTrainingToday(todayKey)
+
+  // Calculate total exercise time from completed sessions
+  const exerciseMinutes = useMemo(() => {
+    return trainingVariants
+      .filter((v) => v.session?.status === 'completed' && v.session?.durationSec)
+      .reduce((sum, v) => sum + Math.round((v.session?.durationSec ?? 0) / 60), 0)
+  }, [trainingVariants])
 
   // Convert events to display format and sort chronologically
   const displayEvents = useMemo(
     () =>
       events
         .map((event) => ({
+          canonicalEventId: event.canonicalEventId,
           title: event.title || 'Untitled event',
           start: new Date(event.startMs),
           end: new Date(event.endMs),
           guests: event.attendees?.filter((a) => a.email).map((a) => a.email!) || [],
+          linkedContactIds: event.linkedContactIds ?? [],
         }))
         .sort((a, b) => a.start.getTime() - b.start.getTime()),
     [events]
   )
+  // Calendar preview: limit to 5 events, track current/next
+  const previewEvents = displayEvents.slice(0, 5)
+  const remainingCount = displayEvents.length - previewEvents.length
+  const currentEventIndex = useMemo(() => {
+    const nowMs = now.getTime()
+    // Find the first event that hasn't ended yet
+    const idx = previewEvents.findIndex((evt) => evt.end.getTime() > nowMs)
+    return idx
+  }, [previewEvents, now])
   const hasCalendarEvents = displayEvents.length > 0
+
+  // Task quick actions
+  const completeTask = useCallback(
+    (taskId: string) => {
+      const task = tasks.find((t) => t.id === taskId)
+      if (!task) return
+      void updateTask({ ...task, completed: true })
+    },
+    [tasks, updateTask]
+  )
+
+  const snoozeTask = useCallback(
+    (taskId: string) => {
+      const task = tasks.find((t) => t.id === taskId)
+      if (!task) return
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      void updateTask({
+        ...task,
+        urgency: 'this_week' as const,
+        dueDate: tomorrow.toISOString().split('T')[0],
+      })
+    },
+    [tasks, updateTask]
+  )
 
   const meetingHours = useMemo(
     () =>
@@ -176,248 +279,297 @@ export function TodayPage() {
 
   const freeHours = Math.max(24 - busyHours, 0)
 
+  const taskSummary = `${todayTasksWithoutFrog.length + (frogTask ? 1 : 0)} tasks${frogTask ? ' \u00b7 1 frog' : ''}`
+  const calendarSummary = `${displayEvents.length} event${displayEvents.length !== 1 ? 's' : ''}`
+
   return (
     <div className="page-container today-shell-refined">
       <StatusBar>
         <span className="today-status-label">System Time</span>
         <span className="today-status-time">
-          {timeWithSeconds.format(today)} <span className="today-status-cursor">█</span>
+          {timeWithSeconds.format(now)} <span className="today-status-cursor">█</span>
         </span>
         <StatusDot status="online" label="Online" />
       </StatusBar>
 
+      {needsReconnect && (
+        <div className="today-reconnect-banner" role="alert">
+          <span>Google Calendar connection expired.</span>
+          <button type="button" onClick={() => navigate('/calendar')}>
+            Reconnect Google
+          </button>
+        </div>
+      )}
+
+      {/* Telemetry pill bar — above the grid */}
+      <div className="today-telemetry-bar" data-testid="today-telemetry">
+        <button className="today-telemetry-bar__pill" onClick={() => navigate('/calendar')}>
+          MTG {meetingHours.toFixed(1)}h
+        </button>
+        <button className="today-telemetry-bar__pill" onClick={() => navigate('/calendar')}>
+          FREE {freeHours.toFixed(1)}h
+        </button>
+        <button className="today-telemetry-bar__pill" onClick={() => navigate('/planner')}>
+          UTIL {Math.round((busyHours / 24) * 100)}%
+        </button>
+        <button className="today-telemetry-bar__pill" onClick={() => navigate('/plan')}>
+          EXERCISE {exerciseMinutes} min
+        </button>
+      </div>
+
       <div className="today-layout">
-        <div className="today-primary">
-          {/* Top Priority Tasks */}
-          <section className="task-list-card today-card">
-            <div className="today-card-header">
-              <div>
-                <p className="section-label">Top Priority To-Dos</p>
-                <p className="section-hint">Focus on what moves today forward.</p>
-              </div>
-            </div>
-            {frogTask && (
-              <div className="frog-highlight">
-                <p className="section-label">The Frog</p>
-                <div className="task-item task-item--row">
-                  <span className="task-item-title">{frogTask.title}</span>
-                  <span className="priority-score">{calculatePriorityScore(frogTask)}</span>
-                </div>
-              </div>
-            )}
-            <div className="task-items">
-              {showTasksEmptyState ? (
-                <div className="today-empty-row">
-                  <div>
-                    <p className="today-empty-title">Inbox is clear</p>
-                    <p className="today-empty-text">Add a task to map your next move.</p>
-                  </div>
-                </div>
-              ) : (
-                todayTasksWithoutFrog.map((task) => (
-                  <div key={task.id} className="task-item task-item--row">
-                    <span className="task-item-title">{task.title}</span>
-                    <span className="priority-score">{calculatePriorityScore(task)}</span>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="inline-input-row">
-              <span className="inline-input-prefix">+</span>
-              <input
-                type="text"
-                value={quickTaskTitle}
-                onChange={(e) => setQuickTaskTitle(e.target.value)}
-                placeholder="Input new task…"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && quickTaskTitle.trim()) {
-                    void createTask({
-                      title: quickTaskTitle.trim(),
-                      domain: 'work',
-                      importance: 4,
-                      status: 'inbox',
-                      completed: false,
-                      archived: false,
-                    })
-                    setQuickTaskTitle('')
-                  }
-                }}
-              />
-              <button
-                type="button"
-                className="ghost-button small"
-                onClick={() => {
-                  if (!quickTaskTitle.trim()) return
-                  void createTask({
-                    title: quickTaskTitle.trim(),
-                    domain: 'work',
-                    importance: 4,
-                    status: 'inbox',
-                    completed: false,
-                    archived: false,
-                  })
-                  setQuickTaskTitle('')
+        {/* Row 1, Col 1: Morning Check-In (left) */}
+        <div className="today-grid-checkin">
+          <CheckInCard userId={userId} dateKey={todayKey} />
+        </div>
+
+        {/* Row 1, Col 2: Daily State — compact card (right) */}
+        <section className="today-card daily-state-card today-grid-state">
+          <details className="today-card-collapse" open>
+            <summary className="today-collapse-header">
+              <h3 className="section-label">Daily State</h3>
+              <span className="today-collapse-summary">{formatter.format(now)}</span>
+            </summary>
+            <div className="today-collapse-body">
+              <p
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--text-secondary)',
+                  margin: 0,
                 }}
               >
-                Add
-              </button>
-            </div>
-          </section>
-
-          {/* Calendar Preview */}
-          {hasCalendarEvents && (
-            <section className="calendar-preview-card today-card">
-              <div className="today-card-header">
-                <div>
-                  <p className="section-label">Calendar Preview</p>
-                  <p className="section-hint">Your time blocks for today.</p>
-                </div>
+                {timeFormat.format(now)} {timezone}
+              </p>
+              <div className="daily-state-quote">
+                {loading ? (
+                  <p className="inspiration-loading">Loading quote...</p>
+                ) : quote ? (
+                  <>
+                    <blockquote className="inspiration-quote">
+                      &ldquo;{quote.text}&rdquo;
+                    </blockquote>
+                    <p className="inspiration-author">— {quote.author}</p>
+                  </>
+                ) : (
+                  <p className="inspiration-loading">Quote unavailable</p>
+                )}
               </div>
-              <div className="calendar-events-list">
-                {displayEvents.map((evt, index) => (
-                  <div key={`${evt.title}-${index}`} className="calendar-event-item">
-                    <div className="calendar-event-time">
-                      {timeFormat.format(evt.start)} - {timeFormat.format(evt.end)}
+              <IncantationDisplay variant="embedded" />
+            </div>
+          </details>
+        </section>
+
+        {/* Row 2, Col 1: Top Priority Tasks (left) */}
+        <section className="task-list-card today-card today-grid-tasks">
+          <details className="today-card-collapse" open>
+            <summary className="today-collapse-header">
+              <h3 className="section-label">Top Priorities</h3>
+              <span className="today-collapse-summary">{taskSummary}</span>
+            </summary>
+            <div className="today-collapse-body">
+              {frogTask && (
+                <div className="today-frog-task" data-testid="today-frog-task">
+                  <p className="today-frog-label">Eat the Frog</p>
+                  <div className="today-task-row">
+                    <button
+                      className="today-task-checkbox"
+                      onClick={() => completeTask(frogTask.id)}
+                    >
+                      ○
+                    </button>
+                    <div className="today-task-info">
+                      <span className="today-task-title">{frogTask.title}</span>
                     </div>
-                    <div className="calendar-event-info">
-                      <div className="calendar-event-title">{evt.title}</div>
-                      {evt.guests.length > 0 && (
-                        <div className="calendar-event-meta">
-                          {evt.guests.length} {evt.guests.length === 1 ? 'guest' : 'guests'}
-                        </div>
-                      )}
+                    <div className="today-task-actions">
+                      <button
+                        className="today-task-action"
+                        title="Snooze to tomorrow"
+                        onClick={() => snoozeTask(frogTask.id)}
+                      >
+                        ⏭
+                      </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
-          {!hasCalendarEvents && (
-            <section className="calendar-preview-card calendar-preview-card--empty today-card">
-              <div className="today-card-header">
-                <div>
-                  <p className="section-label">Calendar Preview</p>
-                  <p className="section-hint">Keep a clear window for deep work.</p>
                 </div>
+              )}
+              <div className="task-items">
+                {showTasksEmptyState ? (
+                  <div className="today-empty-row">
+                    <div>
+                      <p className="today-empty-title">Inbox is clear</p>
+                      <p className="today-empty-text">Add a task to map your next move.</p>
+                    </div>
+                  </div>
+                ) : (
+                  todayTasksWithoutFrog.map((task) => (
+                    <div key={task.id} className="today-task-row">
+                      <button className="today-task-checkbox" onClick={() => completeTask(task.id)}>
+                        ○
+                      </button>
+                      <div className="today-task-info">
+                        <span className="today-task-title">{task.title}</span>
+                        <span className="priority-score">{calculatePriorityScore(task)}</span>
+                      </div>
+                      <div className="today-task-actions">
+                        <button
+                          className="today-task-action"
+                          title="Snooze to tomorrow"
+                          onClick={() => snoozeTask(task.id)}
+                        >
+                          ⏭
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
-              <div className="today-empty-row">
-                <div>
-                  <p className="today-empty-title">Calendar is open</p>
-                  <p className="today-empty-text">Block focus time or schedule a meeting.</p>
-                </div>
-              </div>
-              <div className="inline-input-row">
-                <span className="inline-input-prefix">+</span>
+              <div className="today-quick-add">
                 <input
                   type="text"
-                  value={quickEventTitle}
-                  onChange={(e) => setQuickEventTitle(e.target.value)}
-                  placeholder="Input new event…"
+                  className="today-quick-add__input"
+                  value={quickTaskTitle}
+                  onChange={(e) => setQuickTaskTitle(e.target.value)}
+                  placeholder="+ Add a task for today..."
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && quickEventTitle.trim()) {
-                      navigate('/calendar')
-                      setQuickEventTitle('')
+                    if (e.key === 'Enter' && quickTaskTitle.trim()) {
+                      void createTask({
+                        title: quickTaskTitle.trim(),
+                        domain: 'work',
+                        importance: 4,
+                        status: 'inbox',
+                        completed: false,
+                        archived: false,
+                      })
+                      setQuickTaskTitle('')
                     }
                   }}
                 />
-                <button
-                  type="button"
-                  className="ghost-button small"
-                  onClick={() => {
-                    if (!quickEventTitle.trim()) return
-                    navigate('/calendar')
-                    setQuickEventTitle('')
-                  }}
-                >
-                  Add
-                </button>
               </div>
-            </section>
-          )}
-        </div>
+            </div>
+          </details>
+        </section>
 
-        <div className="today-secondary">
-          <section className="today-card daily-state-card">
-            <div className="today-card-header">
-              <div>
-                <p className="section-label">Daily State</p>
-                <p className="section-hint">Signals that set your focus and tone.</p>
-              </div>
-              <Button variant="ghost" className="small" onClick={() => navigate('/review')}>
-                Review week
-              </Button>
-            </div>
-            <div className="daily-state-header">
-              <div>
-                <p className="today-label">Today · {formatter.format(today)}</p>
-                <p className="today-location">Today in {timezone}</p>
-              </div>
-              <div className="today-time">
-                <span>{timeFormat.format(today)}</span>
-                <span className="today-time-zone">{timezone}</span>
-              </div>
-            </div>
-            <div className="daily-state-quote">
-              {loading ? (
-                <p className="inspiration-loading">Loading quote...</p>
-              ) : quote ? (
+        {/* Row 2, Col 2: Calendar Preview — compact (right) */}
+        <section className="calendar-preview-card today-card today-grid-calendar">
+          <details className="today-card-collapse" open>
+            <summary className="today-collapse-header">
+              <h3 className="section-label">Calendar Preview</h3>
+              <span className="today-collapse-summary">{calendarSummary}</span>
+            </summary>
+            <div className="today-collapse-body">
+              {hasCalendarEvents ? (
                 <>
-                  <blockquote className="inspiration-quote">&ldquo;{quote.text}&rdquo;</blockquote>
-                  <p className="inspiration-author">— {quote.author}</p>
+                  {previewEvents.map((evt, index) => (
+                    <div
+                      key={`${evt.canonicalEventId}-${index}`}
+                      className={`today-event-row${index === currentEventIndex ? ' today-event-row--current' : ''}`}
+                    >
+                      <span className="today-event-time">{timeFormat.format(evt.start)}</span>
+                      <span className="today-event-title">{evt.title}</span>
+                      {evt.guests.length > 0 && (
+                        <span className="today-event-guests">{evt.guests.length}</span>
+                      )}
+                      {evt.linkedContactIds.length > 0 && (
+                        <button
+                          className="today-event-prep"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setBriefingEvent({
+                              id: evt.canonicalEventId,
+                              title: evt.title,
+                              time: `${timeFormat.format(evt.start)} - ${timeFormat.format(evt.end)}`,
+                            })
+                          }}
+                        >
+                          Prep
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {remainingCount > 0 && (
+                    <Link to="/calendar" className="today-see-more">
+                      +{remainingCount} more events &rarr; See full calendar
+                    </Link>
+                  )}
+                  {remainingCount === 0 && (
+                    <Link to="/calendar" className="today-see-more">
+                      See full calendar &rarr;
+                    </Link>
+                  )}
                 </>
               ) : (
-                <p className="inspiration-loading">Quote unavailable</p>
+                <>
+                  <div className="today-empty-row">
+                    <div>
+                      <p className="today-empty-title">Calendar is open</p>
+                      <p className="today-empty-text">Block focus time or schedule a meeting.</p>
+                    </div>
+                  </div>
+                  <div className="inline-input-row">
+                    <span className="inline-input-prefix">+</span>
+                    <input
+                      type="text"
+                      value={quickEventTitle}
+                      onChange={(e) => setQuickEventTitle(e.target.value)}
+                      placeholder="Input new event…"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && quickEventTitle.trim()) {
+                          navigate('/calendar')
+                          setQuickEventTitle('')
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="ghost-button small"
+                      onClick={() => {
+                        if (!quickEventTitle.trim()) return
+                        navigate('/calendar')
+                        setQuickEventTitle('')
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </>
               )}
             </div>
-            <div className="today-subsection">
-              <div className="today-subsection-header">
-                <p className="section-label">Energy Level</p>
-                <p className="section-hint">Select your current level.</p>
-              </div>
-              <div
-                className="view-toggles today-energy-toggle"
-                role="group"
-                aria-label="Energy level"
-              >
-                {(['low', 'med', 'high'] as const).map((level) => (
-                  <button
-                    key={level}
-                    type="button"
-                    className={`view-toggle ${energyLevel === level ? 'active' : ''}`}
-                    aria-pressed={energyLevel === level}
-                    onClick={() => setEnergyLevel(level)}
-                  >
-                    {level === 'med' ? 'Medium' : level.charAt(0).toUpperCase() + level.slice(1)}
-                  </button>
-                ))}
-              </div>
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={() => setIsMindModalOpen(true)}
-                className="small"
-              >
-                Adjust focus
-              </Button>
-            </div>
-            <IncantationDisplay variant="embedded" />
-          </section>
+          </details>
+        </section>
 
-          <section className="today-card daily-momentum-card">
-            <div className="today-card-header">
-              <div>
-                <p className="section-label">Daily Momentum</p>
-                <p className="section-hint">Habits and training in one place.</p>
-              </div>
-            </div>
-            <div className="today-card-body">
+        {/* Row 3, Col 1: Message Inbox (left) */}
+        <MessageMailbox maxMessages={10} />
+
+        {/* Row 3, Col 2: Daily Momentum (right) */}
+        <section className="today-card daily-momentum-card today-grid-momentum">
+          <details className="today-card-collapse" open>
+            <summary className="today-collapse-header">
+              <h3 className="section-label">Daily Momentum</h3>
+              <span className="today-collapse-summary">Habits + Training</span>
+            </summary>
+            <div className="today-collapse-body">
               <HabitCheckInCard userId={userId} dateKey={todayKey} variant="embedded" />
               <TodayWorkout userId={userId} dateKey={todayKey} variant="embedded" />
               <WorkoutSessionCard dateKey={todayKey} variant="embedded" />
             </div>
-          </section>
-        </div>
+          </details>
+        </section>
+
+        {/* Row 4: Follow-Up Reminders (full width) */}
+        <FollowUpWidget maxContacts={8} />
       </div>
+
+      {/* Meeting Briefing Modal */}
+      {briefingEvent && (
+        <MeetingBriefingModal
+          isOpen={true}
+          onClose={() => setBriefingEvent(null)}
+          eventId={briefingEvent.id}
+          eventTitle={briefingEvent.title}
+          eventTime={briefingEvent.time}
+        />
+      )}
 
       {/* Mind Intervention Modal */}
       <MindInterventionModal
@@ -426,23 +578,6 @@ export function TodayPage() {
         dateKey={todayKey}
         trigger="today_prompt"
       />
-
-      {/* Stats Grid */}
-      <section className="today-card today-telemetry">
-        <div className="today-card-header">
-          <div>
-            <p className="section-label">Daily Metrics</p>
-            <p className="section-hint">Meeting load and available space.</p>
-          </div>
-        </div>
-        <TelemetryBar
-          items={[
-            { label: 'MTG', value: `${meetingHours.toFixed(1)}h` },
-            { label: 'FREE', value: `${freeHours.toFixed(1)}h` },
-            { label: 'UTIL', value: `${Math.round((busyHours / 24) * 100)}%` },
-          ]}
-        />
-      </section>
     </div>
   )
 }

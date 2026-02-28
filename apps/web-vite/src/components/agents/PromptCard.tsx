@@ -8,12 +8,14 @@
  * - Action buttons at bottom (Edit, Delete)
  */
 
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type { PromptTemplate, PromptType } from '@lifeos/agents'
 import './PromptCard.css'
 
 export interface PromptCardProps {
   template: PromptTemplate
+  onClick?: (template: PromptTemplate) => void
   onEdit: (template: PromptTemplate) => void
   onDelete: (template: PromptTemplate) => void
 }
@@ -54,11 +56,12 @@ const truncate = (text: string, maxLength: number) => {
   return text.substring(0, maxLength).trim() + '…'
 }
 
-export function PromptCard({ template, onEdit, onDelete }: PromptCardProps) {
+export function PromptCard({ template, onClick, onEdit, onDelete }: PromptCardProps) {
+  const [expanded, setExpanded] = useState(false)
   const icon = TYPE_ICON_MAP[template.type]
 
   return (
-    <article className="prompt-card">
+    <article className="prompt-card" onClick={() => onClick?.(template)}>
       <div className="prompt-card__header">
         <div className="prompt-card__icon">
           <picture>
@@ -73,7 +76,20 @@ export function PromptCard({ template, onEdit, onDelete }: PromptCardProps) {
       </div>
 
       <div className="prompt-card__description">
-        <p>{truncate(template.description, 120)}</p>
+        <p className={expanded ? '' : 'prompt-card__description--clamped'}>
+          {template.description}
+        </p>
+        {template.description.length > 100 && (
+          <button
+            className="prompt-card__expand"
+            onClick={(e) => {
+              e.stopPropagation()
+              setExpanded(!expanded)
+            }}
+          >
+            {expanded ? 'Show less' : 'Show more'}
+          </button>
+        )}
       </div>
 
       <div className="prompt-card__meta">
@@ -107,10 +123,23 @@ export function PromptCard({ template, onEdit, onDelete }: PromptCardProps) {
       )}
 
       <div className="prompt-card__footer">
-        <Button variant="ghost" onClick={() => onEdit(template)} size="sm">
+        <Button
+          variant="ghost"
+          onClick={(e) => {
+            e.stopPropagation()
+            onEdit(template)
+          }}
+        >
           Edit
         </Button>
-        <Button variant="ghost" onClick={() => onDelete(template)} className="danger" size="sm">
+        <Button
+          variant="ghost"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete(template)
+          }}
+          className="danger"
+        >
           Delete
         </Button>
       </div>

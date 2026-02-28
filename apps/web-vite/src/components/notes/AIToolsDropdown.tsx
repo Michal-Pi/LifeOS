@@ -8,6 +8,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { JSONContent } from '@tiptap/core'
 import type { Note, TopicId } from '@lifeos/notes'
+import { MODEL_PRICING } from '@lifeos/agents'
 import { useNoteAITools, type AIToolType } from '@/hooks/useNoteAITools'
 import { TagEditor } from './TagEditor'
 import '@/styles/components/AIToolsDropdown.css'
@@ -24,7 +25,6 @@ interface AITool {
   id: AIToolType
   name: string
   description: string
-  icon: string
 }
 
 const AI_TOOLS: AITool[] = [
@@ -32,39 +32,45 @@ const AI_TOOLS: AITool[] = [
     id: 'summarize',
     name: 'Summarize',
     description: 'Condense note into key points and themes',
-    icon: '📝',
   },
   {
     id: 'factCheck',
     name: 'Fact Check',
     description: 'Analyze claims for accuracy with sources',
-    icon: '✓',
   },
   {
     id: 'linkedIn',
     name: 'LinkedIn Analysis',
     description: 'Optimize content for LinkedIn engagement',
-    icon: '💼',
   },
   {
     id: 'writeWithAI',
     name: 'Write with AI',
     description: 'Generate new content based on a prompt',
-    icon: '✨',
   },
   {
     id: 'tagWithAI',
     name: 'Auto-Tag Paragraphs',
     description: 'Semantic paragraph-level tagging',
-    icon: '🏷',
   },
   {
     id: 'noteTags',
     name: 'Manage Tags',
     description: 'Edit note tags with AI suggestions',
-    icon: '#',
   },
 ]
+
+function calculateCost(inputTokens: number, outputTokens: number): number {
+  const pricing = MODEL_PRICING.default
+  const inputCost = (inputTokens / 1_000_000) * pricing.input
+  const outputCost = (outputTokens / 1_000_000) * pricing.output
+  return inputCost + outputCost
+}
+
+function formatCost(cost: number): string {
+  if (cost < 0.001) return '<$0.001'
+  return `$${cost.toFixed(4)}`
+}
 
 export function AIToolsDropdown({
   note,
@@ -81,7 +87,9 @@ export function AIToolsDropdown({
   const {
     state,
     runSummarize,
-    runFactCheck,
+    runFactCheckExtract,
+    toggleClaimSelection,
+    runFactCheckVerify,
     runLinkedIn,
     runWriteWithAI,
     runTagWithAI,
@@ -121,7 +129,7 @@ export function AIToolsDropdown({
           void runSummarize(content)
           break
         case 'factCheck':
-          void runFactCheck(content)
+          void runFactCheckExtract(content)
           break
         case 'linkedIn':
           void runLinkedIn(content)
@@ -147,7 +155,7 @@ export function AIToolsDropdown({
       availableNotes,
       setActiveTool,
       runSummarize,
-      runFactCheck,
+      runFactCheckExtract,
       runLinkedIn,
       runTagWithAI,
       runSuggestNoteTags,
@@ -193,7 +201,223 @@ export function AIToolsDropdown({
     return AI_TOOLS.find((t) => t.id === toolId)?.name || 'AI Tool'
   }
 
+  const selectedCount = state.selectedClaimFlags.filter(Boolean).length
+
+  const renderFactCheckContent = () => {
+    const { factCheckStep, extractedClaims, selectedClaimFlags, factCheckResults } = state
+
+    // Extracting phase
+    if (factCheckStep === 'extracting') {
+      return (
+        <div className="ai-dropdown-modal__loading">
+          <div className="ai-dropdown-modal__spinner" />
+          <p>Extracting claims...</p>
+        </div>
+      )
+    }
+
+    // Verifying phase
+    if (factCheckStep === 'verifying') {
+      return (
+        <div className="ai-dropdown-modal__loading">
+          <div className="ai-dropdown-modal__spinner" />
+          <p>
+            Verifying {selectedCount} claim{selectedCount !== 1 ? 's' : ''}...
+          </p>
+        </div>
+      )
+    }
+
+    // Selection phase
+    if (factCheckStep === 'selecting' && extractedClaims) {
+      return (
+        <div className="ai-dropdown-modal__result">
+          <p className="ai-dropdown-modal__claim-select-header">
+            Found {extractedClaims.length} claim{extractedClaims.length !== 1 ? 's' : ''} to verify.
+            Uncheck any you trust.
+          </p>
+          {state.error && (
+            <div className="ai-dropdown-modal__error" style={{ marginBottom: '0.75rem' }}>
+              <p>{state.error}</p>
+            </div>
+          )}
+          <div className="ai-dropdown-modal__claim-checkbox-list">
+            {extractedClaims.map((claim, i) => (
+              <label
+                key={i}
+                className={`ai-dropdown-modal__claim-checkbox-item ${selectedClaimFlags[i] ? 'is-selected' : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  className="ai-dropdown-modal__claim-checkbox"
+                  checked={selectedClaimFlags[i] ?? true}
+                  onChange={() => toggleClaimSelection(i)}
+                />
+                <div className="ai-dropdown-modal__claim-content">
+                  <div className="ai-dropdown-modal__claim-text">{claim.claim}</div>
+                  <div className="ai-dropdown-modal__claim-meta">
+                    <span
+                      className={`ai-dropdown-modal__claim-confidence confidence-${claim.confidence}`}
+                    >
+                      {claim.confidence}
+                    </span>
+                  </div>
+                  <div className="ai-dropdown-modal__claim-explanation">{claim.explanation}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+          <div className="ai-dropdown-modal__claim-actions">
+            <div className="ai-dropdown-modal__claim-bulk-actions">
+              <button
+                type="button"
+                className="ghost-button small"
+                onClick={() =>
+                  extractedClaims.forEach((_, i) => {
+                    if (!selectedClaimFlags[i]) toggleClaimSelection(i)
+                  })
+                }
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                className="ghost-button small"
+                onClick={() =>
+                  extractedClaims.forEach((_, i) => {
+                    if (selectedClaimFlags[i]) toggleClaimSelection(i)
+                  })
+                }
+              >
+                Deselect All
+              </button>
+            </div>
+            <button
+              type="button"
+              className="primary-button small"
+              onClick={() => void runFactCheckVerify(note.content as JSONContent)}
+            >
+              {selectedCount === 0 ? 'Skip Verification' : `Verify Selected (${selectedCount})`}
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    // Done phase — grouped results
+    if (factCheckStep === 'done' && factCheckResults) {
+      if (factCheckResults.length === 0) {
+        return (
+          <div className="ai-dropdown-modal__result">
+            <p className="ai-dropdown-modal__empty">No factual claims identified.</p>
+          </div>
+        )
+      }
+
+      const verified = factCheckResults.filter((r) => r.webSearchUsed !== false)
+      const userConfirmed = factCheckResults.filter((r) => r.webSearchUsed === false)
+
+      return (
+        <div className="ai-dropdown-modal__result">
+          <div className="ai-dropdown-modal__fact-list">
+            {verified.length > 0 && (
+              <>
+                {userConfirmed.length > 0 && (
+                  <div className="ai-dropdown-modal__results-group-header">Verified</div>
+                )}
+                {verified.map((result, i) => (
+                  <div
+                    key={`v-${i}`}
+                    className={`ai-dropdown-modal__fact-item ${result.verdict ? `verdict-${result.verdict}` : `confidence-${result.confidence}`}`}
+                  >
+                    <div className="ai-dropdown-modal__fact-header">
+                      <div className="ai-dropdown-modal__fact-claim">"{result.claim}"</div>
+                      {result.verdict && (
+                        <span
+                          className={`ai-dropdown-modal__fact-verdict verdict-${result.verdict}`}
+                        >
+                          {result.verdict.replaceAll('_', ' ')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="ai-dropdown-modal__fact-confidence">
+                      Confidence: <span>{result.confidence}</span>
+                    </div>
+                    <div className="ai-dropdown-modal__fact-explanation">{result.explanation}</div>
+                    {result.sources && result.sources.length > 0 && (
+                      <div className="ai-dropdown-modal__fact-sources">
+                        <strong>Sources:</strong>
+                        <ul className="ai-dropdown-modal__source-list">
+                          {result.sources.map((source, j) => (
+                            <li
+                              key={j}
+                              className={source.supports ? 'source-supports' : 'source-contradicts'}
+                            >
+                              <a href={source.url} target="_blank" rel="noopener noreferrer">
+                                {source.title}
+                              </a>
+                              <span className="ai-dropdown-modal__source-indicator">
+                                {source.supports ? ' (supports)' : ' (contradicts)'}
+                              </span>
+                              {source.snippet && (
+                                <p className="ai-dropdown-modal__source-snippet">
+                                  {source.snippet}
+                                </p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {!result.sources?.length &&
+                      result.suggestedSources &&
+                      result.suggestedSources.length > 0 && (
+                        <div className="ai-dropdown-modal__fact-sources">
+                          Verify with: {result.suggestedSources.join(', ')}
+                        </div>
+                      )}
+                  </div>
+                ))}
+              </>
+            )}
+            {userConfirmed.length > 0 && (
+              <>
+                {verified.length > 0 && (
+                  <div className="ai-dropdown-modal__results-group-header">User Confirmed</div>
+                )}
+                {userConfirmed.map((result, i) => (
+                  <div
+                    key={`uc-${i}`}
+                    className="ai-dropdown-modal__fact-item verdict-user_confirmed"
+                  >
+                    <div className="ai-dropdown-modal__fact-header">
+                      <div className="ai-dropdown-modal__fact-claim">"{result.claim}"</div>
+                      <span className="ai-dropdown-modal__fact-verdict verdict-user_confirmed">
+                        user confirmed
+                      </span>
+                    </div>
+                    <div className="ai-dropdown-modal__fact-confidence">
+                      Confidence: <span>{result.confidence}</span>
+                    </div>
+                    <div className="ai-dropdown-modal__fact-explanation">{result.explanation}</div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      )
+    }
+
+    return null
+  }
+
   const renderModalContent = () => {
+    // For factCheck, delegate to step-aware renderer
+    if (state.activeTool === 'factCheck') {
+      return renderFactCheckContent()
+    }
+
     if (state.isLoading) {
       return (
         <div className="ai-dropdown-modal__loading">
@@ -238,47 +462,96 @@ export function AIToolsDropdown({
         }
         break
 
-      case 'factCheck':
-        if (state.factCheckResults) {
-          return (
-            <div className="ai-dropdown-modal__result">
-              {state.factCheckResults.length === 0 ? (
-                <p className="ai-dropdown-modal__empty">No factual claims identified.</p>
-              ) : (
-                <div className="ai-dropdown-modal__fact-list">
-                  {state.factCheckResults.map((result, i) => (
-                    <div
-                      key={i}
-                      className={`ai-dropdown-modal__fact-item confidence-${result.confidence}`}
-                    >
-                      <div className="ai-dropdown-modal__fact-claim">"{result.claim}"</div>
-                      <div className="ai-dropdown-modal__fact-confidence">
-                        Confidence: <span>{result.confidence}</span>
-                      </div>
-                      <div className="ai-dropdown-modal__fact-explanation">{result.explanation}</div>
-                      {result.suggestedSources && result.suggestedSources.length > 0 && (
-                        <div className="ai-dropdown-modal__fact-sources">
-                          Verify with: {result.suggestedSources.join(', ')}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        }
-        break
-
       case 'linkedIn':
         if (state.linkedInResult) {
-          const { overallScore, hooks, suggestedHashtags, quotableLines, improvements } =
-            state.linkedInResult
+          const {
+            overallScore,
+            hooks,
+            suggestedHashtags,
+            quotableLines,
+            improvements,
+            trendingContext,
+            timingAdvice,
+            competitiveAnalysis,
+            webSearchUsed,
+          } = state.linkedInResult
           return (
             <div className="ai-dropdown-modal__result">
               <div className="ai-dropdown-modal__linkedin-score">
                 Score: <strong>{overallScore}/10</strong>
+                {webSearchUsed && (
+                  <span
+                    className="ai-dropdown-modal__web-badge ai-dropdown-modal__web-badge--verified"
+                    style={{ marginLeft: 8, fontSize: '0.75rem' }}
+                  >
+                    Trend data included
+                  </span>
+                )}
               </div>
+
+              {trendingContext && (
+                <div className="ai-dropdown-modal__section ai-dropdown-modal__trending">
+                  <h5>Topic Trending Analysis</h5>
+                  <div className="ai-dropdown-modal__trend-header">
+                    <span
+                      className={`ai-dropdown-modal__trend-badge ${trendingContext.isTrending ? 'trending' : 'not-trending'}`}
+                    >
+                      {trendingContext.isTrending ? 'Trending' : 'Not trending'}
+                    </span>
+                    <span className="ai-dropdown-modal__trend-score">
+                      Trend score: <strong>{trendingContext.trendScore}/10</strong>
+                    </span>
+                  </div>
+                  {trendingContext.relatedNews.length > 0 && (
+                    <div className="ai-dropdown-modal__trend-section">
+                      <strong>Related News:</strong>
+                      <ul>
+                        {trendingContext.relatedNews.slice(0, 3).map((news, i) => (
+                          <li key={i}>
+                            <a href={news.url} target="_blank" rel="noopener noreferrer">
+                              {news.title}
+                            </a>
+                            {news.date && (
+                              <span className="ai-dropdown-modal__trend-date"> ({news.date})</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {trendingContext.relatedPosts.length > 0 && (
+                    <div className="ai-dropdown-modal__trend-section">
+                      <strong>Similar LinkedIn Posts:</strong>
+                      <ul>
+                        {trendingContext.relatedPosts.slice(0, 3).map((post, i) => (
+                          <li key={i}>
+                            <a href={post.url} target="_blank" rel="noopener noreferrer">
+                              {post.title}
+                            </a>
+                            {post.snippet && (
+                              <p className="ai-dropdown-modal__source-snippet">{post.snippet}</p>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {timingAdvice && (
+                <div className="ai-dropdown-modal__section">
+                  <h5>Timing Advice</h5>
+                  <p>{timingAdvice}</p>
+                </div>
+              )}
+
+              {competitiveAnalysis && (
+                <div className="ai-dropdown-modal__section">
+                  <h5>Competitive Analysis</h5>
+                  <p>{competitiveAnalysis}</p>
+                </div>
+              )}
 
               {hooks.length > 0 && (
                 <div className="ai-dropdown-modal__section">
@@ -341,14 +614,16 @@ export function AIToolsDropdown({
                 placeholder="Describe what you want to add... (e.g., 'Add a conclusion' or 'Expand on the second point')"
                 rows={3}
               />
-              <button
-                type="button"
-                className="primary-button small"
-                onClick={handleWriteSubmit}
-                disabled={!writePrompt.trim() || state.isLoading}
-              >
-                Generate
-              </button>
+              <div className="ai-dropdown-modal__write-actions">
+                <button
+                  type="button"
+                  className="primary-button small"
+                  onClick={handleWriteSubmit}
+                  disabled={!writePrompt.trim() || state.isLoading}
+                >
+                  {state.writeResult ? 'Re-run' : 'Generate'}
+                </button>
+              </div>
             </div>
             {state.writeResult && (
               <div className="ai-dropdown-modal__write-result">
@@ -363,13 +638,15 @@ export function AIToolsDropdown({
                     Copy
                   </button>
                   {onContentInsert && (
-                    <button
-                      type="button"
-                      className="primary-button small"
-                      onClick={handleInsertContent}
-                    >
-                      Insert at End
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="primary-button small"
+                        onClick={handleInsertContent}
+                      >
+                        Append to Note
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -455,21 +732,22 @@ export function AIToolsDropdown({
           className="ghost-button notes-header-button ai-tools-dropdown__trigger"
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
+          aria-haspopup="true"
         >
           AI Tools
           <span className="ai-tools-dropdown__caret">{isOpen ? '▲' : '▼'}</span>
         </button>
 
         {isOpen && (
-          <div className="ai-tools-dropdown__menu">
+          <div className="ai-tools-dropdown__menu" role="menu">
             {AI_TOOLS.map((tool) => (
               <button
                 key={tool.id}
                 type="button"
+                role="menuitem"
                 className="ai-tools-dropdown__item"
                 onClick={() => handleToolSelect(tool.id)}
               >
-                <span className="ai-tools-dropdown__item-icon">{tool.icon}</span>
                 <div className="ai-tools-dropdown__item-content">
                   <span className="ai-tools-dropdown__item-name">{tool.name}</span>
                   <span className="ai-tools-dropdown__item-desc">{tool.description}</span>
@@ -486,15 +764,27 @@ export function AIToolsDropdown({
           <div className="ai-dropdown-modal" onClick={(e) => e.stopPropagation()}>
             <div className="ai-dropdown-modal__header">
               <h3>{getToolName(state.activeTool)}</h3>
-              <button
-                type="button"
-                className="ai-dropdown-modal__close"
-                onClick={handleCloseModal}
-              >
+              <button type="button" className="ai-dropdown-modal__close" onClick={handleCloseModal}>
                 ×
               </button>
             </div>
             <div className="ai-dropdown-modal__body">{renderModalContent()}</div>
+            {(() => {
+              const displayUsage =
+                state.usage ?? (state.factCheckStep === 'selecting' ? state.extractionUsage : null)
+              if (!displayUsage || state.isLoading) return null
+              return (
+                <div className="ai-dropdown-modal__footer">
+                  <span className="ai-dropdown-modal__usage">
+                    {displayUsage.inputTokens.toLocaleString()} input +{' '}
+                    {displayUsage.outputTokens.toLocaleString()} output tokens
+                  </span>
+                  <span className="ai-dropdown-modal__cost">
+                    {formatCost(calculateCost(displayUsage.inputTokens, displayUsage.outputTokens))}
+                  </span>
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}

@@ -13,6 +13,7 @@ export type SyncState = 'synced' | 'pending' | 'syncing' | 'failed' | 'conflict'
 
 // ----- Enums -----
 
+/** @deprecated Use ExerciseTypeCategory instead */
 export type ExerciseCategory =
   | 'push'
   | 'pull'
@@ -21,8 +22,27 @@ export type ExerciseCategory =
   | 'conditioning'
   | 'mobility'
   | 'other'
+
+export type ExerciseTypeCategory =
+  | 'lower_body'
+  | 'upper_body'
+  | 'arms'
+  | 'core'
+  | 'mobility_stability'
+  | 'cardio'
+  | 'yoga'
+
 export type WorkoutContext = 'gym' | 'home' | 'road'
 export type SessionStatus = 'planned' | 'in_progress' | 'completed' | 'skipped'
+
+// ----- Exercise Variants -----
+
+export interface ExerciseVariant {
+  name: string // e.g., "Barbell Back Squat"
+  equipment?: string[]
+  tags?: string[]
+  notes?: string
+}
 
 // ----- Exercise Library -----
 
@@ -30,10 +50,24 @@ export interface ExerciseLibraryItem {
   exerciseId: ExerciseId
   userId: string
 
-  name: string
-  category?: ExerciseCategory
-  equipment?: string[] // ["barbell", "bench"]
-  defaultMetrics: Array<'sets_reps_weight' | 'time' | 'distance' | 'reps_only' | 'rpe'>
+  // New schema fields
+  generic_name: string // e.g., "Squat"
+  target_muscle_group: string | string[] // e.g., "Quadriceps" or ["Quadriceps", "Glutes"]
+  category: ExerciseTypeCategory // Which category this belongs to
+
+  // Context-specific variants
+  gym: ExerciseVariant[]
+  home: ExerciseVariant[]
+  road: ExerciseVariant[]
+
+  // Legacy fields (deprecated, kept for migration)
+  /** @deprecated Use generic_name instead */
+  name?: string
+  /** @deprecated Use category instead */
+  legacyCategory?: ExerciseCategory
+  /** @deprecated Equipment is now per-variant */
+  equipment?: string[]
+  defaultMetrics?: Array<'sets_reps_weight' | 'time' | 'distance' | 'reps_only' | 'rpe'>
 
   archived: boolean
   createdAtMs: number
@@ -81,15 +115,26 @@ export interface WorkoutTemplate {
 
 // ----- Workout Plans -----
 
+export interface DayExerciseBlock {
+  category: ExerciseTypeCategory
+  timeMinutes: number
+  exerciseIds?: ExerciseId[] // Optional specific exercises
+}
+
 export interface WorkoutDaySchedule {
   dayOfWeek: number // 0-6
-  variants: {
+  restDay?: boolean
+  blocks: DayExerciseBlock[] // Exercise categories with time allocations
+
+  // Legacy fields (deprecated, kept for migration)
+  /** @deprecated Use blocks instead */
+  variants?: {
     gymTemplateId?: TemplateId
     homeTemplateId?: TemplateId
     roadTemplateId?: TemplateId
   }
+  /** @deprecated No longer used */
   defaultContext?: WorkoutContext
-  restDay?: boolean
 }
 
 export interface WorkoutPlan {

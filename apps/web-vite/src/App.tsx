@@ -1,9 +1,10 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
-import { lazy, Suspense, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useState, useRef } from 'react'
 import { Toaster } from 'sonner'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { TopNav } from './components/TopNav'
+import { KeyboardShortcuts } from './components/KeyboardShortcuts'
 import { useNotifications } from './hooks/useNotifications'
 import { Providers } from './components/Providers'
 
@@ -134,8 +135,77 @@ function NotificationListener() {
 
 function AppRoutes() {
   const location = useLocation()
+  const navigate = useNavigate()
   const isLoginRoute = location.pathname === '/login'
   const contentClass = isLoginRoute ? 'app-content app-content--public' : 'app-content'
+
+  // Keyboard shortcuts overlay
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const pendingGoToRef = useRef(false)
+  const goToTimerRef = useRef<ReturnType<typeof setTimeout>>()
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't trigger in inputs/textareas/contenteditable
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement).isContentEditable
+      ) {
+        return
+      }
+
+      // "?" toggles shortcuts overlay
+      if (e.key === '?') {
+        e.preventDefault()
+        setShortcutsOpen((open) => !open)
+        return
+      }
+
+      // Go-To chord: "g" then a letter
+      if (pendingGoToRef.current) {
+        pendingGoToRef.current = false
+        clearTimeout(goToTimerRef.current)
+        switch (e.key.toLowerCase()) {
+          case 't':
+            navigate('/today')
+            break
+          case 'p':
+            navigate('/planner')
+            break
+          case 'n':
+            navigate('/notes')
+            break
+          case 'c':
+            navigate('/calendar')
+            break
+          case 'm':
+            navigate('/mailbox')
+            break
+          case 'w':
+            navigate('/workflows')
+            break
+          case 's':
+            navigate('/settings')
+            break
+        }
+        return
+      }
+
+      if (e.key === 'g' && !e.metaKey && !e.ctrlKey) {
+        pendingGoToRef.current = true
+        goToTimerRef.current = setTimeout(() => {
+          pendingGoToRef.current = false
+        }, 1000)
+      }
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => {
+      window.removeEventListener('keydown', handler)
+      clearTimeout(goToTimerRef.current)
+    }
+  }, [navigate])
 
   useEffect(() => {
     const removeInjectedSurvey = (root: ParentNode) => {
@@ -421,6 +491,7 @@ function AppRoutes() {
           </Suspense>
         </div>
       </div>
+      <KeyboardShortcuts isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </>
   )
 }

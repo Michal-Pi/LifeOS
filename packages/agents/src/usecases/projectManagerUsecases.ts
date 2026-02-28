@@ -5,7 +5,7 @@ import type {
   ConversationTurn,
   DecisionRecord,
 } from '../domain/projectManager'
-import type { RunId, WorkspaceId } from '../domain/models'
+import type { RunId, WorkflowId } from '../domain/models'
 import type { ProjectManagerRepository } from '../ports/projectManagerRepository'
 
 type ExtractorResult = {
@@ -32,10 +32,10 @@ export function createProjectManagerUsecases(
   }
 ) {
   return {
-    async startConversation(userId: string, workspaceId?: WorkspaceId, runId?: RunId) {
-      const existing = await repository.getActiveContext(userId, workspaceId)
+    async startConversation(userId: string, workflowId?: WorkflowId, runId?: RunId) {
+      const existing = await repository.getActiveContext(userId, workflowId)
       if (existing) return existing
-      return repository.createContext(userId, workspaceId, runId)
+      return repository.createContext(userId, workflowId, runId)
     },
 
     async addTurn(

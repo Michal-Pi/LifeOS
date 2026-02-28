@@ -23,8 +23,14 @@ interface EventModalsContainerProps {
   onDeleteEvent: (scope?: EditScope) => Promise<void> | void
 }
 
+export interface EventPrefill {
+  title?: string
+  startMs?: number
+  endMs?: number
+}
+
 export interface EventModalsContainerHandle {
-  openCreateModal: () => void
+  openCreateModal: (prefill?: EventPrefill) => void
   openEditModal: () => void
   openDeleteModal: () => void
 }
@@ -38,9 +44,11 @@ export const EventModalsContainer = forwardRef<
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [editScope, setEditScope] = useState<EditScope | null>(null)
+  const [prefillData, setPrefillData] = useState<EventPrefill | null>(null)
 
-  // Open create modal
-  const openCreateModal = useCallback(() => {
+  // Open create modal with optional prefill data
+  const openCreateModal = useCallback((prefill?: EventPrefill) => {
+    setPrefillData(prefill ?? null)
     setFormMode('create')
     setFormModalOpen(true)
   }, [])
@@ -79,6 +87,7 @@ export const EventModalsContainer = forwardRef<
   const handleFormClose = useCallback(() => {
     setFormModalOpen(false)
     setEditScope(null)
+    setPrefillData(null)
   }, [])
 
   // Handle delete confirm
@@ -123,6 +132,21 @@ export const EventModalsContainer = forwardRef<
         mode={formMode}
         isRecurrenceInstance={isRecurrenceInstance}
         onScopeSelect={handleScopeSelect}
+        initialFormData={
+          formMode === 'create' && prefillData
+            ? {
+                title: prefillData.title,
+                ...(prefillData.startMs && prefillData.endMs
+                  ? {
+                      startDate: new Date(prefillData.startMs).toISOString().split('T')[0],
+                      startTime: new Date(prefillData.startMs).toTimeString().slice(0, 5),
+                      endDate: new Date(prefillData.endMs).toISOString().split('T')[0],
+                      endTime: new Date(prefillData.endMs).toTimeString().slice(0, 5),
+                    }
+                  : {}),
+              }
+            : undefined
+        }
       />
 
       {/* Delete Confirmation Modal */}

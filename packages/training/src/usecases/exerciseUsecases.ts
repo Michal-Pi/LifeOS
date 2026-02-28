@@ -12,6 +12,7 @@ import type {
   CreateExerciseInput,
   UpdateExerciseInput,
   ExerciseCategory,
+  ExerciseTypeCategory,
 } from '../domain/models'
 
 /**
@@ -22,14 +23,23 @@ export function createExerciseUsecase(exerciseRepo: ExerciseLibraryRepository) {
     userId: string,
     input: Omit<CreateExerciseInput, 'userId'>
   ): Promise<ExerciseLibraryItem> => {
-    // Business rule: Exercise name must not be empty
-    if (!input.name.trim()) {
+    // Business rule: Exercise generic_name must not be empty
+    if (!input.generic_name.trim()) {
       throw new Error('Exercise name is required')
     }
 
-    // Business rule: Must have at least one default metric
-    if (input.defaultMetrics.length === 0) {
-      throw new Error('Exercise must have at least one default metric')
+    // Business rule: Must have a target muscle group
+    const targetMuscle = input.target_muscle_group
+    const hasTargetMuscle = Array.isArray(targetMuscle)
+      ? targetMuscle.length > 0
+      : typeof targetMuscle === 'string' && targetMuscle.trim().length > 0
+    if (!hasTargetMuscle) {
+      throw new Error('Exercise must have at least one target muscle group')
+    }
+
+    // Business rule: Must have a valid category
+    if (!input.category) {
+      throw new Error('Exercise category is required')
     }
 
     // Create with userId
@@ -51,14 +61,20 @@ export function updateExerciseUsecase(exerciseRepo: ExerciseLibraryRepository) {
     exerciseId: ExerciseId,
     updates: UpdateExerciseInput
   ): Promise<ExerciseLibraryItem> => {
-    // Business rule: If updating name, ensure it's not empty
-    if (updates.name !== undefined && !updates.name.trim()) {
+    // Business rule: If updating generic_name, ensure it's not empty
+    if (updates.generic_name !== undefined && !updates.generic_name.trim()) {
       throw new Error('Exercise name cannot be empty')
     }
 
-    // Business rule: If updating metrics, ensure at least one
-    if (updates.defaultMetrics !== undefined && updates.defaultMetrics.length === 0) {
-      throw new Error('Exercise must have at least one default metric')
+    // Business rule: If updating target_muscle_group, ensure at least one
+    if (updates.target_muscle_group !== undefined) {
+      const targetMuscle = updates.target_muscle_group
+      const hasTargetMuscle = Array.isArray(targetMuscle)
+        ? targetMuscle.length > 0
+        : typeof targetMuscle === 'string' && targetMuscle.trim().length > 0
+      if (!hasTargetMuscle) {
+        throw new Error('Exercise must have at least one target muscle group')
+      }
     }
 
     return await exerciseRepo.update(userId, exerciseId, updates)
@@ -89,7 +105,11 @@ export function getExerciseUsecase(exerciseRepo: ExerciseLibraryRepository) {
 export function listExercisesUsecase(exerciseRepo: ExerciseLibraryRepository) {
   return async (
     userId: string,
-    options?: { category?: ExerciseCategory; activeOnly?: boolean }
+    options?: {
+      category?: ExerciseTypeCategory
+      legacyCategory?: ExerciseCategory // For backwards compatibility
+      activeOnly?: boolean
+    }
   ): Promise<ExerciseLibraryItem[]> => {
     return await exerciseRepo.list(userId, options)
   }
