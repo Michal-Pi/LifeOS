@@ -269,6 +269,19 @@ service cloud.firestore {
       allow read: if isAuthenticated(userId);
       allow write: if false; // Server-only writes (auto-learn + import)
     }
+    // Scheduling Links (owner CRUD)
+    match /users/{userId}/schedulingLinks/{linkId} {
+      allow read, write: if isAuthenticated(userId);
+      // Bookings are server-only writes (Cloud Function creates on public booking)
+      match /bookings/{bookingId} {
+        allow read: if isAuthenticated(userId);
+        allow write: if false;
+      }
+    }
+    // Slug lookup index (server-only — public reads via Cloud Function)
+    match /schedulingLinkSlugs/{slug} {
+      allow read, write: if false;
+    }
     // Deny all other paths by default
     match /{document=**} {
       allow read, write: if false;

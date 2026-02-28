@@ -16,6 +16,7 @@ import { ChannelConnectionsPanel } from '@/components/settings/ChannelConnection
 import { GeneralSettingsSection } from '@/components/settings/GeneralSettingsSection'
 import { AIProvidersSection } from '@/components/settings/AIProvidersSection'
 import { SearchToolsSection } from '@/components/settings/SearchToolsSection'
+import { SchedulingLinksSection } from '@/components/settings/SchedulingLinksSection'
 import { QuotesSection } from '@/components/settings/QuotesSection'
 import { SystemSection } from '@/components/settings/SystemSection'
 
@@ -24,6 +25,7 @@ const SIDEBAR_SECTIONS = [
   { id: 'ai-providers', label: 'AI Providers' },
   { id: 'search-tools', label: 'Search Tools' },
   { id: 'calendar', label: 'Calendar' },
+  { id: 'scheduling', label: 'Scheduling' },
   { id: 'channels', label: 'Channels' },
   { id: 'quotes', label: 'Quotes' },
   { id: 'system', label: 'System' },
@@ -115,6 +117,8 @@ export function SettingsPage() {
             </p>
             <CalendarSettingsPanel />
           </section>
+
+          <SchedulingLinksSection userId={user?.uid} onError={handleError} />
 
           {/* Channels -- already a standalone panel */}
           <section id="channels">

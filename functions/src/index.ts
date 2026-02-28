@@ -3,7 +3,11 @@ import type { CanonicalCalendarEvent } from '@lifeos/calendar'
 import type { Request, Response } from 'express'
 import { getAuth } from 'firebase-admin/auth'
 import { Timestamp } from 'firebase-admin/firestore'
-import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore'
+import {
+  onDocumentCreated,
+  onDocumentDeleted,
+  onDocumentUpdated,
+} from 'firebase-functions/v2/firestore'
 import { onCall, onRequest } from 'firebase-functions/v2/https'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { OAuth2Client, type Credentials } from 'google-auth-library'
@@ -1888,3 +1892,79 @@ export {
   channelConnectionDelete,
   channelConnectionTest,
 } from './channels/channelConnectionEndpoints.js'
+
+// ==================== Scheduling Links (Task 3.3) ====================
+
+/**
+ * Public scheduling endpoints — no auth required.
+ * Guests use these to view booking pages and create bookings.
+ */
+
+export const getSchedulingLink = onRequest(
+  { ...FUNCTION_CONFIG.http, cors: true },
+  async (request, response) => {
+    const m = await import('./scheduling/endpoints.js')
+    return m.handleGetSchedulingLink(request, response)
+  }
+)
+
+export const getSchedulingAvailability = onRequest(
+  {
+    ...FUNCTION_CONFIG.http,
+    cors: true,
+    secrets: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET'],
+  },
+  async (request, response) => {
+    const m = await import('./scheduling/endpoints.js')
+    return m.handleGetAvailability(request, response)
+  }
+)
+
+export const createSchedulingBooking = onRequest(
+  {
+    ...FUNCTION_CONFIG.http,
+    cors: true,
+    secrets: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET'],
+  },
+  async (request, response) => {
+    const m = await import('./scheduling/endpoints.js')
+    return m.handleCreateBooking(request, response)
+  }
+)
+
+/**
+ * Firestore triggers: keep the slug-to-user lookup index in sync.
+ */
+
+export const onSchedulingLinkCreated = onDocumentCreated(
+  {
+    ...FUNCTION_CONFIG.http,
+    document: 'users/{userId}/schedulingLinks/{linkId}',
+  },
+  async (event) => {
+    const m = await import('./scheduling/slugManager.js')
+    return m.handleSchedulingLinkCreated(event)
+  }
+)
+
+export const onSchedulingLinkUpdated = onDocumentUpdated(
+  {
+    ...FUNCTION_CONFIG.http,
+    document: 'users/{userId}/schedulingLinks/{linkId}',
+  },
+  async (event) => {
+    const m = await import('./scheduling/slugManager.js')
+    return m.handleSchedulingLinkUpdated(event)
+  }
+)
+
+export const onSchedulingLinkDeleted = onDocumentDeleted(
+  {
+    ...FUNCTION_CONFIG.http,
+    document: 'users/{userId}/schedulingLinks/{linkId}',
+  },
+  async (event) => {
+    const m = await import('./scheduling/slugManager.js')
+    return m.handleSchedulingLinkDeleted(event)
+  }
+)

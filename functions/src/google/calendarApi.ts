@@ -255,10 +255,19 @@ export async function insertEvent(
   uid: string,
   accountId: string,
   calendarId: string,
-  event: GoogleCalendarEventInput
+  event: GoogleCalendarEventInput,
+  options?: {
+    sendUpdates?: 'all' | 'externalOnly' | 'none'
+    conferenceDataVersion?: number
+  }
 ): Promise<GoogleCalendarEventResponse> {
   const accessToken = await getValidAccessToken(uid, accountId)
-  const path = `/calendars/${encodeURIComponent(calendarId)}/events`
+  const params = new URLSearchParams()
+  if (options?.sendUpdates) params.set('sendUpdates', options.sendUpdates)
+  if (options?.conferenceDataVersion != null)
+    params.set('conferenceDataVersion', String(options.conferenceDataVersion))
+  const qs = params.toString()
+  const path = `/calendars/${encodeURIComponent(calendarId)}/events${qs ? `?${qs}` : ''}`
 
   return makeCalendarRequest<GoogleCalendarEventResponse>(accessToken, 'POST', path, event)
 }

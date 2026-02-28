@@ -111,6 +111,9 @@ const MailboxPage = lazyWithRetry(() =>
 const PeoplePage = lazyWithRetry(() =>
   import('./pages/PeoplePage').then((m) => ({ default: m.PeoplePage }))
 )
+const BookingPage = lazyWithRetry(() =>
+  import('./pages/BookingPage').then((m) => ({ default: m.BookingPage }))
+)
 
 // Loading fallback component
 function PageLoader() {
@@ -136,8 +139,8 @@ function NotificationListener() {
 function AppRoutes() {
   const location = useLocation()
   const navigate = useNavigate()
-  const isLoginRoute = location.pathname === '/login'
-  const contentClass = isLoginRoute ? 'app-content app-content--public' : 'app-content'
+  const isPublicRoute = location.pathname === '/login' || location.pathname.startsWith('/schedule/')
+  const contentClass = isPublicRoute ? 'app-content app-content--public' : 'app-content'
 
   // Keyboard shortcuts overlay
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
@@ -245,13 +248,21 @@ function AppRoutes() {
       <Toaster position="top-right" richColors />
       <NotificationListener />
       <div className="app-container">
-        {!isLoginRoute && <TopNav />}
+        {!isPublicRoute && <TopNav />}
 
         <div className={contentClass}>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public Routes */}
               <Route path="/login" element={<LoginPage />} />
+              <Route
+                path="/schedule/:slug"
+                element={
+                  <ErrorBoundary>
+                    <BookingPage />
+                  </ErrorBoundary>
+                }
+              />
 
               {/* Protected Routes */}
               <Route
