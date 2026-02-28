@@ -16,6 +16,8 @@ import '@/styles/components/MailboxComposer.css'
 
 interface MailboxComposerProps {
   replyTo?: PrioritizedMessage | null
+  /** Pre-fill body with an AI-generated draft */
+  initialBody?: string
   onClose: () => void
 }
 
@@ -27,7 +29,7 @@ const CHANNEL_OPTIONS: Array<{ value: MessageSource; label: string }> = [
   { value: 'telegram', label: 'Telegram' },
 ]
 
-export function MailboxComposer({ replyTo, onClose }: MailboxComposerProps) {
+export function MailboxComposer({ replyTo, initialBody, onClose }: MailboxComposerProps) {
   const [mode, setMode] = useState<'rich' | 'plain'>('rich')
 
   const {
@@ -46,6 +48,15 @@ export function MailboxComposer({ replyTo, onClose }: MailboxComposerProps) {
     discardDraft,
     send,
   } = useMailboxComposer({ replyTo })
+
+  // Pre-fill body from AI draft when provided
+  useEffect(() => {
+    if (initialBody && !state.body) {
+      setBody(initialBody)
+    }
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const isEmail = state.source === 'gmail' || state.source === 'linkedin'
 

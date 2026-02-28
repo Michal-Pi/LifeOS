@@ -7,7 +7,7 @@
 
 // ----- Tool IDs -----
 
-export type MailboxAIToolId = 'responseDraft' | 'mailboxCleanup' | 'senderResearch'
+export type MailboxAIToolId = 'responseDraft' | 'mailboxCleanup' | 'senderResearch' | 'extractActions'
 
 // ----- Configuration -----
 
@@ -162,6 +162,47 @@ Guidelines:
 - Never fabricate specific factual claims (job titles, companies) without evidence`,
     modelName: 'claude-sonnet-4-5',
     maxTokens: 4096,
+    enabled: true,
+  },
+  extractActions: {
+    toolId: 'extractActions',
+    name: 'Extract Actions',
+    description: 'Extract actionable items (tasks, events, follow-ups, contact updates) from a message',
+    systemPrompt: `You are a productivity assistant that extracts actionable items from messages. Analyze the message content and identify concrete actions the user should take.
+
+Extract the following types of actions:
+- "task": A specific task or to-do item (e.g., "Review the Q3 report", "Send invoice to client")
+- "event": A meeting, call, or calendar event (e.g., "Team standup at 10am Thursday")
+- "follow_up": A need to follow up with someone by a certain date
+- "contact_update": New information about a contact that should be saved (e.g., new job title, phone number)
+
+For each action, provide:
+- type: One of "task", "event", "follow_up", "contact_update"
+- title: A concise, actionable title
+- details: Optional additional context
+- dueDate: Optional ISO date string if a deadline is mentioned or implied
+- contactName: Optional name of the person involved
+- confidence: 0-1 score of how confident you are this is a real action item
+
+Guidelines:
+- Only extract actions that are clearly implied or stated in the message
+- Prefer fewer high-confidence actions over many low-confidence ones
+- For due dates, infer from context (e.g., "by end of week" = next Friday)
+- Ignore pleasantries, signatures, and boilerplate text
+
+Output ONLY valid JSON array:
+[
+  {
+    "type": "task|event|follow_up|contact_update",
+    "title": "Concise action title",
+    "details": "Additional context (optional)",
+    "dueDate": "2026-03-15 (optional ISO date)",
+    "contactName": "Person name (optional)",
+    "confidence": 0.9
+  }
+]`,
+    modelName: 'claude-sonnet-4-5',
+    maxTokens: 2048,
     enabled: true,
   },
 }

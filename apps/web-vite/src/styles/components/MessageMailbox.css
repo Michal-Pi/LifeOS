@@ -551,6 +551,30 @@
   text-align: center;
 }
 
+/* Triage badges */
+.triage-badge {
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.triage-badge--urgent {
+  background: var(--error-light, rgba(239, 68, 68, 0.1));
+  color: var(--error-color, #dc3545);
+}
+.triage-badge--important {
+  background: var(--warning-light, rgba(245, 158, 11, 0.1));
+  color: var(--warning-color, #f59e0b);
+}
+.triage-badge--fyi {
+  background: var(--info-light, rgba(59, 130, 246, 0.1));
+  color: var(--info-color, #3b82f6);
+}
+.triage-badge--automated {
+  background: var(--background-tertiary);
+  color: var(--text-tertiary);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .message-item-header {

@@ -79,6 +79,32 @@ vi.mock('@/hooks/useMessageMailbox', () => ({
   useMessageMailbox: vi.fn(),
 }))
 
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: { uid: 'test-user', getIdToken: vi.fn().mockResolvedValue('token') } }),
+}))
+
+vi.mock('@/lib/firestoreClient', () => ({
+  getFirestoreClient: vi.fn(),
+}))
+
+vi.mock('@/lib/idGenerator', () => ({
+  generateId: () => 'generated-id',
+}))
+
+vi.mock('@/todos/offlineStore', () => ({
+  saveTaskLocally: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/todos/todoOutbox', () => ({
+  enqueueTaskOp: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/adapters/firestoreTodoRepository', () => ({
+  createFirestoreTodoRepository: () => ({
+    saveTask: vi.fn().mockResolvedValue(undefined),
+  }),
+}))
+
 const createMessage = (overrides: Partial<PrioritizedMessage> = {}): PrioritizedMessage =>
   ({
     messageId: `msg-${Math.random().toString(36).slice(2)}`,
@@ -130,6 +156,7 @@ describe('MailboxPage', () => {
       markAsRead: mockMarkAsRead,
       dismissMessage: mockDismissMessage,
       refreshMessages: vi.fn(),
+      overrideTriageCategory: vi.fn().mockResolvedValue(undefined),
       ...overrides,
     })
   }

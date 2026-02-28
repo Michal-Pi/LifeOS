@@ -6,6 +6,15 @@
   height: 100%;
 }
 
+/* Triage filter tabs */
+.mailbox-list__triage-tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3) 0;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
 /* Channel filter tabs */
 .mailbox-list__tabs {
   display: flex;

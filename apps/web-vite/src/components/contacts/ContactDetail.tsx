@@ -1,12 +1,30 @@
 /**
- * ContactDetail — right panel showing full contact profile and interactions
+ * ContactDetail — right panel showing full contact profile, interactions,
+ * and conversation history across all channels.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  collection,
+  onSnapshot,
+  query,
+  where,
+  orderBy,
+  limit as firestoreLimit,
+  type Unsubscribe,
+} from 'firebase/firestore'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
+import { useAuth } from '@/hooks/useAuth'
 import { useContactDetail } from '@/hooks/useContactDetail'
 import { CircleSuggestionBadge } from './CircleSuggestionBadge'
 import { InteractionTimeline } from './InteractionTimeline'
-import type { ContactId, DunbarCircle, UpdateContactInput } from '@lifeos/agents'
+import type {
+  ContactId,
+  DunbarCircle,
+  UpdateContactInput,
+  MessageSource,
+  PrioritizedMessage,
+} from '@lifeos/agents'
 import { CIRCLE_LABELS, getFollowUpStatus, DEFAULT_FOLLOW_UP_DAYS } from '@lifeos/agents'
 import '@/styles/components/ContactDetail.css'
 
@@ -46,14 +64,84 @@ function formatFollowUpCountdown(ms: number): string {
   return `in ${Math.floor(days / 30)} months`
 }
 
+function formatRelative(ms: number): string {
+  const days = Math.floor((Date.now() - ms) / (24 * 60 * 60 * 1000))
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days}d ago`
+  if (days < 30) return `${Math.floor(days / 7)}w ago`
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`
+  return `${Math.floor(days / 365)}y ago`
+}
+
 const CIRCLES: DunbarCircle[] = [0, 1, 2, 3, 4]
 
 export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProps) {
+  const { user } = useAuth()
   const { contact, interactions, loading, updateContact } = useContactDetail({
     contactId,
     interactionLimit: 50,
   })
-  const [activeTab, setActiveTab] = useState<'interactions' | 'info'>('interactions')
+  const [activeTab, setActiveTab] = useState<'interactions' | 'conversations' | 'info'>(
+    'interactions'
+  )
+  const [convSearch, setConvSearch] = useState('')
+  const [channelFilter, setChannelFilter] = useState<MessageSource | 'all'>('all')
+
+  // Fetch messages linked to this contact via Firestore query
+  const [contactMessages, setContactMessages] = useState<PrioritizedMessage[]>([])
+
+  useEffect(() => {
+    if (!user?.uid || !contactId) return
+
+    let unsubscribe: Unsubscribe | undefined
+
+    const setup = async () => {
+      try {
+        const db = await getDb()
+        const messagesCol = collection(db, `users/${user.uid}/mailboxMessages`)
+        const q = query(
+          messagesCol,
+          where('contactId', '==', contactId),
+          orderBy('receivedAtMs', 'desc'),
+          firestoreLimit(100)
+        )
+
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          const msgs = snapshot.docs.map((d) => d.data() as PrioritizedMessage)
+          setContactMessages(msgs)
+        })
+      } catch (err) {
+        console.error('Error loading contact messages:', err)
+      }
+    }
+
+    void setup()
+    return () => {
+      if (unsubscribe) unsubscribe()
+    }
+  }, [user?.uid, contactId])
+
+  // Filtered conversation messages
+  const filteredConvMessages = useMemo(() => {
+    let filtered = contactMessages
+
+    if (channelFilter !== 'all') {
+      filtered = filtered.filter((m) => m.source === channelFilter)
+    }
+
+    if (convSearch.trim()) {
+      const search = convSearch.toLowerCase()
+      filtered = filtered.filter(
+        (m) =>
+          m.subject?.toLowerCase().includes(search) ||
+          m.snippet?.toLowerCase().includes(search) ||
+          m.sender?.toLowerCase().includes(search)
+      )
+    }
+
+    return filtered
+  }, [contactMessages, channelFilter, convSearch])
 
   const handleCircleChange = useCallback(
     async (circle: DunbarCircle) => {
@@ -218,13 +306,19 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
         </div>
       )}
 
-      {/* Tabs: Interactions / Info */}
+      {/* Tabs: Interactions / Conversations / Notes */}
       <div className="contact-detail__tabs">
         <button
           className={`contact-detail__tab${activeTab === 'interactions' ? ' contact-detail__tab--active' : ''}`}
           onClick={() => setActiveTab('interactions')}
         >
           Interactions ({interactions.length})
+        </button>
+        <button
+          className={`contact-detail__tab${activeTab === 'conversations' ? ' contact-detail__tab--active' : ''}`}
+          onClick={() => setActiveTab('conversations')}
+        >
+          Conversations ({contactMessages.length})
         </button>
         <button
           className={`contact-detail__tab${activeTab === 'info' ? ' contact-detail__tab--active' : ''}`}
@@ -236,6 +330,59 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
 
       {/* Tab content */}
       {activeTab === 'interactions' && <InteractionTimeline interactions={interactions} />}
+
+      {activeTab === 'conversations' && (
+        <div className="contact-conversations">
+          <div className="contact-conversations__filters">
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              value={convSearch}
+              onChange={(e) => setConvSearch(e.target.value)}
+              className="contact-conversations__search"
+            />
+            <div className="contact-conversations__channel-filter">
+              {(['all', 'gmail', 'slack', 'linkedin'] as const).map((ch) => (
+                <button
+                  key={ch}
+                  className={`filter-chip ${channelFilter === ch ? 'filter-chip--active' : ''}`}
+                  onClick={() => setChannelFilter(ch)}
+                >
+                  {ch === 'all' ? 'All' : ch.charAt(0).toUpperCase() + ch.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredConvMessages.length === 0 ? (
+            <div className="empty-state">
+              <p>No conversations with this contact yet.</p>
+            </div>
+          ) : (
+            <div className="contact-conversations__list">
+              {filteredConvMessages.map((msg) => (
+                <div key={msg.messageId} className="conversation-entry">
+                  <span
+                    className={`conversation-entry__source conversation-entry__source--${msg.source}`}
+                  >
+                    {msg.source}
+                  </span>
+                  <div className="conversation-entry__content">
+                    <span className="conversation-entry__subject">
+                      {msg.subject || msg.sender}
+                    </span>
+                    <p className="conversation-entry__snippet">{msg.snippet}</p>
+                  </div>
+                  <span className="conversation-entry__date">
+                    {formatRelative(msg.receivedAtMs)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'info' && contact.notes && (
         <div className="contact-detail__notes">{contact.notes}</div>
       )}

@@ -10,9 +10,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   collection,
+  doc,
   getDocs,
   onSnapshot,
   query,
+  updateDoc,
   where,
   orderBy,
   limit as firestoreLimit,
@@ -20,7 +22,7 @@ import {
 } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { useAuth } from '@/hooks/useAuth'
-import type { PrioritizedMessage, MessagePriority } from '@lifeos/agents'
+import type { PrioritizedMessage, MessagePriority, TriageCategory } from '@lifeos/agents'
 
 interface UseMessageMailboxOptions {
   maxMessages?: number
@@ -75,6 +77,7 @@ interface UseMessageMailboxResult {
   markAsRead: (messageId: string) => Promise<void>
   dismissMessage: (messageId: string) => Promise<void>
   refreshMessages: () => Promise<void>
+  overrideTriageCategory: (messageId: string, category: TriageCategory) => Promise<void>
 }
 
 export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMessageMailboxResult {
@@ -424,6 +427,26 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
     [messages]
   )
 
+  // Override triage category for a message
+  const overrideTriageCategory = useCallback(
+    async (messageId: string, category: TriageCategory) => {
+      if (!user?.uid) {
+        throw new Error('User not authenticated')
+      }
+      try {
+        const db = await getDb()
+        await updateDoc(doc(db, `users/${user.uid}/mailboxMessages/${messageId}`), {
+          triageCategoryOverride: category,
+          updatedAtMs: Date.now(),
+        })
+      } catch (err) {
+        console.error('Error overriding triage category:', err)
+        throw err
+      }
+    },
+    [user]
+  )
+
   return {
     messages,
     loading,
@@ -439,5 +462,6 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
     markAsRead,
     dismissMessage,
     refreshMessages,
+    overrideTriageCategory,
   }
 }

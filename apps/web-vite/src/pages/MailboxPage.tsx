@@ -12,25 +12,45 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { useMessageMailbox } from '@/hooks/useMessageMailbox'
+import { useAuth } from '@/hooks/useAuth'
 import { MailboxMessageList } from '@/components/mailbox/MailboxMessageList'
 import { MailboxMessageDetail } from '@/components/mailbox/MailboxMessageDetail'
 import { MailboxComposer } from '@/components/mailbox/MailboxComposer'
 import { MailboxDashboard } from '@/components/mailbox/MailboxDashboard'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { generateId } from '@/lib/idGenerator'
+import { saveTaskLocally } from '@/todos/offlineStore'
+import { enqueueTaskOp } from '@/todos/todoOutbox'
+import { createFirestoreTodoRepository } from '@/adapters/firestoreTodoRepository'
+import { doc, updateDoc } from 'firebase/firestore'
+import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import type { PrioritizedMessage, MessageSource } from '@lifeos/agents'
 import '@/styles/pages/MailboxPage.css'
 
 export function MailboxPage() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [selectedMessage, setSelectedMessage] = useState<PrioritizedMessage | null>(null)
   const [channelFilter, setChannelFilter] = useState<MessageSource | 'all'>('all')
   const [followUpOnly, setFollowUpOnly] = useState(false)
   const [composerOpen, setComposerOpen] = useState(false)
   const [replyTo, setReplyTo] = useState<PrioritizedMessage | null>(null)
+  const [composerInitialBody, setComposerInitialBody] = useState<string | undefined>()
   const [focusedIndex, setFocusedIndex] = useState(0)
 
-  const { messages, loading, error, syncStatus, syncMailbox, markAsRead, dismissMessage } =
-    useMessageMailbox({ maxMessages: 100, autoSync: true })
+  const {
+    messages,
+    loading,
+    error,
+    syncStatus,
+    syncMailbox,
+    markAsRead,
+    dismissMessage,
+    overrideTriageCategory,
+  } = useMessageMailbox({ maxMessages: 100, autoSync: true })
 
   const handleSelectMessage = useCallback(
     async (message: PrioritizedMessage) => {
@@ -54,18 +74,117 @@ export function MailboxPage() {
 
   const handleReply = useCallback((message: PrioritizedMessage) => {
     setReplyTo(message)
+    setComposerInitialBody(undefined)
     setComposerOpen(true)
   }, [])
 
   const handleCompose = useCallback(() => {
     setReplyTo(null)
+    setComposerInitialBody(undefined)
     setComposerOpen(true)
   }, [])
 
   const handleCloseComposer = useCallback(() => {
     setComposerOpen(false)
     setReplyTo(null)
+    setComposerInitialBody(undefined)
   }, [])
+
+  // Open composer pre-filled with an AI-generated draft
+  const handleOpenComposerWithDraft = useCallback(
+    (draft: {
+      inReplyTo: string
+      threadId?: string
+      recipientId: string
+      recipientName: string
+      subject: string
+      body: string
+      source: MessageSource
+    }) => {
+      if (selectedMessage) {
+        setReplyTo(selectedMessage)
+      }
+      setComposerInitialBody(draft.body)
+      setComposerOpen(true)
+    },
+    [selectedMessage]
+  )
+
+  // Create a task from an extracted action
+  const handleCreateTask = useCallback(
+    async (data: {
+      title: string
+      dueDate?: string
+      description: string
+      sourceMessageId: string
+    }) => {
+      if (!user?.uid) return
+      const now = new Date().toISOString()
+      const task = {
+        id: generateId(),
+        userId: user.uid,
+        title: data.title,
+        description: data.description,
+        domain: 'work' as const,
+        importance: 4 as const,
+        status: 'inbox' as const,
+        completed: false,
+        archived: false,
+        dueDate: data.dueDate,
+        createdAt: now,
+        updatedAt: now,
+      }
+      await saveTaskLocally({ ...task, syncState: 'pending' })
+      await enqueueTaskOp('create', user.uid, task.id, { task })
+      toast.success(`Task created: ${data.title}`)
+      // Background sync to Firestore
+      const repo = createFirestoreTodoRepository()
+      repo.saveTask(task).catch(() => {
+        // Outbox will retry later
+      })
+    },
+    [user]
+  )
+
+  // Create a calendar event from an extracted action
+  const handleCreateEvent = useCallback(
+    (data: { title: string; description?: string }) => {
+      const params = new URLSearchParams({ newEvent: 'true', title: data.title })
+      if (data.description) params.set('description', data.description)
+      navigate(`/calendar?${params.toString()}`)
+      toast.success(`Navigating to create event: ${data.title}`)
+    },
+    [navigate]
+  )
+
+  // Set a follow-up on a contact
+  const handleSetFollowUp = useCallback(
+    async (contactId: string, dueDate?: string) => {
+      if (!user?.uid) return
+      try {
+        const nextFollowUpMs = dueDate
+          ? new Date(dueDate).getTime()
+          : Date.now() + 7 * 24 * 60 * 60 * 1000 // Default: 1 week
+        const db = await getDb()
+        await updateDoc(doc(db, `users/${user.uid}/contacts/${contactId}`), {
+          nextFollowUpMs,
+          updatedAtMs: Date.now(),
+        })
+        toast.success('Follow-up set')
+      } catch {
+        toast.error('Failed to set follow-up')
+      }
+    },
+    [user]
+  )
+
+  // Navigate to edit a contact
+  const handleEditContact = useCallback(
+    (contactId: string) => {
+      navigate(`/people?contactId=${contactId}`)
+    },
+    [navigate]
+  )
 
   // Page-level keyboard shortcuts
   useEffect(() => {
@@ -171,6 +290,12 @@ export function MailboxPage() {
                 message={selectedMessage}
                 onDismiss={handleDismiss}
                 onReply={handleReply}
+                onOverrideTriage={overrideTriageCategory}
+                onOpenComposerWithDraft={handleOpenComposerWithDraft}
+                onCreateTask={handleCreateTask}
+                onCreateEvent={handleCreateEvent}
+                onSetFollowUp={handleSetFollowUp}
+                onEditContact={handleEditContact}
               />
             ) : (
               <MailboxDashboard
@@ -191,7 +316,13 @@ export function MailboxPage() {
         </div>
       </div>
 
-      {composerOpen && <MailboxComposer replyTo={replyTo} onClose={handleCloseComposer} />}
+      {composerOpen && (
+        <MailboxComposer
+          replyTo={replyTo}
+          initialBody={composerInitialBody}
+          onClose={handleCloseComposer}
+        />
+      )}
     </div>
   )
 }

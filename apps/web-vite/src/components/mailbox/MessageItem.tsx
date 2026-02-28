@@ -7,6 +7,7 @@
 
 import { useCallback } from 'react'
 import type { PrioritizedMessage, PrioritizedMessageId } from '@lifeos/agents'
+import { TRIAGE_LABELS } from '@lifeos/agents'
 import { formatDistanceToNow } from 'date-fns'
 
 interface MessageItemProps {
@@ -93,6 +94,17 @@ export function MessageItem({ message, onDismiss, onMarkAsRead }: MessageItemPro
         )}
       </div>
       <div className="message-item-actions">
+        {(() => {
+          const triageCategory = message.triageCategoryOverride || message.triageCategory
+          if (triageCategory) {
+            return (
+              <span className={`triage-badge triage-badge--${triageCategory}`}>
+                {TRIAGE_LABELS[triageCategory]}
+              </span>
+            )
+          }
+          return null
+        })()}
         <span
           className={`priority-badge ${priorityClasses[message.priority]}`}
           title={priorityTooltips[message.priority]}

@@ -18,7 +18,8 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import type { PrioritizedMessage, MessageSource } from '@lifeos/agents'
+import type { PrioritizedMessage, MessageSource, TriageCategory } from '@lifeos/agents'
+import { TRIAGE_LABELS } from '@lifeos/agents'
 import { groupByThread } from './threadGrouping'
 import type { MessageThread } from './threadGrouping'
 import '@/styles/components/MailboxMessageList.css'
@@ -110,6 +111,15 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
 
 // ----- Props -----
 
+const TRIAGE_ORDER: Record<TriageCategory, number> = {
+  urgent: 0,
+  important: 1,
+  fyi: 2,
+  automated: 3,
+}
+
+type TriageFilter = TriageCategory | 'all' | 'action'
+
 interface MailboxMessageListProps {
   messages: PrioritizedMessage[]
   loading: boolean
@@ -168,6 +178,7 @@ export function MailboxMessageList({
 }: MailboxMessageListProps) {
   const listRef = useRef<HTMLDivElement>(null)
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set())
+  const [triageFilter, setTriageFilter] = useState<TriageFilter>('action')
 
   const toggleThread = useCallback((threadKey: string) => {
     setExpandedThreads((prev) => {
@@ -181,7 +192,7 @@ export function MailboxMessageList({
     })
   }, [])
 
-  // Filter by channel + follow-up
+  // Filter by channel + follow-up + triage
   const filteredMessages = useMemo(() => {
     let filtered =
       channelFilter === 'all' ? messages : messages.filter((m) => m.source === channelFilter)
@@ -190,14 +201,28 @@ export function MailboxMessageList({
       filtered = filtered.filter((m) => m.requiresFollowUp && !m.isDismissed)
     }
 
-    // Sort: AI importance score desc (top-10 first), then by receivedAtMs desc
+    // Apply triage filter
+    if (triageFilter === 'action') {
+      filtered = filtered.filter((m) => {
+        const cat = m.triageCategoryOverride || m.triageCategory
+        return !cat || cat === 'urgent' || cat === 'important'
+      })
+    } else if (triageFilter !== 'all') {
+      filtered = filtered.filter((m) => {
+        const cat = m.triageCategoryOverride || m.triageCategory
+        return cat === triageFilter
+      })
+    }
+
+    // Sort: triage category first, then by recency within each group
     return [...filtered].sort((a, b) => {
-      const scoreA = a.importanceScore ?? 0
-      const scoreB = b.importanceScore ?? 0
-      if (scoreA !== scoreB) return scoreB - scoreA
+      const catA = a.triageCategoryOverride || a.triageCategory || 'fyi'
+      const catB = b.triageCategoryOverride || b.triageCategory || 'fyi'
+      const orderDiff = TRIAGE_ORDER[catA] - TRIAGE_ORDER[catB]
+      if (orderDiff !== 0) return orderDiff
       return b.receivedAtMs - a.receivedAtMs
     })
-  }, [messages, channelFilter, followUpOnly])
+  }, [messages, channelFilter, followUpOnly, triageFilter])
 
   // Group into threads (preserves importance-score ordering from filteredMessages)
   const threads = useMemo(() => groupByThread(filteredMessages), [filteredMessages])
@@ -320,6 +345,29 @@ export function MailboxMessageList({
 
   return (
     <div className="mailbox-list">
+      {/* Triage filter tabs */}
+      <div className="mailbox-list__triage-tabs" role="tablist" aria-label="Triage filter">
+        {([
+          { value: 'action' as const, label: 'Needs Action' },
+          { value: 'all' as const, label: 'All' },
+          { value: 'urgent' as const, label: 'Urgent' },
+          { value: 'important' as const, label: 'Important' },
+          { value: 'fyi' as const, label: 'FYI' },
+          { value: 'automated' as const, label: 'Auto' },
+        ]).map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            role="tab"
+            aria-selected={triageFilter === tab.value}
+            className={`mailbox-list__tab ${triageFilter === tab.value ? 'mailbox-list__tab--active' : ''}`}
+            onClick={() => setTriageFilter(tab.value)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Channel filter tabs */}
       {activeSources.length > 2 && (
         <div className="mailbox-list__tabs" role="tablist" aria-label="Channel filter">
@@ -579,6 +627,17 @@ function MessageRow({
         {message.subject && <div className="mailbox-list__subject">{message.subject}</div>}
         <div className="mailbox-list__snippet">{message.aiSummary}</div>
         <div className="mailbox-list__meta">
+          {(() => {
+            const triageCategory = message.triageCategoryOverride || message.triageCategory
+            if (triageCategory) {
+              return (
+                <span className={`triage-badge triage-badge--${triageCategory}`}>
+                  {TRIAGE_LABELS[triageCategory]}
+                </span>
+              )
+            }
+            return null
+          })()}
           <span className={`mailbox-list__priority mailbox-list__priority--${message.priority}`}>
             {message.priority}
           </span>

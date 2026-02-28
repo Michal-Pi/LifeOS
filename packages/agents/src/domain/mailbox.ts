@@ -68,6 +68,7 @@ export interface SlackMessage {
 
 export type MessagePriority = 'high' | 'medium' | 'low'
 export type MessageSource = 'gmail' | 'slack' | 'linkedin' | 'whatsapp' | 'telegram'
+export type TriageCategory = 'urgent' | 'important' | 'fyi' | 'automated'
 
 export interface PrioritizedMessage {
   messageId: PrioritizedMessageId
@@ -92,6 +93,12 @@ export interface PrioritizedMessage {
   contactId?: ContactId
   /** Thread/conversation ID for grouping related messages */
   threadId?: string
+  /** AI-assigned triage category */
+  triageCategory?: TriageCategory
+  /** User override of AI triage category */
+  triageCategoryOverride?: TriageCategory
+  /** AI confidence in triage classification (0-1) */
+  triageCategoryConfidence?: number
   createdAtMs: number
   updatedAtMs: number
 }
@@ -207,6 +214,15 @@ export interface MessageAnalysisResult {
   summary: string
   followUpReason?: string
   suggestedAction?: string
+}
+
+// ----- Triage Labels -----
+
+export const TRIAGE_LABELS: Record<TriageCategory, string> = {
+  urgent: 'Urgent',
+  important: 'Important',
+  fyi: 'FYI',
+  automated: 'Auto',
 }
 
 // ----- Helper Functions -----

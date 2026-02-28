@@ -14,9 +14,9 @@ import {
 
 describe('mailboxAITools domain', () => {
   describe('MailboxAIToolId', () => {
-    it('covers all 3 tool IDs', () => {
-      const ids: MailboxAIToolId[] = ['responseDraft', 'mailboxCleanup', 'senderResearch']
-      expect(ids).toHaveLength(3)
+    it('covers all 4 tool IDs', () => {
+      const ids: MailboxAIToolId[] = ['responseDraft', 'mailboxCleanup', 'senderResearch', 'extractActions']
+      expect(ids).toHaveLength(4)
       for (const id of ids) {
         expect(typeof id).toBe('string')
       }
@@ -24,15 +24,16 @@ describe('mailboxAITools domain', () => {
   })
 
   describe('DEFAULT_MAILBOX_AI_TOOLS', () => {
-    it('has all 3 tool configs', () => {
+    it('has all 4 tool configs', () => {
       const keys = Object.keys(DEFAULT_MAILBOX_AI_TOOLS)
       expect(keys).toContain('responseDraft')
       expect(keys).toContain('mailboxCleanup')
       expect(keys).toContain('senderResearch')
-      expect(keys).toHaveLength(3)
+      expect(keys).toContain('extractActions')
+      expect(keys).toHaveLength(4)
     })
 
-    it.each(['responseDraft', 'mailboxCleanup', 'senderResearch'] as MailboxAIToolId[])(
+    it.each(['responseDraft', 'mailboxCleanup', 'senderResearch', 'extractActions'] as MailboxAIToolId[])(
       '%s has required MailboxAIToolConfig fields',
       (toolId) => {
         const config: MailboxAIToolConfig = DEFAULT_MAILBOX_AI_TOOLS[toolId]
@@ -75,13 +76,14 @@ describe('mailboxAITools domain', () => {
       expect(settings.tools).toBeDefined()
     })
 
-    it('has all 3 tools with correct IDs', () => {
+    it('has all 4 tools with correct IDs', () => {
       const settings = createDefaultMailboxAIToolSettings()
       const toolIds = Object.keys(settings.tools)
-      expect(toolIds).toHaveLength(3)
+      expect(toolIds).toHaveLength(4)
       expect(settings.tools.responseDraft.toolId).toBe('responseDraft')
       expect(settings.tools.mailboxCleanup.toolId).toBe('mailboxCleanup')
       expect(settings.tools.senderResearch.toolId).toBe('senderResearch')
+      expect(settings.tools.extractActions.toolId).toBe('extractActions')
     })
 
     it('does not include customPriorityPrompt by default', () => {
