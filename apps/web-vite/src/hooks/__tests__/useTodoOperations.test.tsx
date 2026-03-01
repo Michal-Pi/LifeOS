@@ -27,6 +27,10 @@ vi.mock('@/adapters/firestoreTodoRepository', () => ({
   createFirestoreTodoRepository: () => repo,
 }))
 
+vi.mock('@/contexts/RepositoryContext', () => ({
+  useRepositories: () => ({ todoRepository: repo }),
+}))
+
 const baseProject = (overrides: Partial<CanonicalProject> = {}): CanonicalProject => ({
   id: 'p1',
   userId: 'u1',

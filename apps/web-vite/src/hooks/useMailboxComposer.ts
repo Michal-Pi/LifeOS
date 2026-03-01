@@ -3,6 +3,8 @@
  *
  * Manages composer state for the mailbox: draft save/load/discard,
  * send via Cloud Function, and auto-save timer.
+ *
+ * Supports multi-recipient (To, CC, BCC) and Reply All.
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react'
@@ -19,13 +21,15 @@ import {
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { useAuth } from '@/hooks/useAuth'
 import type { MessageSource, DraftMessage, PrioritizedMessage } from '@lifeos/agents'
+import type { Recipient } from '@lifeos/agents'
 import type { JSONContent } from '@tiptap/core'
 
 interface ComposerState {
   draftId: string | null
   source: MessageSource
-  recipientId: string
-  recipientName: string
+  toRecipients: Recipient[]
+  ccRecipients: Recipient[]
+  bccRecipients: Recipient[]
   subject: string
   body: string
   richContent: JSONContent | null
@@ -35,6 +39,7 @@ interface ComposerState {
 
 interface UseMailboxComposerOptions {
   replyTo?: PrioritizedMessage | null
+  replyAll?: boolean
   autoSaveIntervalMs?: number
 }
 
@@ -46,8 +51,9 @@ interface UseMailboxComposerResult {
   lastSavedMs: number | null
 
   setSource: (source: MessageSource) => void
-  setRecipientId: (id: string) => void
-  setRecipientName: (name: string) => void
+  setToRecipients: (recipients: Recipient[]) => void
+  setCcRecipients: (recipients: Recipient[]) => void
+  setBccRecipients: (recipients: Recipient[]) => void
   setSubject: (subject: string) => void
   setBody: (body: string) => void
   setRichContent: (content: JSONContent) => void
@@ -61,8 +67,9 @@ interface UseMailboxComposerResult {
 const EMPTY_STATE: ComposerState = {
   draftId: null,
   source: 'gmail',
-  recipientId: '',
-  recipientName: '',
+  toRecipients: [],
+  ccRecipients: [],
+  bccRecipients: [],
   subject: '',
   body: '',
   richContent: null,
@@ -70,22 +77,68 @@ const EMPTY_STATE: ComposerState = {
   threadId: null,
 }
 
+/**
+ * Build a Recipient from an email address string (for Reply All pre-fill).
+ */
+function recipientFromEmail(email: string, channel: MessageSource): Recipient {
+  return {
+    id: email,
+    name: email,
+    email,
+    channel,
+  }
+}
+
 export function useMailboxComposer(
   options: UseMailboxComposerOptions = {}
 ): UseMailboxComposerResult {
-  const { replyTo, autoSaveIntervalMs = 30_000 } = options
+  const { replyTo, replyAll = false, autoSaveIntervalMs = 30_000 } = options
   const { user } = useAuth()
 
   const [state, setState] = useState<ComposerState>(() => {
     if (replyTo) {
+      const senderRecipient: Recipient = {
+        id: replyTo.senderEmail ?? replyTo.sender,
+        name: replyTo.sender,
+        email: replyTo.senderEmail,
+        channel: replyTo.source,
+      }
+
+      const toRecipients: Recipient[] = [senderRecipient]
+      const ccRecipients: Recipient[] = []
+
+      if (replyAll) {
+        // Add original To recipients (excluding self and sender)
+        const senderEmail = replyTo.senderEmail?.toLowerCase()
+        const userEmail = user?.email?.toLowerCase()
+
+        if (replyTo.toRecipients) {
+          for (const addr of replyTo.toRecipients) {
+            const addrLower = addr.toLowerCase()
+            if (addrLower !== senderEmail && addrLower !== userEmail) {
+              toRecipients.push(recipientFromEmail(addr, replyTo.source))
+            }
+          }
+        }
+
+        // Add original CC recipients (excluding self)
+        if (replyTo.ccRecipients) {
+          for (const addr of replyTo.ccRecipients) {
+            if (addr.toLowerCase() !== userEmail) {
+              ccRecipients.push(recipientFromEmail(addr, replyTo.source))
+            }
+          }
+        }
+      }
+
       return {
         ...EMPTY_STATE,
         source: replyTo.source,
-        recipientId: replyTo.senderEmail ?? replyTo.sender,
-        recipientName: replyTo.sender,
+        toRecipients,
+        ccRecipients,
         subject: replyTo.subject ? `Re: ${replyTo.subject}` : '',
         inReplyTo: replyTo.originalMessageId,
-        threadId: null,
+        threadId: replyTo.threadId ?? null,
       }
     }
     return EMPTY_STATE
@@ -108,9 +161,16 @@ export function useMailboxComposer(
   )
 
   const setSource = useCallback((s: MessageSource) => updateState('source', s), [updateState])
-  const setRecipientId = useCallback((id: string) => updateState('recipientId', id), [updateState])
-  const setRecipientName = useCallback(
-    (name: string) => updateState('recipientName', name),
+  const setToRecipients = useCallback(
+    (recipients: Recipient[]) => updateState('toRecipients', recipients),
+    [updateState]
+  )
+  const setCcRecipients = useCallback(
+    (recipients: Recipient[]) => updateState('ccRecipients', recipients),
+    [updateState]
+  )
+  const setBccRecipients = useCallback(
+    (recipients: Recipient[]) => updateState('bccRecipients', recipients),
     [updateState]
   )
   const setSubject = useCallback((s: string) => updateState('subject', s), [updateState])
@@ -123,7 +183,7 @@ export function useMailboxComposer(
   // Save draft to Firestore
   const saveDraft = useCallback(async () => {
     if (!user?.uid) return
-    if (!state.body.trim() && !state.recipientId.trim()) return
+    if (!state.body.trim() && state.toRecipients.length === 0) return
 
     setIsSaving(true)
     setError(null)
@@ -138,8 +198,25 @@ export function useMailboxComposer(
         draftId,
         userId: user.uid,
         source: state.source,
-        recipientId: state.recipientId || undefined,
-        recipientName: state.recipientName || undefined,
+        // Backward compat: primary recipient
+        recipientId: state.toRecipients[0]?.id,
+        recipientName: state.toRecipients[0]?.name,
+        // Multi-recipient arrays
+        toRecipients: state.toRecipients.map((r) => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+        })),
+        ccRecipients: state.ccRecipients.map((r) => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+        })),
+        bccRecipients: state.bccRecipients.map((r) => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+        })),
         subject: state.subject || undefined,
         body: state.body,
         richContent: state.richContent ?? undefined,
@@ -179,14 +256,14 @@ export function useMailboxComposer(
     isDirty.current = false
   }, [user, state.draftId])
 
-  // Send message via Cloud Function
+  // Send message via offline-capable outbox queue
   const send = useCallback(async (): Promise<boolean> => {
     if (!user?.uid) {
       setError('Not authenticated')
       return false
     }
-    if (!state.recipientId.trim()) {
-      setError('Recipient is required')
+    if (state.toRecipients.length === 0) {
+      setError('At least one recipient is required')
       return false
     }
     if (!state.body.trim()) {
@@ -198,31 +275,36 @@ export function useMailboxComposer(
     setError(null)
 
     try {
-      const idToken = await user.getIdToken()
-      const response = await fetch(`${import.meta.env.VITE_FUNCTIONS_URL}/mailboxSend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          uid: user.uid,
-          source: state.source,
-          recipientId: state.recipientId,
-          recipientName: state.recipientName || undefined,
-          subject: state.subject || undefined,
-          body: state.body,
-          htmlBody: undefined, // Rich content HTML rendering not yet implemented
-          inReplyTo: state.inReplyTo || undefined,
-          threadId: state.threadId || undefined,
-        }),
+      const { enqueueSend } = await import('@/outbox/mailboxOutbox')
+      const { triggerDrain } = await import('@/outbox/mailboxOutboxWorker')
+
+      const primaryRecipient = state.toRecipients[0]
+      const additionalTo = state.toRecipients.slice(1)
+
+      await enqueueSend(user.uid, {
+        source: state.source,
+        recipientId: primaryRecipient.id,
+        recipientName: primaryRecipient.name,
+        toRecipients:
+          additionalTo.length > 0
+            ? additionalTo.map((r) => ({ id: r.id, name: r.name }))
+            : undefined,
+        ccRecipients:
+          state.ccRecipients.length > 0
+            ? state.ccRecipients.map((r) => ({ id: r.id, name: r.name }))
+            : undefined,
+        bccRecipients:
+          state.bccRecipients.length > 0
+            ? state.bccRecipients.map((r) => ({ id: r.id, name: r.name }))
+            : undefined,
+        subject: state.subject || undefined,
+        body: state.body,
+        inReplyTo: state.inReplyTo || undefined,
+        threadId: state.threadId || undefined,
       })
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to send message')
-      }
+      // Trigger immediate send attempt
+      triggerDrain()
 
       // Delete the draft if it exists
       if (state.draftId) {
@@ -238,7 +320,7 @@ export function useMailboxComposer(
       isDirty.current = false
       return true
     } catch (err) {
-      console.error('Error sending message:', err)
+      console.error('Error queuing message:', err)
       setError((err as Error).message)
       return false
     } finally {
@@ -284,8 +366,9 @@ export function useMailboxComposer(
     error,
     lastSavedMs,
     setSource,
-    setRecipientId,
-    setRecipientName,
+    setToRecipients,
+    setCcRecipients,
+    setBccRecipients,
     setSubject,
     setBody,
     setRichContent,

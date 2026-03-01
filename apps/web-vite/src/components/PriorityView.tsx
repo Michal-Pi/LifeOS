@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import type { CanonicalTask, CanonicalProject, CanonicalChapter } from '@/types/todo'
 import { groupTasksByBucket, type TaskFilters, getEffectiveUrgency } from '@/lib/priorityBuckets'
 import { getProjectColor } from '@/config/domainColors'
-import { importanceLabel } from '@/lib/todoUi'
 import { calculatePriorityScore } from '@/lib/priority'
 
 interface PriorityViewProps {
@@ -124,7 +123,7 @@ export function PriorityView({
                           style={{ backgroundColor: taskColor }}
                         />
                       )}
-                      <div className="task-card-header">
+                      <div className="task-card-main">
                         <input
                           type="checkbox"
                           checked={task.completed}
@@ -136,24 +135,18 @@ export function PriorityView({
                         />
                         <span className="task-title">{task.title}</span>
                       </div>
-                      <div className="task-card-meta">
-                        <span
-                          className={`meta-tag ${project ? 'task-card-badge-project' : `task-card-badge-domain-${task.domain}`}`}
-                        >
-                          {badgeLabel}
+                      {task.allocatedTimeMinutes && task.allocatedTimeMinutes > 0 ? (
+                        <span className="meta-tag time-estimate">
+                          {task.allocatedTimeMinutes}min
                         </span>
-                        {task.dueDate && (
-                          <span className="meta-tag due-date">Due {task.dueDate}</span>
-                        )}
-                        <span className="meta-tag importance">
-                          Imp: {importanceLabel(task.importance)}
-                        </span>
-                        {task.allocatedTimeMinutes && task.allocatedTimeMinutes > 0 && (
-                          <span className="meta-tag time-estimate">
-                            {task.allocatedTimeMinutes}min
-                          </span>
-                        )}
-                      </div>
+                      ) : (
+                        <span />
+                      )}
+                      <span
+                        className={`meta-tag ${project ? 'task-card-badge-project' : `task-card-badge-domain-${task.domain}`}`}
+                      >
+                        {badgeLabel}
+                      </span>
                     </div>
                   )
                 })

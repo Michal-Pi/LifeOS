@@ -3,13 +3,17 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
+import { createLogger } from '@lifeos/core'
 import {
   getMeetingBriefing,
   type MeetingBriefing,
   type ContactBriefing,
 } from '@/lib/contactAITools'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/Modal'
 import '@/styles/components/MeetingBriefingModal.css'
+
+const logger = createLogger('MeetingBriefingModal')
 
 interface MeetingBriefingModalProps {
   isOpen: boolean
@@ -37,7 +41,7 @@ export function MeetingBriefingModal({
       const result = await getMeetingBriefing(eventId)
       setBriefing(result)
     } catch (err) {
-      console.error('Failed to fetch meeting briefing:', err)
+      logger.error('Failed to fetch meeting briefing:', err)
       setError((err as Error).message || 'Failed to generate briefing')
     } finally {
       setLoading(false)
@@ -49,63 +53,49 @@ export function MeetingBriefingModal({
     if (isOpen && !briefing && !loading && !error) {
       void fetchBriefing()
     }
-  }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!isOpen) return null
+  }, [isOpen, briefing, loading, error, fetchBriefing])
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content meeting-briefing-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="meeting-briefing-modal__header">
-          <div>
-            <h2 className="meeting-briefing-modal__title">{eventTitle}</h2>
-            <p className="meeting-briefing-modal__time">{eventTime}</p>
-          </div>
-          <button className="modal-close" onClick={onClose}>
-            &times;
-          </button>
+    <Modal open={isOpen} onClose={onClose} title={eventTitle} subtitle={eventTime} size="md" className="meeting-briefing-modal">
+      {loading && (
+        <div className="meeting-briefing-modal__loading">
+          <p>Preparing your meeting briefing...</p>
         </div>
+      )}
 
-        {loading && (
-          <div className="meeting-briefing-modal__loading">
-            <p>Preparing your meeting briefing...</p>
-          </div>
-        )}
+      {error && (
+        <div className="meeting-briefing-modal__error">
+          <p>{error}</p>
+          <Button variant="ghost" className="small" onClick={fetchBriefing}>
+            Retry
+          </Button>
+        </div>
+      )}
 
-        {error && (
-          <div className="meeting-briefing-modal__error">
-            <p>{error}</p>
-            <Button variant="ghost" className="small" onClick={fetchBriefing}>
-              Retry
-            </Button>
-          </div>
-        )}
+      {briefing && (
+        <div className="meeting-briefing-modal__body">
+          {briefing.contactBriefings.map((cb: ContactBriefing) => (
+            <div key={cb.contactId} className="meeting-briefing-modal__contact">
+              <h3 className="meeting-briefing-modal__contact-name">{cb.displayName}</h3>
+              <p className="meeting-briefing-modal__context">{cb.recentContext}</p>
+              {cb.talkingPoints.length > 0 && (
+                <ul className="meeting-briefing-modal__points">
+                  {cb.talkingPoints.map((point, i) => (
+                    <li key={i}>{point}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
 
-        {briefing && (
-          <div className="meeting-briefing-modal__body">
-            {briefing.contactBriefings.map((cb: ContactBriefing) => (
-              <div key={cb.contactId} className="meeting-briefing-modal__contact">
-                <h3 className="meeting-briefing-modal__contact-name">{cb.displayName}</h3>
-                <p className="meeting-briefing-modal__context">{cb.recentContext}</p>
-                {cb.talkingPoints.length > 0 && (
-                  <ul className="meeting-briefing-modal__points">
-                    {cb.talkingPoints.map((point, i) => (
-                      <li key={i}>{point}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-
-            {briefing.overallPrepNotes && (
-              <div className="meeting-briefing-modal__prep">
-                <h3 className="meeting-briefing-modal__prep-title">Preparation Notes</h3>
-                <p>{briefing.overallPrepNotes}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+          {briefing.overallPrepNotes && (
+            <div className="meeting-briefing-modal__prep">
+              <h3 className="meeting-briefing-modal__prep-title">Preparation Notes</h3>
+              <p>{briefing.overallPrepNotes}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
   )
 }

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { createLogger } from '@lifeos/calendar'
-import { createFirestoreTodoRepository } from '@/adapters/firestoreTodoRepository'
+import { useRepositories } from '@/contexts/RepositoryContext'
 import type { CanonicalProject, CanonicalChapter, CanonicalTask } from '@/types/todo'
 import { generateId } from '@/lib/idGenerator'
 import { mergeTasksForLoad, normalizeTaskForSave } from '@/lib/todoRules'
@@ -33,13 +33,13 @@ import {
 } from '@/todos/todoOutbox'
 
 const logger = createLogger('useTodoOperations')
-const todoRepository = createFirestoreTodoRepository()
 
 interface UseTodoOperationsProps {
   userId: string
 }
 
 export function useTodoOperations({ userId }: UseTodoOperationsProps) {
+  const { todoRepository } = useRepositories()
   const [projects, setProjects] = useState<CanonicalProject[]>([])
   const [chapters, setChapters] = useState<CanonicalChapter[]>([])
   const [tasks, setTasks] = useState<CanonicalTask[]>([])
@@ -148,7 +148,7 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
         setLoading(false)
       }
     },
-    [userId]
+    [userId, todoRepository]
   )
 
   const loadTasks = useCallback(
@@ -197,7 +197,7 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
         setLoading(false)
       }
     },
-    [userId, projects]
+    [userId, projects, todoRepository]
   )
 
   // --- Projects ---
@@ -234,7 +234,7 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
 
       return newProject.id
     },
-    [userId]
+    [userId, todoRepository]
   )
 
   const deleteProject = useCallback(
@@ -259,7 +259,7 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
         // Outbox will retry later
       })
     },
-    [projects, userId]
+    [projects, userId, todoRepository]
   )
 
   // --- Chapters ---
@@ -291,7 +291,7 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
         // Outbox will retry later
       })
     },
-    [userId]
+    [userId, todoRepository]
   )
 
   const deleteChapter = useCallback(
@@ -315,7 +315,7 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
         // Outbox will retry later
       })
     },
-    [userId, chapters]
+    [userId, chapters, todoRepository]
   )
 
   // --- Tasks ---
@@ -359,7 +359,7 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
 
       return normalizedTask
     },
-    [userId, projects]
+    [userId, projects, todoRepository]
   )
 
   const updateTask = useCallback(
@@ -403,7 +403,7 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
         // Outbox will retry later
       })
     },
-    [userId, projects]
+    [userId, projects, todoRepository]
   )
 
   const deleteTask = useCallback(
@@ -429,7 +429,7 @@ export function useTodoOperations({ userId }: UseTodoOperationsProps) {
         // Outbox will retry later
       })
     },
-    [userId, tasks]
+    [userId, tasks, todoRepository]
   )
 
   const convertTaskToProject = useCallback(

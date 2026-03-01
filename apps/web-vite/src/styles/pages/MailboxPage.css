@@ -1,4 +1,4 @@
-/* MailboxPage — split list/detail layout */
+/* MailboxPage — two-panel master-detail layout */
 
 .mailbox-page {
   display: flex;
@@ -8,27 +8,6 @@
   overflow: hidden;
 }
 
-.mailbox-page__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.mailbox-page__title {
-  font-size: var(--text-xl);
-  font-weight: 600;
-  color: var(--foreground);
-  margin: 0;
-}
-
-.mailbox-page__actions {
-  display: flex;
-  gap: var(--space-2);
-}
-
 .mailbox-page__content {
   display: flex;
   flex: 1;
@@ -36,14 +15,16 @@
   overflow: hidden;
 }
 
+/* Left panel: conversation list */
 .mailbox-page__list {
-  width: 380px;
+  width: 420px;
   flex-shrink: 0;
-  border-right: 1px solid var(--border);
   overflow-y: auto;
-  background: var(--card);
+  border-right: 1px solid var(--border);
+  background: var(--background);
 }
 
+/* Right panel: message detail */
 .mailbox-page__detail {
   flex: 1;
   overflow-y: auto;
@@ -51,19 +32,17 @@
   background: var(--card);
 }
 
+/* Empty state for right panel */
 .mailbox-page__empty-detail {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100%;
-}
-
-.mailbox-page__empty-text {
-  font-size: var(--text-base);
   color: var(--text-tertiary);
+  font-size: var(--text-base);
 }
 
-/* Error fallback for panels */
+/* Error fallback */
 .mailbox-page__panel-error {
   display: flex;
   flex-direction: column;
@@ -83,7 +62,7 @@
   word-break: break-word;
 }
 
-/* Responsive: stack on narrow screens */
+/* Responsive: stack on mobile */
 @media (max-width: 768px) {
   .mailbox-page__content {
     flex-direction: column;

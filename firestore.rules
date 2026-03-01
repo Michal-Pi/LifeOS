@@ -221,6 +221,11 @@ service cloud.firestore {
     match /users/{userId}/mailbox/{document=**} {
       allow read, write: if isAuthenticated(userId);
     }
+    // Mailbox Message Bodies (full message content for offline reading)
+    match /users/{userId}/mailboxMessageBodies/{bodyId} {
+      allow read: if isAuthenticated(userId);
+      allow write: if false; // Server-only writes
+    }
     // Mailbox Syncs (sync history records)
     match /users/{userId}/mailboxSyncs/{syncId} {
       allow read: if isAuthenticated(userId);

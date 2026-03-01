@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { lazy, Suspense, useEffect, useState, useRef } from 'react'
 import { Toaster } from 'sonner'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -87,11 +87,8 @@ const WorkoutTemplatePage = lazyWithRetry(() =>
 const WorkoutPlanPage = lazyWithRetry(() =>
   import('./pages/WorkoutPlanPage').then((m) => ({ default: m.WorkoutPlanPage }))
 )
-const AgentsPage = lazyWithRetry(() =>
-  import('./pages/AgentsPage').then((m) => ({ default: m.AgentsPage }))
-)
-const WorkflowsPage = lazyWithRetry(() =>
-  import('./pages/WorkflowsPage').then((m) => ({ default: m.WorkflowsPage }))
+const AgenticWorkflowsPage = lazyWithRetry(() =>
+  import('./pages/AgenticWorkflowsPage').then((m) => ({ default: m.AgenticWorkflowsPage }))
 )
 const WorkflowDetailPage = lazyWithRetry(() =>
   import('./pages/WorkflowDetailPage').then((m) => ({ default: m.WorkflowDetailPage }))
@@ -377,17 +374,17 @@ function AppRoutes() {
                 }
               />
               <Route
-                path="/agents"
+                path="/workflows"
                 element={
                   <ProtectedRoute>
                     <ErrorBoundary>
-                      <AgentsPage />
+                      <AgenticWorkflowsPage />
                     </ErrorBoundary>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/agents/prompts"
+                path="/workflows/prompts"
                 element={
                   <ProtectedRoute>
                     <ErrorBoundary>
@@ -396,16 +393,9 @@ function AppRoutes() {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/workflows"
-                element={
-                  <ProtectedRoute>
-                    <ErrorBoundary>
-                      <WorkflowsPage />
-                    </ErrorBoundary>
-                  </ProtectedRoute>
-                }
-              />
+              {/* Redirects for backward compatibility */}
+              <Route path="/agents" element={<Navigate to="/workflows" replace />} />
+              <Route path="/agents/prompts" element={<Navigate to="/workflows/prompts" replace />} />
               <Route
                 path="/workflows/:workflowId"
                 element={

@@ -15,8 +15,11 @@ import {
   readGmailMessage,
   sendGmailMessage,
   trashGmailMessage,
+  modifyGmailMessage,
+  getOrCreateGmailLabel,
+  listGmailLabels,
 } from '../google/gmailApi.js'
-import { mailboxSyncsCollection } from '../slack/paths.js'
+import { mailboxSyncsCollection, messageBodyRef } from '../slack/paths.js'
 
 const log = createLogger('Gmail')
 
@@ -30,6 +33,21 @@ function extractEmail(fromHeader: string): string | undefined {
   if (match) return match[1]
   if (fromHeader.includes('@')) return fromHeader.trim()
   return undefined
+}
+
+/**
+ * Parse a comma-separated RFC 2822 address list into individual email addresses.
+ * Handles "Name <email>" format and bare email addresses.
+ */
+function parseEmailList(header: string): string[] {
+  if (!header) return []
+  return header
+    .split(',')
+    .map((addr) => {
+      const email = extractEmail(addr.trim())
+      return email ?? addr.trim()
+    })
+    .filter((addr) => addr.includes('@'))
 }
 
 // ----- Connection Discovery -----
@@ -85,7 +103,7 @@ export const gmailAdapter = {
 
     try {
       // Build Gmail query
-      let gmailQuery = 'is:unread category:primary'
+      let gmailQuery = 'category:primary'
 
       if (options?.since) {
         const afterDate = new Date(options.since)
@@ -107,31 +125,32 @@ export const gmailAdapter = {
         }
       }
 
-      const maxResults = options?.maxResults ?? 50
+      if (options?.before) {
+        const beforeDate = new Date(options.before)
+        gmailQuery += ` before:${beforeDate.getFullYear()}/${beforeDate.getMonth() + 1}/${beforeDate.getDate()}`
+      }
+
+      const maxResults = options?.maxResults ?? 100
       log.info(`Query for account ${accountId}: "${gmailQuery}"`)
 
       const gmailMessages = await listGmailMessages(userId, accountId, gmailQuery, maxResults)
       log.info(`Found ${gmailMessages.length} messages for account ${accountId}`)
 
-      // Fetch full body for each message
+      // Build RawMessages from metadata only (snippet for AI, full body fetched separately)
       for (const meta of gmailMessages) {
-        try {
-          const fullMessage = await readGmailMessage(userId, accountId, meta.messageId)
-
-          rawMessages.push({
-            id: `gmail_${meta.messageId}`,
-            source: 'gmail',
-            accountId,
-            sender: fullMessage.from,
-            senderEmail: extractEmail(fullMessage.from),
-            subject: fullMessage.subject,
-            body: fullMessage.body || fullMessage.snippet,
-            receivedAt: new Date(fullMessage.date).toISOString(),
-            originalUrl: `https://mail.google.com/mail/u/0/#inbox/${meta.messageId}`,
-          })
-        } catch (msgErr) {
-          log.error(`Failed to read message ${meta.messageId}`, msgErr)
-        }
+        rawMessages.push({
+          id: `gmail_${meta.messageId}`,
+          source: 'gmail',
+          accountId,
+          sender: meta.from,
+          senderEmail: extractEmail(meta.from),
+          subject: meta.subject,
+          body: meta.snippet, // Snippet only — cost-efficient for AI triage
+          receivedAt: new Date(meta.date).toISOString(),
+          originalUrl: `https://mail.google.com/mail/u/0/#inbox/${meta.messageId}`,
+          toRecipients: meta.to ? parseEmailList(meta.to) : undefined,
+          ccRecipients: meta.cc ? parseEmailList(meta.cc) : undefined,
+        })
       }
     } catch (err) {
       log.error(`Failed to fetch messages for account ${accountId}`, err)
@@ -150,8 +169,16 @@ export const gmailAdapter = {
       throw new Error('No connected Gmail account found')
     }
 
+    // Combine primary recipientId with additional toRecipients
+    const toList = [message.recipientId]
+    if (message.toRecipients) {
+      toList.push(...message.toRecipients.map((r) => r.id))
+    }
+
     const result = await sendGmailMessage(userId, account.accountId, {
-      to: message.recipientId,
+      to: toList.join(', '),
+      cc: message.ccRecipients?.map((r) => r.id).join(', ') || undefined,
+      bcc: message.bccRecipients?.map((r) => r.id).join(', ') || undefined,
       subject: message.subject ?? '',
       body: message.body,
       htmlBody: message.htmlBody,
@@ -184,4 +211,123 @@ export const gmailAdapter = {
 
     return trashGmailMessage(userId, account.accountId, rawMessageId)
   },
+}
+
+/**
+ * Fetch full message bodies from Gmail and store in Firestore for offline reading.
+ * Called during sync after AI analysis — bodies are stored separately from metadata.
+ */
+export async function fetchAndStoreGmailBodies(
+  userId: string,
+  accountId: string,
+  messageIds: string[]
+): Promise<number> {
+  if (messageIds.length === 0) return 0
+
+  const db = getFirestore()
+  const BATCH_SIZE = 10
+  let storedCount = 0
+
+  for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
+    const batch = db.batch()
+    const chunk = messageIds.slice(i, i + BATCH_SIZE)
+
+    const results = await Promise.all(
+      chunk.map(async (prefixedId) => {
+        const rawId = prefixedId.startsWith('gmail_') ? prefixedId.slice(6) : prefixedId
+        try {
+          const fullMessage = await readGmailMessage(userId, accountId, rawId)
+          return { prefixedId, fullMessage }
+        } catch (err) {
+          log.error(`Failed to read body for ${rawId}`, err)
+          return null
+        }
+      })
+    )
+
+    for (const result of results) {
+      if (!result) continue
+      batch.set(
+        messageBodyRef(userId, result.prefixedId),
+        {
+          messageId: result.prefixedId,
+          body: result.fullMessage.body,
+          attachmentCount: result.fullMessage.attachmentCount,
+          storedAtMs: Date.now(),
+        },
+        { merge: true }
+      )
+      storedCount++
+    }
+
+    await batch.commit()
+  }
+
+  log.info(`Stored ${storedCount} message bodies for account ${accountId}`)
+  return storedCount
+}
+
+/**
+ * Fetch a single Gmail message body on demand and store in Firestore.
+ * Called when the frontend opens a message whose body wasn't stored during sync.
+ */
+export async function fetchSingleGmailBody(
+  userId: string,
+  accountId: string,
+  messageId: string
+): Promise<{ body: string; attachmentCount: number }> {
+  const rawId = messageId.startsWith('gmail_') ? messageId.slice(6) : messageId
+  const fullMessage = await readGmailMessage(userId, accountId, rawId)
+
+  const db = getFirestore()
+  await db.doc(messageBodyRef(userId, messageId).path).set(
+    {
+      messageId,
+      body: fullMessage.body,
+      attachmentCount: fullMessage.attachmentCount,
+      storedAtMs: Date.now(),
+    },
+    { merge: true }
+  )
+
+  log.info(`On-demand body fetch for ${messageId}`)
+  return { body: fullMessage.body, attachmentCount: fullMessage.attachmentCount }
+}
+
+/**
+ * Archive a Gmail message: apply a label and remove from INBOX.
+ * Gmail's "archive" = remove INBOX label. Optionally apply a custom label.
+ */
+export async function archiveGmailMessage(
+  userId: string,
+  accountId: string,
+  messageId: string,
+  labelName?: string
+): Promise<boolean> {
+  const rawMessageId = messageId.startsWith('gmail_') ? messageId.slice(6) : messageId
+
+  const addLabelIds: string[] = []
+  if (labelName) {
+    const labelId = await getOrCreateGmailLabel(userId, accountId, labelName)
+    addLabelIds.push(labelId)
+  }
+
+  await modifyGmailMessage(userId, accountId, rawMessageId, addLabelIds, ['INBOX'])
+  log.info(`Archived message ${rawMessageId} with label "${labelName || 'none'}"`)
+  return true
+}
+
+/**
+ * Get Gmail labels for label picker UI
+ */
+export async function getGmailLabelsForUser(
+  userId: string,
+  accountId: string
+): Promise<Array<{ id: string; name: string }>> {
+  const labels = await listGmailLabels(userId, accountId)
+  // Filter to user-created labels (exclude system labels like INBOX, SPAM, etc.)
+  return labels
+    .filter((l) => l.type === 'user')
+    .map((l) => ({ id: l.id, name: l.name }))
+    .sort((a, b) => a.name.localeCompare(b.name))
 }

@@ -241,6 +241,21 @@ export function titleSimilarity(a?: string, b?: string): number {
 }
 
 /**
+ * Check if two events are from the exact same calendar source.
+ * Events from the same calendar cannot be duplicates of each other
+ * (the provider guarantees uniqueness within a single calendar).
+ * Events from different calendars within the same account CAN be duplicates
+ * (e.g., Siri creating copies, or the same meeting appearing in multiple calendars).
+ */
+export function isSameSource(a: CanonicalCalendarEvent, b: CanonicalCalendarEvent): boolean {
+  return (
+    a.providerRef.provider === b.providerRef.provider &&
+    a.providerRef.accountId === b.providerRef.accountId &&
+    a.providerRef.providerCalendarId === b.providerRef.providerCalendarId
+  )
+}
+
+/**
  * Check if two events match by iCalUID
  *
  * Guardrail: Even with matching iCalUID, verify reasonable time overlap
@@ -253,12 +268,9 @@ export function matchByICalUID(
   if (!eventA.iCalUID || !eventB.iCalUID) return null
   if (eventA.iCalUID !== eventB.iCalUID) return null
 
-  // Same iCalUID but different accounts
-  if (
-    eventA.providerRef.accountId === eventB.providerRef.accountId &&
-    eventA.providerRef.provider === eventB.providerRef.provider
-  ) {
-    return null // Same account, not a duplicate
+  // Same calendar source — not a duplicate
+  if (isSameSource(eventA, eventB)) {
+    return null
   }
 
   // Guardrail: Verify reasonable time overlap (1 day tolerance for recurrence edge cases)
@@ -285,7 +297,7 @@ export function matchByICalUID(
 
 /**
  * Check if two events match by provider event ID
- * (Same provider + same providerEventId across accounts/calendars)
+ * (Same provider + same providerEventId across accounts or calendars)
  */
 export function matchByProviderEventId(
   eventA: CanonicalCalendarEvent,
@@ -297,9 +309,10 @@ export function matchByProviderEventId(
   if (!providerIdA || !providerIdB) return null
   if (providerIdA !== providerIdB) return null
 
-  // Must be same provider but different accounts
+  // Must be same provider
   if (eventA.providerRef.provider !== eventB.providerRef.provider) return null
-  if (eventA.providerRef.accountId === eventB.providerRef.accountId) return null
+  // Same calendar source — not a duplicate
+  if (isSameSource(eventA, eventB)) return null
 
   return {
     eventA,
@@ -324,11 +337,8 @@ export function matchByTimeTitle(
   eventB: CanonicalCalendarEvent,
   config: TimeTitleConfig = DEFAULT_TIME_TITLE_CONFIG
 ): DuplicateCandidate | null {
-  // Same account check
-  if (
-    eventA.providerRef.accountId === eventB.providerRef.accountId &&
-    eventA.providerRef.provider === eventB.providerRef.provider
-  ) {
+  // Same calendar source — not a duplicate
+  if (isSameSource(eventA, eventB)) {
     return null
   }
 
@@ -375,12 +385,60 @@ export function matchByTimeTitle(
 }
 
 /**
+ * Check if two events match by participant overlap and time
+ *
+ * Useful when titles are generic (e.g. "meeting", "call") but the same
+ * set of participants at the same time strongly indicates a duplicate.
+ *
+ * Guardrails:
+ * - Both events must have at least 2 attendees
+ * - 80%+ participant overlap required (Jaccard similarity on emails)
+ * - Time must match within tolerance
+ */
+export function matchByParticipantsAndTime(
+  eventA: CanonicalCalendarEvent,
+  eventB: CanonicalCalendarEvent,
+  config: TimeTitleConfig = DEFAULT_TIME_TITLE_CONFIG
+): DuplicateCandidate | null {
+  if (isSameSource(eventA, eventB)) return null
+
+  // Time check
+  if (Math.abs(eventA.startMs - eventB.startMs) > config.timeToleranceMs) return null
+  if (Math.abs(eventA.endMs - eventB.endMs) > config.timeToleranceMs) return null
+
+  // Need at least 2 attendees each to make overlap meaningful
+  const emailsA = new Set(
+    (eventA.attendees ?? []).map((a) => a.email?.toLowerCase()).filter(Boolean) as string[]
+  )
+  const emailsB = new Set(
+    (eventB.attendees ?? []).map((a) => a.email?.toLowerCase()).filter(Boolean) as string[]
+  )
+  if (emailsA.size < 2 || emailsB.size < 2) return null
+
+  // Calculate Jaccard overlap
+  const intersection = [...emailsA].filter((e) => emailsB.has(e))
+  const union = new Set([...emailsA, ...emailsB])
+  const overlap = intersection.length / union.size
+
+  if (overlap < 0.8) return null // Need 80%+ participant overlap
+
+  return {
+    eventA,
+    eventB,
+    heuristic: 'time-title',
+    confidence: 0.85 * overlap,
+    matchReason: `Participant overlap: ${(overlap * 100).toFixed(0)}% (${intersection.length}/${union.size} emails), time diff: ${Math.abs(eventA.startMs - eventB.startMs)}ms`,
+  }
+}
+
+/**
  * Find all duplicate candidates among a set of events
  *
  * Priority order:
  * 1. Provider event ID match (highest confidence)
  * 2. iCalUID match (strong)
- * 3. Fuzzy time-title match (conservative)
+ * 3. Participant + time match (medium-high)
+ * 4. Fuzzy time-title match (conservative)
  */
 export function findDuplicateCandidates(
   events: CanonicalCalendarEvent[],
@@ -409,6 +467,13 @@ export function findDuplicateCandidates(
       const icalMatch = matchByICalUID(eventA, eventB)
       if (icalMatch) {
         candidates.push(icalMatch)
+        continue
+      }
+
+      // Try participant overlap (medium-high confidence)
+      const participantMatch = matchByParticipantsAndTime(eventA, eventB, config)
+      if (participantMatch) {
+        candidates.push(participantMatch)
         continue
       }
 

@@ -2,16 +2,15 @@
  * People Page — Inner Circle CRM
  *
  * Master-detail layout: circle visualization + contact list on the left,
- * contact detail panel on the right. Quick-add via Cmd+Shift+C or FAB.
+ * contact detail shown in a modal on selection.
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useContacts } from '@/hooks/useContacts'
 import { CircleVisualization } from '@/components/contacts/CircleVisualization'
 import { ContactList } from '@/components/contacts/ContactList'
 import { ContactDetail } from '@/components/contacts/ContactDetail'
 import { ContactFormModal } from '@/components/contacts/ContactFormModal'
-import { QuickAddContact } from '@/components/contacts/QuickAddContact'
 import { DuplicateReviewModal } from '@/components/contacts/DuplicateReviewModal'
 import type {
   ContactId,
@@ -28,7 +27,6 @@ export function PeoplePage() {
   const [showForm, setShowForm] = useState(false)
   const [editContact, setEditContact] = useState<ContactId | null>(null)
   const [showDuplicates, setShowDuplicates] = useState(false)
-  const [quickAddOpen, setQuickAddOpen] = useState(false)
 
   const { contacts, loading, createContact, updateContact, deleteContact } = useContacts({
     circle: selectedCircle ?? undefined,
@@ -38,29 +36,9 @@ export function PeoplePage() {
   // All contacts (unfiltered) for circle counts
   const { contacts: allContacts } = useContacts()
 
-  // Keyboard shortcut: Cmd+Shift+C → quick-add
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'c') {
-        e.preventDefault()
-        setQuickAddOpen(true)
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])
-
   const handleCreate = useCallback(
     async (data: CreateContactInput | UpdateContactInput) => {
       const created = await createContact(data as CreateContactInput)
-      setSelectedContactId(created.contactId)
-    },
-    [createContact]
-  )
-
-  const handleQuickCreate = useCallback(
-    async (data: CreateContactInput) => {
-      const created = await createContact(data)
       setSelectedContactId(created.contactId)
     },
     [createContact]
@@ -87,11 +65,6 @@ export function PeoplePage() {
     }
   }, [selectedContactId])
 
-  const handleQuickAddMoreDetails = useCallback(() => {
-    setQuickAddOpen(false)
-    setShowForm(true)
-  }, [])
-
   const selectedContact = contacts.find((c) => c.contactId === selectedContactId)
 
   return (
@@ -107,17 +80,10 @@ export function PeoplePage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <button className="people-page__dedup-btn" onClick={() => setShowDuplicates(true)}>
+          <button className="ghost-button small" onClick={() => setShowDuplicates(true)}>
             Find Duplicates
           </button>
-          <button
-            className="people-page__fab"
-            onClick={() => setQuickAddOpen(true)}
-            title="Add contact (\u2318\u21E7C)"
-          >
-            +
-          </button>
-          <button className="people-page__add-btn" onClick={() => setShowForm(true)}>
+          <button className="primary-button small" onClick={() => setShowForm(true)}>
             + Add Contact
           </button>
         </div>
@@ -144,7 +110,7 @@ export function PeoplePage() {
                 Add your first contact to start building your inner circle. Contacts will also be
                 auto-created from your mailbox and calendar.
               </div>
-              <button className="people-page__add-btn" onClick={() => setShowForm(true)}>
+              <button className="primary-button small" onClick={() => setShowForm(true)}>
                 + Add Contact
               </button>
             </div>
@@ -164,7 +130,7 @@ export function PeoplePage() {
           )}
         </div>
 
-        {/* Detail panel */}
+        {/* Right column: contact detail */}
         <div className="people-page__detail">
           {selectedContactId && selectedContact ? (
             <ContactDetail
@@ -174,21 +140,13 @@ export function PeoplePage() {
             />
           ) : (
             <div className="people-page__empty-detail">
-              <div className="people-page__empty-icon">{'\uD83D\uDC65'}</div>
-              <div className="people-page__empty-text">Select a contact to view their profile</div>
+              <span className="people-page__empty-text">
+                Select a contact to view their profile
+              </span>
             </div>
           )}
         </div>
       </div>
-
-      {/* Quick-add modal */}
-      {quickAddOpen && (
-        <QuickAddContact
-          onSave={handleQuickCreate}
-          onOpenFullForm={handleQuickAddMoreDetails}
-          onClose={() => setQuickAddOpen(false)}
-        />
-      )}
 
       {/* Create modal */}
       {showForm && <ContactFormModal onSave={handleCreate} onClose={() => setShowForm(false)} />}

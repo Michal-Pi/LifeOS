@@ -25,55 +25,39 @@ import type { CanonicalCalendarEvent } from '@lifeos/calendar'
 import { createLogger, getDefaultQuotes, getQuoteForDate } from '@lifeos/core'
 import type { Quote } from '@lifeos/core'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNow } from '@/hooks/useNow'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { createFirestoreCalendarEventRepository } from '@/adapters/firestoreCalendarEventRepository'
-import { createFirestoreQuoteRepository } from '@/adapters/firestoreQuoteRepository'
+import { useRepositories } from '@/contexts/RepositoryContext'
 import { listEventsByDayKeysLocally, bulkSaveEventsLocally } from '@/calendar/offlineStore'
 import { getQuotesLocally, saveQuotesLocally } from '@/quotes/offlineStore'
-import { HabitCheckInCard } from '@/components/habits/HabitCheckInCard'
-import { IncantationDisplay } from '@/components/habits/IncantationDisplay'
-import { CheckInCard } from '@/components/mind/CheckInCard'
-import { MindInterventionModal } from '@/components/mind/MindInterventionModal'
-import { TodayWorkout } from '@/components/training/TodayWorkout'
-import { WorkoutSessionCard } from '@/components/training/WorkoutSessionCard'
+
 import { FollowUpWidget } from '@/components/contacts/FollowUpWidget'
 import { MeetingBriefingModal } from '@/components/contacts/MeetingBriefingModal'
 import { MessageMailbox } from '@/components/mailbox/MessageMailbox'
-import { StatusBar } from '@/components/StatusBar'
-import { StatusDot } from '@/components/StatusDot'
 import { useAuth } from '@/hooks/useAuth'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { useCalendarAccountStatus } from '@/hooks/useCalendarAccountStatus'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
 import { useTrainingToday } from '@/hooks/useTrainingToday'
 import { calculatePriorityScore } from '@/lib/priority'
+import type { ImportanceLevel } from '@/types/todo'
 import { seedDemoTrainingData } from '@/utils/seedDemoTraining'
 
 const logger = createLogger('TodayPage')
 
-const quoteRepository = createFirestoreQuoteRepository()
-const calendarRepository = createFirestoreCalendarEventRepository()
-
-const formatter = new Intl.DateTimeFormat('en-US', {
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-})
 const timeFormat = new Intl.DateTimeFormat('en-US', {
   hour: '2-digit',
   minute: '2-digit',
   hour12: false,
 })
-const timeWithSeconds = new Intl.DateTimeFormat('en-US', {
-  hour: 'numeric',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: true,
+
+const shortDateFormat = new Intl.DateTimeFormat('en-US', {
+  weekday: 'short',
 })
-const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 export function TodayPage() {
   const { user } = useAuth()
+  const { quoteRepository, calendarRepository } = useRepositories()
   const userId = user?.uid ?? ''
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -90,8 +74,8 @@ export function TodayPage() {
   const [quote, setQuote] = useState<Quote | null>(null)
   const [loading, setLoading] = useState(true)
   const [events, setEvents] = useState<CanonicalCalendarEvent[]>([])
-  const [, setEventsLoading] = useState(true)
-  const [isMindModalOpen, setIsMindModalOpen] = useState(false)
+  const [eventsLoading, setEventsLoading] = useState(true)
+
   const [briefingEvent, setBriefingEvent] = useState<{
     id: string
     title: string
@@ -99,6 +83,7 @@ export function TodayPage() {
   } | null>(null)
   const [quickTaskTitle, setQuickTaskTitle] = useState('')
   const [quickEventTitle, setQuickEventTitle] = useState('')
+  const [quickTaskImportance, setQuickTaskImportance] = useState<ImportanceLevel>(4)
 
   // Load tasks
   const { tasks, loadData: loadTasks, createTask, updateTask } = useTodoOperations({ userId })
@@ -119,17 +104,25 @@ export function TodayPage() {
     return [...activeTasks].sort((a, b) => calculatePriorityScore(b) - calculatePriorityScore(a))[0]
   }, [activeTasks])
   const todayTasksWithoutFrog = useMemo(() => {
-    if (!frogTask) return todayTasks
-    return todayTasks.filter((task) => task.id !== frogTask.id)
+    if (!frogTask) return todayTasks.slice(0, 4)
+    return todayTasks.filter((task) => task.id !== frogTask.id).slice(0, 4)
   }, [frogTask, todayTasks])
   const showTasksEmptyState = !frogTask && todayTasksWithoutFrog.length === 0
 
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000)
-    return () => clearInterval(id)
-  }, [])
+  const now = useNow(60_000)
   const todayKey = now.toISOString().split('T')[0]
+
+  // Compute upcoming day keys for calendar lookahead
+  const upcomingDayKeys = useMemo(() => {
+    const keys: string[] = []
+    for (let i = 1; i <= 3; i++) {
+      const d = new Date(now)
+      d.setDate(d.getDate() + i)
+      keys.push(d.toISOString().split('T')[0])
+    }
+    return keys
+  }, [now])
+  const allDayKeys = useMemo(() => [todayKey, ...upcomingDayKeys], [todayKey, upcomingDayKeys])
 
   // Load quotes independently (local-first)
   useEffect(() => {
@@ -163,14 +156,14 @@ export function TodayPage() {
         setQuote((prev) => prev ?? getDefaultQuotes()[0])
       })
       .finally(() => setLoading(false))
-  }, [userId, todayKey])
+  }, [userId, todayKey, quoteRepository])
 
-  // Load calendar events independently (local-first)
+  // Load calendar events independently (local-first) — today + next 3 days
   useEffect(() => {
     if (!userId) return
 
     // 1. Read from IndexedDB first for instant display
-    listEventsByDayKeysLocally(userId, [todayKey])
+    listEventsByDayKeysLocally(userId, allDayKeys)
       .then((localEvents) => {
         if (localEvents.length > 0) {
           setEvents(localEvents.filter((e) => !isDeleted(e)))
@@ -182,7 +175,7 @@ export function TodayPage() {
       })
 
     // 2. Fetch from Firestore in background and cache
-    listEvents({ repository: calendarRepository }, { userId, dayKeys: [todayKey] })
+    listEvents({ repository: calendarRepository }, { userId, dayKeys: allDayKeys })
       .then((canonicalEvents) => {
         const freshEvents = canonicalEvents.filter((e) => !isDeleted(e))
         setEvents(freshEvents)
@@ -194,7 +187,7 @@ export function TodayPage() {
         setEvents((prev) => (prev.length > 0 ? prev : []))
       })
       .finally(() => setEventsLoading(false))
-  }, [userId, todayKey])
+  }, [userId, allDayKeys, calendarRepository])
 
   // Load tasks independently (already offline-first via useTodoOperations)
   useEffect(() => {
@@ -213,7 +206,7 @@ export function TodayPage() {
   }, [trainingVariants])
 
   // Convert events to display format and sort chronologically
-  const displayEvents = useMemo(
+  const allDisplayEvents = useMemo(
     () =>
       events
         .map((event) => ({
@@ -227,16 +220,38 @@ export function TodayPage() {
         .sort((a, b) => a.start.getTime() - b.start.getTime()),
     [events]
   )
-  // Calendar preview: limit to 5 events, track current/next
-  const previewEvents = displayEvents.slice(0, 5)
-  const remainingCount = displayEvents.length - previewEvents.length
+
+  // Split into today's events and upcoming events
+  const todayStart = useMemo(() => {
+    const d = new Date(now)
+    d.setHours(0, 0, 0, 0)
+    return d.getTime()
+  }, [now])
+  const todayEnd = todayStart + 86_400_000
+
+  const displayEvents = useMemo(
+    () => allDisplayEvents.filter((evt) => evt.start.getTime() < todayEnd),
+    [allDisplayEvents, todayEnd]
+  )
+
+  const upcomingEvents = useMemo(
+    () => allDisplayEvents.filter((evt) => evt.start.getTime() >= todayEnd),
+    [allDisplayEvents, todayEnd]
+  )
+
+  // Show all today events, then fill with upcoming if today has < 7
+  const MAX_CALENDAR_ROWS = 12
+  const todayPreview = displayEvents
+  const upcomingSlots = Math.max(0, MAX_CALENDAR_ROWS - todayPreview.length)
+  const upcomingPreview = upcomingEvents.slice(0, upcomingSlots)
+  const remainingUpcomingCount = upcomingEvents.length - upcomingPreview.length
+
   const currentEventIndex = useMemo(() => {
     const nowMs = now.getTime()
-    // Find the first event that hasn't ended yet
-    const idx = previewEvents.findIndex((evt) => evt.end.getTime() > nowMs)
+    const idx = todayPreview.findIndex((evt) => evt.end.getTime() > nowMs)
     return idx
-  }, [previewEvents, now])
-  const hasCalendarEvents = displayEvents.length > 0
+  }, [todayPreview, now])
+  const hasCalendarEvents = displayEvents.length > 0 || upcomingPreview.length > 0
 
   // Task quick actions
   const completeTask = useCallback(
@@ -280,18 +295,12 @@ export function TodayPage() {
   const freeHours = Math.max(24 - busyHours, 0)
 
   const taskSummary = `${todayTasksWithoutFrog.length + (frogTask ? 1 : 0)} tasks${frogTask ? ' \u00b7 1 frog' : ''}`
-  const calendarSummary = `${displayEvents.length} event${displayEvents.length !== 1 ? 's' : ''}`
+  const calendarSummary = upcomingPreview.length > 0
+    ? `${displayEvents.length} today \u00b7 ${upcomingPreview.length} upcoming`
+    : `${displayEvents.length} event${displayEvents.length !== 1 ? 's' : ''}`
 
   return (
     <div className="page-container today-shell-refined">
-      <StatusBar>
-        <span className="today-status-label">System Time</span>
-        <span className="today-status-time">
-          {timeWithSeconds.format(now)} <span className="today-status-cursor">█</span>
-        </span>
-        <StatusDot status="online" label="Online" />
-      </StatusBar>
-
       {needsReconnect && (
         <div className="today-reconnect-banner" role="alert">
           <span>Google Calendar connection expired.</span>
@@ -301,7 +310,17 @@ export function TodayPage() {
         </div>
       )}
 
-      {/* Telemetry pill bar — above the grid */}
+      {/* Quote strip — below nav */}
+      {!loading && quote && (
+        <div className="today-quote-strip">
+          <blockquote className="today-quote-strip__text">
+            &ldquo;{quote.text}&rdquo;
+          </blockquote>
+          <span className="today-quote-strip__author">&mdash; {quote.author}</span>
+        </div>
+      )}
+
+      {/* Telemetry pill bar — top metrics */}
       <div className="today-telemetry-bar" data-testid="today-telemetry">
         <button className="today-telemetry-bar__pill" onClick={() => navigate('/calendar')}>
           MTG {meetingHours.toFixed(1)}h
@@ -310,7 +329,7 @@ export function TodayPage() {
           FREE {freeHours.toFixed(1)}h
         </button>
         <button className="today-telemetry-bar__pill" onClick={() => navigate('/planner')}>
-          UTIL {Math.round((busyHours / 24) * 100)}%
+          UTIL {Math.round((busyHours / 10) * 100)}%
         </button>
         <button className="today-telemetry-bar__pill" onClick={() => navigate('/plan')}>
           EXERCISE {exerciseMinutes} min
@@ -318,44 +337,123 @@ export function TodayPage() {
       </div>
 
       <div className="today-layout">
-        {/* Row 1, Col 1: Morning Check-In (left) */}
-        <div className="today-grid-checkin">
-          <CheckInCard userId={userId} dateKey={todayKey} />
-        </div>
+        {/* Row 1, Col 1: Message Mailbox (left) */}
+        <MessageMailbox maxMessages={8} />
 
-        {/* Row 1, Col 2: Daily State — compact card (right) */}
-        <section className="today-card daily-state-card today-grid-state">
+        {/* Row 1, Col 2: Calendar Preview (right) */}
+        <section className="calendar-preview-card today-card today-grid-calendar">
           <details className="today-card-collapse" open>
             <summary className="today-collapse-header">
-              <h3 className="section-label">Daily State</h3>
-              <span className="today-collapse-summary">{formatter.format(now)}</span>
+              <h3 className="section-label">Calendar Preview</h3>
+              <span className="today-collapse-summary">{calendarSummary}</span>
             </summary>
             <div className="today-collapse-body">
-              <p
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 'var(--text-sm)',
-                  color: 'var(--text-secondary)',
-                  margin: 0,
-                }}
-              >
-                {timeFormat.format(now)} {timezone}
-              </p>
-              <div className="daily-state-quote">
-                {loading ? (
-                  <p className="inspiration-loading">Loading quote...</p>
-                ) : quote ? (
-                  <>
-                    <blockquote className="inspiration-quote">
-                      &ldquo;{quote.text}&rdquo;
-                    </blockquote>
-                    <p className="inspiration-author">— {quote.author}</p>
-                  </>
-                ) : (
-                  <p className="inspiration-loading">Quote unavailable</p>
-                )}
-              </div>
-              <IncantationDisplay variant="embedded" />
+              {eventsLoading && events.length === 0 ? (
+                <div className="today-calendar-loading">
+                  <div className="today-skeleton-row" />
+                  <div className="today-skeleton-row" />
+                  <div className="today-skeleton-row" />
+                </div>
+              ) : hasCalendarEvents ? (
+                <>
+                  {todayPreview.length > 0 ? (
+                    todayPreview.map((evt, index) => (
+                      <div
+                        key={`${evt.canonicalEventId}-${index}`}
+                        className={`today-event-row${index === currentEventIndex ? ' today-event-row--current' : ''}`}
+                      >
+                        <span className="today-event-time">{timeFormat.format(evt.start)}</span>
+                        <span className="today-event-title">{evt.title}</span>
+                        {evt.guests.length > 0 && (
+                          <span className="today-event-guests">{evt.guests.length}</span>
+                        )}
+                        {evt.linkedContactIds.length > 0 && (
+                          <button
+                            className="today-event-prep"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setBriefingEvent({
+                                id: evt.canonicalEventId,
+                                title: evt.title,
+                                time: `${timeFormat.format(evt.start)} - ${timeFormat.format(evt.end)}`,
+                              })
+                            }}
+                          >
+                            Prep
+                          </button>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="today-empty-row" style={{ marginTop: 0 }}>
+                      <div>
+                        <p className="today-empty-title">No events today</p>
+                        <p className="today-empty-text">Your day is open.</p>
+                      </div>
+                    </div>
+                  )}
+                  {upcomingPreview.length > 0 && (
+                    <>
+                      <div className="today-event-separator">
+                        <span>Later</span>
+                      </div>
+                      {upcomingPreview.map((evt, index) => (
+                        <div
+                          key={`upcoming-${evt.canonicalEventId}-${index}`}
+                          className="today-event-row today-event-row--upcoming"
+                        >
+                          <span className="today-event-date">{shortDateFormat.format(evt.start)}</span>
+                          <span className="today-event-time">{timeFormat.format(evt.start)}</span>
+                          <span className="today-event-title">{evt.title}</span>
+                          {evt.guests.length > 0 && (
+                            <span className="today-event-guests">{evt.guests.length}</span>
+                          )}
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  <Link to="/calendar" className="today-see-more">
+                    {remainingUpcomingCount > 0
+                      ? `+${remainingUpcomingCount} more upcoming \u2192 See full calendar`
+                      : 'See full calendar \u2192'}
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <div className="today-empty-row">
+                    <div>
+                      <p className="today-empty-title">Calendar is open</p>
+                      <p className="today-empty-text">Block focus time or schedule a meeting.</p>
+                    </div>
+                  </div>
+                  <div className="inline-input-row">
+                    <span className="inline-input-prefix">+</span>
+                    <input
+                      type="text"
+                      value={quickEventTitle}
+                      onChange={(e) => setQuickEventTitle(e.target.value)}
+                      placeholder="Input new event…"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && quickEventTitle.trim()) {
+                          navigate('/calendar', { state: { eventTitle: quickEventTitle.trim() } })
+                          setQuickEventTitle('')
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="ghost-button small"
+                      onClick={() => {
+                        if (!quickEventTitle.trim()) return
+                        navigate('/calendar', { state: { eventTitle: quickEventTitle.trim() } })
+                        setQuickEventTitle('')
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </details>
         </section>
@@ -375,6 +473,7 @@ export function TodayPage() {
                     <button
                       className="today-task-checkbox"
                       onClick={() => completeTask(frogTask.id)}
+                      aria-label={`Complete ${frogTask.title}`}
                     >
                       ○
                     </button>
@@ -385,6 +484,7 @@ export function TodayPage() {
                       <button
                         className="today-task-action"
                         title="Snooze to tomorrow"
+                        aria-label={`Snooze ${frogTask.title} to tomorrow`}
                         onClick={() => snoozeTask(frogTask.id)}
                       >
                         ⏭
@@ -404,7 +504,7 @@ export function TodayPage() {
                 ) : (
                   todayTasksWithoutFrog.map((task) => (
                     <div key={task.id} className="today-task-row">
-                      <button className="today-task-checkbox" onClick={() => completeTask(task.id)}>
+                      <button className="today-task-checkbox" onClick={() => completeTask(task.id)} aria-label={`Complete ${task.title}`}>
                         ○
                       </button>
                       <div className="today-task-info">
@@ -415,6 +515,7 @@ export function TodayPage() {
                         <button
                           className="today-task-action"
                           title="Snooze to tomorrow"
+                          aria-label={`Snooze ${task.title} to tomorrow`}
                           onClick={() => snoozeTask(task.id)}
                         >
                           ⏭
@@ -430,134 +531,45 @@ export function TodayPage() {
                   className="today-quick-add__input"
                   value={quickTaskTitle}
                   onChange={(e) => setQuickTaskTitle(e.target.value)}
-                  placeholder="+ Add a task for today..."
+                  placeholder="+ Create task..."
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && quickTaskTitle.trim()) {
                       void createTask({
                         title: quickTaskTitle.trim(),
                         domain: 'work',
-                        importance: 4,
+                        importance: quickTaskImportance,
                         status: 'inbox',
                         completed: false,
                         archived: false,
                       })
                       setQuickTaskTitle('')
+                      setQuickTaskImportance(4)
                     }
                   }}
                 />
+                {quickTaskTitle.trim() && (
+                  <div className="today-quick-add__importance">
+                    {([1, 2, 4, 7, 10] as const).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        className={`today-quick-add__importance-btn${quickTaskImportance === level ? ' active' : ''}`}
+                        onClick={() => setQuickTaskImportance(level)}
+                      >
+                        {level}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </details>
         </section>
 
-        {/* Row 2, Col 2: Calendar Preview — compact (right) */}
-        <section className="calendar-preview-card today-card today-grid-calendar">
-          <details className="today-card-collapse" open>
-            <summary className="today-collapse-header">
-              <h3 className="section-label">Calendar Preview</h3>
-              <span className="today-collapse-summary">{calendarSummary}</span>
-            </summary>
-            <div className="today-collapse-body">
-              {hasCalendarEvents ? (
-                <>
-                  {previewEvents.map((evt, index) => (
-                    <div
-                      key={`${evt.canonicalEventId}-${index}`}
-                      className={`today-event-row${index === currentEventIndex ? ' today-event-row--current' : ''}`}
-                    >
-                      <span className="today-event-time">{timeFormat.format(evt.start)}</span>
-                      <span className="today-event-title">{evt.title}</span>
-                      {evt.guests.length > 0 && (
-                        <span className="today-event-guests">{evt.guests.length}</span>
-                      )}
-                      {evt.linkedContactIds.length > 0 && (
-                        <button
-                          className="today-event-prep"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setBriefingEvent({
-                              id: evt.canonicalEventId,
-                              title: evt.title,
-                              time: `${timeFormat.format(evt.start)} - ${timeFormat.format(evt.end)}`,
-                            })
-                          }}
-                        >
-                          Prep
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  {remainingCount > 0 && (
-                    <Link to="/calendar" className="today-see-more">
-                      +{remainingCount} more events &rarr; See full calendar
-                    </Link>
-                  )}
-                  {remainingCount === 0 && (
-                    <Link to="/calendar" className="today-see-more">
-                      See full calendar &rarr;
-                    </Link>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className="today-empty-row">
-                    <div>
-                      <p className="today-empty-title">Calendar is open</p>
-                      <p className="today-empty-text">Block focus time or schedule a meeting.</p>
-                    </div>
-                  </div>
-                  <div className="inline-input-row">
-                    <span className="inline-input-prefix">+</span>
-                    <input
-                      type="text"
-                      value={quickEventTitle}
-                      onChange={(e) => setQuickEventTitle(e.target.value)}
-                      placeholder="Input new event…"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && quickEventTitle.trim()) {
-                          navigate('/calendar')
-                          setQuickEventTitle('')
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="ghost-button small"
-                      onClick={() => {
-                        if (!quickEventTitle.trim()) return
-                        navigate('/calendar')
-                        setQuickEventTitle('')
-                      }}
-                    >
-                      Add
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </details>
-        </section>
-
-        {/* Row 3, Col 1: Message Inbox (left) */}
-        <MessageMailbox maxMessages={10} />
-
-        {/* Row 3, Col 2: Daily Momentum (right) */}
-        <section className="today-card daily-momentum-card today-grid-momentum">
-          <details className="today-card-collapse" open>
-            <summary className="today-collapse-header">
-              <h3 className="section-label">Daily Momentum</h3>
-              <span className="today-collapse-summary">Habits + Training</span>
-            </summary>
-            <div className="today-collapse-body">
-              <HabitCheckInCard userId={userId} dateKey={todayKey} variant="embedded" />
-              <TodayWorkout userId={userId} dateKey={todayKey} variant="embedded" />
-              <WorkoutSessionCard dateKey={todayKey} variant="embedded" />
-            </div>
-          </details>
-        </section>
-
-        {/* Row 4: Follow-Up Reminders (full width) */}
+        {/* Row 2, Col 2: Follow-Up Reminders (right) */}
         <FollowUpWidget maxContacts={8} />
+
+
       </div>
 
       {/* Meeting Briefing Modal */}
@@ -571,13 +583,7 @@ export function TodayPage() {
         />
       )}
 
-      {/* Mind Intervention Modal */}
-      <MindInterventionModal
-        isOpen={isMindModalOpen}
-        onClose={() => setIsMindModalOpen(false)}
-        dateKey={todayKey}
-        trigger="today_prompt"
-      />
+
     </div>
   )
 }

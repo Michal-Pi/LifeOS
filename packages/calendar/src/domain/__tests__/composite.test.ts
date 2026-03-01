@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   normalizeTitle,
   titleSimilarity,
+  isSameSource,
   matchByICalUID,
   matchByTimeTitle,
+  matchByParticipantsAndTime,
   findDuplicateCandidates,
   createCompositeFromCandidate,
   addMemberToComposite,
@@ -115,13 +117,13 @@ describe('matchByICalUID', () => {
     expect(result?.confidence).toBe(0.95)
   })
 
-  it('returns null for same account', () => {
+  it('returns match for same account different calendar (Siri duplicates)', () => {
     const eventA = createTestEvent({
       iCalUID: 'shared-uid@google.com',
       providerRef: {
         provider: 'google',
         accountId: 'account-1',
-        providerCalendarId: 'p1',
+        providerCalendarId: 'personal',
         providerEventId: 'e1',
       },
     })
@@ -130,7 +132,32 @@ describe('matchByICalUID', () => {
       providerRef: {
         provider: 'google',
         accountId: 'account-1',
-        providerCalendarId: 'p2',
+        providerCalendarId: 'siri-suggestions',
+        providerEventId: 'e2',
+      },
+    })
+
+    const result = matchByICalUID(eventA, eventB)
+    expect(result).not.toBeNull()
+    expect(result?.heuristic).toBe('icaluid')
+  })
+
+  it('returns null for same calendar source', () => {
+    const eventA = createTestEvent({
+      iCalUID: 'shared-uid@google.com',
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'personal',
+        providerEventId: 'e1',
+      },
+    })
+    const eventB = createTestEvent({
+      iCalUID: 'shared-uid@google.com',
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'personal',
         providerEventId: 'e2',
       },
     })
@@ -238,30 +265,60 @@ describe('matchByTimeTitle', () => {
     expect(matchByTimeTitle(eventA, eventB)).toBeNull()
   })
 
-  it('returns null for same account', () => {
+  it('returns null for same calendar source', () => {
     const startMs = Date.now()
     const eventA = createTestEvent({
       startMs,
-      title: 'Meeting',
+      title: 'Project Review Session',
       providerRef: {
         provider: 'google',
         accountId: 'account-1',
-        providerCalendarId: 'p1',
+        providerCalendarId: 'personal',
         providerEventId: 'e1',
       },
     })
     const eventB = createTestEvent({
       startMs,
-      title: 'Meeting',
+      title: 'Project Review Session',
       providerRef: {
         provider: 'google',
         accountId: 'account-1',
-        providerCalendarId: 'p2',
+        providerCalendarId: 'personal',
         providerEventId: 'e2',
       },
     })
 
     expect(matchByTimeTitle(eventA, eventB)).toBeNull()
+  })
+
+  it('returns match for same account different calendar', () => {
+    const startMs = Date.now()
+    const eventA = createTestEvent({
+      startMs,
+      endMs: startMs + 3600000,
+      title: 'Project Review Session',
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'personal',
+        providerEventId: 'e1',
+      },
+    })
+    const eventB = createTestEvent({
+      startMs: startMs + 60000,
+      endMs: startMs + 3660000,
+      title: 'Project Review Session',
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'work',
+        providerEventId: 'e2',
+      },
+    })
+
+    const result = matchByTimeTitle(eventA, eventB)
+    expect(result).not.toBeNull()
+    expect(result?.heuristic).toBe('time-title')
   })
 })
 
@@ -530,6 +587,207 @@ describe('addMemberToComposite', () => {
     const updated = addMemberToComposite(composite, eventA)
 
     expect(updated.members).toHaveLength(2)
+  })
+})
+
+describe('isSameSource', () => {
+  it('returns true for same provider + account + calendar', () => {
+    const eventA = createTestEvent({
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'personal',
+        providerEventId: 'e1',
+      },
+    })
+    const eventB = createTestEvent({
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'personal',
+        providerEventId: 'e2',
+      },
+    })
+    expect(isSameSource(eventA, eventB)).toBe(true)
+  })
+
+  it('returns false for same account different calendar', () => {
+    const eventA = createTestEvent({
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'personal',
+        providerEventId: 'e1',
+      },
+    })
+    const eventB = createTestEvent({
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'work',
+        providerEventId: 'e2',
+      },
+    })
+    expect(isSameSource(eventA, eventB)).toBe(false)
+  })
+
+  it('returns false for different accounts', () => {
+    const eventA = createTestEvent({
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'personal',
+        providerEventId: 'e1',
+      },
+    })
+    const eventB = createTestEvent({
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-2',
+        providerCalendarId: 'personal',
+        providerEventId: 'e2',
+      },
+    })
+    expect(isSameSource(eventA, eventB)).toBe(false)
+  })
+})
+
+describe('matchByParticipantsAndTime', () => {
+  it('returns match when participants overlap 80%+ and time matches', () => {
+    const startMs = Date.now()
+    const eventA = createTestEvent({
+      startMs,
+      endMs: startMs + 3600000,
+      title: 'Sync',
+      attendees: [
+        { email: 'alice@example.com', responseStatus: 'accepted' },
+        { email: 'bob@example.com', responseStatus: 'accepted' },
+        { email: 'carol@example.com', responseStatus: 'accepted' },
+      ],
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'personal',
+        providerEventId: 'e1',
+      },
+    })
+    const eventB = createTestEvent({
+      startMs: startMs + 30000,
+      endMs: startMs + 3630000,
+      title: 'Sync',
+      attendees: [
+        { email: 'alice@example.com', responseStatus: 'accepted' },
+        { email: 'bob@example.com', responseStatus: 'accepted' },
+        { email: 'carol@example.com', responseStatus: 'accepted' },
+      ],
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'siri-calendar',
+        providerEventId: 'e2',
+      },
+    })
+
+    const result = matchByParticipantsAndTime(eventA, eventB)
+    expect(result).not.toBeNull()
+    expect(result?.confidence).toBeGreaterThan(0.8)
+  })
+
+  it('returns null when participant overlap is below 80%', () => {
+    const startMs = Date.now()
+    const eventA = createTestEvent({
+      startMs,
+      title: 'Meeting',
+      attendees: [
+        { email: 'alice@example.com', responseStatus: 'accepted' },
+        { email: 'bob@example.com', responseStatus: 'accepted' },
+      ],
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'personal',
+        providerEventId: 'e1',
+      },
+    })
+    const eventB = createTestEvent({
+      startMs,
+      title: 'Meeting',
+      attendees: [
+        { email: 'alice@example.com', responseStatus: 'accepted' },
+        { email: 'dave@example.com', responseStatus: 'accepted' },
+        { email: 'eve@example.com', responseStatus: 'accepted' },
+      ],
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'work',
+        providerEventId: 'e2',
+      },
+    })
+
+    expect(matchByParticipantsAndTime(eventA, eventB)).toBeNull()
+  })
+
+  it('returns null when fewer than 2 attendees', () => {
+    const startMs = Date.now()
+    const eventA = createTestEvent({
+      startMs,
+      title: 'Focus Time',
+      attendees: [{ email: 'alice@example.com', responseStatus: 'accepted' }],
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'personal',
+        providerEventId: 'e1',
+      },
+    })
+    const eventB = createTestEvent({
+      startMs,
+      title: 'Focus Time',
+      attendees: [{ email: 'alice@example.com', responseStatus: 'accepted' }],
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'work',
+        providerEventId: 'e2',
+      },
+    })
+
+    expect(matchByParticipantsAndTime(eventA, eventB)).toBeNull()
+  })
+
+  it('returns null for same calendar source', () => {
+    const startMs = Date.now()
+    const eventA = createTestEvent({
+      startMs,
+      title: 'Meeting',
+      attendees: [
+        { email: 'alice@example.com', responseStatus: 'accepted' },
+        { email: 'bob@example.com', responseStatus: 'accepted' },
+      ],
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'personal',
+        providerEventId: 'e1',
+      },
+    })
+    const eventB = createTestEvent({
+      startMs,
+      title: 'Meeting',
+      attendees: [
+        { email: 'alice@example.com', responseStatus: 'accepted' },
+        { email: 'bob@example.com', responseStatus: 'accepted' },
+      ],
+      providerRef: {
+        provider: 'google',
+        accountId: 'account-1',
+        providerCalendarId: 'personal',
+        providerEventId: 'e2',
+      },
+    })
+
+    expect(matchByParticipantsAndTime(eventA, eventB)).toBeNull()
   })
 })
 

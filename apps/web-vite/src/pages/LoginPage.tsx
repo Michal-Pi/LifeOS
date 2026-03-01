@@ -58,7 +58,7 @@ export function LoginPage() {
       <div className="login-container">
         <div className="login-header">
           <div className="login-logo">
-            <img src="/images/logo.png" alt="LifeOS" style={{ height: '48px', width: 'auto' }} />
+            <img src="/logo-icon.svg" alt="LifeOS" style={{ height: '48px', width: 'auto' }} />
           </div>
           <h1>Welcome</h1>
           <p>Sign in to access your personal dashboard</p>

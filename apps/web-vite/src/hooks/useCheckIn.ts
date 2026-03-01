@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useNow } from '@/hooks/useNow'
 import type {
   DailyCheckIn,
   EnergyLevel,
@@ -14,9 +15,7 @@ import type {
   DetailedEmotion,
 } from '@lifeos/mind'
 import { getTimeOfDay, getCheckInLabel, getDetailedEmotionById } from '@lifeos/mind'
-import { createFirestoreCheckInRepository } from '@/adapters/firestoreCheckInRepository'
-
-const checkInRepository = createFirestoreCheckInRepository()
+import { useRepositories } from '@/contexts/RepositoryContext'
 
 interface UseCheckInOptions {
   userId: string
@@ -63,6 +62,7 @@ function formatDateKey(date: Date): string {
 }
 
 export function useCheckIn({ userId, dateKey }: UseCheckInOptions): UseCheckInResult {
+  const { checkInRepository } = useRepositories()
   const [currentCheckIn, setCurrentCheckIn] = useState<DailyCheckIn | null>(null)
   const [todayCheckIns, setTodayCheckIns] = useState<DailyCheckIn[]>([])
   const [recentHistory, setRecentHistory] = useState<DailyCheckIn[]>([])
@@ -70,8 +70,9 @@ export function useCheckIn({ userId, dateKey }: UseCheckInOptions): UseCheckInRe
   const [historyLoading, setHistoryLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Calculate time of day
-  const timeOfDay = useMemo(() => getTimeOfDay(), [])
+  // Calculate time of day (updates when the hour changes)
+  const now = useNow(60_000)
+  const timeOfDay = useMemo(() => getTimeOfDay(now), [now])
   const checkInLabel = useMemo(() => getCheckInLabel(timeOfDay), [timeOfDay])
 
   // Get current emotion details
@@ -116,7 +117,7 @@ export function useCheckIn({ userId, dateKey }: UseCheckInOptions): UseCheckInRe
     } finally {
       setLoading(false)
     }
-  }, [userId, dateKey, timeOfDay])
+  }, [userId, dateKey, timeOfDay, checkInRepository])
 
   // Load on mount and when dependencies change
   useEffect(() => {
@@ -160,7 +161,7 @@ export function useCheckIn({ userId, dateKey }: UseCheckInOptions): UseCheckInRe
         throw err
       }
     },
-    [userId, dateKey, timeOfDay]
+    [userId, dateKey, timeOfDay, checkInRepository]
   )
 
   // Update existing check-in
@@ -193,7 +194,7 @@ export function useCheckIn({ userId, dateKey }: UseCheckInOptions): UseCheckInRe
         throw err
       }
     },
-    [currentCheckIn]
+    [currentCheckIn, checkInRepository]
   )
 
   // Load recent history (default: last 14 days)
@@ -224,7 +225,7 @@ export function useCheckIn({ userId, dateKey }: UseCheckInOptions): UseCheckInRe
         setHistoryLoading(false)
       }
     },
-    [userId]
+    [userId, checkInRepository]
   )
 
   return {

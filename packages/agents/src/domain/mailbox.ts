@@ -99,6 +99,10 @@ export interface PrioritizedMessage {
   triageCategoryOverride?: TriageCategory
   /** AI confidence in triage classification (0-1) */
   triageCategoryConfidence?: number
+  /** Original To recipients (for Reply All) */
+  toRecipients?: string[]
+  /** Original CC recipients (for Reply All) */
+  ccRecipients?: string[]
   createdAtMs: number
   updatedAtMs: number
 }
@@ -107,6 +111,16 @@ export type CreatePrioritizedMessageInput = Omit<
   PrioritizedMessage,
   'messageId' | 'createdAtMs' | 'updatedAtMs' | 'isRead' | 'isDismissed'
 >
+
+// ----- Message Body (stored separately for offline reading) -----
+
+export interface MessageBody {
+  messageId: string
+  body: string
+  htmlBody?: string
+  attachmentCount: number
+  storedAtMs: number
+}
 
 // ----- Mailbox Sync -----
 
@@ -214,6 +228,8 @@ export interface MessageAnalysisResult {
   summary: string
   followUpReason?: string
   suggestedAction?: string
+  triageCategory: TriageCategory
+  triageCategoryConfidence?: number // 0-1
 }
 
 // ----- Triage Labels -----
@@ -311,10 +327,16 @@ export interface OutboundMessage {
   source: MessageSource
   /** Channel connection to send through */
   connectionId: ChannelConnectionId
-  /** Recipient identifier (email, Slack user/channel ID, phone number, chat ID) */
+  /** Primary recipient identifier (email, Slack user/channel ID, phone number, chat ID) */
   recipientId: string
   /** Human-readable recipient name */
   recipientName?: string
+  /** Additional To recipients beyond recipientId */
+  toRecipients?: Array<{ id: string; name?: string }>
+  /** CC recipients (email channels) */
+  ccRecipients?: Array<{ id: string; name?: string }>
+  /** BCC recipients (email channels) */
+  bccRecipients?: Array<{ id: string; name?: string }>
   /** Email subject (email channels only) */
   subject?: string
   /** Plain text body */
@@ -341,6 +363,12 @@ export interface DraftMessage {
   connectionId?: ChannelConnectionId
   recipientId?: string
   recipientName?: string
+  /** All To recipients (structured) */
+  toRecipients?: Array<{ id: string; name?: string; email?: string }>
+  /** CC recipients */
+  ccRecipients?: Array<{ id: string; name?: string; email?: string }>
+  /** BCC recipients */
+  bccRecipients?: Array<{ id: string; name?: string; email?: string }>
   subject?: string
   /** Plain text content */
   body: string

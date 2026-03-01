@@ -30,16 +30,21 @@ export function LinkedInSettingsPanel() {
       setLocalError('Please enter your li_at cookie')
       return
     }
+    if (!csrfInput.trim()) {
+      setLocalError('Please enter your CSRF token (JSESSIONID cookie value). See "How to get your LinkedIn cookie" below.')
+      return
+    }
 
     setIsSaving(true)
     setLocalError(null)
 
     try {
+      const csrf = csrfInput.trim().replace(/^"|"$/g, '')
       await createConnection({
         source: 'linkedin',
         credentials: {
           liAtCookie: cookieInput.trim(),
-          ...(csrfInput.trim() ? { csrfToken: csrfInput.trim() } : {}),
+          csrfToken: csrf,
         },
       })
       setCookieInput('')
@@ -211,13 +216,13 @@ export function LinkedInSettingsPanel() {
           </div>
           <div className="linkedin-form-group">
             <label htmlFor="linkedin-csrf" className="linkedin-form-label">
-              CSRF Token <span className="linkedin-optional">(optional)</span>
+              CSRF Token (JSESSIONID) <span className="linkedin-required">*</span>
             </label>
             <input
               id="linkedin-csrf"
               type="password"
               className="linkedin-form-input"
-              placeholder="ajax:12345..."
+              placeholder="ajax:1234567890..."
               value={csrfInput}
               onChange={(e) => setCsrfInput(e.target.value)}
               disabled={isSaving}
@@ -228,7 +233,7 @@ export function LinkedInSettingsPanel() {
               variant="primary"
               size="sm"
               onClick={handleSave}
-              disabled={isSaving || !cookieInput.trim()}
+              disabled={isSaving || !cookieInput.trim() || !csrfInput.trim()}
             >
               {isSaving ? 'Connecting...' : 'Connect'}
             </Button>
@@ -250,9 +255,13 @@ export function LinkedInSettingsPanel() {
               Find the <code>li_at</code> cookie and copy its value
             </li>
             <li>
-              (Optional) Find the <code>JSESSIONID</code> cookie for the CSRF token
+              Find the <code>JSESSIONID</code> cookie and copy its value into the CSRF field
+              (required; often starts with <code>ajax:</code>)
             </li>
-            <li>Paste the values above and click Connect</li>
+            <li>
+              <strong>Tip:</strong> Copy both values, then close the LinkedIn tab and paste here.
+            </li>
+            <li>Paste both values above and click Connect</li>
             <li>
               <strong>Note:</strong> The cookie expires when you log out of LinkedIn or after some
               time. You will need to re-enter it when it expires.

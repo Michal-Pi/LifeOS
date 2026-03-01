@@ -1,4 +1,4 @@
-/* ContactCard — list item in contact sidebar */
+/* ContactCard — list item in contact sidebar (mailbox-aligned card style) */
 
 .contact-card {
   display: flex;
@@ -6,20 +6,54 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   cursor: pointer;
-  border-bottom: 1px solid var(--border);
-  transition: background-color var(--motion-fast);
+  background: var(--card, #fff);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  transition:
+    background var(--motion-fast),
+    border-color var(--motion-fast);
 }
 
 .contact-card:hover {
   background: var(--background-secondary);
+  border-color: var(--border);
 }
 
 .contact-card--selected {
   background: var(--accent-subtle);
+  border-color: var(--accent);
+  border-left: 3px solid var(--accent);
 }
 
 .contact-card--selected:hover {
   background: var(--accent-subtle);
+}
+
+/* Dunbar circle left-border colors */
+.contact-card--circle-0 {
+  border-left-color: var(--core-neon-violet);
+}
+.contact-card--circle-1 {
+  border-left-color: var(--core-electric-navy);
+}
+.contact-card--circle-2 {
+  border-left-color: var(--core-cyber-teal);
+}
+.contact-card--circle-3 {
+  border-left-color: var(--warning);
+}
+.contact-card--circle-4 {
+  border-left-color: var(--muted-foreground);
+}
+
+/* Selected overrides circle color */
+.contact-card--selected.contact-card--circle-0,
+.contact-card--selected.contact-card--circle-1,
+.contact-card--selected.contact-card--circle-2,
+.contact-card--selected.contact-card--circle-3,
+.contact-card--selected.contact-card--circle-4 {
+  border-left-color: var(--accent);
 }
 
 .contact-card__avatar {
@@ -77,7 +111,7 @@
   font-size: var(--text-xs);
   font-weight: 600;
   padding: 2px 6px;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -103,8 +137,8 @@
 }
 
 .contact-card__circle-badge--4 {
-  background: var(--background-secondary);
-  color: var(--text-tertiary);
+  background: var(--circle-4-bg);
+  color: var(--circle-4-text);
 }
 
 .contact-card__followup-dot {

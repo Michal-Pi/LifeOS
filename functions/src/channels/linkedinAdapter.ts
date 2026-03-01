@@ -85,7 +85,9 @@ const DEFAULT_HEADERS = {
 function buildVoyagerHeaders(liAtCookie: string, csrfToken?: string): Record<string, string> {
   const headers: Record<string, string> = {
     ...DEFAULT_HEADERS,
-    Cookie: `li_at=${liAtCookie}`,
+    Cookie: csrfToken
+      ? `li_at=${liAtCookie}; JSESSIONID=${csrfToken}`
+      : `li_at=${liAtCookie}`,
   }
   if (csrfToken) {
     headers['csrf-token'] = csrfToken
@@ -171,6 +173,217 @@ export async function getLinkedInConnections(userId: string): Promise<LinkedInCo
   }
 
   return connections
+}
+
+// ----- Profile Search & Enrichment -----
+
+export interface LinkedInSearchResult {
+  publicIdentifier: string
+  firstName: string
+  lastName: string
+  headline?: string
+  profilePicture?: string
+}
+
+export interface LinkedInProfilePosition {
+  title: string
+  companyName: string
+  startDate?: { month?: number; year?: number }
+  endDate?: { month?: number; year?: number }
+  current?: boolean
+}
+
+export interface LinkedInProfileData {
+  firstName: string
+  lastName: string
+  headline?: string
+  industry?: string
+  location?: string
+  profilePicture?: string
+  positions?: LinkedInProfilePosition[]
+}
+
+/**
+ * Search for LinkedIn profiles using the Voyager typeahead API.
+ */
+export async function searchLinkedInProfiles(
+  liAtCookie: string,
+  csrfToken: string | undefined,
+  searchQuery: string,
+  limit = 8
+): Promise<LinkedInSearchResult[]> {
+  const headers = buildVoyagerHeaders(liAtCookie, csrfToken)
+
+  const params = new URLSearchParams({
+    q: 'blended',
+    query: searchQuery,
+    count: String(limit),
+    filters: 'List(resultType->PEOPLE)',
+  })
+
+  const response = await fetch(
+    `${VOYAGER_BASE}/typeahead/dash/hitsV2?${params}`,
+    { headers }
+  )
+
+  if (!response.ok) {
+    log.warn(`Voyager search returned ${response.status}`)
+    throw new Error(`LinkedIn search failed (HTTP ${response.status})`)
+  }
+
+  const data = (await response.json()) as Record<string, unknown>
+  const results: LinkedInSearchResult[] = []
+
+  // Voyager typeahead returns results in elements array
+  const elements = (data.elements ?? data.included ?? []) as Array<Record<string, unknown>>
+  for (const el of elements) {
+    // Look for profile entities in the response — navigate nested Voyager structures
+    const image = el.image as Record<string, unknown> | undefined
+    const imageAttrs = image?.attributes as Array<Record<string, unknown>> | undefined
+    const miniFromImage = imageAttrs?.[0]?.miniProfile as Record<string, unknown> | undefined
+    const miniFromTarget = (el.targetUrn as Record<string, unknown> | undefined)?.miniProfile as Record<string, unknown> | undefined
+    const miniFromResult = (el.entityResult as Record<string, unknown> | undefined)?.miniProfile as Record<string, unknown> | undefined
+    const miniDirect = el.miniProfile as Record<string, unknown> | undefined
+
+    const profile = miniFromImage ?? miniFromTarget ?? miniFromResult ?? miniDirect ?? el
+
+    const publicId = (profile.publicIdentifier as string) ?? ''
+    if (!publicId) continue
+
+    const subtext = el.subtext as Record<string, unknown> | undefined
+    const headlineObj = el.headline as Record<string, unknown> | undefined
+
+    results.push({
+      publicIdentifier: publicId,
+      firstName: (profile.firstName as string) ?? '',
+      lastName: (profile.lastName as string) ?? '',
+      headline: (subtext?.text as string) ?? (headlineObj?.text as string) ?? (profile.occupation as string) ?? undefined,
+      profilePicture: extractProfilePicture(profile as Record<string, unknown>),
+    })
+  }
+
+  // Deduplicate by publicIdentifier
+  const seen = new Set<string>()
+  return results.filter((r) => {
+    if (seen.has(r.publicIdentifier)) return false
+    seen.add(r.publicIdentifier)
+    return true
+  })
+}
+
+/**
+ * Fetch a full LinkedIn profile by public identifier using the Voyager API.
+ */
+export async function fetchLinkedInProfile(
+  liAtCookie: string,
+  csrfToken: string | undefined,
+  publicIdentifier: string
+): Promise<LinkedInProfileData> {
+  const headers = buildVoyagerHeaders(liAtCookie, csrfToken)
+
+  // Fetch basic profile
+  const profileResponse = await fetch(
+    `${VOYAGER_BASE}/identity/dash/profiles?q=memberIdentity&memberIdentity=${encodeURIComponent(publicIdentifier)}&decorationId=com.linkedin.voyager.dash.deco.identity.profile.FullProfileWithEntities-93`,
+    { headers }
+  )
+
+  if (!profileResponse.ok) {
+    log.warn(`Voyager profile fetch returned ${profileResponse.status} for ${publicIdentifier}`)
+    throw new Error(`LinkedIn profile fetch failed (HTTP ${profileResponse.status})`)
+  }
+
+  const data = (await profileResponse.json()) as Record<string, unknown>
+
+  // Extract profile from response
+  const elements = (data.elements ?? []) as Array<Record<string, unknown>>
+  const profileEl = elements[0] as Record<string, unknown> | undefined
+  const included = (data.included ?? []) as Array<Record<string, unknown>>
+
+  // Find mini profile
+  const firstName = (profileEl?.firstName as string) ?? ''
+  const lastName = (profileEl?.lastName as string) ?? ''
+  const headline = (profileEl?.headline as string) ?? undefined
+  const industry = (profileEl?.industryName as string) ?? undefined
+  const locationName = ((profileEl?.locationName ?? profileEl?.geoLocationName) as string) ?? undefined
+  const profilePicture = extractProfilePicture(profileEl as Record<string, unknown> | undefined)
+
+  // Extract positions from included entities
+  const positions: LinkedInProfilePosition[] = []
+  for (const inc of included) {
+    // Position entities have $type containing 'Position'
+    const type = ((inc['$type'] ?? inc.entityUrn) as string) ?? ''
+    if (
+      typeof type === 'string' &&
+      (type.includes('Position') || type.includes('position')) &&
+      inc.title
+    ) {
+      const dateRange = inc.dateRange as Record<string, Record<string, number>> | undefined
+      const timePeriod = inc.timePeriod as Record<string, Record<string, number>> | undefined
+      const startDate = dateRange?.start ?? timePeriod?.startDate
+      const endDate = dateRange?.end ?? timePeriod?.endDate
+      const isCurrent = !endDate
+
+      const companyObj = inc.company as Record<string, unknown> | undefined
+
+      positions.push({
+        title: (inc.title as string) ?? '',
+        companyName: (inc.companyName as string) ?? (companyObj?.name as string) ?? '',
+        startDate: startDate
+          ? { month: startDate.month, year: startDate.year }
+          : undefined,
+        endDate: endDate
+          ? { month: endDate.month, year: endDate.year }
+          : undefined,
+        current: isCurrent,
+      })
+    }
+  }
+
+  return {
+    firstName,
+    lastName,
+    headline,
+    industry,
+    location: locationName,
+    profilePicture,
+    positions: positions.length > 0 ? positions : undefined,
+  }
+}
+
+/**
+ * Extract profile picture URL from a Voyager profile or miniProfile object.
+ */
+function extractProfilePicture(profile: Record<string, unknown> | undefined): string | undefined {
+  if (!profile) return undefined
+
+  // Try picture.rootUrl + artifact path
+  const picture = profile.picture as Record<string, unknown> | undefined
+  if (picture) {
+    const rootUrl = picture.rootUrl as string | undefined
+    const artifacts = picture.artifacts as Array<Record<string, unknown>> | undefined
+    if (rootUrl && artifacts?.length) {
+      // Pick the largest artifact
+      const artifact = artifacts[artifacts.length - 1]
+      const path = artifact?.fileIdentifyingUrlPathSegment as string | undefined
+      if (path) return `${rootUrl}${path}`
+    }
+  }
+
+  // Try profilePicture.displayImageReference
+  const profilePicture = profile.profilePicture as Record<string, unknown> | undefined
+  const displayImageRef = profilePicture?.displayImageReference as Record<string, unknown> | undefined
+  const vectorImage = displayImageRef?.vectorImage as Record<string, unknown> | undefined
+  if (vectorImage) {
+    const rootUrl = vectorImage.rootUrl as string | undefined
+    const artifacts = vectorImage.artifacts as Array<Record<string, unknown>> | undefined
+    if (rootUrl && artifacts?.length) {
+      const artifact = artifacts[artifacts.length - 1]
+      const path = artifact?.fileIdentifyingUrlPathSegment as string | undefined
+      if (path) return `${rootUrl}${path}`
+    }
+  }
+
+  return undefined
 }
 
 // ----- Adapter Implementation -----

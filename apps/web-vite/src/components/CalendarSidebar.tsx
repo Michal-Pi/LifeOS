@@ -5,6 +5,7 @@ import type {
   CanonicalAlert,
   CanonicalCalendarEvent,
   CanonicalResponseStatus,
+  CompositeEvent,
   SyncState,
 } from '@lifeos/calendar'
 import {
@@ -21,6 +22,7 @@ import type { CanonicalTask } from '@/types/todo'
 import { AlertSelector } from '@/components/AlertSelector'
 import { AttendeeList } from '@/components/AttendeeList'
 import type { CalendarsById } from '@lifeos/calendar'
+import { CompositeMembershipPanel } from '@/components/CompositeMembershipPanel'
 import { EmptyState } from '@/components/EmptyState'
 import { MeetingBriefingModal } from '@/components/contacts/MeetingBriefingModal'
 
@@ -36,6 +38,7 @@ interface CalendarSidebarProps {
   onAlertChange: (alert: CanonicalAlert | null) => void
   onRetryWriteback: () => void
   onConnectGoogle: () => void
+  compositeByEventId?: Map<string, CompositeEvent>
   onEdit: () => void
   onDelete: () => void
 }
@@ -133,6 +136,7 @@ export function CalendarSidebar({
   contacts = [],
   tasks = [],
   selectedDayKey,
+  compositeByEventId = new Map(),
   onRSVP,
   onAlertChange,
   onRetryWriteback,
@@ -276,6 +280,13 @@ export function CalendarSidebar({
           isOffline={!isOnline}
           isPending={selectedEvent.syncState === 'pending_writeback'}
           onRSVP={(status) => onRSVP(selectedEvent.canonicalEventId, status)}
+        />
+      )}
+
+      {/* Composite Membership Panel */}
+      {compositeByEventId.has(selectedEvent.canonicalEventId) && (
+        <CompositeMembershipPanel
+          composite={compositeByEventId.get(selectedEvent.canonicalEventId)!}
         />
       )}
 

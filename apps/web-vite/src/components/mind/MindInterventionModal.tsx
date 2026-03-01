@@ -6,14 +6,18 @@
  */
 
 import { useState } from 'react'
+import { createLogger } from '@lifeos/core'
 import { FeelingSelector } from './FeelingSelector'
 import { InterventionSelector } from './InterventionSelector'
 import { InterventionRunner } from './InterventionRunner'
 import { SessionComplete } from './SessionComplete'
+import { Modal } from '@/components/ui/Modal'
 import { useMindInterventions } from '@/hooks/useMindInterventions'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
 import { useAuth } from '@/hooks/useAuth'
 import type { FeelingState, CanonicalInterventionPreset, SessionId } from '@lifeos/mind'
+
+const logger = createLogger('MindInterventionModal')
 
 interface MindInterventionModalProps {
   isOpen: boolean
@@ -51,10 +55,6 @@ export function MindInterventionModal({
   const { createTask } = useTodoOperations({ userId })
   const [flowState, setFlowState] = useState<FlowState>({ step: 'feeling' })
 
-  if (!isOpen) {
-    return null
-  }
-
   const handleFeelingSelect = (feeling: FeelingState) => {
     setFlowState({ step: 'selector', feeling })
   }
@@ -79,7 +79,7 @@ export function MindInterventionModal({
         sessionId: session.sessionId,
       })
     } catch (error) {
-      console.error('Failed to start intervention session:', error)
+      logger.error('Failed to start intervention session:', error)
     }
   }
 
@@ -130,7 +130,7 @@ export function MindInterventionModal({
       setFlowState({ step: 'feeling' })
       onClose()
     } catch (error) {
-      console.error('Failed to complete intervention session:', error)
+      logger.error('Failed to complete intervention session:', error)
     }
   }
 
@@ -145,29 +145,36 @@ export function MindInterventionModal({
     }
   }
 
+  const modalTitle =
+    flowState.step === 'feeling'
+      ? 'How Are You Feeling?'
+      : flowState.step === 'selector'
+        ? 'Choose an Intervention'
+        : flowState.step === 'running'
+          ? 'Mind Reset'
+          : 'Session Complete'
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content mind-intervention-modal" onClick={(e) => e.stopPropagation()}>
-        {flowState.step === 'feeling' && <FeelingSelector onSelect={handleFeelingSelect} />}
+    <Modal open={isOpen} onClose={handleCancel} title={modalTitle} size="md" className="mind-intervention-modal">
+      {flowState.step === 'feeling' && <FeelingSelector onSelect={handleFeelingSelect} />}
 
-        {flowState.step === 'selector' && (
-          <InterventionSelector
-            feeling={flowState.feeling}
-            onSelect={handleInterventionSelect}
-            onBack={handleBack}
-          />
-        )}
+      {flowState.step === 'selector' && (
+        <InterventionSelector
+          feeling={flowState.feeling}
+          onSelect={handleInterventionSelect}
+          onBack={handleBack}
+        />
+      )}
 
-        {flowState.step === 'running' && (
-          <InterventionRunner
-            intervention={flowState.intervention}
-            onComplete={handleInterventionComplete}
-            onCancel={handleCancel}
-          />
-        )}
+      {flowState.step === 'running' && (
+        <InterventionRunner
+          intervention={flowState.intervention}
+          onComplete={handleInterventionComplete}
+          onCancel={handleCancel}
+        />
+      )}
 
-        {flowState.step === 'complete' && <SessionComplete onFinish={handleSessionFinish} />}
-      </div>
-    </div>
+      {flowState.step === 'complete' && <SessionComplete onFinish={handleSessionFinish} />}
+    </Modal>
   )
 }

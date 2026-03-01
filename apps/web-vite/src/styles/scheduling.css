@@ -121,7 +121,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
-  padding: var(--space-4) 0;
+  max-width: 520px;
 }
 
 .scheduling-link-form .form-section {
@@ -130,33 +130,22 @@
   gap: var(--space-3);
 }
 
-.scheduling-link-form .form-section > label {
-  font-weight: 600;
-  font-size: var(--text-sm);
-}
-
-.scheduling-link-form .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.scheduling-link-form .form-group > label {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
 .scheduling-link-form .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
+  max-width: 360px;
+}
+
+.scheduling-link-form .form-row .ui-input[type='number'] {
+  max-width: 140px;
 }
 
 .scheduling-link-form__slug-preview {
   display: flex;
   align-items: center;
   gap: 0;
+  max-width: 400px;
 }
 
 .scheduling-link-form__slug-prefix {
@@ -165,20 +154,19 @@
   font-family: var(--font-mono);
   white-space: nowrap;
   padding-right: var(--space-1);
+  flex-shrink: 0;
+}
+
+.scheduling-link-form__slug-preview .ui-input {
+  font-size: var(--text-sm);
+  min-height: 34px;
+  padding: var(--space-1) var(--space-2);
 }
 
 .scheduling-link-form__durations {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-}
-
-.scheduling-link-form__checkbox {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  cursor: pointer;
-  font-size: var(--text-sm);
 }
 
 .scheduling-link-form__color-input {
@@ -188,21 +176,28 @@
 }
 
 .scheduling-link-form__color-input input[type='color'] {
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm, 4px);
-  padding: 0;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 2px;
   cursor: pointer;
-  background: none;
+  background: var(--background-tertiary);
 }
 
-.scheduling-link-form__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--border);
+.scheduling-link-form__color-input .ui-input {
+  flex: 1;
+  max-width: 120px;
+}
+
+.scheduling-link-form .ui-textarea {
+  min-height: 60px;
+  max-width: 520px;
+}
+
+.scheduling-link-form .ui-input {
+  max-width: 520px;
 }
 
 /* ── Duration Chips (shared between form and booking page) ── */
@@ -277,13 +272,10 @@
   font-size: var(--text-xs);
 }
 
-.time-window-input input[type='time'] {
+.time-window-input .ui-input[type='time'] {
+  min-height: 32px;
   padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm, 4px);
   font-size: var(--text-sm);
-  background: var(--background);
-  color: var(--foreground);
 }
 
 /* ── Public Booking Page ── */

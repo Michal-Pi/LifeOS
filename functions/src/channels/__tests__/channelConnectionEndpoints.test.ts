@@ -123,6 +123,18 @@ describe('channelConnectionEndpoints', () => {
       expect(res.jsonData.error).toContain('liAtCookie')
     })
 
+    it('returns 400 when linkedin csrf token is missing', async () => {
+      const req = createMockRequest({
+        uid: 'user1',
+        source: 'linkedin',
+        credentials: { liAtCookie: 'some-cookie' },
+      })
+      const res = createMockResponse()
+      await (channelConnectionCreate as any)(req, res)
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(res.jsonData.error).toContain('CSRF')
+    })
+
     it('returns 400 when telegram token is missing', async () => {
       const req = createMockRequest({
         uid: 'user1',
@@ -184,7 +196,7 @@ describe('channelConnectionEndpoints', () => {
       const req = createMockRequest({
         uid: 'user1',
         source: 'linkedin',
-        credentials: { liAtCookie: 'expired-cookie' },
+        credentials: { liAtCookie: 'expired-cookie', csrfToken: 'ajax:fake' },
       })
       const res = createMockResponse()
       await (channelConnectionCreate as any)(req, res)

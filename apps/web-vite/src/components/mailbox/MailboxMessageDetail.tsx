@@ -1,38 +1,44 @@
 /**
  * MailboxMessageDetail Component
  *
- * Right panel of the Mailbox page. Shows the full message content,
- * AI summary, thread context, draft reply with tone selection,
- * extracted action items, and action buttons (reply, dismiss, open original).
+ * Inline reply view for the Mailbox detail panel. Layout from top to bottom:
+ * 1. TipTap toolbar (sticky) — controls the reply editor
+ * 2. Message metadata (source, triage, sender, subject, time)
+ * 3. AI Summary — collapsible
+ * 4. Message body — collapsible
+ * 5. Reply mode toggle (Reply / Reply All) + editable recipient chips
+ * 6. Reply editor — inline TipTap, populated by AI draft or typed manually
+ * 7. Action buttons — Send Reply, Save Draft, Open Original, Extract Actions, Archive
+ *
+ * IMPORTANT: Render with key={message.messageId} so useMailboxComposer re-initializes per message.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { formatDistanceToNow, format } from 'date-fns'
+import { EditorContent } from '@tiptap/react'
+import type { JSONContent } from '@tiptap/core'
 import type { PrioritizedMessage, MessageSource, TriageCategory } from '@lifeos/agents'
 import { TRIAGE_LABELS } from '@lifeos/agents'
 import {
   generateContextualDraft,
   extractActionItems,
   type DraftReplyTone,
-  type DraftReplyResult,
   type ExtractedAction,
 } from '@/lib/mailboxAITools'
+import { TipTapMenuBar } from '@/components/editor/TipTapMenuBar'
+import { useMailboxMessageBody } from '@/hooks/useMailboxMessageBody'
+import { useMailboxReplyEditor } from '@/hooks/useMailboxReplyEditor'
+import { useMailboxComposer } from '@/hooks/useMailboxComposer'
+import { RecipientChipInput } from '@/components/mailbox/RecipientChipInput'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import '@/styles/components/MailboxMessageDetail.css'
 
 interface MailboxMessageDetailProps {
   message: PrioritizedMessage
+  threadMessages?: PrioritizedMessage[]
   onDismiss: (messageId: string) => void
-  onReply: (message: PrioritizedMessage) => void
+  onReplySent?: (messageId: string) => void
   onOverrideTriage?: (messageId: string, category: TriageCategory) => Promise<void>
-  onOpenComposerWithDraft?: (draft: {
-    inReplyTo: string
-    threadId?: string
-    recipientId: string
-    recipientName: string
-    subject: string
-    body: string
-    source: MessageSource
-  }) => void
   onCreateTask?: (data: {
     title: string
     dueDate?: string
@@ -76,10 +82,10 @@ const ACTION_TYPE_LABELS: Record<ExtractedAction['type'], string> = {
 
 export function MailboxMessageDetail({
   message,
+  threadMessages,
   onDismiss,
-  onReply,
+  onReplySent,
   onOverrideTriage,
-  onOpenComposerWithDraft,
   onCreateTask,
   onCreateEvent,
   onSetFollowUp,
@@ -88,96 +94,85 @@ export function MailboxMessageDetail({
   const timeAgo = formatDistanceToNow(new Date(message.receivedAtMs), { addSuffix: true })
   const fullDate = format(new Date(message.receivedAtMs), 'PPpp')
 
-  // Draft reply state
+  // ---- Reply mode (Reply vs Reply All) ----
+  const [replyAll, setReplyAll] = useState(false)
+  const isEmail = message.source === 'gmail' || message.source === 'linkedin'
+  const hasMultipleRecipients =
+    (message.toRecipients && message.toRecipients.length > 1) ||
+    (message.ccRecipients && message.ccRecipients.length > 0)
+
+  // ---- Composer state (draft save/send) ----
+  const composer = useMailboxComposer({ replyTo: message, replyAll })
+
+  // ---- Reply editor ----
+  const handleEditorChange = useCallback(
+    (_json: JSONContent, text: string) => {
+      composer.setBody(text)
+    },
+    [composer]
+  )
+
+  const { editor, setContent, clearContent } = useMailboxReplyEditor({
+    onChange: handleEditorChange,
+  })
+
+  // ---- Message body ----
+  const {
+    body: fullBody,
+    loading: bodyLoading,
+    error: bodyError,
+    retry: retryBody,
+  } = useMailboxMessageBody(message.messageId, message.accountId, message.source)
+
+  // ---- AI draft generation ----
   const [generating, setGenerating] = useState(false)
-  const [draftResult, setDraftResult] = useState<DraftReplyResult | null>(null)
   const [draftError, setDraftError] = useState<string | null>(null)
   const [selectedTone, setSelectedTone] = useState<DraftReplyTone>('professional')
 
-  // Action extraction state with cache
+  const handleGenerateDraft = useCallback(async () => {
+    setGenerating(true)
+    setDraftError(null)
+    try {
+      const body = fullBody || message.snippet
+      if (!body) {
+        setDraftError('Message body not available yet. Please wait for it to load.')
+        return
+      }
+      const currentText = composer.state.body.trim()
+      const result = await generateContextualDraft({
+        messageId: message.messageId,
+        messageBody: body,
+        senderName: message.sender,
+        tone: selectedTone,
+        userInstructions: currentText || undefined,
+        messageSource: message.source,
+      })
+
+      if (result.data?.body) {
+        const htmlContent = result.data.body
+          .split('\n')
+          .map((line: string) => (line.trim() ? `<p>${line}</p>` : '<p><br></p>'))
+          .join('')
+        setContent(htmlContent)
+        composer.setBody(result.data.body)
+        if (result.data.subject) {
+          composer.setSubject(result.data.subject)
+        }
+      }
+    } catch {
+      setDraftError('Failed to generate draft. Try again.')
+    } finally {
+      setGenerating(false)
+    }
+  }, [message, fullBody, selectedTone, setContent, composer])
+
+  // ---- Action extraction ----
   const [actions, setActions] = useState<ExtractedAction[]>([])
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
   const actionsCache = useRef<Map<string, ExtractedAction[]>>(new Map())
 
-  // Reset state when message changes
-  useEffect(() => {
-    setDraftResult(null)
-    setDraftError(null)
-    setGenerating(false)
-
-    // Use cached actions if available
-    const cached = actionsCache.current.get(message.messageId)
-    if (cached) {
-      setActions(cached)
-      setExtracting(false)
-      setExtractError(null)
-      return
-    }
-
-    // Extract actions for new message
-    setActions([])
-    setExtractError(null)
-    setExtracting(true)
-    let cancelled = false
-
-    void extractActionItems(message.messageId)
-      .then((result) => {
-        if (!cancelled) {
-          setActions(result.data)
-          actionsCache.current.set(message.messageId, result.data)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setExtractError('Failed to extract actions')
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setExtracting(false)
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [message.messageId])
-
-  const handleGenerateDraft = useCallback(
-    async (tone: DraftReplyTone) => {
-      setSelectedTone(tone)
-      setGenerating(true)
-      setDraftError(null)
-      try {
-        const result = await generateContextualDraft({
-          messageId: message.messageId,
-          tone,
-        })
-        setDraftResult(result.data)
-
-        // Auto-open composer if handler is provided
-        if (onOpenComposerWithDraft && result.data) {
-          onOpenComposerWithDraft({
-            inReplyTo: message.messageId,
-            threadId: message.threadId,
-            recipientId: message.senderEmail || message.sender,
-            recipientName: message.sender,
-            subject: result.data.subject,
-            body: result.data.body,
-            source: message.source,
-          })
-        }
-      } catch {
-        setDraftError('Failed to generate draft. Click a tone to retry.')
-      } finally {
-        setGenerating(false)
-      }
-    },
-    [message, onOpenComposerWithDraft]
-  )
-
-  const handleRetryExtract = useCallback(() => {
+  const handleExtractActions = useCallback(() => {
     setExtractError(null)
     setExtracting(true)
 
@@ -226,22 +221,33 @@ export function MailboxMessageDetail({
     [message, onCreateTask, onCreateEvent, onSetFollowUp, onEditContact]
   )
 
+  // ---- Send reply ----
+  const handleSend = useCallback(async () => {
+    const success = await composer.send()
+    if (success) {
+      clearContent()
+      onReplySent?.(message.messageId)
+    }
+  }, [composer, clearContent, onReplySent, message.messageId])
+
   const triageCategory = message.triageCategoryOverride || message.triageCategory
 
   return (
     <div className="mailbox-detail">
-      {/* Header */}
+      {/* 1. Sticky TipTap toolbar */}
+      {editor && (
+        <div className="mailbox-detail__toolbar">
+          <TipTapMenuBar editor={editor} />
+        </div>
+      )}
+
+      {/* 2. Message metadata */}
       <div className="mailbox-detail__header">
         <div className="mailbox-detail__header-top">
           <div className={`mailbox-detail__source mailbox-detail__source--${message.source}`}>
             <span className="mailbox-detail__source-icon">{SOURCE_ICONS[message.source]}</span>
             <span className="mailbox-detail__source-label">{SOURCE_LABELS[message.source]}</span>
           </div>
-          <span
-            className={`mailbox-detail__priority mailbox-detail__priority--${message.priority}`}
-          >
-            {message.priority}
-          </span>
           {triageCategory && (
             <span className={`triage-badge triage-badge--${triageCategory}`}>
               {TRIAGE_LABELS[triageCategory]}
@@ -252,7 +258,6 @@ export function MailboxMessageDetail({
           )}
         </div>
 
-        {/* Triage override selector */}
         {onOverrideTriage && (
           <div className="mailbox-detail__triage-override">
             <span className="mailbox-detail__triage-label">Triage:</span>
@@ -284,55 +289,179 @@ export function MailboxMessageDetail({
         </div>
       </div>
 
-      {/* AI Summary */}
-      <div className="mailbox-detail__ai-section">
-        <div className="mailbox-detail__ai-label">AI Summary</div>
-        <p className="mailbox-detail__ai-summary">{message.aiSummary}</p>
-        {message.requiresFollowUp && message.followUpReason && (
-          <div className="mailbox-detail__followup">
-            <span className="mailbox-detail__followup-label">Follow-up needed:</span>
-            <span className="mailbox-detail__followup-reason">{message.followUpReason}</span>
+      {/* 3. AI Summary — collapsible */}
+      <details className="mailbox-detail__collapsible">
+        <summary className="mailbox-detail__collapsible-header">
+          <span>AI Summary</span>
+        </summary>
+        <div className="mailbox-detail__collapsible-body">
+          <p className="mailbox-detail__ai-summary">{message.aiSummary}</p>
+          {message.requiresFollowUp && message.followUpReason && (
+            <div className="mailbox-detail__followup">
+              <span className="mailbox-detail__followup-label">Follow-up needed:</span>
+              <span className="mailbox-detail__followup-reason">{message.followUpReason}</span>
+            </div>
+          )}
+        </div>
+      </details>
+
+      {/* 4. Thread / Message body — collapsible per message */}
+      {(() => {
+        const threadMsgs = threadMessages && threadMessages.length > 1
+          ? [...threadMessages].sort((a, b) => a.receivedAtMs - b.receivedAtMs)
+          : null
+
+        if (threadMsgs) {
+          return (
+            <div className="mailbox-detail__thread">
+              {threadMsgs.map((msg) => (
+                <details key={msg.messageId} className="mailbox-detail__collapsible" open={msg.messageId === message.messageId}>
+                  <summary className="mailbox-detail__collapsible-header">
+                    <span className="mailbox-detail__thread-sender">{msg.sender}</span>
+                    <span className="mailbox-detail__body-snippet">
+                      {(msg.snippet || '').slice(0, 120)}
+                      {(msg.snippet || '').length > 120 ? '...' : ''}
+                    </span>
+                  </summary>
+                  <div className="mailbox-detail__collapsible-body">
+                    {msg.messageId === message.messageId ? (
+                      <>
+                        {bodyLoading && <p className="mailbox-detail__body-loading">Loading full message...</p>}
+                        {bodyError && !bodyLoading && (
+                          <div className="mailbox-detail__body-error">
+                            <p className="mailbox-detail__snippet">{msg.snippet}</p>
+                            <button type="button" className="ghost-button small" onClick={retryBody}>
+                              Load full message
+                            </button>
+                          </div>
+                        )}
+                        {!bodyLoading && !bodyError && fullBody ? (
+                          <pre className="mailbox-detail__full-body">{fullBody}</pre>
+                        ) : (
+                          !bodyLoading &&
+                          !bodyError && <p className="mailbox-detail__snippet">{msg.snippet}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="mailbox-detail__snippet">{msg.snippet}</p>
+                    )}
+                  </div>
+                </details>
+              ))}
+            </div>
+          )
+        }
+
+        // Single message (no thread)
+        return (
+          <details className="mailbox-detail__collapsible">
+            <summary className="mailbox-detail__collapsible-header">
+              <span className="mailbox-detail__thread-sender">{message.sender}</span>
+              <span className="mailbox-detail__body-snippet">
+                {(message.snippet || '').slice(0, 120)}
+                {(message.snippet || '').length > 120 ? '...' : ''}
+              </span>
+            </summary>
+            <div className="mailbox-detail__collapsible-body">
+              {bodyLoading && <p className="mailbox-detail__body-loading">Loading full message...</p>}
+              {bodyError && !bodyLoading && (
+                <div className="mailbox-detail__body-error">
+                  <p className="mailbox-detail__snippet">{message.snippet}</p>
+                  <button type="button" className="ghost-button small" onClick={retryBody}>
+                    Load full message
+                  </button>
+                </div>
+              )}
+              {!bodyLoading && !bodyError && fullBody ? (
+                <pre className="mailbox-detail__full-body">{fullBody}</pre>
+              ) : (
+                !bodyLoading &&
+                !bodyError && <p className="mailbox-detail__snippet">{message.snippet}</p>
+              )}
+            </div>
+          </details>
+        )
+      })()}
+
+      {/* 5. Reply mode toggle + editable recipients */}
+      {isEmail && hasMultipleRecipients && (
+        <div className="mailbox-detail__reply-mode">
+          <button
+            type="button"
+            className={`mailbox-detail__reply-mode-btn ${!replyAll ? 'mailbox-detail__reply-mode-btn--active' : ''}`}
+            onClick={() => setReplyAll(false)}
+          >
+            Reply
+          </button>
+          <button
+            type="button"
+            className={`mailbox-detail__reply-mode-btn ${replyAll ? 'mailbox-detail__reply-mode-btn--active' : ''}`}
+            onClick={() => setReplyAll(true)}
+          >
+            Reply All
+          </button>
+        </div>
+      )}
+
+      {/* Editable recipient chips for reply */}
+      <div className="mailbox-detail__reply-recipients">
+        <div className="mailbox-detail__reply-recipient-row">
+          <span className="mailbox-detail__reply-recipient-label">To</span>
+          <RecipientChipInput
+            recipients={composer.state.toRecipients}
+            onChange={composer.setToRecipients}
+            channel={message.source}
+            placeholder="Add recipients..."
+          />
+        </div>
+        {replyAll && composer.state.ccRecipients.length > 0 && (
+          <div className="mailbox-detail__reply-recipient-row">
+            <span className="mailbox-detail__reply-recipient-label">CC</span>
+            <RecipientChipInput
+              recipients={composer.state.ccRecipients}
+              onChange={composer.setCcRecipients}
+              channel={message.source}
+              placeholder="Add CC recipients..."
+            />
           </div>
         )}
       </div>
 
-      {/* Message content (snippet) */}
-      <div className="mailbox-detail__body">
-        <p className="mailbox-detail__snippet">{message.snippet}</p>
-      </div>
-
-      {/* Draft Reply section */}
-      <div className="draft-reply-actions">
-        <span className="draft-reply-label">Draft Reply</span>
-        <div className="draft-reply-tones">
-          {(['professional', 'friendly', 'brief'] as const).map((tone) => (
-            <button
-              key={tone}
-              type="button"
-              className={`tone-button ${selectedTone === tone && draftResult ? 'tone-button--active' : ''}`}
-              onClick={() => void handleGenerateDraft(tone)}
-              disabled={generating}
-            >
-              {tone.charAt(0).toUpperCase() + tone.slice(1)}
-            </button>
-          ))}
-        </div>
-        {generating && <span className="draft-reply-generating">Generating...</span>}
-        {draftError && !generating && <span className="draft-reply-error">{draftError}</span>}
-        {draftResult && !generating && (
-          <div className="draft-reply-preview">
-            {draftResult.subject && (
-              <div className="draft-reply-preview__subject">
-                <strong>Subject:</strong> {draftResult.subject}
-              </div>
-            )}
-            <p className="draft-reply-preview__body">{draftResult.body}</p>
-            {draftResult.suggestedFollowUp && (
-              <p className="draft-reply-preview__followup">
-                Suggested follow-up: {draftResult.suggestedFollowUp}
-              </p>
-            )}
+      {/* 6. Inline reply area */}
+      <div className="mailbox-detail__reply-area">
+        {editor && (
+          <div className="mailbox-detail__editor-wrapper">
+            <EditorContent editor={editor} />
           </div>
+        )}
+
+        <div className="draft-reply-actions">
+          <SegmentedControl
+            value={selectedTone}
+            onChange={(v) => setSelectedTone(v as DraftReplyTone)}
+            options={[
+              { value: 'professional', label: 'Professional' },
+              { value: 'friendly', label: 'Friendly' },
+              { value: 'brief', label: 'Brief' },
+            ]}
+          />
+
+          <button
+            type="button"
+            className="primary-button small"
+            onClick={() => void handleGenerateDraft()}
+            disabled={generating}
+          >
+            {generating ? 'Drafting...' : 'Draft Reply'}
+          </button>
+        </div>
+
+        {draftError && !generating && (
+          <span className="draft-reply-error">{draftError}</span>
+        )}
+
+        {composer.error && (
+          <div className="mailbox-detail__composer-error">{composer.error}</div>
         )}
       </div>
 
@@ -345,7 +474,7 @@ export function MailboxMessageDetail({
       {extractError && !extracting && (
         <div className="action-panel">
           <span className="action-panel__error">{extractError}</span>
-          <button type="button" className="ghost-button small" onClick={handleRetryExtract}>
+          <button type="button" className="ghost-button small" onClick={handleExtractActions}>
             Retry
           </button>
         </div>
@@ -374,17 +503,30 @@ export function MailboxMessageDetail({
         </div>
       )}
 
-      {/* Actions bar */}
+      {/* 7. Action buttons */}
       <div className="mailbox-detail__actions">
-        <button type="button" className="primary-button small" onClick={() => onReply(message)}>
-          Reply
+        <button
+          type="button"
+          className="primary-button small"
+          onClick={() => void handleSend()}
+          disabled={composer.isSending || !composer.state.body.trim()}
+        >
+          {composer.isSending ? 'Sending...' : replyAll ? 'Send Reply All' : 'Send Reply'}
+        </button>
+        <button
+          type="button"
+          className="ghost-button small"
+          onClick={() => void composer.saveDraft()}
+          disabled={composer.isSaving}
+        >
+          {composer.isSaving ? 'Saving...' : 'Save Draft'}
         </button>
         {message.originalUrl && (
           <a
             href={message.originalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="ghost-button small"
+            className="mailbox-detail__action-link ghost-button small"
           >
             Open Original
           </a>
@@ -392,9 +534,17 @@ export function MailboxMessageDetail({
         <button
           type="button"
           className="ghost-button small"
+          onClick={handleExtractActions}
+          disabled={extracting}
+        >
+          {extracting ? 'Extracting...' : 'Extract Actions'}
+        </button>
+        <button
+          type="button"
+          className="ghost-button small"
           onClick={() => void onDismiss(message.messageId)}
         >
-          Dismiss
+          Archive
         </button>
       </div>
     </div>

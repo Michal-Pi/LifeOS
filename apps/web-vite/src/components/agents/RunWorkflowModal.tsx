@@ -743,7 +743,7 @@ export function RunWorkflowModal({
               workflowId={workflow.workflowId}
               runId={resumeRunId}
               onOpenFullQueue={() => {
-                navigate(`/agents/research?workflowId=${workflow.workflowId}`)
+                navigate(`/workflows/${workflow.workflowId}`)
               }}
             />
           )}

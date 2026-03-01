@@ -139,19 +139,20 @@ function renderPage() {
 }
 
 describe('SettingsPage', () => {
-  it('renders sidebar with 7 navigation links', () => {
+  it('renders sidebar with 8 navigation links', () => {
     renderPage()
     const sidebar = document.querySelector('.settings-sidebar')
     expect(sidebar).toBeInTheDocument()
     const links = sidebar!.querySelectorAll('.settings-sidebar__link')
-    expect(links).toHaveLength(7)
+    expect(links).toHaveLength(8)
     expect(links[0].textContent).toBe('General')
     expect(links[1].textContent).toBe('AI Providers')
     expect(links[2].textContent).toBe('Search Tools')
     expect(links[3].textContent).toBe('Calendar')
-    expect(links[4].textContent).toBe('Channels')
-    expect(links[5].textContent).toBe('Quotes')
-    expect(links[6].textContent).toBe('System')
+    expect(links[4].textContent).toBe('Scheduling')
+    expect(links[5].textContent).toBe('Channels')
+    expect(links[6].textContent).toBe('Quotes')
+    expect(links[7].textContent).toBe('System')
   })
 
   it('highlights active section in sidebar', () => {

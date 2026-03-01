@@ -16,6 +16,11 @@ import { onRequest } from 'firebase-functions/v2/https'
 import type { MessageSource, ChannelAuthMethod } from '@lifeos/agents'
 import { channelConnectionRef } from '../slack/paths.js'
 import { randomUUID } from 'crypto'
+import {
+  getLinkedInConnections,
+  searchLinkedInProfiles,
+  fetchLinkedInProfile,
+} from './linkedinAdapter.js'
 
 const log = createLogger('ChannelConnection')
 
@@ -67,7 +72,9 @@ async function validateLinkedIn(
   csrfToken?: string
 ): Promise<{ displayName: string }> {
   const headers: Record<string, string> = {
-    Cookie: `li_at=${liAtCookie}`,
+    Cookie: csrfToken
+      ? `li_at=${liAtCookie}; JSESSIONID=${csrfToken}`
+      : `li_at=${liAtCookie}`,
     Accept: 'application/json',
   }
   if (csrfToken) {
@@ -77,9 +84,23 @@ async function validateLinkedIn(
   const res = await fetch(`${VOYAGER_BASE}/me`, { headers })
 
   if (res.status === 401 || res.status === 403) {
-    throw new Error(
-      'LinkedIn session cookie is invalid or expired. Please re-enter your li_at cookie.'
-    )
+    let bodySnippet: string | undefined
+    try {
+      const text = await res.text()
+      bodySnippet = text.slice(0, 200)
+    } catch {
+      /* ignore */
+    }
+    const isCsrfFailure =
+      res.status === 403 && bodySnippet?.includes('CSRF check failed')
+    const err = new Error(
+      isCsrfFailure
+        ? 'LinkedIn requires a CSRF token. Add your JSESSIONID cookie value (Application > Cookies > linkedin.com > JSESSIONID) to the CSRF field.'
+        : 'LinkedIn session cookie is invalid or expired. Please re-enter your li_at cookie.'
+    ) as Error & { linkedInStatus?: number; linkedInBody?: string }
+    err.linkedInStatus = res.status
+    if (bodySnippet) err.linkedInBody = bodySnippet
+    throw err
   }
   if (!res.ok) {
     throw new Error(`LinkedIn API returned status ${res.status}`)
@@ -173,6 +194,13 @@ export const channelConnectionCreate = onRequest(
             response.status(400).json({ error: 'Missing required credential: liAtCookie' })
             return
           }
+          if (!credentials.csrfToken?.trim()) {
+            response.status(400).json({
+              error:
+                'LinkedIn requires a CSRF token. Copy the JSESSIONID cookie value from Application > Cookies > linkedin.com and paste it in the CSRF field.',
+            })
+            return
+          }
           authMethod = 'cookie'
           const linkedinResult = await validateLinkedIn(
             credentials.liAtCookie,
@@ -213,13 +241,18 @@ export const channelConnectionCreate = onRequest(
           return
       }
     } catch (err) {
+      const e = err as Error & { linkedInStatus?: number; linkedInBody?: string }
       log.warn('Connection validation failed', {
         source: src,
-        error: (err as Error).message,
+        error: e.message,
+        linkedInStatus: e.linkedInStatus,
       })
-      response.status(400).json({
-        error: (err as Error).message,
-      })
+      const payload: { error: string; linkedInStatus?: number; linkedInBody?: string } = {
+        error: e.message,
+      }
+      if (e.linkedInStatus != null) payload.linkedInStatus = e.linkedInStatus
+      if (e.linkedInBody) payload.linkedInBody = e.linkedInBody
+      response.status(400).json(payload)
       return
     }
 
@@ -379,6 +412,85 @@ export const channelConnectionTest = onRequest(
       })
     } catch (err) {
       log.error('Failed to test channel connection', err)
+      response.status(500).json({ error: (err as Error).message })
+    }
+  }
+)
+
+/**
+ * Search LinkedIn profiles or fetch a full profile by public identifier.
+ * POST /linkedinProfileSearch
+ * Body: { uid, query?, publicIdentifier? }
+ *   - If `publicIdentifier` is provided: fetches full profile data
+ *   - If `query` is provided: searches for matching profiles
+ */
+export const linkedinProfileSearch = onRequest(
+  { ...FUNCTION_CONFIG.http, cors: true },
+  async (request, response) => {
+    const { uid, query, publicIdentifier } = request.body ?? {}
+
+    if (!uid) {
+      response.status(400).json({ error: 'Missing required field: uid' })
+      return
+    }
+
+    if (!query && !publicIdentifier) {
+      response.status(400).json({ error: 'Provide either query or publicIdentifier' })
+      return
+    }
+
+    if (!(await verifyAuth(request, response, uid))) return
+
+    try {
+      // Find the user's active LinkedIn connection
+      const connections = await getLinkedInConnections(uid)
+      if (connections.length === 0) {
+        response.status(400).json({
+          error: 'No active LinkedIn connection found. Connect LinkedIn in Settings first.',
+        })
+        return
+      }
+
+      const conn = connections[0]
+      if (!conn.liAtCookie) {
+        response.status(400).json({ error: 'LinkedIn credentials are missing or expired.' })
+        return
+      }
+
+      if (publicIdentifier) {
+        // Fetch full profile
+        const profile = await fetchLinkedInProfile(
+          conn.liAtCookie,
+          conn.csrfToken,
+          publicIdentifier
+        )
+
+        log.info('LinkedIn profile fetched', {
+          userId: uid,
+          publicIdentifier,
+          positionsCount: profile.positions?.length ?? 0,
+        })
+
+        response.json({ profile })
+      } else {
+        // Search profiles
+        const results = await searchLinkedInProfiles(
+          conn.liAtCookie,
+          conn.csrfToken,
+          query!,
+          8
+        )
+
+        log.info('LinkedIn profile search', {
+          userId: uid,
+          query,
+          resultCount: results.length,
+        })
+
+        response.json({ results })
+      }
+    } catch (err) {
+      log.error('LinkedIn profile search/fetch failed', err)
       response.status(500).json({ error: (err as Error).message })
     }
   }

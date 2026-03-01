@@ -26,7 +26,7 @@ import {
 import { listAvailableChannels } from './slackApi.js'
 import { NoAPIKeyConfiguredError } from '../agents/providerKeys.js'
 import type { PrioritizedMessage as StoredMessage } from '@lifeos/agents'
-import { runUnifiedSync } from '../channels/unifiedSync.js'
+import { runUnifiedSync, backfillChannel } from '../channels/unifiedSync.js'
 
 const log = createLogger('SlackEndpoints')
 
@@ -537,6 +537,48 @@ export const mailboxSync = onRequest(
 )
 
 /**
+ * Fetch a single message body on demand (when not stored during sync).
+ * POST /fetchMessageBody
+ * Body: { uid: string, messageId: string, accountId: string, source: string }
+ */
+export const fetchMessageBody = onRequest(
+  {
+    ...FUNCTION_CONFIG.http,
+    cors: true,
+    secrets: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT_URI'],
+  },
+  async (request, response) => {
+    const uid = String(request.body?.uid ?? '')
+    const messageId = String(request.body?.messageId ?? '')
+    const accountId = String(request.body?.accountId ?? '')
+    const source = String(request.body?.source ?? '')
+
+    if (!uid || !messageId || !accountId) {
+      response.status(400).json({ error: 'Missing uid, messageId, or accountId' })
+      return
+    }
+
+    if (!(await verifyAuth(request, response, uid))) {
+      return
+    }
+
+    try {
+      if (source === 'gmail') {
+        const { fetchSingleGmailBody } = await import('../channels/gmailAdapter.js')
+        const result = await fetchSingleGmailBody(uid, accountId, messageId)
+        response.json({ success: true, body: result.body, attachmentCount: result.attachmentCount })
+      } else {
+        // Non-Gmail bodies are stored during sync; nothing to fetch on demand
+        response.status(404).json({ error: 'Body not available for this source' })
+      }
+    } catch (err) {
+      log.error('fetchMessageBody error', err)
+      response.status(500).json({ error: (err as Error).message })
+    }
+  }
+)
+
+/**
  * Get prioritized messages for a user
  * GET /mailboxMessages?uid=xxx&limit=10&includeRead=false
  */
@@ -615,17 +657,20 @@ export const mailboxMarkRead = onRequest(
 )
 
 /**
- * Dismiss a message (remove from follow-up list)
+ * Archive a message — removes from mailbox and archives in Gmail.
+ * For Gmail: removes INBOX label (archive) and optionally applies a custom label.
+ * For other sources: marks as dismissed in Firestore.
  * POST /mailboxDismiss
- * Body: { uid, messageId }
+ * Body: { uid, messageId, labelName?: string }
  */
 export const mailboxDismiss = onRequest(
   {
     ...FUNCTION_CONFIG.http,
     cors: true,
+    secrets: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT_URI'],
   },
   async (request, response) => {
-    const { uid, messageId } = request.body ?? {}
+    const { uid, messageId, labelName } = request.body ?? {}
 
     if (!uid || !messageId) {
       response.status(400).json({ error: 'Missing uid or messageId' })
@@ -637,10 +682,36 @@ export const mailboxDismiss = onRequest(
     }
 
     try {
-      await prioritizedMessageRef(uid, messageId).update({
+      // Read message doc once (needed for archive + backfill source)
+      const msgRef = prioritizedMessageRef(uid, messageId)
+      const msgDoc = await msgRef.get()
+      const msgData = msgDoc.data() as
+        | { source?: string; accountId?: string; originalMessageId?: string }
+        | undefined
+
+      // Always archive Gmail messages (remove INBOX label, optionally add custom label)
+      if (msgData?.source === 'gmail' && msgData.accountId && msgData.originalMessageId) {
+        const { archiveGmailMessage } = await import('../channels/gmailAdapter.js')
+        await archiveGmailMessage(
+          uid,
+          msgData.accountId,
+          msgData.originalMessageId,
+          labelName || undefined
+        )
+      }
+
+      await msgRef.update({
         isDismissed: true,
         updatedAtMs: Date.now(),
       })
+
+      // Trigger backfill asynchronously (fire-and-forget) to replenish message pool
+      if (msgData?.source) {
+        backfillChannel(uid, msgData.source as import('@lifeos/agents').MessageSource).catch(
+          (err) => log.error('Backfill after dismiss failed', err)
+        )
+      }
+
       response.json({ success: true })
     } catch (err) {
       response.status(500).json({ error: (err as Error).message })

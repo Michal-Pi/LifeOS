@@ -1,46 +1,46 @@
 /**
  * MailboxPage
  *
- * Full-page unified mailbox with a list/detail split layout.
- * Left panel: MailboxMessageList (scrollable, filterable, AI top-10)
- * Right panel: MailboxMessageDetail (full message, actions, thread context)
+ * Two-panel layout: conversation feed on the left, inline detail on the right.
+ * Supports three folders: Inbox, Drafts, Outbox.
+ * Stats bar provides folder tabs + inbox filters (All, Today, etc.).
+ *
+ * Both replies and new messages use inline editors in the detail panel.
  *
  * Keyboard shortcuts:
- * - Cmd+N or 'c': Open composer
- * - Escape: Close detail panel or composer
- * - Arrow Up/Down, Enter, 'e', 'r': Delegated to MailboxMessageList
+ * - Cmd+N or 'c': Open inline composer (new message)
+ * - Escape: Close composer
+ * - Arrow Up/Down, Enter, 'e': Delegated to MailboxMessageList
  */
 
-import { useState, useCallback, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useMessageMailbox } from '@/hooks/useMessageMailbox'
-import { useAuth } from '@/hooks/useAuth'
+import { useMailboxDrafts } from '@/hooks/useMailboxDrafts'
+import { useMailboxOutbox } from '@/hooks/useMailboxOutbox'
+import { useMailboxOutboxList } from '@/hooks/useMailboxOutboxList'
 import { MailboxMessageList } from '@/components/mailbox/MailboxMessageList'
 import { MailboxMessageDetail } from '@/components/mailbox/MailboxMessageDetail'
-import { MailboxComposer } from '@/components/mailbox/MailboxComposer'
-import { MailboxDashboard } from '@/components/mailbox/MailboxDashboard'
+import { MailboxComposeInline } from '@/components/mailbox/MailboxComposeInline'
+import { MailboxFolderList } from '@/components/mailbox/MailboxFolderList'
+import { MailboxOutboxDetail } from '@/components/mailbox/MailboxOutboxDetail'
+import { MailboxStatsBar } from '@/components/mailbox/MailboxStatsBar'
+import type { MailboxFilter, MailboxFolder } from '@/components/mailbox/MailboxStatsBar'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { generateId } from '@/lib/idGenerator'
-import { saveTaskLocally } from '@/todos/offlineStore'
-import { enqueueTaskOp } from '@/todos/todoOutbox'
-import { createFirestoreTodoRepository } from '@/adapters/firestoreTodoRepository'
-import { doc, updateDoc } from 'firebase/firestore'
-import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
-import type { PrioritizedMessage, MessageSource } from '@lifeos/agents'
+import type { PrioritizedMessage, DraftMessage } from '@lifeos/agents'
+import type { MailboxSendOp } from '@/outbox/mailboxOutbox'
 import '@/styles/pages/MailboxPage.css'
 
-export function MailboxPage() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
-  const [selectedMessage, setSelectedMessage] = useState<PrioritizedMessage | null>(null)
-  const [channelFilter, setChannelFilter] = useState<MessageSource | 'all'>('all')
-  const [followUpOnly, setFollowUpOnly] = useState(false)
-  const [composerOpen, setComposerOpen] = useState(false)
-  const [replyTo, setReplyTo] = useState<PrioritizedMessage | null>(null)
-  const [composerInitialBody, setComposerInitialBody] = useState<string | undefined>()
-  const [focusedIndex, setFocusedIndex] = useState(0)
+const IMPORTANCE_THRESHOLD = 70
 
+export function MailboxPage() {
+  const [activeFolder, setActiveFolder] = useState<MailboxFolder>('inbox')
+  const [activeFilter, setActiveFilter] = useState<MailboxFilter>({ type: 'all' })
+  const [selectedMessage, setSelectedMessage] = useState<PrioritizedMessage | null>(null)
+  const [selectedDraft, setSelectedDraft] = useState<DraftMessage | null>(null)
+  const [selectedOutboxItem, setSelectedOutboxItem] = useState<MailboxSendOp | null>(null)
+  const [composerOpen, setComposerOpen] = useState(false)
+
+  // ---- Data hooks ----
   const {
     messages,
     loading,
@@ -52,144 +52,144 @@ export function MailboxPage() {
     overrideTriageCategory,
   } = useMessageMailbox({ maxMessages: 100, autoSync: true })
 
-  const handleSelectMessage = useCallback(
-    async (message: PrioritizedMessage) => {
-      setSelectedMessage(message)
-      if (!message.isRead) {
-        await markAsRead(message.messageId)
+  const { drafts, loading: draftsLoading, deleteDraft } = useMailboxDrafts()
+  useMailboxOutbox() // Start outbox worker so replies sent from this page are drained
+  const { items: outboxItems, loading: outboxLoading, retry: retryOutbox } = useMailboxOutboxList()
+
+  // ---- Inbox filtering ----
+  const filteredMessages = useMemo(() => {
+    switch (activeFilter.type) {
+      case 'today': {
+        const startOfToday = new Date()
+        startOfToday.setHours(0, 0, 0, 0)
+        const startMs = startOfToday.getTime()
+        return messages.filter((m) => m.receivedAtMs >= startMs)
       }
+      case 'top-priority':
+        return messages.filter((m) => (m.importanceScore ?? 0) >= IMPORTANCE_THRESHOLD)
+      case 'needs-reply':
+        return messages.filter((m) => m.requiresFollowUp && !m.isDismissed)
+      case 'unread':
+        return messages.filter((m) => !m.isRead)
+      case 'channel':
+        return messages.filter((m) => m.source === activeFilter.source)
+      case 'all':
+      default:
+        return messages
+    }
+  }, [messages, activeFilter])
+
+  // Keep selected message in sync with the latest data
+  const displayedMessage = useMemo(() => {
+    if (!selectedMessage) return null
+    return (
+      filteredMessages.find((m) => m.messageId === selectedMessage.messageId) ?? selectedMessage
+    )
+  }, [selectedMessage, filteredMessages])
+
+  // ---- Folder switching ----
+  const handleFolderChange = useCallback((folder: MailboxFolder) => {
+    setActiveFolder(folder)
+    setSelectedMessage(null)
+    setSelectedDraft(null)
+    setSelectedOutboxItem(null)
+    setComposerOpen(false)
+  }, [])
+
+  // ---- Inbox selection ----
+  const handleSelectMessage = useCallback((message: PrioritizedMessage) => {
+    setSelectedMessage(message)
+    setComposerOpen(false)
+  }, [])
+
+  // Auto-select the first conversation when none is selected (inbox only)
+  if (activeFolder === 'inbox' && !selectedMessage && !composerOpen && !loading && filteredMessages.length > 0) {
+    setSelectedMessage(filteredMessages[0])
+  }
+
+  // Mark selected message as read
+  useEffect(() => {
+    if (selectedMessage && !selectedMessage.isRead) {
+      void markAsRead(selectedMessage.messageId)
+    }
+  }, [selectedMessage, markAsRead])
+
+  const handleDismiss = useCallback(
+    async (messageId: string) => {
+      const msg = filteredMessages.find((m) => m.messageId === messageId)
+      await dismissMessage(messageId, msg?.source === 'gmail' ? { archive: true } : undefined)
+      if (selectedMessage?.messageId === messageId) {
+        const currentIdx = filteredMessages.findIndex((m) => m.messageId === messageId)
+        const remaining = filteredMessages.filter((m) => m.messageId !== messageId)
+        if (remaining.length > 0) {
+          const nextIdx = Math.min(currentIdx, remaining.length - 1)
+          setSelectedMessage(remaining[nextIdx])
+        } else {
+          setSelectedMessage(null)
+        }
+      }
+    },
+    [dismissMessage, filteredMessages, selectedMessage]
+  )
+
+  const handleReplySent = useCallback(
+    (messageId: string) => {
+      void markAsRead(messageId)
     },
     [markAsRead]
   )
 
-  const handleDismiss = useCallback(
-    async (messageId: string) => {
-      await dismissMessage(messageId)
-      if (selectedMessage?.messageId === messageId) {
-        setSelectedMessage(null)
-      }
-    },
-    [dismissMessage, selectedMessage]
-  )
-
-  const handleReply = useCallback((message: PrioritizedMessage) => {
-    setReplyTo(message)
-    setComposerInitialBody(undefined)
-    setComposerOpen(true)
-  }, [])
-
+  // ---- Compose ----
   const handleCompose = useCallback(() => {
-    setReplyTo(null)
-    setComposerInitialBody(undefined)
+    setSelectedMessage(null)
+    setSelectedDraft(null)
+    setSelectedOutboxItem(null)
     setComposerOpen(true)
+    // Switch to inbox folder when composing to keep consistent
+    setActiveFolder('inbox')
   }, [])
 
   const handleCloseComposer = useCallback(() => {
     setComposerOpen(false)
-    setReplyTo(null)
-    setComposerInitialBody(undefined)
+    if (filteredMessages.length > 0) {
+      setSelectedMessage(filteredMessages[0])
+    }
+  }, [filteredMessages])
+
+  // ---- Drafts selection ----
+  const handleSelectDraft = useCallback((draft: DraftMessage) => {
+    setSelectedDraft(draft)
   }, [])
 
-  // Open composer pre-filled with an AI-generated draft
-  const handleOpenComposerWithDraft = useCallback(
-    (draft: {
-      inReplyTo: string
-      threadId?: string
-      recipientId: string
-      recipientName: string
-      subject: string
-      body: string
-      source: MessageSource
-    }) => {
-      if (selectedMessage) {
-        setReplyTo(selectedMessage)
-      }
-      setComposerInitialBody(draft.body)
-      setComposerOpen(true)
-    },
-    [selectedMessage]
-  )
-
-  // Create a task from an extracted action
-  const handleCreateTask = useCallback(
-    async (data: {
-      title: string
-      dueDate?: string
-      description: string
-      sourceMessageId: string
-    }) => {
-      if (!user?.uid) return
-      const now = new Date().toISOString()
-      const task = {
-        id: generateId(),
-        userId: user.uid,
-        title: data.title,
-        description: data.description,
-        domain: 'work' as const,
-        importance: 4 as const,
-        status: 'inbox' as const,
-        completed: false,
-        archived: false,
-        dueDate: data.dueDate,
-        createdAt: now,
-        updatedAt: now,
-      }
-      await saveTaskLocally({ ...task, syncState: 'pending' })
-      await enqueueTaskOp('create', user.uid, task.id, { task })
-      toast.success(`Task created: ${data.title}`)
-      // Background sync to Firestore
-      const repo = createFirestoreTodoRepository()
-      repo.saveTask(task).catch(() => {
-        // Outbox will retry later
-      })
-    },
-    [user]
-  )
-
-  // Create a calendar event from an extracted action
-  const handleCreateEvent = useCallback(
-    (data: { title: string; description?: string }) => {
-      const params = new URLSearchParams({ newEvent: 'true', title: data.title })
-      if (data.description) params.set('description', data.description)
-      navigate(`/calendar?${params.toString()}`)
-      toast.success(`Navigating to create event: ${data.title}`)
-    },
-    [navigate]
-  )
-
-  // Set a follow-up on a contact
-  const handleSetFollowUp = useCallback(
-    async (contactId: string, dueDate?: string) => {
-      if (!user?.uid) return
-      try {
-        const nextFollowUpMs = dueDate
-          ? new Date(dueDate).getTime()
-          : Date.now() + 7 * 24 * 60 * 60 * 1000 // Default: 1 week
-        const db = await getDb()
-        await updateDoc(doc(db, `users/${user.uid}/contacts/${contactId}`), {
-          nextFollowUpMs,
-          updatedAtMs: Date.now(),
-        })
-        toast.success('Follow-up set')
-      } catch {
-        toast.error('Failed to set follow-up')
+  const handleDeleteDraft = useCallback(
+    async (draftId: string) => {
+      await deleteDraft(draftId)
+      if (selectedDraft?.draftId === draftId) {
+        setSelectedDraft(null)
       }
     },
-    [user]
+    [deleteDraft, selectedDraft]
   )
 
-  // Navigate to edit a contact
-  const handleEditContact = useCallback(
-    (contactId: string) => {
-      navigate(`/people?contactId=${contactId}`)
+  const handleDraftSentOrDiscarded = useCallback(() => {
+    setSelectedDraft(null)
+  }, [])
+
+  // ---- Outbox selection ----
+  const handleSelectOutboxItem = useCallback((item: MailboxSendOp) => {
+    setSelectedOutboxItem(item)
+  }, [])
+
+  const handleRetryOutbox = useCallback(
+    async (opId: string) => {
+      await retryOutbox(opId)
     },
-    [navigate]
+    [retryOutbox]
   )
 
-  // Page-level keyboard shortcuts
+  // ---- Keyboard shortcuts ----
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept when typing in inputs
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
@@ -198,53 +198,153 @@ export function MailboxPage() {
         return
       }
 
-      // Cmd+N or 'c' to open composer
       if ((e.metaKey && e.key === 'n') || (e.key === 'c' && !e.metaKey && !e.ctrlKey)) {
         e.preventDefault()
         handleCompose()
         return
       }
 
-      // Escape to close composer or deselect message
-      if (e.key === 'Escape') {
-        if (composerOpen) {
-          handleCloseComposer()
-        } else if (selectedMessage) {
-          setSelectedMessage(null)
-        }
+      if (e.key === 'Escape' && composerOpen) {
+        handleCloseComposer()
         return
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [composerOpen, selectedMessage, handleCompose, handleCloseComposer])
+  }, [composerOpen, handleCompose, handleCloseComposer])
+
+  // ---- Render list panel ----
+  const renderListPanel = () => {
+    switch (activeFolder) {
+      case 'drafts':
+        return (
+          <MailboxFolderList
+            folder="drafts"
+            drafts={drafts}
+            loading={draftsLoading}
+            selectedId={selectedDraft?.draftId}
+            onSelectDraft={handleSelectDraft}
+            onDeleteDraft={(id) => void handleDeleteDraft(id)}
+          />
+        )
+      case 'outbox':
+        return (
+          <MailboxFolderList
+            folder="outbox"
+            outboxItems={outboxItems}
+            loading={outboxLoading}
+            selectedId={selectedOutboxItem?.opId}
+            onSelectOutboxItem={handleSelectOutboxItem}
+            onRetryOutbox={(id) => void handleRetryOutbox(id)}
+          />
+        )
+      case 'inbox':
+      default:
+        return (
+          <MailboxMessageList
+            messages={filteredMessages}
+            loading={loading}
+            error={error}
+            selectedMessageId={selectedMessage?.messageId}
+            onSelectMessage={handleSelectMessage}
+            onDismiss={handleDismiss}
+            onMarkAsRead={markAsRead}
+          />
+        )
+    }
+  }
+
+  // ---- Render detail panel ----
+  const renderDetailPanel = () => {
+    // Compose mode (any folder)
+    if (composerOpen) {
+      return (
+        <MailboxComposeInline
+          onSent={handleCloseComposer}
+          onDiscard={handleCloseComposer}
+        />
+      )
+    }
+
+    switch (activeFolder) {
+      case 'drafts':
+        if (selectedDraft) {
+          return (
+            <MailboxComposeInline
+              key={selectedDraft.draftId}
+              draft={selectedDraft}
+              onSent={handleDraftSentOrDiscarded}
+              onDiscard={handleDraftSentOrDiscarded}
+            />
+          )
+        }
+        return (
+          <div className="mailbox-page__empty-detail">
+            <span>{drafts.length > 0 ? 'Select a draft to edit' : 'No drafts'}</span>
+          </div>
+        )
+
+      case 'outbox':
+        if (selectedOutboxItem) {
+          return (
+            <MailboxOutboxDetail
+              item={selectedOutboxItem}
+              onRetry={(id) => void handleRetryOutbox(id)}
+            />
+          )
+        }
+        return (
+          <div className="mailbox-page__empty-detail">
+            <span>{outboxItems.length > 0 ? 'Select an item to view details' : 'Outbox is empty'}</span>
+          </div>
+        )
+
+      case 'inbox':
+      default:
+        if (displayedMessage) {
+          return (
+            <MailboxMessageDetail
+              key={displayedMessage.messageId}
+              message={displayedMessage}
+              threadMessages={displayedMessage.threadId
+                ? filteredMessages.filter((m) => m.threadId === displayedMessage.threadId)
+                : undefined}
+              onDismiss={handleDismiss}
+              onReplySent={handleReplySent}
+              onOverrideTriage={overrideTriageCategory}
+            />
+          )
+        }
+        return (
+          <div className="mailbox-page__empty-detail">
+            <span>Select a conversation to view details</span>
+          </div>
+        )
+    }
+  }
 
   return (
     <div className="mailbox-page">
-      <div className="mailbox-page__header">
-        <h1 className="mailbox-page__title">Mailbox</h1>
-        <div className="mailbox-page__actions">
-          <button type="button" className="primary-button small" onClick={handleCompose}>
-            Compose
-          </button>
-          <button
-            type="button"
-            className="ghost-button small"
-            onClick={() => void syncMailbox()}
-            disabled={syncStatus.isSyncing}
-          >
-            {syncStatus.isSyncing ? 'Syncing...' : 'Sync'}
-          </button>
-        </div>
-      </div>
+      <MailboxStatsBar
+        messages={messages}
+        activeFilter={activeFilter}
+        activeFolder={activeFolder}
+        draftsCount={drafts.length}
+        outboxCount={outboxItems.filter((i) => i.status !== 'applied').length}
+        onFilterChange={setActiveFilter}
+        onFolderChange={handleFolderChange}
+        onCompose={handleCompose}
+        onSync={() => void syncMailbox()}
+        isSyncing={syncStatus.isSyncing}
+      />
 
       <div className="mailbox-page__content">
         <div className="mailbox-page__list">
           <ErrorBoundary
             fallback={(err, reset) => (
               <div className="mailbox-page__panel-error">
-                <p>Message list encountered an error</p>
+                <p>Something went wrong</p>
                 <p className="mailbox-page__panel-error-detail">{err.message}</p>
                 <button type="button" className="ghost-button small" onClick={reset}>
                   Try again
@@ -252,77 +352,14 @@ export function MailboxPage() {
               </div>
             )}
           >
-            <MailboxMessageList
-              messages={messages}
-              loading={loading}
-              error={error}
-              selectedMessageId={selectedMessage?.messageId ?? null}
-              channelFilter={channelFilter}
-              followUpOnly={followUpOnly}
-              focusedIndex={focusedIndex}
-              onChannelFilterChange={(filter) => {
-                setChannelFilter(filter)
-                setFollowUpOnly(false)
-              }}
-              onSelectMessage={handleSelectMessage}
-              onDismiss={handleDismiss}
-              onFocusedIndexChange={setFocusedIndex}
-              onReply={handleReply}
-              onMarkAsRead={markAsRead}
-            />
+            {renderListPanel()}
           </ErrorBoundary>
         </div>
 
-        <div className="mailbox-page__detail" aria-live="polite">
-          <ErrorBoundary
-            fallback={(err, reset) => (
-              <div className="mailbox-page__panel-error">
-                <p>Detail panel encountered an error</p>
-                <p className="mailbox-page__panel-error-detail">{err.message}</p>
-                <button type="button" className="ghost-button small" onClick={reset}>
-                  Try again
-                </button>
-              </div>
-            )}
-          >
-            {selectedMessage ? (
-              <MailboxMessageDetail
-                message={selectedMessage}
-                onDismiss={handleDismiss}
-                onReply={handleReply}
-                onOverrideTriage={overrideTriageCategory}
-                onOpenComposerWithDraft={handleOpenComposerWithDraft}
-                onCreateTask={handleCreateTask}
-                onCreateEvent={handleCreateEvent}
-                onSetFollowUp={handleSetFollowUp}
-                onEditContact={handleEditContact}
-              />
-            ) : (
-              <MailboxDashboard
-                messages={messages}
-                syncStatus={syncStatus}
-                onFilterChannel={(channel) => {
-                  setChannelFilter(channel)
-                  setFollowUpOnly(false)
-                }}
-                onFilterFollowUp={() => {
-                  setFollowUpOnly(true)
-                  setChannelFilter('all')
-                }}
-                onSync={() => void syncMailbox()}
-              />
-            )}
-          </ErrorBoundary>
+        <div className="mailbox-page__detail">
+          {renderDetailPanel()}
         </div>
       </div>
-
-      {composerOpen && (
-        <MailboxComposer
-          replyTo={replyTo}
-          initialBody={composerInitialBody}
-          onClose={handleCloseComposer}
-        />
-      )}
     </div>
   )
 }

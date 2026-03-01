@@ -69,36 +69,33 @@ describe('gmailAdapter', () => {
   })
 
   describe('fetchMessages', () => {
-    it('normalizes Gmail messages to RawMessage format', async () => {
+    it('normalizes Gmail messages to RawMessage format using metadata', async () => {
       const mockListGmailMessages = vi.mocked(listGmailMessages)
-      const mockReadGmailMessage = vi.mocked(readGmailMessage)
 
       mockListGmailMessages.mockResolvedValue([
-        { messageId: 'msg1', threadId: 'thread1', snippet: 'Preview...' },
-        { messageId: 'msg2', threadId: 'thread2', snippet: 'Another...' },
-      ] as any)
-
-      mockReadGmailMessage
-        .mockResolvedValueOnce({
+        {
+          messageId: 'msg1',
+          threadId: 'thread1',
           from: 'Alice <alice@example.com>',
           subject: 'Meeting Tomorrow',
-          body: 'Can we meet at 3pm?',
-          snippet: 'Can we meet...',
+          snippet: 'Can we meet at 3pm?',
           date: '2026-02-14T10:00:00Z',
-        } as any)
-        .mockResolvedValueOnce({
+        },
+        {
+          messageId: 'msg2',
+          threadId: 'thread2',
           from: 'bob@example.com',
           subject: 'FYI: Report',
-          body: 'See attached.',
           snippet: 'See attached.',
           date: '2026-02-14T11:00:00Z',
-        } as any)
+        },
+      ] as any)
 
       const messages = await gmailAdapter.fetchMessages('user1', 'account1' as ChannelConnectionId)
 
       expect(messages).toHaveLength(2)
 
-      // First message
+      // First message — body should be the snippet (cost-efficient for AI)
       expect(messages[0].id).toBe('gmail_msg1')
       expect(messages[0].source).toBe('gmail')
       expect(messages[0].accountId).toBe('account1')
@@ -110,32 +107,38 @@ describe('gmailAdapter', () => {
 
       // Second message - plain email without angle brackets
       expect(messages[1].senderEmail).toBe('bob@example.com')
+
+      // Should NOT call readGmailMessage (bodies are fetched separately)
+      expect(readGmailMessage).not.toHaveBeenCalled()
     })
 
-    it('handles individual message read failures gracefully', async () => {
+    it('returns all messages from list even when metadata varies', async () => {
       const mockListGmailMessages = vi.mocked(listGmailMessages)
-      const mockReadGmailMessage = vi.mocked(readGmailMessage)
 
       mockListGmailMessages.mockResolvedValue([
-        { messageId: 'msg1', threadId: 'thread1', snippet: 'test' },
-        { messageId: 'msg_bad', threadId: 'thread2', snippet: 'fail' },
-      ] as any)
-
-      mockReadGmailMessage
-        .mockResolvedValueOnce({
+        {
+          messageId: 'msg1',
+          threadId: 'thread1',
           from: 'alice@test.com',
           subject: 'Good',
-          body: 'Works',
           snippet: 'Works',
           date: '2026-02-14T10:00:00Z',
-        } as any)
-        .mockRejectedValueOnce(new Error('API error'))
+        },
+        {
+          messageId: 'msg2',
+          threadId: 'thread2',
+          from: 'bob@test.com',
+          subject: 'Also Good',
+          snippet: 'Also works',
+          date: '2026-02-14T11:00:00Z',
+        },
+      ] as any)
 
       const messages = await gmailAdapter.fetchMessages('user1', 'account1' as ChannelConnectionId)
 
-      // Should return the successful message only
-      expect(messages).toHaveLength(1)
+      expect(messages).toHaveLength(2)
       expect(messages[0].id).toBe('gmail_msg1')
+      expect(messages[1].id).toBe('gmail_msg2')
     })
 
     it('returns empty array on complete fetch failure', async () => {

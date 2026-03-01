@@ -201,7 +201,7 @@ export function compareContacts(a: ContactForDedup, b: ContactForDedup): DedupMa
         name1: a.displayName,
         name2: b.displayName,
       })
-      bestScore = Math.max(bestScore, 70)
+      bestScore = Math.max(bestScore, 90)
     }
 
     // 5c. First+Last name independent comparison

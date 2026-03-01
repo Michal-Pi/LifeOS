@@ -15,6 +15,7 @@ import type {
   CanonicalCalendar,
   SyncState,
   RecurrenceInstance,
+  CompositeEvent,
 } from '@lifeos/calendar'
 import type { OutboxOp } from '@/outbox/types'
 import { useMemo } from 'react'
@@ -49,6 +50,9 @@ interface CalendarViewsContainerProps {
 
   // Outbox state
   pendingOps: OutboxOp[]
+
+  // Composite events for dedup display
+  compositeByEventId?: Map<string, CompositeEvent>
 
   // Event handlers
   onDateSelect: (date: Date | null) => void
@@ -100,6 +104,7 @@ export function CalendarViewsContainer({
   calendars,
   selectedEvent,
   pendingOps,
+  compositeByEventId = new Map(),
   onDateSelect,
   onEventSelect,
   onQuickCreate,
@@ -187,51 +192,53 @@ export function CalendarViewsContainer({
   return (
     <>
       {/* Calendar Views */}
-      {viewType === 'monthly' && (
-        <MonthView
-          year={currentYear}
-          month={currentMonth}
-          events={events}
-          instances={instances}
-          calendars={calendars}
-          onDateSelect={onDateSelect}
-          selectedDate={selectedMonthDate}
-          onDateClick={scrollToTimeline}
-        />
-      )}
+      <div className="calendar-view-panel">
+        {viewType === 'monthly' && (
+          <MonthView
+            year={currentYear}
+            month={currentMonth}
+            events={events}
+            instances={instances}
+            calendars={calendars}
+            onDateSelect={onDateSelect}
+            selectedDate={selectedMonthDate}
+            onDateClick={scrollToTimeline}
+          />
+        )}
 
-      {viewType === 'weekly' && (
-        <WeeklyView
-          weekStartDate={selectedMonthDate || today}
-          events={events}
-          instances={instances}
-          onDateSelect={onDateSelect}
-          selectedDate={selectedMonthDate}
-          onDateClick={scrollToTimeline}
-        />
-      )}
+        {viewType === 'weekly' && (
+          <WeeklyView
+            weekStartDate={selectedMonthDate || today}
+            events={events}
+            instances={instances}
+            onDateSelect={onDateSelect}
+            selectedDate={selectedMonthDate}
+            onDateClick={scrollToTimeline}
+          />
+        )}
 
-      {viewType === 'daily' && (
-        <DailyView
-          date={selectedMonthDate || today}
-          events={events}
-          instances={instances}
-          onEventSelect={onEventSelect}
-          selectedEventId={selectedEvent?.canonicalEventId}
-          calendarsById={calendarsById}
-          loading={loading}
-          onQuickCreate={onQuickCreate}
-          onQuickCreateMore={onQuickCreateMore}
-        />
-      )}
+        {viewType === 'daily' && (
+          <DailyView
+            date={selectedMonthDate || today}
+            events={events}
+            instances={instances}
+            onEventSelect={onEventSelect}
+            selectedEventId={selectedEvent?.canonicalEventId}
+            calendarsById={calendarsById}
+            loading={loading}
+            onQuickCreate={onQuickCreate}
+            onQuickCreateMore={onQuickCreateMore}
+          />
+        )}
 
-      {viewType === 'agenda' && (
-        <AgendaView
-          events={events}
-          onEventSelect={onEventSelect}
-          selectedEventId={selectedEvent?.canonicalEventId}
-        />
-      )}
+        {viewType === 'agenda' && (
+          <AgendaView
+            events={events}
+            onEventSelect={onEventSelect}
+            selectedEventId={selectedEvent?.canonicalEventId}
+          />
+        )}
+      </div>
 
       {/* Event Timeline */}
       <section className="calendar-timeline">
@@ -316,12 +323,22 @@ export function CalendarViewsContainer({
                           </span>
                         )}
                       </h3>
-                      <span
-                        className={`sync-indicator ${eventSyncState.className}`}
-                        title={hasPendingOp ? 'Saving to device…' : eventSyncState.label}
-                      >
-                        {hasPendingOp ? '↻' : eventSyncState.icon}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {compositeByEventId.has(event.canonicalEventId) && (
+                          <span
+                            className="composite-badge"
+                            title="Unified from multiple calendars"
+                          >
+                            Unified
+                          </span>
+                        )}
+                        <span
+                          className={`sync-indicator ${eventSyncState.className}`}
+                          title={hasPendingOp ? 'Saving to device…' : eventSyncState.label}
+                        >
+                          {hasPendingOp ? '↻' : eventSyncState.icon}
+                        </span>
+                      </div>
                     </div>
                     <div className="timeline-event-details">
                       <div className="timeline-event-detail">

@@ -104,7 +104,7 @@ export function SyncStatusBanner({
       {/* Account connection status */}
       <p className="calendar-meta">
         {hasConnection
-          ? `Google Calendar connected${accountStatus?.accountId ? ` (${accountStatus.accountId})` : ''}`
+          ? `Google Calendar connected${accountStatus?.email ? ` (${accountStatus.email})` : ''}`
           : 'No calendar accounts connected'}
       </p>
 

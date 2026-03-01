@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { Contact } from '@lifeos/agents'
 import { useAuth } from '@/hooks/useAuth'
-import { createFirestoreContactRepository } from '@/adapters/contacts/firestoreContactRepository'
+import { useRepositories } from '@/contexts/RepositoryContext'
 
 interface UseFollowUpDueResult {
   contacts: Contact[]
@@ -17,10 +17,9 @@ interface UseFollowUpDueResult {
   refresh: () => void
 }
 
-const contactRepo = createFirestoreContactRepository()
-
 export function useFollowUpDue(limit = 10): UseFollowUpDueResult {
   const { user } = useAuth()
+  const { contactRepository: contactRepo } = useRepositories()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -63,7 +62,7 @@ export function useFollowUpDue(limit = 10): UseFollowUpDueResult {
     return () => {
       cancelled = true
     }
-  }, [user?.uid, limit, refreshKey])
+  }, [user?.uid, limit, refreshKey, contactRepo])
 
   return { contacts, loading, error, refresh }
 }

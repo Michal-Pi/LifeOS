@@ -30,7 +30,10 @@ export function ContactCard({ contact, selected, onClick }: ContactCardProps) {
   const meta = [contact.title, contact.company].filter(Boolean).join(' at ')
 
   return (
-    <div className={`contact-card${selected ? ' contact-card--selected' : ''}`} onClick={onClick}>
+    <div
+      className={`contact-card contact-card--circle-${contact.circle}${selected ? ' contact-card--selected' : ''}`}
+      onClick={onClick}
+    >
       <div className="contact-card__avatar">
         {contact.avatarUrl ? (
           <img src={contact.avatarUrl} alt={contact.displayName} />

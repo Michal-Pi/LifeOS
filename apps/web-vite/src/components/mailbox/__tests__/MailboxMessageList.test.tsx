@@ -3,6 +3,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PrioritizedMessage } from '@lifeos/agents'
 import { MailboxMessageList } from '../MailboxMessageList'
 
+// jsdom does not implement scrollIntoView
+Element.prototype.scrollIntoView = vi.fn()
+
+// Mock the useMailboxMessageBody hook used by ThreadMessage
+vi.mock('@/hooks/useMailboxMessageBody', () => ({
+  useMailboxMessageBody: (messageId: string) => ({
+    body: `Full body for ${messageId}`,
+    loading: false,
+    htmlBody: null,
+    attachmentCount: 0,
+    error: null,
+  }),
+}))
+
 // ---- Helpers ----
 
 let msgCounter = 0
@@ -38,15 +52,8 @@ function defaultProps(overrides: Partial<React.ComponentProps<typeof MailboxMess
     messages: [] as PrioritizedMessage[],
     loading: false,
     error: null,
-    selectedMessageId: null,
-    channelFilter: 'all' as const,
-    followUpOnly: false,
-    focusedIndex: -1,
-    onChannelFilterChange: vi.fn(),
-    onSelectMessage: vi.fn(),
     onDismiss: vi.fn(),
-    onFocusedIndexChange: vi.fn(),
-    onReply: vi.fn(),
+    onSelectMessage: vi.fn(),
     onMarkAsRead: vi.fn(),
     ...overrides,
   }
@@ -58,18 +65,11 @@ beforeEach(() => {
 })
 
 // =========================================================================
-// 1. Thread group rendering
+// 1. Conversation rendering
 // =========================================================================
 
-/** Helper to get the thread header button element */
-function getThreadHeader(): HTMLElement {
-  const header = document.querySelector('.mailbox-thread__header')
-  if (!header) throw new Error('Could not find thread header')
-  return header as HTMLElement
-}
-
-describe('Thread group rendering', () => {
-  it('renders messages sharing a threadId as a collapsible thread group', () => {
+describe('Conversation rendering', () => {
+  it('renders messages sharing a threadId as a single conversation row', () => {
     const messages = [
       makeMessage({ threadId: 'thread-A', sender: 'Alice', receivedAtMs: 3000 }),
       makeMessage({ threadId: 'thread-A', sender: 'Alice', receivedAtMs: 2000 }),
@@ -77,20 +77,15 @@ describe('Thread group rendering', () => {
     ]
     render(<MailboxMessageList {...defaultProps({ messages })} />)
 
-    // Thread header should show sender name
+    // Should show sender name
     expect(screen.getByText('Alice')).toBeInTheDocument()
 
     // Thread count badge should display the number of messages
-    const countBadge = document.querySelector('.mailbox-thread__count')
+    const countBadge = document.querySelector('.conv-row__count')
     expect(countBadge).toHaveTextContent('3')
-
-    // Thread group should have a header button with aria-expanded and a chevron
-    const threadHeader = getThreadHeader()
-    expect(threadHeader).toHaveAttribute('aria-expanded', 'false')
-    expect(threadHeader.querySelector('.mailbox-thread__chevron')).toBeInTheDocument()
   })
 
-  it('shows a thread group with the subject from the earliest message', () => {
+  it('shows the subject from the earliest message in the thread', () => {
     const messages = [
       makeMessage({
         threadId: 'thread-B',
@@ -107,17 +102,46 @@ describe('Thread group rendering', () => {
     ]
     render(<MailboxMessageList {...defaultProps({ messages })} />)
 
-    // The thread header should use the earliest message's subject
+    // The thread subject should use the earliest message's subject
     expect(screen.getByText('Project Update')).toBeInTheDocument()
+  })
+
+  it('displays AI summary as the primary element', () => {
+    const messages = [
+      makeMessage({
+        threadId: 'thread-ai',
+        sender: 'Carol',
+        aiSummary: 'Meeting rescheduled to Thursday',
+      }),
+    ]
+    render(<MailboxMessageList {...defaultProps({ messages })} />)
+
+    const summary = document.querySelector('.conv-row__summary')
+    expect(summary).toHaveTextContent('Meeting rescheduled to Thursday')
+  })
+
+  it('displays last message snippet as the preview trust layer', () => {
+    const messages = [
+      makeMessage({
+        threadId: 'thread-preview',
+        sender: 'Dave',
+        snippet: 'Can we reschedule the meeting?',
+      }),
+    ]
+    render(<MailboxMessageList {...defaultProps({ messages })} />)
+
+    expect(screen.getByText('Can we reschedule the meeting?')).toBeInTheDocument()
+    // Sender should appear in the preview
+    expect(screen.getByText('Dave:')).toBeInTheDocument()
   })
 })
 
 // =========================================================================
-// 2. Single messages render individually
+// 2. Single messages render as standalone conversation rows
 // =========================================================================
 
-describe('Single messages render individually', () => {
-  it('renders messages without matching threads as standalone rows', () => {
+describe('Single messages render as standalone rows', () => {
+  it('renders messages without matching threads as individual conversation rows', () => {
     const messages = [
       makeMessage({ threadId: 'thread-X', sender: 'Alice', subject: 'Hello from Alice' }),
       makeMessage({ threadId: 'thread-Y', sender: 'Bob', subject: 'Hello from Bob' }),
@@ -125,90 +149,78 @@ describe('Single messages render individually', () => {
     ]
     render(<MailboxMessageList {...defaultProps({ messages })} />)
 
-    // Each message should render as an individual option row
-    const options = screen.getAllByRole('option')
-    expect(options).toHaveLength(3)
+    const rows = screen.getAllByRole('listitem')
+    expect(rows).toHaveLength(3)
 
-    // Each sender should appear
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Bob')).toBeInTheDocument()
     expect(screen.getByText('Charlie')).toBeInTheDocument()
   })
 
-  it('does not show a thread count badge for standalone messages', () => {
+  it('does not show a count badge for standalone messages', () => {
     const messages = [
       makeMessage({ threadId: 'solo-1', sender: 'Solo Sender', subject: 'Solo Subject' }),
     ]
     render(<MailboxMessageList {...defaultProps({ messages })} />)
 
-    // No thread count element should be present (no .mailbox-thread__count)
-    const threadCountElements = document.querySelectorAll('.mailbox-thread__count')
-    expect(threadCountElements).toHaveLength(0)
+    const countBadges = document.querySelectorAll('.conv-row__count')
+    expect(countBadges).toHaveLength(0)
   })
 })
 
 // =========================================================================
-// 3. Thread expansion on click
+// 3. Thread expansion via click
 // =========================================================================
 
-describe('Thread expansion on click', () => {
-  it('reveals individual messages when a thread group header is clicked', () => {
+describe('Thread expansion via click', () => {
+  it('reveals thread messages when the conversation row is clicked', () => {
     const messages = [
       makeMessage({
         threadId: 'thread-expand',
         sender: 'Alice',
         receivedAtMs: 3000,
-        subject: 'Re: Discussion',
-        aiSummary: 'Latest reply from Alice',
+        snippet: 'Latest reply from Alice',
       }),
       makeMessage({
         threadId: 'thread-expand',
         sender: 'Alice',
         receivedAtMs: 2000,
-        subject: 'Re: Discussion',
-        aiSummary: 'Middle reply from Alice',
+        snippet: 'Middle reply from Alice',
       }),
       makeMessage({
         threadId: 'thread-expand',
         sender: 'Alice',
         receivedAtMs: 1000,
-        subject: 'Discussion',
-        aiSummary: 'Original message from Alice',
+        snippet: 'Original message from Alice',
       }),
     ]
     render(<MailboxMessageList {...defaultProps({ messages })} />)
 
-    // Before clicking, thread child messages should not be visible
-    expect(screen.queryByText('Original message from Alice')).not.toBeInTheDocument()
-    expect(screen.queryByText('Middle reply from Alice')).not.toBeInTheDocument()
+    // Before clicking, thread view should not be visible
+    expect(document.querySelector('.conv-row__thread')).not.toBeInTheDocument()
 
-    // Click the thread header to expand
-    const threadHeader = getThreadHeader()
-    fireEvent.click(threadHeader)
+    // Click the expand button to expand the thread
+    const expandBtn = screen.getByLabelText('Expand thread')
+    fireEvent.click(expandBtn)
 
-    // After clicking, the thread group should be visible
-    const threadGroup = screen.getByRole('group', { name: /Thread: Discussion/i })
-    expect(threadGroup).toBeInTheDocument()
+    // After clicking, thread view should be visible
+    expect(document.querySelector('.conv-row__thread')).toBeInTheDocument()
 
-    // Individual messages should now be rendered inside the group
-    expect(screen.getByText('Latest reply from Alice')).toBeInTheDocument()
-    expect(screen.getByText('Middle reply from Alice')).toBeInTheDocument()
-    expect(screen.getByText('Original message from Alice')).toBeInTheDocument()
+    // Individual thread messages should now be rendered
+    const threadMsgs = document.querySelectorAll('.thread-msg')
+    expect(threadMsgs).toHaveLength(3)
   })
 
-  it('sets aria-expanded to true on the thread header after clicking', () => {
+  it('shows expand button with message count for multi-message threads', () => {
     const messages = [
-      makeMessage({ threadId: 'thread-aria', sender: 'Carol', receivedAtMs: 2000 }),
-      makeMessage({ threadId: 'thread-aria', sender: 'Carol', receivedAtMs: 1000 }),
+      makeMessage({ threadId: 'thread-btn', sender: 'Carol', receivedAtMs: 2000 }),
+      makeMessage({ threadId: 'thread-btn', sender: 'Carol', receivedAtMs: 1000 }),
     ]
     render(<MailboxMessageList {...defaultProps({ messages })} />)
 
-    const header = getThreadHeader()
-    expect(header).toHaveAttribute('aria-expanded', 'false')
-
-    fireEvent.click(header)
-
-    expect(header).toHaveAttribute('aria-expanded', 'true')
+    const expandBtn = screen.getByLabelText('Expand thread')
+    expect(expandBtn).toBeInTheDocument()
+    expect(expandBtn).toHaveTextContent('2 messages')
   })
 })
 
@@ -217,62 +229,46 @@ describe('Thread expansion on click', () => {
 // =========================================================================
 
 describe('Thread collapse on second click', () => {
-  it('collapses an expanded thread when the header is clicked again', () => {
+  it('collapses an expanded thread when clicked again', () => {
     const messages = [
       makeMessage({
         threadId: 'thread-collapse',
         sender: 'Dan',
         receivedAtMs: 2000,
-        aiSummary: 'Dan reply',
       }),
       makeMessage({
         threadId: 'thread-collapse',
         sender: 'Dan',
         receivedAtMs: 1000,
-        aiSummary: 'Dan original',
       }),
     ]
     render(<MailboxMessageList {...defaultProps({ messages })} />)
 
-    const header = getThreadHeader()
+    // First click on expand button: expand
+    const expandBtn = screen.getByLabelText('Expand thread')
+    fireEvent.click(expandBtn)
+    expect(document.querySelector('.conv-row__thread')).toBeInTheDocument()
 
-    // First click: expand
-    fireEvent.click(header)
-    expect(header).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('group')).toBeInTheDocument()
-    expect(screen.getByText('Dan original')).toBeInTheDocument()
-
-    // Second click: collapse
-    fireEvent.click(header)
-    expect(header).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('group')).not.toBeInTheDocument()
-    expect(screen.queryByText('Dan original')).not.toBeInTheDocument()
+    // Second click on collapse button: collapse
+    const collapseBtn = screen.getByLabelText('Collapse thread')
+    fireEvent.click(collapseBtn)
+    expect(document.querySelector('.conv-row__thread')).not.toBeInTheDocument()
   })
 })
 
 // =========================================================================
-// 5. Hover quick-action buttons
+// 5. Inline action buttons
 // =========================================================================
 
-describe('Hover quick-action buttons', () => {
-  it('renders archive, mark-read, and reply action buttons on each message row', () => {
+describe('Inline action buttons', () => {
+  it('renders reply and archive action buttons on each conversation row', () => {
     const messages = [
       makeMessage({ threadId: 'solo', sender: 'Eve', subject: 'Quick actions test' }),
     ]
     render(<MailboxMessageList {...defaultProps({ messages })} />)
 
-    // Quick action buttons should be present in the DOM (shown on hover via CSS)
-    expect(screen.getByLabelText('Archive message from Eve')).toBeInTheDocument()
-    expect(screen.getByLabelText('Mark as read')).toBeInTheDocument()
     expect(screen.getByLabelText('Reply to Eve')).toBeInTheDocument()
-  })
-
-  it('has a hover-actions container with the correct CSS class', () => {
-    const messages = [makeMessage({ threadId: 'hover-test', sender: 'Frank' })]
-    render(<MailboxMessageList {...defaultProps({ messages })} />)
-
-    const hoverContainer = document.querySelector('.mailbox-list__hover-actions')
-    expect(hoverContainer).toBeInTheDocument()
+    expect(screen.getByLabelText('Archive conversation with Eve')).toBeInTheDocument()
   })
 
   it('calls onDismiss when the archive button is clicked', () => {
@@ -280,75 +276,30 @@ describe('Hover quick-action buttons', () => {
     const messages = [makeMessage({ threadId: 'dismiss-test', sender: 'Grace' })]
     render(<MailboxMessageList {...defaultProps({ messages, onDismiss })} />)
 
-    const archiveBtn = screen.getByLabelText('Archive message from Grace')
+    const archiveBtn = screen.getByLabelText('Archive conversation with Grace')
     fireEvent.click(archiveBtn)
 
     expect(onDismiss).toHaveBeenCalledWith(messages[0].messageId)
   })
 
-  it('calls onReply when the reply button is clicked', () => {
-    const onReply = vi.fn()
+  it('calls onSelectMessage when the reply button is clicked', () => {
+    const onSelectMessage = vi.fn()
     const messages = [makeMessage({ threadId: 'reply-test', sender: 'Hank' })]
-    render(<MailboxMessageList {...defaultProps({ messages, onReply })} />)
+    render(<MailboxMessageList {...defaultProps({ messages, onSelectMessage })} />)
 
     const replyBtn = screen.getByLabelText('Reply to Hank')
     fireEvent.click(replyBtn)
 
-    expect(onReply).toHaveBeenCalledWith(messages[0])
-  })
-
-  it('calls onMarkAsRead when the mark-read button is clicked', () => {
-    const onMarkAsRead = vi.fn()
-    const messages = [makeMessage({ threadId: 'read-test', sender: 'Iris', isRead: false })]
-    render(<MailboxMessageList {...defaultProps({ messages, onMarkAsRead })} />)
-
-    const markReadBtn = screen.getByLabelText('Mark as read')
-    fireEvent.click(markReadBtn)
-
-    expect(onMarkAsRead).toHaveBeenCalledWith(messages[0].messageId)
-  })
-
-  it('shows "Mark as unread" label when message is already read', () => {
-    const messages = [makeMessage({ threadId: 'unread-test', sender: 'Jack', isRead: true })]
-    render(<MailboxMessageList {...defaultProps({ messages })} />)
-
-    expect(screen.getByLabelText('Mark as unread')).toBeInTheDocument()
-  })
-
-  it('renders action buttons inside expanded thread child messages', () => {
-    const messages = [
-      makeMessage({
-        threadId: 'thread-actions',
-        sender: 'Kate',
-        receivedAtMs: 2000,
-      }),
-      makeMessage({
-        threadId: 'thread-actions',
-        sender: 'Kate',
-        receivedAtMs: 1000,
-      }),
-    ]
-    render(<MailboxMessageList {...defaultProps({ messages })} />)
-
-    // Expand the thread
-    const threadHeader = getThreadHeader()
-    fireEvent.click(threadHeader)
-
-    // Each child message row should have action buttons
-    const archiveButtons = screen.getAllByTitle('Archive')
-    expect(archiveButtons.length).toBe(2)
-
-    const replyButtons = screen.getAllByTitle('Reply')
-    expect(replyButtons.length).toBe(2)
+    expect(onSelectMessage).toHaveBeenCalledWith(messages[0])
   })
 })
 
 // =========================================================================
-// 6. Thread count badge
+// 6. Conversation count and summary
 // =========================================================================
 
-describe('Thread count badge', () => {
-  it('shows the correct message count for a thread with 3 messages', () => {
+describe('Conversation count and summary', () => {
+  it('shows the correct message count badge for a thread with 3 messages', () => {
     const messages = [
       makeMessage({ threadId: 'count-3', sender: 'Leo', receivedAtMs: 3000 }),
       makeMessage({ threadId: 'count-3', sender: 'Leo', receivedAtMs: 2000 }),
@@ -356,25 +307,9 @@ describe('Thread count badge', () => {
     ]
     render(<MailboxMessageList {...defaultProps({ messages })} />)
 
-    // The thread count badge should show "3"
-    const countBadge = document.querySelector('.mailbox-thread__count')
+    const countBadge = document.querySelector('.conv-row__count')
     expect(countBadge).toBeInTheDocument()
     expect(countBadge).toHaveTextContent('3')
-  })
-
-  it('shows the correct message count for a thread with 5 messages', () => {
-    const messages = Array.from({ length: 5 }, (_, i) =>
-      makeMessage({
-        threadId: 'count-5',
-        sender: 'Mia',
-        receivedAtMs: (5 - i) * 1000,
-      })
-    )
-    render(<MailboxMessageList {...defaultProps({ messages })} />)
-
-    const countBadge = document.querySelector('.mailbox-thread__count')
-    expect(countBadge).toBeInTheDocument()
-    expect(countBadge).toHaveTextContent('5')
   })
 
   it('shows correct counts for multiple threads', () => {
@@ -387,15 +322,15 @@ describe('Thread count badge', () => {
     ]
     render(<MailboxMessageList {...defaultProps({ messages })} />)
 
-    const countBadges = document.querySelectorAll('.mailbox-thread__count')
+    const countBadges = document.querySelectorAll('.conv-row__count')
     expect(countBadges).toHaveLength(2)
 
-    // First thread (Nina) has 2 messages, second (Oscar) has 3
+    // Nina has 2 messages, Oscar has 3
     expect(countBadges[0]).toHaveTextContent('2')
     expect(countBadges[1]).toHaveTextContent('3')
   })
 
-  it('displays the total message count in the summary line', () => {
+  it('displays conversation and message counts in the summary line', () => {
     const messages = [
       makeMessage({ threadId: 'summary-thread', sender: 'Pat', receivedAtMs: 3000 }),
       makeMessage({ threadId: 'summary-thread', sender: 'Pat', receivedAtMs: 2000 }),
@@ -403,12 +338,13 @@ describe('Thread count badge', () => {
     ]
     render(<MailboxMessageList {...defaultProps({ messages })} />)
 
-    // The component shows "3 messages in 1 thread"
-    expect(screen.getByText(/3 messages/)).toBeInTheDocument()
-    expect(screen.getByText(/1 thread/)).toBeInTheDocument()
+    // Component shows "1 conversation (3 messages)"
+    expect(screen.getByText(/1 conversation/)).toBeInTheDocument()
+    const summary = document.querySelector('.conv-feed__summary')
+    expect(summary).toHaveTextContent('3 messages')
   })
 
-  it('shows pluralised thread count when multiple threads exist', () => {
+  it('pluralises conversation count correctly', () => {
     const messages = [
       makeMessage({ threadId: 'pl-A', sender: 'Quinn', receivedAtMs: 3000 }),
       makeMessage({ threadId: 'pl-A', sender: 'Quinn', receivedAtMs: 2000 }),
@@ -417,8 +353,30 @@ describe('Thread count badge', () => {
     ]
     render(<MailboxMessageList {...defaultProps({ messages })} />)
 
-    // "4 messages in 2 threads"
+    // "2 conversations (4 messages)"
+    expect(screen.getByText(/2 conversations/)).toBeInTheDocument()
     expect(screen.getByText(/4 messages/)).toBeInTheDocument()
-    expect(screen.getByText(/2 threads/)).toBeInTheDocument()
+  })
+})
+
+// =========================================================================
+// 7. Loading, error, and empty states
+// =========================================================================
+
+describe('States', () => {
+  it('shows loading state when loading with no messages', () => {
+    render(<MailboxMessageList {...defaultProps({ loading: true })} />)
+    expect(screen.getByText('Loading messages...')).toBeInTheDocument()
+  })
+
+  it('shows error state when error occurs with no messages', () => {
+    render(<MailboxMessageList {...defaultProps({ error: 'Network error' })} />)
+    expect(screen.getByText('Failed to load messages')).toBeInTheDocument()
+    expect(screen.getByText('Network error')).toBeInTheDocument()
+  })
+
+  it('shows empty state when no messages exist', () => {
+    render(<MailboxMessageList {...defaultProps()} />)
+    expect(screen.getByText('No messages to show')).toBeInTheDocument()
   })
 })

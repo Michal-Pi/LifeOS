@@ -31,6 +31,10 @@ export interface RawMessage {
   receivedAt: string
   /** Deep link URL to open the message in its source app */
   originalUrl?: string
+  /** To recipients (email channels, for Reply All) */
+  toRecipients?: string[]
+  /** CC recipients (email channels, for Reply All) */
+  ccRecipients?: string[]
 }
 
 /**
@@ -49,6 +53,8 @@ export interface SendMessageResult {
 export interface FetchMessagesOptions {
   /** Only fetch messages received after this timestamp (ISO 8601) */
   since?: string
+  /** Only fetch messages received before this timestamp (ISO 8601) — for backfill */
+  before?: string
   /** Maximum number of messages to fetch */
   maxResults?: number
 }

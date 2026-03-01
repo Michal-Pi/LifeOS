@@ -121,13 +121,18 @@ export function AIProvidersSection({ userId, onError }: AIProvidersSectionProps)
 
   return (
     <section id="ai-providers">
-      <h2 className="settings-section__title">AI Providers</h2>
-      <p className="settings-section__description">Configure API keys for AI model providers.</p>
+      <div className="settings-panel">
+        <header className="settings-panel__header">
+          <div>
+            <h2 className="settings-section__title">AI Providers</h2>
+            <p className="settings-panel__meta">Configure API keys for AI model providers.</p>
+          </div>
+        </header>
 
-      {providerKeysError && <p className="settings-panel__error">&#x26A0; {providerKeysError}</p>}
-      {providerKeysLoading && <p className="settings-panel__meta">Loading keys...</p>}
+        {providerKeysError && <p className="settings-panel__error">&#x26A0; {providerKeysError}</p>}
+        {providerKeysLoading && <p className="settings-panel__meta">Loading keys...</p>}
 
-      <div className="provider-grid">
+        <div className="provider-grid">
         {providerRows.map((provider) => (
           <div key={provider.id} className="provider-card">
             <div className="provider-card__header">
@@ -202,21 +207,22 @@ export function AIProvidersSection({ userId, onError }: AIProvidersSectionProps)
         ))}
       </div>
 
-      <div className="settings-links">
-        <Link to="/settings/models" className="settings-link-card">
-          <div className="settings-link-card__content">
-            <h4>Model Settings</h4>
-            <p>Configure which AI models to use for each provider</p>
-          </div>
-          <span className="settings-link-card__arrow">&rarr;</span>
-        </Link>
-        <Link to="/settings/ai-tools" className="settings-link-card">
-          <div className="settings-link-card__content">
-            <h4>AI Tool Settings</h4>
-            <p>Customize system prompts and parameters for AI tools</p>
-          </div>
-          <span className="settings-link-card__arrow">&rarr;</span>
-        </Link>
+        <div className="settings-links">
+          <Link to="/settings/models" className="settings-link-card">
+            <div className="settings-link-card__content">
+              <h4>Model Settings</h4>
+              <p>Configure which AI models to use for each provider</p>
+            </div>
+            <span className="settings-link-card__arrow">&rarr;</span>
+          </Link>
+          <Link to="/settings/ai-tools" className="settings-link-card">
+            <div className="settings-link-card__content">
+              <h4>AI Tool Settings</h4>
+              <p>Customize system prompts and parameters for AI tools</p>
+            </div>
+            <span className="settings-link-card__arrow">&rarr;</span>
+          </Link>
+        </div>
       </div>
     </section>
   )

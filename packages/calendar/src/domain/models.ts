@@ -49,7 +49,9 @@ export interface CalendarAccount {
 }
 
 export interface CalendarAccountStatus {
+  accountId?: string
   provider?: Provider
+  email?: string
   status?: 'connected' | 'needs_attention' | 'disconnected'
   lastSuccessAt?: string
   updatedAt?: string

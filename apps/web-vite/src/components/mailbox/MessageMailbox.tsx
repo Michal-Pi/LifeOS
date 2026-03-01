@@ -6,34 +6,59 @@
  * top 3-5 AI-ranked messages with source icons, and a "View All" link to /mailbox.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
+import { useNow } from '@/hooks/useNow'
 import { useNavigate } from 'react-router-dom'
 import { useMessageMailbox } from '@/hooks/useMessageMailbox'
+import { useMailboxOutbox } from '@/hooks/useMailboxOutbox'
 import type { PrioritizedMessage, MessageSource } from '@lifeos/agents'
 import { Button } from '@/components/ui/button'
 import '@/styles/components/MessageMailbox.css'
 
-const SOURCE_ICONS: Record<MessageSource, string> = {
-  gmail: '@',
-  slack: '#',
-  linkedin: 'in',
-  whatsapp: 'W',
-  telegram: 'T',
-}
-
-const SOURCE_LABELS: Record<MessageSource, string> = {
-  gmail: 'Gmail',
-  slack: 'Slack',
-  linkedin: 'LinkedIn',
-  whatsapp: 'WhatsApp',
-  telegram: 'Telegram',
+function SourceIcon({ source }: { source: MessageSource }) {
+  switch (source) {
+    case 'gmail':
+      return (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="2" y="4" width="20" height="16" rx="2" />
+          <polyline points="22,4 12,13 2,4" />
+        </svg>
+      )
+    case 'slack':
+      return (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+          <path d="M6 15a2 2 0 0 1-2 2a2 2 0 0 1-2-2a2 2 0 0 1 2-2h2v2zm1 0a2 2 0 0 1 2-2a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2a2 2 0 0 1-2-2v-5zm2-8a2 2 0 0 1-2-2a2 2 0 0 1 2-2a2 2 0 0 1 2 2v2H9zm0 1a2 2 0 0 1 2 2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2a2 2 0 0 1 2-2h5zm8 2a2 2 0 0 1 2-2a2 2 0 0 1 2 2a2 2 0 0 1-2 2h-2v-2zm-1 0a2 2 0 0 1-2 2a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2a2 2 0 0 1 2 2v5zm-2 8a2 2 0 0 1 2 2a2 2 0 0 1-2 2a2 2 0 0 1-2-2v-2h2zm0-1a2 2 0 0 1-2-2a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2a2 2 0 0 1-2 2h-5z" />
+        </svg>
+      )
+    case 'linkedin':
+      return (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+          <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z" />
+          <rect x="2" y="9" width="4" height="12" />
+          <circle cx="4" cy="4" r="2" />
+        </svg>
+      )
+    case 'whatsapp':
+      return (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+        </svg>
+      )
+    case 'telegram':
+      return (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <line x1="22" y1="2" x2="11" y2="13" />
+          <polygon points="22 2 15 22 11 13 2 9 22 2" />
+        </svg>
+      )
+  }
 }
 
 interface MessageMailboxProps {
   maxMessages?: number
 }
 
-export function MessageMailbox({ maxMessages = 50 }: MessageMailboxProps) {
+export function MessageMailbox({ maxMessages = 8 }: MessageMailboxProps) {
   const navigate = useNavigate()
   const {
     messages,
@@ -41,12 +66,11 @@ export function MessageMailbox({ maxMessages = 50 }: MessageMailboxProps) {
     error,
     syncStatus,
     requiresAPIKeySetup,
-    highPriorityCount,
     totalMessagesScanned,
     followUpCount,
     syncMailbox,
-    dismissMessage,
   } = useMessageMailbox({ maxMessages, autoSync: false })
+  const { pendingCount: outboxPending, failedCount: outboxFailed, retryFailed } = useMailboxOutbox()
 
   // Sort by importance score (desc), then receivedAtMs (desc) — top 5 for compact view
   const topMessages = useMemo(() => {
@@ -57,18 +81,7 @@ export function MessageMailbox({ maxMessages = 50 }: MessageMailboxProps) {
         if (scoreA !== scoreB) return scoreB - scoreA
         return b.receivedAtMs - a.receivedAtMs
       })
-      .slice(0, 5)
-  }, [messages])
-
-  // Compute channel breakdown
-  const channelBreakdown = useMemo(() => {
-    const counts: Partial<Record<MessageSource, number>> = {}
-    for (const msg of messages) {
-      counts[msg.source] = (counts[msg.source] ?? 0) + 1
-    }
-    return Object.entries(counts)
-      .filter(([, count]) => count > 0)
-      .sort(([, a], [, b]) => b - a) as Array<[MessageSource, number]>
+      .slice(0, 8)
   }, [messages])
 
   // Unread count
@@ -97,12 +110,8 @@ export function MessageMailbox({ maxMessages = 50 }: MessageMailboxProps) {
     [navigate]
   )
 
-  // Tick a "now" timestamp every minute so relative-time labels stay pure
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60000)
-    return () => clearInterval(id)
-  }, [])
+  // Tick a "now" timestamp every minute so relative-time labels stay fresh
+  const now = useNow(60_000).getTime()
 
   // Format relative time
   const formatTimeAgo = useCallback(
@@ -137,10 +146,9 @@ export function MessageMailbox({ maxMessages = 50 }: MessageMailboxProps) {
   if (requiresAPIKeySetup) {
     return (
       <section className="today-card message-mailbox-card today-grid-mailbox">
-        <div className="today-card-header">
-          <div>
-            <p className="section-label">Message Mailbox</p>
-            <p className="section-hint">AI-prioritized messages from your inbox.</p>
+        <div className="mailbox-header">
+          <div className="mailbox-header__left">
+            <p className="section-label">Mailbox</p>
           </div>
         </div>
         <div className="mailbox-setup-prompt">
@@ -161,10 +169,9 @@ export function MessageMailbox({ maxMessages = 50 }: MessageMailboxProps) {
   if (loading && messages.length === 0) {
     return (
       <section className="today-card message-mailbox-card today-grid-mailbox">
-        <div className="today-card-header">
-          <div>
-            <p className="section-label">Message Mailbox</p>
-            <p className="section-hint">AI-prioritized messages from your inbox.</p>
+        <div className="mailbox-header">
+          <div className="mailbox-header__left">
+            <p className="section-label">Mailbox</p>
           </div>
         </div>
         <div className="mailbox-loading">Loading messages...</div>
@@ -176,10 +183,9 @@ export function MessageMailbox({ maxMessages = 50 }: MessageMailboxProps) {
   if (error && messages.length === 0) {
     return (
       <section className="today-card message-mailbox-card today-grid-mailbox">
-        <div className="today-card-header">
-          <div>
-            <p className="section-label">Message Mailbox</p>
-            <p className="section-hint">AI-prioritized messages from your inbox.</p>
+        <div className="mailbox-header">
+          <div className="mailbox-header__left">
+            <p className="section-label">Mailbox</p>
           </div>
         </div>
         <div className="mailbox-error">
@@ -196,19 +202,18 @@ export function MessageMailbox({ maxMessages = 50 }: MessageMailboxProps) {
   if (messages.length === 0) {
     return (
       <section className="today-card message-mailbox-card today-grid-mailbox">
-        <div className="today-card-header">
-          <div>
-            <p className="section-label">Message Mailbox</p>
-            <p className="section-hint">AI-prioritized messages from your inbox.</p>
+        <div className="mailbox-header">
+          <div className="mailbox-header__left">
+            <p className="section-label">Mailbox</p>
           </div>
-          <div className="mailbox-header-actions">
+          <div className="mailbox-header__right">
             <Button
               variant="ghost"
               className="small"
               onClick={handleSync}
               disabled={syncStatus.isSyncing}
             >
-              {syncStatus.isSyncing ? 'Syncing...' : 'Sync Now'}
+              {syncStatus.isSyncing ? 'Syncing...' : 'Sync'}
             </Button>
           </div>
         </div>
@@ -222,21 +227,22 @@ export function MessageMailbox({ maxMessages = 50 }: MessageMailboxProps) {
 
   return (
     <section className="today-card message-mailbox-card today-grid-mailbox">
-      <div className="today-card-header">
-        <div>
-          <p className="section-label">
-            Message Mailbox
-            {unreadCount > 0 && <span className="mailbox-unread-count">{unreadCount} unread</span>}
-            {highPriorityCount > 0 && (
-              <span className="mailbox-priority-count">{highPriorityCount} urgent</span>
+      <div className="mailbox-header">
+        <div className="mailbox-header__left">
+          <p className="section-label">Mailbox</p>
+          <div className="mailbox-header__indicators">
+            {unreadCount > 0 && (
+              <span className="mailbox-indicator">
+                <span className="mailbox-indicator__dot mailbox-indicator__dot--unread" />
+                {unreadCount} unread
+              </span>
             )}
-          </p>
-          <p className="section-hint">
-            {followUpCount} follow-up{followUpCount !== 1 ? 's' : ''} of {totalMessagesScanned}{' '}
-            scanned
-          </p>
+            <span className="mailbox-indicator mailbox-indicator--muted">
+              {followUpCount}/{totalMessagesScanned} need action
+            </span>
+          </div>
         </div>
-        <div className="mailbox-header-actions">
+        <div className="mailbox-header__right">
           {syncStatus.lastSyncMs && (
             <span className="mailbox-last-sync">{formatLastSync(syncStatus.lastSyncMs)}</span>
           )}
@@ -246,22 +252,10 @@ export function MessageMailbox({ maxMessages = 50 }: MessageMailboxProps) {
             onClick={handleSync}
             disabled={syncStatus.isSyncing}
           >
-            {syncStatus.isSyncing ? 'Syncing...' : 'Sync Now'}
+            {syncStatus.isSyncing ? 'Syncing...' : 'Sync'}
           </Button>
         </div>
       </div>
-
-      {/* Channel breakdown chips */}
-      {channelBreakdown.length > 0 && (
-        <div className="mailbox-channel-chips">
-          {channelBreakdown.map(([source, count]) => (
-            <span key={source} className={`mailbox-channel-chip mailbox-channel-chip--${source}`}>
-              <span className="mailbox-channel-chip__icon">{SOURCE_ICONS[source]}</span>
-              {count} {SOURCE_LABELS[source]}
-            </span>
-          ))}
-        </div>
-      )}
 
       {syncStatus.isSyncing && (
         <div className="mailbox-syncing-overlay">
@@ -270,7 +264,26 @@ export function MessageMailbox({ maxMessages = 50 }: MessageMailboxProps) {
         </div>
       )}
 
-      {/* Compact top AI-ranked messages */}
+      {/* Outbox status indicator */}
+      {(outboxPending > 0 || outboxFailed > 0) && (
+        <div className="mailbox-outbox-status">
+          {outboxPending > 0 && (
+            <span className="mailbox-outbox-status__pending">
+              {outboxPending} message{outboxPending !== 1 ? 's' : ''} sending...
+            </span>
+          )}
+          {outboxFailed > 0 && (
+            <span className="mailbox-outbox-status__failed">
+              {outboxFailed} failed to send.{' '}
+              <button type="button" className="mailbox-outbox-status__retry" onClick={() => void retryFailed()}>
+                Retry
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Compact top AI-ranked messages — 2-column layout */}
       <div className="mailbox-compact-messages">
         {topMessages.map((message) => (
           <div
@@ -286,39 +299,19 @@ export function MessageMailbox({ maxMessages = 50 }: MessageMailboxProps) {
             role="button"
             tabIndex={0}
           >
-            <div
-              className={`mailbox-compact-item__source mailbox-compact-item__source--${message.source}`}
-            >
-              <span className="mailbox-compact-item__source-icon">
-                {SOURCE_ICONS[message.source]}
+            <div className="mailbox-compact-item__left">
+              <span className="mailbox-compact-item__source">
+                <SourceIcon source={message.source} />
               </span>
-            </div>
-            <div className="mailbox-compact-item__body">
-              <div className="mailbox-compact-item__header">
+              <div className="mailbox-compact-item__body">
                 <span className="mailbox-compact-item__sender">{message.sender}</span>
-                <span className="mailbox-compact-item__time">
-                  {formatTimeAgo(message.receivedAtMs)}
-                </span>
+                <p className="mailbox-compact-item__summary">{message.aiSummary}</p>
               </div>
-              <p className="mailbox-compact-item__summary">{message.aiSummary}</p>
             </div>
-            <div className="mailbox-compact-item__meta">
-              <span
-                className={`mailbox-compact-item__priority mailbox-compact-item__priority--${message.priority}`}
-              >
-                {message.priority}
+            <div className="mailbox-compact-item__right">
+              <span className="mailbox-compact-item__time">
+                {formatTimeAgo(message.receivedAtMs)}
               </span>
-              <button
-                type="button"
-                className="mailbox-compact-item__dismiss"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  void dismissMessage(message.messageId)
-                }}
-                aria-label="Dismiss message"
-              >
-                ×
-              </button>
             </div>
           </div>
         ))}

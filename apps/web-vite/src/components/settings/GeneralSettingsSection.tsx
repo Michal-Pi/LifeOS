@@ -75,20 +75,23 @@ export function GeneralSettingsSection({ userId, onError }: GeneralSettingsSecti
 
   return (
     <section id="general">
-      <h2 className="settings-section__title">General</h2>
-      <p className="settings-section__description">Theme, appearance, and agent memory defaults.</p>
+      <div className="settings-panel">
+        <header className="settings-panel__header">
+          <div>
+            <h2 className="settings-section__title">General</h2>
+            <p className="settings-panel__meta">Theme, appearance, and agent memory defaults.</p>
+          </div>
+        </header>
 
-      <div className="settings-section__grid">
-        <div className="settings-panel">
-          <header className="settings-panel__header">
-            <div>
-              <p className="section-label">Appearance</p>
-              <h3>Theme Mode</h3>
-              <p className="settings-panel__meta">
-                Choose a theme or follow system settings. Auto can use OS or a custom schedule.
-              </p>
-            </div>
-          </header>
+        {/* Theme Mode */}
+        <div className="settings-panel__subsection">
+          <div>
+            <p className="section-label">Appearance</p>
+            <h3 className="settings-panel__subtitle">Theme Mode</h3>
+            <p className="settings-panel__meta">
+              Choose a theme or follow system settings. Auto can use OS or a custom schedule.
+            </p>
+          </div>
           <div className="settings-panel__content theme-controls">
             <div className="theme-control-row">
               <SegmentedControl
@@ -147,16 +150,15 @@ export function GeneralSettingsSection({ userId, onError }: GeneralSettingsSecti
           </div>
         </div>
 
-        <div className="settings-panel">
-          <header className="settings-panel__header">
-            <div>
-              <p className="section-label">Agent Memory</p>
-              <h3>Memory Span</h3>
-              <p className="settings-panel__meta">
-                Define how many recent messages agents should remember when resuming work.
-              </p>
-            </div>
-          </header>
+        {/* Memory Span */}
+        <div className="settings-panel__subsection">
+          <div>
+            <p className="section-label">Agent Memory</p>
+            <h3 className="settings-panel__subtitle">Memory Span</h3>
+            <p className="settings-panel__meta">
+              Define how many recent messages agents should remember when resuming work.
+            </p>
+          </div>
 
           {memoryError && <p className="settings-panel__error">&#x26A0; {memoryError}</p>}
           {memoryLoading && <p className="settings-panel__meta">Loading memory settings...</p>}

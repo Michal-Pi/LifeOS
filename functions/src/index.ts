@@ -1868,7 +1868,69 @@ export {
   mailboxMessages,
   mailboxMarkRead,
   mailboxDismiss,
+  fetchMessageBody,
 } from './slack/slackEndpoints.js'
+
+// ==================== Mailbox Body Fetch (Callable) ====================
+
+/**
+ * Callable function to fetch a single message body on demand.
+ * Used when the body wasn't stored during sync or Firestore read fails.
+ * Falls back to fetching from the source (Gmail) and stores it for future access.
+ */
+export const fetchMailboxBody = onCall(
+  { timeoutSeconds: 30, memory: '256MiB' },
+  async (request) => {
+    if (!request.auth) {
+      throw new (await import('firebase-functions/v2/https')).HttpsError(
+        'unauthenticated',
+        'User must be authenticated'
+      )
+    }
+
+    const userId = request.auth.uid
+    const { messageId, accountId, source } = request.data as {
+      messageId: string
+      accountId: string
+      source: string
+    }
+
+    if (!messageId || !accountId) {
+      throw new (await import('firebase-functions/v2/https')).HttpsError(
+        'invalid-argument',
+        'Missing messageId or accountId'
+      )
+    }
+
+    const { getFirestore } = await import('firebase-admin/firestore')
+    const db = getFirestore()
+
+    // Check if body already exists in Firestore
+    const bodyDoc = await db
+      .doc(`users/${userId}/mailboxMessageBodies/${messageId}`)
+      .get()
+
+    if (bodyDoc.exists) {
+      const data = bodyDoc.data()!
+      return {
+        body: data.body as string,
+        attachmentCount: (data.attachmentCount as number) ?? 0,
+      }
+    }
+
+    // Fetch from source
+    if (source === 'gmail') {
+      const { fetchSingleGmailBody } = await import('./channels/gmailAdapter.js')
+      const result = await fetchSingleGmailBody(userId, accountId, messageId)
+      return { body: result.body, attachmentCount: result.attachmentCount }
+    }
+
+    throw new (await import('firebase-functions/v2/https')).HttpsError(
+      'not-found',
+      'Message body not available for this source'
+    )
+  }
+)
 
 // ==================== Mailbox Write Endpoints (Phase 3) ====================
 
@@ -1891,7 +1953,12 @@ export {
   channelConnectionCreate,
   channelConnectionDelete,
   channelConnectionTest,
+  linkedinProfileSearch,
 } from './channels/channelConnectionEndpoints.js'
+
+// ==================== Contact Enrichment ====================
+
+export { contactSearchEnrich } from './contacts/contactSearchEnrich.js'
 
 // ==================== Scheduling Links (Task 3.3) ====================
 

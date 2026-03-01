@@ -1,19 +1,16 @@
 /**
- * MailboxMessageList Component
+ * MailboxMessageList — Conversation Feed
  *
- * Left panel of the Mailbox page. Shows a scrollable list of messages
- * with channel filter tabs, AI top-10 ranking, thread grouping, hover
- * quick actions, and keyboard navigation (Arrow Up/Down, Enter, 'e' to dismiss, 'r' to reply).
+ * AI-first decision feed. Each row is a conversation (thread), not a message.
+ * Primary element: AI summary — what's happening, what changed, what to do.
+ * Secondary: last message preview — trust layer for verification.
+ * Expansion: click to expand full thread inline (accordion — one at a time).
  *
- * Thread grouping:
- * - Messages sharing a threadId, senderEmail, or sender name are collapsed
- *   into an expandable thread header showing sender, subject, count badge,
- *   and most-recent timestamp.
- * - Single messages render as a normal row.
- *
- * Hover quick actions:
- * - Archive (X icon), Mark read/unread (eye icon), Reply (arrow icon)
- * - Appear as a floating toolbar on hover; hidden on touch via CSS.
+ * Keyboard navigation:
+ * - Arrow Up/Down: move between conversations
+ * - Enter: expand/collapse
+ * - 'e': archive focused conversation
+ * - 'r': select message (opens inline reply in detail panel)
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
@@ -22,11 +19,61 @@ import type { PrioritizedMessage, MessageSource, TriageCategory } from '@lifeos/
 import { TRIAGE_LABELS } from '@lifeos/agents'
 import { groupByThread } from './threadGrouping'
 import type { MessageThread } from './threadGrouping'
+import { useMailboxMessageBody } from '@/hooks/useMailboxMessageBody'
 import '@/styles/components/MailboxMessageList.css'
 
-// ----- SVG icon helpers (inline, no external dep) -----
+// ----- SVG icon helpers -----
 
-/** X / close icon for Archive */
+function SourceIcon({ source }: { source: MessageSource }) {
+  const props = { width: 12, height: 12, viewBox: '0 0 12 12', 'aria-hidden': true as const }
+  switch (source) {
+    case 'gmail':
+      return (
+        <svg {...props} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1" y="2.5" width="10" height="7" rx="1" />
+          <polyline points="1,2.5 6,7 11,2.5" />
+        </svg>
+      )
+    case 'slack':
+      return (
+        <svg {...props} fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+          <line x1="3.5" y1="1.5" x2="3.5" y2="10.5" />
+          <line x1="8.5" y1="1.5" x2="8.5" y2="10.5" />
+          <line x1="1.5" y1="4" x2="10.5" y2="4" />
+          <line x1="1.5" y1="8" x2="10.5" y2="8" />
+        </svg>
+      )
+    case 'linkedin':
+      return (
+        <svg {...props} fill="currentColor">
+          <text x="1" y="10" fontSize="10" fontWeight="700" fontFamily="system-ui, sans-serif" letterSpacing="-0.5">in</text>
+        </svg>
+      )
+    case 'whatsapp':
+      return (
+        <svg {...props} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.5 5.8a4.2 4.2 0 0 1-.45 1.9A4.25 4.25 0 0 1 6.25 10a4.2 4.2 0 0 1-1.9-.45L1.5 10.5l.95-2.85A4.2 4.2 0 0 1 2 5.75 4.25 4.25 0 0 1 4.35 2a4.2 4.2 0 0 1 1.9-.45h.25a4.24 4.24 0 0 1 4 4v.25z" />
+        </svg>
+      )
+    case 'telegram':
+      return (
+        <svg {...props} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.5 1.5L5.5 6.5" />
+          <polygon points="10.5,1.5 7,10.5 5.5,6.5 1.5,5 10.5,1.5" fill="none" />
+        </svg>
+      )
+  }
+}
+
+function ReplyIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M6 3L2 7.5 6 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 7.5h8.5a3 3 0 013 3V12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  )
+}
+
 function ArchiveIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -35,81 +82,22 @@ function ArchiveIcon() {
   )
 }
 
-/** Eye icon for Mark read / unread */
-function EyeIcon({ open }: { open: boolean }) {
-  if (open) {
-    return (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path
-          d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8s-2.5 4.5-6.5 4.5S1.5 8 1.5 8z"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          strokeLinejoin="round"
-        />
-        <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.4" />
-      </svg>
-    )
-  }
-  // Closed eye (slash through)
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8s-2.5 4.5-6.5 4.5S1.5 8 1.5 8z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
-      <path d="M3 3l10 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-/** Reply arrow icon */
-function ReplyIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M6 3L2 7.5 6 12"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M2 7.5h8.5a3 3 0 013 3V12"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
-  )
-}
-
-/** Chevron (right when collapsed, down when expanded) */
-function ChevronIcon({ expanded }: { expanded: boolean }) {
+function ChevronDown({ expanded }: { expanded: boolean }) {
   return (
     <svg
-      width="12"
-      height="12"
+      width="14"
+      height="14"
       viewBox="0 0 16 16"
       fill="none"
       aria-hidden="true"
-      className={`mailbox-thread__chevron ${expanded ? 'mailbox-thread__chevron--expanded' : ''}`}
+      className={`conv-chevron ${expanded ? 'conv-chevron--expanded' : ''}`}
     >
-      <path
-        d="M6 4l4 4-4 4"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
 
-// ----- Props -----
+// ----- Constants -----
 
 const TRIAGE_ORDER: Record<TriageCategory, number> = {
   urgent: 0,
@@ -118,570 +106,333 @@ const TRIAGE_ORDER: Record<TriageCategory, number> = {
   automated: 3,
 }
 
-type TriageFilter = TriageCategory | 'all' | 'action'
+// ----- Props -----
 
 interface MailboxMessageListProps {
   messages: PrioritizedMessage[]
   loading: boolean
   error: string | null
-  selectedMessageId: string | null
-  channelFilter: MessageSource | 'all'
-  followUpOnly?: boolean
-  focusedIndex: number
-  onChannelFilterChange: (filter: MessageSource | 'all') => void
-  onSelectMessage: (message: PrioritizedMessage) => void
+  selectedMessageId?: string | null
+  onSelectMessage?: (message: PrioritizedMessage) => void
   onDismiss: (messageId: string) => void
-  onFocusedIndexChange: (index: number) => void
-  onReply?: (message: PrioritizedMessage) => void
   onMarkAsRead?: (messageId: string) => Promise<void>
 }
 
-const SOURCE_ICONS: Record<MessageSource, string> = {
-  gmail: '@',
-  slack: '#',
-  linkedin: 'in',
-  whatsapp: 'W',
-  telegram: 'T',
-}
-
-const SOURCE_LABELS: Record<MessageSource, string> = {
-  gmail: 'Gmail',
-  slack: 'Slack',
-  linkedin: 'LinkedIn',
-  whatsapp: 'WhatsApp',
-  telegram: 'Telegram',
-}
-
-const CHANNEL_TABS: Array<{ value: MessageSource | 'all'; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'gmail', label: 'Gmail' },
-  { value: 'slack', label: 'Slack' },
-  { value: 'linkedin', label: 'LinkedIn' },
-  { value: 'whatsapp', label: 'WhatsApp' },
-  { value: 'telegram', label: 'Telegram' },
-]
+// ----- Main Component -----
 
 export function MailboxMessageList({
   messages,
   loading,
   error,
   selectedMessageId,
-  channelFilter,
-  followUpOnly = false,
-  focusedIndex,
-  onChannelFilterChange,
   onSelectMessage,
   onDismiss,
-  onFocusedIndexChange,
-  onReply,
   onMarkAsRead,
 }: MailboxMessageListProps) {
-  const listRef = useRef<HTMLDivElement>(null)
-  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set())
-  const [triageFilter, setTriageFilter] = useState<TriageFilter>('action')
+  const feedRef = useRef<HTMLDivElement>(null)
+  const [expandedThread, setExpandedThread] = useState<string | null>(null)
+  const [focusedIndex, setFocusedIndex] = useState(0)
 
-  const toggleThread = useCallback((threadKey: string) => {
-    setExpandedThreads((prev) => {
-      const next = new Set(prev)
-      if (next.has(threadKey)) {
-        next.delete(threadKey)
-      } else {
-        next.add(threadKey)
-      }
-      return next
-    })
-  }, [])
-
-  // Filter by channel + follow-up + triage
-  const filteredMessages = useMemo(() => {
-    let filtered =
-      channelFilter === 'all' ? messages : messages.filter((m) => m.source === channelFilter)
-
-    if (followUpOnly) {
-      filtered = filtered.filter((m) => m.requiresFollowUp && !m.isDismissed)
-    }
-
-    // Apply triage filter
-    if (triageFilter === 'action') {
-      filtered = filtered.filter((m) => {
-        const cat = m.triageCategoryOverride || m.triageCategory
-        return !cat || cat === 'urgent' || cat === 'important'
-      })
-    } else if (triageFilter !== 'all') {
-      filtered = filtered.filter((m) => {
-        const cat = m.triageCategoryOverride || m.triageCategory
-        return cat === triageFilter
-      })
-    }
-
-    // Sort: triage category first, then by recency within each group
-    return [...filtered].sort((a, b) => {
+  // Sort: triage category first, then recency
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort((a, b) => {
       const catA = a.triageCategoryOverride || a.triageCategory || 'fyi'
       const catB = b.triageCategoryOverride || b.triageCategory || 'fyi'
       const orderDiff = TRIAGE_ORDER[catA] - TRIAGE_ORDER[catB]
       if (orderDiff !== 0) return orderDiff
       return b.receivedAtMs - a.receivedAtMs
     })
-  }, [messages, channelFilter, followUpOnly, triageFilter])
-
-  // Group into threads (preserves importance-score ordering from filteredMessages)
-  const threads = useMemo(() => groupByThread(filteredMessages), [filteredMessages])
-
-  // Flat list of "visible" messages for keyboard navigation
-  const flatMessages = useMemo(() => {
-    const flat: PrioritizedMessage[] = []
-    for (const thread of threads) {
-      flat.push(thread.latestMessage)
-      if (thread.messages.length > 1 && expandedThreads.has(thread.threadKey)) {
-        // Add sub-messages (excluding the latest which is already shown)
-        for (let i = 1; i < thread.messages.length; i++) {
-          flat.push(thread.messages[i])
-        }
-      }
-    }
-    return flat
-  }, [threads, expandedThreads])
-
-  // Only show tabs for sources that have messages
-  const activeSources = useMemo(() => {
-    const sources = new Set(messages.map((m) => m.source))
-    return CHANNEL_TABS.filter((tab) => tab.value === 'all' || sources.has(tab.value))
   }, [messages])
+
+  // Group into conversations (threads)
+  const threads = useMemo(() => groupByThread(sortedMessages), [sortedMessages])
+
+  // Accordion toggle — only one thread expanded at a time
+  const toggleThread = useCallback((threadKey: string) => {
+    setExpandedThread((prev) => (prev === threadKey ? null : threadKey))
+  }, [])
+
+  // Mark latest message as read when expanding
+  const handleToggle = useCallback(
+    (thread: MessageThread) => {
+      toggleThread(thread.threadKey)
+      if (thread.unreadCount > 0 && onMarkAsRead) {
+        void onMarkAsRead(thread.latestMessage.messageId)
+      }
+    },
+    [toggleThread, onMarkAsRead]
+  )
 
   // Scroll focused item into view
   useEffect(() => {
-    if (listRef.current && focusedIndex >= 0) {
-      const items = listRef.current.querySelectorAll('[role="option"]')
-      const focusedItem = items[focusedIndex] as HTMLElement
-      if (focusedItem) {
-        focusedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-      }
+    if (feedRef.current && focusedIndex >= 0) {
+      const items = feedRef.current.querySelectorAll('[data-conv-row]')
+      const item = items[focusedIndex] as HTMLElement | undefined
+      item?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
     }
   }, [focusedIndex])
 
-  // Keyboard navigation handler for the list
-  const handleListKeyDown = useCallback(
+  // Keyboard navigation
+  const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (flatMessages.length === 0) return
+      if (threads.length === 0) return
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
       switch (e.key) {
-        case 'ArrowDown': {
+        case 'ArrowDown':
           e.preventDefault()
-          const nextIndex = Math.min(focusedIndex + 1, flatMessages.length - 1)
-          onFocusedIndexChange(nextIndex)
+          setFocusedIndex((i) => Math.min(i + 1, threads.length - 1))
           break
-        }
-        case 'ArrowUp': {
+        case 'ArrowUp':
           e.preventDefault()
-          const prevIndex = Math.max(focusedIndex - 1, 0)
-          onFocusedIndexChange(prevIndex)
+          setFocusedIndex((i) => Math.max(i - 1, 0))
           break
-        }
-        case 'Enter': {
+        case 'Enter':
           e.preventDefault()
-          const msg = flatMessages[focusedIndex]
-          if (msg) void onSelectMessage(msg)
+          if (threads[focusedIndex]) handleToggle(threads[focusedIndex])
           break
-        }
         case 'e': {
-          // Dismiss focused message
-          if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)
-            return
           e.preventDefault()
-          const msg = flatMessages[focusedIndex]
-          if (msg) {
-            void onDismiss(msg.messageId)
-            if (focusedIndex >= flatMessages.length - 1) {
-              onFocusedIndexChange(Math.max(0, focusedIndex - 1))
-            }
+          const thread = threads[focusedIndex]
+          if (thread) {
+            void onDismiss(thread.latestMessage.messageId)
+            setFocusedIndex((i) => Math.min(i, threads.length - 2))
           }
           break
         }
         case 'r': {
-          // Reply to focused message
-          if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)
-            return
           e.preventDefault()
-          const msg = flatMessages[focusedIndex]
-          if (msg && onReply) onReply(msg)
+          const thread = threads[focusedIndex]
+          if (thread && onSelectMessage) onSelectMessage(thread.latestMessage)
           break
         }
       }
     },
-    [flatMessages, focusedIndex, onFocusedIndexChange, onSelectMessage, onDismiss, onReply]
-  )
-
-  const handleToggleRead = useCallback(
-    (e: React.MouseEvent, message: PrioritizedMessage) => {
-      e.stopPropagation()
-      if (onMarkAsRead) {
-        void onMarkAsRead(message.messageId)
-      }
-    },
-    [onMarkAsRead]
+    [threads, focusedIndex, handleToggle, onDismiss, onSelectMessage]
   )
 
   if (loading && messages.length === 0) {
     return (
-      <div className="mailbox-list">
-        <div className="mailbox-list__loading">Loading messages...</div>
+      <div className="conv-feed">
+        <div className="conv-feed__loading">Loading messages...</div>
       </div>
     )
   }
 
   if (error && messages.length === 0) {
     return (
-      <div className="mailbox-list">
-        <div className="mailbox-list__error">
+      <div className="conv-feed">
+        <div className="conv-feed__error">
           <p>Failed to load messages</p>
-          <p className="mailbox-list__error-detail">{error}</p>
+          <p className="conv-feed__error-detail">{error}</p>
         </div>
       </div>
     )
   }
 
-  // Track flat index for keyboard nav
-  let flatIndex = -1
+  if (sortedMessages.length === 0) {
+    return (
+      <div className="conv-feed">
+        <div className="conv-feed__empty">No messages to show</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="mailbox-list">
-      {/* Triage filter tabs */}
-      <div className="mailbox-list__triage-tabs" role="tablist" aria-label="Triage filter">
-        {[
-          { value: 'action' as const, label: 'Needs Action' },
-          { value: 'all' as const, label: 'All' },
-          { value: 'urgent' as const, label: 'Urgent' },
-          { value: 'important' as const, label: 'Important' },
-          { value: 'fyi' as const, label: 'FYI' },
-          { value: 'automated' as const, label: 'Auto' },
-        ].map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            role="tab"
-            aria-selected={triageFilter === tab.value}
-            className={`mailbox-list__tab ${triageFilter === tab.value ? 'mailbox-list__tab--active' : ''}`}
-            onClick={() => setTriageFilter(tab.value)}
-          >
-            {tab.label}
-          </button>
+    <div className="conv-feed">
+      <div className="conv-feed__summary">
+        {threads.length} conversation{threads.length !== 1 ? 's' : ''}
+        <span className="conv-feed__msg-count">
+          {' '}({sortedMessages.length} message{sortedMessages.length !== 1 ? 's' : ''})
+        </span>
+      </div>
+
+      <div
+        ref={feedRef}
+        className="conv-feed__list"
+        role="list"
+        aria-label="Conversations"
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+      >
+        {threads.map((thread, index) => (
+          <ConversationRow
+            key={thread.threadKey}
+            thread={thread}
+            isExpanded={expandedThread === thread.threadKey}
+            isFocused={index === focusedIndex}
+            isSelected={selectedMessageId === thread.latestMessage.messageId}
+            onToggle={() => handleToggle(thread)}
+            onSelect={onSelectMessage}
+            onDismiss={onDismiss}
+            onSelectForReply={onSelectMessage}
+          />
         ))}
       </div>
-
-      {/* Channel filter tabs */}
-      {activeSources.length > 2 && (
-        <div className="mailbox-list__tabs" role="tablist" aria-label="Channel filter">
-          {activeSources.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              role="tab"
-              aria-selected={channelFilter === tab.value}
-              className={`mailbox-list__tab ${channelFilter === tab.value ? 'mailbox-list__tab--active' : ''}`}
-              onClick={() => onChannelFilterChange(tab.value)}
-            >
-              {tab.label}
-              {tab.value !== 'all' && (
-                <span className="mailbox-list__tab-count">
-                  {messages.filter((m) => m.source === tab.value).length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Message count */}
-      <div className="mailbox-list__count">
-        {filteredMessages.length} message{filteredMessages.length !== 1 ? 's' : ''}
-        {followUpOnly && ' (follow-up)'}
-        {threads.length < filteredMessages.length && (
-          <span className="mailbox-list__thread-count">
-            {' '}
-            in {threads.length} thread{threads.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-
-      {/* Messages grouped by thread */}
-      {filteredMessages.length === 0 ? (
-        <div className="mailbox-list__empty">No messages to show</div>
-      ) : (
-        <div
-          ref={listRef}
-          className="mailbox-list__items"
-          role="listbox"
-          aria-label="Messages"
-          tabIndex={0}
-          onKeyDown={handleListKeyDown}
-        >
-          {threads.map((thread) => {
-            const isSingleMessage = thread.messages.length === 1
-            const isExpanded = expandedThreads.has(thread.threadKey)
-
-            if (isSingleMessage) {
-              // Render as regular message item
-              flatIndex++
-              const message = thread.latestMessage
-              return (
-                <MessageRow
-                  key={message.messageId}
-                  message={message}
-                  flatIndex={flatIndex}
-                  selectedMessageId={selectedMessageId}
-                  focusedIndex={focusedIndex}
-                  onSelectMessage={onSelectMessage}
-                  onDismiss={onDismiss}
-                  onReply={onReply}
-                  onToggleRead={handleToggleRead}
-                />
-              )
-            }
-
-            // Multi-message thread
-            flatIndex++
-            const headerFlatIndex = flatIndex
-
-            return (
-              <ThreadGroup
-                key={thread.threadKey}
-                thread={thread}
-                isExpanded={isExpanded}
-                headerFlatIndex={headerFlatIndex}
-                focusedIndex={focusedIndex}
-                selectedMessageId={selectedMessageId}
-                onToggleThread={toggleThread}
-                onSelectMessage={onSelectMessage}
-                onDismiss={onDismiss}
-                onReply={onReply}
-                onToggleRead={handleToggleRead}
-                assignFlatIndex={() => {
-                  flatIndex++
-                  return flatIndex
-                }}
-              />
-            )
-          })}
-        </div>
-      )}
     </div>
   )
 }
 
-// ----- ThreadGroup -----
+// ----- ConversationRow -----
 
-interface ThreadGroupProps {
+interface ConversationRowProps {
   thread: MessageThread
   isExpanded: boolean
-  headerFlatIndex: number
-  focusedIndex: number
-  selectedMessageId: string | null
-  onToggleThread: (threadKey: string) => void
-  onSelectMessage: (message: PrioritizedMessage) => void
+  isFocused: boolean
+  isSelected: boolean
+  onToggle: () => void
+  onSelect?: (message: PrioritizedMessage) => void
   onDismiss: (messageId: string) => void
-  onReply?: (message: PrioritizedMessage) => void
-  onToggleRead: (e: React.MouseEvent, message: PrioritizedMessage) => void
-  /** Call to get the next flat index for expanded child messages */
-  assignFlatIndex: () => number
+  onSelectForReply?: (message: PrioritizedMessage) => void
 }
 
-function ThreadGroup({
+function ConversationRow({
   thread,
   isExpanded,
-  headerFlatIndex,
-  focusedIndex,
-  selectedMessageId,
-  onToggleThread,
-  onSelectMessage,
+  isFocused,
+  isSelected,
+  onToggle,
+  onSelect,
   onDismiss,
-  onReply,
-  onToggleRead,
-  assignFlatIndex,
-}: ThreadGroupProps) {
-  const hasUnread = thread.unreadCount > 0
+  onSelectForReply,
+}: ConversationRowProps) {
+  const latest = thread.latestMessage
+  const triageCategory = latest.triageCategoryOverride || latest.triageCategory
   const timeAgo = formatDistanceToNow(new Date(thread.latestTimestamp), { addSuffix: true })
-  const displaySubject = thread.subject || thread.latestMessage.snippet
-
-  return (
-    <div className="mailbox-thread">
-      <button
-        className={[
-          'mailbox-thread__header',
-          headerFlatIndex === focusedIndex && 'mailbox-thread__header--focused',
-          hasUnread && 'mailbox-thread__header--has-unread',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-        onClick={() => onToggleThread(thread.threadKey)}
-        role="option"
-        aria-selected={thread.latestMessage.messageId === selectedMessageId}
-        aria-expanded={isExpanded}
-      >
-        <ChevronIcon expanded={isExpanded} />
-        <span className="mailbox-thread__sender">{thread.sender}</span>
-        <span className="mailbox-thread__count">{thread.messages.length}</span>
-        <span className="mailbox-thread__subject">{displaySubject}</span>
-        <span className="mailbox-thread__time">{timeAgo}</span>
-        {hasUnread && <span className="mailbox-thread__unread">{thread.unreadCount}</span>}
-      </button>
-
-      {isExpanded && (
-        <div
-          className="mailbox-thread__messages"
-          role="group"
-          aria-label={`Thread: ${displaySubject}`}
-        >
-          {thread.messages.map((message) => {
-            const currentFlatIndex =
-              message.messageId === thread.latestMessage.messageId
-                ? headerFlatIndex
-                : assignFlatIndex()
-
-            return (
-              <MessageRow
-                key={message.messageId}
-                message={message}
-                flatIndex={currentFlatIndex}
-                selectedMessageId={selectedMessageId}
-                focusedIndex={focusedIndex}
-                onSelectMessage={onSelectMessage}
-                onDismiss={onDismiss}
-                onReply={onReply}
-                onToggleRead={onToggleRead}
-                isThreadChild
-              />
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ----- MessageRow (extracted for reuse) -----
-
-interface MessageRowProps {
-  message: PrioritizedMessage
-  flatIndex: number
-  selectedMessageId: string | null
-  focusedIndex: number
-  onSelectMessage: (message: PrioritizedMessage) => void
-  onDismiss: (messageId: string) => void
-  onReply?: (message: PrioritizedMessage) => void
-  onToggleRead: (e: React.MouseEvent, message: PrioritizedMessage) => void
-  isThreadChild?: boolean
-}
-
-function MessageRow({
-  message,
-  flatIndex,
-  selectedMessageId,
-  focusedIndex,
-  onSelectMessage,
-  onDismiss,
-  onReply,
-  onToggleRead,
-  isThreadChild = false,
-}: MessageRowProps) {
-  const isSelected = message.messageId === selectedMessageId
-  const isFocused = flatIndex === focusedIndex
-  const isTop10 = flatIndex < 10 && message.importanceScore != null
-  const timeAgo = formatDistanceToNow(new Date(message.receivedAtMs), { addSuffix: true })
+  const hasMultiple = thread.messages.length > 1
 
   return (
     <div
       className={[
-        'mailbox-list__item',
-        isSelected && 'mailbox-list__item--selected',
-        isFocused && 'mailbox-list__item--focused',
-        message.isRead && 'mailbox-list__item--read',
-        isTop10 && 'mailbox-list__item--top10',
-        isThreadChild && 'mailbox-list__item--thread-child',
+        'conv-row',
+        isExpanded && 'conv-row--expanded',
+        isFocused && 'conv-row--focused',
+        isSelected && 'conv-row--selected',
+        triageCategory === 'urgent' && 'conv-row--urgent',
+        latest.requiresFollowUp && 'conv-row--action-required',
+        thread.unreadCount > 0 && 'conv-row--unread',
       ]
         .filter(Boolean)
         .join(' ')}
-      onClick={() => void onSelectMessage(message)}
-      role="option"
-      aria-selected={isSelected}
-      id={`mailbox-msg-${message.messageId}`}
+      data-conv-row
+      role="listitem"
     >
-      <div className={`mailbox-list__source mailbox-list__source--${message.source}`}>
-        <span className="mailbox-list__source-icon">{SOURCE_ICONS[message.source] ?? '>'}</span>
-      </div>
-
-      <div className="mailbox-list__item-body">
-        <div className="mailbox-list__item-header">
-          <span className="mailbox-list__sender">
-            {message.sender}
-            {message.contactId && (
-              <a
-                className="mailbox-list__contact-dot"
-                href={`/people?contactId=${message.contactId}`}
-                title="Linked contact"
-                onClick={(e) => e.stopPropagation()}
-              />
+      {/* Clickable header area */}
+      <div className="conv-row__clickable" onClick={() => onSelect?.(latest)} role="button" tabIndex={-1}>
+        {/* Top row: participants + meta */}
+        <div className="conv-row__header">
+          <div className="conv-row__participants">
+            <div className="conv-row__source">
+              <SourceIcon source={latest.source} />
+            </div>
+            <span className="conv-row__sender">{thread.sender}</span>
+            {hasMultiple && (
+              <span className="conv-row__count">{thread.messages.length}</span>
             )}
-          </span>
-          <span className="mailbox-list__time">{timeAgo}</span>
+            {thread.unreadCount > 0 && (
+              <span className="conv-row__unread-dot" />
+            )}
+          </div>
+          <div className="conv-row__meta">
+            {triageCategory && triageCategory !== 'fyi' && triageCategory !== 'automated' && (
+              <span className={`conv-row__triage conv-row__triage--${triageCategory}`}>
+                {TRIAGE_LABELS[triageCategory]}
+              </span>
+            )}
+            {latest.requiresFollowUp && (
+              <span className="conv-row__action-badge">Action</span>
+            )}
+            <span className="conv-row__time">{timeAgo}</span>
+          </div>
         </div>
-        {message.subject && <div className="mailbox-list__subject">{message.subject}</div>}
-        <div className="mailbox-list__snippet">{message.aiSummary}</div>
-        <div className="mailbox-list__meta">
-          {(() => {
-            const triageCategory = message.triageCategoryOverride || message.triageCategory
-            if (triageCategory) {
-              return (
-                <span className={`triage-badge triage-badge--${triageCategory}`}>
-                  {TRIAGE_LABELS[triageCategory]}
-                </span>
-              )
-            }
-            return null
-          })()}
-          <span className={`mailbox-list__priority mailbox-list__priority--${message.priority}`}>
-            {message.priority}
-          </span>
-          <span className="mailbox-list__channel-label">{SOURCE_LABELS[message.source]}</span>
-          {isTop10 && <span className="mailbox-list__ai-badge">AI Top 10</span>}
+
+        {/* Subject */}
+        {thread.subject && (
+          <div className="conv-row__subject">{thread.subject}</div>
+        )}
+
+        {/* AI Summary — PRIMARY ELEMENT */}
+        <div className="conv-row__summary">{latest.aiSummary}</div>
+
+        {/* Last message preview — TRUST LAYER */}
+        <div className="conv-row__preview">
+          <span className="conv-row__preview-sender">{latest.sender}:</span>
+          <span className="conv-row__preview-text">{latest.snippet}</span>
         </div>
       </div>
 
-      {/* Hover quick actions */}
-      <div className="mailbox-list__hover-actions">
-        <button
-          type="button"
-          className="mailbox-list__hover-btn"
-          title="Archive"
-          onClick={(e) => {
-            e.stopPropagation()
-            void onDismiss(message.messageId)
-          }}
-          aria-label={`Archive message from ${message.sender}`}
-        >
-          <ArchiveIcon />
-        </button>
-        <button
-          type="button"
-          className="mailbox-list__hover-btn"
-          title={message.isRead ? 'Mark unread' : 'Mark read'}
-          onClick={(e) => onToggleRead(e, message)}
-          aria-label={message.isRead ? 'Mark as unread' : 'Mark as read'}
-        >
-          <EyeIcon open={!message.isRead} />
-        </button>
-        {onReply && (
+      {/* Inline actions */}
+      <div className="conv-row__actions">
+        {onSelectForReply && (
           <button
             type="button"
-            className="mailbox-list__hover-btn"
-            title="Reply"
-            onClick={(e) => {
-              e.stopPropagation()
-              onReply(message)
-            }}
-            aria-label={`Reply to ${message.sender}`}
+            className="conv-row__action-btn conv-row__action-btn--reply"
+            onClick={(e) => { e.stopPropagation(); onSelectForReply(latest) }}
+            aria-label={`Reply to ${thread.sender}`}
           >
             <ReplyIcon />
+            <span>Reply</span>
           </button>
+        )}
+        <button
+          type="button"
+          className="conv-row__action-btn conv-row__action-btn--archive"
+          onClick={(e) => { e.stopPropagation(); void onDismiss(latest.messageId) }}
+          aria-label={`Archive conversation with ${thread.sender}`}
+        >
+          <ArchiveIcon />
+          <span>Done</span>
+        </button>
+        {hasMultiple && (
+          <button
+            type="button"
+            className="conv-row__action-btn conv-row__action-btn--expand"
+            onClick={(e) => { e.stopPropagation(); onToggle() }}
+            aria-label={isExpanded ? 'Collapse thread' : 'Expand thread'}
+          >
+            <ChevronDown expanded={isExpanded} />
+            <span>{isExpanded ? 'Collapse' : `${thread.messages.length} messages`}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Expanded thread view */}
+      {isExpanded && (
+        <div className="conv-row__thread">
+          <div className="conv-row__thread-divider" />
+          {[...thread.messages].reverse().map((msg) => (
+            <ThreadMessage key={msg.messageId} message={msg} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ----- ThreadMessage (individual message within expanded thread) -----
+
+function ThreadMessage({ message }: { message: PrioritizedMessage }) {
+  const { body: fullBody, loading: bodyLoading } = useMailboxMessageBody(
+    message.messageId,
+    message.accountId,
+    message.source
+  )
+  const timeAgo = formatDistanceToNow(new Date(message.receivedAtMs), { addSuffix: true })
+
+  return (
+    <div className="thread-msg">
+      <div className="thread-msg__header">
+        <div className="thread-msg__source">
+          <SourceIcon source={message.source} />
+        </div>
+        <span className="thread-msg__sender">{message.sender}</span>
+        <span className="thread-msg__time">{timeAgo}</span>
+      </div>
+      <div className="thread-msg__body">
+        {bodyLoading ? (
+          <span className="thread-msg__loading">Loading message...</span>
+        ) : (
+          <div className="thread-msg__text">{fullBody || message.snippet}</div>
         )}
       </div>
     </div>

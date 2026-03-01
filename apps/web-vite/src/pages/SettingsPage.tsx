@@ -109,24 +109,36 @@ export function SettingsPage() {
 
           <SearchToolsSection userId={user?.uid} onError={handleError} />
 
-          {/* Calendar -- already a standalone panel */}
+          {/* Calendar */}
           <section id="calendar">
-            <h2 className="settings-section__title">Calendar</h2>
-            <p className="settings-section__description">
-              Manage Google Calendar sync and event preferences.
-            </p>
-            <CalendarSettingsPanel />
+            <div className="settings-panel">
+              <header className="settings-panel__header">
+                <div>
+                  <h2 className="settings-section__title">Calendar</h2>
+                  <p className="settings-panel__meta">
+                    Manage Google Calendar sync and event preferences.
+                  </p>
+                </div>
+              </header>
+              <CalendarSettingsPanel />
+            </div>
           </section>
 
           <SchedulingLinksSection userId={user?.uid} onError={handleError} />
 
-          {/* Channels -- already a standalone panel */}
+          {/* Channels */}
           <section id="channels">
-            <h2 className="settings-section__title">Channels</h2>
-            <p className="settings-section__description">
-              Connect messaging channels for unified inbox sync.
-            </p>
-            <ChannelConnectionsPanel />
+            <div className="settings-panel">
+              <header className="settings-panel__header">
+                <div>
+                  <h2 className="settings-section__title">Channels</h2>
+                  <p className="settings-panel__meta">
+                    Connect messaging channels for unified inbox sync.
+                  </p>
+                </div>
+              </header>
+              <ChannelConnectionsPanel />
+            </div>
           </section>
 
           <QuotesSection userId={userId} onError={handleError} />

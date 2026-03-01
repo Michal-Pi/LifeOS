@@ -1,62 +1,12 @@
-/* MailboxComposer — modal composer for drafting messages */
+/* MailboxComposer — form content inside design-system Modal */
 
-.mailbox-composer__overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
+/* Override Modal body padding for the compose form */
+.mailbox-composer-modal .ui-modal-body {
+  padding: 0;
 }
 
-.mailbox-composer {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  width: 640px;
-  max-width: 90vw;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--shadow-lg);
-}
-
-/* Header */
-.mailbox-composer__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.mailbox-composer__title {
-  font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--foreground);
-  margin: 0;
-}
-
-.mailbox-composer__close {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-xs);
-  font-size: var(--text-xl);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background var(--motion-fast);
-}
-
-.mailbox-composer__close:hover {
-  background: var(--background-secondary);
-  color: var(--foreground);
+.mailbox-composer-modal .ui-modal-footer {
+  padding: 0;
 }
 
 /* Form */
@@ -71,7 +21,7 @@
 
 .mailbox-composer__field {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-3);
 }
 
@@ -81,6 +31,41 @@
   color: var(--text-secondary);
   width: 60px;
   flex-shrink: 0;
+  padding-top: var(--space-2);
+}
+
+.mailbox-composer__field-body {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.mailbox-composer__field-body .recipient-chip-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.mailbox-composer__cc-toggle {
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--motion-fast);
+  white-space: nowrap;
+  margin-top: var(--space-1);
+}
+
+.mailbox-composer__cc-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-subtle);
 }
 
 .mailbox-composer__select,
@@ -185,8 +170,7 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
+  width: 100%;
 }
 
 .mailbox-composer__footer-left {

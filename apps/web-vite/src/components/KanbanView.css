@@ -2,8 +2,11 @@
   display: flex;
   gap: var(--space-4);
   overflow-x: auto;
-  padding: var(--space-3) 0;
+  padding: var(--space-4);
   min-height: 400px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
 }
 
 .kanban-column {

@@ -4,6 +4,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Modal } from '@/components/ui/Modal'
+import { FormField } from '@/components/ui/FormField'
+import { Input } from '@/components/ui/Input'
 import { useCalendars } from '@/hooks/useCalendars'
 import { useAuth } from '@/hooks/useAuth'
 import type { SchedulingLink, WeeklyAvailability, TimeWindow } from '@/hooks/useSchedulingLinks'
@@ -195,35 +197,43 @@ export function SchedulingLinkModal({
   const writableCalendars = calendars.filter((c) => c.canWrite)
   const isEditing = link?.createdAt !== link?.updatedAt || !!link?.slug
 
+  const modalFooter = (
+    <>
+      <button type="button" className="ghost-button" onClick={onClose}>
+        Cancel
+      </button>
+      <button type="button" className="primary-button" onClick={handleSubmit} disabled={saving}>
+        {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Link'}
+      </button>
+    </>
+  )
+
   return (
     <Modal
       open={open}
       onClose={onClose}
       size="lg"
       title={isEditing ? 'Edit Scheduling Link' : 'New Scheduling Link'}
+      footer={modalFooter}
     >
       <div className="scheduling-link-form">
         {/* Title & Slug */}
         <div className="form-section">
-          <div className="form-group">
-            <label htmlFor="sl-title">Title</label>
-            <input
+          <FormField label="Title" htmlFor="sl-title" required>
+            <Input
               id="sl-title"
-              className="ui-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. 30-Minute Chat"
             />
-          </div>
-          <div className="form-group">
-            <label htmlFor="sl-slug">Slug</label>
+          </FormField>
+          <FormField label="Slug" htmlFor="sl-slug">
             <div className="scheduling-link-form__slug-preview">
               <span className="scheduling-link-form__slug-prefix">
                 {window.location.origin}/schedule/
               </span>
-              <input
+              <Input
                 id="sl-slug"
-                className="ui-input"
                 value={slug}
                 onChange={(e) => {
                   setSlug(slugify(e.target.value))
@@ -232,23 +242,22 @@ export function SchedulingLinkModal({
                 placeholder="my-meeting"
               />
             </div>
-          </div>
-          <div className="form-group">
-            <label htmlFor="sl-desc">Description</label>
+          </FormField>
+          <FormField label="Description" htmlFor="sl-desc">
             <textarea
               id="sl-desc"
-              className="ui-input"
+              className="ui-textarea"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this meeting about?"
               rows={2}
             />
-          </div>
+          </FormField>
         </div>
 
         {/* Duration Selection */}
         <div className="form-section">
-          <label>Durations</label>
+          <span className="section-label">Durations</span>
           <div className="scheduling-link-form__durations">
             {AVAILABLE_DURATIONS.map((d) => (
               <button
@@ -262,8 +271,7 @@ export function SchedulingLinkModal({
             ))}
           </div>
           {durations.length > 1 && (
-            <div className="form-group" style={{ marginTop: '8px' }}>
-              <label htmlFor="sl-default-duration">Default duration</label>
+            <FormField label="Default duration" htmlFor="sl-default-duration">
               <select
                 id="sl-default-duration"
                 className="ui-input"
@@ -276,14 +284,13 @@ export function SchedulingLinkModal({
                   </option>
                 ))}
               </select>
-            </div>
+            </FormField>
           )}
         </div>
 
         {/* Calendar & Timezone */}
         <div className="form-section">
-          <div className="form-group">
-            <label htmlFor="sl-calendar">Calendar</label>
+          <FormField label="Calendar" htmlFor="sl-calendar" required>
             <select
               id="sl-calendar"
               className="ui-input"
@@ -307,22 +314,20 @@ export function SchedulingLinkModal({
                 </option>
               ))}
             </select>
-          </div>
-          <div className="form-group">
-            <label htmlFor="sl-timezone">Timezone</label>
-            <input
+          </FormField>
+          <FormField label="Timezone" htmlFor="sl-timezone">
+            <Input
               id="sl-timezone"
-              className="ui-input"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
               placeholder="America/New_York"
             />
-          </div>
+          </FormField>
         </div>
 
         {/* Availability */}
         <div className="form-section">
-          <label>Availability</label>
+          <span className="section-label">Availability</span>
           <div className="availability-editor">
             {DAY_LABELS.map(({ key, label }) => (
               <div key={key} className="availability-row">
@@ -335,12 +340,14 @@ export function SchedulingLinkModal({
                       <div key={i} className="time-window-input">
                         <input
                           type="time"
+                          className="ui-input"
                           value={w.start}
                           onChange={(e) => updateWindow(key, i, 'start', e.target.value)}
                         />
                         <span>to</span>
                         <input
                           type="time"
+                          className="ui-input"
                           value={w.end}
                           onChange={(e) => updateWindow(key, i, 'end', e.target.value)}
                         />
@@ -372,95 +379,74 @@ export function SchedulingLinkModal({
         {/* Buffer, Max Days, Location, Conferencing */}
         <div className="form-section">
           <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="sl-buffer">Buffer (minutes)</label>
-              <input
+            <FormField label="Buffer (minutes)" htmlFor="sl-buffer">
+              <Input
                 id="sl-buffer"
                 type="number"
-                className="ui-input"
                 min={0}
                 max={120}
                 value={bufferMinutes}
                 onChange={(e) => setBufferMinutes(Number(e.target.value))}
               />
-            </div>
-            <div className="form-group">
-              <label htmlFor="sl-max-days">Max days ahead</label>
-              <input
+            </FormField>
+            <FormField label="Max days ahead" htmlFor="sl-max-days">
+              <Input
                 id="sl-max-days"
                 type="number"
-                className="ui-input"
                 min={1}
                 max={365}
                 value={maxDaysAhead}
                 onChange={(e) => setMaxDaysAhead(Number(e.target.value))}
               />
-            </div>
+            </FormField>
           </div>
-          <div className="form-group">
-            <label htmlFor="sl-location">Location</label>
-            <input
+          <FormField label="Location" htmlFor="sl-location">
+            <Input
               id="sl-location"
-              className="ui-input"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Google Meet, Zoom link, office address..."
             />
-          </div>
-          <label className="scheduling-link-form__checkbox">
+          </FormField>
+          <div className="form-group form-checkbox">
             <input
+              id="sl-conferencing"
               type="checkbox"
               checked={addConferencing}
               onChange={(e) => setAddConferencing(e.target.checked)}
             />
-            <span>Auto-add Google Meet</span>
-          </label>
+            <label htmlFor="sl-conferencing">Auto-add Google Meet</label>
+          </div>
         </div>
 
         {/* Branding */}
         <div className="form-section">
-          <label>Branding (optional)</label>
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="sl-accent">Accent color</label>
-              <div className="scheduling-link-form__color-input">
-                <input
-                  id="sl-accent"
-                  type="color"
-                  value={accentColor || '#0313a6'}
-                  onChange={(e) => setAccentColor(e.target.value)}
-                />
-                <input
-                  className="ui-input"
-                  value={accentColor}
-                  onChange={(e) => setAccentColor(e.target.value)}
-                  placeholder="#0313a6"
-                  style={{ flex: 1 }}
-                />
-              </div>
+          <span className="section-label">Branding (optional)</span>
+          <FormField label="Accent color" htmlFor="sl-accent">
+            <div className="scheduling-link-form__color-input">
+              <input
+                id="sl-accent"
+                type="color"
+                value={accentColor || '#0313a6'}
+                onChange={(e) => setAccentColor(e.target.value)}
+              />
+              <Input
+                value={accentColor}
+                onChange={(e) => setAccentColor(e.target.value)}
+                placeholder="#0313a6"
+              />
             </div>
-          </div>
-          <div className="form-group">
-            <label htmlFor="sl-welcome">Welcome message</label>
+          </FormField>
+          <FormField label="Welcome message" htmlFor="sl-welcome">
             <textarea
               id="sl-welcome"
-              className="ui-input"
+              className="ui-textarea"
               value={welcomeMessage}
               onChange={(e) => setWelcomeMessage(e.target.value)}
               placeholder="Displayed on the booking page"
               rows={2}
             />
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="scheduling-link-form__actions">
-          <button type="button" className="ghost-button" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="button" className="primary-button" onClick={handleSubmit} disabled={saving}>
-            {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Link'}
-          </button>
+          </FormField>
         </div>
       </div>
     </Modal>

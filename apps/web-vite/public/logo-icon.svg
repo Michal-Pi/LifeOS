@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0313a6"/>
+      <stop offset="100%" stop-color="#9201cb"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square container -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- Stylized L with modern notch -->
+  <path d="M152 108 h56 v240 h148 v56 H152 Z" fill="#ffffff"/>
+  <!-- Accent bar — the "OS" hint -->
+  <path d="M308 108 h56 v120 h-56 Z" fill="rgba(255,255,255,0.35)"/>
+</svg>

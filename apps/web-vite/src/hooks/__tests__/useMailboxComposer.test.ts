@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useMailboxComposer } from '@/hooks/useMailboxComposer'
-import type { PrioritizedMessage } from '@lifeos/agents'
+import type { PrioritizedMessage, Recipient } from '@lifeos/agents'
 
 // --- Firestore mocks ---
 const mockSetDoc = vi.fn()
@@ -24,12 +24,25 @@ vi.mock('firebase/firestore', () => ({
   limit: vi.fn(),
 }))
 
+// --- Outbox mocks ---
+const mockEnqueueSend = vi.fn()
+const mockTriggerDrain = vi.fn()
+
+vi.mock('@/outbox/mailboxOutbox', () => ({
+  enqueueSend: (...args: unknown[]) => mockEnqueueSend(...args),
+}))
+
+vi.mock('@/outbox/mailboxOutboxWorker', () => ({
+  triggerDrain: () => mockTriggerDrain(),
+}))
+
 vi.mock('@/lib/firestoreClient', () => ({
   getFirestoreClient: vi.fn().mockResolvedValue('mock-db'),
 }))
 
 const mockUser = {
   uid: 'user-1',
+  email: 'me@example.com',
   getIdToken: vi.fn().mockResolvedValue('mock-token'),
 }
 
@@ -37,12 +50,20 @@ vi.mock('@/hooks/useAuth', () => ({
   useAuth: vi.fn(() => ({ user: mockUser })),
 }))
 
+const bobRecipient: Recipient = {
+  id: 'bob@example.com',
+  name: 'Bob',
+  email: 'bob@example.com',
+  channel: 'gmail',
+}
+
 describe('useMailboxComposer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSetDoc.mockResolvedValue(undefined)
     mockDeleteDoc.mockResolvedValue(undefined)
     mockGetDocs.mockResolvedValue({ docs: [] })
+    mockEnqueueSend.mockResolvedValue({ opId: 'test-op' })
     vi.stubGlobal('fetch', vi.fn())
   })
 
@@ -52,8 +73,9 @@ describe('useMailboxComposer', () => {
     expect(result.current.state).toEqual({
       draftId: null,
       source: 'gmail',
-      recipientId: '',
-      recipientName: '',
+      toRecipients: [],
+      ccRecipients: [],
+      bccRecipients: [],
       subject: '',
       body: '',
       richContent: null,
@@ -90,10 +112,48 @@ describe('useMailboxComposer', () => {
     const { result } = renderHook(() => useMailboxComposer({ replyTo }))
 
     expect(result.current.state.source).toBe('slack')
-    expect(result.current.state.recipientId).toBe('alice@example.com')
-    expect(result.current.state.recipientName).toBe('Alice')
+    expect(result.current.state.toRecipients).toHaveLength(1)
+    expect(result.current.state.toRecipients[0].id).toBe('alice@example.com')
+    expect(result.current.state.toRecipients[0].name).toBe('Alice')
     expect(result.current.state.subject).toBe('Re: Hello')
     expect(result.current.state.inReplyTo).toBe('orig-1')
+  })
+
+  it('pre-fills Reply All with To and CC recipients', () => {
+    const replyTo = {
+      messageId: 'msg-1',
+      userId: 'user-1',
+      source: 'gmail',
+      accountId: 'acc-1',
+      originalMessageId: 'orig-1',
+      sender: 'Alice',
+      senderEmail: 'alice@example.com',
+      subject: 'Hello',
+      snippet: 'Test',
+      aiSummary: 'Test summary',
+      priority: 'high',
+      requiresFollowUp: false,
+      isRead: true,
+      isDismissed: false,
+      receivedAtMs: Date.now(),
+      createdAtMs: Date.now(),
+      updatedAtMs: Date.now(),
+      toRecipients: ['me@example.com', 'carol@example.com'],
+      ccRecipients: ['dave@example.com'],
+    } as PrioritizedMessage
+
+    const { result } = renderHook(() =>
+      useMailboxComposer({ replyTo, replyAll: true })
+    )
+
+    // To should include sender + other To recipients (excluding self)
+    expect(result.current.state.toRecipients).toHaveLength(2)
+    expect(result.current.state.toRecipients[0].id).toBe('alice@example.com')
+    expect(result.current.state.toRecipients[1].id).toBe('carol@example.com')
+
+    // CC should include original CC recipients (excluding self)
+    expect(result.current.state.ccRecipients).toHaveLength(1)
+    expect(result.current.state.ccRecipients[0].id).toBe('dave@example.com')
   })
 
   it('state setters update individual fields', () => {
@@ -105,14 +165,10 @@ describe('useMailboxComposer', () => {
     expect(result.current.state.source).toBe('linkedin')
 
     act(() => {
-      result.current.setRecipientId('bob@example.com')
+      result.current.setToRecipients([bobRecipient])
     })
-    expect(result.current.state.recipientId).toBe('bob@example.com')
-
-    act(() => {
-      result.current.setRecipientName('Bob')
-    })
-    expect(result.current.state.recipientName).toBe('Bob')
+    expect(result.current.state.toRecipients).toHaveLength(1)
+    expect(result.current.state.toRecipients[0].id).toBe('bob@example.com')
 
     act(() => {
       result.current.setSubject('New Subject')
@@ -125,7 +181,7 @@ describe('useMailboxComposer', () => {
     expect(result.current.state.body).toBe('Message body')
   })
 
-  it('send validates that recipient is required', async () => {
+  it('send validates that at least one recipient is required', async () => {
     const { result } = renderHook(() => useMailboxComposer())
 
     act(() => {
@@ -138,14 +194,14 @@ describe('useMailboxComposer', () => {
     })
 
     expect(success).toBe(false)
-    expect(result.current.error).toBe('Recipient is required')
+    expect(result.current.error).toBe('At least one recipient is required')
   })
 
   it('send validates that message body is required', async () => {
     const { result } = renderHook(() => useMailboxComposer())
 
     act(() => {
-      result.current.setRecipientId('bob@example.com')
+      result.current.setToRecipients([bobRecipient])
     })
 
     let success: boolean | undefined
@@ -157,17 +213,11 @@ describe('useMailboxComposer', () => {
     expect(result.current.error).toBe('Message body is required')
   })
 
-  it('send calls the Cloud Function on valid input', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ success: true }),
-    })
-    vi.stubGlobal('fetch', mockFetch)
-
+  it('send enqueues to outbox on valid input', async () => {
     const { result } = renderHook(() => useMailboxComposer())
 
     act(() => {
-      result.current.setRecipientId('bob@example.com')
+      result.current.setToRecipients([bobRecipient])
       result.current.setBody('Hello!')
     })
 
@@ -177,24 +227,26 @@ describe('useMailboxComposer', () => {
     })
 
     expect(success).toBe(true)
-    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(mockEnqueueSend).toHaveBeenCalledTimes(1)
+    expect(mockEnqueueSend).toHaveBeenCalledWith('user-1', expect.objectContaining({
+      source: 'gmail',
+      recipientId: 'bob@example.com',
+      body: 'Hello!',
+    }))
+    expect(mockTriggerDrain).toHaveBeenCalledTimes(1)
     expect(result.current.error).toBeNull()
     // State should be reset after successful send
     expect(result.current.state.body).toBe('')
-    expect(result.current.state.recipientId).toBe('')
+    expect(result.current.state.toRecipients).toEqual([])
   })
 
-  it('send sets error on API failure', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: false,
-      json: () => Promise.resolve({ error: 'Rate limited' }),
-    })
-    vi.stubGlobal('fetch', mockFetch)
+  it('send sets error on outbox failure', async () => {
+    mockEnqueueSend.mockRejectedValue(new Error('IndexedDB error'))
 
     const { result } = renderHook(() => useMailboxComposer())
 
     act(() => {
-      result.current.setRecipientId('bob@example.com')
+      result.current.setToRecipients([bobRecipient])
       result.current.setBody('Hello!')
     })
 
@@ -204,14 +256,14 @@ describe('useMailboxComposer', () => {
     })
 
     expect(success).toBe(false)
-    expect(result.current.error).toBe('Rate limited')
+    expect(result.current.error).toBe('IndexedDB error')
   })
 
   it('saveDraft writes to Firestore when content exists', async () => {
     const { result } = renderHook(() => useMailboxComposer())
 
     act(() => {
-      result.current.setRecipientId('bob@example.com')
+      result.current.setToRecipients([bobRecipient])
       result.current.setBody('Draft content')
     })
 
@@ -223,7 +275,7 @@ describe('useMailboxComposer', () => {
     expect(result.current.lastSavedMs).not.toBeNull()
   })
 
-  it('saveDraft skips when body and recipientId are empty', async () => {
+  it('saveDraft skips when body and recipients are empty', async () => {
     const { result } = renderHook(() => useMailboxComposer())
 
     await act(async () => {
@@ -238,7 +290,7 @@ describe('useMailboxComposer', () => {
     const { result } = renderHook(() => useMailboxComposer())
 
     act(() => {
-      result.current.setRecipientId('bob@example.com')
+      result.current.setToRecipients([bobRecipient])
       result.current.setBody('Draft content')
       result.current.setSubject('Subject')
     })
@@ -247,7 +299,7 @@ describe('useMailboxComposer', () => {
       await result.current.discardDraft()
     })
 
-    expect(result.current.state.recipientId).toBe('')
+    expect(result.current.state.toRecipients).toEqual([])
     expect(result.current.state.body).toBe('')
     expect(result.current.state.subject).toBe('')
   })

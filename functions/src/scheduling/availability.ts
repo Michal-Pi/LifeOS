@@ -61,7 +61,7 @@ function parseTimeString(time: string): { hours: number; minutes: number } {
  * Get the start of a day in a specific timezone as epoch ms.
  * Returns midnight of that date in the given timezone.
  */
-function getStartOfDayInTimezone(dateMs: number, timezone: string): number {
+export function getStartOfDayInTimezone(dateMs: number, timezone: string): number {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
     year: 'numeric',

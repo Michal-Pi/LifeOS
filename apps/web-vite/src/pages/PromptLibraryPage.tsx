@@ -109,9 +109,11 @@ export function PromptLibraryPage() {
         <div className="page-header__actions">
           <SegmentedControl
             value="prompts"
-            onChange={(value) => navigate(value === 'agents' ? '/agents' : '/agents/prompts')}
+            onChange={(value) =>
+              navigate(value === 'workflows' ? '/workflows' : '/workflows/prompts')
+            }
             options={[
-              { value: 'agents', label: 'Agents' },
+              { value: 'workflows', label: 'Workflows' },
               { value: 'prompts', label: 'Prompts' },
             ]}
           />

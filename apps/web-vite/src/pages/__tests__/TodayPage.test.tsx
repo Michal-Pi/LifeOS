@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TodayPage } from '../TodayPage'
@@ -118,27 +119,22 @@ vi.mock('@/utils/seedDemoTraining', () => ({
   seedDemoTrainingData: vi.fn(),
 }))
 
+vi.mock('@/contexts/RepositoryContext', () => ({
+  useRepositories: () => ({
+    quoteRepository: {
+      getQuotes: () => Promise.resolve([]),
+    },
+    calendarRepository: {},
+    checkInRepository: {},
+    contactRepository: {},
+    todoRepository: {},
+    planRepository: {},
+    templateRepository: {},
+    sessionRepository: {},
+  }),
+}))
+
 // Mock child components to isolate page logic
-vi.mock('@/components/mind/CheckInCard', () => ({
-  CheckInCard: () => <div data-testid="check-in-card">CheckIn</div>,
-}))
-
-vi.mock('@/components/habits/IncantationDisplay', () => ({
-  IncantationDisplay: () => <div data-testid="incantation-display">Incantations</div>,
-}))
-
-vi.mock('@/components/habits/HabitCheckInCard', () => ({
-  HabitCheckInCard: () => <div data-testid="habit-checkin">Habits</div>,
-}))
-
-vi.mock('@/components/training/TodayWorkout', () => ({
-  TodayWorkout: () => <div data-testid="today-workout">Workout</div>,
-}))
-
-vi.mock('@/components/training/WorkoutSessionCard', () => ({
-  WorkoutSessionCard: () => <div data-testid="workout-session">Session</div>,
-}))
-
 vi.mock('@/components/contacts/FollowUpWidget', () => ({
   FollowUpWidget: () => <div data-testid="follow-up-widget">FollowUps</div>,
 }))
@@ -149,16 +145,6 @@ vi.mock('@/components/contacts/MeetingBriefingModal', () => ({
 
 vi.mock('@/components/mailbox/MessageMailbox', () => ({
   MessageMailbox: () => <div data-testid="message-mailbox">Mailbox</div>,
-}))
-
-vi.mock('@/components/StatusBar', () => ({
-  StatusBar: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="status-bar">{children}</div>
-  ),
-}))
-
-vi.mock('@/components/StatusDot', () => ({
-  StatusDot: () => <span data-testid="status-dot" />,
 }))
 
 vi.mock('@/components/ui/button', () => ({
@@ -182,7 +168,7 @@ function renderPage() {
 describe('TodayPage', () => {
   it('renders without crash', () => {
     renderPage()
-    expect(screen.getByTestId('status-bar')).toBeInTheDocument()
+    expect(screen.getByTestId('today-telemetry')).toBeInTheDocument()
   })
 
   it('renders telemetry bar with pill elements', () => {
@@ -202,21 +188,97 @@ describe('TodayPage', () => {
 
   it('renders quick-add input', () => {
     renderPage()
-    expect(screen.getByPlaceholderText('+ Add a task for today...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('+ Create task...')).toBeInTheDocument()
   })
 
   it('renders collapsible sections with <details> elements open by default', () => {
     renderPage()
     const details = document.querySelectorAll('details.today-card-collapse')
-    expect(details.length).toBeGreaterThanOrEqual(3)
+    expect(details.length).toBeGreaterThanOrEqual(2)
     details.forEach((d) => {
       expect(d).toHaveAttribute('open')
     })
   })
 
-  it('renders "See full calendar" link when no events', () => {
+  it('renders "See full calendar" link when no events', async () => {
     renderPage()
-    // With mocked empty calendar events, the empty state should show
-    expect(screen.getByText('Calendar is open')).toBeInTheDocument()
+    // With mocked empty calendar events, loading skeleton shows first, then empty state
+    expect(await screen.findByText('Calendar is open')).toBeInTheDocument()
+  })
+
+  it('creates a task via quick-add on Enter', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const input = screen.getByPlaceholderText('+ Create task...')
+    await user.type(input, 'New task{Enter}')
+    expect(mockCreateTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'New task',
+        importance: 4,
+      })
+    )
+  })
+
+  it('completes a task when checkbox is clicked', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    // The frog task checkbox has aria-label "Complete Most important task"
+    const checkbox = screen.getByRole('button', { name: /Complete Most important task/i })
+    await user.click(checkbox)
+    expect(mockUpdateTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'task-1',
+        completed: true,
+      })
+    )
+  })
+
+  it('snoozes a task when snooze button is clicked', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const snoozeBtn = screen.getByRole('button', { name: /Snooze Most important task to tomorrow/i })
+    await user.click(snoozeBtn)
+    expect(mockUpdateTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'task-1',
+        urgency: 'this_week',
+      })
+    )
+  })
+
+  it('task checkboxes have aria-labels for accessibility', () => {
+    renderPage()
+    expect(screen.getByRole('button', { name: /Complete Most important task/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Complete Second task/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Snooze Most important task to tomorrow/ })).toBeInTheDocument()
+  })
+
+  it('UTIL telemetry uses /10 denominator (0% with no events)', () => {
+    renderPage()
+    // With no events, busyHours = 0, so UTIL = 0 / 10 * 100 = 0%
+    expect(screen.getByText('UTIL 0%')).toBeInTheDocument()
+  })
+
+  it('shows calendar loading skeleton while events are loading', () => {
+    renderPage()
+    // On initial render, eventsLoading is true and events are empty
+    const skeletons = document.querySelectorAll('.today-skeleton-row')
+    expect(skeletons.length).toBe(3)
+  })
+
+  it('renders child components', () => {
+    renderPage()
+    expect(screen.getByTestId('follow-up-widget')).toBeInTheDocument()
+    expect(screen.getByTestId('message-mailbox')).toBeInTheDocument()
+  })
+
+  it('shows importance selector when typing a task', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const input = screen.getByPlaceholderText('+ Create task...')
+    await user.type(input, 'Test task')
+    // Importance buttons should appear
+    const importanceBtns = document.querySelectorAll('.today-quick-add__importance-btn')
+    expect(importanceBtns.length).toBe(5)
   })
 })

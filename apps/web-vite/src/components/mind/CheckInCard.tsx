@@ -10,6 +10,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
+import { createLogger } from '@lifeos/core'
 import type { EnergyLevel, CoreEmotionId } from '@lifeos/mind'
 import { useCheckIn } from '@/hooks/useCheckIn'
 import { EmotionPicker } from './EmotionPicker'
@@ -18,9 +19,12 @@ import { Button } from '@/components/ui/button'
 import { getEmotionLabel, getCoreEmotionById } from '@lifeos/mind'
 import '@/styles/components/CheckInCard.css'
 
+const logger = createLogger('CheckInCard')
+
 interface CheckInCardProps {
   userId: string
   dateKey: string
+  onRequestIntervention?: () => void
 }
 
 const ENERGY_LEVELS: { value: EnergyLevel; label: string }[] = [
@@ -29,7 +33,7 @@ const ENERGY_LEVELS: { value: EnergyLevel; label: string }[] = [
   { value: 'high', label: 'High' },
 ]
 
-export function CheckInCard({ userId, dateKey }: CheckInCardProps) {
+export function CheckInCard({ userId, dateKey, onRequestIntervention }: CheckInCardProps) {
   const {
     currentCheckIn,
     checkInLabel,
@@ -81,7 +85,7 @@ export function CheckInCard({ userId, dateKey }: CheckInCardProps) {
     try {
       await saveCheckIn(selectedEnergy, selectedEmotionId, selectedCoreEmotionId)
     } catch (err) {
-      console.error('Failed to save check-in:', err)
+      logger.error('Failed to save check-in:', err)
     } finally {
       setIsSaving(false)
     }
@@ -160,6 +164,11 @@ export function CheckInCard({ userId, dateKey }: CheckInCardProps) {
         <Button variant="ghost" className="small" onClick={handleOpenHistory}>
           See History
         </Button>
+        {onRequestIntervention && (
+          <Button variant="ghost" className="small" onClick={onRequestIntervention}>
+            Mind Reset
+          </Button>
+        )}
         <Button className="primary-button small" onClick={handleSave} disabled={!canSave}>
           {isSaving ? 'Saving...' : hasCheckedInForPeriod ? 'Update' : 'Save Check-In'}
         </Button>

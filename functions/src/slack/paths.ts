@@ -71,6 +71,23 @@ export function prioritizedMessagesCollection(uid: string) {
   return db().collection(`users/${uid}/mailboxMessages`)
 }
 
+// ----- Mailbox Message Bodies Paths -----
+
+/**
+ * Full message body stored separately for offline reading
+ * Path: users/{uid}/mailboxMessageBodies/{messageId}
+ */
+export function messageBodyRef(uid: string, messageId: string): DocumentReference {
+  return db().doc(`users/${uid}/mailboxMessageBodies/${messageId}`)
+}
+
+/**
+ * All message bodies for a user
+ */
+export function messageBodiesCollection(uid: string) {
+  return db().collection(`users/${uid}/mailboxMessageBodies`)
+}
+
 // ----- Mailbox Sync Paths -----
 
 /**

@@ -114,6 +114,27 @@ export function useChannelConnections(source?: MessageSource): UseChannelConnect
 
       setError(null)
 
+      // #region agent log
+      if (input.source === 'linkedin' && input.credentials) {
+        const liAt = input.credentials.liAtCookie
+        fetch('http://127.0.0.1:7403/ingest/eb9b440f-45bd-4a2b-83e2-dbda3c3b5e69', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1518cc' },
+          body: JSON.stringify({
+            sessionId: '1518cc',
+            location: 'useChannelConnections.ts:createConnection',
+            message: 'LinkedIn createConnection request',
+            data: {
+              cookieLength: typeof liAt === 'string' ? liAt.length : 0,
+              hasCsrf: Boolean(input.credentials.csrfToken),
+            },
+            timestamp: Date.now(),
+            hypothesisId: 'H1-H5',
+          }),
+        }).catch(() => {})
+      }
+      // #endregion
+
       try {
         const idToken = await user.getIdToken()
         const response = await fetch(
@@ -131,12 +152,38 @@ export function useChannelConnections(source?: MessageSource): UseChannelConnect
           }
         )
 
+        const errPayload = await response.json().catch(() => ({}))
+        const errMessage = errPayload.error || 'Failed to create connection'
+
         if (!response.ok) {
-          const err = await response.json()
-          throw new Error(err.error || 'Failed to create connection')
+          // #region agent log
+          if (input.source === 'linkedin') {
+            const liAt = input.credentials?.liAtCookie
+            fetch('http://127.0.0.1:7403/ingest/eb9b440f-45bd-4a2b-83e2-dbda3c3b5e69', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1518cc' },
+              body: JSON.stringify({
+                sessionId: '1518cc',
+                location: 'useChannelConnections.ts:createConnection',
+                message: 'LinkedIn createConnection failed',
+                data: {
+                  httpStatus: response.status,
+                  error: errMessage,
+                  linkedInStatus: errPayload.linkedInStatus,
+                  linkedInBodySnippet: errPayload.linkedInBody ? String(errPayload.linkedInBody).slice(0, 100) : undefined,
+                  cookieLength: typeof liAt === 'string' ? liAt.length : 0,
+                  hasCsrf: Boolean(input.credentials?.csrfToken),
+                },
+                timestamp: Date.now(),
+                hypothesisId: 'H1-H5',
+              }),
+            }).catch(() => {})
+          }
+          // #endregion
+          throw new Error(errMessage)
         }
 
-        const { connectionId } = await response.json()
+        const connectionId = errPayload.connectionId
         return connectionId
       } catch (err) {
         console.error('Error creating channel connection:', err)

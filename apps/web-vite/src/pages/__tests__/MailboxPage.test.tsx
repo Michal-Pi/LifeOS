@@ -12,13 +12,11 @@ vi.mock('@/components/mailbox/MailboxMessageList', () => ({
     messages: PrioritizedMessage[]
     loading: boolean
     error: string | null
-    selectedMessageId: string | null
-    onSelectMessage: (msg: PrioritizedMessage) => void
+    selectedMessageId?: string | null
+    onSelectMessage?: (msg: PrioritizedMessage) => void
     onDismiss: (id: string) => void
-    channelFilter: string
-    onChannelFilterChange: (f: string) => void
-    focusedIndex: number
-    onFocusedIndexChange: (i: number) => void
+    onReply?: (msg: PrioritizedMessage) => void
+    onMarkAsRead?: (id: string) => Promise<void>
   }) => (
     <div data-testid="message-list">
       {props.loading && <div data-testid="list-loading">Loading...</div>}
@@ -28,15 +26,11 @@ vi.mock('@/components/mailbox/MailboxMessageList', () => ({
           key={m.messageId}
           data-testid={`msg-${m.messageId}`}
           data-selected={m.messageId === props.selectedMessageId}
-          onClick={() => props.onSelectMessage(m)}
+          onClick={() => props.onSelectMessage?.(m)}
         >
           {m.sender}
         </button>
       ))}
-      <div data-testid="channel-filter">{props.channelFilter}</div>
-      <button data-testid="filter-gmail" onClick={() => props.onChannelFilterChange('gmail')}>
-        Gmail
-      </button>
       <button
         data-testid="dismiss-first"
         onClick={() => {
@@ -57,18 +51,40 @@ vi.mock('@/components/mailbox/MailboxMessageDetail', () => ({
   ),
 }))
 
-vi.mock('@/components/mailbox/MailboxComposer', () => ({
-  MailboxComposer: ({ onClose }: { onClose: () => void }) => (
+vi.mock('@/components/mailbox/MailboxComposeInline', () => ({
+  MailboxComposeInline: ({ onDiscard }: { onDiscard?: () => void }) => (
     <div data-testid="composer">
-      <button data-testid="close-composer" onClick={onClose}>
+      <button data-testid="close-composer" onClick={onDiscard}>
         Close
       </button>
     </div>
   ),
 }))
 
-vi.mock('@/components/mailbox/MailboxDashboard', () => ({
-  MailboxDashboard: () => <div data-testid="dashboard">Select a message to read</div>,
+vi.mock('@/components/mailbox/MailboxFolderList', () => ({
+  MailboxFolderList: () => <div data-testid="folder-list" />,
+}))
+
+vi.mock('@/components/mailbox/MailboxOutboxDetail', () => ({
+  MailboxOutboxDetail: () => <div data-testid="outbox-detail" />,
+}))
+
+vi.mock('@/components/mailbox/MailboxStatsBar', () => ({
+  MailboxStatsBar: (props: {
+    onCompose: () => void
+    onSync: () => void
+    onFolderChange: (folder: string) => void
+    isSyncing: boolean
+  }) => (
+    <div data-testid="stats-bar">
+      <button onClick={props.onCompose}>Compose</button>
+      <button onClick={props.onSync} disabled={props.isSyncing}>
+        {props.isSyncing ? 'Syncing...' : 'Sync'}
+      </button>
+      <button onClick={() => props.onFolderChange('drafts')}>Drafts</button>
+      <button onClick={() => props.onFolderChange('outbox')}>Outbox</button>
+    </div>
+  ),
 }))
 
 vi.mock('@/components/ErrorBoundary', () => ({
@@ -77,6 +93,25 @@ vi.mock('@/components/ErrorBoundary', () => ({
 
 vi.mock('@/hooks/useMessageMailbox', () => ({
   useMessageMailbox: vi.fn(),
+}))
+
+vi.mock('@/hooks/useMailboxDrafts', () => ({
+  useMailboxDrafts: () => ({
+    drafts: [],
+    loading: false,
+    error: null,
+    deleteDraft: vi.fn(),
+  }),
+}))
+
+vi.mock('@/hooks/useMailboxOutboxList', () => ({
+  useMailboxOutboxList: () => ({
+    items: [],
+    loading: false,
+    retry: vi.fn(),
+    retryAllFailed: vi.fn(),
+    refresh: vi.fn(),
+  }),
 }))
 
 vi.mock('@/hooks/useAuth', () => ({
@@ -169,15 +204,15 @@ describe('MailboxPage', () => {
     )
   }
 
-  it('renders page with empty state', () => {
+  it('renders page with stats bar, message list, and empty detail panel', () => {
     setupHook([])
     renderPage()
 
-    expect(screen.getByText('Mailbox')).toBeInTheDocument()
     expect(screen.getByText('Compose')).toBeInTheDocument()
     expect(screen.getByText('Sync')).toBeInTheDocument()
     expect(screen.getByTestId('message-list')).toBeInTheDocument()
-    expect(screen.getByText('Select a message to read')).toBeInTheDocument()
+    expect(screen.getByTestId('stats-bar')).toBeInTheDocument()
+    expect(screen.getByText('Select a conversation to view details')).toBeInTheDocument()
   })
 
   it('shows detail panel when a message is selected', async () => {
@@ -192,19 +227,6 @@ describe('MailboxPage', () => {
     expect(screen.getByTestId('detail-sender')).toHaveTextContent('Bob')
   })
 
-  it('channel filter tabs change the filter', async () => {
-    const user = userEvent.setup()
-    setupHook([createMessage()])
-    renderPage()
-
-    // Initially "all"
-    expect(screen.getByTestId('channel-filter')).toHaveTextContent('all')
-
-    // Click Gmail filter
-    await user.click(screen.getByTestId('filter-gmail'))
-    expect(screen.getByTestId('channel-filter')).toHaveTextContent('gmail')
-  })
-
   it('compose button opens the composer', async () => {
     const user = userEvent.setup()
     setupHook([])
@@ -217,19 +239,14 @@ describe('MailboxPage', () => {
     expect(screen.getByTestId('composer')).toBeInTheDocument()
   })
 
-  it('dismiss removes message selection when selected message is dismissed', async () => {
+  it('dismiss calls dismissMessage with archive option for gmail', async () => {
     const user = userEvent.setup()
     const msg = createMessage({ messageId: 'msg-1', sender: 'Carol' })
     setupHook([msg])
     renderPage()
 
-    // Select the message first
-    await user.click(screen.getByTestId('msg-msg-1'))
-    expect(screen.getByTestId('message-detail')).toBeInTheDocument()
-
-    // Dismiss it
     await user.click(screen.getByTestId('dismiss-first'))
-    expect(mockDismissMessage).toHaveBeenCalledWith('msg-1')
+    expect(mockDismissMessage).toHaveBeenCalledWith('msg-1', { archive: true })
   })
 
   it('shows syncing state in the sync button', () => {
@@ -238,5 +255,25 @@ describe('MailboxPage', () => {
 
     const syncButton = screen.getByText('Syncing...')
     expect(syncButton).toBeDisabled()
+  })
+
+  it('switches to drafts folder when Drafts button is clicked', async () => {
+    const user = userEvent.setup()
+    setupHook([])
+    renderPage()
+
+    await user.click(screen.getByText('Drafts'))
+
+    expect(screen.getByTestId('folder-list')).toBeInTheDocument()
+  })
+
+  it('switches to outbox folder when Outbox button is clicked', async () => {
+    const user = userEvent.setup()
+    setupHook([])
+    renderPage()
+
+    await user.click(screen.getByText('Outbox'))
+
+    expect(screen.getByTestId('folder-list')).toBeInTheDocument()
   })
 })

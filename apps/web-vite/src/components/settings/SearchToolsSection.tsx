@@ -150,14 +150,21 @@ export function SearchToolsSection({ userId, onError }: SearchToolsSectionProps)
 
   return (
     <section id="search-tools">
-      <h2 className="settings-section__title">Search Tools</h2>
-      <p className="settings-section__description">
-        API keys for web search and content extraction.
-      </p>
+      <div className="settings-panel">
+        <header className="settings-panel__header">
+          <div>
+            <h2 className="settings-section__title">Search Tools</h2>
+            <p className="settings-panel__meta">
+              API keys for web search and content extraction.
+            </p>
+          </div>
+        </header>
 
-      {searchToolKeysLoading && <p className="settings-panel__meta">Loading search tool keys...</p>}
+        {searchToolKeysLoading && (
+          <p className="settings-panel__meta">Loading search tool keys...</p>
+        )}
 
-      <div className="provider-grid">
+        <div className="provider-grid">
         {searchToolRows.map((tool) => (
           <div key={tool.id} className="provider-card">
             <div className="provider-card__header">
@@ -251,6 +258,7 @@ export function SearchToolsSection({ userId, onError }: SearchToolsSectionProps)
             )}
           </div>
         ))}
+        </div>
       </div>
     </section>
   )

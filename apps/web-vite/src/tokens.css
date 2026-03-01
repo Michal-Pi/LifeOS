@@ -178,6 +178,8 @@
   --circle-2-text: #059669;
   --circle-3-bg: #fef3c7;
   --circle-3-text: #b45309;
+  --circle-4-bg: #f1f5f9;
+  --circle-4-text: #64748b;
 
   /* Evidence type colors */
   --evidence-empirical: #3b82f6;
@@ -337,6 +339,8 @@
   --circle-2-text: #6ee7b7;
   --circle-3-bg: rgba(180, 83, 9, 0.2);
   --circle-3-text: #fcd34d;
+  --circle-4-bg: rgba(100, 116, 139, 0.2);
+  --circle-4-text: #94a3b8;
 
   /* Evidence type colors (dark mode — same hues, slightly lighter) */
   --evidence-empirical: #60a5fa;

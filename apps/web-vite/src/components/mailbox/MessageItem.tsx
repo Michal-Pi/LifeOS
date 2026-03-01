@@ -2,7 +2,7 @@
  * MessageItem Component
  *
  * Displays a single prioritized message in the mailbox.
- * Shows source icon, sender, AI summary, priority badge, and dismiss button.
+ * Shows source icon, sender, AI summary, triage badge, and dismiss button.
  */
 
 import { useCallback } from 'react'
@@ -19,18 +19,6 @@ interface MessageItemProps {
 const sourceIcons: Record<string, string> = {
   slack: '#',
   gmail: '@',
-}
-
-const priorityClasses: Record<string, string> = {
-  high: 'priority-badge--high',
-  medium: 'priority-badge--medium',
-  low: 'priority-badge--low',
-}
-
-const priorityTooltips: Record<string, string> = {
-  high: 'Urgent - Requires immediate attention',
-  medium: 'Standard - Should be addressed soon',
-  low: 'Low priority - Can be reviewed later',
 }
 
 export function MessageItem({ message, onDismiss, onMarkAsRead }: MessageItemProps) {
@@ -105,12 +93,6 @@ export function MessageItem({ message, onDismiss, onMarkAsRead }: MessageItemPro
           }
           return null
         })()}
-        <span
-          className={`priority-badge ${priorityClasses[message.priority]}`}
-          title={priorityTooltips[message.priority]}
-        >
-          {message.priority}
-        </span>
         <button
           type="button"
           className="message-dismiss-btn"

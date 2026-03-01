@@ -158,7 +158,7 @@ curl https://us-central1-lifeos-pi.cloudfunctions.net/getFirebaseConfig
 
 ```json
 {
-  "apiKey": "AIzaSyD3ASUyzqK0NOtPevKqbM8WG3CkNErLLGI",
+  "apiKey": "<REDACTED - use getFirebaseConfig or Firebase Console>",
   "authDomain": "lifeos-pi.firebaseapp.com",
   "projectId": "lifeos-pi",
   "storageBucket": "lifeos-pi.firebasestorage.app",

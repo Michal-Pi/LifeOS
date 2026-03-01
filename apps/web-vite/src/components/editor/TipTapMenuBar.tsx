@@ -68,6 +68,14 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
     return null
   }
 
+  const exts = editor.extensionManager.extensions
+  const hasExt = (name: string) => exts.some((e) => e.name === name)
+  const hasFontFamily = hasExt('fontFamily')
+  const hasFontSize = hasExt('fontSize')
+  const hasTextColor = hasExt('textColor')
+  const hasSuperscript = hasExt('superscript')
+  const hasTable = hasExt('table')
+
   const setHeading = (level: 1 | 2 | 3 | 4) => {
     editor.chain().focus().toggleHeading({ level }).run()
     setShowHeadingMenu(false)
@@ -242,155 +250,159 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
       <div className="menu-divider" />
 
       {/* Font Family */}
-      <div className="menu-group" ref={fontFamilyMenuRef}>
-        <div className="menu-dropdown">
-          <button
-            type="button"
-            className="menu-button"
-            title="Font Family"
-            onClick={() => setShowFontFamilyMenu(!showFontFamilyMenu)}
-          >
-            <span className="menu-icon">Aa</span>
-            <span className="menu-arrow">▼</span>
-          </button>
-          {showFontFamilyMenu && (
-            <div className="menu-dropdown-content">
-              <button
-                type="button"
-                className="menu-dropdown-item"
-                onClick={() => {
-                  editor.chain().focus().setFontFamily('Inter, sans-serif').run()
-                  setShowFontFamilyMenu(false)
-                }}
-              >
-                <span className="menu-item-heading">Inter</span>
-              </button>
-              <button
-                type="button"
-                className="menu-dropdown-item"
-                onClick={() => {
-                  editor.chain().focus().setFontFamily('Georgia, serif').run()
-                  setShowFontFamilyMenu(false)
-                }}
-              >
-                <span className="menu-item-heading">Georgia</span>
-              </button>
-              <button
-                type="button"
-                className="menu-dropdown-item"
-                onClick={() => {
-                  editor.chain().focus().setFontFamily('Monaco, monospace').run()
-                  setShowFontFamilyMenu(false)
-                }}
-              >
-                <span className="menu-item-heading">Monaco</span>
-              </button>
-              <button
-                type="button"
-                className="menu-dropdown-item"
-                onClick={() => {
-                  editor.chain().focus().unsetFontFamily().run()
-                  setShowFontFamilyMenu(false)
-                }}
-              >
-                <span className="menu-item-heading">Default</span>
-              </button>
-            </div>
-          )}
+      {hasFontFamily && (
+        <div className="menu-group" ref={fontFamilyMenuRef}>
+          <div className="menu-dropdown">
+            <button
+              type="button"
+              className="menu-button"
+              title="Font Family"
+              onClick={() => setShowFontFamilyMenu(!showFontFamilyMenu)}
+            >
+              <span className="menu-icon">Aa</span>
+              <span className="menu-arrow">▼</span>
+            </button>
+            {showFontFamilyMenu && (
+              <div className="menu-dropdown-content">
+                <button
+                  type="button"
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    editor.chain().focus().setFontFamily('Inter, sans-serif').run()
+                    setShowFontFamilyMenu(false)
+                  }}
+                >
+                  <span className="menu-item-heading">Inter</span>
+                </button>
+                <button
+                  type="button"
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    editor.chain().focus().setFontFamily('Georgia, serif').run()
+                    setShowFontFamilyMenu(false)
+                  }}
+                >
+                  <span className="menu-item-heading">Georgia</span>
+                </button>
+                <button
+                  type="button"
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    editor.chain().focus().setFontFamily('Monaco, monospace').run()
+                    setShowFontFamilyMenu(false)
+                  }}
+                >
+                  <span className="menu-item-heading">Monaco</span>
+                </button>
+                <button
+                  type="button"
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    editor.chain().focus().unsetFontFamily().run()
+                    setShowFontFamilyMenu(false)
+                  }}
+                >
+                  <span className="menu-item-heading">Default</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Font Size */}
-      <div className="menu-group" ref={fontSizeMenuRef}>
-        <div className="menu-dropdown">
-          <button
-            type="button"
-            className="menu-button"
-            title="Font Size"
-            onClick={() => setShowFontSizeMenu(!showFontSizeMenu)}
-          >
-            <span className="menu-icon">12</span>
-            <span className="menu-arrow">▼</span>
-          </button>
-          {showFontSizeMenu && (
-            <div className="menu-dropdown-content">
-              <button
-                type="button"
-                className="menu-dropdown-item"
-                onClick={() => {
-                  editor.chain().focus().setFontSize('12px').run()
-                  setShowFontSizeMenu(false)
-                }}
-              >
-                <span className="menu-item-heading">12px</span>
-              </button>
-              <button
-                type="button"
-                className="menu-dropdown-item"
-                onClick={() => {
-                  editor.chain().focus().setFontSize('14px').run()
-                  setShowFontSizeMenu(false)
-                }}
-              >
-                <span className="menu-item-heading">14px</span>
-              </button>
-              <button
-                type="button"
-                className="menu-dropdown-item"
-                onClick={() => {
-                  editor.chain().focus().setFontSize('16px').run()
-                  setShowFontSizeMenu(false)
-                }}
-              >
-                <span className="menu-item-heading">16px</span>
-              </button>
-              <button
-                type="button"
-                className="menu-dropdown-item"
-                onClick={() => {
-                  editor.chain().focus().setFontSize('18px').run()
-                  setShowFontSizeMenu(false)
-                }}
-              >
-                <span className="menu-item-heading">18px</span>
-              </button>
-              <button
-                type="button"
-                className="menu-dropdown-item"
-                onClick={() => {
-                  editor.chain().focus().setFontSize('20px').run()
-                  setShowFontSizeMenu(false)
-                }}
-              >
-                <span className="menu-item-heading">20px</span>
-              </button>
-              <button
-                type="button"
-                className="menu-dropdown-item"
-                onClick={() => {
-                  editor.chain().focus().setFontSize('24px').run()
-                  setShowFontSizeMenu(false)
-                }}
-              >
-                <span className="menu-item-heading">24px</span>
-              </button>
-              <button
-                type="button"
-                className="menu-dropdown-item"
-                onClick={() => {
-                  editor.chain().focus().unsetFontSize().run()
-                  setShowFontSizeMenu(false)
-                }}
-              >
-                <span className="menu-item-heading">Default</span>
-              </button>
-            </div>
-          )}
+      {hasFontSize && (
+        <div className="menu-group" ref={fontSizeMenuRef}>
+          <div className="menu-dropdown">
+            <button
+              type="button"
+              className="menu-button"
+              title="Font Size"
+              onClick={() => setShowFontSizeMenu(!showFontSizeMenu)}
+            >
+              <span className="menu-icon">12</span>
+              <span className="menu-arrow">▼</span>
+            </button>
+            {showFontSizeMenu && (
+              <div className="menu-dropdown-content">
+                <button
+                  type="button"
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    editor.chain().focus().setFontSize('12px').run()
+                    setShowFontSizeMenu(false)
+                  }}
+                >
+                  <span className="menu-item-heading">12px</span>
+                </button>
+                <button
+                  type="button"
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    editor.chain().focus().setFontSize('14px').run()
+                    setShowFontSizeMenu(false)
+                  }}
+                >
+                  <span className="menu-item-heading">14px</span>
+                </button>
+                <button
+                  type="button"
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    editor.chain().focus().setFontSize('16px').run()
+                    setShowFontSizeMenu(false)
+                  }}
+                >
+                  <span className="menu-item-heading">16px</span>
+                </button>
+                <button
+                  type="button"
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    editor.chain().focus().setFontSize('18px').run()
+                    setShowFontSizeMenu(false)
+                  }}
+                >
+                  <span className="menu-item-heading">18px</span>
+                </button>
+                <button
+                  type="button"
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    editor.chain().focus().setFontSize('20px').run()
+                    setShowFontSizeMenu(false)
+                  }}
+                >
+                  <span className="menu-item-heading">20px</span>
+                </button>
+                <button
+                  type="button"
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    editor.chain().focus().setFontSize('24px').run()
+                    setShowFontSizeMenu(false)
+                  }}
+                >
+                  <span className="menu-item-heading">24px</span>
+                </button>
+                <button
+                  type="button"
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    editor.chain().focus().unsetFontSize().run()
+                    setShowFontSizeMenu(false)
+                  }}
+                >
+                  <span className="menu-item-heading">Default</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Font Color */}
-      <div className="menu-group" ref={textColorMenuRef}>
+      {hasTextColor && <div className="menu-group" ref={textColorMenuRef}>
         <div className="menu-dropdown">
           <button
             type="button"
@@ -470,7 +482,7 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* Highlight Color */}
       <div className="menu-group" ref={highlightMenuRef}>
@@ -587,29 +599,33 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
 
       <div className="menu-divider" />
 
-      {/* Superscript/Subscript */}
-      <div className="menu-group">
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleSuperscript().run()}
-          disabled={!editor.can().chain().focus().toggleSuperscript().run()}
-          className={`menu-button ${editor.isActive('superscript') ? 'is-active' : ''}`}
-          title="Superscript (Cmd+.)"
-        >
-          <span className="menu-icon">x²</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleSubscript().run()}
-          disabled={!editor.can().chain().focus().toggleSubscript().run()}
-          className={`menu-button ${editor.isActive('subscript') ? 'is-active' : ''}`}
-          title="Subscript (Cmd+,)"
-        >
-          <span className="menu-icon">x₂</span>
-        </button>
-      </div>
+      {/* Superscript/Subscript — only shown when extensions are registered */}
+      {hasSuperscript && (
+        <>
+          <div className="menu-group">
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleSuperscript().run()}
+              disabled={!editor.can().chain().focus().toggleSuperscript().run()}
+              className={`menu-button ${editor.isActive('superscript') ? 'is-active' : ''}`}
+              title="Superscript (Cmd+.)"
+            >
+              <span className="menu-icon">x²</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleSubscript().run()}
+              disabled={!editor.can().chain().focus().toggleSubscript().run()}
+              className={`menu-button ${editor.isActive('subscript') ? 'is-active' : ''}`}
+              title="Subscript (Cmd+,)"
+            >
+              <span className="menu-icon">x₂</span>
+            </button>
+          </div>
 
-      <div className="menu-divider" />
+          <div className="menu-divider" />
+        </>
+      )}
 
       {/* Insert Menu */}
       <div className="menu-group" ref={insertMenuRef}>
@@ -625,14 +641,18 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
           </button>
           {showInsertMenu && (
             <div className="menu-dropdown-content">
-              <button type="button" onClick={insertTable} className="menu-dropdown-item">
-                <span className="menu-item-heading">Table</span>
-                <span className="menu-item-icon">⊞</span>
-              </button>
-              <button type="button" onClick={insertMath} className="menu-dropdown-item">
-                <span className="menu-item-heading">Math Equation</span>
-                <span className="menu-item-icon">∑</span>
-              </button>
+              {hasTable && (
+                <button type="button" onClick={insertTable} className="menu-dropdown-item">
+                  <span className="menu-item-heading">Table</span>
+                  <span className="menu-item-icon">⊞</span>
+                </button>
+              )}
+              {onOpenMathPanel && (
+                <button type="button" onClick={insertMath} className="menu-dropdown-item">
+                  <span className="menu-item-heading">Math Equation</span>
+                  <span className="menu-item-icon">∑</span>
+                </button>
+              )}
               <button type="button" onClick={insertCodeBlock} className="menu-dropdown-item">
                 <span className="menu-item-heading">Code Block</span>
                 <span className="menu-item-icon">{'</>'}</span>

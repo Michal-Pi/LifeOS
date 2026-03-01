@@ -9,7 +9,7 @@
 import type { Request, Response } from 'express'
 import { randomUUID } from 'node:crypto'
 import { slugLookupRef, schedulingLinkRef, bookingsCollection, bookingRef } from './paths.js'
-import { computeAvailableSlots } from './availability.js'
+import { computeAvailableSlots, getStartOfDayInTimezone } from './availability.js'
 import { getAttendeeFreeBusy } from '../freeBusy/freeBusy.js'
 import { insertEvent, type GoogleCalendarEventInput } from '../google/calendarApi.js'
 import { createLogger } from '../lib/logger.js'
@@ -107,23 +107,39 @@ export async function handleGetAvailability(req: Request, res: Response): Promis
       return
     }
 
-    const rangeStartMs = new Date(startDate).getTime()
-    const rangeEndMs = new Date(endDate).getTime() + 24 * 60 * 60 * 1000
+    // Use T12:00:00Z to anchor dates at noon UTC, preventing timezone date shifts.
+    // new Date("2026-03-04") = UTC midnight, which is March 3 in US timezones.
+    // Noon UTC stays on the correct date for all timezone offsets (-12 to +14).
+    const anchorStartMs = new Date(`${startDate}T12:00:00Z`).getTime()
+    const anchorEndMs = new Date(`${endDate}T12:00:00Z`).getTime()
 
-    if (isNaN(rangeStartMs) || isNaN(rangeEndMs)) {
+    if (isNaN(anchorStartMs) || isNaN(anchorEndMs)) {
       res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' })
       return
     }
 
-    // Fetch busy blocks from Google Calendar
-    const freeBusyResult = await getAttendeeFreeBusy(
-      userId,
-      [link.calendarId],
-      rangeStartMs,
-      rangeEndMs,
-      link.timezone
-    )
-    const busyBlocks = freeBusyResult.attendees[0]?.busy ?? []
+    // Get timezone-correct day boundaries for slot enumeration
+    const rangeStartMs = getStartOfDayInTimezone(anchorStartMs, link.timezone)
+    const rangeEndMs = getStartOfDayInTimezone(anchorEndMs, link.timezone) + 24 * 60 * 60 * 1000
+
+    // Fetch busy blocks from Google Calendar (use broad range to cover all timezones)
+    let busyBlocks: Array<{ startMs: number; endMs: number }> = []
+    try {
+      const freeBusyResult = await getAttendeeFreeBusy(
+        userId,
+        [link.calendarId],
+        rangeStartMs,
+        rangeEndMs,
+        link.timezone
+      )
+      busyBlocks = freeBusyResult.attendees[0]?.busy ?? []
+    } catch (error) {
+      // If FreeBusy lookup fails, proceed without busy blocks.
+      // The booking step re-verifies availability before creating the event.
+      log.warn('FreeBusy lookup failed, proceeding without busy blocks', {
+        error: String(error),
+      })
+    }
 
     // Fetch existing confirmed bookings
     const bookingsSnap = await bookingsCollection(userId, link.id)

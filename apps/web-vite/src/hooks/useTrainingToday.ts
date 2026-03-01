@@ -7,9 +7,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from './useAuth'
 import { useTrainingSync } from './useTrainingSync'
-import { createIndexedDbWorkoutPlanRepository } from '@/adapters/training/indexedDbWorkoutPlanRepository'
-import { createIndexedDbWorkoutTemplateRepository } from '@/adapters/training/indexedDbWorkoutTemplateRepository'
-import { createIndexedDbWorkoutSessionRepository } from '@/adapters/training/indexedDbWorkoutSessionRepository'
+import { useRepositories } from '@/contexts/RepositoryContext'
 import { getDayOfWeekFromDateKey } from '@/training/utils'
 import type {
   WorkoutPlan,
@@ -19,10 +17,6 @@ import type {
   CreateSessionInput,
   ExercisePerformance,
 } from '@lifeos/training'
-
-const planRepository = createIndexedDbWorkoutPlanRepository()
-const templateRepository = createIndexedDbWorkoutTemplateRepository()
-const sessionRepository = createIndexedDbWorkoutSessionRepository()
 
 export interface TrainingVariant {
   context: WorkoutContext
@@ -42,6 +36,7 @@ export interface UseTrainingTodayReturn {
 
 export function useTrainingToday(dateKey: string): UseTrainingTodayReturn {
   const { user } = useAuth()
+  const { planRepository, templateRepository, sessionRepository } = useRepositories()
   useTrainingSync()
 
   const [plan, setPlan] = useState<WorkoutPlan | null>(null)
@@ -95,7 +90,7 @@ export function useTrainingToday(dateKey: string): UseTrainingTodayReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [userId, dateKey])
+  }, [userId, dateKey, planRepository, templateRepository, sessionRepository])
 
   useEffect(() => {
     void refresh()
@@ -133,7 +128,7 @@ export function useTrainingToday(dateKey: string): UseTrainingTodayReturn {
       await refresh()
       return session
     },
-    [userId, dateKey, variants, refresh]
+    [userId, dateKey, variants, refresh, sessionRepository]
   )
 
   return {

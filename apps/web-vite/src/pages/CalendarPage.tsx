@@ -47,9 +47,11 @@ import type {
   CanonicalCalendarEvent,
   CanonicalCalendar,
   CalendarsById,
+  CompositeEvent,
 } from '@lifeos/calendar'
 import {} from '@lifeos/calendar'
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { createLogger } from '@lifeos/core'
 import { toast } from 'sonner'
 
@@ -70,11 +72,15 @@ import { minutesAgo } from '@/utils/timeFormatters'
 import { useAuth } from '@/hooks/useAuth'
 import { useEventOperations } from '@/hooks/useEventOperations'
 import { useCalendarEvents } from '@/hooks/useCalendarEvents'
+import { useCompositeEvents } from '@/hooks/useCompositeEvents'
 import { useContacts } from '@/hooks/useContacts'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
 import { useOutbox } from '@/hooks/useOutbox'
 import { useAutoSync } from '@/hooks/useAutoSync'
 import { useEventAlerts } from '@/hooks/useEventAlerts'
+import { CalendarSchedulingPanel } from '@/components/calendar/CalendarSchedulingPanel'
+import { useSchedulingLinks } from '@/hooks/useSchedulingLinks'
+import { useUpcomingBookings } from '@/hooks/useUpcomingBookings'
 import { fetchAllCalendarAccountStatuses } from '@/lib/accountStatus'
 import { functionUrl } from '@/lib/functionsUrl'
 import { authenticatedFetch } from '@/lib/authenticatedFetch'
@@ -135,8 +141,31 @@ export function CalendarPage() {
     if (userId) void loadTodoData({ includeTasks: true })
   }, [userId, loadTodoData])
 
+  // Scheduling links & upcoming bookings
+  const {
+    links: schedulingLinks,
+    loading: linksLoading,
+    saveLink,
+    deleteLink,
+    toggleActive,
+  } = useSchedulingLinks(userId || undefined)
+  const { bookings: upcomingBookings, loading: bookingsLoading } = useUpcomingBookings(
+    userId || undefined,
+    schedulingLinks
+  )
+
   // Modal management via ref
   const modalsRef = useRef<EventModalsContainerHandle>(null)
+
+  // Handle incoming event title from Today page quick-add
+  const location = useLocation()
+  useEffect(() => {
+    const state = location.state as { eventTitle?: string } | null
+    if (state?.eventTitle) {
+      modalsRef.current?.openCreateModal({ title: state.eventTitle })
+      window.history.replaceState({}, '')
+    }
+  }, [location.state])
 
   const todayKey = useMemo(() => new Date().toISOString().split('T')[0], [])
   const today = useMemo(() => new Date(), [])
@@ -207,6 +236,48 @@ export function CalendarPage() {
     reload: reloadEvents,
     syncProgress,
   } = useCalendarEvents(userId, displayDayKeys)
+
+  // Load composite events for deduplication
+  const eventRange = useMemo(() => {
+    if (displayDayKeys.length === 0) return { startMs: 0, endMs: 0 }
+    const sorted = [...displayDayKeys].sort()
+    return {
+      startMs: new Date(`${sorted[0]}T00:00:00`).getTime(),
+      endMs: new Date(`${sorted[sorted.length - 1]}T23:59:59`).getTime(),
+    }
+  }, [displayDayKeys])
+
+  const { compositeEvents } = useCompositeEvents({
+    userId,
+    startMs: eventRange.startMs,
+    endMs: eventRange.endMs,
+    enabled: !!userId && displayDayKeys.length > 0,
+  })
+
+  // Build deduplicated event list (filter out secondary members of composites)
+  const deduplicatedEvents = useMemo(() => {
+    if (compositeEvents.length === 0) return events
+    const secondaryIds = new Set<string>()
+    for (const composite of compositeEvents) {
+      for (const member of composite.members) {
+        if (member.canonicalEventId !== composite.primaryMemberId) {
+          secondaryIds.add(member.canonicalEventId)
+        }
+      }
+    }
+    return events.filter((e) => !secondaryIds.has(e.canonicalEventId))
+  }, [events, compositeEvents])
+
+  // Composite lookup map (canonical event ID → composite)
+  const compositeByEventId = useMemo(() => {
+    const map = new Map<string, CompositeEvent>()
+    for (const composite of compositeEvents) {
+      for (const member of composite.members) {
+        map.set(member.canonicalEventId, composite)
+      }
+    }
+    return map
+  }, [compositeEvents])
 
   // Event operations hook
   const { createEvent, updateEvent, deleteEvent, retryWriteback, rsvpEvent } = useEventOperations({
@@ -331,12 +402,29 @@ export function CalendarPage() {
     }
   }, [userId])
 
-  // Auto-select first event
+  // Auto-select first event when no event is selected
   useEffect(() => {
-    if (!selectedEvent && events.length) {
-      setSelectedEvent(events[0])
+    if (!selectedEvent && deduplicatedEvents.length) {
+      setSelectedEvent(deduplicatedEvents[0])
     }
-  }, [events, selectedEvent])
+  }, [deduplicatedEvents, selectedEvent])
+
+  // When a date is selected, also select the first event on that day
+  const handleDateSelect = useCallback(
+    (date: Date | null) => {
+      setSelectedMonthDate(date)
+      if (date) {
+        const dateKey = date.toISOString().split('T')[0]
+        const firstEvent = deduplicatedEvents
+          .filter((e) => new Date(e.startIso).toISOString().split('T')[0] === dateKey)
+          .sort((a, b) => new Date(a.startIso).getTime() - new Date(b.startIso).getTime())[0]
+        if (firstEvent) {
+          setSelectedEvent(firstEvent)
+        }
+      }
+    },
+    [deduplicatedEvents]
+  )
 
   const handleSyncNow = async () => {
     // Use the connected account's ID, or fall back to 'primary'
@@ -542,30 +630,48 @@ export function CalendarPage() {
               {status?.lastSyncAt ? timeFormatter.format(new Date(status.lastSyncAt)) : 'soon'}
             </p>
           </div>
+          <div>
+            <p className="section-label">Bookings</p>
+            <strong>{upcomingBookings.length}</strong>
+            <p>upcoming</p>
+          </div>
         </section>
 
         <section className="calendar-layout">
-          <div className="calendar-timeline-panel">
-            {/* Calendar Views and Event Timeline */}
-            <CalendarViewsContainer
-              viewType={viewType}
-              currentYear={currentYear}
-              currentMonth={currentMonth}
-              selectedMonthDate={selectedMonthDate}
-              today={today}
-              events={events}
-              instances={instances}
-              loading={loading}
-              calendars={calendars}
-              selectedEvent={selectedEvent}
-              pendingOps={pendingOps}
-              onDateSelect={setSelectedMonthDate}
-              onEventSelect={setSelectedEvent}
-              onQuickCreate={handleQuickCreate}
-              onQuickCreateMore={handleQuickCreateMore}
+          {/* Row 1 col 1: Calendar View, Row 2 col 1: Event Timeline */}
+          <CalendarViewsContainer
+            viewType={viewType}
+            currentYear={currentYear}
+            currentMonth={currentMonth}
+            selectedMonthDate={selectedMonthDate}
+            today={today}
+            events={deduplicatedEvents}
+            instances={instances}
+            loading={loading}
+            calendars={calendars}
+            selectedEvent={selectedEvent}
+            pendingOps={pendingOps}
+            compositeByEventId={compositeByEventId}
+            onDateSelect={handleDateSelect}
+            onEventSelect={setSelectedEvent}
+            onQuickCreate={handleQuickCreate}
+            onQuickCreateMore={handleQuickCreateMore}
+          />
+
+          {/* Row 1 col 2: Scheduling Links */}
+          <div className="calendar-scheduling-wrapper">
+            <CalendarSchedulingPanel
+              links={schedulingLinks}
+              bookings={upcomingBookings}
+              linksLoading={linksLoading}
+              bookingsLoading={bookingsLoading}
+              onSaveLink={saveLink}
+              onDeleteLink={deleteLink}
+              onToggleLink={toggleActive}
             />
           </div>
 
+          {/* Row 2 col 2: Event Details */}
           <CalendarSidebar
             selectedEvent={selectedEvent}
             isOnline={isOnline}
@@ -574,6 +680,7 @@ export function CalendarPage() {
             contacts={contacts}
             tasks={tasks}
             selectedDayKey={selectedDayKey}
+            compositeByEventId={compositeByEventId}
             onRSVP={(eventId, status) => rsvpEvent(eventId, status, events)}
             onAlertChange={handleAlertChange}
             onRetryWriteback={retryWriteback}

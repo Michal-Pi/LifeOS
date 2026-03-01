@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, startTransition } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useTodoOperations } from '@/hooks/useTodoOperations'
 import { useTodoSync } from '@/hooks/useTodoSync'
@@ -27,6 +27,7 @@ type ViewMode = 'priority' | 'list' | 'board'
 
 export function PlannerPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const userId = user?.uid ?? ''
 
@@ -215,7 +216,7 @@ export function PlannerPage() {
 
   // Prepare filter options
   const domainOptions: SelectOption[] = [
-    { value: 'all', label: 'All' },
+    { value: 'all', label: 'All Domains' },
     { value: 'work', label: 'Work' },
     { value: 'projects', label: 'Projects' },
     { value: 'life', label: 'Life' },
@@ -224,7 +225,7 @@ export function PlannerPage() {
   ]
 
   const timelineOptions: SelectOption[] = [
-    { value: 'all', label: 'All' },
+    { value: 'all', label: 'All time' },
     { value: 'today', label: 'Today' },
     { value: 'next_3_days', label: 'Next 3 Days' },
     { value: 'this_week', label: 'This Week' },
@@ -425,6 +426,12 @@ export function PlannerPage() {
         </div>
 
         <div className="planner-actions-right">
+          <button className="ghost-button" onClick={() => navigate('/plan')}>
+            Training
+          </button>
+          <button className="ghost-button" onClick={() => navigate('/habits')}>
+            Habits
+          </button>
           {selectedProject && (
             <button className="ghost-button" onClick={() => setIsChapterModalOpen(true)}>
               + Chapter

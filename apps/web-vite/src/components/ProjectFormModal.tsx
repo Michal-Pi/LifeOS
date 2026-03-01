@@ -195,32 +195,29 @@ export function ProjectFormModal({
           </div>
 
           <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="form-group-header">
               <label>Chapters (Optional)</label>
               <button
                 type="button"
                 className="ghost-button-small"
                 onClick={addChapter}
-                style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
               >
                 + Add
               </button>
             </div>
             {chapters.map((chapter, index) => (
-              <div key={index} style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <div key={index} className="chapter-input-row">
                 <input
                   type="text"
                   value={chapter}
                   onChange={(e) => updateChapter(index, e.target.value)}
                   placeholder={`Chapter ${index + 1}`}
-                  style={{ flex: 1 }}
                 />
                 {chapters.length > 1 && (
                   <button
                     type="button"
                     className="ghost-button-small"
                     onClick={() => removeChapter(index)}
-                    style={{ padding: '0.5rem' }}
                   >
                     ×
                   </button>
@@ -239,33 +236,6 @@ export function ProjectFormModal({
           </div>
         </form>
 
-        <style>{`
-          .project-form-modal .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-          }
-
-          .project-form-modal .modal-header > div {
-            flex: 1;
-          }
-
-          .import-projects-link {
-            margin-top: 0.25rem;
-            padding: 0;
-            background: none;
-            border: none;
-            font-size: 0.875rem;
-            color: var(--accent);
-            cursor: pointer;
-            text-decoration: underline;
-            transition: color var(--motion-fast) var(--motion-ease);
-          }
-
-          .import-projects-link:hover {
-            color: var(--accent-hover);
-          }
-        `}</style>
       </div>
 
       <MarkdownImportModal

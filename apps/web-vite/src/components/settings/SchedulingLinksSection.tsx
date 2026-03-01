@@ -48,40 +48,42 @@ export function SchedulingLinksSection({ userId, onError }: SchedulingLinksSecti
 
   return (
     <section id="scheduling">
-      <div className="settings-section__header-row">
-        <div>
-          <h2 className="settings-section__title">Scheduling Links</h2>
-          <p className="settings-section__description">
-            Create shareable booking pages backed by your Google Calendar availability.
-          </p>
-        </div>
-        <button type="button" className="primary-button" onClick={openCreate}>
-          + New Link
-        </button>
-      </div>
+      <div className="settings-panel">
+        <header className="settings-panel__header">
+          <div>
+            <h2 className="settings-section__title">Scheduling Links</h2>
+            <p className="settings-panel__meta">
+              Create shareable booking pages backed by your Google Calendar availability.
+            </p>
+          </div>
+          <button type="button" className="primary-button" onClick={openCreate}>
+            + New Link
+          </button>
+        </header>
 
-      {loading ? (
-        <p className="settings-section__loading">Loading...</p>
-      ) : links.length === 0 ? (
-        <div className="scheduling-empty">
-          <p>No scheduling links yet.</p>
-          <p className="scheduling-empty__hint">
-            Create your first link to let others book time on your calendar.
-          </p>
-        </div>
-      ) : (
-        <div className="scheduling-links-list">
-          {links.map((link) => (
-            <SchedulingLinkCard
-              key={link.id}
-              link={link}
-              onEdit={() => openEdit(link)}
-              onDelete={() => handleDelete(link.id)}
-              onToggle={(active) => toggleActive(link.id, active)}
-            />
-          ))}
-        </div>
-      )}
+        {loading ? (
+          <p className="settings-panel__meta">Loading...</p>
+        ) : links.length === 0 ? (
+          <div className="scheduling-empty">
+            <p>No scheduling links yet.</p>
+            <p className="scheduling-empty__hint">
+              Create your first link to let others book time on your calendar.
+            </p>
+          </div>
+        ) : (
+          <div className="scheduling-links-list">
+            {links.map((link) => (
+              <SchedulingLinkCard
+                key={link.id}
+                link={link}
+                onEdit={() => openEdit(link)}
+                onDelete={() => handleDelete(link.id)}
+                onToggle={(active) => toggleActive(link.id, active)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       <SchedulingLinkModal
         open={modalOpen}

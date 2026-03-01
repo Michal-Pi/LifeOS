@@ -81,7 +81,7 @@ beforeEach(() => {
 
 function renderPage() {
   return render(
-    <MemoryRouter initialEntries={['/agents/prompts']}>
+    <MemoryRouter initialEntries={['/workflows/prompts']}>
       <PromptLibraryPage />
     </MemoryRouter>
   )

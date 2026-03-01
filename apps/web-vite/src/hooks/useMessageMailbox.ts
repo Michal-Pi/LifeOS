@@ -22,12 +22,12 @@ import {
 } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { useAuth } from '@/hooks/useAuth'
-import type { PrioritizedMessage, MessagePriority, TriageCategory } from '@lifeos/agents'
+import type { PrioritizedMessage, TriageCategory } from '@lifeos/agents'
 
 interface UseMessageMailboxOptions {
   maxMessages?: number
   autoSync?: boolean
-  priorityThreshold?: MessagePriority
+  priorityThreshold?: string
   showDismissed?: boolean
 }
 
@@ -66,25 +66,24 @@ interface UseMessageMailboxResult {
   /** Total messages scanned in last sync (including non-follow-up) */
   totalMessagesScanned: number
 
-  // Counts by priority (among follow-up messages)
-  highPriorityCount: number
-  mediumPriorityCount: number
-  lowPriorityCount: number
   followUpCount: number
 
   // Actions
   syncMailbox: () => Promise<void>
   markAsRead: (messageId: string) => Promise<void>
-  dismissMessage: (messageId: string) => Promise<void>
+  dismissMessage: (
+    messageId: string,
+    options?: { archive?: boolean; labelName?: string }
+  ) => Promise<void>
   refreshMessages: () => Promise<void>
   overrideTriageCategory: (messageId: string, category: TriageCategory) => Promise<void>
 }
 
 export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMessageMailboxResult {
   const {
-    maxMessages = 20,
+    maxMessages = 100,
     autoSync = true,
-    priorityThreshold = 'low',
+    priorityThreshold: _priorityThreshold = 'low',
     showDismissed = false,
   } = options
 
@@ -146,11 +145,11 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
         const db = await getDb()
         const messagesCol = collection(db, `users/${user.uid}/mailboxMessages`)
 
-        // Build query constraints
+        // Build query constraints — show all messages sorted by importance
         const constraints = [
-          where('requiresFollowUp', '==', true),
+          orderBy('importanceScore', 'desc'),
           orderBy('receivedAtMs', 'desc'),
-          firestoreLimit(maxMessages * 2), // Fetch extra for client-side filtering
+          firestoreLimit(maxMessages),
         ]
 
         if (!showDismissed) {
@@ -166,19 +165,7 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
               (doc) => doc.data() as PrioritizedMessage
             )
 
-            // Apply priority threshold filter
-            const priorityOrder: Record<MessagePriority, number> = {
-              high: 3,
-              medium: 2,
-              low: 1,
-            }
-            const minPriority = priorityOrder[priorityThreshold]
-
-            const filteredMsgs = msgs
-              .filter((m) => priorityOrder[m.priority] >= minPriority)
-              .slice(0, maxMessages)
-
-            setMessages(filteredMsgs)
+            setMessages(msgs)
             setLoading(false)
           },
           (err) => {
@@ -201,7 +188,7 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
         unsubscribe()
       }
     }
-  }, [user?.uid, maxMessages, priorityThreshold, showDismissed])
+  }, [user?.uid, maxMessages, showDismissed])
 
   // Auto-sync on mount with retry
   useEffect(() => {
@@ -333,9 +320,9 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
     [user]
   )
 
-  // Dismiss message
+  // Dismiss or archive message (archive removes from Gmail INBOX and optionally applies a label)
   const dismissMessage = useCallback(
-    async (messageId: string) => {
+    async (messageId: string, options?: { archive?: boolean; labelName?: string }) => {
       if (!user?.uid) {
         throw new Error('User not authenticated')
       }
@@ -348,7 +335,12 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
             'Content-Type': 'application/json',
             Authorization: `Bearer ${idToken}`,
           },
-          body: JSON.stringify({ uid: user.uid, messageId }),
+          body: JSON.stringify({
+            uid: user.uid,
+            messageId,
+            archive: options?.archive,
+            labelName: options?.labelName,
+          }),
         })
 
         if (!response.ok) {
@@ -406,22 +398,6 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
     return stats.totalMessagesScanned
   }, [syncStatus.lastSyncStats])
 
-  // Computed counts
-  const highPriorityCount = useMemo(
-    () => messages.filter((m) => m.priority === 'high').length,
-    [messages]
-  )
-
-  const mediumPriorityCount = useMemo(
-    () => messages.filter((m) => m.priority === 'medium').length,
-    [messages]
-  )
-
-  const lowPriorityCount = useMemo(
-    () => messages.filter((m) => m.priority === 'low').length,
-    [messages]
-  )
-
   const followUpCount = useMemo(
     () => messages.filter((m) => m.requiresFollowUp && !m.isDismissed).length,
     [messages]
@@ -454,9 +430,6 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
     syncStatus,
     requiresAPIKeySetup,
     totalMessagesScanned,
-    highPriorityCount,
-    mediumPriorityCount,
-    lowPriorityCount,
     followUpCount,
     syncMailbox,
     markAsRead,

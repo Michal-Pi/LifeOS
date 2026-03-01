@@ -7,6 +7,8 @@ export interface GmailMessageMeta {
   threadId: string
   subject: string
   from: string
+  to?: string
+  cc?: string
   date: string
   snippet: string
   labelIds: string[]
@@ -96,7 +98,7 @@ export async function listGmailMessages(
     const batchResults = await Promise.all(
       batch.map(async ({ id }) => {
         // Gmail API only allows one metadataHeaders per param, so build URL manually
-        const metaUrl = `/users/me/messages/${id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`
+        const metaUrl = `/users/me/messages/${id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Cc&metadataHeaders=Date`
 
         const msg = await makeGmailRequest<{
           id: string
@@ -110,11 +112,16 @@ export async function listGmailMessages(
 
         const headers = msg.payload?.headers ?? []
 
+        const toHeader = extractHeader(headers, 'To')
+        const ccHeader = extractHeader(headers, 'Cc')
+
         return {
           messageId: msg.id,
           threadId: msg.threadId,
           subject: extractHeader(headers, 'Subject'),
           from: extractHeader(headers, 'From'),
+          to: toHeader || undefined,
+          cc: ccHeader || undefined,
           date: extractHeader(headers, 'Date'),
           snippet: msg.snippet ?? '',
           labelIds: msg.labelIds ?? [],
@@ -278,6 +285,8 @@ async function makeGmailRequestWithBody<T>(
  */
 function buildRawEmail(options: {
   to: string
+  cc?: string
+  bcc?: string
   subject: string
   body: string
   htmlBody?: string
@@ -288,6 +297,8 @@ function buildRawEmail(options: {
   const boundary = `boundary_${Date.now()}`
   const headers = [`To: ${options.to}`, `Subject: ${options.subject}`, `MIME-Version: 1.0`]
 
+  if (options.cc) headers.push(`Cc: ${options.cc}`)
+  if (options.bcc) headers.push(`Bcc: ${options.bcc}`)
   if (options.from) headers.push(`From: ${options.from}`)
   if (options.inReplyTo) {
     headers.push(`In-Reply-To: ${options.inReplyTo}`)
@@ -332,6 +343,8 @@ export async function sendGmailMessage(
   accountId: string,
   options: {
     to: string
+    cc?: string
+    bcc?: string
     subject: string
     body: string
     htmlBody?: string
@@ -372,6 +385,64 @@ export async function trashGmailMessage(
   await makeGmailRequestWithBody(accessToken, 'POST', `/users/me/messages/${messageId}/trash`)
 
   return true
+}
+
+/**
+ * Modify Gmail message labels (add/remove)
+ * Used for archive (remove INBOX) and label assignment
+ */
+export async function modifyGmailMessage(
+  uid: string,
+  accountId: string,
+  messageId: string,
+  addLabelIds: string[],
+  removeLabelIds: string[]
+): Promise<void> {
+  const accessToken = await getValidAccessToken(uid, accountId)
+  await makeGmailRequestWithBody(accessToken, 'POST', `/users/me/messages/${messageId}/modify`, {
+    addLabelIds,
+    removeLabelIds,
+  })
+}
+
+/**
+ * List all Gmail labels for an account
+ */
+export async function listGmailLabels(
+  uid: string,
+  accountId: string
+): Promise<Array<{ id: string; name: string; type: string }>> {
+  const accessToken = await getValidAccessToken(uid, accountId)
+  const result = await makeGmailRequest<{
+    labels: Array<{ id: string; name: string; type: string }>
+  }>(accessToken, 'GET', '/users/me/labels')
+  return result.labels ?? []
+}
+
+/**
+ * Find or create a Gmail label by name
+ */
+export async function getOrCreateGmailLabel(
+  uid: string,
+  accountId: string,
+  labelName: string
+): Promise<string> {
+  const labels = await listGmailLabels(uid, accountId)
+  const existing = labels.find((l) => l.name === labelName)
+  if (existing) return existing.id
+
+  const accessToken = await getValidAccessToken(uid, accountId)
+  const created = await makeGmailRequestWithBody<{ id: string }>(
+    accessToken,
+    'POST',
+    '/users/me/labels',
+    {
+      name: labelName,
+      labelListVisibility: 'labelShow',
+      messageListVisibility: 'show',
+    }
+  )
+  return created.id
 }
 
 // ----- Helpers -----

@@ -12,11 +12,17 @@
 import { createLogger } from '../lib/logger.js'
 import { randomUUID } from 'node:crypto'
 import { getFirestore } from 'firebase-admin/firestore'
-import type { MailboxSyncTrigger, MailboxSyncStats, ChannelConnectionId } from '@lifeos/agents'
+import type {
+  MailboxSyncTrigger,
+  MailboxSyncStats,
+  ChannelConnectionId,
+  MessageSource,
+} from '@lifeos/agents'
 import type { PrioritizedMessage as AnalyzedMessage, RawMessage } from '../slack/messageAnalyzer.js'
 import { NoAPIKeyConfiguredError } from '../agents/providerKeys.js'
 import {
   mailboxSyncRef,
+  messageBodyRef,
   prioritizedMessageRef,
   prioritizedMessagesCollection,
 } from '../slack/paths.js'
@@ -45,6 +51,16 @@ async function loadAdapters() {
 }
 
 const log = createLogger('UnifiedSync')
+
+const RETENTION_LIMITS: Record<string, number> = {
+  gmail: 100,
+  slack: 50,
+  linkedin: 50,
+  whatsapp: 50,
+  telegram: 50,
+}
+
+const MAX_BACKFILL_PER_CYCLE = 20
 
 function isRateLimitedError(error: unknown): boolean {
   if (!error) return false
@@ -207,6 +223,37 @@ export async function runUnifiedSync(
 
     log.info(`AI returned ${prioritizedMessages.length} prioritized messages`)
 
+    // ----- Fetch & Store Full Bodies (parallel with stats/storage) -----
+    const gmailRawMessages = allRawMessages.filter((m) => m.source === 'gmail')
+    if (gmailRawMessages.length > 0) {
+      const { fetchAndStoreGmailBodies } = await import('./gmailAdapter.js')
+      // Group by accountId and fetch bodies
+      const byAccount = new Map<string, string[]>()
+      for (const m of gmailRawMessages) {
+        const ids = byAccount.get(m.accountId) ?? []
+        ids.push(m.id)
+        byAccount.set(m.accountId, ids)
+      }
+      for (const [accountId, ids] of byAccount) {
+        await fetchAndStoreGmailBodies(userId, accountId, ids)
+      }
+    }
+
+    // For non-Gmail channels, store body from the raw message directly
+    const nonGmailRaw = allRawMessages.filter((m) => m.source !== 'gmail')
+    if (nonGmailRaw.length > 0) {
+      const db2 = getFirestore()
+      const bodyBatch = db2.batch()
+      for (const m of nonGmailRaw) {
+        bodyBatch.set(
+          messageBodyRef(userId, m.id),
+          { messageId: m.id, body: m.body, attachmentCount: 0, storedAtMs: Date.now() },
+          { merge: true }
+        )
+      }
+      await bodyBatch.commit()
+    }
+
     // Compute stats
     stats.newMessagesFound = prioritizedMessages.length
     stats.messagesRequiringFollowUp = prioritizedMessages.filter((m) => m.requiresFollowUp).length
@@ -218,30 +265,46 @@ export async function runUnifiedSync(
     const db = getFirestore()
     const batch = db.batch()
 
-    // Clear stale messages (older than 7 days)
-    const oldMessagesSnap = await prioritizedMessagesCollection(userId)
-      .where('receivedAtMs', '<', Date.now() - 7 * 24 * 60 * 60 * 1000)
-      .get()
-    oldMessagesSnap.docs.forEach((doc) => batch.delete(doc.ref))
+    // Fetch existing message IDs to distinguish new vs existing
+    const existingSnap = await prioritizedMessagesCollection(userId).select().get()
+    const existingIds = new Set(existingSnap.docs.map((d) => d.id))
 
-    // Add new prioritized messages
+    // Upsert prioritized messages (merge to preserve isRead, isDismissed, triageCategoryOverride)
     for (const msg of prioritizedMessages) {
       const messageId = msg.originalMessageId
-      batch.set(prioritizedMessageRef(userId, messageId), {
-        ...msg,
-        messageId,
-        userId,
-        isRead: false,
-        isDismissed: false,
-        syncId,
-        createdAtMs: Date.now(),
-        updatedAtMs: Date.now(),
-      })
+      const isNew = !existingIds.has(messageId)
+      batch.set(
+        prioritizedMessageRef(userId, messageId),
+        {
+          ...msg,
+          messageId,
+          userId,
+          syncId,
+          updatedAtMs: Date.now(),
+          ...(isNew ? { isRead: false, isDismissed: false, createdAtMs: Date.now() } : {}),
+        },
+        { merge: true }
+      )
+    }
+
+    // Count-based retention: keep 100 Gmail + 50 per other channel
+    let deletedCount = 0
+    for (const [source, limit] of Object.entries(RETENTION_LIMITS)) {
+      const allForSource = await prioritizedMessagesCollection(userId)
+        .where('source', '==', source)
+        .orderBy('receivedAtMs', 'desc')
+        .get()
+
+      if (allForSource.size > limit) {
+        const toDelete = allForSource.docs.slice(limit)
+        toDelete.forEach((doc) => batch.delete(doc.ref))
+        deletedCount += toDelete.length
+      }
     }
 
     await batch.commit()
     log.info(
-      `Stored ${prioritizedMessages.length} messages, deleted ${oldMessagesSnap.size} stale messages`
+      `Stored ${prioritizedMessages.length} messages, deleted ${deletedCount} overflow messages`
     )
 
     // ----- Update Sync Record -----
@@ -282,4 +345,202 @@ export async function runUnifiedSync(
     )
     throw err
   }
+}
+
+// ----- Backfill Pipeline -----
+
+/**
+ * Backfill older messages for a specific channel to maintain target count.
+ * Called after dismiss/archive to replenish the message pool.
+ *
+ * 1. Count current non-dismissed messages for the source
+ * 2. If below target, find oldest message timestamp
+ * 3. Fetch older messages from the adapter using the `before` option
+ * 4. Analyze with AI (snippet-only) and store metadata + full bodies
+ * 5. Cap at MAX_BACKFILL_PER_CYCLE messages per call
+ */
+export async function backfillChannel(
+  userId: string,
+  source: MessageSource
+): Promise<{ fetched: number; stored: number }> {
+  const targetCount = RETENTION_LIMITS[source]
+  if (!targetCount) {
+    log.info(`No retention limit defined for source "${source}", skipping backfill`)
+    return { fetched: 0, stored: 0 }
+  }
+
+  // Count current non-dismissed messages for this source
+  const currentSnap = await prioritizedMessagesCollection(userId)
+    .where('source', '==', source)
+    .where('isDismissed', '==', false)
+    .select()
+    .get()
+
+  const deficit = targetCount - currentSnap.size
+  if (deficit <= 0) {
+    log.info(`Source "${source}" has ${currentSnap.size}/${targetCount} messages, no backfill needed`)
+    return { fetched: 0, stored: 0 }
+  }
+
+  const fetchCount = Math.min(deficit, MAX_BACKFILL_PER_CYCLE)
+  log.info(
+    `Source "${source}" has ${currentSnap.size}/${targetCount} messages, backfilling ${fetchCount}`
+  )
+
+  // Find the oldest message timestamp for this source to use as the "before" boundary
+  const oldestSnap = await prioritizedMessagesCollection(userId)
+    .where('source', '==', source)
+    .orderBy('receivedAtMs', 'asc')
+    .limit(1)
+    .get()
+
+  let beforeTimestamp: string | undefined
+  if (!oldestSnap.empty) {
+    const oldestMs = (oldestSnap.docs[0].data() as { receivedAtMs: number }).receivedAtMs
+    beforeTimestamp = new Date(oldestMs).toISOString()
+  }
+
+  // Load the appropriate adapter and fetch older messages
+  const adapters = await loadAdapters()
+  let rawMessages: RawMessage[] = []
+
+  try {
+    if (source === 'gmail') {
+      const connections = await adapters.getGmailConnections(userId)
+      for (const conn of connections) {
+        const msgs = await adapters.gmailAdapter.fetchMessages(
+          userId,
+          conn.connectionId as ChannelConnectionId,
+          { before: beforeTimestamp, maxResults: fetchCount }
+        )
+        rawMessages.push(...msgs)
+      }
+    } else if (source === 'slack') {
+      const connections = await adapters.getSlackConnections(userId)
+      for (const conn of connections) {
+        const msgs = await adapters.slackAdapter.fetchMessages(
+          userId,
+          conn.connectionId as ChannelConnectionId,
+          { before: beforeTimestamp, maxResults: fetchCount }
+        )
+        rawMessages.push(...msgs)
+      }
+    } else if (source === 'linkedin') {
+      const connections = await adapters.getLinkedInConnections(userId)
+      for (const conn of connections) {
+        const msgs = await adapters.linkedinAdapter.fetchMessages(
+          userId,
+          conn.connectionId as ChannelConnectionId,
+          { before: beforeTimestamp, maxResults: fetchCount }
+        )
+        rawMessages.push(...msgs)
+      }
+    } else if (source === 'whatsapp') {
+      const connections = await adapters.getWhatsAppConnections(userId)
+      for (const conn of connections) {
+        const msgs = await adapters.whatsappAdapter.fetchMessages(
+          userId,
+          conn.connectionId as ChannelConnectionId,
+          { before: beforeTimestamp, maxResults: fetchCount }
+        )
+        rawMessages.push(...msgs)
+      }
+    } else if (source === 'telegram') {
+      const connections = await adapters.getTelegramConnections(userId)
+      for (const conn of connections) {
+        const msgs = await adapters.telegramAdapter.fetchMessages(
+          userId,
+          conn.connectionId as ChannelConnectionId,
+          { before: beforeTimestamp, maxResults: fetchCount }
+        )
+        rawMessages.push(...msgs)
+      }
+    }
+  } catch (err) {
+    log.error(`Backfill fetch failed for source "${source}"`, err)
+    return { fetched: 0, stored: 0 }
+  }
+
+  // Cap to avoid runaway
+  rawMessages = rawMessages.slice(0, fetchCount)
+
+  if (rawMessages.length === 0) {
+    log.info(`No older messages found for source "${source}"`)
+    return { fetched: 0, stored: 0 }
+  }
+
+  // Filter out messages we already have
+  const existingSnap = await prioritizedMessagesCollection(userId).select().get()
+  const existingIds = new Set(existingSnap.docs.map((d) => d.id))
+  rawMessages = rawMessages.filter((m) => !existingIds.has(m.id))
+
+  if (rawMessages.length === 0) {
+    log.info(`All backfill messages already exist for source "${source}"`)
+    return { fetched: 0, stored: 0 }
+  }
+
+  log.info(`Analyzing ${rawMessages.length} backfill messages for source "${source}"`)
+
+  // AI analysis
+  let prioritizedMessages: AnalyzedMessage[] = []
+  try {
+    const { analyzeAndPrioritizeMessages } = await import('../slack/messageAnalyzer.js')
+    prioritizedMessages = await analyzeAndPrioritizeMessages(userId, rawMessages)
+  } catch (err) {
+    log.error(`Backfill AI analysis failed for source "${source}"`, err)
+    return { fetched: rawMessages.length, stored: 0 }
+  }
+
+  // Store results
+  const db = getFirestore()
+  const batch = db.batch()
+
+  for (const msg of prioritizedMessages) {
+    const messageId = msg.originalMessageId
+    batch.set(
+      prioritizedMessageRef(userId, messageId),
+      {
+        ...msg,
+        messageId,
+        userId,
+        updatedAtMs: Date.now(),
+        isRead: false,
+        isDismissed: false,
+        createdAtMs: Date.now(),
+      },
+      { merge: true }
+    )
+  }
+
+  await batch.commit()
+
+  // Store full bodies for backfilled messages
+  if (source === 'gmail') {
+    const { fetchAndStoreGmailBodies } = await import('./gmailAdapter.js')
+    const byAccount = new Map<string, string[]>()
+    for (const m of rawMessages) {
+      const ids = byAccount.get(m.accountId) ?? []
+      ids.push(m.id)
+      byAccount.set(m.accountId, ids)
+    }
+    for (const [accountId, ids] of byAccount) {
+      await fetchAndStoreGmailBodies(userId, accountId, ids)
+    }
+  } else {
+    // Non-Gmail: store body from raw message directly
+    const bodyBatch = db.batch()
+    for (const m of rawMessages) {
+      bodyBatch.set(
+        messageBodyRef(userId, m.id),
+        { messageId: m.id, body: m.body, attachmentCount: 0, storedAtMs: Date.now() },
+        { merge: true }
+      )
+    }
+    await bodyBatch.commit()
+  }
+
+  log.info(
+    `Backfill complete for "${source}": fetched=${rawMessages.length}, stored=${prioritizedMessages.length}`
+  )
+  return { fetched: rawMessages.length, stored: prioritizedMessages.length }
 }

@@ -15,27 +15,20 @@ interface ContactListProps {
 
 export function ContactList({ contacts, selectedId, onSelect }: ContactListProps) {
   return (
-    <div style={{ flex: 1, overflowY: 'auto' }}>
+    <div className="contact-list">
       {contacts.length === 0 ? (
-        <div
-          style={{
-            padding: 'var(--space-6)',
-            textAlign: 'center',
-            color: 'var(--text-tertiary)',
-            fontSize: '0.875rem',
-          }}
-        >
-          No contacts found
-        </div>
+        <div className="contact-list__empty">No contacts found</div>
       ) : (
-        contacts.map((contact) => (
-          <ContactCard
-            key={contact.contactId}
-            contact={contact}
-            selected={contact.contactId === selectedId}
-            onClick={() => onSelect(contact.contactId)}
-          />
-        ))
+        <div className="contact-list__items">
+          {contacts.map((contact) => (
+            <ContactCard
+              key={contact.contactId}
+              contact={contact}
+              selected={contact.contactId === selectedId}
+              onClick={() => onSelect(contact.contactId)}
+            />
+          ))}
+        </div>
       )}
     </div>
   )

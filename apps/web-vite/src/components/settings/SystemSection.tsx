@@ -10,9 +10,15 @@ import { SystemStatus } from '@/components/SystemStatus'
 export function SystemSection() {
   return (
     <section id="system">
-      <h2 className="settings-section__title">System</h2>
-      <p className="settings-section__description">Monitor sync health and system status.</p>
-      <SystemStatus />
+      <div className="settings-panel">
+        <header className="settings-panel__header">
+          <div>
+            <h2 className="settings-section__title">System</h2>
+            <p className="settings-panel__meta">Monitor sync health and system status.</p>
+          </div>
+        </header>
+        <SystemStatus />
+      </div>
     </section>
   )
 }

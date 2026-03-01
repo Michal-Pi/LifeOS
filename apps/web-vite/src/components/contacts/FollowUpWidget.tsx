@@ -87,6 +87,14 @@ export function FollowUpWidget({ maxContacts = 8 }: FollowUpWidgetProps) {
                 key={contact.contactId}
                 className="followup-widget__item"
                 onClick={() => navigate(`/people?contactId=${contact.contactId}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    navigate(`/people?contactId=${contact.contactId}`)
+                  }
+                }}
+                role="button"
+                tabIndex={0}
               >
                 <div className="followup-widget__avatar">
                   {contact.avatarUrl ? (

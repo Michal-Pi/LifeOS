@@ -27,11 +27,12 @@ import type {
   MessageAnalysisRequest,
   MessageAnalysisResult,
   MailboxAIToolSettings,
+  TriageCategory,
 } from '@lifeos/agents'
 
 const log = createLogger('SlackAnalyzer')
 const MAX_MESSAGES_PER_ANALYSIS_BATCH = 10
-const MAX_BODY_CHARS_PER_MESSAGE = 2000
+const MAX_BODY_CHARS_PER_MESSAGE = 500
 
 /**
  * Prioritized message result ready for storage
@@ -51,6 +52,12 @@ export interface PrioritizedMessage {
   requiresFollowUp: boolean
   followUpReason?: string
   originalUrl?: string
+  triageCategory?: TriageCategory
+  triageCategoryConfidence?: number
+  /** Original To recipients (for Reply All) */
+  toRecipients?: string[]
+  /** Original CC recipients (for Reply All) */
+  ccRecipients?: string[]
 }
 
 /**
@@ -66,6 +73,10 @@ export interface RawMessage {
   body: string
   receivedAt: string // ISO string
   originalUrl?: string
+  /** To recipients (email channels, for Reply All) */
+  toRecipients?: string[]
+  /** CC recipients (email channels, for Reply All) */
+  ccRecipients?: string[]
 }
 
 // ----- Shared Prompts -----
@@ -78,6 +89,7 @@ For each message, you must determine:
 3. Whether follow-up is required (true/false)
 4. A concise 1-2 sentence summary
 5. If follow-up is required, the reason why
+6. A triage category (urgent/important/fyi/automated)
 
 Priority guidelines:
 - HIGH: Direct asks with deadlines, revenue-impacting requests, time-sensitive decisions, escalations, messages requiring your specific input
@@ -101,6 +113,12 @@ Importance score guidelines (0-100):
 Follow-up guidelines:
 - TRUE: Asks a direct question, requests a deliverable, mentions a specific deadline, requires a decision from you, has an open thread needing your input
 - FALSE: Informational only, CC'd for awareness, already resolved, no action needed
+
+Triage category guidelines:
+- URGENT: Requires immediate response — deadlines today, blocking issues, emergencies, escalations
+- IMPORTANT: Requires response but not time-critical — standard requests, questions, coordination, approvals
+- FYI: Informational only, no response needed — status updates, newsletters you subscribed to, FYI CCs, social messages
+- AUTOMATED: Machine-generated — receipts, shipping notifications, CI/CD alerts, system notifications, marketing emails, automated alerts
 
 Respond with valid JSON only, no markdown formatting.`
 
@@ -138,7 +156,9 @@ Respond with a JSON array of analysis results in this exact format:
     "priority": "high" | "medium" | "low",
     "importanceScore": number (0-100),
     "summary": "string (1-2 sentence summary)",
-    "followUpReason": "string (only if requiresFollowUp is true)"
+    "followUpReason": "string (only if requiresFollowUp is true)",
+    "triageCategory": "urgent" | "important" | "fyi" | "automated",
+    "triageCategoryConfidence": number (0-1)
   }
 ]`
 }
@@ -424,6 +444,9 @@ export async function analyzeAndPrioritizeMessages(
           aiSummary: 'Analysis unavailable',
           requiresFollowUp: false,
           originalUrl: msg.originalUrl,
+          triageCategory: 'fyi' as TriageCategory,
+          toRecipients: msg.toRecipients,
+          ccRecipients: msg.ccRecipients,
         }
       }
 
@@ -442,6 +465,10 @@ export async function analyzeAndPrioritizeMessages(
         requiresFollowUp: analysis.requiresFollowUp,
         followUpReason: analysis.followUpReason,
         originalUrl: msg.originalUrl,
+        triageCategory: analysis.triageCategory,
+        triageCategoryConfidence: analysis.triageCategoryConfidence,
+        toRecipients: msg.toRecipients,
+        ccRecipients: msg.ccRecipients,
       }
     })
   } catch (error) {

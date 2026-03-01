@@ -19,18 +19,6 @@ describe('TopNav', () => {
     )
   }
 
-  it('renders 4 nav groups', async () => {
-    const { container } = await renderNav()
-    const groups = container.querySelectorAll('.top-nav__group')
-    expect(groups.length).toBe(4)
-  })
-
-  it('renders 3 separators between groups', async () => {
-    const { container } = await renderNav()
-    const separators = container.querySelectorAll('.top-nav__separator')
-    expect(separators.length).toBe(3)
-  })
-
   it('renders all expected navigation links', async () => {
     await renderNav()
     const expectedLinks = [
@@ -40,8 +28,7 @@ describe('TopNav', () => {
       'Notes',
       'People',
       'Mailbox',
-      'Workflows',
-      'Agents',
+      'Agentic Workflows',
     ]
     for (const label of expectedLinks) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument()

@@ -28,6 +28,16 @@ export type InteractionType = 'email' | 'meeting' | 'call' | 'message' | 'note' 
 /** Follow-up urgency relative to cadence */
 export type FollowUpStatus = 'overdue' | 'due' | 'upcoming' | 'ok'
 
+/** Relationship type enum */
+export type RelationshipType =
+  | 'personal'
+  | 'client'
+  | 'prospect'
+  | 'peer'
+  | 'investor'
+  | 'recruiter'
+  | 'other'
+
 // ----- Contact Identifiers (cross-channel identity resolution) -----
 
 export interface ContactIdentifiers {
@@ -45,6 +55,36 @@ export interface ContactIdentifiers {
   telegramUsername?: string
 }
 
+// ----- Work History -----
+
+export interface WorkHistoryEntry {
+  company: string
+  title: string
+  /** ISO date string (YYYY-MM-DD) */
+  startDate?: string
+  /** ISO date string (YYYY-MM-DD), undefined if current */
+  endDate?: string
+  current?: boolean
+}
+
+// ----- Pipeline & Tasks -----
+
+export interface PipelineEntry {
+  projectName: string
+  type?: string
+  stage?: string
+}
+
+export interface ContactTask {
+  action: string
+  /** ISO date string (YYYY-MM-DD) */
+  dueDate?: string
+  priority?: 'high' | 'medium' | 'low'
+  status: 'pending' | 'in_progress' | 'done'
+  /** Reason for follow-up */
+  reason?: string
+}
+
 // ----- Contact -----
 
 export interface Contact {
@@ -56,6 +96,12 @@ export interface Contact {
   firstName?: string
   lastName?: string
   avatarUrl?: string
+
+  // Personal details
+  /** ISO date string (YYYY-MM-DD) */
+  dateOfBirth?: string
+  /** Work positions, current and past */
+  workHistory?: WorkHistoryEntry[]
 
   // Professional context
   title?: string
@@ -71,11 +117,29 @@ export interface Contact {
   identifiers: ContactIdentifiers
 
   // Relationship metadata
-  /** Free-form relationship label (e.g. "Mentor", "Co-founder", "Client") */
-  relationship?: string
+  relationship?: RelationshipType
+  /** How you met this person */
+  howWeMet?: string
   tags: string[]
   /** Free-form notes about this contact */
   notes?: string
+
+  // Personal context
+  interests?: string[]
+  familyNotes?: string
+  personalityStyle?: string
+  preferences?: string
+
+  // Professional context
+  goals?: string
+  challenges?: string
+  strategicPriorities?: string
+
+  // Pipeline
+  pipeline?: PipelineEntry[]
+
+  // Tasks & follow-ups
+  contactTasks?: ContactTask[]
 
   // AI enrichment link
   /** Link to AI-researched SenderPersona for enriched display */
@@ -168,6 +232,28 @@ export const DEFAULT_FOLLOW_UP_DAYS: Record<DunbarCircle, number> = {
   3: 90,
   4: 0, // no auto follow-up for acquaintances
 }
+
+/** Human-readable labels for relationship types */
+export const RELATIONSHIP_LABELS: Record<RelationshipType, string> = {
+  personal: 'Personal',
+  client: 'Client',
+  prospect: 'Prospect',
+  peer: 'Peer',
+  investor: 'Investor',
+  recruiter: 'Recruiter',
+  other: 'Other',
+}
+
+/** All relationship type values for iteration */
+export const RELATIONSHIP_TYPES: RelationshipType[] = [
+  'personal',
+  'client',
+  'prospect',
+  'peer',
+  'investor',
+  'recruiter',
+  'other',
+]
 
 /** Maps circle to significance (for Firestore index compatibility) */
 export const CIRCLE_TO_SIGNIFICANCE: Record<DunbarCircle, number> = {

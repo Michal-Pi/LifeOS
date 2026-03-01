@@ -17,20 +17,33 @@ vi.mock('firebase-admin/firestore', () => ({
   })),
 }))
 
+const mockCollectionQuery = {
+  get: vi.fn(() => Promise.resolve({ docs: [], size: 0 })),
+  where: vi.fn(() => mockCollectionQuery),
+  orderBy: vi.fn(() => mockCollectionQuery),
+  limit: vi.fn(() => mockCollectionQuery),
+  select: vi.fn(() => mockCollectionQuery),
+}
+
 vi.mock('../../slack/paths.js', () => ({
   mailboxSyncRef: vi.fn(() => ({
     set: mockSet,
     update: mockUpdate,
   })),
   mailboxSyncsCollection: vi.fn(() => ({})),
+  messageBodyRef: vi.fn((_uid: string, msgId: string) => ({
+    id: msgId,
+    path: `users/user1/mailboxMessageBodies/${msgId}`,
+  })),
   prioritizedMessageRef: vi.fn((_uid: string, msgId: string) => ({
     id: msgId,
     path: `users/user1/mailboxMessages/${msgId}`,
   })),
   prioritizedMessagesCollection: vi.fn(() => ({
-    where: vi.fn(() => ({
-      get: vi.fn(() => Promise.resolve({ docs: [], size: 0 })),
-    })),
+    ...mockCollectionQuery,
+    where: vi.fn(() => mockCollectionQuery),
+    orderBy: vi.fn(() => mockCollectionQuery),
+    select: vi.fn(() => mockCollectionQuery),
   })),
   channelConnectionsCollection: vi.fn(() => ({
     where: vi.fn(() => ({
@@ -50,6 +63,7 @@ vi.mock('../gmailAdapter.js', () => ({
     fetchMessages: vi.fn(() => Promise.resolve([])),
   },
   getGmailConnections: vi.fn(() => Promise.resolve([])),
+  fetchAndStoreGmailBodies: vi.fn(() => Promise.resolve(0)),
 }))
 
 vi.mock('../slackAdapter.js', () => ({

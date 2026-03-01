@@ -336,18 +336,12 @@ export function QuotesSection({ userId, onError }: QuotesSectionProps) {
   return (
     <>
       <section id="quotes">
-        <h2 className="settings-section__title">Quotes</h2>
-        <p className="settings-section__description">
-          Shape the tone of the system with quotes and daily prompts.
-        </p>
-
         <div className="settings-panel">
           <header className="settings-panel__header">
             <div>
-              <p className="section-label">Quotes</p>
-              <h3>Daily Quotes</h3>
+              <h2 className="settings-section__title">Quotes</h2>
               <p className="settings-panel__meta">
-                Keep a small set of quotes that reset focus and intention.
+                Shape the tone of the system with quotes and daily prompts.
               </p>
             </div>
             <div className="settings-panel__actions">

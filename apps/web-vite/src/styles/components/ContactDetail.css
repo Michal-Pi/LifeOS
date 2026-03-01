@@ -1,10 +1,10 @@
-/* ContactDetail — right panel profile view */
+/* ContactDetail — profile view (shown inside Modal) */
 
 .contact-detail {
-  padding: var(--space-5);
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  padding: var(--space-5);
 }
 
 .contact-detail__header {
@@ -65,22 +65,6 @@
   flex-shrink: 0;
 }
 
-.contact-detail__icon-btn {
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--background);
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: var(--text-base);
-  transition: all var(--motion-fast);
-}
-
-.contact-detail__icon-btn:hover {
-  background: var(--background-secondary);
-  color: var(--foreground);
-}
-
 /* Follow-up banner */
 .contact-detail__followup-banner {
   display: flex;
@@ -92,7 +76,7 @@
 }
 
 .contact-detail__followup-banner--overdue {
-  background: var(--error-bg);
+  background: var(--error-light);
   color: var(--error-color);
 }
 
@@ -131,7 +115,7 @@
   font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.2em;
   color: var(--text-tertiary);
 }
 
@@ -141,7 +125,7 @@
 }
 
 .contact-detail__circle-btn {
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--background);
@@ -155,10 +139,43 @@
   background: var(--background-secondary);
 }
 
+.contact-detail__circle-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .contact-detail__circle-btn--active {
-  background: var(--accent);
-  color: var(--accent-foreground);
-  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.contact-detail__circle-btn--0.contact-detail__circle-btn--active {
+  background: var(--circle-0-bg);
+  color: var(--circle-0-text);
+  border-color: var(--circle-0-text);
+}
+
+.contact-detail__circle-btn--1.contact-detail__circle-btn--active {
+  background: var(--circle-1-bg);
+  color: var(--circle-1-text);
+  border-color: var(--circle-1-text);
+}
+
+.contact-detail__circle-btn--2.contact-detail__circle-btn--active {
+  background: var(--circle-2-bg);
+  color: var(--circle-2-text);
+  border-color: var(--circle-2-text);
+}
+
+.contact-detail__circle-btn--3.contact-detail__circle-btn--active {
+  background: var(--circle-3-bg);
+  color: var(--circle-3-text);
+  border-color: var(--circle-3-text);
+}
+
+.contact-detail__circle-btn--4.contact-detail__circle-btn--active {
+  background: var(--circle-4-bg);
+  color: var(--circle-4-text);
+  border-color: var(--circle-4-text);
 }
 
 /* Follow-up info */
@@ -179,12 +196,12 @@
 .contact-detail__followup-status {
   font-weight: 500;
   padding: 2px 8px;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   font-size: var(--text-xs);
 }
 
 .contact-detail__followup-status--overdue {
-  background: var(--error-bg);
+  background: var(--error-light);
   color: var(--error-color);
 }
 
@@ -234,7 +251,7 @@
 
 .contact-detail__tag {
   padding: 2px 8px;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   background: var(--background-secondary);
   color: var(--text-secondary);
   font-size: var(--text-xs);
@@ -257,7 +274,7 @@
 }
 
 .contact-detail__tab {
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   border: none;
   background: none;
   color: var(--text-secondary);
@@ -269,6 +286,11 @@
 
 .contact-detail__tab:hover {
   color: var(--foreground);
+}
+
+.contact-detail__tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .contact-detail__tab--active {
@@ -283,30 +305,39 @@
   flex-direction: column;
   gap: var(--space-3);
 }
+
 .contact-conversations__filters {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
+
 .contact-conversations__search {
   max-width: 300px;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font-size: var(--text-sm);
   background: var(--background);
   color: var(--foreground);
+  outline: none;
+  transition:
+    border-color var(--motion-fast),
+    box-shadow var(--motion-fast);
 }
-.contact-conversations__search:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
+
+.contact-conversations__search:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
+
 .contact-conversations__channel-filter {
   display: flex;
   gap: var(--space-1);
 }
+
 .filter-chip {
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
   background: transparent;
@@ -315,24 +346,34 @@
   cursor: pointer;
   transition: all var(--motion-fast);
 }
+
 .filter-chip:hover {
   background: var(--background-secondary);
 }
+
+.filter-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .filter-chip--active {
   background: var(--accent-subtle);
   color: var(--accent);
   border-color: var(--accent);
 }
+
 .empty-state {
   padding: var(--space-6);
   text-align: center;
   color: var(--text-tertiary);
   font-size: var(--text-sm);
 }
+
 .contact-conversations__list {
   display: flex;
   flex-direction: column;
 }
+
 .conversation-entry {
   display: flex;
   align-items: flex-start;
@@ -340,6 +381,7 @@
   padding: var(--space-3);
   border-bottom: 1px solid var(--border);
 }
+
 .conversation-entry__source {
   font-size: var(--text-xs);
   padding: 2px 6px;
@@ -348,35 +390,43 @@
   flex-shrink: 0;
   text-transform: capitalize;
 }
+
 .conversation-entry__source--gmail {
   background: rgba(234, 67, 53, 0.1);
-  color: #ea4335;
+  color: var(--channel-gmail);
 }
+
 .conversation-entry__source--slack {
   background: rgba(74, 21, 75, 0.1);
-  color: #4a154b;
+  color: var(--channel-slack);
 }
+
 .conversation-entry__source--linkedin {
   background: rgba(10, 102, 194, 0.1);
-  color: #0a66c2;
+  color: var(--channel-linkedin);
 }
+
 .conversation-entry__source--whatsapp {
   background: rgba(37, 211, 102, 0.1);
-  color: #25d366;
+  color: var(--channel-whatsapp);
 }
+
 .conversation-entry__source--telegram {
   background: rgba(0, 136, 204, 0.1);
-  color: #0088cc;
+  color: var(--channel-telegram);
 }
+
 .conversation-entry__content {
   flex: 1;
   min-width: 0;
 }
+
 .conversation-entry__subject {
   font-size: var(--text-sm);
   font-weight: 500;
   display: block;
 }
+
 .conversation-entry__snippet {
   font-size: var(--text-xs);
   color: var(--text-secondary);
@@ -385,8 +435,425 @@
   white-space: nowrap;
   margin: 2px 0 0;
 }
+
 .conversation-entry__date {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
   flex-shrink: 0;
+}
+
+/* Meetings */
+.contact-detail__meetings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.contact-detail__meetings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+@media (max-width: 768px) {
+  .contact-detail__meetings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.contact-detail__meeting-card {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--background);
+}
+
+.contact-detail__meeting-card--upcoming {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-subtle);
+}
+
+.contact-detail__meeting-card--past {
+  border-left: 3px solid var(--text-tertiary);
+}
+
+.contact-detail__meeting-card-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-1);
+}
+
+.contact-detail__meeting-card--upcoming .contact-detail__meeting-card-label {
+  color: var(--accent);
+}
+
+.contact-detail__meeting-card-title {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.contact-detail__meeting-card-date {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.contact-detail__meeting-card-location {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+.contact-detail__meeting-card-more {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-2);
+  font-style: italic;
+}
+
+/* Date of Birth */
+.contact-detail__dob {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.contact-detail__dob-value {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+/* Work History */
+.contact-detail__work-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.contact-detail__work-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.contact-detail__work-entry {
+  padding: var(--space-3);
+  border-left: 3px solid var(--border);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--background);
+}
+
+.contact-detail__work-entry--current {
+  border-left-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.contact-detail__work-entry-title {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.contact-detail__work-entry-company {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.contact-detail__work-entry-dates {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  margin-top: var(--space-1);
+}
+
+/* Deep enrich progress */
+.contact-detail__enrich-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: var(--text-sm);
+}
+
+.contact-detail__enrich-progress-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--accent);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: contact-detail-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes contact-detail-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.contact-detail__enrich-progress-note {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
+
+/* Enrich error */
+.contact-detail__enrich-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--error-light);
+  color: var(--error-color);
+  font-size: var(--text-sm);
+}
+
+/* Enrich review panel */
+.contact-detail__enrich-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-subtle);
+}
+
+.contact-detail__enrich-review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.contact-detail__enrich-review-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.contact-detail__enrich-review-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.contact-detail__enrich-review-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.contact-detail__enrich-review-key {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: capitalize;
+}
+
+.contact-detail__enrich-review-value {
+  font-size: var(--text-sm);
+  color: var(--foreground);
+  white-space: pre-wrap;
+}
+
+.contact-detail__enrich-review-sources {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-2);
+}
+
+.contact-detail__enrich-source-link {
+  font-size: var(--text-xs);
+  color: var(--accent);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contact-detail__enrich-source-link:hover {
+  text-decoration: underline;
+}
+
+/* Context fields (shared by personal/professional context, how we met) */
+.contact-detail__context-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.contact-detail__context-field-label {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.contact-detail__context-value {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* Personal & Professional Context sections */
+.contact-detail__personal-context,
+.contact-detail__professional-context {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Pipeline */
+.contact-detail__pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.contact-detail__pipeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.contact-detail__pipeline-entry {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--background);
+}
+
+.contact-detail__pipeline-entry-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.contact-detail__pipeline-entry-meta {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: 2px;
+}
+
+.contact-detail__pipeline-entry-type {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.contact-detail__pipeline-entry-stage {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+/* Tasks */
+.contact-detail__tasks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.contact-detail__tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.contact-detail__task-entry {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--background);
+  border-left: 3px solid var(--border);
+}
+
+.contact-detail__task-entry--done {
+  opacity: 0.6;
+  border-left-color: var(--success-color);
+}
+
+.contact-detail__task-entry--in_progress {
+  border-left-color: var(--accent);
+}
+
+.contact-detail__task-entry--pending {
+  border-left-color: var(--warning-color);
+}
+
+.contact-detail__task-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.contact-detail__task-entry-action {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.contact-detail__task-entry-badges {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.contact-detail__task-badge {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: capitalize;
+}
+
+.contact-detail__task-badge--high {
+  background: var(--error-light);
+  color: var(--error-color);
+}
+
+.contact-detail__task-badge--medium {
+  background: var(--warning-light);
+  color: var(--warning-color);
+}
+
+.contact-detail__task-badge--low {
+  background: var(--info-light);
+  color: var(--info-color);
+}
+
+.contact-detail__task-badge--pending {
+  background: var(--warning-light);
+  color: var(--warning-color);
+}
+
+.contact-detail__task-badge--in_progress {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.contact-detail__task-badge--done {
+  background: var(--success-light);
+  color: var(--success-color);
+}
+
+.contact-detail__task-entry-meta {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
 }
