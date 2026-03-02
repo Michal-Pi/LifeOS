@@ -169,10 +169,7 @@ export function AgenticWorkflowsPage() {
   }
 
   const availableTools = useMemo(() => [...builtinTools, ...tools], [tools])
-  const existingToolNames = useMemo(
-    () => availableTools.map((tool) => tool.name),
-    [availableTools]
-  )
+  const existingToolNames = useMemo(() => availableTools.map((tool) => tool.name), [availableTools])
 
   return (
     <div className="page-container">
@@ -182,9 +179,7 @@ export function AgenticWorkflowsPage() {
           <h1>Agentic Workflows</h1>
         </div>
         <div className="page-header__actions">
-          {activeTab === 'workflows' && (
-            <Button onClick={handleNewWorkflow}>+ New Workflow</Button>
-          )}
+          {activeTab === 'workflows' && <Button onClick={handleNewWorkflow}>+ New Workflow</Button>}
           {activeTab === 'agents' && <Button onClick={handleNewAgent}>+ New Agent</Button>}
           {activeTab === 'tools' && <Button onClick={handleNewTool}>+ New Tool</Button>}
         </div>

@@ -50,43 +50,41 @@ export function useMailboxMessageBody(
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
 
-  const fetchMessageBody = useCallback(async (
-    uid: string,
-    msgId: string,
-    acctId: string,
-    src: MessageSource
-  ) => {
-    // Step 1: Check Firestore for cached body (non-fatal — falls through to Cloud Function)
-    try {
-      const db = await getDb()
-      const bodyDoc = await getDoc(doc(db, `users/${uid}/mailboxMessageBodies/${msgId}`))
+  const fetchMessageBody = useCallback(
+    async (uid: string, msgId: string, acctId: string, src: MessageSource) => {
+      // Step 1: Check Firestore for cached body (non-fatal — falls through to Cloud Function)
+      try {
+        const db = await getDb()
+        const bodyDoc = await getDoc(doc(db, `users/${uid}/mailboxMessageBodies/${msgId}`))
 
-      if (bodyDoc.exists()) {
-        const data = bodyDoc.data() as MessageBodyData
-        bodyCache.set(msgId, data)
-        return data
+        if (bodyDoc.exists()) {
+          const data = bodyDoc.data() as MessageBodyData
+          bodyCache.set(msgId, data)
+          return data
+        }
+      } catch {
+        // Firestore read failed (e.g. missing security rules) — fall through to Cloud Function
       }
-    } catch {
-      // Firestore read failed (e.g. missing security rules) — fall through to Cloud Function
-    }
 
-    // Step 2: Fetch on demand via callable Cloud Function
-    const functions = getFunctions()
-    const fetchBody = httpsCallable<
-      { messageId: string; accountId: string; source: string },
-      { body: string; attachmentCount: number }
-    >(functions, 'fetchMailboxBody')
+      // Step 2: Fetch on demand via callable Cloud Function
+      const functions = getFunctions()
+      const fetchBody = httpsCallable<
+        { messageId: string; accountId: string; source: string },
+        { body: string; attachmentCount: number }
+      >(functions, 'fetchMailboxBody')
 
-    const result = await fetchBody({ messageId: msgId, accountId: acctId, source: src })
-    const data: MessageBodyData = {
-      messageId: msgId,
-      body: result.data.body,
-      attachmentCount: result.data.attachmentCount,
-      storedAtMs: Date.now(),
-    }
-    bodyCache.set(msgId, data)
-    return data
-  }, [])
+      const result = await fetchBody({ messageId: msgId, accountId: acctId, source: src })
+      const data: MessageBodyData = {
+        messageId: msgId,
+        body: result.data.body,
+        attachmentCount: result.data.attachmentCount,
+        storedAtMs: Date.now(),
+      }
+      bodyCache.set(msgId, data)
+      return data
+    },
+    []
+  )
 
   // Handle state transitions during render when inputs change (avoids setState in effect)
   const fetchKey = `${messageId ?? ''}-${uid ?? ''}-${accountId ?? ''}-${source ?? ''}-${retryCount}`

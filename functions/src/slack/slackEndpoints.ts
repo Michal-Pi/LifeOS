@@ -689,6 +689,11 @@ export const mailboxDismiss = onRequest(
         | { source?: string; accountId?: string; originalMessageId?: string }
         | undefined
 
+      if (!msgDoc.exists) {
+        response.status(404).json({ error: 'Message not found' })
+        return
+      }
+
       // Always archive Gmail messages (remove INBOX label, optionally add custom label)
       if (msgData?.source === 'gmail' && msgData.accountId && msgData.originalMessageId) {
         const { archiveGmailMessage } = await import('../channels/gmailAdapter.js')

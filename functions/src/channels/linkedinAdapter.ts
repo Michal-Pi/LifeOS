@@ -85,9 +85,7 @@ const DEFAULT_HEADERS = {
 function buildVoyagerHeaders(liAtCookie: string, csrfToken?: string): Record<string, string> {
   const headers: Record<string, string> = {
     ...DEFAULT_HEADERS,
-    Cookie: csrfToken
-      ? `li_at=${liAtCookie}; JSESSIONID=${csrfToken}`
-      : `li_at=${liAtCookie}`,
+    Cookie: csrfToken ? `li_at=${liAtCookie}; JSESSIONID=${csrfToken}` : `li_at=${liAtCookie}`,
   }
   if (csrfToken) {
     headers['csrf-token'] = csrfToken
@@ -221,10 +219,7 @@ export async function searchLinkedInProfiles(
     filters: 'List(resultType->PEOPLE)',
   })
 
-  const response = await fetch(
-    `${VOYAGER_BASE}/typeahead/dash/hitsV2?${params}`,
-    { headers }
-  )
+  const response = await fetch(`${VOYAGER_BASE}/typeahead/dash/hitsV2?${params}`, { headers })
 
   if (!response.ok) {
     log.warn(`Voyager search returned ${response.status}`)
@@ -241,8 +236,12 @@ export async function searchLinkedInProfiles(
     const image = el.image as Record<string, unknown> | undefined
     const imageAttrs = image?.attributes as Array<Record<string, unknown>> | undefined
     const miniFromImage = imageAttrs?.[0]?.miniProfile as Record<string, unknown> | undefined
-    const miniFromTarget = (el.targetUrn as Record<string, unknown> | undefined)?.miniProfile as Record<string, unknown> | undefined
-    const miniFromResult = (el.entityResult as Record<string, unknown> | undefined)?.miniProfile as Record<string, unknown> | undefined
+    const miniFromTarget = (el.targetUrn as Record<string, unknown> | undefined)?.miniProfile as
+      | Record<string, unknown>
+      | undefined
+    const miniFromResult = (el.entityResult as Record<string, unknown> | undefined)?.miniProfile as
+      | Record<string, unknown>
+      | undefined
     const miniDirect = el.miniProfile as Record<string, unknown> | undefined
 
     const profile = miniFromImage ?? miniFromTarget ?? miniFromResult ?? miniDirect ?? el
@@ -257,7 +256,11 @@ export async function searchLinkedInProfiles(
       publicIdentifier: publicId,
       firstName: (profile.firstName as string) ?? '',
       lastName: (profile.lastName as string) ?? '',
-      headline: (subtext?.text as string) ?? (headlineObj?.text as string) ?? (profile.occupation as string) ?? undefined,
+      headline:
+        (subtext?.text as string) ??
+        (headlineObj?.text as string) ??
+        (profile.occupation as string) ??
+        undefined,
       profilePicture: extractProfilePicture(profile as Record<string, unknown>),
     })
   }
@@ -304,7 +307,8 @@ export async function fetchLinkedInProfile(
   const lastName = (profileEl?.lastName as string) ?? ''
   const headline = (profileEl?.headline as string) ?? undefined
   const industry = (profileEl?.industryName as string) ?? undefined
-  const locationName = ((profileEl?.locationName ?? profileEl?.geoLocationName) as string) ?? undefined
+  const locationName =
+    ((profileEl?.locationName ?? profileEl?.geoLocationName) as string) ?? undefined
   const profilePicture = extractProfilePicture(profileEl as Record<string, unknown> | undefined)
 
   // Extract positions from included entities
@@ -328,12 +332,8 @@ export async function fetchLinkedInProfile(
       positions.push({
         title: (inc.title as string) ?? '',
         companyName: (inc.companyName as string) ?? (companyObj?.name as string) ?? '',
-        startDate: startDate
-          ? { month: startDate.month, year: startDate.year }
-          : undefined,
-        endDate: endDate
-          ? { month: endDate.month, year: endDate.year }
-          : undefined,
+        startDate: startDate ? { month: startDate.month, year: startDate.year } : undefined,
+        endDate: endDate ? { month: endDate.month, year: endDate.year } : undefined,
         current: isCurrent,
       })
     }
@@ -371,7 +371,9 @@ function extractProfilePicture(profile: Record<string, unknown> | undefined): st
 
   // Try profilePicture.displayImageReference
   const profilePicture = profile.profilePicture as Record<string, unknown> | undefined
-  const displayImageRef = profilePicture?.displayImageReference as Record<string, unknown> | undefined
+  const displayImageRef = profilePicture?.displayImageReference as
+    | Record<string, unknown>
+    | undefined
   const vectorImage = displayImageRef?.vectorImage as Record<string, unknown> | undefined
   if (vectorImage) {
     const rootUrl = vectorImage.rootUrl as string | undefined

@@ -263,19 +263,26 @@ export async function runUnifiedSync(
 
     // ----- Store Results -----
     const db = getFirestore()
-    const batch = db.batch()
+    const MAX_BATCH_OPS = 450 // Stay safely under Firestore's 500-op limit
 
     // Fetch existing message IDs to distinguish new vs existing
     const existingSnap = await prioritizedMessagesCollection(userId).select().get()
     const existingIds = new Set(existingSnap.docs.map((d) => d.id))
 
+    // Collect all write operations, then chunk into batches
+    type BatchOp =
+      | { type: 'set'; ref: FirebaseFirestore.DocumentReference; data: Record<string, unknown> }
+      | { type: 'delete'; ref: FirebaseFirestore.DocumentReference }
+    const ops: BatchOp[] = []
+
     // Upsert prioritized messages (merge to preserve isRead, isDismissed, triageCategoryOverride)
     for (const msg of prioritizedMessages) {
       const messageId = msg.originalMessageId
       const isNew = !existingIds.has(messageId)
-      batch.set(
-        prioritizedMessageRef(userId, messageId),
-        {
+      ops.push({
+        type: 'set',
+        ref: prioritizedMessageRef(userId, messageId),
+        data: {
           ...msg,
           messageId,
           userId,
@@ -283,8 +290,7 @@ export async function runUnifiedSync(
           updatedAtMs: Date.now(),
           ...(isNew ? { isRead: false, isDismissed: false, createdAtMs: Date.now() } : {}),
         },
-        { merge: true }
-      )
+      })
     }
 
     // Count-based retention: keep 100 Gmail + 50 per other channel
@@ -297,12 +303,24 @@ export async function runUnifiedSync(
 
       if (allForSource.size > limit) {
         const toDelete = allForSource.docs.slice(limit)
-        toDelete.forEach((doc) => batch.delete(doc.ref))
+        toDelete.forEach((doc) => ops.push({ type: 'delete', ref: doc.ref }))
         deletedCount += toDelete.length
       }
     }
 
-    await batch.commit()
+    // Commit in chunks to stay under Firestore batch limit
+    for (let i = 0; i < ops.length; i += MAX_BATCH_OPS) {
+      const chunk = ops.slice(i, i + MAX_BATCH_OPS)
+      const batch = db.batch()
+      for (const op of chunk) {
+        if (op.type === 'set') {
+          batch.set(op.ref, op.data, { merge: true })
+        } else {
+          batch.delete(op.ref)
+        }
+      }
+      await batch.commit()
+    }
     log.info(
       `Stored ${prioritizedMessages.length} messages, deleted ${deletedCount} overflow messages`
     )
@@ -378,7 +396,9 @@ export async function backfillChannel(
 
   const deficit = targetCount - currentSnap.size
   if (deficit <= 0) {
-    log.info(`Source "${source}" has ${currentSnap.size}/${targetCount} messages, no backfill needed`)
+    log.info(
+      `Source "${source}" has ${currentSnap.size}/${targetCount} messages, no backfill needed`
+    )
     return { fetched: 0, stored: 0 }
   }
 

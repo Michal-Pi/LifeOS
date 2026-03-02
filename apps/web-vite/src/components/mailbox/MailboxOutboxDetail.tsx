@@ -62,7 +62,9 @@ export function MailboxOutboxDetail({ item, onRetry }: MailboxOutboxDetailProps)
 
         {item.attempts > 0 && (
           <div className="mailbox-detail__time">
-            <span>Attempts: {item.attempts}/{item.maxAttempts}</span>
+            <span>
+              Attempts: {item.attempts}/{item.maxAttempts}
+            </span>
           </div>
         )}
       </div>
@@ -79,9 +81,7 @@ export function MailboxOutboxDetail({ item, onRetry }: MailboxOutboxDetailProps)
 
       {/* Error details */}
       {item.status === 'failed' && item.lastError && (
-        <div className="mailbox-detail__composer-error">
-          {item.lastError.message}
-        </div>
+        <div className="mailbox-detail__composer-error">{item.lastError.message}</div>
       )}
 
       {/* Actions */}
@@ -96,12 +96,18 @@ export function MailboxOutboxDetail({ item, onRetry }: MailboxOutboxDetailProps)
           </button>
         )}
         {(item.status === 'pending' || item.status === 'applying') && (
-          <span className="mailbox-detail__composer-error" style={{ color: 'var(--text-tertiary)' }}>
+          <span
+            className="mailbox-detail__composer-error"
+            style={{ color: 'var(--text-tertiary)' }}
+          >
             This message is queued and will be sent automatically.
           </span>
         )}
         {item.status === 'applied' && (
-          <span className="mailbox-detail__composer-error" style={{ color: 'var(--success-color, #22c55e)' }}>
+          <span
+            className="mailbox-detail__composer-error"
+            style={{ color: 'var(--success-color, #22c55e)' }}
+          >
             This message was sent successfully.
           </span>
         )}

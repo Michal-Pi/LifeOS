@@ -1906,9 +1906,7 @@ export const fetchMailboxBody = onCall(
     const db = getFirestore()
 
     // Check if body already exists in Firestore
-    const bodyDoc = await db
-      .doc(`users/${userId}/mailboxMessageBodies/${messageId}`)
-      .get()
+    const bodyDoc = await db.doc(`users/${userId}/mailboxMessageBodies/${messageId}`).get()
 
     if (bodyDoc.exists) {
       const data = bodyDoc.data()!

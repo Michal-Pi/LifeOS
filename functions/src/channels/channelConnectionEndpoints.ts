@@ -72,9 +72,7 @@ async function validateLinkedIn(
   csrfToken?: string
 ): Promise<{ displayName: string }> {
   const headers: Record<string, string> = {
-    Cookie: csrfToken
-      ? `li_at=${liAtCookie}; JSESSIONID=${csrfToken}`
-      : `li_at=${liAtCookie}`,
+    Cookie: csrfToken ? `li_at=${liAtCookie}; JSESSIONID=${csrfToken}` : `li_at=${liAtCookie}`,
     Accept: 'application/json',
   }
   if (csrfToken) {
@@ -91,8 +89,7 @@ async function validateLinkedIn(
     } catch {
       /* ignore */
     }
-    const isCsrfFailure =
-      res.status === 403 && bodySnippet?.includes('CSRF check failed')
+    const isCsrfFailure = res.status === 403 && bodySnippet?.includes('CSRF check failed')
     const err = new Error(
       isCsrfFailure
         ? 'LinkedIn requires a CSRF token. Add your JSESSIONID cookie value (Application > Cookies > linkedin.com > JSESSIONID) to the CSRF field.'
@@ -247,11 +244,11 @@ export const channelConnectionCreate = onRequest(
         error: e.message,
         linkedInStatus: e.linkedInStatus,
       })
-      const payload: { error: string; linkedInStatus?: number; linkedInBody?: string } = {
+      const payload: { error: string; linkedInStatus?: number } = {
         error: e.message,
       }
       if (e.linkedInStatus != null) payload.linkedInStatus = e.linkedInStatus
-      if (e.linkedInBody) payload.linkedInBody = e.linkedInBody
+      // Do not forward raw LinkedIn response body to the client
       response.status(400).json(payload)
       return
     }
@@ -474,12 +471,7 @@ export const linkedinProfileSearch = onRequest(
         response.json({ profile })
       } else {
         // Search profiles
-        const results = await searchLinkedInProfiles(
-          conn.liAtCookie,
-          conn.csrfToken,
-          query!,
-          8
-        )
+        const results = await searchLinkedInProfiles(conn.liAtCookie, conn.csrfToken, query!, 8)
 
         log.info('LinkedIn profile search', {
           userId: uid,

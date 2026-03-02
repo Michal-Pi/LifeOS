@@ -395,7 +395,10 @@ function AppRoutes() {
               />
               {/* Redirects for backward compatibility */}
               <Route path="/agents" element={<Navigate to="/workflows" replace />} />
-              <Route path="/agents/prompts" element={<Navigate to="/workflows/prompts" replace />} />
+              <Route
+                path="/agents/prompts"
+                element={<Navigate to="/workflows/prompts" replace />}
+              />
               <Route
                 path="/workflows/:workflowId"
                 element={

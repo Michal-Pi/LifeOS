@@ -13,7 +13,12 @@ import type {
   PipelineEntry,
   ContactTask,
 } from '@lifeos/agents'
-import { CIRCLE_LABELS, CIRCLE_TO_SIGNIFICANCE, RELATIONSHIP_TYPES, RELATIONSHIP_LABELS } from '@lifeos/agents'
+import {
+  CIRCLE_LABELS,
+  CIRCLE_TO_SIGNIFICANCE,
+  RELATIONSHIP_TYPES,
+  RELATIONSHIP_LABELS,
+} from '@lifeos/agents'
 import { useAuth } from '@/hooks/useAuth'
 import { Modal } from '@/components/ui/Modal'
 import '@/styles/components/ContactFormModal.css'
@@ -235,7 +240,9 @@ export function ContactFormModal({ contact, onSave, onClose }: ContactFormModalP
         // Auto-populate form fields
         setFirstName(profile.firstName || result.firstName)
         setLastName(profile.lastName || result.lastName)
-        setDisplayName(`${profile.firstName || result.firstName} ${profile.lastName || result.lastName}`)
+        setDisplayName(
+          `${profile.firstName || result.firstName} ${profile.lastName || result.lastName}`
+        )
         setLinkedinSlug(result.publicIdentifier)
 
         if (profile.positions && profile.positions.length > 0) {
@@ -476,16 +483,13 @@ export function ContactFormModal({ contact, onSave, onClose }: ContactFormModalP
     ])
   }, [])
 
-  const handleUpdateTask = useCallback(
-    (index: number, field: keyof TaskForm, value: string) => {
-      setContactTasks((prev) => {
-        const updated = [...prev]
-        updated[index] = { ...updated[index], [field]: value }
-        return updated
-      })
-    },
-    []
-  )
+  const handleUpdateTask = useCallback((index: number, field: keyof TaskForm, value: string) => {
+    setContactTasks((prev) => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: value }
+      return updated
+    })
+  }, [])
 
   const handleRemoveTask = useCallback((index: number) => {
     setContactTasks((prev) => prev.filter((_, i) => i !== index))

@@ -297,7 +297,6 @@
   gap: var(--space-3);
 }
 
-
 .draft-reply-error {
   font-size: var(--text-xs);
   color: var(--error-color);

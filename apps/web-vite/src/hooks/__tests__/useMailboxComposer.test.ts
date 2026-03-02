@@ -142,9 +142,7 @@ describe('useMailboxComposer', () => {
       ccRecipients: ['dave@example.com'],
     } as PrioritizedMessage
 
-    const { result } = renderHook(() =>
-      useMailboxComposer({ replyTo, replyAll: true })
-    )
+    const { result } = renderHook(() => useMailboxComposer({ replyTo, replyAll: true }))
 
     // To should include sender + other To recipients (excluding self)
     expect(result.current.state.toRecipients).toHaveLength(2)
@@ -228,11 +226,14 @@ describe('useMailboxComposer', () => {
 
     expect(success).toBe(true)
     expect(mockEnqueueSend).toHaveBeenCalledTimes(1)
-    expect(mockEnqueueSend).toHaveBeenCalledWith('user-1', expect.objectContaining({
-      source: 'gmail',
-      recipientId: 'bob@example.com',
-      body: 'Hello!',
-    }))
+    expect(mockEnqueueSend).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        source: 'gmail',
+        recipientId: 'bob@example.com',
+        body: 'Hello!',
+      })
+    )
     expect(mockTriggerDrain).toHaveBeenCalledTimes(1)
     expect(result.current.error).toBeNull()
     // State should be reset after successful send

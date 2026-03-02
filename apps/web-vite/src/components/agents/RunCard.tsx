@@ -228,9 +228,7 @@ export function RunCard({
             <button
               type="button"
               className="run-research-indicator"
-              onClick={() =>
-                navigate(`/workflows/${workflowId}?runId=${run.runId}`)
-              }
+              onClick={() => navigate(`/workflows/${workflowId}?runId=${run.runId}`)}
             >
               {pendingResearch.length} pending
             </button>

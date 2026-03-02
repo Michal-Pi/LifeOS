@@ -170,7 +170,6 @@
   grid-row: 2;
 }
 
-
 .today-card {
   background: var(--card);
   background-image: var(--panel-sheen);
@@ -315,8 +314,13 @@
 }
 
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Two-column Layout */

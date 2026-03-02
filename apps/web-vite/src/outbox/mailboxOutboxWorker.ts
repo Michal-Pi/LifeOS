@@ -83,9 +83,7 @@ async function applyOp(op: MailboxSendOp): Promise<boolean> {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-      throw new Error(
-        (errorData as { error?: string }).error || `Send failed (${response.status})`
-      )
+      throw new Error((errorData as { error?: string }).error || `Send failed (${response.status})`)
     }
 
     await markApplied(op.opId)

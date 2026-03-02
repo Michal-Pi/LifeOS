@@ -8,16 +8,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import {
-  listAll,
-  retryOp,
-  retryAll,
-  type MailboxSendOp,
-} from '@/outbox/mailboxOutbox'
-import {
-  addMailboxOutboxListener,
-  triggerDrain,
-} from '@/outbox/mailboxOutboxWorker'
+import { listAll, retryOp, retryAll, type MailboxSendOp } from '@/outbox/mailboxOutbox'
+import { addMailboxOutboxListener, triggerDrain } from '@/outbox/mailboxOutboxWorker'
 
 interface UseMailboxOutboxListResult {
   items: MailboxSendOp[]

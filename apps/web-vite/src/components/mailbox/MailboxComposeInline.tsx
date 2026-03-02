@@ -145,9 +145,7 @@ export function MailboxComposeInline({ draft, onSent, onDiscard }: MailboxCompos
 
       {/* 2. Compose fields */}
       <div className="mailbox-detail__header">
-        <h2 className="mailbox-detail__subject">
-          {draft ? 'Edit Draft' : 'New Message'}
-        </h2>
+        <h2 className="mailbox-detail__subject">{draft ? 'Edit Draft' : 'New Message'}</h2>
 
         <div className="mailbox-detail__compose-field">
           <label className="mailbox-detail__compose-label" htmlFor="compose-channel">
@@ -246,9 +244,7 @@ export function MailboxComposeInline({ draft, onSent, onDiscard }: MailboxCompos
           </div>
         )}
 
-        {composer.error && (
-          <div className="mailbox-detail__composer-error">{composer.error}</div>
-        )}
+        {composer.error && <div className="mailbox-detail__composer-error">{composer.error}</div>}
       </div>
 
       {/* 4. Action buttons */}

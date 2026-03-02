@@ -154,9 +154,7 @@ export function SearchToolsSection({ userId, onError }: SearchToolsSectionProps)
         <header className="settings-panel__header">
           <div>
             <h2 className="settings-section__title">Search Tools</h2>
-            <p className="settings-panel__meta">
-              API keys for web search and content extraction.
-            </p>
+            <p className="settings-panel__meta">API keys for web search and content extraction.</p>
           </div>
         </header>
 
@@ -165,99 +163,99 @@ export function SearchToolsSection({ userId, onError }: SearchToolsSectionProps)
         )}
 
         <div className="provider-grid">
-        {searchToolRows.map((tool) => (
-          <div key={tool.id} className="provider-card">
-            <div className="provider-card__header">
-              <div>
-                <p className="section-label">Search Tool</p>
-                <h4>{tool.label}</h4>
+          {searchToolRows.map((tool) => (
+            <div key={tool.id} className="provider-card">
+              <div className="provider-card__header">
+                <div>
+                  <p className="section-label">Search Tool</p>
+                  <h4>{tool.label}</h4>
+                </div>
+                <div className="provider-card__status">
+                  <StatusDot
+                    status={tool.saved ? 'online' : 'offline'}
+                    label={tool.saved ? 'Connected' : 'Inactive'}
+                  />
+                  <span>{tool.saved ? 'Connected' : 'Inactive'}</span>
+                </div>
               </div>
-              <div className="provider-card__status">
-                <StatusDot
-                  status={tool.saved ? 'online' : 'offline'}
-                  label={tool.saved ? 'Connected' : 'Inactive'}
-                />
-                <span>{tool.saved ? 'Connected' : 'Inactive'}</span>
-              </div>
-            </div>
-            <p className="settings-panel__meta">{tool.helper}</p>
+              <p className="settings-panel__meta">{tool.helper}</p>
 
-            {/* Masked key display */}
-            <div className="api-key-field">
-              <div className="api-key-field__display">
-                {searchToolKeys[tool.keyField] ? (
-                  revealed[tool.id] ? (
-                    searchToolKeys[tool.keyField]
+              {/* Masked key display */}
+              <div className="api-key-field">
+                <div className="api-key-field__display">
+                  {searchToolKeys[tool.keyField] ? (
+                    revealed[tool.id] ? (
+                      searchToolKeys[tool.keyField]
+                    ) : (
+                      getMaskedKey(searchToolKeys[tool.keyField])
+                    )
                   ) : (
-                    getMaskedKey(searchToolKeys[tool.keyField])
-                  )
-                ) : (
-                  <span className="api-key-field__empty">Not configured</span>
-                )}
-              </div>
-              {searchToolKeys[tool.keyField] && (
-                <button
-                  type="button"
-                  className="ghost-button api-key-field__reveal"
-                  onClick={() => setRevealed((r) => ({ ...r, [tool.id]: !r[tool.id] }))}
-                >
-                  {revealed[tool.id] ? 'Hide' : 'Reveal'}
-                </button>
-              )}
-            </div>
-
-            <div className="provider-card__input">
-              <input
-                type="password"
-                value={searchToolKeyInputs[tool.id]}
-                onChange={(e) =>
-                  setSearchToolKeyInputs((prev) => ({
-                    ...prev,
-                    [tool.id]: e.target.value,
-                  }))
-                }
-                placeholder={tool.saved ? 'Enter new key...' : tool.placeholder}
-                className="settings-code-input"
-              />
-              <div className="provider-card__actions">
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => handleRemoveSearchToolKey(tool.id)}
-                  disabled={!tool.saved || searchToolKeySaving[tool.id]}
-                >
-                  Clear
-                </button>
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => handleSaveSearchToolKey(tool.id)}
-                  disabled={searchToolKeySaving[tool.id]}
-                >
-                  Save
-                </button>
-                {tool.saved && (
+                    <span className="api-key-field__empty">Not configured</span>
+                  )}
+                </div>
+                {searchToolKeys[tool.keyField] && (
                   <button
                     type="button"
-                    className="ghost-button"
-                    onClick={() => handleTestSearchToolKey(tool.id)}
-                    disabled={searchToolKeyTesting[tool.id]}
+                    className="ghost-button api-key-field__reveal"
+                    onClick={() => setRevealed((r) => ({ ...r, [tool.id]: !r[tool.id] }))}
                   >
-                    {searchToolKeyTesting[tool.id] ? 'Testing...' : 'Test'}
+                    {revealed[tool.id] ? 'Hide' : 'Reveal'}
                   </button>
                 )}
               </div>
+
+              <div className="provider-card__input">
+                <input
+                  type="password"
+                  value={searchToolKeyInputs[tool.id]}
+                  onChange={(e) =>
+                    setSearchToolKeyInputs((prev) => ({
+                      ...prev,
+                      [tool.id]: e.target.value,
+                    }))
+                  }
+                  placeholder={tool.saved ? 'Enter new key...' : tool.placeholder}
+                  className="settings-code-input"
+                />
+                <div className="provider-card__actions">
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => handleRemoveSearchToolKey(tool.id)}
+                    disabled={!tool.saved || searchToolKeySaving[tool.id]}
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => handleSaveSearchToolKey(tool.id)}
+                    disabled={searchToolKeySaving[tool.id]}
+                  >
+                    Save
+                  </button>
+                  {tool.saved && (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => handleTestSearchToolKey(tool.id)}
+                      disabled={searchToolKeyTesting[tool.id]}
+                    >
+                      {searchToolKeyTesting[tool.id] ? 'Testing...' : 'Test'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {searchToolKeyTestResult[tool.id] && (
+                <p
+                  className={`settings-panel__meta ${searchToolKeyTestResult[tool.id]?.ok ? 'settings-panel__success' : 'settings-panel__error'}`}
+                >
+                  {searchToolKeyTestResult[tool.id]?.ok ? '\u2713' : '\u2717'}{' '}
+                  {searchToolKeyTestResult[tool.id]?.message}
+                </p>
+              )}
             </div>
-            {searchToolKeyTestResult[tool.id] && (
-              <p
-                className={`settings-panel__meta ${searchToolKeyTestResult[tool.id]?.ok ? 'settings-panel__success' : 'settings-panel__error'}`}
-              >
-                {searchToolKeyTestResult[tool.id]?.ok ? '\u2713' : '\u2717'}{' '}
-                {searchToolKeyTestResult[tool.id]?.message}
-              </p>
-            )}
-          </div>
-        ))}
+          ))}
         </div>
       </div>
     </section>

@@ -325,10 +325,7 @@ export function CalendarViewsContainer({
                       </h3>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {compositeByEventId.has(event.canonicalEventId) && (
-                          <span
-                            className="composite-badge"
-                            title="Unified from multiple calendars"
-                          >
+                          <span className="composite-badge" title="Unified from multiple calendars">
                             Unified
                           </span>
                         )}

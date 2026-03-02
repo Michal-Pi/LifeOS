@@ -88,8 +88,8 @@ export const WeeklyView = React.memo(function WeeklyView({
     for (const event of events) {
       const isRecurring = Boolean(
         event.isRecurringSeries ||
-          event.recurrenceV2?.rule ||
-          event.recurrence?.recurrenceRules?.length
+        event.recurrenceV2?.rule ||
+        event.recurrence?.recurrenceRules?.length
       )
       const hasGuests = (event.attendees?.length ?? 0) > 0
       const colorTone = hasGuests ? 'dark' : isRecurring ? 'light' : 'normal'
@@ -203,9 +203,7 @@ export const WeeklyView = React.memo(function WeeklyView({
                 onDateClick?.(cell.date)
               }}
             >
-              <span className="weekly-day-tab__weekday">
-                {dayLabelFormatter.format(cell.date)}
-              </span>
+              <span className="weekly-day-tab__weekday">{dayLabelFormatter.format(cell.date)}</span>
               <span className="weekly-day-tab__date">{cell.dayOfMonth}</span>
             </button>
           ))}

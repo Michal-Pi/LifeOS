@@ -56,7 +56,14 @@ export function MeetingBriefingModal({
   }, [isOpen, briefing, loading, error, fetchBriefing])
 
   return (
-    <Modal open={isOpen} onClose={onClose} title={eventTitle} subtitle={eventTime} size="md" className="meeting-briefing-modal">
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title={eventTitle}
+      subtitle={eventTime}
+      size="md"
+      className="meeting-briefing-modal"
+    >
       {loading && (
         <div className="meeting-briefing-modal__loading">
           <p>Preparing your meeting briefing...</p>

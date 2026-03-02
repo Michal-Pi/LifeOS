@@ -6,14 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  deleteDoc,
-  doc,
-} from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { useAuth } from '@/hooks/useAuth'
 import type { DraftMessage } from '@lifeos/agents'

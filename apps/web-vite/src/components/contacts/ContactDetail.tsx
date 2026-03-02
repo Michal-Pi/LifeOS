@@ -242,17 +242,14 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
         return
       }
 
-      const res = await fetch(
-        `${import.meta.env.VITE_FUNCTIONS_URL}/linkedinProfileSearch`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ uid: user.uid, publicIdentifier: slug }),
-        }
-      )
+      const res = await fetch(`${import.meta.env.VITE_FUNCTIONS_URL}/linkedinProfileSearch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ uid: user.uid, publicIdentifier: slug }),
+      })
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'LinkedIn enrichment failed')
@@ -318,22 +315,19 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
 
     try {
       const token = await user.getIdToken()
-      const res = await fetch(
-        `${import.meta.env.VITE_FUNCTIONS_URL}/contactSearchEnrich`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            uid: user.uid,
-            name: contact.displayName,
-            company: contact.company,
-            email: contact.identifiers.emails[0],
-          }),
-        }
-      )
+      const res = await fetch(`${import.meta.env.VITE_FUNCTIONS_URL}/contactSearchEnrich`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          name: contact.displayName,
+          company: contact.company,
+          email: contact.identifiers.emails[0],
+        }),
+      })
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Search enrichment failed')
@@ -359,23 +353,20 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
 
     try {
       const token = await user.getIdToken()
-      const res = await fetch(
-        `${import.meta.env.VITE_FUNCTIONS_URL}/contactSearchEnrich`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            uid: user.uid,
-            name: contact.displayName,
-            company: contact.company,
-            email: contact.identifiers.emails[0],
-            mode: 'deep',
-          }),
-        }
-      )
+      const res = await fetch(`${import.meta.env.VITE_FUNCTIONS_URL}/contactSearchEnrich`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          name: contact.displayName,
+          company: contact.company,
+          email: contact.identifiers.emails[0],
+          mode: 'deep',
+        }),
+      })
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Deep enrichment failed')
@@ -420,7 +411,8 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
     if (fields.interests) updates.interests = fields.interests as string[]
     if (fields.goals) updates.goals = fields.goals as string
     if (fields.challenges) updates.challenges = fields.challenges as string
-    if (fields.strategicPriorities) updates.strategicPriorities = fields.strategicPriorities as string
+    if (fields.strategicPriorities)
+      updates.strategicPriorities = fields.strategicPriorities as string
     if (fields.workHistory) updates.workHistory = fields.workHistory as WorkHistoryEntry[]
     if (fields.familyNotes) updates.familyNotes = fields.familyNotes as string
     if (fields.personalityStyle) updates.personalityStyle = fields.personalityStyle as string
@@ -673,9 +665,7 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
             {pastMeetings.length > 0 && (
               <div className="contact-detail__meeting-card contact-detail__meeting-card--past">
                 <div className="contact-detail__meeting-card-label">Last Meeting</div>
-                <div className="contact-detail__meeting-card-title">
-                  {pastMeetings[0].title}
-                </div>
+                <div className="contact-detail__meeting-card-title">{pastMeetings[0].title}</div>
                 <div className="contact-detail__meeting-card-date">
                   {formatRelativeDate(pastMeetings[0].startMs)}
                   {' \u2014 '}
@@ -745,7 +735,8 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
                   <div className="contact-detail__work-entry-company">{entry.company}</div>
                   {(entry.startDate || entry.endDate) && (
                     <div className="contact-detail__work-entry-dates">
-                      {entry.startDate ?? '?'} — {entry.current ? 'Present' : (entry.endDate ?? '?')}
+                      {entry.startDate ?? '?'} —{' '}
+                      {entry.current ? 'Present' : (entry.endDate ?? '?')}
                     </div>
                   )}
                 </div>
@@ -755,7 +746,10 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
       )}
 
       {/* Personal Context */}
-      {(contact.interests?.length || contact.familyNotes || contact.personalityStyle || contact.preferences) && (
+      {(contact.interests?.length ||
+        contact.familyNotes ||
+        contact.personalityStyle ||
+        contact.preferences) && (
         <div className="contact-detail__personal-context">
           <span className="contact-detail__section-label">Personal Context</span>
           {contact.interests && contact.interests.length > 0 && (
@@ -825,8 +819,12 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
               <div key={i} className="contact-detail__pipeline-entry">
                 <div className="contact-detail__pipeline-entry-name">{entry.projectName}</div>
                 <div className="contact-detail__pipeline-entry-meta">
-                  {entry.type && <span className="contact-detail__pipeline-entry-type">{entry.type}</span>}
-                  {entry.stage && <span className="contact-detail__pipeline-entry-stage">{entry.stage}</span>}
+                  {entry.type && (
+                    <span className="contact-detail__pipeline-entry-type">{entry.type}</span>
+                  )}
+                  {entry.stage && (
+                    <span className="contact-detail__pipeline-entry-stage">{entry.stage}</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -857,7 +855,9 @@ export function ContactDetail({ contactId, onEdit, onDelete }: ContactDetailProp
                     <span
                       className={`contact-detail__task-badge contact-detail__task-badge--${task.status}`}
                     >
-                      {task.status === 'in_progress' ? 'In Progress' : task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+                      {task.status === 'in_progress'
+                        ? 'In Progress'
+                        : task.status.charAt(0).toUpperCase() + task.status.slice(1)}
                     </span>
                   </div>
                 </div>

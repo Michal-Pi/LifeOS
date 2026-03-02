@@ -170,7 +170,9 @@ export function useChannelConnections(source?: MessageSource): UseChannelConnect
                   httpStatus: response.status,
                   error: errMessage,
                   linkedInStatus: errPayload.linkedInStatus,
-                  linkedInBodySnippet: errPayload.linkedInBody ? String(errPayload.linkedInBody).slice(0, 100) : undefined,
+                  linkedInBodySnippet: errPayload.linkedInBody
+                    ? String(errPayload.linkedInBody).slice(0, 100)
+                    : undefined,
                   cookieLength: typeof liAt === 'string' ? liAt.length : 0,
                   hasCsrf: Boolean(input.credentials?.csrfToken),
                 },

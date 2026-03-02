@@ -29,7 +29,14 @@ function SourceIcon({ source }: { source: MessageSource }) {
   switch (source) {
     case 'gmail':
       return (
-        <svg {...props} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          {...props}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <rect x="1" y="2.5" width="10" height="7" rx="1" />
           <polyline points="1,2.5 6,7 11,2.5" />
         </svg>
@@ -46,18 +53,41 @@ function SourceIcon({ source }: { source: MessageSource }) {
     case 'linkedin':
       return (
         <svg {...props} fill="currentColor">
-          <text x="1" y="10" fontSize="10" fontWeight="700" fontFamily="system-ui, sans-serif" letterSpacing="-0.5">in</text>
+          <text
+            x="1"
+            y="10"
+            fontSize="10"
+            fontWeight="700"
+            fontFamily="system-ui, sans-serif"
+            letterSpacing="-0.5"
+          >
+            in
+          </text>
         </svg>
       )
     case 'whatsapp':
       return (
-        <svg {...props} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          {...props}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M10.5 5.8a4.2 4.2 0 0 1-.45 1.9A4.25 4.25 0 0 1 6.25 10a4.2 4.2 0 0 1-1.9-.45L1.5 10.5l.95-2.85A4.2 4.2 0 0 1 2 5.75 4.25 4.25 0 0 1 4.35 2a4.2 4.2 0 0 1 1.9-.45h.25a4.24 4.24 0 0 1 4 4v.25z" />
         </svg>
       )
     case 'telegram':
       return (
-        <svg {...props} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          {...props}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M10.5 1.5L5.5 6.5" />
           <polygon points="10.5,1.5 7,10.5 5.5,6.5 1.5,5 10.5,1.5" fill="none" />
         </svg>
@@ -68,8 +98,21 @@ function SourceIcon({ source }: { source: MessageSource }) {
 function ReplyIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M6 3L2 7.5 6 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2 7.5h8.5a3 3 0 013 3V12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path
+        d="M6 3L2 7.5 6 12"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M2 7.5h8.5a3 3 0 013 3V12"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
     </svg>
   )
 }
@@ -92,7 +135,13 @@ function ChevronDown({ expanded }: { expanded: boolean }) {
       aria-hidden="true"
       className={`conv-chevron ${expanded ? 'conv-chevron--expanded' : ''}`}
     >
-      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M4 6l4 4 4-4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
@@ -243,7 +292,8 @@ export function MailboxMessageList({
       <div className="conv-feed__summary">
         {threads.length} conversation{threads.length !== 1 ? 's' : ''}
         <span className="conv-feed__msg-count">
-          {' '}({sortedMessages.length} message{sortedMessages.length !== 1 ? 's' : ''})
+          {' '}
+          ({sortedMessages.length} message{sortedMessages.length !== 1 ? 's' : ''})
         </span>
       </div>
 
@@ -318,7 +368,12 @@ function ConversationRow({
       role="listitem"
     >
       {/* Clickable header area */}
-      <div className="conv-row__clickable" onClick={() => onSelect?.(latest)} role="button" tabIndex={-1}>
+      <div
+        className="conv-row__clickable"
+        onClick={() => onSelect?.(latest)}
+        role="button"
+        tabIndex={-1}
+      >
         {/* Top row: participants + meta */}
         <div className="conv-row__header">
           <div className="conv-row__participants">
@@ -326,12 +381,8 @@ function ConversationRow({
               <SourceIcon source={latest.source} />
             </div>
             <span className="conv-row__sender">{thread.sender}</span>
-            {hasMultiple && (
-              <span className="conv-row__count">{thread.messages.length}</span>
-            )}
-            {thread.unreadCount > 0 && (
-              <span className="conv-row__unread-dot" />
-            )}
+            {hasMultiple && <span className="conv-row__count">{thread.messages.length}</span>}
+            {thread.unreadCount > 0 && <span className="conv-row__unread-dot" />}
           </div>
           <div className="conv-row__meta">
             {triageCategory && triageCategory !== 'fyi' && triageCategory !== 'automated' && (
@@ -339,17 +390,13 @@ function ConversationRow({
                 {TRIAGE_LABELS[triageCategory]}
               </span>
             )}
-            {latest.requiresFollowUp && (
-              <span className="conv-row__action-badge">Action</span>
-            )}
+            {latest.requiresFollowUp && <span className="conv-row__action-badge">Action</span>}
             <span className="conv-row__time">{timeAgo}</span>
           </div>
         </div>
 
         {/* Subject */}
-        {thread.subject && (
-          <div className="conv-row__subject">{thread.subject}</div>
-        )}
+        {thread.subject && <div className="conv-row__subject">{thread.subject}</div>}
 
         {/* AI Summary — PRIMARY ELEMENT */}
         <div className="conv-row__summary">{latest.aiSummary}</div>
@@ -367,7 +414,10 @@ function ConversationRow({
           <button
             type="button"
             className="conv-row__action-btn conv-row__action-btn--reply"
-            onClick={(e) => { e.stopPropagation(); onSelectForReply(latest) }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelectForReply(latest)
+            }}
             aria-label={`Reply to ${thread.sender}`}
           >
             <ReplyIcon />
@@ -377,7 +427,10 @@ function ConversationRow({
         <button
           type="button"
           className="conv-row__action-btn conv-row__action-btn--archive"
-          onClick={(e) => { e.stopPropagation(); void onDismiss(latest.messageId) }}
+          onClick={(e) => {
+            e.stopPropagation()
+            void onDismiss(latest.messageId)
+          }}
           aria-label={`Archive conversation with ${thread.sender}`}
         >
           <ArchiveIcon />
@@ -387,7 +440,10 @@ function ConversationRow({
           <button
             type="button"
             className="conv-row__action-btn conv-row__action-btn--expand"
-            onClick={(e) => { e.stopPropagation(); onToggle() }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggle()
+            }}
             aria-label={isExpanded ? 'Collapse thread' : 'Expand thread'}
           >
             <ChevronDown expanded={isExpanded} />

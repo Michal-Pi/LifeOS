@@ -155,7 +155,13 @@ export function MindInterventionModal({
           : 'Session Complete'
 
   return (
-    <Modal open={isOpen} onClose={handleCancel} title={modalTitle} size="md" className="mind-intervention-modal">
+    <Modal
+      open={isOpen}
+      onClose={handleCancel}
+      title={modalTitle}
+      size="md"
+      className="mind-intervention-modal"
+    >
       {flowState.step === 'feeling' && <FeelingSelector onSelect={handleFeelingSelect} />}
 
       {flowState.step === 'selector' && (

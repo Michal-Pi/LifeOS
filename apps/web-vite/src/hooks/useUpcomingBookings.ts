@@ -31,10 +31,7 @@ export interface Booking {
   createdAt: string
 }
 
-export function useUpcomingBookings(
-  userId: string | undefined,
-  links: SchedulingLink[]
-) {
+export function useUpcomingBookings(userId: string | undefined, links: SchedulingLink[]) {
   const hasLinks = links.length > 0
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,7 +72,7 @@ export function useUpcomingBookings(
             (snap) => {
               bookingsByLink.set(
                 link.id,
-                snap.docs.map((d) => ({ ...d.data(), id: d.id } as Booking))
+                snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Booking)
               )
               pendingSetups = Math.max(0, pendingSetups - 1)
               if (pendingSetups === 0) setLoading(false)

@@ -197,11 +197,7 @@ export function ProjectFormModal({
           <div className="form-group">
             <div className="form-group-header">
               <label>Chapters (Optional)</label>
-              <button
-                type="button"
-                className="ghost-button-small"
-                onClick={addChapter}
-              >
+              <button type="button" className="ghost-button-small" onClick={addChapter}>
                 + Add
               </button>
             </div>
@@ -235,7 +231,6 @@ export function ProjectFormModal({
             </button>
           </div>
         </form>
-
       </div>
 
       <MarkdownImportModal

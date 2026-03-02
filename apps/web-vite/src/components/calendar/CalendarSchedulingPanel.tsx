@@ -79,10 +79,7 @@ export function CalendarSchedulingPanel({
         <p className="section-label" style={{ margin: 0 }}>
           Scheduling
           {compact && activeLinks.length > 0 && (
-            <span className="calendar-scheduling__count">
-              {' '}
-              ({activeLinks.length} active)
-            </span>
+            <span className="calendar-scheduling__count"> ({activeLinks.length} active)</span>
           )}
         </p>
 
@@ -105,8 +102,7 @@ export function CalendarSchedulingPanel({
           ) : links.length === 0 ? (
             <div>
               <p className="calendar-meta">
-                No scheduling links yet. Create one to let others book time on
-                your calendar.
+                No scheduling links yet. Create one to let others book time on your calendar.
               </p>
               <button
                 type="button"
@@ -130,11 +126,7 @@ export function CalendarSchedulingPanel({
                   />
                 ))}
               </div>
-              <button
-                type="button"
-                className="ghost-button small"
-                onClick={openCreate}
-              >
+              <button type="button" className="ghost-button small" onClick={openCreate}>
                 + New Link
               </button>
             </>
@@ -146,15 +138,11 @@ export function CalendarSchedulingPanel({
               <p className="section-label">Upcoming Bookings</p>
               {bookings.slice(0, 5).map((booking) => (
                 <div key={booking.id} className="calendar-booking-item">
-                  <span className="calendar-booking-item__guest">
-                    {booking.guestName}
-                  </span>
+                  <span className="calendar-booking-item__guest">{booking.guestName}</span>
                   <span className="calendar-booking-item__time">
                     {timeFormatter.format(new Date(booking.startTime))}
                   </span>
-                  <span className="calendar-booking-item__duration">
-                    {booking.duration}m
-                  </span>
+                  <span className="calendar-booking-item__duration">{booking.duration}m</span>
                 </div>
               ))}
             </div>

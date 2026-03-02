@@ -79,13 +79,20 @@ export function MailboxPage() {
     }
   }, [messages, activeFilter])
 
-  // Keep selected message in sync with the latest data
+  // Keep selected message in sync with the latest data, auto-selecting
+  // the first conversation when none is explicitly selected (inbox only).
   const displayedMessage = useMemo(() => {
-    if (!selectedMessage) return null
-    return (
-      filteredMessages.find((m) => m.messageId === selectedMessage.messageId) ?? selectedMessage
-    )
-  }, [selectedMessage, filteredMessages])
+    if (selectedMessage) {
+      return (
+        filteredMessages.find((m) => m.messageId === selectedMessage.messageId) ?? selectedMessage
+      )
+    }
+    // Auto-select first message when inbox is active with no explicit selection
+    if (activeFolder === 'inbox' && !composerOpen && !loading && filteredMessages.length > 0) {
+      return filteredMessages[0]
+    }
+    return null
+  }, [selectedMessage, filteredMessages, activeFolder, composerOpen, loading])
 
   // ---- Folder switching ----
   const handleFolderChange = useCallback((folder: MailboxFolder) => {
@@ -101,11 +108,6 @@ export function MailboxPage() {
     setSelectedMessage(message)
     setComposerOpen(false)
   }, [])
-
-  // Auto-select the first conversation when none is selected (inbox only)
-  if (activeFolder === 'inbox' && !selectedMessage && !composerOpen && !loading && filteredMessages.length > 0) {
-    setSelectedMessage(filteredMessages[0])
-  }
 
   // Mark selected message as read
   useEffect(() => {
@@ -259,12 +261,7 @@ export function MailboxPage() {
   const renderDetailPanel = () => {
     // Compose mode (any folder)
     if (composerOpen) {
-      return (
-        <MailboxComposeInline
-          onSent={handleCloseComposer}
-          onDiscard={handleCloseComposer}
-        />
-      )
+      return <MailboxComposeInline onSent={handleCloseComposer} onDiscard={handleCloseComposer} />
     }
 
     switch (activeFolder) {
@@ -296,7 +293,9 @@ export function MailboxPage() {
         }
         return (
           <div className="mailbox-page__empty-detail">
-            <span>{outboxItems.length > 0 ? 'Select an item to view details' : 'Outbox is empty'}</span>
+            <span>
+              {outboxItems.length > 0 ? 'Select an item to view details' : 'Outbox is empty'}
+            </span>
           </div>
         )
 
@@ -307,12 +306,30 @@ export function MailboxPage() {
             <MailboxMessageDetail
               key={displayedMessage.messageId}
               message={displayedMessage}
-              threadMessages={displayedMessage.threadId
-                ? filteredMessages.filter((m) => m.threadId === displayedMessage.threadId)
-                : undefined}
+              threadMessages={
+                displayedMessage.threadId
+                  ? filteredMessages.filter((m) => m.threadId === displayedMessage.threadId)
+                  : undefined
+              }
               onDismiss={handleDismiss}
               onReplySent={handleReplySent}
               onOverrideTriage={overrideTriageCategory}
+              onCreateTask={(data) => {
+                // TODO: Wire to task creation flow
+                console.info('Create task from action:', data)
+              }}
+              onCreateEvent={(data) => {
+                // TODO: Wire to calendar event creation flow
+                console.info('Create event from action:', data)
+              }}
+              onSetFollowUp={(contactId, dueDate) => {
+                // TODO: Wire to contact follow-up flow
+                console.info('Set follow-up:', contactId, dueDate)
+              }}
+              onEditContact={(contactId, details) => {
+                // TODO: Wire to contact edit flow
+                console.info('Edit contact:', contactId, details)
+              }}
             />
           )
         }
@@ -357,7 +374,19 @@ export function MailboxPage() {
         </div>
 
         <div className="mailbox-page__detail">
-          {renderDetailPanel()}
+          <ErrorBoundary
+            fallback={(err, reset) => (
+              <div className="mailbox-page__panel-error">
+                <p>Something went wrong</p>
+                <p className="mailbox-page__panel-error-detail">{err.message}</p>
+                <button type="button" className="ghost-button small" onClick={reset}>
+                  Try again
+                </button>
+              </div>
+            )}
+          >
+            {renderDetailPanel()}
+          </ErrorBoundary>
         </div>
       </div>
     </div>

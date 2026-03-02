@@ -236,7 +236,9 @@ describe('TodayPage', () => {
   it('snoozes a task when snooze button is clicked', async () => {
     const user = userEvent.setup()
     renderPage()
-    const snoozeBtn = screen.getByRole('button', { name: /Snooze Most important task to tomorrow/i })
+    const snoozeBtn = screen.getByRole('button', {
+      name: /Snooze Most important task to tomorrow/i,
+    })
     await user.click(snoozeBtn)
     expect(mockUpdateTask).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -250,7 +252,9 @@ describe('TodayPage', () => {
     renderPage()
     expect(screen.getByRole('button', { name: /Complete Most important task/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Complete Second task/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Snooze Most important task to tomorrow/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Snooze Most important task to tomorrow/ })
+    ).toBeInTheDocument()
   })
 
   it('UTIL telemetry uses /10 denominator (0% with no events)', () => {

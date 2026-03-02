@@ -295,9 +295,10 @@ export function TodayPage() {
   const freeHours = Math.max(24 - busyHours, 0)
 
   const taskSummary = `${todayTasksWithoutFrog.length + (frogTask ? 1 : 0)} tasks${frogTask ? ' \u00b7 1 frog' : ''}`
-  const calendarSummary = upcomingPreview.length > 0
-    ? `${displayEvents.length} today \u00b7 ${upcomingPreview.length} upcoming`
-    : `${displayEvents.length} event${displayEvents.length !== 1 ? 's' : ''}`
+  const calendarSummary =
+    upcomingPreview.length > 0
+      ? `${displayEvents.length} today \u00b7 ${upcomingPreview.length} upcoming`
+      : `${displayEvents.length} event${displayEvents.length !== 1 ? 's' : ''}`
 
   return (
     <div className="page-container today-shell-refined">
@@ -313,9 +314,7 @@ export function TodayPage() {
       {/* Quote strip — below nav */}
       {!loading && quote && (
         <div className="today-quote-strip">
-          <blockquote className="today-quote-strip__text">
-            &ldquo;{quote.text}&rdquo;
-          </blockquote>
+          <blockquote className="today-quote-strip__text">&ldquo;{quote.text}&rdquo;</blockquote>
           <span className="today-quote-strip__author">&mdash; {quote.author}</span>
         </div>
       )}
@@ -402,7 +401,9 @@ export function TodayPage() {
                           key={`upcoming-${evt.canonicalEventId}-${index}`}
                           className="today-event-row today-event-row--upcoming"
                         >
-                          <span className="today-event-date">{shortDateFormat.format(evt.start)}</span>
+                          <span className="today-event-date">
+                            {shortDateFormat.format(evt.start)}
+                          </span>
                           <span className="today-event-time">{timeFormat.format(evt.start)}</span>
                           <span className="today-event-title">{evt.title}</span>
                           {evt.guests.length > 0 && (
@@ -504,7 +505,11 @@ export function TodayPage() {
                 ) : (
                   todayTasksWithoutFrog.map((task) => (
                     <div key={task.id} className="today-task-row">
-                      <button className="today-task-checkbox" onClick={() => completeTask(task.id)} aria-label={`Complete ${task.title}`}>
+                      <button
+                        className="today-task-checkbox"
+                        onClick={() => completeTask(task.id)}
+                        aria-label={`Complete ${task.title}`}
+                      >
                         ○
                       </button>
                       <div className="today-task-info">
@@ -568,8 +573,6 @@ export function TodayPage() {
 
         {/* Row 2, Col 2: Follow-Up Reminders (right) */}
         <FollowUpWidget maxContacts={8} />
-
-
       </div>
 
       {/* Meeting Briefing Modal */}
@@ -582,8 +585,6 @@ export function TodayPage() {
           eventTime={briefingEvent.time}
         />
       )}
-
-
     </div>
   )
 }

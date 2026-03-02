@@ -31,7 +31,9 @@ export function LinkedInSettingsPanel() {
       return
     }
     if (!csrfInput.trim()) {
-      setLocalError('Please enter your CSRF token (JSESSIONID cookie value). See "How to get your LinkedIn cookie" below.')
+      setLocalError(
+        'Please enter your CSRF token (JSESSIONID cookie value). See "How to get your LinkedIn cookie" below.'
+      )
       return
     }
 

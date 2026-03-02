@@ -22,12 +22,7 @@ import { instantiateTemplate } from '@/services/templateInstantiation'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { useDialog } from '@/contexts/useDialog'
-import type {
-  Workflow,
-  WorkflowTemplate,
-  AgentTemplate,
-  PromptTemplate,
-} from '@lifeos/agents'
+import type { Workflow, WorkflowTemplate, AgentTemplate, PromptTemplate } from '@lifeos/agents'
 
 type WorkflowTemplateExport = {
   version: number
@@ -473,9 +468,7 @@ export function TemplatesTab({
           <div>
             <p className="section-label">Templates</p>
             <h2>Workflow Templates</h2>
-            <p className="settings-panel__meta">
-              Reuse workflow setups for repeated workflows.
-            </p>
+            <p className="settings-panel__meta">Reuse workflow setups for repeated workflows.</p>
             <div className="settings-panel__actions">
               <Button variant="ghost" onClick={handleAddWorkflowPresets} type="button">
                 Add Presets
@@ -589,11 +582,7 @@ export function TemplatesTab({
               <Button variant="ghost" onClick={handleExportAgentTemplates} type="button">
                 Export
               </Button>
-              <Button
-                variant="ghost"
-                onClick={() => agentImportRef.current?.click()}
-                type="button"
-              >
+              <Button variant="ghost" onClick={() => agentImportRef.current?.click()} type="button">
                 Import
               </Button>
               <input
@@ -621,9 +610,7 @@ export function TemplatesTab({
               <div
                 key={template.templateId}
                 className={`agent-card${batchMode && selectedTemplateIds.has(template.templateId) ? ' agent-card--selected' : ''}`}
-                onClick={
-                  batchMode ? () => toggleTemplateSelection(template.templateId) : undefined
-                }
+                onClick={batchMode ? () => toggleTemplateSelection(template.templateId) : undefined}
                 style={batchMode ? { cursor: 'pointer' } : undefined}
               >
                 {batchMode && (

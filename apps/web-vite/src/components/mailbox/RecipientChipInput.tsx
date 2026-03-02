@@ -170,7 +170,16 @@ export function RecipientChipInput({
           break
       }
     },
-    [isOpen, suggestions, selectedIndex, query, recipients, handleSelect, handleRemove, handleAddRaw]
+    [
+      isOpen,
+      suggestions,
+      selectedIndex,
+      query,
+      recipients,
+      handleSelect,
+      handleRemove,
+      handleAddRaw,
+    ]
   )
 
   // Scroll selected item into view
@@ -194,7 +203,9 @@ export function RecipientChipInput({
         {/* Selected recipient chips */}
         {recipients.map((recipient, index) => (
           <span key={`${recipient.id}-${index}`} className="recipient-chip">
-            <span className={`recipient-chip__icon recipient-chip__icon--${recipient.channel ?? channel}`}>
+            <span
+              className={`recipient-chip__icon recipient-chip__icon--${recipient.channel ?? channel}`}
+            >
               {SOURCE_ICONS[recipient.channel ?? channel]}
             </span>
             <span className="recipient-chip__name">{recipient.name}</span>

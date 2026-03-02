@@ -56,11 +56,7 @@ interface SerpResult {
   link: string
 }
 
-async function serpSearch(
-  apiKey: string,
-  query: string,
-  num = 10
-): Promise<SerpResult[]> {
+async function serpSearch(apiKey: string, query: string, num = 10): Promise<SerpResult[]> {
   const res = await fetch(SERPER_API, {
     method: 'POST',
     headers: {
@@ -270,7 +266,7 @@ function buildWorkerDefinitions(
           ],
       scrapeMode: 'none',
       extractionPrompt:
-        'Focus on the person\'s current role details, seniority, company context, any leadership announcements, strategic direction they are driving, and professional goals mentioned in press or company communications.',
+        "Focus on the person's current role details, seniority, company context, any leadership announcements, strategic direction they are driving, and professional goals mentioned in press or company communications.",
       targetFields: ['title', 'company', 'strategicPriorities', 'goals'],
     },
     {
@@ -588,7 +584,9 @@ async function deepEnrich(
 
   return {
     enrichedFields: synthesis.fields,
-    sources: allSources.slice(0, 10).map((r) => ({ title: r.title, url: r.link, snippet: r.snippet })),
+    sources: allSources
+      .slice(0, 10)
+      .map((r) => ({ title: r.title, url: r.link, snippet: r.snippet })),
     tokensUsed: totalTokens,
     workersCompleted: successfulOutputs.length,
   }
@@ -662,7 +660,12 @@ export const contactSearchEnrich = onRequest(
 
       if (email) {
         const domain = (email as string).split('@')[1]
-        if (domain && !domain.includes('gmail') && !domain.includes('yahoo') && !domain.includes('hotmail')) {
+        if (
+          domain &&
+          !domain.includes('gmail') &&
+          !domain.includes('yahoo') &&
+          !domain.includes('hotmail')
+        ) {
           queries.push(`"${name}" ${domain}`)
         }
         queries.push(`"${email}"`)

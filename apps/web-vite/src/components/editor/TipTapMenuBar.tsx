@@ -402,87 +402,89 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
       )}
 
       {/* Font Color */}
-      {hasTextColor && <div className="menu-group" ref={textColorMenuRef}>
-        <div className="menu-dropdown">
-          <button
-            type="button"
-            className="menu-button"
-            title="Font Color"
-            onClick={() => setShowTextColorMenu(!showTextColorMenu)}
-          >
-            <span
-              className="menu-color-dot"
-              style={{ backgroundColor: activeTextColor || 'transparent' }}
-            />
-            <span className="menu-arrow">▼</span>
-          </button>
-          {showTextColorMenu && (
-            <div className="menu-dropdown-content">
-              <div className="menu-color-grid">
-                {textColors.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className="menu-color-swatch"
-                    style={{ backgroundColor: color }}
-                    onClick={() => {
-                      editor.chain().focus().setTextColor(color).run()
-                      setActiveTextColor(color)
-                      setShowTextColorMenu(false)
-                    }}
-                  />
-                ))}
-              </div>
-              <div className="menu-color-custom">
-                <label className="menu-color-label">Custom</label>
-                <div className="menu-color-controls">
-                  <input
-                    type="color"
-                    value={customTextColor}
-                    onChange={(event) => {
-                      const next = event.target.value
-                      setCustomTextColor(next)
-                      editor.chain().focus().setTextColor(next).run()
-                      setActiveTextColor(next)
-                    }}
-                    aria-label="Custom text color picker"
-                  />
-                  <input
-                    type="text"
-                    value={customTextColor}
-                    onChange={(event) => setCustomTextColor(event.target.value)}
-                    onBlur={() => {
-                      if (isValidHex(customTextColor)) {
-                        editor.chain().focus().setTextColor(customTextColor).run()
-                        setActiveTextColor(customTextColor)
-                      }
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' && isValidHex(customTextColor)) {
-                        editor.chain().focus().setTextColor(customTextColor).run()
-                        setActiveTextColor(customTextColor)
-                      }
-                    }}
-                    placeholder="#39FF14"
-                    className="menu-color-hex"
-                  />
+      {hasTextColor && (
+        <div className="menu-group" ref={textColorMenuRef}>
+          <div className="menu-dropdown">
+            <button
+              type="button"
+              className="menu-button"
+              title="Font Color"
+              onClick={() => setShowTextColorMenu(!showTextColorMenu)}
+            >
+              <span
+                className="menu-color-dot"
+                style={{ backgroundColor: activeTextColor || 'transparent' }}
+              />
+              <span className="menu-arrow">▼</span>
+            </button>
+            {showTextColorMenu && (
+              <div className="menu-dropdown-content">
+                <div className="menu-color-grid">
+                  {textColors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className="menu-color-swatch"
+                      style={{ backgroundColor: color }}
+                      onClick={() => {
+                        editor.chain().focus().setTextColor(color).run()
+                        setActiveTextColor(color)
+                        setShowTextColorMenu(false)
+                      }}
+                    />
+                  ))}
                 </div>
+                <div className="menu-color-custom">
+                  <label className="menu-color-label">Custom</label>
+                  <div className="menu-color-controls">
+                    <input
+                      type="color"
+                      value={customTextColor}
+                      onChange={(event) => {
+                        const next = event.target.value
+                        setCustomTextColor(next)
+                        editor.chain().focus().setTextColor(next).run()
+                        setActiveTextColor(next)
+                      }}
+                      aria-label="Custom text color picker"
+                    />
+                    <input
+                      type="text"
+                      value={customTextColor}
+                      onChange={(event) => setCustomTextColor(event.target.value)}
+                      onBlur={() => {
+                        if (isValidHex(customTextColor)) {
+                          editor.chain().focus().setTextColor(customTextColor).run()
+                          setActiveTextColor(customTextColor)
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && isValidHex(customTextColor)) {
+                          editor.chain().focus().setTextColor(customTextColor).run()
+                          setActiveTextColor(customTextColor)
+                        }
+                      }}
+                      placeholder="#39FF14"
+                      className="menu-color-hex"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="menu-dropdown-item"
+                  onClick={() => {
+                    editor.chain().focus().unsetTextColor().run()
+                    setActiveTextColor(null)
+                    setShowTextColorMenu(false)
+                  }}
+                >
+                  <span className="menu-item-heading">Clear color</span>
+                </button>
               </div>
-              <button
-                type="button"
-                className="menu-dropdown-item"
-                onClick={() => {
-                  editor.chain().focus().unsetTextColor().run()
-                  setActiveTextColor(null)
-                  setShowTextColorMenu(false)
-                }}
-              >
-                <span className="menu-item-heading">Clear color</span>
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>}
+      )}
 
       {/* Highlight Color */}
       <div className="menu-group" ref={highlightMenuRef}>

@@ -133,79 +133,79 @@ export function AIProvidersSection({ userId, onError }: AIProvidersSectionProps)
         {providerKeysLoading && <p className="settings-panel__meta">Loading keys...</p>}
 
         <div className="provider-grid">
-        {providerRows.map((provider) => (
-          <div key={provider.id} className="provider-card">
-            <div className="provider-card__header">
-              <div>
-                <p className="section-label">Provider</p>
-                <h4>{provider.label}</h4>
+          {providerRows.map((provider) => (
+            <div key={provider.id} className="provider-card">
+              <div className="provider-card__header">
+                <div>
+                  <p className="section-label">Provider</p>
+                  <h4>{provider.label}</h4>
+                </div>
+                <div className="provider-card__status">
+                  <StatusDot
+                    status={provider.saved ? 'online' : 'offline'}
+                    label={provider.saved ? 'Connected' : 'Inactive'}
+                  />
+                  <span>{provider.saved ? 'Connected' : 'Inactive'}</span>
+                </div>
               </div>
-              <div className="provider-card__status">
-                <StatusDot
-                  status={provider.saved ? 'online' : 'offline'}
-                  label={provider.saved ? 'Connected' : 'Inactive'}
-                />
-                <span>{provider.saved ? 'Connected' : 'Inactive'}</span>
-              </div>
-            </div>
-            <p className="settings-panel__meta">{provider.helper}</p>
+              <p className="settings-panel__meta">{provider.helper}</p>
 
-            {/* Masked key display */}
-            <div className="api-key-field">
-              <div className="api-key-field__display">
-                {providerKeys[provider.keyField] ? (
-                  revealed[provider.id] ? (
-                    providerKeys[provider.keyField]
+              {/* Masked key display */}
+              <div className="api-key-field">
+                <div className="api-key-field__display">
+                  {providerKeys[provider.keyField] ? (
+                    revealed[provider.id] ? (
+                      providerKeys[provider.keyField]
+                    ) : (
+                      getMaskedKey(providerKeys[provider.keyField])
+                    )
                   ) : (
-                    getMaskedKey(providerKeys[provider.keyField])
-                  )
-                ) : (
-                  <span className="api-key-field__empty">Not configured</span>
+                    <span className="api-key-field__empty">Not configured</span>
+                  )}
+                </div>
+                {providerKeys[provider.keyField] && (
+                  <button
+                    type="button"
+                    className="ghost-button api-key-field__reveal"
+                    onClick={() => setRevealed((r) => ({ ...r, [provider.id]: !r[provider.id] }))}
+                  >
+                    {revealed[provider.id] ? 'Hide' : 'Reveal'}
+                  </button>
                 )}
               </div>
-              {providerKeys[provider.keyField] && (
-                <button
-                  type="button"
-                  className="ghost-button api-key-field__reveal"
-                  onClick={() => setRevealed((r) => ({ ...r, [provider.id]: !r[provider.id] }))}
-                >
-                  {revealed[provider.id] ? 'Hide' : 'Reveal'}
-                </button>
-              )}
-            </div>
 
-            <div className="provider-card__input">
-              <input
-                type="password"
-                value={keyInputs[provider.id]}
-                onChange={(e) =>
-                  setKeyInputs((prev) => ({ ...prev, [provider.id]: e.target.value }))
-                }
-                placeholder={provider.saved ? 'Enter new key...' : provider.placeholder}
-                className="settings-code-input"
-              />
-              <div className="provider-card__actions">
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => handleRemoveKey(provider.id)}
-                  disabled={!provider.saved || keySaving[provider.id]}
-                >
-                  Clear
-                </button>
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => handleSaveKey(provider.id)}
-                  disabled={keySaving[provider.id]}
-                >
-                  Save
-                </button>
+              <div className="provider-card__input">
+                <input
+                  type="password"
+                  value={keyInputs[provider.id]}
+                  onChange={(e) =>
+                    setKeyInputs((prev) => ({ ...prev, [provider.id]: e.target.value }))
+                  }
+                  placeholder={provider.saved ? 'Enter new key...' : provider.placeholder}
+                  className="settings-code-input"
+                />
+                <div className="provider-card__actions">
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => handleRemoveKey(provider.id)}
+                    disabled={!provider.saved || keySaving[provider.id]}
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => handleSaveKey(provider.id)}
+                    disabled={keySaving[provider.id]}
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
         <div className="settings-links">
           <Link to="/settings/models" className="settings-link-card">

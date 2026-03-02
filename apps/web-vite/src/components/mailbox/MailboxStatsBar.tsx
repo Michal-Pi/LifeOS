@@ -123,14 +123,16 @@ export function MailboxStatsBar({
           className={`mailbox-stats-bar__pill ${activeFolder === 'drafts' ? 'mailbox-stats-bar__pill--active' : ''}`}
           onClick={() => onFolderChange('drafts')}
         >
-          Drafts {draftsCount > 0 && <span className="mailbox-stats-bar__count">{draftsCount}</span>}
+          Drafts{' '}
+          {draftsCount > 0 && <span className="mailbox-stats-bar__count">{draftsCount}</span>}
         </button>
         <button
           type="button"
           className={`mailbox-stats-bar__pill ${activeFolder === 'outbox' ? 'mailbox-stats-bar__pill--active' : ''}`}
           onClick={() => onFolderChange('outbox')}
         >
-          Outbox {outboxCount > 0 && <span className="mailbox-stats-bar__count">{outboxCount}</span>}
+          Outbox{' '}
+          {outboxCount > 0 && <span className="mailbox-stats-bar__count">{outboxCount}</span>}
         </button>
       </div>
 
@@ -175,12 +177,7 @@ export function MailboxStatsBar({
         <button type="button" className="primary-button small" onClick={onCompose}>
           Compose
         </button>
-        <button
-          type="button"
-          className="ghost-button small"
-          onClick={onSync}
-          disabled={isSyncing}
-        >
+        <button type="button" className="ghost-button small" onClick={onSync} disabled={isSyncing}>
           {isSyncing ? 'Syncing...' : 'Sync'}
         </button>
       </div>

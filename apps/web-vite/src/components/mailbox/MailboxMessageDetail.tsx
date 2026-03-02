@@ -149,9 +149,15 @@ export function MailboxMessageDetail({
       })
 
       if (result.data?.body) {
+        const escapeHtml = (s: string) =>
+          s
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
         const htmlContent = result.data.body
           .split('\n')
-          .map((line: string) => (line.trim() ? `<p>${line}</p>` : '<p><br></p>'))
+          .map((line: string) => (line.trim() ? `<p>${escapeHtml(line)}</p>` : '<p><br></p>'))
           .join('')
         setContent(htmlContent)
         composer.setBody(result.data.body)
@@ -307,15 +313,20 @@ export function MailboxMessageDetail({
 
       {/* 4. Thread / Message body — collapsible per message */}
       {(() => {
-        const threadMsgs = threadMessages && threadMessages.length > 1
-          ? [...threadMessages].sort((a, b) => a.receivedAtMs - b.receivedAtMs)
-          : null
+        const threadMsgs =
+          threadMessages && threadMessages.length > 1
+            ? [...threadMessages].sort((a, b) => a.receivedAtMs - b.receivedAtMs)
+            : null
 
         if (threadMsgs) {
           return (
             <div className="mailbox-detail__thread">
               {threadMsgs.map((msg) => (
-                <details key={msg.messageId} className="mailbox-detail__collapsible" open={msg.messageId === message.messageId}>
+                <details
+                  key={msg.messageId}
+                  className="mailbox-detail__collapsible"
+                  open={msg.messageId === message.messageId}
+                >
                   <summary className="mailbox-detail__collapsible-header">
                     <span className="mailbox-detail__thread-sender">{msg.sender}</span>
                     <span className="mailbox-detail__body-snippet">
@@ -326,11 +337,17 @@ export function MailboxMessageDetail({
                   <div className="mailbox-detail__collapsible-body">
                     {msg.messageId === message.messageId ? (
                       <>
-                        {bodyLoading && <p className="mailbox-detail__body-loading">Loading full message...</p>}
+                        {bodyLoading && (
+                          <p className="mailbox-detail__body-loading">Loading full message...</p>
+                        )}
                         {bodyError && !bodyLoading && (
                           <div className="mailbox-detail__body-error">
                             <p className="mailbox-detail__snippet">{msg.snippet}</p>
-                            <button type="button" className="ghost-button small" onClick={retryBody}>
+                            <button
+                              type="button"
+                              className="ghost-button small"
+                              onClick={retryBody}
+                            >
                               Load full message
                             </button>
                           </div>
@@ -363,7 +380,9 @@ export function MailboxMessageDetail({
               </span>
             </summary>
             <div className="mailbox-detail__collapsible-body">
-              {bodyLoading && <p className="mailbox-detail__body-loading">Loading full message...</p>}
+              {bodyLoading && (
+                <p className="mailbox-detail__body-loading">Loading full message...</p>
+              )}
               {bodyError && !bodyLoading && (
                 <div className="mailbox-detail__body-error">
                   <p className="mailbox-detail__snippet">{message.snippet}</p>
@@ -456,13 +475,9 @@ export function MailboxMessageDetail({
           </button>
         </div>
 
-        {draftError && !generating && (
-          <span className="draft-reply-error">{draftError}</span>
-        )}
+        {draftError && !generating && <span className="draft-reply-error">{draftError}</span>}
 
-        {composer.error && (
-          <div className="mailbox-detail__composer-error">{composer.error}</div>
-        )}
+        {composer.error && <div className="mailbox-detail__composer-error">{composer.error}</div>}
       </div>
 
       {/* Extracted Actions panel */}

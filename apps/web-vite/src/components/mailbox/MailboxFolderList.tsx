@@ -18,7 +18,14 @@ function SourceIcon({ source }: { source: MessageSource }) {
   switch (source) {
     case 'gmail':
       return (
-        <svg {...props} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          {...props}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <rect x="1" y="2.5" width="10" height="7" rx="1" />
           <polyline points="1,2.5 6,7 11,2.5" />
         </svg>
@@ -35,18 +42,41 @@ function SourceIcon({ source }: { source: MessageSource }) {
     case 'linkedin':
       return (
         <svg {...props} fill="currentColor">
-          <text x="1" y="10" fontSize="10" fontWeight="700" fontFamily="system-ui, sans-serif" letterSpacing="-0.5">in</text>
+          <text
+            x="1"
+            y="10"
+            fontSize="10"
+            fontWeight="700"
+            fontFamily="system-ui, sans-serif"
+            letterSpacing="-0.5"
+          >
+            in
+          </text>
         </svg>
       )
     case 'whatsapp':
       return (
-        <svg {...props} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          {...props}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M10.5 5.8a4.2 4.2 0 0 1-.45 1.9A4.25 4.25 0 0 1 6.25 10a4.2 4.2 0 0 1-1.9-.45L1.5 10.5l.95-2.85A4.2 4.2 0 0 1 2 5.75 4.25 4.25 0 0 1 4.35 2a4.2 4.2 0 0 1 1.9-.45h.25a4.24 4.24 0 0 1 4 4v.25z" />
         </svg>
       )
     case 'telegram':
       return (
-        <svg {...props} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          {...props}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M10.5 1.5L5.5 6.5" />
           <polygon points="10.5,1.5 7,10.5 5.5,6.5 1.5,5 10.5,1.5" fill="none" />
         </svg>
@@ -188,7 +218,9 @@ export function MailboxFolderList({
                 </div>
                 <div className="conv-row__meta">
                   {folder === 'outbox' && item.status !== 'draft' && (
-                    <span className={`folder-row__status ${OUTBOX_STATUS_CLASS[item.status] || ''}`}>
+                    <span
+                      className={`folder-row__status ${OUTBOX_STATUS_CLASS[item.status] || ''}`}
+                    >
                       {OUTBOX_STATUS_LABELS[item.status] || item.status}
                     </span>
                   )}
@@ -199,9 +231,7 @@ export function MailboxFolderList({
               </div>
 
               {/* Subject */}
-              {item.subject && (
-                <div className="conv-row__subject">{item.subject}</div>
-              )}
+              {item.subject && <div className="conv-row__subject">{item.subject}</div>}
 
               {/* Body preview */}
               <div className="conv-row__summary">{item.preview || 'Empty draft'}</div>

@@ -176,7 +176,10 @@ async function fetchAvailabilitySlots(
   userId: string,
   daysAhead: number,
   durationMinutes: number
-): Promise<{ slots: Array<{ date: string; time: string; endTime: string }>; linkSlug: string | null }> {
+): Promise<{
+  slots: Array<{ date: string; time: string; endTime: string }>
+  linkSlug: string | null
+}> {
   const db = getFirestore()
   const linksSnap = await db
     .collection(`users/${userId}/schedulingLinks`)
@@ -216,9 +219,7 @@ async function fetchAvailabilitySlots(
     })
     .filter((b) => b.startMs < rangeEndMs && b.endMs > rangeStartMs)
 
-  const duration = link.durations.includes(durationMinutes)
-    ? durationMinutes
-    : link.defaultDuration
+  const duration = link.durations.includes(durationMinutes) ? durationMinutes : link.defaultDuration
 
   const rawSlots = computeAvailableSlots({
     availability: link.availability,
@@ -270,7 +271,7 @@ async function fetchAvailabilitySlots(
 const AVAILABILITY_TOOL: Anthropic.Tool = {
   name: 'check_my_availability',
   description:
-    'Check the user\'s calendar availability for the next several days. Use this when the message is about scheduling a meeting, call, or catch-up and you want to suggest specific time slots.',
+    "Check the user's calendar availability for the next several days. Use this when the message is about scheduling a meeting, call, or catch-up and you want to suggest specific time slots.",
   input_schema: {
     type: 'object' as const,
     properties: {
@@ -331,7 +332,9 @@ async function responseDraft(
   }
 
   if (data.userInstructions?.trim()) {
-    contextParts.push(`\nUser's instructions for this reply (incorporate these into the draft):\n${data.userInstructions}`)
+    contextParts.push(
+      `\nUser's instructions for this reply (incorporate these into the draft):\n${data.userInstructions}`
+    )
   }
 
   const userPrompt = `Generate a reply to the following message.
@@ -385,9 +388,7 @@ Output ONLY valid JSON matching the specified structure.`
 
           const slotText =
             availability.slots.length > 0
-              ? availability.slots
-                  .map((s) => `  ${s.date}: ${s.time} – ${s.endTime}`)
-                  .join('\n')
+              ? availability.slots.map((s) => `  ${s.date}: ${s.time} – ${s.endTime}`).join('\n')
               : 'No available slots found in the requested range.'
 
           const schedulingNote = availability.linkSlug
@@ -766,9 +767,7 @@ export const mailboxAITool = onCall(
             }
             // Also fetch sender name and source if not provided
             if (!data.senderName || !data.messageSource) {
-              const msgDoc = await db
-                .doc(`users/${userId}/mailboxMessages/${data.messageId}`)
-                .get()
+              const msgDoc = await db.doc(`users/${userId}/mailboxMessages/${data.messageId}`).get()
               if (msgDoc.exists) {
                 const msgData = msgDoc.data()
                 if (!data.senderName) data.senderName = msgData?.sender as string

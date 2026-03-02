@@ -49,9 +49,5 @@ export function RepositoryProvider({ children }: { children: ReactNode }) {
     []
   )
 
-  return (
-    <RepositoryContext.Provider value={repositories}>
-      {children}
-    </RepositoryContext.Provider>
-  )
+  return <RepositoryContext.Provider value={repositories}>{children}</RepositoryContext.Provider>
 }
