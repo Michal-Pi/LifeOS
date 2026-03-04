@@ -325,6 +325,8 @@ export const WorkflowSchema = z.object({
   maxIterations: z.number().int().positive().max(200).optional(),
   memoryMessageLimit: z.number().int().positive().max(200).optional(),
   criticality: WorkflowCriticalitySchema.optional(),
+  enableContextCompression: z.boolean().optional(),
+  earlyExitPatterns: z.array(z.string().min(1)).optional(),
   archived: z.boolean(),
   createdAtMs: z.number().int().positive(),
   updatedAtMs: z.number().int().positive(),
@@ -431,6 +433,14 @@ export const RunSchema = z.object({
   completedAtMs: z.number().int().positive().optional(),
   tokensUsed: z.number().int().nonnegative().optional(),
   estimatedCost: z.number().nonnegative().optional(),
+  evaluationScores: z
+    .object({
+      relevance: z.number().min(1).max(5),
+      completeness: z.number().min(1).max(5),
+      accuracy: z.number().min(1).max(5),
+      evaluatedAtMs: z.number().int().positive(),
+    })
+    .optional(),
   syncState: SyncStateSchema,
   version: z.number().int().nonnegative(),
 })

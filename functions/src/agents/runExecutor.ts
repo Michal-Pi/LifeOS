@@ -32,6 +32,7 @@ import { checkQuota, updateQuota, shouldSendQuotaAlert } from './quotaManager.js
 import { checkRunRateLimit, recordRunUsage } from './rateLimiter.js'
 import { createRunEventWriter } from './runEvents.js'
 import { loadToolRegistryForUser } from './toolExecutor.js'
+import { evaluateRunOutput } from './evaluation.js'
 import { executeWorkflow } from './workflowExecutor.js'
 
 const log = createLogger('RunExecutor')
@@ -302,6 +303,23 @@ async function executeRun(params: {
           status: 'completed',
         })
 
+        // Auto-evaluate output quality (fire-and-forget)
+        evaluateRunOutput(turn.stage3.finalResponse, run.goal, providerKeys)
+          .then(async (scores) => {
+            if (scores) {
+              await runRef.update({ evaluationScores: scores })
+              log.info('Expert Council evaluation complete', {
+                runId,
+                relevance: scores.relevance,
+                completeness: scores.completeness,
+                accuracy: scores.accuracy,
+              })
+            }
+          })
+          .catch((err) => {
+            log.warn('Expert Council evaluation failed (non-critical)', { runId, error: err })
+          })
+
         log.info(`Expert Council completed for run ${runId}`)
         return
       } catch (error) {
@@ -537,6 +555,28 @@ async function executeRun(params: {
       output: result.output,
       status: 'completed',
     })
+
+    // Auto-evaluate output quality (fire-and-forget)
+    evaluateRunOutput(result.output, run.goal, {
+      openai: providerKeys.openai,
+      anthropic: providerKeys.anthropic,
+      google: providerKeys.google,
+      grok: providerKeys.grok,
+    })
+      .then(async (scores) => {
+        if (scores) {
+          await runRef.update({ evaluationScores: scores })
+          log.info('Run evaluation complete', {
+            runId,
+            relevance: scores.relevance,
+            completeness: scores.completeness,
+            accuracy: scores.accuracy,
+          })
+        }
+      })
+      .catch((err) => {
+        log.warn('Run evaluation failed (non-critical)', { runId, error: err })
+      })
 
     log.info(
       `Run ${runId} completed successfully. Workflow: ${workflow.workflowType}, Steps: ${result.totalSteps}, Tokens: ${result.totalTokensUsed}, Cost: $${result.totalEstimatedCost.toFixed(4)}`

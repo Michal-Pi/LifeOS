@@ -207,6 +207,8 @@ export interface Workflow {
 
   // Cost optimization
   criticality?: WorkflowCriticality // Determines cost-saving behavior
+  enableContextCompression?: boolean // Compress output between sequential agents (default: per criticality)
+  earlyExitPatterns?: string[] // If agent output contains any of these patterns, skip remaining agents
 
   // Metadata
   archived: boolean
@@ -304,6 +306,14 @@ export interface Run {
   completedAtMs?: number
   tokensUsed?: number
   estimatedCost?: number // USD
+
+  // Evaluation
+  evaluationScores?: {
+    relevance: number // 1-5: How relevant is the output to the goal?
+    completeness: number // 1-5: Does it fully address the goal?
+    accuracy: number // 1-5: Is the content factually sound?
+    evaluatedAtMs: number // When evaluation was performed
+  }
 
   syncState: SyncState
   version: number
