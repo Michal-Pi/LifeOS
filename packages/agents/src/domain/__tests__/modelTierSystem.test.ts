@@ -110,7 +110,12 @@ describe('resolveEffectiveModel', () => {
 
   describe('cost_saving mode — critical workflows', () => {
     it('downgrades thinking to balanced (never fast)', () => {
-      const result = resolveEffectiveModel(openaiThinkingAgent, 'cost_saving', undefined, 'critical')
+      const result = resolveEffectiveModel(
+        openaiThinkingAgent,
+        'cost_saving',
+        undefined,
+        'critical'
+      )
       expect(result).toEqual({
         provider: 'openai',
         model: 'gpt-5.2',
