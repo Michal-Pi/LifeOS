@@ -14,20 +14,69 @@ import type {
   AgentConfig,
   Workflow,
   WorkflowExecutionMode,
-  ModelTier,
   WorkflowCriticality,
+  ModelTier,
 } from '@lifeos/agents'
 import type { UnifiedWorkflowState, AgentExecutionStep } from '@lifeos/agents'
 import { createFirestoreCheckpointer } from './firestoreCheckpointer.js'
 import { createLogger } from '../../lib/logger.js'
 import type { ProviderKeys } from '../providerService.js'
+import { executeWithProvider } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
 import type { ToolRegistry } from '../toolExecutor.js'
 import { executeAgentWithEvents, type AgentExecutionContext } from './utils.js'
 import { SequentialStateAnnotation, type SequentialState } from './stateAnnotations.js'
+import { estimateTokenCount } from '../anthropicService.js'
 
 const log = createLogger('SequentialGraph')
+
+/** Minimum estimated token count before compression is applied */
+const COMPRESSION_TOKEN_THRESHOLD = 2000
+
+/**
+ * Determine whether context compression is enabled for a workflow.
+ * Explicit flag takes priority; otherwise defaults by criticality:
+ *  - critical → false, core → false, routine → true
+ */
+function isCompressionEnabled(
+  explicit: boolean | undefined,
+  criticality: WorkflowCriticality | undefined
+): boolean {
+  if (explicit !== undefined) return explicit
+  return (criticality ?? 'core') === 'routine'
+}
+
+/**
+ * Compress agent output using a fast model to reduce tokens for downstream agents.
+ * Returns the original output unchanged if the model call fails.
+ */
+export async function compressAgentOutput(output: string, apiKeys: ProviderKeys): Promise<string> {
+  const compressionAgent: AgentConfig = {
+    agentId: '__context_compressor__' as AgentConfig['agentId'],
+    userId: '',
+    name: 'Context Compressor',
+    role: 'synthesizer',
+    systemPrompt:
+      'You are a context compression agent. Summarize the following output concisely, preserving all key findings, data, decisions, action items, and conclusions. Remove redundancy and filler. Output ONLY the compressed summary.',
+    modelProvider: 'openai',
+    modelName: 'gpt-4o-mini',
+    temperature: 0.3,
+    archived: false,
+    createdAtMs: 0,
+    updatedAtMs: 0,
+    syncState: 'synced',
+    version: 0,
+  }
+
+  try {
+    const result = await executeWithProvider(compressionAgent, output, {}, apiKeys)
+    return result.output
+  } catch (error) {
+    log.warn('Context compression failed, using original output', { error })
+    return output
+  }
+}
 
 /**
  * Configuration for sequential graph creation
@@ -113,30 +162,82 @@ export function createSequentialGraph(config: SequentialGraphConfig) {
         execContext,
         {
           stepNumber: i + 1,
+          totalSteps: agents.length,
         }
       )
 
+      // Compress output before passing to next agent (skip for last agent)
+      let outputForNext = step.output
+      const isLastAgent = i === agents.length - 1
+
+      // Check for early exit patterns
+      const earlyExitPatterns = workflow.earlyExitPatterns ?? []
+      const shouldEarlyExit =
+        !isLastAgent &&
+        earlyExitPatterns.length > 0 &&
+        earlyExitPatterns.some((pattern) => step.output.includes(pattern))
+
+      if (shouldEarlyExit) {
+        log.info('Early exit triggered', {
+          step: i + 1,
+          totalSteps: agents.length,
+          agentName: agent.name,
+          pattern: earlyExitPatterns.find((p) => step.output.includes(p)),
+        })
+      }
+
+      if (
+        !isLastAgent &&
+        !shouldEarlyExit &&
+        isCompressionEnabled(workflow.enableContextCompression, workflowCriticality)
+      ) {
+        const estimatedTokens = estimateTokenCount(step.output)
+        if (estimatedTokens > COMPRESSION_TOKEN_THRESHOLD) {
+          log.info('Compressing agent output', {
+            originalTokens: estimatedTokens,
+            step: i + 1,
+            totalSteps: agents.length,
+          })
+          outputForNext = await compressAgentOutput(step.output, apiKeys)
+        }
+      }
+
       return {
         currentAgentIndex: i + 1,
-        currentGoal: step.output, // Next agent's goal is previous agent's output
+        currentGoal: outputForNext, // Next agent's goal is (possibly compressed) output
         steps: [step],
         totalTokensUsed: step.tokensUsed,
         totalEstimatedCost: step.estimatedCost,
-        lastOutput: step.output,
-        finalOutput: i === agents.length - 1 ? step.output : null,
-        status: i === agents.length - 1 ? 'completed' : 'running',
+        lastOutput: step.output, // Always keep the full output in lastOutput
+        finalOutput: isLastAgent || shouldEarlyExit ? step.output : null,
+        status: isLastAgent || shouldEarlyExit ? 'completed' : 'running',
       }
     })
   }
 
-  // Add edges: START -> agent_0 -> agent_1 -> ... -> agent_n -> END
+  // Add edges: START -> agent_0 -> (conditional) -> agent_1 -> ... -> agent_n -> END
   // Note: Type assertions needed because LangGraph's strict typing requires compile-time node names
   graph.addEdge(START, 'agent_0' as typeof START)
 
+  // Use conditional edges for non-last agents to support early exit
   for (let i = 0; i < agents.length - 1; i++) {
-    graph.addEdge(`agent_${i}` as typeof START, `agent_${i + 1}` as typeof START)
+    graph.addConditionalEdges(
+      `agent_${i}` as typeof START,
+      (state: SequentialState) => {
+        // If finalOutput is set, the workflow completed early — go to END
+        if (state.finalOutput !== null && state.finalOutput !== undefined) {
+          return END
+        }
+        return `agent_${i + 1}`
+      },
+      {
+        [END]: END,
+        [`agent_${i + 1}`]: `agent_${i + 1}` as typeof START,
+      }
+    )
   }
 
+  // Last agent always goes to END
   graph.addEdge(`agent_${agents.length - 1}` as typeof START, END)
 
   // Compile with optional checkpointing
