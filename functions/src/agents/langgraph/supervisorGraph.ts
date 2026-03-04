@@ -7,6 +7,8 @@
  * Key improvements:
  * - Uses shared state annotations from stateAnnotations.ts
  * - Uses executeAgentWithEvents utility for consistent agent execution
+ * - Phase 13: Enhanced planning prompt, self-reflection after each worker
+ * - Phase 14: Tool-aware delegation, per-worker token budgets
  */
 
 import { StateGraph, END, START, Annotation } from '@langchain/langgraph'
@@ -46,6 +48,8 @@ export interface SupervisorGraphConfig {
   executionMode?: WorkflowExecutionMode
   tierOverride?: ModelTier | null
   workflowCriticality?: WorkflowCriticality
+  enableReflection?: boolean // Supervisor evaluates each worker's output (default true)
+  maxTokensPerWorker?: number // Optional per-worker token budget
 }
 
 /**
@@ -63,6 +67,15 @@ const SupervisorStateAnnotation = Annotation.Root({
   supervisorPlan: Annotation<string>,
   currentWorkerIndex: Annotation<number>,
   workerOutputs: Annotation<Record<string, string>>({
+    reducer: (current: Record<string, string>, update: Record<string, string>) => ({
+      ...current,
+      ...update,
+    }),
+    default: () => ({}),
+  }),
+
+  // Reflection results (Phase 13)
+  reflectionResults: Annotation<Record<string, string>>({
     reducer: (current: Record<string, string>, update: Record<string, string>) => ({
       ...current,
       ...update,
@@ -104,6 +117,8 @@ type SupervisorState = typeof SupervisorStateAnnotation.State
  *
  * The graph structure:
  * START -> supervisor_plan -> worker_0 -> worker_1 -> ... -> supervisor_synthesize -> END
+ *
+ * With reflection enabled, each worker node also runs a supervisor reflection step.
  */
 export function createSupervisorGraph(config: SupervisorGraphConfig) {
   const {
@@ -122,7 +137,11 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
     workflowCriticality,
   } = config
 
+  const enableReflection = config.enableReflection !== false // default true
   const iterationLimit = Math.min(maxIterations, workflow.maxIterations ?? 10)
+
+  // Calculate total steps: plan + workers (with optional reflections) + synthesis
+  const totalStepsCount = enableReflection ? 2 * workerAgents.length + 2 : workerAgents.length + 2
 
   // Build execution context (shared by all agents)
   const execContext: AgentExecutionContext = {
@@ -151,9 +170,22 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
         name: a.name,
         role: a.role,
         description: a.description,
+        tools: (a.toolIds ?? []).map((toolId) => {
+          const toolDef = toolRegistry?.get(toolId)
+          return toolDef
+            ? { id: toolId, name: toolDef.name, description: toolDef.description }
+            : { id: toolId }
+        }),
       })),
       instruction:
-        'You are a supervisor agent. Analyze the goal and create a delegation plan. Which agents should work on this task and in what order?',
+        'You are a supervisor agent. Analyze the goal and create a structured delegation plan.\n\n' +
+        'Each worker has specific tools available. Consider tool capabilities when assigning tasks.\n\n' +
+        'For each worker, specify:\n' +
+        '1. Which agent should handle the task (and why their tools make them suited)\n' +
+        '2. What specific subtask they should accomplish\n' +
+        '3. What you expect their output to contain\n' +
+        '4. How their output feeds into the next step\n\n' +
+        'Format: use clear headings per worker.',
     }
 
     // Execute the supervisor agent using shared utility
@@ -162,11 +194,21 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
       state.goal,
       supervisorContext,
       execContext,
-      { stepNumber: 1 }
+      { stepNumber: 1, totalSteps: totalStepsCount }
     )
 
     // Override the agent name for planning step
     step.agentName = `${supervisorAgent.name} (Planning)`
+
+    // Emit supervisor plan event
+    if (execContext.eventWriter) {
+      await execContext.eventWriter.writeEvent({
+        type: 'status',
+        status: 'supervisor_plan',
+        output: step.output,
+        agentName: supervisorAgent.name,
+      })
+    }
 
     return {
       supervisorPlan: step.output,
@@ -177,8 +219,17 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
     }
   })
 
+  // Finding 14: Warn when iteration limit drops workers
+  const effectiveWorkerCount = Math.min(workerAgents.length, iterationLimit - 1)
+  if (workerAgents.length > effectiveWorkerCount) {
+    log.warn(
+      `Iteration limit (${iterationLimit}) dropping ${workerAgents.length - effectiveWorkerCount} worker(s)`,
+      { total: workerAgents.length, running: effectiveWorkerCount }
+    )
+  }
+
   // Create worker nodes
-  for (let i = 0; i < Math.min(workerAgents.length, iterationLimit - 1); i++) {
+  for (let i = 0; i < effectiveWorkerCount; i++) {
     const worker = workerAgents[i]
     const nodeId = `worker_${i}`
 
@@ -195,18 +246,71 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
         ...state.workerOutputs,
       }
 
+      // Calculate step number based on reflection mode
+      const workerStepNumber = enableReflection ? i * 2 + 2 : i + 2
+
       // Execute the worker agent using shared utility
       const step = await executeAgentWithEvents(worker, state.goal, workerContext, execContext, {
-        stepNumber: i + 2,
+        stepNumber: workerStepNumber,
+        totalSteps: totalStepsCount,
+        maxTokens: config.maxTokensPerWorker,
       })
 
-      return {
+      const updates: Partial<SupervisorState> = {
         currentWorkerIndex: i + 1,
-        workerOutputs: { [`worker_${i + 1}_output`]: step.output },
+        workerOutputs: { [`${worker.name}_output`]: step.output },
         steps: [step],
         totalTokensUsed: step.tokensUsed,
         totalEstimatedCost: step.estimatedCost,
       }
+
+      // Reflection after worker (Phase 13)
+      if (enableReflection) {
+        const reflectionContext = {
+          supervisorPlan: state.supervisorPlan,
+          workerName: worker.name,
+          workerOutput: step.output,
+          instruction:
+            "Review this worker's output against your plan. Respond with:\n" +
+            '1. SATISFACTORY or UNSATISFACTORY\n' +
+            '2. Brief explanation (1-2 sentences)\n' +
+            'Be concise.',
+        }
+
+        const reflectionStepNumber = workerStepNumber + 1
+        const reflectionStep = await executeAgentWithEvents(
+          supervisorAgent,
+          state.goal,
+          reflectionContext,
+          execContext,
+          { stepNumber: reflectionStepNumber, totalSteps: totalStepsCount }
+        )
+
+        reflectionStep.agentName = `${supervisorAgent.name} (Reflection on ${worker.name})`
+
+        // Emit reflection event
+        if (execContext.eventWriter) {
+          await execContext.eventWriter.writeEvent({
+            type: 'status',
+            status: 'supervisor_reflection',
+            output: reflectionStep.output,
+            agentName: reflectionStep.agentName,
+          })
+        }
+
+        // Log warning if unsatisfactory
+        // TODO: Future — re-delegate to another worker when enableReDelegation is true
+        if (reflectionStep.output.toUpperCase().includes('UNSATISFACTORY')) {
+          log.warn('Worker output rated unsatisfactory', { worker: worker.name })
+        }
+
+        updates.steps = [step, reflectionStep]
+        updates.totalTokensUsed = step.tokensUsed + reflectionStep.tokensUsed
+        updates.totalEstimatedCost = step.estimatedCost + reflectionStep.estimatedCost
+        updates.reflectionResults = { [worker.name]: reflectionStep.output }
+      }
+
+      return updates
     })
   }
 
@@ -222,15 +326,13 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
         'You are a supervisor agent. Review all worker outputs and synthesize a final comprehensive response.',
     }
 
-    const stepNumber = state.steps.length + 1
-
     // Execute the supervisor synthesis using shared utility
     const step = await executeAgentWithEvents(
       supervisorAgent,
       state.goal,
       synthesisContext,
       execContext,
-      { stepNumber }
+      { stepNumber: totalStepsCount, totalSteps: totalStepsCount }
     )
 
     // Override the agent name for synthesis step
@@ -305,6 +407,7 @@ export async function executeSupervisorWorkflowLangGraph(
     supervisorPlan: '',
     currentWorkerIndex: 0,
     workerOutputs: {},
+    reflectionResults: {},
     steps: [],
     totalTokensUsed: 0,
     totalEstimatedCost: 0,
@@ -314,7 +417,21 @@ export async function executeSupervisorWorkflowLangGraph(
   }
 
   // Execute the graph
-  const finalState = await compiledGraph.invoke(initialState)
+  let finalState: typeof initialState
+  try {
+    finalState = await compiledGraph.invoke(initialState)
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e)
+    log.error('Supervisor graph execution failed', { error: errorMessage })
+    return {
+      output: errorMessage,
+      steps: [],
+      totalTokensUsed: 0,
+      totalEstimatedCost: 0,
+      totalSteps: 0,
+      status: 'failed' as const,
+    }
+  }
 
   return {
     output: finalState.finalOutput ?? 'No output generated',

@@ -70,9 +70,11 @@ export interface AgentExecutionContext {
  */
 export interface AgentExecutionOptions {
   stepNumber?: number
+  totalSteps?: number
   nodeId?: string
   additionalContext?: Record<string, unknown>
   maxIterations?: number
+  maxTokens?: number // Per-delegation token budget
 }
 
 // ----- Agent Execution Utility -----
@@ -102,7 +104,8 @@ export async function executeAgentWithEvents(
     tierOverride,
     workflowCriticality,
   } = execContext
-  const { stepNumber, nodeId, additionalContext } = options
+  const { stepNumber, totalSteps, nodeId, additionalContext } = options
+  const startMs = Date.now()
 
   // Resolve effective model based on execution mode and tier override
   const resolved = resolveEffectiveModel(
@@ -112,11 +115,19 @@ export async function executeAgentWithEvents(
     workflowCriticality ?? 'core'
   )
 
-  // Create a modified agent config with the resolved model
-  const effectiveAgent: AgentConfig =
-    resolved.model !== agent.modelName || resolved.provider !== agent.modelProvider
-      ? { ...agent, modelProvider: resolved.provider, modelName: resolved.model }
-      : agent
+  // Create a modified agent config with the resolved model and optional token budget
+  const needsOverride =
+    resolved.model !== agent.modelName ||
+    resolved.provider !== agent.modelProvider ||
+    options.maxTokens !== undefined
+  const effectiveAgent: AgentConfig = needsOverride
+    ? {
+        ...agent,
+        modelProvider: resolved.provider,
+        modelName: resolved.model,
+        ...(options.maxTokens !== undefined ? { maxTokens: options.maxTokens } : {}),
+      }
+    : agent
 
   // Build tool execution context
   const toolContext = {
@@ -155,6 +166,20 @@ export async function executeAgentWithEvents(
       agentName: effectiveAgent.name,
       status: startStatus,
     })
+
+    // Emit step_started event for progress tracking
+    if (stepNumber !== undefined) {
+      await eventWriter.writeEvent({
+        type: 'step_started',
+        workflowId,
+        agentId: effectiveAgent.agentId,
+        agentName: effectiveAgent.name,
+        step: stepNumber,
+        details: {
+          totalSteps: totalSteps ?? 0,
+        },
+      })
+    }
   }
 
   // Build full context
@@ -212,6 +237,23 @@ export async function executeAgentWithEvents(
       agentName: effectiveAgent.name,
       status: doneStatus,
     })
+
+    // Emit step_completed event for progress tracking
+    if (stepNumber !== undefined) {
+      await eventWriter.writeEvent({
+        type: 'step_completed',
+        workflowId,
+        agentId: effectiveAgent.agentId,
+        agentName: effectiveAgent.name,
+        step: stepNumber,
+        details: {
+          totalSteps: totalSteps ?? 0,
+          cumulativeCost: result.estimatedCost,
+          cumulativeTokens: result.tokensUsed,
+          durationMs: Date.now() - startMs,
+        },
+      })
+    }
   }
 
   return step

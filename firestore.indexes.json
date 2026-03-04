@@ -1008,11 +1008,11 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "dateKey",
+          "fieldPath": "userId",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "userId",
+          "fieldPath": "dateKey",
           "order": "ASCENDING"
         },
         {

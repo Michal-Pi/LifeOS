@@ -187,31 +187,7 @@ export const WeeklyView = React.memo(function WeeklyView({
         <h3>{weekRange}</h3>
       </div>
 
-      {/* Day header tabs — aligned with visible columns */}
-      <div className="weekly-strip weekly-strip--header">
-        <div className="weekly-strip__arrow-spacer" />
-        <div className="weekly-day-tabs">
-          {visibleCells.map((cell, i) => (
-            <button
-              key={startOffset + i}
-              type="button"
-              className={`weekly-day-tab ${cell.isToday ? 'today' : ''} ${
-                selectedDate && isSameDay(cell.date, selectedDate) ? 'selected' : ''
-              }`}
-              onClick={() => {
-                onDateSelect?.(cell.date)
-                onDateClick?.(cell.date)
-              }}
-            >
-              <span className="weekly-day-tab__weekday">{dayLabelFormatter.format(cell.date)}</span>
-              <span className="weekly-day-tab__date">{cell.dayOfMonth}</span>
-            </button>
-          ))}
-        </div>
-        <div className="weekly-strip__arrow-spacer" />
-      </div>
-
-      {/* Arrow + visible grid */}
+      {/* Arrows at extremes, day content between them */}
       <div className="weekly-strip">
         <button
           type="button"
@@ -222,43 +198,68 @@ export const WeeklyView = React.memo(function WeeklyView({
           &#x2039;
         </button>
 
-        <div className="weekly-strip__grid">
-          {visibleCells.map((cell, i) => (
-            <button
-              key={startOffset + i}
-              type="button"
-              className={`weekly-day-col ${cell.isToday ? 'today' : ''} ${
-                selectedDate && isSameDay(cell.date, selectedDate) ? 'selected' : ''
-              }`}
-              onClick={() => {
-                onDateSelect?.(cell.date)
-                onDateClick?.(cell.date)
-              }}
-            >
-              <span className="weekly-day-col__label">
-                {dayLabelFormatter.format(cell.date)} {cell.dayOfMonth}
-              </span>
+        <div className="weekly-strip__content">
+          {/* Day header tabs */}
+          <div className="weekly-day-tabs">
+            {visibleCells.map((cell, i) => (
+              <button
+                key={startOffset + i}
+                type="button"
+                className={`weekly-day-tab ${cell.isToday ? 'today' : ''} ${
+                  selectedDate && isSameDay(cell.date, selectedDate) ? 'selected' : ''
+                }`}
+                onClick={() => {
+                  onDateSelect?.(cell.date)
+                  onDateClick?.(cell.date)
+                }}
+              >
+                <span className="weekly-day-tab__weekday">
+                  {dayLabelFormatter.format(cell.date)}
+                </span>
+                <span className="weekly-day-tab__date">{cell.dayOfMonth}</span>
+              </button>
+            ))}
+          </div>
 
-              <div className="weekly-day-col__events">
-                {cell.events.slice(0, MAX_EVENTS_PER_DAY).map((event, ei) => (
-                  <div
-                    key={ei}
-                    className={`event-card ${event.isRecurring ? 'recurring' : ''} ${
-                      event.colorTone ? `event-card--${event.colorTone}` : ''
-                    }`}
-                    title={event.title}
-                  >
-                    <span className="event-title">{event.title}</span>
-                  </div>
-                ))}
-                {cell.events.length > MAX_EVENTS_PER_DAY && (
-                  <span className="event-more">
-                    +{cell.events.length - MAX_EVENTS_PER_DAY} more
-                  </span>
-                )}
-              </div>
-            </button>
-          ))}
+          {/* Day columns with events */}
+          <div className="weekly-strip__grid">
+            {visibleCells.map((cell, i) => (
+              <button
+                key={startOffset + i}
+                type="button"
+                className={`weekly-day-col ${cell.isToday ? 'today' : ''} ${
+                  selectedDate && isSameDay(cell.date, selectedDate) ? 'selected' : ''
+                }`}
+                onClick={() => {
+                  onDateSelect?.(cell.date)
+                  onDateClick?.(cell.date)
+                }}
+              >
+                <span className="weekly-day-col__label">
+                  {dayLabelFormatter.format(cell.date)} {cell.dayOfMonth}
+                </span>
+
+                <div className="weekly-day-col__events">
+                  {cell.events.slice(0, MAX_EVENTS_PER_DAY).map((event, ei) => (
+                    <div
+                      key={ei}
+                      className={`event-card ${event.isRecurring ? 'recurring' : ''} ${
+                        event.colorTone ? `event-card--${event.colorTone}` : ''
+                      }`}
+                      title={event.title}
+                    >
+                      <span className="event-title">{event.title}</span>
+                    </div>
+                  ))}
+                  {cell.events.length > MAX_EVENTS_PER_DAY && (
+                    <span className="event-more">
+                      +{cell.events.length - MAX_EVENTS_PER_DAY} more
+                    </span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
         <button

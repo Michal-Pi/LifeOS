@@ -13,6 +13,9 @@ export type RunEventType =
   | 'status'
   | 'error'
   | 'final'
+  // Step progress events
+  | 'step_started'
+  | 'step_completed'
   // Deep research events
   | 'deep_research_phase'
   // Dialectical workflow events

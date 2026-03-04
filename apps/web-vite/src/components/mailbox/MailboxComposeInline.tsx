@@ -17,6 +17,7 @@ import { TipTapMenuBar } from '@/components/editor/TipTapMenuBar'
 import { useMailboxReplyEditor } from '@/hooks/useMailboxReplyEditor'
 import { useMailboxComposer } from '@/hooks/useMailboxComposer'
 import { RecipientChipInput } from '@/components/mailbox/RecipientChipInput'
+import { formatRecipientSummary } from '@/components/mailbox/recipientUtils'
 import '@/styles/components/MailboxMessageDetail.css'
 
 const CHANNEL_OPTIONS: Array<{ value: MessageSource; label: string }> = [
@@ -35,12 +36,6 @@ interface MailboxComposeInlineProps {
 
 export function MailboxComposeInline({ draft, onSent, onDiscard }: MailboxComposeInlineProps) {
   const composer = useMailboxComposer()
-  const [showCcBcc, setShowCcBcc] = useState(
-    () =>
-      (draft?.ccRecipients && draft.ccRecipients.length > 0) ||
-      (draft?.bccRecipients && draft.bccRecipients.length > 0) ||
-      false
-  )
 
   const handleEditorChange = useCallback(
     (_json: JSONContent, text: string) => {
@@ -56,6 +51,29 @@ export function MailboxComposeInline({ draft, onSent, onDiscard }: MailboxCompos
 
   const [source, setSource] = useState<MessageSource>(draft?.source ?? 'gmail')
   const isEmail = source === 'gmail' || source === 'linkedin'
+
+  // Progressive disclosure for recipients
+  const detailsRef = useRef<HTMLDetailsElement>(null)
+  const [recipientsInitialOpen] = useState(
+    () =>
+      !draft ||
+      (draft.ccRecipients && draft.ccRecipients.length > 0) ||
+      (draft.bccRecipients && draft.bccRecipients.length > 0) ||
+      true // new compose is always open
+  )
+
+  // Force-open when CC/BCC become populated
+  useEffect(() => {
+    if (
+      (composer.state.ccRecipients.length > 0 || composer.state.bccRecipients.length > 0) &&
+      detailsRef.current &&
+      !detailsRef.current.open
+    ) {
+      detailsRef.current.open = true
+    }
+  }, [composer.state.ccRecipients.length, composer.state.bccRecipients.length])
+
+  const recipientSummaryText = formatRecipientSummary(composer.state.toRecipients)
 
   // Pre-fill from draft on mount
   const didInit = useRef(false)
@@ -165,59 +183,58 @@ export function MailboxComposeInline({ draft, onSent, onDiscard }: MailboxCompos
           </select>
         </div>
 
-        <div className="mailbox-detail__compose-field">
-          <label className="mailbox-detail__compose-label" htmlFor="compose-to">
-            To
-          </label>
-          <div className="mailbox-detail__compose-field-body">
-            <RecipientChipInput
-              id="compose-to"
-              recipients={composer.state.toRecipients}
-              onChange={composer.setToRecipients}
-              channel={source}
-              placeholder="Type a name or email..."
-            />
-            {!showCcBcc && isEmail && (
-              <button
-                type="button"
-                className="mailbox-composer__cc-toggle"
-                onClick={() => setShowCcBcc(true)}
-              >
-                CC / BCC
-              </button>
+        {/* Recipients — progressive disclosure */}
+        <details
+          ref={detailsRef}
+          className="mailbox-detail__collapsible"
+          open={recipientsInitialOpen || undefined}
+        >
+          <summary className="mailbox-detail__collapsible-header">
+            <span>TO: {recipientSummaryText}</span>
+          </summary>
+          <div className="mailbox-detail__collapsible-body">
+            <div className="mailbox-detail__compose-field">
+              <label className="mailbox-detail__compose-label" htmlFor="compose-to">
+                To
+              </label>
+              <RecipientChipInput
+                id="compose-to"
+                recipients={composer.state.toRecipients}
+                onChange={composer.setToRecipients}
+                channel={source}
+                placeholder="Type a name or email..."
+              />
+            </div>
+            {isEmail && (
+              <>
+                <div className="mailbox-detail__compose-field">
+                  <label className="mailbox-detail__compose-label" htmlFor="compose-cc">
+                    CC
+                  </label>
+                  <RecipientChipInput
+                    id="compose-cc"
+                    recipients={composer.state.ccRecipients}
+                    onChange={composer.setCcRecipients}
+                    channel={source}
+                    placeholder="Add CC recipients..."
+                  />
+                </div>
+                <div className="mailbox-detail__compose-field">
+                  <label className="mailbox-detail__compose-label" htmlFor="compose-bcc">
+                    BCC
+                  </label>
+                  <RecipientChipInput
+                    id="compose-bcc"
+                    recipients={composer.state.bccRecipients}
+                    onChange={composer.setBccRecipients}
+                    channel={source}
+                    placeholder="Add BCC recipients..."
+                  />
+                </div>
+              </>
             )}
           </div>
-        </div>
-
-        {showCcBcc && isEmail && (
-          <div className="mailbox-detail__compose-field">
-            <label className="mailbox-detail__compose-label" htmlFor="compose-cc">
-              CC
-            </label>
-            <RecipientChipInput
-              id="compose-cc"
-              recipients={composer.state.ccRecipients}
-              onChange={composer.setCcRecipients}
-              channel={source}
-              placeholder="Add CC recipients..."
-            />
-          </div>
-        )}
-
-        {showCcBcc && isEmail && (
-          <div className="mailbox-detail__compose-field">
-            <label className="mailbox-detail__compose-label" htmlFor="compose-bcc">
-              BCC
-            </label>
-            <RecipientChipInput
-              id="compose-bcc"
-              recipients={composer.state.bccRecipients}
-              onChange={composer.setBccRecipients}
-              channel={source}
-              placeholder="Add BCC recipients..."
-            />
-          </div>
-        )}
+        </details>
 
         {isEmail && (
           <div className="mailbox-detail__compose-field">

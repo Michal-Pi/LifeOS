@@ -58,9 +58,7 @@ describe('evaluateRunOutput', () => {
   })
 
   it('returns null for invalid JSON response', async () => {
-    mockExecuteWithProvider.mockResolvedValue(
-      makeProviderResult('This is not valid JSON at all')
-    )
+    mockExecuteWithProvider.mockResolvedValue(makeProviderResult('This is not valid JSON at all'))
 
     const result = await evaluateRunOutput('Some output', 'Do something', mockApiKeys)
 
@@ -116,9 +114,7 @@ describe('evaluateRunOutput', () => {
   })
 
   it('returns null when scores are missing fields', async () => {
-    mockExecuteWithProvider.mockResolvedValue(
-      makeProviderResult('{"relevance": 4}')
-    )
+    mockExecuteWithProvider.mockResolvedValue(makeProviderResult('{"relevance": 4}'))
 
     const result = await evaluateRunOutput('Output', 'Goal', mockApiKeys)
 

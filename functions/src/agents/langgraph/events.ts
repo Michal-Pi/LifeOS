@@ -23,6 +23,8 @@ export type WorkflowEventType =
   | 'node_start'
   | 'node_done'
   | 'node_failed'
+  | 'step_started'
+  | 'step_completed'
   | 'tool_start'
   | 'tool_done'
   | 'tool_failed'
@@ -421,6 +423,62 @@ export function checkpointRestoredEvent(
     workflowId,
     runId,
     data: { checkpointId },
+  })
+}
+
+/**
+ * Create a step started event
+ */
+export function stepStartedEvent(params: {
+  workflowId: string
+  runId: string
+  agentId: string
+  agentName: string
+  stepIndex: number
+  totalSteps: number
+}): WorkflowEvent {
+  return createEvent({
+    type: 'step_started',
+    workflowId: params.workflowId,
+    runId: params.runId,
+    agentId: params.agentId,
+    agentName: params.agentName,
+    stepNumber: params.stepIndex,
+    data: { totalSteps: params.totalSteps },
+  })
+}
+
+/**
+ * Create a step completed event
+ */
+export function stepCompletedEvent(params: {
+  workflowId: string
+  runId: string
+  agentId: string
+  agentName: string
+  stepIndex: number
+  totalSteps: number
+  cumulativeCost: number
+  cumulativeTokens: number
+  durationMs: number
+}): WorkflowEvent {
+  return createEvent({
+    type: 'step_completed',
+    workflowId: params.workflowId,
+    runId: params.runId,
+    agentId: params.agentId,
+    agentName: params.agentName,
+    stepNumber: params.stepIndex,
+    data: {
+      totalSteps: params.totalSteps,
+      cumulativeCost: params.cumulativeCost,
+      cumulativeTokens: params.cumulativeTokens,
+    },
+    metrics: {
+      durationMs: params.durationMs,
+      estimatedCost: params.cumulativeCost,
+      tokensUsed: params.cumulativeTokens,
+    },
   })
 }
 

@@ -303,22 +303,21 @@ async function executeRun(params: {
           status: 'completed',
         })
 
-        // Auto-evaluate output quality (fire-and-forget)
-        evaluateRunOutput(turn.stage3.finalResponse, run.goal, providerKeys)
-          .then(async (scores) => {
-            if (scores) {
-              await runRef.update({ evaluationScores: scores })
-              log.info('Expert Council evaluation complete', {
-                runId,
-                relevance: scores.relevance,
-                completeness: scores.completeness,
-                accuracy: scores.accuracy,
-              })
-            }
-          })
-          .catch((err) => {
-            log.warn('Expert Council evaluation failed (non-critical)', { runId, error: err })
-          })
+        // Auto-evaluate output quality (awaited to ensure completion before function exits)
+        try {
+          const scores = await evaluateRunOutput(turn.stage3.finalResponse, run.goal, providerKeys)
+          if (scores) {
+            await runRef.update({ evaluationScores: scores })
+            log.info('Expert Council evaluation complete', {
+              runId,
+              relevance: scores.relevance,
+              completeness: scores.completeness,
+              accuracy: scores.accuracy,
+            })
+          }
+        } catch (err) {
+          log.warn('Expert Council evaluation failed (non-critical)', { runId, error: err })
+        }
 
         log.info(`Expert Council completed for run ${runId}`)
         return
@@ -556,27 +555,26 @@ async function executeRun(params: {
       status: 'completed',
     })
 
-    // Auto-evaluate output quality (fire-and-forget)
-    evaluateRunOutput(result.output, run.goal, {
-      openai: providerKeys.openai,
-      anthropic: providerKeys.anthropic,
-      google: providerKeys.google,
-      grok: providerKeys.grok,
-    })
-      .then(async (scores) => {
-        if (scores) {
-          await runRef.update({ evaluationScores: scores })
-          log.info('Run evaluation complete', {
-            runId,
-            relevance: scores.relevance,
-            completeness: scores.completeness,
-            accuracy: scores.accuracy,
-          })
-        }
+    // Auto-evaluate output quality (awaited to ensure completion before function exits)
+    try {
+      const scores = await evaluateRunOutput(result.output, run.goal, {
+        openai: providerKeys.openai,
+        anthropic: providerKeys.anthropic,
+        google: providerKeys.google,
+        grok: providerKeys.grok,
       })
-      .catch((err) => {
-        log.warn('Run evaluation failed (non-critical)', { runId, error: err })
-      })
+      if (scores) {
+        await runRef.update({ evaluationScores: scores })
+        log.info('Run evaluation complete', {
+          runId,
+          relevance: scores.relevance,
+          completeness: scores.completeness,
+          accuracy: scores.accuracy,
+        })
+      }
+    } catch (err) {
+      log.warn('Run evaluation failed (non-critical)', { runId, error: err })
+    }
 
     log.info(
       `Run ${runId} completed successfully. Workflow: ${workflow.workflowType}, Steps: ${result.totalSteps}, Tokens: ${result.totalTokensUsed}, Cost: $${result.totalEstimatedCost.toFixed(4)}`

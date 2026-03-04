@@ -3,10 +3,12 @@
  *
  * Wrapper for Anthropic (Claude) API calls with token counting and cost estimation.
  * Supports tool calling with iterative execution.
+ * Supports prompt caching for system prompts exceeding 1024 tokens.
  * Follows the same pattern as OpenAI service for consistency.
  */
 
 import Anthropic from '@anthropic-ai/sdk'
+import type { TextBlockParam } from '@anthropic-ai/sdk/resources/messages/messages.js'
 import type { AgentConfig } from '@lifeos/agents'
 import { asId, MODEL_PRICING } from '@lifeos/agents'
 
@@ -22,12 +24,27 @@ import { executeTools, getAgentToolsFromRegistry, getBuiltinToolRegistry } from 
 const log = createLogger('AnthropicService')
 
 /**
+ * Minimum token threshold for applying prompt caching.
+ * Anthropic requires at least 1024 tokens for cache eligibility.
+ */
+const CACHE_TOKEN_THRESHOLD = 1024
+
+/**
  * Initialize Anthropic client with API key from Firebase secrets
  */
 export function createAnthropicClient(apiKey: string): Anthropic {
   return new Anthropic({
     apiKey,
   })
+}
+
+/**
+ * Cache telemetry from an Anthropic API call
+ */
+export interface AnthropicCacheMetrics {
+  cacheCreationInputTokens: number
+  cacheReadInputTokens: number
+  cacheStatus: 'hit' | 'miss' | 'creation' | 'none'
 }
 
 /**
@@ -38,16 +55,82 @@ export interface AnthropicExecutionResult {
   tokensUsed: number
   estimatedCost: number
   iterationsUsed: number
+  cacheMetrics?: AnthropicCacheMetrics
 }
 
 /**
- * Calculate cost based on token usage
+ * Estimate token count from text using a rough heuristic.
+ * ~1 token ≈ 4 characters for English text.
  */
-function calculateCost(modelName: string, inputTokens: number, outputTokens: number): number {
+export function estimateTokenCount(text: string): number {
+  return Math.ceil(text.length / 4)
+}
+
+/**
+ * Build system prompt with cache_control for Anthropic prompt caching.
+ * Returns TextBlockParam[] with cache_control on the last block if the
+ * prompt exceeds the token threshold; otherwise returns the plain string.
+ */
+export function buildSystemPromptWithCaching(systemPrompt: string): string | TextBlockParam[] {
+  const estimatedTokens = estimateTokenCount(systemPrompt)
+
+  if (estimatedTokens < CACHE_TOKEN_THRESHOLD) {
+    return systemPrompt
+  }
+
+  return [
+    {
+      type: 'text' as const,
+      text: systemPrompt,
+      cache_control: { type: 'ephemeral' as const },
+    },
+  ]
+}
+
+/**
+ * Determine cache status from Anthropic usage response
+ */
+function determineCacheStatus(
+  cacheCreationTokens: number | null | undefined,
+  cacheReadTokens: number | null | undefined
+): AnthropicCacheMetrics['cacheStatus'] {
+  const creation = cacheCreationTokens ?? 0
+  const read = cacheReadTokens ?? 0
+
+  if (read > 0) return 'hit'
+  if (creation > 0) return 'creation'
+  return 'none'
+}
+
+/**
+ * Calculate cost based on token usage, including prompt caching discounts.
+ *
+ * Anthropic cache pricing:
+ * - Cache writes: 25% more than base input price
+ * - Cache reads: 90% discount from base input price
+ */
+function calculateCost(
+  modelName: string,
+  inputTokens: number,
+  outputTokens: number,
+  cacheCreationTokens: number = 0,
+  cacheReadTokens: number = 0
+): number {
   const pricing = MODEL_PRICING[modelName] ?? MODEL_PRICING.default
-  const inputCost = (inputTokens / 1_000_000) * pricing.input
+
+  // Regular input tokens (excludes cached tokens already counted separately)
+  const regularInputTokens = inputTokens - cacheCreationTokens - cacheReadTokens
+  const regularInputCost = (Math.max(0, regularInputTokens) / 1_000_000) * pricing.input
+
+  // Cache creation: 25% premium
+  const cacheCreationCost = (cacheCreationTokens / 1_000_000) * pricing.input * 1.25
+
+  // Cache read: 90% discount (pay only 10%)
+  const cacheReadCost = (cacheReadTokens / 1_000_000) * pricing.input * 0.1
+
   const outputCost = (outputTokens / 1_000_000) * pricing.output
-  return inputCost + outputCost
+
+  return regularInputCost + cacheCreationCost + cacheReadCost + outputCost
 }
 
 /**
@@ -130,9 +213,14 @@ export async function executeWithAnthropic(
       })
     }
 
+    // Build system prompt with caching support
+    const systemParam = buildSystemPromptWithCaching(systemPrompt)
+
     // Track total tokens and cost across all iterations
     let totalInputTokens = 0
     let totalOutputTokens = 0
+    let totalCacheCreationTokens = 0
+    let totalCacheReadTokens = 0
 
     // Iterative execution loop (configurable, default 5)
     const MAX_ITERATIONS = toolContext?.maxIterations ?? 5
@@ -155,7 +243,7 @@ export async function executeWithAnthropic(
               model: modelName,
               max_tokens: agent.maxTokens ?? 2048,
               temperature: agent.temperature ?? 0.7,
-              system: systemPrompt,
+              system: systemParam,
               messages,
               tools,
             }),
@@ -174,9 +262,11 @@ export async function executeWithAnthropic(
         }
       )
 
-      // Track token usage
+      // Track token usage (including cache metrics)
       totalInputTokens += response.usage.input_tokens
       totalOutputTokens += response.usage.output_tokens
+      totalCacheCreationTokens += response.usage.cache_creation_input_tokens ?? 0
+      totalCacheReadTokens += response.usage.cache_read_input_tokens ?? 0
 
       // Check stop reason
       if (response.stop_reason === 'tool_use' && toolContext) {
@@ -336,15 +426,38 @@ export async function executeWithAnthropic(
       }
     }
 
-    // Calculate totals
+    // Calculate totals with cache-aware pricing
     const tokensUsed = totalInputTokens + totalOutputTokens
-    const estimatedCost = calculateCost(modelName, totalInputTokens, totalOutputTokens)
+    const estimatedCost = calculateCost(
+      modelName,
+      totalInputTokens,
+      totalOutputTokens,
+      totalCacheCreationTokens,
+      totalCacheReadTokens
+    )
+
+    const cacheStatus = determineCacheStatus(totalCacheCreationTokens, totalCacheReadTokens)
+    const cacheMetrics: AnthropicCacheMetrics = {
+      cacheCreationInputTokens: totalCacheCreationTokens,
+      cacheReadInputTokens: totalCacheReadTokens,
+      cacheStatus,
+    }
+
+    if (cacheStatus !== 'none') {
+      log.info('Prompt cache metrics', {
+        cacheStatus,
+        cacheCreationTokens: totalCacheCreationTokens,
+        cacheReadTokens: totalCacheReadTokens,
+        model: modelName,
+      })
+    }
 
     return {
       output: finalOutput,
       tokensUsed,
       estimatedCost,
       iterationsUsed: iteration,
+      cacheMetrics,
     }
   } catch (error) {
     log.error('Execution error', error)
@@ -388,6 +501,9 @@ export async function executeWithAnthropicStreaming(
     const contextStr = context ? `\n\nContext:\n${JSON.stringify(context, null, 2)}` : ''
     const userPrompt = `Goal: ${goal}${contextStr}`
 
+    // Build system prompt with caching support
+    const systemParam = buildSystemPromptWithCaching(systemPrompt)
+
     const messages: Anthropic.MessageParam[] = [
       {
         role: 'user',
@@ -424,7 +540,7 @@ export async function executeWithAnthropicStreaming(
           model: modelName,
           max_tokens: agent.maxTokens ?? 2048,
           temperature: agent.temperature ?? 0.7,
-          system: systemPrompt,
+          system: systemParam,
           messages,
         })
       },
@@ -479,14 +595,39 @@ export async function executeWithAnthropicStreaming(
 
     const inputTokens = finalMessage.usage?.input_tokens ?? 0
     const outputTokens = finalMessage.usage?.output_tokens ?? 0
+    const cacheCreationTokens = finalMessage.usage?.cache_creation_input_tokens ?? 0
+    const cacheReadTokens = finalMessage.usage?.cache_read_input_tokens ?? 0
     const tokensUsed = inputTokens + outputTokens
-    const estimatedCost = calculateCost(modelName, inputTokens, outputTokens)
+    const estimatedCost = calculateCost(
+      modelName,
+      inputTokens,
+      outputTokens,
+      cacheCreationTokens,
+      cacheReadTokens
+    )
+
+    const cacheStatus = determineCacheStatus(cacheCreationTokens, cacheReadTokens)
+    const cacheMetrics: AnthropicCacheMetrics = {
+      cacheCreationInputTokens: cacheCreationTokens,
+      cacheReadInputTokens: cacheReadTokens,
+      cacheStatus,
+    }
+
+    if (cacheStatus !== 'none') {
+      log.info('Streaming prompt cache metrics', {
+        cacheStatus,
+        cacheCreationTokens,
+        cacheReadTokens,
+        model: modelName,
+      })
+    }
 
     return {
       output: finalOutput,
       tokensUsed,
       estimatedCost,
       iterationsUsed: 1,
+      cacheMetrics,
     }
   } catch (error) {
     log.error('Streaming execution error', error)

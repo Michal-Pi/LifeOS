@@ -170,6 +170,11 @@
   grid-row: 2;
 }
 
+.today-layout > .checkin-card {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
 .today-card {
   background: var(--card);
   background-image: var(--panel-sheen);

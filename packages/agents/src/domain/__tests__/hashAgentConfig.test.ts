@@ -95,6 +95,6 @@ describe('hashAgentConfig', () => {
 
   it('returns a string starting with cfghash_', () => {
     const hash = hashAgentConfig(baseConfig)
-    expect(hash).toMatch(/^cfghash_[a-z0-9]+$/)
+    expect(hash).toMatch(/^cfghash_[a-z0-9]+_[a-z0-9]+$/)
   })
 })

@@ -68,7 +68,9 @@ export async function evaluateRunOutput(
     const truncatedOutput =
       output.length > MAX_OUTPUT_CHARS ? output.substring(0, MAX_OUTPUT_CHARS) : output
 
-    const prompt = `Goal: ${goal}\n\nOutput to evaluate:\n${truncatedOutput}`
+    // Sanitize goal to prevent prompt injection via crafted goal strings
+    const sanitizedGoal = goal.replace(/[{}"\\]/g, ' ').substring(0, 500)
+    const prompt = `Goal: ${sanitizedGoal}\n\nOutput to evaluate:\n${truncatedOutput}`
 
     const result = await executeWithProvider(judgeAgent, prompt, {}, apiKeys)
 

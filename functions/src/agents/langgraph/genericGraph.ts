@@ -416,7 +416,11 @@ export function createGenericGraph(config: GenericGraphConfig) {
             await execContext.eventWriter.writeEvent({
               type: 'status',
               status: 'waiting_for_approval',
-              details: { nodeId: node.id, prompt: node.label ?? 'Approval required', workflowId: workflow.workflowId },
+              details: {
+                nodeId: node.id,
+                prompt: node.label ?? 'Approval required',
+                workflowId: workflow.workflowId,
+              },
             })
           }
 
@@ -574,10 +578,14 @@ export function createGenericGraph(config: GenericGraphConfig) {
           // Phase 16: Error recovery — wrap agent execution in try/catch
           try {
             // Phase 17: Resolve template parameters in goal and agent context
-            const templateParams = (state.context.templateParameters ?? {}) as Record<string, string>
-            const resolvedGoal = Object.keys(templateParams).length > 0
-              ? resolveTemplateParameters(state.goal, templateParams)
-              : state.goal
+            const templateParams = (state.context.templateParameters ?? {}) as Record<
+              string,
+              string
+            >
+            const resolvedGoal =
+              Object.keys(templateParams).length > 0
+                ? resolveTemplateParameters(state.goal, templateParams)
+                : state.goal
 
             const nodeContext = {
               ...state.context,
@@ -589,15 +597,25 @@ export function createGenericGraph(config: GenericGraphConfig) {
             }
 
             // Phase 17: Resolve template parameters in agent system prompt
-            const resolvedAgent = Object.keys(templateParams).length > 0
-              ? { ...agent, systemPrompt: resolveTemplateParameters(agent.systemPrompt, templateParams) }
-              : agent
+            const resolvedAgent =
+              Object.keys(templateParams).length > 0
+                ? {
+                    ...agent,
+                    systemPrompt: resolveTemplateParameters(agent.systemPrompt, templateParams),
+                  }
+                : agent
 
             // Execute the agent using shared utility
-            const step = await executeAgentWithEvents(resolvedAgent, resolvedGoal, nodeContext, execContext, {
-              stepNumber: state.steps.length + 1,
-              nodeId: node.id,
-            })
+            const step = await executeAgentWithEvents(
+              resolvedAgent,
+              resolvedGoal,
+              nodeContext,
+              execContext,
+              {
+                stepNumber: state.steps.length + 1,
+                nodeId: node.id,
+              }
+            )
 
             return {
               ...baseUpdate,

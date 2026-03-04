@@ -718,14 +718,16 @@ export function createExpertCouncilPipeline(params: {
       // Phase 20: Disagreement Deep-Dive — reasoning follow-up on low consensus
       let disagreementDeepDive: ExpertCouncilTurn['disagreementDeepDive'] = undefined
       const shouldDeepDive =
-        (config.enableDisagreementDeepDive ?? (mode === 'full')) &&
+        (config.enableDisagreementDeepDive ?? mode === 'full') &&
         consensusMetrics.kendallTau < 0.4 &&
         stage2Reviews.length >= 2
 
       let deepDiveSection = ''
       if (shouldDeepDive) {
         await writeStatus('expert_council_disagreement_deep_dive_start')
-        const deepDiveResponses: NonNullable<ExpertCouncilTurn['disagreementDeepDive']>['reasoningResponses'] = []
+        const deepDiveResponses: NonNullable<
+          ExpertCouncilTurn['disagreementDeepDive']
+        >['reasoningResponses'] = []
 
         // Limit to first 3 council models to control cost
         const deepDiveModels = activeModels.slice(0, 3)
@@ -775,9 +777,7 @@ export function createExpertCouncilPipeline(params: {
           deepDiveSection = [
             '',
             'REASONING FOLLOW-UP (triggered by low consensus):',
-            ...deepDiveResponses.map(
-              (r) => `Model ${r.modelId}:\n${r.reasoning}`
-            ),
+            ...deepDiveResponses.map((r) => `Model ${r.modelId}:\n${r.reasoning}`),
           ].join('\n')
         }
 

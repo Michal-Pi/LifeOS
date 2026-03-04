@@ -52,12 +52,24 @@ export interface SourceRecord {
   contentHash: string // SHA-256 for dedup
   sourceType: 'web' | 'academic' | 'pdf' | 'crawled'
   relevanceScore?: number // 0-1 from relevance-first scoring
+  /** Source quality score 0-1, computed from domain authority + date + citations (Phase 23) */
+  sourceQualityScore?: number
   scholarMetadata?: {
     authors?: string[]
     year?: number
     citations?: number
     journal?: string
   }
+}
+
+/**
+ * Result from the counterclaim adversarial agent (Phase 23)
+ */
+export interface CounterclaimResult {
+  originalClaimId: string
+  counterargument: string
+  strength: 'strong' | 'moderate' | 'weak'
+  evidenceBasis: string
 }
 
 /**
@@ -246,6 +258,8 @@ export interface DeepResearchRunConfig {
   maxGapIterations: number
   /** Max dialectical cycles per gap iteration (user-configurable, default 2) */
   maxDialecticalCycles: number
+  /** Research mode: 'full' runs complete pipeline, 'quick' skips KG and gap analysis (Phase 25) */
+  mode?: 'full' | 'quick'
 }
 
 /**

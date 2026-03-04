@@ -329,6 +329,163 @@ function deduplicateClaims(claims: ExtractedClaim[]): ExtractedClaim[] {
   })
 }
 
+// ----- Batch Extraction (Phase 21) -----
+
+const BATCH_EXTRACTION_SYSTEM_PROMPT = `You are a precision claim extraction agent. Your task is to extract atomic, verifiable claims from MULTIPLE source documents provided in a single batch.
+
+Rules:
+1. Each claim must be a single, self-contained assertion
+2. Do NOT infer beyond what the text explicitly states
+3. Preserve uncertainty language (e.g., "may", "suggests", "correlates with")
+4. Include the exact quote from the source text that supports each claim
+5. Assign confidence based on the strength of evidence language
+6. Classify evidence type accurately
+7. CRITICAL: Attribute each claim to the correct source by its sourceIndex (1-indexed)
+
+Output valid JSON only, no markdown fences.`
+
+/**
+ * Build a prompt for batch extraction of claims from multiple sources.
+ */
+export function buildBatchExtractionPrompt(
+  sources: Array<{ sourceId: string; content: string }>,
+  query: string
+): string {
+  const sourceBlocks = sources
+    .map((s, idx) => `--- SOURCE ${idx + 1} [${s.sourceId}] ---\n${s.content.substring(0, 3000)}`)
+    .join('\n\n')
+
+  return `Research query: "${query}"
+
+Extract atomic claims from each source below. For each claim, provide:
+- sourceIndex: Which source (1-indexed) this claim came from
+- claimText: The claim as a clear, self-contained statement
+- confidence: 0-1 based on evidence strength (1.0 = definitive, 0.5 = suggestive)
+- evidenceType: one of "empirical", "theoretical", "anecdotal", "expert_opinion", "meta_analysis", "statistical", "review"
+- sourceQuote: Exact quote from the text supporting this claim (max 200 chars)
+- concepts: Array of key concept names this claim references
+
+Sources:
+${sourceBlocks}
+
+Respond with JSON: { "claims": [{ "sourceIndex": 1, "claimText": "...", ... }, ...] }`
+}
+
+interface RawBatchClaim extends RawExtractedClaim {
+  sourceIndex?: number
+}
+
+/**
+ * Parse batch extraction output, mapping claims back to their source records.
+ */
+export function parseBatchExtractionOutput(
+  output: string,
+  sources: Array<{ sourceId: string; section?: string }>
+): ExtractedClaim[] {
+  try {
+    const jsonMatch = output.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) return []
+
+    const parsed = JSON.parse(jsonMatch[0]) as { claims?: RawBatchClaim[] }
+    if (!parsed.claims || !Array.isArray(parsed.claims)) return []
+
+    return parsed.claims
+      .filter((c) => c.claimText && typeof c.claimText === 'string')
+      .map((c) => {
+        const idx = Math.max(0, Math.min(sources.length - 1, (Number(c.sourceIndex) || 1) - 1))
+        const source = sources[idx]
+        return {
+          claimText: c.claimText!.trim(),
+          confidence: Math.min(1, Math.max(0, Number(c.confidence) || 0.5)),
+          evidenceType: validateEvidenceType(c.evidenceType),
+          sourceId: source.sourceId,
+          sourceQuote: c.sourceQuote?.substring(0, 200),
+          pageOrSection: source.section,
+          concepts: Array.isArray(c.concepts)
+            ? c.concepts.filter((n) => typeof n === 'string')
+            : [],
+        }
+      })
+  } catch (err) {
+    log.warn('Failed to parse batch extraction result', { error: String(err) })
+    return []
+  }
+}
+
+/**
+ * Extract claims from multiple sources in batches.
+ * Processes batchSize sources per LLM call instead of one per source.
+ */
+export async function extractClaimsFromSourceBatch(
+  sources: SourceRecord[],
+  contentMap: Record<string, string>,
+  query: string,
+  executeProvider: ProviderExecuteFn,
+  budget: RunBudget,
+  batchSize: number = 3
+): Promise<{ claims: ExtractedClaim[]; updatedBudget: RunBudget }> {
+  let currentBudget = { ...budget }
+  const allClaims: ExtractedClaim[] = []
+
+  // Filter to sources that have content
+  const sourcesWithContent = sources.filter((s) => contentMap[s.sourceId])
+
+  // Group sources into batches
+  const batches: SourceRecord[][] = []
+  for (let i = 0; i < sourcesWithContent.length; i += batchSize) {
+    batches.push(sourcesWithContent.slice(i, i + batchSize))
+  }
+
+  log.info('Batch claim extraction', {
+    totalSources: sources.length,
+    sourcesWithContent: sourcesWithContent.length,
+    batchCount: batches.length,
+    batchSize,
+  })
+
+  for (const batch of batches) {
+    // Estimate cost for this batch (3000 chars per source / 4 chars per token + output)
+    const inputTokens = batch.reduce(
+      (sum, s) => sum + Math.min(3000, (contentMap[s.sourceId] ?? '').length) / 4,
+      0
+    )
+    const estimatedCost = estimateLLMCost('gpt-5-mini', inputTokens + 200, 800)
+
+    if (!canAffordOperation(currentBudget, estimatedCost)) {
+      log.info('Budget limit reached during batch extraction', {
+        remainingBatches: batches.length - batches.indexOf(batch),
+      })
+      break
+    }
+
+    try {
+      const batchSources = batch.map((s) => ({
+        sourceId: s.sourceId,
+        content: contentMap[s.sourceId] ?? '',
+      }))
+
+      const prompt = buildBatchExtractionPrompt(batchSources, query)
+      const result = await executeProvider(BATCH_EXTRACTION_SYSTEM_PROMPT, prompt)
+
+      currentBudget = recordSpend(currentBudget, estimatedCost, inputTokens + 1000, 'llm')
+
+      const claims = parseBatchExtractionOutput(
+        result,
+        batch.map((s) => ({ sourceId: s.sourceId }))
+      )
+      allClaims.push(...claims)
+    } catch (err) {
+      log.warn('Batch claim extraction failed', {
+        batchSourceIds: batch.map((s) => s.sourceId),
+        error: String(err),
+      })
+    }
+  }
+
+  const deduped = deduplicateClaims(allClaims)
+  return { claims: deduped, updatedBudget: currentBudget }
+}
+
 // ----- Provider Execution Type -----
 
 /**

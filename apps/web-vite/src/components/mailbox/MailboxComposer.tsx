@@ -8,13 +8,14 @@
  * Drafts auto-save periodically.
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useMailboxComposer } from '@/hooks/useMailboxComposer'
 import type { PrioritizedMessage, MessageSource } from '@lifeos/agents'
 import type { JSONContent } from '@tiptap/core'
 import { TipTapEditor } from '@/components/editor/TipTapEditor'
 import { extractTextFromJSON } from '@/lib/tiptapUtils'
 import { RecipientChipInput } from '@/components/mailbox/RecipientChipInput'
+import { formatRecipientSummary } from '@/components/mailbox/recipientUtils'
 import { Modal } from '@/components/ui/Modal'
 import '@/styles/components/MailboxComposer.css'
 
@@ -43,7 +44,6 @@ export function MailboxComposer({
   onClose,
 }: MailboxComposerProps) {
   const [mode, setMode] = useState<'rich' | 'plain'>('rich')
-  const [showCcBcc, setShowCcBcc] = useState(false)
 
   const {
     state,
@@ -63,13 +63,6 @@ export function MailboxComposer({
     send,
   } = useMailboxComposer({ replyTo, replyAll })
 
-  // Auto-show CC/BCC fields if they have recipients (e.g. Reply All)
-  useEffect(() => {
-    if (state.ccRecipients.length > 0 || state.bccRecipients.length > 0) {
-      setShowCcBcc(true)
-    }
-  }, [state.ccRecipients.length, state.bccRecipients.length])
-
   // Pre-fill body from AI draft when provided
   useEffect(() => {
     if (initialBody && !state.body) {
@@ -80,6 +73,29 @@ export function MailboxComposer({
   }, [])
 
   const isEmail = state.source === 'gmail' || state.source === 'linkedin'
+
+  // Progressive disclosure for recipients
+  const detailsRef = useRef<HTMLDetailsElement>(null)
+  const [recipientsInitialOpen] = useState(
+    () =>
+      !replyTo ||
+      state.toRecipients.length === 0 ||
+      state.ccRecipients.length > 0 ||
+      state.bccRecipients.length > 0
+  )
+
+  // Force-open when CC/BCC become populated (e.g. Reply All auto-fill)
+  useEffect(() => {
+    if (
+      (state.ccRecipients.length > 0 || state.bccRecipients.length > 0) &&
+      detailsRef.current &&
+      !detailsRef.current.open
+    ) {
+      detailsRef.current.open = true
+    }
+  }, [state.ccRecipients.length, state.bccRecipients.length])
+
+  const recipientSummaryText = formatRecipientSummary(state.toRecipients)
 
   const handleSend = useCallback(async () => {
     const success = await send()
@@ -185,62 +201,58 @@ export function MailboxComposer({
           </select>
         </div>
 
-        {/* To recipients */}
-        <div className="mailbox-composer__field">
-          <label className="mailbox-composer__label" htmlFor="composer-to">
-            To
-          </label>
-          <div className="mailbox-composer__field-body">
-            <RecipientChipInput
-              id="composer-to"
-              recipients={state.toRecipients}
-              onChange={setToRecipients}
-              channel={state.source}
-              placeholder="Type a name or email..."
-            />
-            {!showCcBcc && isEmail && (
-              <button
-                type="button"
-                className="mailbox-composer__cc-toggle"
-                onClick={() => setShowCcBcc(true)}
-              >
-                CC / BCC
-              </button>
+        {/* Recipients — progressive disclosure */}
+        <details
+          ref={detailsRef}
+          className="mailbox-detail__collapsible"
+          open={recipientsInitialOpen || undefined}
+        >
+          <summary className="mailbox-detail__collapsible-header">
+            <span>TO: {recipientSummaryText}</span>
+          </summary>
+          <div className="mailbox-detail__collapsible-body">
+            <div className="mailbox-composer__field">
+              <label className="mailbox-composer__label" htmlFor="composer-to">
+                To
+              </label>
+              <RecipientChipInput
+                id="composer-to"
+                recipients={state.toRecipients}
+                onChange={setToRecipients}
+                channel={state.source}
+                placeholder="Type a name or email..."
+              />
+            </div>
+            {isEmail && (
+              <>
+                <div className="mailbox-composer__field">
+                  <label className="mailbox-composer__label" htmlFor="composer-cc">
+                    CC
+                  </label>
+                  <RecipientChipInput
+                    id="composer-cc"
+                    recipients={state.ccRecipients}
+                    onChange={setCcRecipients}
+                    channel={state.source}
+                    placeholder="Add CC recipients..."
+                  />
+                </div>
+                <div className="mailbox-composer__field">
+                  <label className="mailbox-composer__label" htmlFor="composer-bcc">
+                    BCC
+                  </label>
+                  <RecipientChipInput
+                    id="composer-bcc"
+                    recipients={state.bccRecipients}
+                    onChange={setBccRecipients}
+                    channel={state.source}
+                    placeholder="Add BCC recipients..."
+                  />
+                </div>
+              </>
             )}
           </div>
-        </div>
-
-        {/* CC recipients */}
-        {showCcBcc && isEmail && (
-          <div className="mailbox-composer__field">
-            <label className="mailbox-composer__label" htmlFor="composer-cc">
-              CC
-            </label>
-            <RecipientChipInput
-              id="composer-cc"
-              recipients={state.ccRecipients}
-              onChange={setCcRecipients}
-              channel={state.source}
-              placeholder="Add CC recipients..."
-            />
-          </div>
-        )}
-
-        {/* BCC recipients */}
-        {showCcBcc && isEmail && (
-          <div className="mailbox-composer__field">
-            <label className="mailbox-composer__label" htmlFor="composer-bcc">
-              BCC
-            </label>
-            <RecipientChipInput
-              id="composer-bcc"
-              recipients={state.bccRecipients}
-              onChange={setBccRecipients}
-              channel={state.source}
-              placeholder="Add BCC recipients..."
-            />
-          </div>
-        )}
+        </details>
 
         {/* Subject (email channels only) */}
         {isEmail && (

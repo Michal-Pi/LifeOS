@@ -1,4 +1,10 @@
-import type { AgentConfig, CreateAgentInput, CreateWorkflowInput, TemplateParameter, Workflow } from '@lifeos/agents'
+import type {
+  AgentConfig,
+  CreateAgentInput,
+  CreateWorkflowInput,
+  TemplateParameter,
+  Workflow,
+} from '@lifeos/agents'
 import { hashAgentConfig } from '@lifeos/agents'
 import type { WorkflowTemplatePreset, WorkflowGraphTemplate } from '@/agents/templatePresets'
 import type { BuiltinToolMeta } from '@/agents/builtinTools'

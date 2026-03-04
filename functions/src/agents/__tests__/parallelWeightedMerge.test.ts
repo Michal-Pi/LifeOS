@@ -1,9 +1,9 @@
 /**
- * Parallel Weighted Merge & Budget-Aware Parallelism Tests — Phase 12
+ * Parallel Merge & Budget-Aware Parallelism Tests — Phase 12
  *
- * Tests for weighted merge and budget-aware fan-out:
- * 1. Weighted merge includes quality scores in merge prompt when historical data exists
- * 2. Weighted merge falls back to equal weighting when no historical data
+ * Tests for merge output formatting and budget-aware fan-out:
+ * 1. Merge output includes agent names
+ * 2. Ranked strategy sorts by output length
  * 3. Budget-aware parallelism reduces fan-out when budget tight
  * 4. Budget-aware parallelism doesn't reduce fan-out when budget ample
  * 5. Budget-aware parallelism respects minimum fan-out of 2
@@ -139,35 +139,12 @@ const baseConfig = {
   runId: 'run1',
 }
 
-describe('Weighted Merge', () => {
+describe('Merge Output', () => {
   beforeEach(() => {
     mockExecuteAgent.mockReset()
   })
 
-  it('includes quality scores in merge output when weights provided', async () => {
-    const agents = [makeAgent('Agent A', 0), makeAgent('Agent B', 1)]
-    const workflow = makeWorkflow()
-
-    setupAgentOutputs([
-      { name: 'Agent A', output: 'Output from A', agentId: 'agent_0' },
-      { name: 'Agent B', output: 'Output from B', agentId: 'agent_1' },
-    ])
-
-    const result = await executeParallelWorkflowLangGraph(
-      {
-        ...baseConfig,
-        workflow,
-        agents,
-        qualityWeights: { agent_0: 4.2, agent_1: 3.1 },
-      },
-      'Test goal'
-    )
-
-    expect(result.output).toContain('quality score 4.2/5')
-    expect(result.output).toContain('quality score 3.1/5')
-  })
-
-  it('falls back to no weights when qualityWeights not provided', async () => {
+  it('includes agent names in list merge output', async () => {
     const agents = [makeAgent('Agent A', 0), makeAgent('Agent B', 1)]
     const workflow = makeWorkflow()
 
@@ -181,17 +158,23 @@ describe('Weighted Merge', () => {
       'Test goal'
     )
 
-    // No quality score annotations
-    expect(result.output).not.toContain('quality score')
+    expect(result.output).toContain('Agent A')
+    expect(result.output).toContain('Agent B')
+    expect(result.output).toContain('Output from A')
+    expect(result.output).toContain('Output from B')
   })
 
-  it('ranked strategy sorts by quality weight when provided', async () => {
+  it('ranked strategy sorts by output length', async () => {
     const agents = [makeAgent('Agent A', 0), makeAgent('Agent B', 1)]
     const workflow = makeWorkflow()
 
     setupAgentOutputs([
-      { name: 'Agent A', output: 'Output A', agentId: 'agent_0' },
-      { name: 'Agent B', output: 'Output B', agentId: 'agent_1' },
+      { name: 'Agent A', output: 'Short', agentId: 'agent_0' },
+      {
+        name: 'Agent B',
+        output: 'This is a much longer output that should rank first',
+        agentId: 'agent_1',
+      },
     ])
 
     const result = await executeParallelWorkflowLangGraph(
@@ -200,12 +183,11 @@ describe('Weighted Merge', () => {
         workflow,
         agents,
         mergeStrategy: 'ranked',
-        qualityWeights: { agent_0: 2.0, agent_1: 4.5 },
       },
       'Test goal'
     )
 
-    // Agent B should be ranked first (higher quality score)
+    // Agent B has longer output, should be ranked first
     const outputLines = result.output.split('\n')
     const firstMention = outputLines.findIndex((l) => l.includes('Agent B'))
     const secondMention = outputLines.findIndex((l) => l.includes('Agent A'))
@@ -272,10 +254,7 @@ describe('Budget-Aware Parallelism', () => {
       { name: 'B', output: 'Output B' },
     ])
 
-    await executeParallelWorkflowLangGraph(
-      { ...baseConfig, workflow, agents },
-      'Test goal'
-    )
+    await executeParallelWorkflowLangGraph({ ...baseConfig, workflow, agents }, 'Test goal')
 
     // Reduced to minimum 2
     expect(mockExecuteAgent).toHaveBeenCalledTimes(2)
@@ -290,10 +269,7 @@ describe('Budget-Aware Parallelism', () => {
       { name: 'B', output: 'Output B' },
     ])
 
-    await executeParallelWorkflowLangGraph(
-      { ...baseConfig, workflow, agents },
-      'Test goal'
-    )
+    await executeParallelWorkflowLangGraph({ ...baseConfig, workflow, agents }, 'Test goal')
 
     // Still runs both (can't go below 2)
     expect(mockExecuteAgent).toHaveBeenCalledTimes(2)

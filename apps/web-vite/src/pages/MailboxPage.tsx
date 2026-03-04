@@ -14,10 +14,15 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { useAuth } from '@/hooks/useAuth'
 import { useMessageMailbox } from '@/hooks/useMessageMailbox'
 import { useMailboxDrafts } from '@/hooks/useMailboxDrafts'
 import { useMailboxOutbox } from '@/hooks/useMailboxOutbox'
 import { useMailboxOutboxList } from '@/hooks/useMailboxOutboxList'
+import { useTodoOperations } from '@/hooks/useTodoOperations'
+import { useRepositories } from '@/contexts/RepositoryContext'
 import { MailboxMessageList } from '@/components/mailbox/MailboxMessageList'
 import { MailboxMessageDetail } from '@/components/mailbox/MailboxMessageDetail'
 import { MailboxComposeInline } from '@/components/mailbox/MailboxComposeInline'
@@ -26,13 +31,19 @@ import { MailboxOutboxDetail } from '@/components/mailbox/MailboxOutboxDetail'
 import { MailboxStatsBar } from '@/components/mailbox/MailboxStatsBar'
 import type { MailboxFilter, MailboxFolder } from '@/components/mailbox/MailboxStatsBar'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import type { PrioritizedMessage, DraftMessage } from '@lifeos/agents'
+import type { PrioritizedMessage, DraftMessage, ContactId } from '@lifeos/agents'
 import type { MailboxSendOp } from '@/outbox/mailboxOutbox'
 import '@/styles/pages/MailboxPage.css'
 
 const IMPORTANCE_THRESHOLD = 70
 
 export function MailboxPage() {
+  const { user } = useAuth()
+  const userId = user?.uid ?? ''
+  const navigate = useNavigate()
+  const { contactRepository } = useRepositories()
+  const { createTask } = useTodoOperations({ userId })
+
   const [activeFolder, setActiveFolder] = useState<MailboxFolder>('inbox')
   const [activeFilter, setActiveFilter] = useState<MailboxFilter>({ type: 'all' })
   const [selectedMessage, setSelectedMessage] = useState<PrioritizedMessage | null>(null)
@@ -314,21 +325,46 @@ export function MailboxPage() {
               onDismiss={handleDismiss}
               onReplySent={handleReplySent}
               onOverrideTriage={overrideTriageCategory}
-              onCreateTask={(data) => {
-                // TODO: Wire to task creation flow
-                console.info('Create task from action:', data)
+              onCreateTask={async (data) => {
+                try {
+                  await createTask({
+                    title: data.title,
+                    description: data.description,
+                    dueDate: data.dueDate,
+                    domain: 'work',
+                    importance: 4,
+                    status: 'inbox',
+                    completed: false,
+                    archived: false,
+                  })
+                } catch (err) {
+                  toast.error('Failed to create task', {
+                    description: (err as Error).message,
+                  })
+                }
               }}
               onCreateEvent={(data) => {
-                // TODO: Wire to calendar event creation flow
-                console.info('Create event from action:', data)
+                const params = new URLSearchParams({ title: data.title })
+                if (data.description) params.set('description', data.description)
+                navigate(`/calendar?newEvent=1&${params.toString()}`)
               }}
-              onSetFollowUp={(contactId, dueDate) => {
-                // TODO: Wire to contact follow-up flow
-                console.info('Set follow-up:', contactId, dueDate)
+              onSetFollowUp={async (contactId, dueDate) => {
+                try {
+                  const followUpMs = dueDate
+                    ? new Date(dueDate).getTime()
+                    : Date.now() + 7 * 24 * 60 * 60 * 1000
+                  await contactRepository.update(userId, contactId as ContactId, {
+                    nextFollowUpMs: followUpMs,
+                  })
+                  toast.success('Follow-up reminder set')
+                } catch (err) {
+                  toast.error('Failed to set follow-up', {
+                    description: (err as Error).message,
+                  })
+                }
               }}
-              onEditContact={(contactId, details) => {
-                // TODO: Wire to contact edit flow
-                console.info('Edit contact:', contactId, details)
+              onEditContact={(contactId) => {
+                navigate(`/contacts/${contactId}`)
               }}
             />
           )

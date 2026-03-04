@@ -39,6 +39,16 @@ export const ROLE_LABELS: Record<AgentRole, string> = {
   claim_extractor: 'Claim Extractor',
   gap_analyst: 'Gap Analyst',
   answer_generator: 'Answer Generator',
+  coordinator: 'Coordinator',
+  validator: 'Validator',
+  formatter: 'Formatter',
+  summarizer: 'Summarizer',
+  router: 'Router',
+  writer: 'Writer',
+  editor: 'Editor',
+  analyst: 'Analyst',
+  advisor: 'Advisor',
+  translator: 'Translator',
 }
 
 export const ROLE_FILTER_OPTIONS: SelectOption[] = [
@@ -49,6 +59,16 @@ export const ROLE_FILTER_OPTIONS: SelectOption[] = [
   { value: 'synthesizer', label: 'Synthesizer' },
   { value: 'executor', label: 'Executor' },
   { value: 'supervisor', label: 'Supervisor' },
+  { value: 'coordinator', label: 'Coordinator' },
+  { value: 'validator', label: 'Validator' },
+  { value: 'formatter', label: 'Formatter' },
+  { value: 'summarizer', label: 'Summarizer' },
+  { value: 'router', label: 'Router' },
+  { value: 'writer', label: 'Writer' },
+  { value: 'editor', label: 'Editor' },
+  { value: 'analyst', label: 'Analyst' },
+  { value: 'advisor', label: 'Advisor' },
+  { value: 'translator', label: 'Translator' },
   { value: 'custom', label: 'Custom' },
 ]
 

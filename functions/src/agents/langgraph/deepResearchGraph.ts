@@ -35,6 +35,7 @@ import type {
   WorkflowExecutionMode,
   ModelTier,
   WorkflowCriticality,
+  CounterclaimResult,
 } from '@lifeos/agents'
 import type { ProviderKeys } from '../providerService.js'
 import { executeWithProvider } from '../providerService.js'
@@ -59,11 +60,17 @@ import {
 import { executeSearchPlan, ingestSources } from '../deepResearch/sourceIngestion.js'
 import {
   extractClaimsFromSource,
+  extractClaimsFromSourceBatch,
   mapClaimsToKG,
   type ProviderExecuteFn,
 } from '../deepResearch/claimExtraction.js'
 import { analyzeKnowledgeGaps } from '../deepResearch/gapAnalysis.js'
 import { generateAnswer } from '../deepResearch/answerGeneration.js'
+import {
+  computeSourceQualityScore,
+  applyQualityScoresToClaims,
+  generateCounterclaims,
+} from '../deepResearch/sourceQuality.js'
 import { runContradictionTrackers } from '../contradictionTrackers.js'
 import type { ContradictionTrackerContext } from '../contradictionTrackers.js'
 import { runCompetitiveSynthesis } from '../sublationEngine.js'
@@ -95,6 +102,7 @@ export interface DeepResearchGraphConfig {
   eventWriter?: RunEventWriter
   toolRegistry?: ToolRegistry
   searchToolKeys?: SearchToolKeys
+  enableCheckpointing?: boolean
   executionMode?: WorkflowExecutionMode
   tierOverride?: ModelTier | null
   workflowCriticality?: WorkflowCriticality
@@ -567,27 +575,28 @@ function createClaimExtractionNode(
     const sessionId = (state.kgSessionId ?? `deepResearch:${state.runId}`) as DialecticalSessionId
     const kg = sharedKg
 
-    // Extract claims from each new source
+    // Extract claims from new sources using batch processing (Phase 21)
     const newSources = state.sources.slice(-20) // Process most recent sources
-    for (const source of newSources) {
-      // Retrieve content from source (we need to fetch it for extraction)
-      // In practice, the content was fetched during ingestion and stored in sourceContentMap
-      const content = state.sourceContentMap[source.sourceId]
-      if (!content) {
-        log.warn('No content available for source', { sourceId: source.sourceId })
-        continue
-      }
 
-      const { claims, updatedBudget } = await extractClaimsFromSource(
-        source,
-        content,
+    const { claims: batchClaims, updatedBudget: postBatchBudget } =
+      await extractClaimsFromSourceBatch(
+        newSources,
+        state.sourceContentMap,
         state.goal,
         providerFn,
-        currentBudget
+        currentBudget,
+        3 // batch size
       )
-      currentBudget = updatedBudget
-      allClaims.push(...claims)
+    currentBudget = postBatchBudget
+    allClaims.push(...batchClaims)
+
+    // Phase 23: Apply source quality scores to claims
+    for (const source of newSources) {
+      source.sourceQualityScore = computeSourceQualityScore(source)
     }
+    const qualityAdjustedClaims = applyQualityScoresToClaims(allClaims, newSources)
+    allClaims.length = 0
+    allClaims.push(...qualityAdjustedClaims)
 
     // Map claims into KG
     await emitPhaseEvent(execContext, 'kg_construction', {
@@ -1079,6 +1088,32 @@ function createAnswerNode(
   }
 }
 
+// ----- Node: Counterclaim Search (Phase 23) -----
+
+function createCounterclaimNode(
+  extractionAgent: AgentConfig,
+  execContext: AgentExecutionContext,
+  apiKeys: ProviderKeys
+) {
+  return async (state: DeepResearchState): Promise<Partial<DeepResearchState>> => {
+    log.info('Deep Research: Counterclaim Search phase')
+    await emitPhaseEvent(execContext, 'answer_generation', {
+      phase: 'counterclaim_search',
+      claimCount: state.extractedClaims.length,
+    })
+
+    const providerFn = makeProviderFn(extractionAgent, apiKeys)
+
+    const counterclaims = await generateCounterclaims(state.extractedClaims, state.goal, providerFn)
+
+    log.info('Counterclaim search complete', { counterclaims: counterclaims.length })
+
+    return {
+      counterclaims,
+    }
+  }
+}
+
 // ----- Routing Functions -----
 
 function routeDialecticalMeta(state: DeepResearchState): 'thesis_generation' | 'gap_analysis' {
@@ -1086,6 +1121,20 @@ function routeDialecticalMeta(state: DeepResearchState): 'thesis_generation' | '
     return 'thesis_generation'
   }
   return 'gap_analysis'
+}
+
+/**
+ * Route after search_and_ingest based on mode (Phase 25).
+ * Quick mode skips directly to answer_generation.
+ */
+function routeAfterSearch(
+  state: DeepResearchState,
+  mode: 'full' | 'quick'
+): 'claim_extraction' | 'answer_generation' {
+  if (mode === 'quick') {
+    return 'answer_generation'
+  }
+  return 'claim_extraction'
 }
 
 // ----- Graph Creation -----
@@ -1173,12 +1222,30 @@ export function createDeepResearchGraph(
     )
   )
 
+  graph.addNode(
+    'counterclaim_search',
+    createCounterclaimNode(extractionAgent, execContext, apiKeys)
+  )
+
   graph.addNode('answer_generation', createAnswerNode(answerAgent, execContext, apiKeys, sharedKg))
+
+  const mode = researchConfig.mode ?? 'full'
 
   // Linear edges
   graph.addEdge(START, 'sense_making' as typeof START)
   graph.addEdge('sense_making' as typeof START, 'search_and_ingest' as typeof START)
-  graph.addEdge('search_and_ingest' as typeof START, 'claim_extraction' as typeof START)
+
+  // Phase 25: Quick mode skips claim extraction and dialectical phases
+  graph.addConditionalEdges(
+    'search_and_ingest' as typeof START,
+    (state: DeepResearchState) => routeAfterSearch(state, mode),
+    {
+      claim_extraction: 'claim_extraction' as typeof START,
+      answer_generation: 'answer_generation' as typeof START,
+    }
+  )
+
+  // Full mode edges
   graph.addEdge('claim_extraction' as typeof START, 'thesis_generation' as typeof START)
   graph.addEdge('thesis_generation' as typeof START, 'cross_negation' as typeof START)
   graph.addEdge('cross_negation' as typeof START, 'contradiction' as typeof START)
@@ -1195,7 +1262,7 @@ export function createDeepResearchGraph(
     }
   )
 
-  // Gap analysis outer loop: gap_analysis → search_and_ingest OR answer_generation
+  // Gap analysis outer loop: gap_analysis → counterclaim_search OR search_and_ingest
   graph.addConditionalEdges(
     'gap_analysis' as typeof START,
     (state: DeepResearchState) => {
@@ -1205,13 +1272,16 @@ export function createDeepResearchGraph(
       ) {
         return 'search_and_ingest'
       }
-      return 'answer_generation'
+      return 'counterclaim_search'
     },
     {
       search_and_ingest: 'search_and_ingest' as typeof START,
-      answer_generation: 'answer_generation' as typeof START,
+      counterclaim_search: 'counterclaim_search' as typeof START,
     }
   )
+
+  // Phase 23: Counterclaim search → answer generation
+  graph.addEdge('counterclaim_search' as typeof START, 'answer_generation' as typeof START)
 
   // Answer generation → END
   graph.addEdge('answer_generation' as typeof START, END)

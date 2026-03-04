@@ -325,6 +325,10 @@
   outline: none;
 }
 
+.mailbox-detail__editor-wrapper .mailbox-reply-editor p {
+  margin: 0;
+}
+
 .mailbox-detail__editor-wrapper .mailbox-reply-editor p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   color: var(--text-tertiary);
@@ -506,17 +510,22 @@
   gap: var(--space-2);
 }
 
-.mailbox-detail__compose-field-body {
+.mailbox-detail__compose-field .recipient-chip-input {
   flex: 1;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
   min-width: 0;
 }
 
-.mailbox-detail__compose-field-body .recipient-chip-input {
-  flex: 1;
-  min-width: 0;
+/* Spacing for recipient fields inside collapsible body */
+.mailbox-detail__collapsible-body .mailbox-detail__reply-recipient-row,
+.mailbox-detail__collapsible-body .mailbox-detail__compose-field,
+.mailbox-detail__collapsible-body .mailbox-composer__field {
+  margin-bottom: var(--space-2);
+}
+
+.mailbox-detail__collapsible-body .mailbox-detail__reply-recipient-row:last-child,
+.mailbox-detail__collapsible-body .mailbox-detail__compose-field:last-child,
+.mailbox-detail__collapsible-body .mailbox-composer__field:last-child {
+  margin-bottom: 0;
 }
 
 .mailbox-detail__compose-label {

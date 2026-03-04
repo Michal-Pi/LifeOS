@@ -20,7 +20,7 @@ export const DOMAIN_COLORS: Record<Domain, DomainColorConfig> = {
   },
   projects: {
     domain: 'projects',
-    defaultColor: '#8b5cf6', // Purple
+    defaultColor: '#06b6d4', // Cyan
     label: 'Projects',
   },
   life: {

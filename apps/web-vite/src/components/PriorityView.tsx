@@ -109,7 +109,6 @@ export function PriorityView({
                 band.tasks.map((task) => {
                   const project = projects.find((p) => p.id === task.projectId)
                   const taskColor = project ? getProjectColor(project.color, project.domain) : null
-                  const badgeLabel = project ? project.title : task.domain
 
                   return (
                     <div
@@ -135,17 +134,8 @@ export function PriorityView({
                         />
                         <span className="task-title">{task.title}</span>
                       </div>
-                      {task.allocatedTimeMinutes && task.allocatedTimeMinutes > 0 ? (
-                        <span className="meta-tag time-estimate">
-                          {task.allocatedTimeMinutes}min
-                        </span>
-                      ) : (
-                        <span />
-                      )}
-                      <span
-                        className={`meta-tag ${project ? 'task-card-badge-project' : `task-card-badge-domain-${task.domain}`}`}
-                      >
-                        {badgeLabel}
+                      <span className={`meta-tag task-card-badge-domain-${task.domain}`}>
+                        {task.domain}
                       </span>
                     </div>
                   )

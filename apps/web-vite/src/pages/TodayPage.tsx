@@ -31,6 +31,7 @@ import { useRepositories } from '@/contexts/RepositoryContext'
 import { listEventsByDayKeysLocally, bulkSaveEventsLocally } from '@/calendar/offlineStore'
 import { getQuotesLocally, saveQuotesLocally } from '@/quotes/offlineStore'
 
+import { CheckInCard } from '@/components/mind/CheckInCard'
 import { FollowUpWidget } from '@/components/contacts/FollowUpWidget'
 import { MeetingBriefingModal } from '@/components/contacts/MeetingBriefingModal'
 import { MessageMailbox } from '@/components/mailbox/MessageMailbox'
@@ -573,6 +574,9 @@ export function TodayPage() {
 
         {/* Row 2, Col 2: Follow-Up Reminders (right) */}
         <FollowUpWidget maxContacts={8} />
+
+        {/* Row 3: Emotion Check-In (spans both columns) */}
+        <CheckInCard userId={userId} dateKey={todayKey} />
       </div>
 
       {/* Meeting Briefing Modal */}

@@ -13,7 +13,7 @@
  * IMPORTANT: Render with key={message.messageId} so useMailboxComposer re-initializes per message.
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { EditorContent } from '@tiptap/react'
 import type { JSONContent } from '@tiptap/core'
@@ -30,6 +30,7 @@ import { useMailboxMessageBody } from '@/hooks/useMailboxMessageBody'
 import { useMailboxReplyEditor } from '@/hooks/useMailboxReplyEditor'
 import { useMailboxComposer } from '@/hooks/useMailboxComposer'
 import { RecipientChipInput } from '@/components/mailbox/RecipientChipInput'
+import { formatRecipientSummary } from '@/components/mailbox/recipientUtils'
 import { SegmentedControl } from '@/components/SegmentedControl'
 import '@/styles/components/MailboxMessageDetail.css'
 
@@ -103,6 +104,27 @@ export function MailboxMessageDetail({
 
   // ---- Composer state (draft save/send) ----
   const composer = useMailboxComposer({ replyTo: message, replyAll })
+
+  // ---- Progressive disclosure for recipients ----
+  const recipientDetailsRef = useRef<HTMLDetailsElement>(null)
+  const recipientSummaryText = formatRecipientSummary(composer.state.toRecipients)
+  const [recipientsInitialOpen] = useState(
+    () =>
+      composer.state.toRecipients.length === 0 ||
+      composer.state.ccRecipients.length > 0 ||
+      composer.state.bccRecipients.length > 0
+  )
+
+  // Force-open when CC/BCC become populated (e.g. Reply All switch)
+  useEffect(() => {
+    if (
+      (composer.state.ccRecipients.length > 0 || composer.state.bccRecipients.length > 0) &&
+      recipientDetailsRef.current &&
+      !recipientDetailsRef.current.open
+    ) {
+      recipientDetailsRef.current.open = true
+    }
+  }, [composer.state.ccRecipients.length, composer.state.bccRecipients.length])
 
   // ---- Reply editor ----
   const handleEditorChange = useCallback(
@@ -422,29 +444,49 @@ export function MailboxMessageDetail({
         </div>
       )}
 
-      {/* Editable recipient chips for reply */}
-      <div className="mailbox-detail__reply-recipients">
-        <div className="mailbox-detail__reply-recipient-row">
-          <span className="mailbox-detail__reply-recipient-label">To</span>
-          <RecipientChipInput
-            recipients={composer.state.toRecipients}
-            onChange={composer.setToRecipients}
-            channel={message.source}
-            placeholder="Add recipients..."
-          />
-        </div>
-        {replyAll && composer.state.ccRecipients.length > 0 && (
+      {/* Editable recipient chips for reply — progressive disclosure */}
+      <details
+        ref={recipientDetailsRef}
+        className="mailbox-detail__collapsible"
+        open={recipientsInitialOpen || undefined}
+      >
+        <summary className="mailbox-detail__collapsible-header">
+          <span>TO: {recipientSummaryText}</span>
+        </summary>
+        <div className="mailbox-detail__collapsible-body">
           <div className="mailbox-detail__reply-recipient-row">
-            <span className="mailbox-detail__reply-recipient-label">CC</span>
+            <span className="mailbox-detail__reply-recipient-label">To</span>
             <RecipientChipInput
-              recipients={composer.state.ccRecipients}
-              onChange={composer.setCcRecipients}
+              recipients={composer.state.toRecipients}
+              onChange={composer.setToRecipients}
               channel={message.source}
-              placeholder="Add CC recipients..."
+              placeholder="Add recipients..."
             />
           </div>
-        )}
-      </div>
+          {isEmail && (
+            <>
+              <div className="mailbox-detail__reply-recipient-row">
+                <span className="mailbox-detail__reply-recipient-label">CC</span>
+                <RecipientChipInput
+                  recipients={composer.state.ccRecipients}
+                  onChange={composer.setCcRecipients}
+                  channel={message.source}
+                  placeholder="Add CC recipients..."
+                />
+              </div>
+              <div className="mailbox-detail__reply-recipient-row">
+                <span className="mailbox-detail__reply-recipient-label">BCC</span>
+                <RecipientChipInput
+                  recipients={composer.state.bccRecipients}
+                  onChange={composer.setBccRecipients}
+                  channel={message.source}
+                  placeholder="Add BCC recipients..."
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </details>
 
       {/* 6. Inline reply area */}
       <div className="mailbox-detail__reply-area">

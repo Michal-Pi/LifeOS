@@ -64,6 +64,30 @@
   border-top: 1px solid var(--border);
 }
 
+/* Step progress indicator */
+.run-progress-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-muted);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  margin: 0.5rem 1rem;
+  flex-shrink: 0;
+}
+
+.run-progress-step {
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.run-progress-cost {
+  color: var(--muted-foreground);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-xs);
+}
+
 /* Output preview on compact RunCard */
 .run-output-preview {
   padding: 0.5rem 0;

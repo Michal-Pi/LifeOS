@@ -56,6 +56,15 @@ export function RunDetailModal({
   const finalEvent = [...events].reverse().find((event) => event.type === 'final')
   const displayOutput = run.output ?? finalEvent?.output ?? (streamingOutput || undefined)
 
+  // Step progress from events
+  const stepEvents = events.filter((e) => e.type === 'step_started' || e.type === 'step_completed')
+  const latestStep = stepEvents.length > 0 ? stepEvents[stepEvents.length - 1] : undefined
+  const completedSteps = events.filter((e) => e.type === 'step_completed')
+  const cumulativeCost = completedSteps.reduce(
+    (sum, e) => sum + ((e.details?.cumulativeCost as number) ?? 0),
+    0
+  )
+
   const getAgentNameFromMessages = () => {
     const lastAssistantMessage = [...messages].reverse().find((msg) => msg.role === 'assistant')
     if (lastAssistantMessage && 'agentId' in lastAssistantMessage) {
@@ -157,11 +166,19 @@ export function RunDetailModal({
   if (!isOpen) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="run-detail-heading"
+      onClick={onClose}
+    >
       <div className="modal-content run-detail-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="run-detail-title">
-            <h3 className="run-detail-goal">{run.goal}</h3>
+            <h3 id="run-detail-heading" className="run-detail-goal">
+              {run.goal}
+            </h3>
             <div className="run-detail-meta">
               <span
                 className={`badge-${run.status === 'completed' ? 'success' : run.status === 'failed' ? 'error' : run.status === 'running' ? 'info' : 'warning'}`}
@@ -170,12 +187,24 @@ export function RunDetailModal({
               </span>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close">
             ✕
           </Button>
         </div>
 
         <div className="modal-body">
+          {run.status === 'running' && latestStep && (
+            <div className="run-progress-indicator">
+              <span className="run-progress-step">
+                Agent {latestStep.step}/{(latestStep.details?.totalSteps as number) || '?'}:{' '}
+                {latestStep.agentName}
+                {latestStep.type === 'step_started' ? '...' : ' done'}
+              </span>
+              {cumulativeCost > 0 && (
+                <span className="run-progress-cost">${cumulativeCost.toFixed(4)}</span>
+              )}
+            </div>
+          )}
           <MessageCarousel
             run={run}
             events={events}

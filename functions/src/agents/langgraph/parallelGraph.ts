@@ -65,8 +65,6 @@ export interface ParallelGraphConfig {
   executionMode?: WorkflowExecutionMode
   tierOverride?: ModelTier | null
   workflowCriticality?: WorkflowCriticality
-  /** Pre-computed quality weights per agent (agentId → avg score 1-5). If not provided, equal weighting is used. */
-  qualityWeights?: Record<string, number>
 }
 
 /**
@@ -77,17 +75,11 @@ type AgentResult =
   | { success: false; failed: FailedAgent }
 
 /**
- * Format an agent entry with optional quality weight
+ * Format an agent entry for merge output
  */
-function formatAgentEntry(
-  step: AgentExecutionStep,
-  qualityWeights?: Record<string, number>,
-  prefix?: string
-): string {
-  const weight = qualityWeights?.[step.agentId]
-  const weightLabel = weight !== undefined ? ` (quality score ${weight.toFixed(1)}/5)` : ''
+function formatAgentEntry(step: AgentExecutionStep, prefix?: string): string {
   const namePrefix = prefix ? `${prefix} ` : ''
-  return `**${namePrefix}${step.agentName}${weightLabel}:**\n${step.output}`
+  return `**${namePrefix}${step.agentName}:**\n${step.output}`
 }
 
 /**
@@ -96,8 +88,7 @@ function formatAgentEntry(
 function mergeOutputs(
   outputs: Record<string, AgentExecutionStep>,
   failedAgents: FailedAgent[],
-  strategy: JoinAggregationMode = 'list',
-  qualityWeights?: Record<string, number>
+  strategy: JoinAggregationMode = 'list'
 ): string {
   const entries = Object.values(outputs)
 
@@ -119,34 +110,24 @@ function mergeOutputs(
 
   switch (strategy) {
     case 'list':
-      output = entries.map((step) => formatAgentEntry(step, qualityWeights)).join('\n\n---\n\n')
+      output = entries.map((step) => formatAgentEntry(step)).join('\n\n---\n\n')
       break
 
     case 'ranked': {
-      // Sort by quality weight (descending) if available, else by output length
-      const sorted = qualityWeights
-        ? [...entries].sort(
-            (a, b) => (qualityWeights[b.agentId] ?? 0) - (qualityWeights[a.agentId] ?? 0)
-          )
-        : [...entries].sort((a, b) => b.output.length - a.output.length)
-      output = sorted
-        .map((step, i) => formatAgentEntry(step, qualityWeights, `#${i + 1}`))
-        .join('\n\n---\n\n')
+      // Sort by output length (longest first) as a heuristic for thoroughness
+      const sorted = [...entries].sort((a, b) => b.output.length - a.output.length)
+      output = sorted.map((step, i) => formatAgentEntry(step, `#${i + 1}`)).join('\n\n---\n\n')
       break
     }
 
     case 'consensus':
       output = `## Consensus Summary\n\n${entries
-        .map((step) => {
-          const weight = qualityWeights?.[step.agentId]
-          const weightLabel = weight !== undefined ? ` [${weight.toFixed(1)}/5]` : ''
-          return `- **${step.agentName}${weightLabel}**: ${step.output.slice(0, 200)}...`
-        })
+        .map((step) => `- **${step.agentName}**: ${step.output.slice(0, 200)}...`)
         .join('\n')}`
       break
 
     case 'synthesize':
-      output = `## Synthesized Output\n\nCombined perspectives from ${entries.length} agents:\n\n${entries.map((step) => formatAgentEntry(step, qualityWeights)).join('\n\n')}`
+      output = `## Synthesized Output\n\nCombined perspectives from ${entries.length} agents:\n\n${entries.map((step) => formatAgentEntry(step)).join('\n\n')}`
       break
 
     case 'dedup_combine': {
@@ -156,12 +137,12 @@ function mergeOutputs(
         seen.add(step.output)
         return true
       })
-      output = unique.map((step) => formatAgentEntry(step, qualityWeights)).join('\n\n---\n\n')
+      output = unique.map((step) => formatAgentEntry(step)).join('\n\n---\n\n')
       break
     }
 
     default:
-      output = entries.map((step) => formatAgentEntry(step, qualityWeights)).join('\n\n---\n\n')
+      output = entries.map((step) => formatAgentEntry(step)).join('\n\n---\n\n')
   }
 
   return output + failureNotice
@@ -506,12 +487,7 @@ export function createParallelGraph(config: ParallelGraphConfig) {
       return {}
     }
 
-    const mergedOutput = mergeOutputs(
-      state.agentOutputs,
-      state.failedAgents,
-      mergeStrategy,
-      config.qualityWeights
-    )
+    const mergedOutput = mergeOutputs(state.agentOutputs, state.failedAgents, mergeStrategy)
 
     // Budget tracking warning
     if (workflow.maxBudget !== undefined && state.totalEstimatedCost > workflow.maxBudget) {

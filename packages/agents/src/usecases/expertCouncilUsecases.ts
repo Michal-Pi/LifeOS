@@ -403,8 +403,7 @@ export function executeExpertCouncilUsecase(
         workflowId,
         contextHash
       )
-      const keysToCheck =
-        normalizedKey !== cacheKey ? [cacheKey, normalizedKey] : [cacheKey]
+      const keysToCheck = normalizedKey !== cacheKey ? [cacheKey, normalizedKey] : [cacheKey]
 
       for (const key of keysToCheck) {
         const cached = await repository.getCachedTurn(userId, key)

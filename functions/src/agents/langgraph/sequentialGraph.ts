@@ -60,6 +60,8 @@ export async function compressAgentOutput(output: string, apiKeys: ProviderKeys)
     role: 'synthesizer',
     systemPrompt:
       'You are a context compression agent. Summarize the following output concisely, preserving all key findings, data, decisions, action items, and conclusions. Remove redundancy and filler. Output ONLY the compressed summary.',
+    // Hardcoded to cheapest available model — compression is a utility task
+    // where cost efficiency matters more than provider consistency with the workflow.
     modelProvider: 'openai',
     modelName: 'gpt-4o-mini',
     temperature: 0.3,

@@ -89,10 +89,14 @@ export async function executeLangGraphWorkflow(
     eventWriter,
     toolRegistry,
     searchToolKeys,
+    enableCheckpointing,
     executionMode,
     tierOverride,
     workflowCriticality,
   } = config
+
+  // Resolve checkpointing: explicit config > workflow setting > default false
+  const checkpointing = enableCheckpointing ?? workflow.enableCheckpointing ?? false
 
   const workflowType = workflow.workflowType
 
@@ -109,6 +113,7 @@ export async function executeLangGraphWorkflow(
             eventWriter,
             toolRegistry,
             searchToolKeys,
+            enableCheckpointing: checkpointing,
             executionMode,
             tierOverride,
             workflowCriticality,
@@ -134,9 +139,11 @@ export async function executeLangGraphWorkflow(
             apiKeys,
             userId,
             runId,
+            mergeStrategy: workflow.parallelMergeStrategy,
             eventWriter,
             toolRegistry,
             searchToolKeys,
+            enableCheckpointing: checkpointing,
             executionMode,
             tierOverride,
             workflowCriticality,
@@ -177,6 +184,8 @@ export async function executeLangGraphWorkflow(
             executionMode,
             tierOverride,
             workflowCriticality,
+            enableCheckpointing: checkpointing,
+            maxTokensPerWorker: workflow.maxTokensPerWorker,
           },
           goal,
           context
@@ -212,6 +221,7 @@ export async function executeLangGraphWorkflow(
             eventWriter,
             toolRegistry,
             searchToolKeys,
+            enableCheckpointing: checkpointing,
             executionMode,
             tierOverride,
             workflowCriticality,
@@ -290,6 +300,7 @@ export async function executeLangGraphWorkflow(
             eventWriter,
             toolRegistry,
             searchToolKeys,
+            enableCheckpointing: checkpointing,
             executionMode,
             tierOverride,
             workflowCriticality,
@@ -357,6 +368,7 @@ export async function executeLangGraphWorkflow(
             eventWriter,
             toolRegistry,
             searchToolKeys,
+            enableCheckpointing: checkpointing,
             executionMode,
             tierOverride,
             workflowCriticality,
@@ -398,6 +410,7 @@ export async function executeLangGraphWorkflow(
               eventWriter,
               toolRegistry,
               searchToolKeys,
+              enableCheckpointing: checkpointing,
               executionMode,
               tierOverride,
               workflowCriticality,

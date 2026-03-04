@@ -345,6 +345,62 @@ function chunkByParagraphs(
   return chunks
 }
 
+// ----- Source Deduplication (Phase 22) -----
+
+/**
+ * Deduplicate sources by URL, keeping the one with the highest relevance score.
+ */
+export function deduplicateSources(sources: SourceRecord[]): SourceRecord[] {
+  const byUrl = new Map<string, SourceRecord>()
+  for (const source of sources) {
+    const key = source.url.replace(/\/$/, '').toLowerCase()
+    const existing = byUrl.get(key)
+    if (!existing || (source.relevanceScore ?? 0) > (existing.relevanceScore ?? 0)) {
+      byUrl.set(key, source)
+    }
+  }
+  return [...byUrl.values()]
+}
+
+// ----- Source Ranking (Phase 22) -----
+
+/**
+ * Rank sources by relevance using a fast LLM model.
+ * Scores each source 1-5 for likely relevance and sorts descending.
+ */
+export async function rankSourcesByRelevance(
+  results: SearchResult[],
+  query: string,
+  executeProvider: (systemPrompt: string, userPrompt: string) => Promise<string>
+): Promise<SearchResult[]> {
+  if (results.length === 0) return []
+
+  // Build a compact list of sources for scoring
+  const sourceList = results
+    .map((r, i) => `${i + 1}. [${r.title}] ${r.snippet.substring(0, 150)}`)
+    .join('\n')
+
+  try {
+    const response = await executeProvider(
+      'Score each source 1-5 for relevance to the query. Output ONLY a JSON array of numbers, e.g. [5, 3, 1, 4, 2]. No other text.',
+      `Query: "${query}"\n\nSources:\n${sourceList}`
+    )
+
+    const jsonMatch = response.match(/\[[\s\S]*?\]/)
+    if (!jsonMatch) return results
+
+    const scores = JSON.parse(jsonMatch[0]) as number[]
+    const scored = results.map((r, i) => ({
+      ...r,
+      relevanceScore: Math.min(5, Math.max(1, Number(scores[i]) || 3)) / 5,
+    }))
+
+    return scored.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0))
+  } catch {
+    return results
+  }
+}
+
 // ----- Helpers -----
 
 function parseSearchResults(raw: unknown, source: SearchResult['source']): SearchResult[] {

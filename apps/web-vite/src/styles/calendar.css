@@ -617,20 +617,11 @@
 
 /* Day tab row — aligned with visible columns */
 .weekly-day-tabs {
-  flex: 1;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 1px;
   min-width: 0;
-}
-
-.weekly-strip--header {
-  margin-bottom: var(--space-3);
-}
-
-.weekly-strip__arrow-spacer {
-  flex-shrink: 0;
-  width: 2rem;
+  margin-bottom: var(--space-2);
 }
 
 .weekly-day-tab {
@@ -670,7 +661,7 @@
   color: var(--foreground);
 }
 
-/* Strip: arrows + 5-column grid */
+/* Strip: arrows at extremes, content between them */
 .weekly-strip {
   display: flex;
   align-items: stretch;
@@ -679,16 +670,25 @@
 
 .weekly-strip__arrow {
   flex-shrink: 0;
-  width: 2rem;
+  width: 1.25rem;
   border: none;
-  background: var(--background-secondary);
-  color: var(--foreground);
-  font-size: 1.5rem;
+  background: transparent;
+  color: var(--text-label);
+  font-size: 1.1rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+  opacity: 0.6;
+}
+
+.weekly-strip__arrow:hover:not(:disabled) {
+  background: var(--background-tertiary);
+  opacity: 1;
+  color: var(--foreground);
 }
 
 .weekly-strip__arrow--left {
@@ -699,17 +699,17 @@
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
-.weekly-strip__arrow:hover:not(:disabled) {
-  background: var(--background-tertiary);
-}
-
 .weekly-strip__arrow:disabled {
-  opacity: 0.3;
+  opacity: 0.2;
   cursor: default;
 }
 
-.weekly-strip__grid {
+.weekly-strip__content {
   flex: 1;
+  min-width: 0;
+}
+
+.weekly-strip__grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 1px;

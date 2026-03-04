@@ -192,13 +192,7 @@ describe('Normalized Cache Integration (Phase 20)', () => {
     }
 
     const usecase = executeExpertCouncilUsecase(mockRepo, mockPipeline)
-    const result = await usecase(
-      'user1',
-      'run:new' as RunId,
-      prompt,
-      config,
-      'full'
-    )
+    const result = await usecase('user1', 'run:new' as RunId, prompt, config, 'full')
 
     // getCachedTurn called twice: exact key miss, then normalized key hit
     expect(exactKey).not.toBe(normalizedKey)

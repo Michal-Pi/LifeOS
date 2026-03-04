@@ -28,6 +28,7 @@ import type {
   GapAnalysisResult,
   DeepResearchAnswer,
   KGSnapshot,
+  CounterclaimResult,
 } from '@lifeos/agents'
 import type { WorkflowStatusType } from './utils.js'
 import type { CycleMetrics } from '../metaReflection.js'
@@ -451,6 +452,12 @@ export const DeepResearchStateAnnotation = Annotation.Root({
 
   // KG Snapshots for visualization
   kgSnapshots: Annotation<KGSnapshot[]>({
+    reducer: (current, update) => [...current, ...update],
+    default: () => [],
+  }),
+
+  // Counterclaims (Phase 23)
+  counterclaims: Annotation<CounterclaimResult[]>({
     reducer: (current, update) => [...current, ...update],
     default: () => [],
   }),
