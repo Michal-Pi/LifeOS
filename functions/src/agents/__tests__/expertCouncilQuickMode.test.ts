@@ -78,6 +78,7 @@ function makeCouncilConfig(overrides?: Partial<ExpertCouncilConfig>): ExpertCoun
     enableCaching: false,
     cacheExpirationHours: 24,
     enforceProviderDiversity: false, // Disable to simplify test assertions
+    enableDisagreementDeepDive: false, // Disable to avoid extra LLM calls from Phase 20
     ...overrides,
   }
 }

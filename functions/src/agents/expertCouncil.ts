@@ -715,6 +715,77 @@ export function createExpertCouncilPipeline(params: {
         await writeStatus('expert_council_stage2_complete')
       }
 
+      // Phase 20: Disagreement Deep-Dive — reasoning follow-up on low consensus
+      let disagreementDeepDive: ExpertCouncilTurn['disagreementDeepDive'] = undefined
+      const shouldDeepDive =
+        (config.enableDisagreementDeepDive ?? (mode === 'full')) &&
+        consensusMetrics.kendallTau < 0.4 &&
+        stage2Reviews.length >= 2
+
+      let deepDiveSection = ''
+      if (shouldDeepDive) {
+        await writeStatus('expert_council_disagreement_deep_dive_start')
+        const deepDiveResponses: NonNullable<ExpertCouncilTurn['disagreementDeepDive']>['reasoningResponses'] = []
+
+        // Limit to first 3 council models to control cost
+        const deepDiveModels = activeModels.slice(0, 3)
+        const critiquesText = formatStage2Reviews(stage2Reviews)
+
+        await Promise.all(
+          deepDiveModels.map(async (model) => {
+            const originalResponse = stage1Results.find((r) => r.modelId === model.modelId)
+            if (!originalResponse || originalResponse.status !== 'completed') return
+
+            const deepDivePrompt = [
+              'The judges disagreed significantly on the quality of responses.',
+              '',
+              'CRITIQUES:',
+              critiquesText,
+              '',
+              'YOUR ORIGINAL RESPONSE:',
+              originalResponse.answerText,
+              '',
+              'Explain your reasoning and address the criticisms. Be concise.',
+            ].join('\n')
+
+            try {
+              const agent = buildAgentConfig({
+                userId,
+                model: { ...model, systemPrompt: 'You are defending your reasoning.' },
+                role: 'researcher',
+                systemPromptFallback: 'You are defending your reasoning.',
+                nameSuffix: 'DeepDive',
+              })
+              const result = await executeWithProvider(agent, deepDivePrompt, context, apiKeys)
+              deepDiveResponses.push({
+                modelId: model.modelId,
+                reasoning: result.output,
+                tokensUsed: result.tokensUsed,
+                estimatedCost: result.estimatedCost,
+              })
+            } catch (err) {
+              log.warn('Deep-dive reasoning failed', { modelId: model.modelId, error: String(err) })
+            }
+          })
+        )
+
+        disagreementDeepDive = { triggered: true, reasoningResponses: deepDiveResponses }
+
+        if (deepDiveResponses.length > 0) {
+          deepDiveSection = [
+            '',
+            'REASONING FOLLOW-UP (triggered by low consensus):',
+            ...deepDiveResponses.map(
+              (r) => `Model ${r.modelId}:\n${r.reasoning}`
+            ),
+          ].join('\n')
+        }
+
+        await writeStatus('expert_council_disagreement_deep_dive_complete')
+      } else if (config.enableDisagreementDeepDive !== false && mode === 'full') {
+        disagreementDeepDive = { triggered: false, reasoningResponses: [] }
+      }
+
       const stage3Prompt = [
         'You are the chairman synthesizing expert opinions. Review all responses and peer reviews to produce the best possible answer.',
         '',
@@ -736,6 +807,7 @@ export function createExpertCouncilPipeline(params: {
         '1. Incorporates the strongest insights from all responses',
         '2. Addresses any gaps or weaknesses identified in reviews',
         '3. Provides a comprehensive, accurate answer',
+        deepDiveSection,
       ].join('\n')
 
       let retryCount = 0
@@ -838,10 +910,16 @@ export function createExpertCouncilPipeline(params: {
         await writeStatus('expert_council_stage3_complete')
       }
 
+      // Include deep-dive costs in total
+      const deepDiveCost = disagreementDeepDive?.triggered
+        ? sumCosts(disagreementDeepDive.reasoningResponses.map((r) => r.estimatedCost))
+        : 0
+
       const totalCost =
         sumCosts(stage1Results.map((response) => response.estimatedCost)) +
         sumCosts(stage2Reviews.map((review) => review.estimatedCost)) +
-        (stage3Response.estimatedCost ?? 0)
+        (stage3Response.estimatedCost ?? 0) +
+        deepDiveCost
 
       const totalDurationMs = Date.now() - startMs
       const turnId = `council-turn:${randomUUID()}`
@@ -870,6 +948,7 @@ export function createExpertCouncilPipeline(params: {
         cacheHit: false,
         retryCount,
         qualityScore,
+        disagreementDeepDive,
       }
     },
   }

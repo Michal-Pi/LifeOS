@@ -137,6 +137,25 @@ export function generateCacheKey(
   return `council:${hash}`
 }
 
+// ----- Phase 20: Normalized Prompt Cache -----
+
+const FILLER_WORDS =
+  /\b(please|can you|could you|i want to|i need|i'd like|help me|tell me|give me|show me|explain)\b/gi
+
+/**
+ * Normalize a prompt for cache matching.
+ * Catches near-identical prompts by lowercasing, stripping filler words,
+ * collapsing whitespace, and trimming to 500 chars.
+ */
+export function normalizePromptForCache(prompt: string): string {
+  return prompt
+    .toLowerCase()
+    .replace(FILLER_WORDS, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 500)
+}
+
 export function calculateBordaScores(
   reviews: Array<{ ranking: string[] }>,
   labels: string[]
@@ -375,20 +394,34 @@ export function executeExpertCouncilUsecase(
       contextHash
     )
     if (config.enableCaching) {
-      const cached = await repository.getCachedTurn(userId, cacheKey)
-      if (cached) {
-        const cachedTurnId = cached.turnId
-        const turnId = generateTurnId()
-        const cachedTurn = {
-          ...cached,
-          turnId,
-          sourceTurnId: cached.sourceTurnId ?? cachedTurnId,
-          runId,
-          createdAtMs: Date.now(),
-          cacheHit: true,
+      // Phase 20: Check both exact and normalized cache keys
+      const normalizedKey = generateCacheKey(
+        userId,
+        normalizePromptForCache(prompt),
+        config,
+        executionMode,
+        workflowId,
+        contextHash
+      )
+      const keysToCheck =
+        normalizedKey !== cacheKey ? [cacheKey, normalizedKey] : [cacheKey]
+
+      for (const key of keysToCheck) {
+        const cached = await repository.getCachedTurn(userId, key)
+        if (cached) {
+          const cachedTurnId = cached.turnId
+          const turnId = generateTurnId()
+          const cachedTurn = {
+            ...cached,
+            turnId,
+            sourceTurnId: cached.sourceTurnId ?? cachedTurnId,
+            runId,
+            createdAtMs: Date.now(),
+            cacheHit: true,
+          }
+          await repository.createTurn(userId, cachedTurn)
+          return cachedTurn
         }
-        await repository.createTurn(userId, cachedTurn)
-        return cachedTurn
       }
     }
 
@@ -402,7 +435,19 @@ export function executeExpertCouncilUsecase(
     const turn = await pipeline.execute(userId, runId, prompt, config, executionMode)
 
     if (config.enableCaching) {
+      // Phase 20: Store under both exact and normalized keys
       await repository.setCachedTurn(userId, cacheKey, turn, config.cacheExpirationHours)
+      const normalizedKey = generateCacheKey(
+        userId,
+        normalizePromptForCache(prompt),
+        config,
+        executionMode,
+        workflowId,
+        contextHash
+      )
+      if (normalizedKey !== cacheKey) {
+        await repository.setCachedTurn(userId, normalizedKey, turn, config.cacheExpirationHours)
+      }
     }
 
     await repository.createTurn(userId, turn)
