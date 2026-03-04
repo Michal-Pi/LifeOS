@@ -188,7 +188,14 @@ export const ExpertCouncilModelSchema = z.object({
   systemPrompt: z.string().optional(),
 })
 
-export const JudgeRubricDomainSchema = z.enum(['research', 'creative', 'analytical', 'code', 'factual', 'auto'])
+export const JudgeRubricDomainSchema = z.enum([
+  'research',
+  'creative',
+  'analytical',
+  'code',
+  'factual',
+  'auto',
+])
 
 export const ExpertCouncilConfigSchema = z.object({
   enabled: z.boolean(),

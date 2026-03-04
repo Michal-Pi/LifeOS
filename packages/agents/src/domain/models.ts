@@ -103,7 +103,13 @@ export type WorkflowNodeType =
   // Approval node
   | 'human_approval'
 
-export type WorkflowEdgeConditionType = 'always' | 'equals' | 'contains' | 'regex' | 'llm_evaluate' | 'error'
+export type WorkflowEdgeConditionType =
+  | 'always'
+  | 'equals'
+  | 'contains'
+  | 'regex'
+  | 'llm_evaluate'
+  | 'error'
 
 export type JoinAggregationMode = 'list' | 'ranked' | 'consensus' | 'synthesize' | 'dedup_combine'
 

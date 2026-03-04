@@ -14,7 +14,9 @@ import type {
   ExpertCouncilRepository,
   ExpertCouncilTurn,
   ExecutionMode,
+  JudgeRubricDomain,
   ModelProvider,
+  ModelTier,
   RunId,
   WorkflowId,
 } from '@lifeos/agents'
@@ -39,6 +41,135 @@ const STAGE3_DEFAULT_PROMPT =
   'You are the chairman. Synthesize the best possible final response from all inputs.'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// ----- Phase 18: Domain Detection & Rubrics -----
+
+/**
+ * Classify a prompt into a rubric domain via keyword heuristics.
+ */
+export function detectPromptDomain(prompt: string): JudgeRubricDomain {
+  const lower = prompt.toLowerCase()
+
+  if (
+    /\b(code|function|class|api|bug|implement|refactor|debug|typescript|python|javascript)\b/.test(
+      lower
+    )
+  ) {
+    return 'code'
+  }
+
+  if (/\b(research|study|analyze|evidence|literature|findings|hypothesis|data)\b/.test(lower)) {
+    return 'research'
+  }
+
+  if (/\b(write|draft|creative|story|blog|article|content|poem|essay|narrative)\b/.test(lower)) {
+    return 'creative'
+  }
+
+  if (
+    /\b(analyze|compare|evaluate|assess|pros|cons|trade.?off|decision|strategy|framework)\b/.test(
+      lower
+    )
+  ) {
+    return 'analytical'
+  }
+
+  return 'factual'
+}
+
+/**
+ * Domain-specific judge rubrics — criteria judges should use when evaluating responses.
+ */
+export const JUDGE_RUBRICS: Record<JudgeRubricDomain, string> = {
+  research:
+    'Evaluate on: (1) Evidence quality and citation of sources, (2) Methodological rigor, ' +
+    '(3) Completeness of literature coverage, (4) Objectivity and balance, (5) Actionable conclusions.',
+  creative:
+    'Evaluate on: (1) Originality and voice, (2) Engagement and readability, ' +
+    '(3) Structure and flow, (4) Audience appropriateness, (5) Emotional resonance.',
+  analytical:
+    'Evaluate on: (1) Logical soundness, (2) Completeness of analysis, ' +
+    '(3) Consideration of alternatives, (4) Data-driven reasoning, (5) Actionable recommendations.',
+  code:
+    'Evaluate on: (1) Correctness and bug-free execution, (2) Code quality and readability, ' +
+    '(3) Performance considerations, (4) Edge case handling, (5) Best practices adherence.',
+  factual:
+    'Evaluate on: (1) Accuracy of facts, (2) Completeness, (3) Clarity and conciseness, ' +
+    '(4) Recency of information, (5) Source reliability.',
+}
+
+// ----- Phase 18: Provider Diversity Enforcement -----
+
+const ALL_PROVIDERS: ModelProvider[] = ['openai', 'anthropic', 'google', 'xai']
+
+/**
+ * Model tier map — duplicated from modelSettings to avoid cross-package import issues at runtime.
+ */
+const TIER_MAP: Record<ModelTier, Record<ModelProvider, string>> = {
+  thinking: {
+    openai: 'o1',
+    anthropic: 'claude-opus-4-6',
+    google: 'gemini-3-pro',
+    xai: 'grok-4',
+  },
+  balanced: {
+    openai: 'gpt-5.2',
+    anthropic: 'claude-sonnet-4-5',
+    google: 'gemini-2.5-pro',
+    xai: 'grok-4-1-fast-non-reasoning',
+  },
+  fast: {
+    openai: 'gpt-5-mini',
+    anthropic: 'claude-haiku-4-5',
+    google: 'gemini-3-flash',
+    xai: 'grok-3-mini',
+  },
+}
+
+function inferTier(modelName: string): ModelTier {
+  for (const [tier, providers] of Object.entries(TIER_MAP)) {
+    for (const model of Object.values(providers)) {
+      if (model === modelName) return tier as ModelTier
+    }
+  }
+  return 'balanced'
+}
+
+/**
+ * Ensure council models use distinct providers. When duplicate providers are
+ * found, reassign to an unused provider at the same model tier.
+ */
+export function enforceProviderDiversity(
+  councilModels: ExpertCouncilConfig['councilModels'],
+  availableProviders: ModelProvider[] = ALL_PROVIDERS
+): ExpertCouncilConfig['councilModels'] {
+  const usedProviders = new Set<string>()
+  const result = [...councilModels]
+
+  for (let i = 0; i < result.length; i++) {
+    if (usedProviders.has(result[i].provider)) {
+      const unusedProvider = availableProviders.find((p) => !usedProviders.has(p))
+      if (unusedProvider) {
+        const tier = inferTier(result[i].modelName)
+        const newModelName = TIER_MAP[tier][unusedProvider]
+        log.warn('Provider diversity enforcement: reassigning model', {
+          from: result[i].provider,
+          to: unusedProvider,
+          modelId: result[i].modelId,
+        })
+        result[i] = {
+          ...result[i],
+          provider: unusedProvider,
+          modelName: newModelName,
+          modelId: `${unusedProvider}-${newModelName}`,
+        }
+      }
+    }
+    usedProviders.add(result[i].provider)
+  }
+
+  return result
+}
 
 function stableStringify(value: unknown): string {
   if (value === undefined) return 'null'
@@ -292,10 +423,23 @@ export function createExpertCouncilPipeline(params: {
     ): Promise<ExpertCouncilTurn> {
       const startMs = Date.now()
 
+      // Phase 18: Enforce provider diversity before Stage 1
+      const diverseModels =
+        config.enforceProviderDiversity !== false
+          ? enforceProviderDiversity(config.councilModels)
+          : config.councilModels
+
+      // Phase 18: Resolve judge rubric domain
+      const rubricDomain: JudgeRubricDomain =
+        config.judgeRubricDomain === 'auto' || !config.judgeRubricDomain
+          ? detectPromptDomain(prompt)
+          : config.judgeRubricDomain
+      const rubric = JUDGE_RUBRICS[rubricDomain]
+
       await writeStatus('expert_council_stage1_start')
 
       const stage1Results = await Promise.all(
-        config.councilModels.map(async (model) => {
+        diverseModels.map(async (model) => {
           const startedAt = Date.now()
           try {
             const agent = buildAgentConfig({
@@ -386,6 +530,8 @@ export function createExpertCouncilPipeline(params: {
 
             const reviewPrompt = [
               'You are reviewing responses from multiple AI models. Evaluate each response objectively.',
+              '',
+              `Apply the following evaluation criteria: ${rubric}`,
               '',
               'USER PROMPT:',
               prompt,
