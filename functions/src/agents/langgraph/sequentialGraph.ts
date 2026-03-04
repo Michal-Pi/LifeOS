@@ -17,6 +17,7 @@ import type {
   WorkflowCriticality,
   ModelTier,
 } from '@lifeos/agents'
+import { resolveEffectiveModel } from '@lifeos/agents'
 import type { UnifiedWorkflowState, AgentExecutionStep } from '@lifeos/agents'
 import { createFirestoreCheckpointer } from './firestoreCheckpointer.js'
 import { createLogger } from '../../lib/logger.js'
@@ -75,6 +76,55 @@ export async function compressAgentOutput(output: string, apiKeys: ProviderKeys)
   } catch (error) {
     log.warn('Context compression failed, using original output', { error })
     return output
+  }
+}
+
+/** Tier upgrade mapping for quality gate retries */
+const NEXT_TIER_UP: Record<ModelTier, ModelTier> = {
+  fast: 'balanced',
+  balanced: 'thinking',
+  thinking: 'thinking', // already highest — no upgrade possible
+}
+
+/**
+ * Score an agent's output using a cheap model.
+ * Returns 1-5 score; defaults to 3 on parse failure (safe default).
+ */
+export async function scoreAgentOutput(
+  output: string,
+  goal: string,
+  apiKeys: ProviderKeys
+): Promise<number> {
+  const scorerAgent: AgentConfig = {
+    agentId: '__quality_scorer__' as AgentConfig['agentId'],
+    userId: '',
+    name: 'Quality Scorer',
+    role: 'critic',
+    systemPrompt:
+      'Score the following output 1-5 on how well it achieves the stated goal. Respond with ONLY a single integer 1-5.',
+    modelProvider: 'openai',
+    modelName: 'gpt-4o-mini',
+    temperature: 0.1,
+    archived: false,
+    createdAtMs: 0,
+    updatedAtMs: 0,
+    syncState: 'synced',
+    version: 0,
+  }
+
+  try {
+    const result = await executeWithProvider(
+      scorerAgent,
+      `Goal: ${goal.replace(/[{}"\\]/g, ' ').substring(0, 500)}\n\nOutput to score:\n${output.substring(0, 16000)}`,
+      {},
+      apiKeys
+    )
+    const score = parseInt(result.output.trim(), 10)
+    if (isNaN(score) || score < 1 || score > 5) return 3
+    return score
+  } catch (error) {
+    log.warn('Quality scoring failed, using safe default 3', { error })
+    return 3
   }
 }
 
@@ -155,16 +205,14 @@ export function createSequentialGraph(config: SequentialGraphConfig) {
       }
 
       // Execute the agent using shared utility
-      const step = await executeAgentWithEvents(
-        agent,
-        state.currentGoal,
-        agentContext,
-        execContext,
-        {
-          stepNumber: i + 1,
-          totalSteps: agents.length,
-        }
-      )
+      let step = await executeAgentWithEvents(agent, state.currentGoal, agentContext, execContext, {
+        stepNumber: i + 1,
+        totalSteps: agents.length,
+      })
+
+      // Track extra tokens/cost from quality gate retry
+      let extraTokens = 0
+      let extraCost = 0
 
       // Compress output before passing to next agent (skip for last agent)
       let outputForNext = step.output
@@ -184,6 +232,61 @@ export function createSequentialGraph(config: SequentialGraphConfig) {
           agentName: agent.name,
           pattern: earlyExitPatterns.find((p) => step.output.includes(p)),
         })
+      }
+
+      // Quality gate: score output and retry with stronger model if score is low
+      const qualityGateThreshold = workflow.qualityGateThreshold ?? 3
+      if (workflow.enableQualityGates === true && !isLastAgent && !shouldEarlyExit) {
+        const score = await scoreAgentOutput(step.output, state.currentGoal, apiKeys)
+        if (score < qualityGateThreshold) {
+          // Determine the agent's current resolved tier
+          const currentResolved = resolveEffectiveModel(
+            agent,
+            executionMode ?? 'as_designed',
+            tierOverride,
+            workflowCriticality ?? 'core'
+          )
+          const upgradedTier = NEXT_TIER_UP[currentResolved.resolvedTier]
+
+          if (upgradedTier !== currentResolved.resolvedTier) {
+            log.warn('Quality gate failed, retrying with upgraded model', {
+              score,
+              threshold: qualityGateThreshold,
+              agentName: agent.name,
+              step: i + 1,
+              originalTier: currentResolved.resolvedTier,
+              retryTier: upgradedTier,
+            })
+
+            // Re-execute with upgraded tier
+            const retryContext: AgentExecutionContext = {
+              ...execContext,
+              tierOverride: upgradedTier,
+            }
+            const retryStep = await executeAgentWithEvents(
+              agent,
+              state.currentGoal,
+              agentContext,
+              retryContext,
+              {
+                stepNumber: i + 1,
+                totalSteps: agents.length,
+              }
+            )
+
+            // Accumulate tokens/cost from both attempts
+            extraTokens = step.tokensUsed
+            extraCost = step.estimatedCost
+            step = retryStep
+            outputForNext = step.output
+          } else {
+            log.info('Quality gate failed but already at highest tier, using original output', {
+              score,
+              threshold: qualityGateThreshold,
+              agentName: agent.name,
+            })
+          }
+        }
       }
 
       if (
@@ -206,8 +309,8 @@ export function createSequentialGraph(config: SequentialGraphConfig) {
         currentAgentIndex: i + 1,
         currentGoal: outputForNext, // Next agent's goal is (possibly compressed) output
         steps: [step],
-        totalTokensUsed: step.tokensUsed,
-        totalEstimatedCost: step.estimatedCost,
+        totalTokensUsed: step.tokensUsed + extraTokens,
+        totalEstimatedCost: step.estimatedCost + extraCost,
         lastOutput: step.output, // Always keep the full output in lastOutput
         finalOutput: isLastAgent || shouldEarlyExit ? step.output : null,
         status: isLastAgent || shouldEarlyExit ? 'completed' : 'running',

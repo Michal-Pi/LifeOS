@@ -13,7 +13,7 @@
  */
 
 import { StateGraph, END, START } from '@langchain/langgraph'
-import type { AgentConfig, JoinAggregationMode, Workflow } from '@lifeos/agents'
+import type { AgentConfig, JoinAggregationMode, Workflow, ModelProvider } from '@lifeos/agents'
 import type {
   UnifiedWorkflowState,
   AgentExecutionStep,
@@ -21,6 +21,7 @@ import type {
   ModelTier,
   WorkflowCriticality,
 } from '@lifeos/agents'
+import { resolveEffectiveModel } from '@lifeos/agents'
 import { createLogger } from '../../lib/logger.js'
 import type { ProviderKeys } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
@@ -64,6 +65,8 @@ export interface ParallelGraphConfig {
   executionMode?: WorkflowExecutionMode
   tierOverride?: ModelTier | null
   workflowCriticality?: WorkflowCriticality
+  /** Pre-computed quality weights per agent (agentId → avg score 1-5). If not provided, equal weighting is used. */
+  qualityWeights?: Record<string, number>
 }
 
 /**
@@ -74,12 +77,27 @@ type AgentResult =
   | { success: false; failed: FailedAgent }
 
 /**
+ * Format an agent entry with optional quality weight
+ */
+function formatAgentEntry(
+  step: AgentExecutionStep,
+  qualityWeights?: Record<string, number>,
+  prefix?: string
+): string {
+  const weight = qualityWeights?.[step.agentId]
+  const weightLabel = weight !== undefined ? ` (quality score ${weight.toFixed(1)}/5)` : ''
+  const namePrefix = prefix ? `${prefix} ` : ''
+  return `**${namePrefix}${step.agentName}${weightLabel}:**\n${step.output}`
+}
+
+/**
  * Merge parallel outputs based on strategy
  */
 function mergeOutputs(
   outputs: Record<string, AgentExecutionStep>,
   failedAgents: FailedAgent[],
-  strategy: JoinAggregationMode = 'list'
+  strategy: JoinAggregationMode = 'list',
+  qualityWeights?: Record<string, number>
 ): string {
   const entries = Object.values(outputs)
 
@@ -101,40 +119,49 @@ function mergeOutputs(
 
   switch (strategy) {
     case 'list':
-      output = entries.map((step) => `**${step.agentName}:**\n${step.output}`).join('\n\n---\n\n')
+      output = entries.map((step) => formatAgentEntry(step, qualityWeights)).join('\n\n---\n\n')
       break
 
     case 'ranked': {
-      // Sort by output length as a simple heuristic
-      const sorted = [...entries].sort((a, b) => b.output.length - a.output.length)
+      // Sort by quality weight (descending) if available, else by output length
+      const sorted = qualityWeights
+        ? [...entries].sort(
+            (a, b) => (qualityWeights[b.agentId] ?? 0) - (qualityWeights[a.agentId] ?? 0)
+          )
+        : [...entries].sort((a, b) => b.output.length - a.output.length)
       output = sorted
-        .map((step, i) => `**#${i + 1} ${step.agentName}:**\n${step.output}`)
+        .map((step, i) => formatAgentEntry(step, qualityWeights, `#${i + 1}`))
         .join('\n\n---\n\n')
       break
     }
 
     case 'consensus':
-      output = `## Consensus Summary\n\n${entries.map((step) => `- **${step.agentName}**: ${step.output.slice(0, 200)}...`).join('\n')}`
+      output = `## Consensus Summary\n\n${entries
+        .map((step) => {
+          const weight = qualityWeights?.[step.agentId]
+          const weightLabel = weight !== undefined ? ` [${weight.toFixed(1)}/5]` : ''
+          return `- **${step.agentName}${weightLabel}**: ${step.output.slice(0, 200)}...`
+        })
+        .join('\n')}`
       break
 
     case 'synthesize':
-      output = `## Synthesized Output\n\nCombined perspectives from ${entries.length} agents:\n\n${entries.map((step) => step.output).join('\n\n')}`
+      output = `## Synthesized Output\n\nCombined perspectives from ${entries.length} agents:\n\n${entries.map((step) => formatAgentEntry(step, qualityWeights)).join('\n\n')}`
       break
 
     case 'dedup_combine': {
-      // Simple deduplication by removing exact duplicates
       const seen = new Set<string>()
       const unique = entries.filter((step) => {
         if (seen.has(step.output)) return false
         seen.add(step.output)
         return true
       })
-      output = unique.map((step) => `**${step.agentName}:**\n${step.output}`).join('\n\n---\n\n')
+      output = unique.map((step) => formatAgentEntry(step, qualityWeights)).join('\n\n---\n\n')
       break
     }
 
     default:
-      output = entries.map((step) => `**${step.agentName}:**\n${step.output}`).join('\n\n---\n\n')
+      output = entries.map((step) => formatAgentEntry(step, qualityWeights)).join('\n\n---\n\n')
   }
 
   return output + failureNotice
@@ -232,6 +259,80 @@ function isRetryableAgentError(error: unknown): boolean {
 }
 
 /**
+ * Compute a simple consensus score (0-1) based on output similarity.
+ * Uses Jaccard similarity of word sets across all outputs.
+ * Returns 1.0 for perfect agreement, 0.0 for no overlap.
+ */
+export function computeSimpleConsensus(steps: AgentExecutionStep[]): number {
+  if (steps.length < 2) return 1.0
+
+  const wordSets = steps.map(
+    (s) =>
+      new Set(
+        s.output
+          .toLowerCase()
+          .split(/\s+/)
+          .filter((w) => w.length > 3)
+      )
+  )
+
+  let totalSimilarity = 0
+  let pairCount = 0
+
+  for (let i = 0; i < wordSets.length; i++) {
+    for (let j = i + 1; j < wordSets.length; j++) {
+      const intersection = new Set([...wordSets[i]].filter((w) => wordSets[j].has(w)))
+      const union = new Set([...wordSets[i], ...wordSets[j]])
+      totalSimilarity += union.size > 0 ? intersection.size / union.size : 0
+      pairCount++
+    }
+  }
+
+  return pairCount > 0 ? totalSimilarity / pairCount : 1.0
+}
+
+/**
+ * Build a list of available providers from the API keys.
+ * Maps ProviderKeys key names to ModelProvider names.
+ */
+function getAvailableProviders(apiKeys: ProviderKeys): ModelProvider[] {
+  const providers: ModelProvider[] = []
+  if (apiKeys.openai) providers.push('openai')
+  if (apiKeys.anthropic) providers.push('anthropic')
+  if (apiKeys.google) providers.push('google')
+  if (apiKeys.grok) providers.push('xai')
+  return providers
+}
+
+/**
+ * Apply provider rotation to an agent for heterogeneous parallel execution.
+ * Returns a new agent config with the provider rotated (preserving tier).
+ */
+function rotateAgentProvider(
+  agent: AgentConfig,
+  branchIndex: number,
+  providers: ModelProvider[],
+  executionMode: WorkflowExecutionMode = 'as_designed',
+  tierOverride: ModelTier | null | undefined,
+  workflowCriticality: WorkflowCriticality = 'core'
+): AgentConfig {
+  if (providers.length === 0) return agent
+  const targetProvider = providers[branchIndex % providers.length]
+  if (targetProvider === agent.modelProvider) return agent
+
+  // Resolve the agent's effective tier via the rotated provider
+  const rotatedAgent = { ...agent, modelProvider: targetProvider }
+  const resolved = resolveEffectiveModel(
+    rotatedAgent,
+    executionMode,
+    tierOverride,
+    workflowCriticality
+  )
+
+  return { ...agent, modelProvider: resolved.provider, modelName: resolved.model }
+}
+
+/**
  * Create a parallel workflow graph
  *
  * Uses a single node that executes all agents in parallel with Promise.all,
@@ -251,13 +352,53 @@ export function createParallelGraph(config: ParallelGraphConfig) {
   // Create the state graph
   const graph = new StateGraph(ParallelStateAnnotation)
 
+  // Pre-compute provider rotation if heterogeneous models are enabled
+  const availableProviders = workflow.heterogeneousModels
+    ? getAvailableProviders(config.apiKeys)
+    : []
+
   // Single node that executes all agents in parallel
   graph.addNode('parallel_execution', async (state: ParallelState) => {
-    log.info('Starting agents in parallel', { agentCount: agents.length })
+    // Budget-aware fan-out: reduce agents if estimated cost exceeds 80% of budget
+    let budgetReducedAgents = agents
+    if (workflow.maxBudget !== undefined && workflow.maxBudget > 0) {
+      // Rough cost estimate: ~2000 input + 1000 output tokens per agent, ~$0.01 per 1K tokens
+      const estimatedCostPerAgent = 0.03
+      const estimatedTotalCost = estimatedCostPerAgent * agents.length
+      const budgetThreshold = workflow.maxBudget * 0.8
+
+      if (estimatedTotalCost > budgetThreshold && agents.length > 2) {
+        const reducedCount = Math.max(2, Math.ceil(agents.length / 2))
+        log.info('Budget-aware fan-out reduction', {
+          originalCount: agents.length,
+          reducedCount,
+          estimatedCost: estimatedTotalCost,
+          maxBudget: workflow.maxBudget,
+        })
+        budgetReducedAgents = agents.slice(0, reducedCount)
+      }
+    }
+
+    log.info('Starting agents in parallel', { agentCount: budgetReducedAgents.length })
+
+    // Apply provider rotation if heterogeneous models are enabled
+    const effectiveAgents =
+      workflow.heterogeneousModels && availableProviders.length > 1
+        ? budgetReducedAgents.map((agent, i) =>
+            rotateAgentProvider(
+              agent,
+              i,
+              availableProviders,
+              config.executionMode,
+              config.tierOverride,
+              config.workflowCriticality
+            )
+          )
+        : budgetReducedAgents
 
     // Execute all agents in parallel with Promise.all
     const results = await Promise.all(
-      agents.map((agent) => executeAgentSafely(agent, state, config))
+      effectiveAgents.map((agent) => executeAgentSafely(agent, state, config))
     )
 
     // Separate successful and failed results
@@ -280,7 +421,7 @@ export function createParallelGraph(config: ParallelGraphConfig) {
 
     log.info('Parallel execution completed', {
       succeeded: successfulSteps.length,
-      total: agents.length,
+      total: effectiveAgents.length,
       failed: failedAgents.length,
     })
 
@@ -295,6 +436,57 @@ export function createParallelGraph(config: ParallelGraphConfig) {
         totalEstimatedCost: totalCost,
         error: `${failedAgents.length} agent(s) failed: ${errorSummary}`,
         status: 'failed' as const,
+      }
+    }
+
+    // Adaptive fan-out: if consensus merge and consensus is low, spawn additional agents
+    if (
+      workflow.adaptiveFanOut === true &&
+      mergeStrategy === 'consensus' &&
+      successfulSteps.length >= 2
+    ) {
+      const consensusScore = computeSimpleConsensus(successfulSteps)
+
+      if (consensusScore < 0.6) {
+        log.info('Low consensus detected, spawning additional agents', {
+          consensusScore,
+          originalCount: successfulSteps.length,
+        })
+
+        // Spawn 2 additional agents (reuse from pool, rotate providers if heterogeneous)
+        const additionalAgents = agents.slice(0, 2).map((agent, i) => {
+          const extraIndex = effectiveAgents.length + i
+          return workflow.heterogeneousModels && availableProviders.length > 1
+            ? rotateAgentProvider(
+                agent,
+                extraIndex,
+                availableProviders,
+                config.executionMode,
+                config.tierOverride,
+                config.workflowCriticality
+              )
+            : agent
+        })
+
+        const additionalResults = await Promise.all(
+          additionalAgents.map((agent) => executeAgentSafely(agent, state, config))
+        )
+
+        for (const result of additionalResults) {
+          if (result.success) {
+            successfulSteps.push(result.step)
+            agentOutputs[result.step.agentId] = result.step
+            totalTokens += result.step.tokensUsed
+            totalCost += result.step.estimatedCost
+          } else {
+            failedAgents.push(result.failed)
+          }
+        }
+
+        log.info('Adaptive fan-out completed', {
+          newTotal: successfulSteps.length,
+          originalConsensus: consensusScore,
+        })
       }
     }
 
@@ -314,7 +506,20 @@ export function createParallelGraph(config: ParallelGraphConfig) {
       return {}
     }
 
-    const mergedOutput = mergeOutputs(state.agentOutputs, state.failedAgents, mergeStrategy)
+    const mergedOutput = mergeOutputs(
+      state.agentOutputs,
+      state.failedAgents,
+      mergeStrategy,
+      config.qualityWeights
+    )
+
+    // Budget tracking warning
+    if (workflow.maxBudget !== undefined && state.totalEstimatedCost > workflow.maxBudget) {
+      log.warn('Budget exceeded during parallel execution', {
+        totalCost: state.totalEstimatedCost,
+        maxBudget: workflow.maxBudget,
+      })
+    }
 
     // Determine final status based on results
     const hasSuccesses = Object.keys(state.agentOutputs).length > 0

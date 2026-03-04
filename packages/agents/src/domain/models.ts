@@ -156,13 +156,16 @@ export function hashAgentConfig(config: {
     temperature: config.temperature ?? 0.7,
     modelTier: config.modelTier ?? 'balanced',
   })
-  let hash = 0
+  // FNV-1a inspired 53-bit hash (uses safe integer range for JS)
+  let h1 = 0x811c9dc5 >>> 0
+  let h2 = 0x01000193 >>> 0
   for (let i = 0; i < normalized.length; i++) {
     const char = normalized.charCodeAt(i)
-    hash = (hash << 5) - hash + char
-    hash |= 0
+    h1 = Math.imul(h1 ^ char, 0x01000193) >>> 0
+    h2 = Math.imul(h2 ^ char, 0x00010001) >>> 0
   }
-  return `cfghash_${Math.abs(hash).toString(36)}`
+  // Combine into a wider hash string (64-bit via two 32-bit halves)
+  return `cfghash_${h1.toString(36)}_${h2.toString(36)}`
 }
 
 // ----- Workflow -----
@@ -209,6 +212,13 @@ export interface Workflow {
   criticality?: WorkflowCriticality // Determines cost-saving behavior
   enableContextCompression?: boolean // Compress output between sequential agents (default: per criticality)
   earlyExitPatterns?: string[] // If agent output contains any of these patterns, skip remaining agents
+  enableQualityGates?: boolean // After each agent, score output 1-5; retry with stronger model if < threshold
+  qualityGateThreshold?: number // Score threshold for quality gate (default 3, range 1-5)
+
+  // Parallel workflow options
+  heterogeneousModels?: boolean // Rotate providers across parallel branches for diversity
+  adaptiveFanOut?: boolean // For consensus merge: if consensus low, spawn additional agents
+  maxBudget?: number // Maximum USD budget for this workflow run
 
   // Metadata
   archived: boolean

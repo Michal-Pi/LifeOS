@@ -50,6 +50,7 @@ export const WorkflowTypeSchema = z.enum([
   'custom',
   'graph',
   'dialectical',
+  'deep_research',
 ])
 
 export const WorkflowNodeTypeSchema = z.enum([
@@ -59,9 +60,33 @@ export const WorkflowNodeTypeSchema = z.enum([
   'join',
   'end',
   'research_request',
+  // Dialectical phase nodes
+  'retrieve_context',
+  'generate_theses',
+  'cross_negation',
+  'crystallize_contradictions',
+  'sublate',
+  'meta_reflect',
+  // Deep research phase nodes
+  'sense_making',
+  'search_planning',
+  'search_execution',
+  'source_ingestion',
+  'claim_extraction',
+  'kg_construction',
+  'gap_analysis',
+  'answer_generation',
+  // Composition node
+  'subworkflow',
 ])
 
-export const WorkflowEdgeConditionTypeSchema = z.enum(['always', 'equals', 'contains', 'regex'])
+export const WorkflowEdgeConditionTypeSchema = z.enum([
+  'always',
+  'equals',
+  'contains',
+  'regex',
+  'llm_evaluate',
+])
 export const PromptTypeSchema = z.enum(['agent', 'tone-of-voice', 'workflow', 'tool', 'synthesis'])
 export const PromptCategorySchema = z.enum([
   'project-management',
@@ -311,6 +336,7 @@ export const WorkflowSchema = z.object({
             type: WorkflowEdgeConditionTypeSchema,
             key: z.string().optional(),
             value: z.string().optional(),
+            prompt: z.string().optional(),
           }),
         })
       ),
@@ -327,6 +353,11 @@ export const WorkflowSchema = z.object({
   criticality: WorkflowCriticalitySchema.optional(),
   enableContextCompression: z.boolean().optional(),
   earlyExitPatterns: z.array(z.string().min(1)).optional(),
+  enableQualityGates: z.boolean().optional(),
+  qualityGateThreshold: z.number().int().min(1).max(5).optional(),
+  heterogeneousModels: z.boolean().optional(),
+  adaptiveFanOut: z.boolean().optional(),
+  maxBudget: z.number().nonnegative().optional(),
   archived: z.boolean(),
   createdAtMs: z.number().int().positive(),
   updatedAtMs: z.number().int().positive(),
@@ -403,6 +434,15 @@ export const RunSchema = z.object({
     .optional(),
   errorDetails: z.record(z.string(), z.unknown()).optional(),
   quotaExceeded: z.boolean().optional(),
+  promptResolutionErrors: z
+    .array(
+      z.object({
+        agentId: z.string(),
+        promptType: z.string(),
+        error: z.string(),
+      })
+    )
+    .optional(),
   pendingInput: z
     .object({
       prompt: z.string(),
