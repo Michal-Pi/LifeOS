@@ -171,6 +171,47 @@ export function enforceProviderDiversity(
   return result
 }
 
+// ----- Phase 19: Dynamic Composition -----
+
+/**
+ * Select best-performing council models from historical analytics data.
+ * Falls back to first `targetSize` models when insufficient data.
+ */
+export async function selectDynamicCouncil(
+  userId: string,
+  workflowId: WorkflowId,
+  _domain: JudgeRubricDomain,
+  repository: ExpertCouncilRepository,
+  availableModels: ExpertCouncilConfig['councilModels'],
+  targetSize: number = 3
+): Promise<ExpertCouncilConfig['councilModels']> {
+  const analytics = await repository.getAnalytics(userId, workflowId)
+
+  // Insufficient data — return first targetSize models as-is
+  if (analytics.totalTurns < 5) {
+    return availableModels.slice(0, targetSize)
+  }
+
+  // Score each available model using modelStats
+  // Score = (1 / averageRank) * (1 - failureRate) — higher is better
+  const scored = availableModels.map((model) => {
+    const stats = analytics.modelStats[model.modelId]
+    if (!stats || stats.timesUsed === 0) {
+      return { model, score: 0.5 } // Neutral score for unknown models
+    }
+    const rankScore = stats.averageRank > 0 ? 1 / stats.averageRank : 0.5
+    const reliabilityScore = 1 - stats.failureRate
+    return { model, score: rankScore * reliabilityScore }
+  })
+
+  // Sort by score descending, take top targetSize
+  scored.sort((a, b) => b.score - a.score)
+  const selectedModels = scored.slice(0, targetSize).map((s) => s.model)
+
+  // Ensure provider diversity
+  return enforceProviderDiversity(selectedModels)
+}
+
 function stableStringify(value: unknown): string {
   if (value === undefined) return 'null'
   if (value === null || typeof value !== 'object') {
@@ -401,8 +442,9 @@ export function createExpertCouncilPipeline(params: {
   context?: Record<string, unknown>
   eventWriter?: RunEventWriter
   workflowId?: string
+  repository?: ExpertCouncilRepository
 }): ExpertCouncilPipeline {
-  const { apiKeys, context, eventWriter, workflowId } = params
+  const { apiKeys, context, eventWriter, workflowId, repository } = params
 
   const writeStatus = async (status: string): Promise<void> => {
     if (!eventWriter) return
@@ -424,10 +466,30 @@ export function createExpertCouncilPipeline(params: {
       const startMs = Date.now()
 
       // Phase 18: Enforce provider diversity before Stage 1
-      const diverseModels =
+      let diverseModels =
         config.enforceProviderDiversity !== false
           ? enforceProviderDiversity(config.councilModels)
           : config.councilModels
+
+      // Phase 19: Dynamic composition — auto-select best models from historical data
+      if (config.enableDynamicComposition && repository && workflowId) {
+        try {
+          diverseModels = await selectDynamicCouncil(
+            userId,
+            workflowId as WorkflowId,
+            config.judgeRubricDomain === 'auto' || !config.judgeRubricDomain
+              ? detectPromptDomain(prompt)
+              : config.judgeRubricDomain,
+            repository,
+            diverseModels
+          )
+          log.info('Dynamic composition selected models', {
+            modelIds: diverseModels.map((m) => m.modelId),
+          })
+        } catch (err) {
+          log.warn('Dynamic composition failed, using default models', { error: String(err) })
+        }
+      }
 
       // Phase 18: Resolve judge rubric domain
       const rubricDomain: JudgeRubricDomain =
@@ -436,10 +498,13 @@ export function createExpertCouncilPipeline(params: {
           : config.judgeRubricDomain
       const rubric = JUDGE_RUBRICS[rubricDomain]
 
+      // Phase 19: Quick mode — use only 2 council models
+      const activeModels = mode === 'quick' ? diverseModels.slice(0, 2) : diverseModels
+
       await writeStatus('expert_council_stage1_start')
 
       const stage1Results = await Promise.all(
-        diverseModels.map(async (model) => {
+        activeModels.map(async (model) => {
           const startedAt = Date.now()
           try {
             const agent = buildAgentConfig({
@@ -496,7 +561,7 @@ export function createExpertCouncilPipeline(params: {
         controversialResponses: [],
       }
 
-      if (hasMinimumStage1 && (mode === 'full' || mode === 'custom')) {
+      if (hasMinimumStage1 && (mode === 'full' || mode === 'custom' || mode === 'quick')) {
         await writeStatus('expert_council_stage2_start')
 
         const labels = generateLabels(successfulStage1.length)
@@ -510,8 +575,10 @@ export function createExpertCouncilPipeline(params: {
           return acc
         }, {})
 
-        const judgeModels: Array<CouncilModel | JudgeModel> =
+        // Phase 19: Quick mode — use only 1 judge
+        const allJudgeModels: Array<CouncilModel | JudgeModel> =
           config.judgeModels ?? config.councilModels
+        const judgeModels = mode === 'quick' ? allJudgeModels.slice(0, 1) : allJudgeModels
 
         const judgeResults = await Promise.all(
           judgeModels.map(async (judge) => {
@@ -596,7 +663,9 @@ export function createExpertCouncilPipeline(params: {
         const failedCount = judgeResults.length - successfulReviews.length
         const failedRatio = judgeResults.length > 0 ? failedCount / judgeResults.length : 1
 
-        if (failedRatio > 0.5 || successfulReviews.length < 2) {
+        // Phase 19: Quick mode uses 1 judge, so relax the minimum review threshold
+        const minReviewsNeeded = mode === 'quick' ? 1 : 2
+        if (failedRatio > 0.5 || successfulReviews.length < minReviewsNeeded) {
           await writeStatus('expert_council_stage2_skipped')
         } else {
           stage2Reviews.push(...successfulReviews)
@@ -676,9 +745,28 @@ export function createExpertCouncilPipeline(params: {
         timestampMs: Date.now(),
       }
 
+      // Phase 19: Quick mode — skip chairman if high consensus (Kendall Tau > 0.8)
+      const quickModeSkipChairman =
+        mode === 'quick' && consensusMetrics.kendallTau > 0.8 && aggregateRanking.length > 0
+
       if (mode === 'single') {
         const combined = formatStage1Responses(stage1Results)
         stage3Response.finalResponse = combined || 'No expert responses available.'
+      } else if (quickModeSkipChairman) {
+        // High consensus in quick mode — use top-ranked response directly
+        const topLabel = aggregateRanking[0].label
+        const topModelId = anonymizationMap[topLabel]
+        const topResponse = stage1Results.find((r) => r.modelId === topModelId)
+        stage3Response = {
+          chairmanModelId: 'skipped-quick-consensus',
+          finalResponse: topResponse?.answerText || stage1Results[0]?.answerText || '',
+          timestampMs: Date.now(),
+        }
+        log.info('Quick mode: chairman skipped due to high consensus', {
+          kendallTau: consensusMetrics.kendallTau,
+          topModelId,
+        })
+        await writeStatus('expert_council_stage3_skipped_quick_consensus')
       } else {
         await writeStatus('expert_council_stage3_start')
 

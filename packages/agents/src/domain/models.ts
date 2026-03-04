@@ -627,6 +627,12 @@ export interface ExpertCouncilConfig {
   // Phase 18: Enforce provider diversity across council models (default: true)
   enforceProviderDiversity?: boolean
 
+  // Phase 19: Dynamic composition — auto-select best models from historical data (default: false)
+  enableDynamicComposition?: boolean
+
+  // Phase 20: Disagreement deep-dive — trigger reasoning follow-up on low consensus (default: true for full mode)
+  enableDisagreementDeepDive?: boolean
+
   // Cost controls
   estimatedCostPerTurn?: number
   maxCostPerTurn?: number
@@ -701,6 +707,15 @@ export interface ExpertCouncilTurn {
   retryCount: number
 
   qualityScore?: number
+  disagreementDeepDive?: {
+    triggered: boolean
+    reasoningResponses: Array<{
+      modelId: string
+      reasoning: string
+      tokensUsed?: number
+      estimatedCost?: number
+    }>
+  }
   userFeedback?: {
     rating: 1 | 2 | 3 | 4 | 5
     helpful: boolean

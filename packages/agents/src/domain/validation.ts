@@ -218,6 +218,8 @@ export const ExpertCouncilConfigSchema = z.object({
   requireConsensusThreshold: z.number().min(0).max(100).optional(),
   judgeRubricDomain: JudgeRubricDomainSchema.optional(),
   enforceProviderDiversity: z.boolean().optional(),
+  enableDynamicComposition: z.boolean().optional(),
+  enableDisagreementDeepDive: z.boolean().optional(),
   estimatedCostPerTurn: z.number().nonnegative().optional(),
   maxCostPerTurn: z.number().nonnegative().optional(),
   enableCaching: z.boolean(),
