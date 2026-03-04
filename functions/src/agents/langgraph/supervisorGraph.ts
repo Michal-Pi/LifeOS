@@ -11,7 +11,13 @@
 
 import { StateGraph, END, START, Annotation } from '@langchain/langgraph'
 import type { AgentConfig, Workflow } from '@lifeos/agents'
-import type { UnifiedWorkflowState, AgentExecutionStep } from '@lifeos/agents'
+import type {
+  UnifiedWorkflowState,
+  AgentExecutionStep,
+  WorkflowExecutionMode,
+  ModelTier,
+  WorkflowCriticality,
+} from '@lifeos/agents'
 import { createLogger } from '../../lib/logger.js'
 import type { ProviderKeys } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
@@ -37,6 +43,9 @@ export interface SupervisorGraphConfig {
   toolRegistry?: ToolRegistry
   searchToolKeys?: SearchToolKeys
   enableCheckpointing?: boolean
+  executionMode?: WorkflowExecutionMode
+  tierOverride?: ModelTier | null
+  workflowCriticality?: WorkflowCriticality
 }
 
 /**
@@ -108,6 +117,9 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
     eventWriter,
     toolRegistry,
     searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
   } = config
 
   const iterationLimit = Math.min(maxIterations, workflow.maxIterations ?? 10)
@@ -121,6 +133,9 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
     eventWriter,
     toolRegistry,
     searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
   }
 
   // Create the state graph

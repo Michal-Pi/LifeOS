@@ -29,6 +29,9 @@ import type {
   DialecticalSessionId,
   ClaimId,
   ConceptId,
+  WorkflowExecutionMode,
+  ModelTier,
+  WorkflowCriticality,
 } from '@lifeos/agents'
 import { asId } from '@lifeos/agents'
 import { createFirestoreCheckpointer } from './firestoreCheckpointer.js'
@@ -88,6 +91,9 @@ export interface DialecticalGraphConfig {
   knowledgeHypergraph?: KnowledgeHypergraph // Optional knowledge graph for retrieval
   sessionId?: DialecticalSessionId // Session ID for KG if not provided
   historicalData?: HistoricalIterationData | null // Historical iteration data for budget learning
+  executionMode?: WorkflowExecutionMode
+  tierOverride?: ModelTier | null
+  workflowCriticality?: WorkflowCriticality
 }
 
 // ----- Event and Message Helpers -----
@@ -1037,6 +1043,9 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
     enableSchemaInduction = false,
     knowledgeHypergraph,
     sessionId,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
   } = config
 
   // Create the state graph
@@ -1051,6 +1060,9 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
     eventWriter,
     toolRegistry,
     searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
   }
 
   // Calculate iteration budget for each agent role

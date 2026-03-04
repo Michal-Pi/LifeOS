@@ -10,6 +10,9 @@ import type {
   Workflow,
   UnifiedWorkflowState,
   AgentExecutionStep,
+  WorkflowExecutionMode,
+  ModelTier,
+  WorkflowCriticality,
 } from '@lifeos/agents'
 import { createLogger } from '../../lib/logger.js'
 import type { ProviderKeys } from '../providerService.js'
@@ -42,6 +45,9 @@ export interface LangGraphExecutionConfig {
   toolRegistry?: ToolRegistry
   searchToolKeys?: SearchToolKeys
   enableCheckpointing?: boolean
+  executionMode?: WorkflowExecutionMode
+  tierOverride?: ModelTier | null
+  workflowCriticality?: WorkflowCriticality
 }
 
 /**
@@ -74,8 +80,19 @@ export async function executeLangGraphWorkflow(
   goal: string,
   context?: Record<string, unknown>
 ): Promise<LangGraphExecutionResult> {
-  const { workflow, agents, apiKeys, userId, runId, eventWriter, toolRegistry, searchToolKeys } =
-    config
+  const {
+    workflow,
+    agents,
+    apiKeys,
+    userId,
+    runId,
+    eventWriter,
+    toolRegistry,
+    searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
+  } = config
 
   const workflowType = workflow.workflowType
 
@@ -92,6 +109,9 @@ export async function executeLangGraphWorkflow(
             eventWriter,
             toolRegistry,
             searchToolKeys,
+            executionMode,
+            tierOverride,
+            workflowCriticality,
           },
           goal,
           context
@@ -117,6 +137,9 @@ export async function executeLangGraphWorkflow(
             eventWriter,
             toolRegistry,
             searchToolKeys,
+            executionMode,
+            tierOverride,
+            workflowCriticality,
           },
           goal,
           context
@@ -151,6 +174,9 @@ export async function executeLangGraphWorkflow(
             eventWriter,
             toolRegistry,
             searchToolKeys,
+            executionMode,
+            tierOverride,
+            workflowCriticality,
           },
           goal,
           context
@@ -186,6 +212,9 @@ export async function executeLangGraphWorkflow(
             eventWriter,
             toolRegistry,
             searchToolKeys,
+            executionMode,
+            tierOverride,
+            workflowCriticality,
           },
           goal,
           context
@@ -261,6 +290,9 @@ export async function executeLangGraphWorkflow(
             eventWriter,
             toolRegistry,
             searchToolKeys,
+            executionMode,
+            tierOverride,
+            workflowCriticality,
           },
           goal,
           context
@@ -325,6 +357,9 @@ export async function executeLangGraphWorkflow(
             eventWriter,
             toolRegistry,
             searchToolKeys,
+            executionMode,
+            tierOverride,
+            workflowCriticality,
           },
           goal,
           context
@@ -363,6 +398,9 @@ export async function executeLangGraphWorkflow(
               eventWriter,
               toolRegistry,
               searchToolKeys,
+              executionMode,
+              tierOverride,
+              workflowCriticality,
             },
             goal,
             context

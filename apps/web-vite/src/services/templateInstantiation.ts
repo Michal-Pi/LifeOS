@@ -1,4 +1,5 @@
 import type { AgentConfig, CreateAgentInput, CreateWorkflowInput, Workflow } from '@lifeos/agents'
+import { hashAgentConfig } from '@lifeos/agents'
 import type { WorkflowTemplatePreset, WorkflowGraphTemplate } from '@/agents/templatePresets'
 import type { BuiltinToolMeta } from '@/agents/builtinTools'
 import { agentTemplatePresets, type AgentTemplatePreset } from '@/agents/templatePresets'
@@ -37,10 +38,15 @@ const resolveAgentTemplate = (name: string) => {
 }
 
 /**
- * Check if an existing agent exactly matches a template agent config
+ * Check if an existing agent exactly matches a template agent config.
+ * Uses config hash for fast comparison, falls back to field-by-field check.
  */
 function isExactAgentMatch(existing: AgentConfig, templateConfig: CreateAgentInput): boolean {
-  // Compare core properties that define the agent's behavior
+  // Fast path: compare config hashes
+  const templateHash = hashAgentConfig(templateConfig)
+  if (existing.configHash && existing.configHash === templateHash) return true
+
+  // Fallback: field-by-field comparison (for agents without configHash)
   return (
     existing.name === templateConfig.name &&
     existing.role === templateConfig.role &&
@@ -54,12 +60,23 @@ function isExactAgentMatch(existing: AgentConfig, templateConfig: CreateAgentInp
 }
 
 /**
- * Check if an existing agent has the same name as template (possible modified version)
+ * Find an existing agent that matches a template config.
+ * First tries config hash match (exact functional match regardless of name),
+ * then falls back to name-based matching.
  */
 function findMatchingAgent(
   existingAgents: AgentConfig[],
   templateConfig: CreateAgentInput
 ): AgentConfig | undefined {
+  const templateHash = hashAgentConfig(templateConfig)
+
+  // First: check for hash match (functionally identical agent)
+  const hashMatch = existingAgents.find(
+    (agent) => !agent.archived && agent.configHash === templateHash
+  )
+  if (hashMatch) return hashMatch
+
+  // Fallback: name-based match
   return existingAgents.find((agent) => !agent.archived && agent.name === templateConfig.name)
 }
 
@@ -202,12 +219,16 @@ export async function instantiateTemplate({
         const agent = await createAgent({
           ...config.agentInput,
           name: `${config.agentInput.name} (Template)`,
+          configHash: hashAgentConfig(config.agentInput),
         })
         resultAgents.push(agent)
       }
     } else {
-      // No match - create new agent
-      const agent = await createAgent(config.agentInput)
+      // No match - create new agent with config hash for future dedup
+      const agent = await createAgent({
+        ...config.agentInput,
+        configHash: hashAgentConfig(config.agentInput),
+      })
       resultAgents.push(agent)
     }
   }

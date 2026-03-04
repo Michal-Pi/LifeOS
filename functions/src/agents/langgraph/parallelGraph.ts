@@ -14,7 +14,13 @@
 
 import { StateGraph, END, START } from '@langchain/langgraph'
 import type { AgentConfig, JoinAggregationMode, Workflow } from '@lifeos/agents'
-import type { UnifiedWorkflowState, AgentExecutionStep } from '@lifeos/agents'
+import type {
+  UnifiedWorkflowState,
+  AgentExecutionStep,
+  WorkflowExecutionMode,
+  ModelTier,
+  WorkflowCriticality,
+} from '@lifeos/agents'
 import { createLogger } from '../../lib/logger.js'
 import type { ProviderKeys } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
@@ -55,6 +61,9 @@ export interface ParallelGraphConfig {
   enableCheckpointing?: boolean
   /** If true, fail the entire workflow if any agent fails. Default: false (partial success allowed) */
   failOnPartialError?: boolean
+  executionMode?: WorkflowExecutionMode
+  tierOverride?: ModelTier | null
+  workflowCriticality?: WorkflowCriticality
 }
 
 /**
@@ -139,7 +148,18 @@ async function executeAgentSafely(
   state: ParallelState,
   config: ParallelGraphConfig
 ): Promise<AgentResult> {
-  const { workflow, apiKeys, userId, runId, eventWriter, toolRegistry, searchToolKeys } = config
+  const {
+    workflow,
+    apiKeys,
+    userId,
+    runId,
+    eventWriter,
+    toolRegistry,
+    searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
+  } = config
 
   const execContext: AgentExecutionContext = {
     userId,
@@ -149,6 +169,9 @@ async function executeAgentSafely(
     eventWriter,
     toolRegistry,
     searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
   }
 
   try {

@@ -39,6 +39,10 @@ export const MessageRoleSchema = z.enum(['user', 'assistant', 'system', 'tool'])
 
 export const SyncStateSchema = z.enum(['synced', 'pending', 'conflict'])
 
+export const ModelTierSchema = z.enum(['thinking', 'balanced', 'fast'])
+export const WorkflowExecutionModeSchema = z.enum(['as_designed', 'cost_saving'])
+export const WorkflowCriticalitySchema = z.enum(['critical', 'core', 'routine'])
+
 export const WorkflowTypeSchema = z.enum([
   'sequential',
   'parallel',
@@ -216,9 +220,11 @@ export const AgentConfigSchema = z.object({
   systemPrompt: z.string().min(1),
   modelProvider: ModelProviderSchema,
   modelName: z.string().min(1),
+  modelTier: ModelTierSchema.optional(),
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().int().positive().optional(),
   toolIds: z.array(z.string()).optional(),
+  configHash: z.string().optional(),
   description: z.string().max(500).optional(),
   archived: z.boolean(),
   createdAtMs: z.number().int().positive(),
@@ -318,6 +324,7 @@ export const WorkflowSchema = z.object({
     .optional(),
   maxIterations: z.number().int().positive().max(200).optional(),
   memoryMessageLimit: z.number().int().positive().max(200).optional(),
+  criticality: WorkflowCriticalitySchema.optional(),
   archived: z.boolean(),
   createdAtMs: z.number().int().positive(),
   updatedAtMs: z.number().int().positive(),
@@ -382,6 +389,8 @@ export const RunSchema = z.object({
   goal: z.string().min(1),
   context: z.record(z.string(), z.unknown()).optional(),
   memoryMessageLimit: z.number().int().positive().max(200).optional(),
+  executionMode: WorkflowExecutionModeSchema.optional(),
+  tierOverride: ModelTierSchema.nullable().optional(),
   status: RunStatusSchema,
   currentStep: z.number().int().nonnegative(),
   totalSteps: z.number().int().positive().optional(),

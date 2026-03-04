@@ -15,7 +15,15 @@ import { useAiProviderKeys } from '@/hooks/useAiProviderKeys'
 import { useWorkflowOperations } from '@/hooks/useWorkflowOperations'
 import { useNoteOperations } from '@/hooks/useNoteOperations'
 import { Button } from '@/components/ui/button'
-import type { AgentConfig, ExecutionMode, Workflow, CreateRunInput } from '@lifeos/agents'
+import type {
+  AgentConfig,
+  ExecutionMode,
+  Workflow,
+  CreateRunInput,
+  WorkflowExecutionMode,
+  ModelTier,
+} from '@lifeos/agents'
+import { Select } from '@/components/Select'
 import type { Note } from '@lifeos/notes'
 import { useAuth } from '@/hooks/useAuth'
 import { useDeepResearch } from '@/hooks/useDeepResearch'
@@ -87,6 +95,8 @@ export function RunWorkflowModal({
   const [expertCouncilMode, setExpertCouncilMode] = useState<ExecutionMode>('full')
   const [showResearchQueue, setShowResearchQueue] = useState(false)
   const [skipResearch, setSkipResearch] = useState(false)
+  const [executionMode, setExecutionMode] = useState<WorkflowExecutionMode>('as_designed')
+  const [tierOverride, setTierOverride] = useState<string>('default')
 
   // Deep research configuration (only shown for deep_research workflows)
   const isDeepResearch = workflow?.workflowType === 'deep_research'
@@ -249,6 +259,8 @@ export function RunWorkflowModal({
       setSkipResearch(false)
       setMemoryMessageLimitInput('')
       setExpertCouncilMode(workflow?.expertCouncilConfig?.defaultMode ?? 'full')
+      setExecutionMode('as_designed')
+      setTierOverride('default')
       setError(null)
     }
   }, [initialContext, initialGoal, isOpen, workflow])
@@ -363,6 +375,8 @@ export function RunWorkflowModal({
         workflowId: workflow.workflowId,
         goal: goalText,
         context,
+        executionMode,
+        tierOverride: tierOverride === 'default' ? undefined : (tierOverride as ModelTier),
       }
 
       if (memoryMessageLimit !== undefined) {
@@ -630,6 +644,49 @@ export function RunWorkflowModal({
                 <small>
                   When enabled, agents won't use search tools and will reason from context only
                 </small>
+              </div>
+
+              <div className="form-group">
+                <div className="form-label-with-toggle">
+                  <label>Execution Mode</label>
+                  <div className="input-mode-toggle">
+                    <button
+                      type="button"
+                      className={`toggle-btn ${executionMode === 'as_designed' ? 'active' : ''}`}
+                      onClick={() => setExecutionMode('as_designed')}
+                    >
+                      As-Designed
+                    </button>
+                    <button
+                      type="button"
+                      className={`toggle-btn ${executionMode === 'cost_saving' ? 'active' : ''}`}
+                      onClick={() => setExecutionMode('cost_saving')}
+                    >
+                      Cost-Saving
+                    </button>
+                  </div>
+                </div>
+                <small>
+                  {executionMode === 'as_designed'
+                    ? 'Uses model tiers as configured per agent'
+                    : 'Downgrades model tiers to reduce cost'}
+                </small>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="tierOverride">Tier Override (optional)</label>
+                <Select
+                  id="tierOverride"
+                  value={tierOverride}
+                  onChange={setTierOverride}
+                  options={[
+                    { value: 'default', label: 'Default (per-agent)' },
+                    { value: 'fast', label: 'Fast — all agents use fast models' },
+                    { value: 'balanced', label: 'Balanced — all agents use balanced models' },
+                    { value: 'thinking', label: 'Thinking — all agents use thinking models' },
+                  ]}
+                />
+                <small>Force all agents to use a specific model tier for this run</small>
               </div>
 
               {isDeepResearch && (

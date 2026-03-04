@@ -10,7 +10,13 @@
  */
 
 import { StateGraph, END, START } from '@langchain/langgraph'
-import type { AgentConfig, Workflow } from '@lifeos/agents'
+import type {
+  AgentConfig,
+  Workflow,
+  WorkflowExecutionMode,
+  ModelTier,
+  WorkflowCriticality,
+} from '@lifeos/agents'
 import type { UnifiedWorkflowState, AgentExecutionStep } from '@lifeos/agents'
 import { createFirestoreCheckpointer } from './firestoreCheckpointer.js'
 import { createLogger } from '../../lib/logger.js'
@@ -36,6 +42,9 @@ export interface SequentialGraphConfig {
   toolRegistry?: ToolRegistry
   searchToolKeys?: SearchToolKeys
   enableCheckpointing?: boolean
+  executionMode?: WorkflowExecutionMode
+  tierOverride?: ModelTier | null
+  workflowCriticality?: WorkflowCriticality
 }
 
 /**
@@ -45,8 +54,19 @@ export interface SequentialGraphConfig {
  * START -> agent_0 -> agent_1 -> ... -> agent_n -> END
  */
 export function createSequentialGraph(config: SequentialGraphConfig) {
-  const { workflow, agents, apiKeys, userId, runId, eventWriter, toolRegistry, searchToolKeys } =
-    config
+  const {
+    workflow,
+    agents,
+    apiKeys,
+    userId,
+    runId,
+    eventWriter,
+    toolRegistry,
+    searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
+  } = config
 
   // Create the state graph
   const graph = new StateGraph(SequentialStateAnnotation)
@@ -60,6 +80,9 @@ export function createSequentialGraph(config: SequentialGraphConfig) {
     eventWriter,
     toolRegistry,
     searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
   }
 
   // Create a node for each agent

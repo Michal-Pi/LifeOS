@@ -1537,6 +1537,9 @@ export async function executeWorkflow(
       eventWriter,
       toolRegistry,
       searchToolKeys,
+      executionMode: run.executionMode,
+      tierOverride: run.tierOverride,
+      workflowCriticality: workflow.criticality,
     }
 
     const result = await executeLangGraphWorkflow(langGraphConfig, run.goal, run.context)

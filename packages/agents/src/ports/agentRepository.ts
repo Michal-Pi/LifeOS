@@ -20,4 +20,5 @@ export interface AgentRepository {
       activeOnly?: boolean
     }
   ): Promise<AgentConfig[]>
+  findByConfigHash?(userId: string, hash: string): Promise<AgentConfig | null>
 }

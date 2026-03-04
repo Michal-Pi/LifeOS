@@ -20,6 +20,12 @@ export type DeepResearchRequestId = Id<'research'>
 
 export type SyncState = 'synced' | 'pending' | 'conflict'
 
+// ----- Model Tier System -----
+
+export type ModelTier = 'thinking' | 'balanced' | 'fast'
+export type WorkflowExecutionMode = 'as_designed' | 'cost_saving'
+export type WorkflowCriticality = 'critical' | 'core' | 'routine'
+
 // ----- Enums -----
 
 export type AgentRole =
@@ -109,8 +115,14 @@ export interface AgentConfig {
   temperature?: number // 0-2, default 0.7
   maxTokens?: number // default varies by model
 
+  // Model tier (defaults to 'balanced' if unset)
+  modelTier?: ModelTier
+
   // Tool permissions
   toolIds?: ToolId[] // Which tools this agent can use
+
+  // Deduplication
+  configHash?: string // Hash of config for dedup lookup
 
   // Metadata
   description?: string
@@ -120,6 +132,37 @@ export interface AgentConfig {
 
   syncState: SyncState
   version: number
+}
+
+/**
+ * Creates a deterministic hash of an agent config for deduplication.
+ * Two agents with the same hash are functionally identical.
+ */
+export function hashAgentConfig(config: {
+  systemPrompt: string
+  role: AgentRole
+  toolIds?: ToolId[]
+  modelProvider: ModelProvider
+  modelName: string
+  temperature?: number
+  modelTier?: ModelTier
+}): string {
+  const normalized = JSON.stringify({
+    systemPrompt: config.systemPrompt,
+    role: config.role,
+    toolIds: [...(config.toolIds ?? [])].sort(),
+    modelProvider: config.modelProvider,
+    modelName: config.modelName,
+    temperature: config.temperature ?? 0.7,
+    modelTier: config.modelTier ?? 'balanced',
+  })
+  let hash = 0
+  for (let i = 0; i < normalized.length; i++) {
+    const char = normalized.charCodeAt(i)
+    hash = (hash << 5) - hash + char
+    hash |= 0
+  }
+  return `cfghash_${Math.abs(hash).toString(36)}`
 }
 
 // ----- Workflow -----
@@ -161,6 +204,9 @@ export interface Workflow {
 
   // Memory configuration (Phase 6A)
   memoryMessageLimit?: number // Optional default for conversation history window
+
+  // Cost optimization
+  criticality?: WorkflowCriticality // Determines cost-saving behavior
 
   // Metadata
   archived: boolean
@@ -216,6 +262,10 @@ export interface Run {
   goal: string // User's input prompt
   context?: Record<string, unknown> // Additional context data
   memoryMessageLimit?: number // Per-run override for conversation history window
+
+  // Model tier overrides
+  executionMode?: WorkflowExecutionMode // 'as_designed' | 'cost_saving'
+  tierOverride?: ModelTier | null // Forces all agents to this tier
 
   // Status
   status: RunStatus

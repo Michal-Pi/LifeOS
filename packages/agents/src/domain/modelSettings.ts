@@ -5,7 +5,7 @@
  * These defaults are used when creating new agents or workflows.
  */
 
-import type { ModelProvider } from './models'
+import type { ModelProvider, ModelTier, WorkflowCriticality, WorkflowExecutionMode } from './models'
 
 export type { ModelProvider }
 
@@ -142,4 +142,107 @@ export function createDefaultModelSettings(userId: string): ModelSettings {
     createdAtMs: now,
     updatedAtMs: now,
   }
+}
+
+// ----- Model Tier System -----
+
+/**
+ * Maps a ModelTier to the concrete model name for each provider.
+ */
+export const MODEL_TIER_MAP: Record<ModelTier, Record<ModelProvider, string>> = {
+  thinking: {
+    openai: 'o1',
+    anthropic: 'claude-opus-4-6',
+    google: 'gemini-3-pro',
+    xai: 'grok-4',
+  },
+  balanced: {
+    openai: 'gpt-5.2',
+    anthropic: 'claude-sonnet-4-5',
+    google: 'gemini-2.5-pro',
+    xai: 'grok-4-1-fast-non-reasoning',
+  },
+  fast: {
+    openai: 'gpt-5-mini',
+    anthropic: 'claude-haiku-4-5',
+    google: 'gemini-3-flash',
+    xai: 'grok-3-mini',
+  },
+}
+
+/**
+ * Cost-saving mode downgrade rules.
+ * Maps (criticality, templateTier) → effective tier.
+ */
+export const COST_SAVING_RULES: Record<WorkflowCriticality, Record<ModelTier, ModelTier>> = {
+  critical: {
+    thinking: 'balanced',
+    balanced: 'balanced',
+    fast: 'fast',
+  },
+  core: {
+    thinking: 'balanced',
+    balanced: 'fast',
+    fast: 'fast',
+  },
+  routine: {
+    thinking: 'fast',
+    balanced: 'fast',
+    fast: 'fast',
+  },
+}
+
+/**
+ * Resolves the effective model for an agent given execution context.
+ *
+ * Priority: tierOverride > executionMode mapping > agent modelTier > agent modelName (legacy)
+ */
+export function resolveEffectiveModel(
+  agentConfig: { modelProvider: ModelProvider; modelName: string; modelTier?: ModelTier },
+  executionMode: WorkflowExecutionMode = 'as_designed',
+  tierOverride: ModelTier | null | undefined,
+  workflowCriticality: WorkflowCriticality = 'core'
+): { provider: ModelProvider; model: string; resolvedTier: ModelTier } {
+  // 1. If user forced a specific tier, use it
+  if (tierOverride) {
+    return {
+      provider: agentConfig.modelProvider,
+      model: MODEL_TIER_MAP[tierOverride][agentConfig.modelProvider],
+      resolvedTier: tierOverride,
+    }
+  }
+
+  // 2. Determine the agent's base tier
+  const baseTier: ModelTier = agentConfig.modelTier ?? inferTierFromModel(agentConfig.modelName)
+
+  // 3. Apply cost-saving rules if in cost_saving mode
+  if (executionMode === 'cost_saving') {
+    const effectiveTier = COST_SAVING_RULES[workflowCriticality][baseTier]
+    return {
+      provider: agentConfig.modelProvider,
+      model: MODEL_TIER_MAP[effectiveTier][agentConfig.modelProvider],
+      resolvedTier: effectiveTier,
+    }
+  }
+
+  // 4. As-designed mode: use agent's tier directly
+  return {
+    provider: agentConfig.modelProvider,
+    model: MODEL_TIER_MAP[baseTier][agentConfig.modelProvider],
+    resolvedTier: baseTier,
+  }
+}
+
+/**
+ * Infers a ModelTier from a concrete model name (for backward compatibility).
+ * Used when agentConfig.modelTier is not set (legacy agents).
+ */
+export function inferTierFromModel(modelName: string): ModelTier {
+  for (const [tier, providers] of Object.entries(MODEL_TIER_MAP)) {
+    for (const model of Object.values(providers)) {
+      if (model === modelName) return tier as ModelTier
+    }
+  }
+  // Default to balanced if unknown model
+  return 'balanced'
 }

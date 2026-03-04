@@ -7,8 +7,14 @@
  * - Error handling utilities
  */
 
-import type { AgentConfig } from '@lifeos/agents'
+import type {
+  AgentConfig,
+  ModelTier,
+  WorkflowCriticality,
+  WorkflowExecutionMode,
+} from '@lifeos/agents'
 import type { AgentExecutionStep } from '@lifeos/agents'
+import { resolveEffectiveModel } from '@lifeos/agents'
 import type { ProviderKeys } from '../providerService.js'
 import { executeWithProvider, executeWithProviderStreaming } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
@@ -54,6 +60,9 @@ export interface AgentExecutionContext {
   eventWriter?: RunEventWriter
   toolRegistry?: ToolRegistry
   searchToolKeys?: SearchToolKeys
+  executionMode?: WorkflowExecutionMode
+  tierOverride?: ModelTier | null
+  workflowCriticality?: WorkflowCriticality
 }
 
 /**
@@ -81,14 +90,38 @@ export async function executeAgentWithEvents(
   execContext: AgentExecutionContext,
   options: AgentExecutionOptions = {}
 ): Promise<AgentExecutionStep> {
-  const { userId, workflowId, runId, apiKeys, eventWriter, toolRegistry, searchToolKeys } =
-    execContext
+  const {
+    userId,
+    workflowId,
+    runId,
+    apiKeys,
+    eventWriter,
+    toolRegistry,
+    searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
+  } = execContext
   const { stepNumber, nodeId, additionalContext } = options
+
+  // Resolve effective model based on execution mode and tier override
+  const resolved = resolveEffectiveModel(
+    agent,
+    executionMode ?? 'as_designed',
+    tierOverride,
+    workflowCriticality ?? 'core'
+  )
+
+  // Create a modified agent config with the resolved model
+  const effectiveAgent: AgentConfig =
+    resolved.model !== agent.modelName || resolved.provider !== agent.modelProvider
+      ? { ...agent, modelProvider: resolved.provider, modelName: resolved.model }
+      : agent
 
   // Build tool execution context
   const toolContext = {
     userId,
-    agentId: agent.agentId,
+    agentId: effectiveAgent.agentId,
     workflowId,
     runId,
     eventWriter,
@@ -101,8 +134,8 @@ export async function executeAgentWithEvents(
   const streamContext: StreamContext | undefined = eventWriter
     ? {
         eventWriter,
-        agentId: agent.agentId,
-        agentName: agent.name,
+        agentId: effectiveAgent.agentId,
+        agentName: effectiveAgent.name,
         step: stepNumber,
       }
     : undefined
@@ -118,8 +151,8 @@ export async function executeAgentWithEvents(
     await eventWriter.writeEvent({
       type: 'status',
       workflowId,
-      agentId: agent.agentId,
-      agentName: agent.name,
+      agentId: effectiveAgent.agentId,
+      agentName: effectiveAgent.name,
       status: startStatus,
     })
   }
@@ -130,22 +163,22 @@ export async function executeAgentWithEvents(
     ...additionalContext,
   }
 
-  // Execute the agent
+  // Execute the agent with resolved model
   const result = streamContext
     ? await executeWithProviderStreaming(
-        agent,
+        effectiveAgent,
         goal,
         fullContext,
         apiKeys,
         toolContext,
         streamContext
       )
-    : await executeWithProvider(agent, goal, fullContext, apiKeys, toolContext)
+    : await executeWithProvider(effectiveAgent, goal, fullContext, apiKeys, toolContext)
 
   // Record execution step
   const step: AgentExecutionStep = {
-    agentId: agent.agentId,
-    agentName: agent.name,
+    agentId: effectiveAgent.agentId,
+    agentName: effectiveAgent.name,
     output: result.output,
     tokensUsed: result.tokensUsed,
     estimatedCost: result.estimatedCost,
@@ -166,8 +199,8 @@ export async function executeAgentWithEvents(
   if (eventWriter) {
     await eventWriter.flushTokens({
       workflowId,
-      agentId: agent.agentId,
-      agentName: agent.name,
+      agentId: effectiveAgent.agentId,
+      agentName: effectiveAgent.name,
       provider: result.provider,
       model: result.model,
       step: stepNumber,
@@ -175,8 +208,8 @@ export async function executeAgentWithEvents(
     await eventWriter.writeEvent({
       type: 'status',
       workflowId,
-      agentId: agent.agentId,
-      agentName: agent.name,
+      agentId: effectiveAgent.agentId,
+      agentName: effectiveAgent.name,
       status: doneStatus,
     })
   }

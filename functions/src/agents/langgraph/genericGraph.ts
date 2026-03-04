@@ -16,7 +16,14 @@ import type {
   WorkflowEdge,
   WorkflowGraph,
 } from '@lifeos/agents'
-import type { UnifiedWorkflowState, AgentExecutionStep, JoinBufferEntry } from '@lifeos/agents'
+import type {
+  UnifiedWorkflowState,
+  AgentExecutionStep,
+  JoinBufferEntry,
+  WorkflowExecutionMode,
+  ModelTier,
+  WorkflowCriticality,
+} from '@lifeos/agents'
 import type { ProviderKeys } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
@@ -41,6 +48,9 @@ export interface GenericGraphConfig {
   toolRegistry?: ToolRegistry
   searchToolKeys?: SearchToolKeys
   enableCheckpointing?: boolean
+  executionMode?: WorkflowExecutionMode
+  tierOverride?: ModelTier | null
+  workflowCriticality?: WorkflowCriticality
 }
 
 /**
@@ -228,6 +238,9 @@ export function createGenericGraph(config: GenericGraphConfig) {
     eventWriter,
     toolRegistry,
     searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
   } = config
 
   const db = getFirestore()
@@ -253,6 +266,9 @@ export function createGenericGraph(config: GenericGraphConfig) {
     eventWriter,
     toolRegistry,
     searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
   }
 
   // Create the state graph

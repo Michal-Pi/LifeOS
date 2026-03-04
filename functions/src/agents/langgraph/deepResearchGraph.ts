@@ -32,6 +32,9 @@ import type {
   RewriteOperatorType,
   DialecticalSessionId,
   KGDiff,
+  WorkflowExecutionMode,
+  ModelTier,
+  WorkflowCriticality,
 } from '@lifeos/agents'
 import type { ProviderKeys } from '../providerService.js'
 import { executeWithProvider } from '../providerService.js'
@@ -92,6 +95,9 @@ export interface DeepResearchGraphConfig {
   eventWriter?: RunEventWriter
   toolRegistry?: ToolRegistry
   searchToolKeys?: SearchToolKeys
+  executionMode?: WorkflowExecutionMode
+  tierOverride?: ModelTier | null
+  workflowCriticality?: WorkflowCriticality
 }
 
 // ----- Helper: Provider Execution -----
@@ -1107,6 +1113,9 @@ export function createDeepResearchGraph(
     eventWriter,
     toolRegistry,
     searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
   } = config
 
   const graph = new StateGraph(DeepResearchStateAnnotation)
@@ -1119,6 +1128,9 @@ export function createDeepResearchGraph(
     eventWriter,
     toolRegistry,
     searchToolKeys,
+    executionMode,
+    tierOverride,
+    workflowCriticality,
   }
 
   // Add nodes — shared KG instance passed to nodes that need it
