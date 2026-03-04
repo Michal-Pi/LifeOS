@@ -6,6 +6,8 @@
  *
  * Key improvements:
  * - Uses executeAgentWithEvents utility for consistent agent execution
+ * - Phase 15: human_approval node type for pause/resume approval flows
+ * - Phase 16: Graceful loop termination, budget guardrails, error recovery edges
  */
 
 import { StateGraph, END, START, Annotation } from '@langchain/langgraph'
@@ -31,8 +33,24 @@ import type { ToolRegistry } from '../toolExecutor.js'
 import { getFirestore } from 'firebase-admin/firestore'
 import { randomUUID } from 'crypto'
 import jsonLogic from 'json-logic-js'
+import { createLogger } from '../../lib/logger.js'
 import { createFirestoreCheckpointer } from './firestoreCheckpointer.js'
 import { executeAgentWithEvents, type AgentExecutionContext } from './utils.js'
+
+const log = createLogger('GenericGraph')
+
+/**
+ * Resolve {{variable}} placeholders in text using provided parameter values.
+ * Unresolved placeholders are left as-is.
+ */
+export function resolveTemplateParameters(
+  text: string,
+  parameters: Record<string, string>
+): string {
+  return text.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+    return parameters[key] ?? match
+  })
+}
 
 /**
  * Configuration for generic graph creation
@@ -138,6 +156,9 @@ const GenericGraphStateAnnotation = Annotation.Root({
   status: Annotation<UnifiedWorkflowState['status']>,
   error: Annotation<string | null>,
 
+  // Error recovery (Phase 16)
+  lastError: Annotation<string | null>,
+
   // Pending input
   pendingInput: Annotation<{ prompt: string; nodeId: string } | null>,
 
@@ -176,6 +197,9 @@ function evaluateCondition(edge: WorkflowEdge, data: Record<string, unknown>): b
         return false
       }
     }
+    case 'error':
+      // Error edges are handled separately in routing, not via evaluateCondition
+      return false
     default:
       return false
   }
@@ -277,10 +301,32 @@ export function createGenericGraph(config: GenericGraphConfig) {
   // Create a node for each workflow node
   for (const node of graphDef.nodes) {
     graph.addNode(node.id, async (state: GenericGraphState) => {
-      // Check visit count
+      // Phase 16: Graceful loop termination (instead of throwing)
       const currentVisits = (state.visitedCount[node.id] ?? 0) + 1
       if (currentVisits > maxNodeVisits) {
-        throw new Error(`Node ${node.id} exceeded max visits (${maxNodeVisits})`)
+        log.warn(`Node ${node.id} exceeded max visits (${maxNodeVisits}), auto-terminating`)
+        return {
+          currentNodeId: node.id,
+          visitedCount: { [node.id]: 1 },
+          status: 'completed' as const,
+          finalOutput: `Workflow auto-terminated: node ${node.id} exceeded maximum visits (${maxNodeVisits})`,
+          nextNodeId: null,
+        }
+      }
+
+      // Phase 16: Budget guardrail
+      if (workflow.maxBudget && state.totalEstimatedCost > workflow.maxBudget) {
+        log.warn('Budget exceeded, auto-terminating', {
+          cost: state.totalEstimatedCost,
+          budget: workflow.maxBudget,
+        })
+        return {
+          currentNodeId: node.id,
+          visitedCount: { [node.id]: 1 },
+          status: 'completed' as const,
+          finalOutput: `Workflow auto-terminated: cost ($${state.totalEstimatedCost.toFixed(4)}) exceeded budget ($${workflow.maxBudget})`,
+          nextNodeId: null,
+        }
       }
 
       const baseUpdate: Partial<GenericGraphState> = {
@@ -330,6 +376,54 @@ export function createGenericGraph(config: GenericGraphConfig) {
             ...baseUpdate,
             status: 'waiting_for_input' as const,
             pendingInput: { prompt: node.label ?? 'Additional input required', nodeId: node.id },
+            nextNodeId: null,
+          }
+        }
+
+        case 'human_approval': {
+          // Phase 15: Human-in-the-loop approval node
+          const humanApproval = state.context.humanApproval as
+            | { nodeId?: string; approved?: boolean; response?: string }
+            | undefined
+
+          if (humanApproval && humanApproval.nodeId === node.id) {
+            if (humanApproval.approved) {
+              // Approved — continue to next node
+              return {
+                ...baseUpdate,
+                lastOutput: humanApproval.response ?? 'Approved',
+                namedOutputs: {
+                  [node.outputKey ?? node.id]: humanApproval.response ?? 'Approved',
+                },
+              }
+            } else {
+              // Rejected — terminate workflow
+              return {
+                ...baseUpdate,
+                lastOutput: humanApproval.response ?? 'Rejected',
+                namedOutputs: {
+                  [node.outputKey ?? node.id]: humanApproval.response ?? 'Rejected',
+                },
+                status: 'completed' as const,
+                finalOutput: humanApproval.response ?? 'Workflow rejected by user',
+                nextNodeId: null,
+              }
+            }
+          }
+
+          // No approval yet — pause and wait for input
+          if (execContext.eventWriter) {
+            await execContext.eventWriter.writeEvent({
+              type: 'status',
+              status: 'waiting_for_approval',
+              details: { nodeId: node.id, prompt: node.label ?? 'Approval required', workflowId: workflow.workflowId },
+            })
+          }
+
+          return {
+            ...baseUpdate,
+            status: 'waiting_for_input' as const,
+            pendingInput: { prompt: node.label ?? 'Approval required', nodeId: node.id },
             nextNodeId: null,
           }
         }
@@ -477,28 +571,63 @@ export function createGenericGraph(config: GenericGraphConfig) {
             throw new Error(`Agent not found for node ${node.id}`)
           }
 
-          const nodeContext = {
-            ...state.context,
-            workflowState: {
-              namedOutputs: state.namedOutputs ?? {},
-              joinOutputs: state.joinOutputs ?? {},
-              lastOutput: state.lastOutput,
-            },
-          }
+          // Phase 16: Error recovery — wrap agent execution in try/catch
+          try {
+            // Phase 17: Resolve template parameters in goal and agent context
+            const templateParams = (state.context.templateParameters ?? {}) as Record<string, string>
+            const resolvedGoal = Object.keys(templateParams).length > 0
+              ? resolveTemplateParameters(state.goal, templateParams)
+              : state.goal
 
-          // Execute the agent using shared utility
-          const step = await executeAgentWithEvents(agent, state.goal, nodeContext, execContext, {
-            stepNumber: state.steps.length + 1,
-            nodeId: node.id,
-          })
+            const nodeContext = {
+              ...state.context,
+              workflowState: {
+                namedOutputs: state.namedOutputs ?? {},
+                joinOutputs: state.joinOutputs ?? {},
+                lastOutput: state.lastOutput,
+              },
+            }
 
-          return {
-            ...baseUpdate,
-            steps: [step],
-            totalTokensUsed: step.tokensUsed,
-            totalEstimatedCost: step.estimatedCost,
-            lastOutput: step.output,
-            namedOutputs: node.outputKey ? { [node.outputKey]: step.output } : {},
+            // Phase 17: Resolve template parameters in agent system prompt
+            const resolvedAgent = Object.keys(templateParams).length > 0
+              ? { ...agent, systemPrompt: resolveTemplateParameters(agent.systemPrompt, templateParams) }
+              : agent
+
+            // Execute the agent using shared utility
+            const step = await executeAgentWithEvents(resolvedAgent, resolvedGoal, nodeContext, execContext, {
+              stepNumber: state.steps.length + 1,
+              nodeId: node.id,
+            })
+
+            return {
+              ...baseUpdate,
+              lastError: null, // Clear any previous error
+              steps: [step],
+              totalTokensUsed: step.tokensUsed,
+              totalEstimatedCost: step.estimatedCost,
+              lastOutput: step.output,
+              namedOutputs: node.outputKey ? { [node.outputKey]: step.output } : {},
+            }
+          } catch (e) {
+            const errorMsg = e instanceof Error ? e.message : String(e)
+            const hasErrorEdge = (edgesFromNode.get(node.id) ?? []).some(
+              (edge) => edge.condition.type === 'error'
+            )
+
+            if (hasErrorEdge) {
+              // Follow error edge — store error and let routing handle it
+              log.warn(`Agent node ${node.id} failed, following error edge`, { error: errorMsg })
+              return {
+                ...baseUpdate,
+                lastError: errorMsg,
+                lastOutput: errorMsg,
+                namedOutputs: node.outputKey ? { [node.outputKey]: errorMsg } : {},
+              }
+            }
+
+            // No error edge — re-throw to fail the graph execution
+            log.error(`Agent node ${node.id} failed with no error edge`, { error: errorMsg })
+            throw new Error(`Workflow failed at node ${node.id}: ${errorMsg}`)
           }
         }
       }
@@ -512,7 +641,8 @@ export function createGenericGraph(config: GenericGraphConfig) {
       if (
         state.status === 'completed' ||
         state.status === 'paused' ||
-        state.status === 'waiting_for_input'
+        state.status === 'waiting_for_input' ||
+        state.status === 'failed'
       ) {
         return END
       }
@@ -531,6 +661,15 @@ export function createGenericGraph(config: GenericGraphConfig) {
         return END
       }
 
+      // Phase 16: Error routing — if last node errored, find error edge
+      if (state.lastError) {
+        const errorEdge = edges.find((e) => e.condition.type === 'error')
+        if (errorEdge) {
+          return errorEdge.to
+        }
+        return END
+      }
+
       const conditionData = {
         lastAgentOutput: state.lastOutput,
         namedOutput: state.namedOutputs ?? {},
@@ -538,8 +677,9 @@ export function createGenericGraph(config: GenericGraphConfig) {
         runContext: state.context ?? {},
       }
 
-      // Find first matching edge
+      // Find first matching edge (skip error edges in normal flow)
       for (const edge of edges) {
+        if (edge.condition.type === 'error') continue
         if (evaluateCondition(edge, conditionData)) {
           // Check if target is a join node that needs more inputs
           const targetNode = nodeById.get(edge.to)
@@ -587,9 +727,20 @@ export function createGenericGraph(config: GenericGraphConfig) {
       graph.addEdge(node.id as typeof START, END)
     } else {
       const edges = edgesFromNode.get(node.id) ?? []
+      // Nodes that can pause (human_approval, human_input) or have error edges
+      // must always use conditional routing
+      const requiresConditionalRouting =
+        node.type === 'human_approval' ||
+        node.type === 'human_input' ||
+        edges.some((e) => e.condition.type === 'error')
+
       if (edges.length === 0) {
         graph.addEdge(node.id as typeof START, END)
-      } else if (edges.length === 1 && edges[0].condition.type === 'always') {
+      } else if (
+        edges.length === 1 &&
+        edges[0].condition.type === 'always' &&
+        !requiresConditionalRouting
+      ) {
         // Simple edge
         graph.addEdge(node.id as typeof START, edges[0].to as typeof START)
       } else {
@@ -650,6 +801,7 @@ export async function executeGenericGraphWorkflowLangGraph(
     finalOutput: null,
     status: 'running',
     error: null,
+    lastError: null,
     pendingInput: null,
     pendingResearchRequestId: null,
     pendingResearchOutputKey: null,
@@ -657,7 +809,23 @@ export async function executeGenericGraphWorkflowLangGraph(
   }
 
   // Execute the graph
-  const finalState = await compiledGraph.invoke(initialState)
+  let finalState: typeof initialState
+  try {
+    finalState = await compiledGraph.invoke(initialState)
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e)
+    log.error('Graph execution failed; any partial state accumulated before the error is lost', {
+      error: errorMessage,
+    })
+    return {
+      output: errorMessage,
+      steps: [],
+      totalTokensUsed: 0,
+      totalEstimatedCost: 0,
+      totalSteps: 0,
+      status: 'failed' as const,
+    }
+  }
 
   return {
     output:

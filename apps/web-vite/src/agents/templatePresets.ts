@@ -1,4 +1,4 @@
-import type { AgentConfig, Workflow, WorkflowGraph, WorkflowNode } from '@lifeos/agents'
+import type { AgentConfig, TemplateParameter, Workflow, WorkflowGraph, WorkflowNode } from '@lifeos/agents'
 
 type AgentTemplatePresetConfig = Omit<
   AgentConfig,
@@ -39,6 +39,8 @@ export type WorkflowTemplatePreset = {
   supportsContentTypes?: boolean
   workflowGraphTemplate?: WorkflowGraphTemplate
   workflowConfig: WorkflowTemplatePresetConfig
+  /** Template parameters — {{variable}} placeholders resolved at run time */
+  parameters?: Record<string, TemplateParameter>
 }
 
 export const agentTemplatePresets: AgentTemplatePreset[] = [

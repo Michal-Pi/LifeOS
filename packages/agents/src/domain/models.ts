@@ -48,6 +48,18 @@ export type AgentRole =
   | 'claim_extractor'
   | 'gap_analyst'
   | 'answer_generator'
+  // Workflow-specific roles
+  | 'coordinator'
+  | 'validator'
+  | 'formatter'
+  | 'summarizer'
+  | 'router'
+  // Domain-specific roles
+  | 'writer'
+  | 'editor'
+  | 'analyst'
+  | 'advisor'
+  | 'translator'
 
 export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'xai'
 
@@ -88,8 +100,10 @@ export type WorkflowNodeType =
   | 'answer_generation'
   // Composition node
   | 'subworkflow'
+  // Approval node
+  | 'human_approval'
 
-export type WorkflowEdgeConditionType = 'always' | 'equals' | 'contains' | 'regex' | 'llm_evaluate'
+export type WorkflowEdgeConditionType = 'always' | 'equals' | 'contains' | 'regex' | 'llm_evaluate' | 'error'
 
 export type JoinAggregationMode = 'list' | 'ranked' | 'consensus' | 'synthesize' | 'dedup_combine'
 
@@ -220,6 +234,12 @@ export interface Workflow {
   adaptiveFanOut?: boolean // For consensus merge: if consensus low, spawn additional agents
   maxBudget?: number // Maximum USD budget for this workflow run
 
+  // Supervisor workflow options
+  maxTokensPerWorker?: number // Per-worker token budget for supervisor workflows
+
+  // Checkpointing
+  enableCheckpointing?: boolean // Enable Firestore checkpointing for resumable execution
+
   // Metadata
   archived: boolean
   createdAtMs: number
@@ -247,6 +267,12 @@ export interface AgentTemplate {
   updatedAtMs: number
 }
 
+export interface TemplateParameter {
+  description: string
+  required: boolean
+  defaultValue?: string
+}
+
 export interface WorkflowTemplate {
   templateId: WorkflowTemplateId
   userId: string
@@ -258,6 +284,9 @@ export interface WorkflowTemplate {
     Workflow,
     'workflowId' | 'userId' | 'archived' | 'createdAtMs' | 'updatedAtMs' | 'syncState' | 'version'
   >
+
+  /** Template parameters — variables like {{topic}} that users fill in at run time */
+  parameters?: Record<string, TemplateParameter>
 
   createdAtMs: number
   updatedAtMs: number
@@ -546,6 +575,8 @@ export interface ToolCallRecord {
 
 // ----- Expert Council -----
 
+export type JudgeRubricDomain = 'research' | 'creative' | 'analytical' | 'code' | 'factual'
+
 export interface ExpertCouncilConfig {
   enabled: boolean
 
@@ -584,6 +615,11 @@ export interface ExpertCouncilConfig {
   minCouncilSize: number
   maxCouncilSize: number
   requireConsensusThreshold?: number
+
+  // Phase 18: Judge rubric domain — auto-detect from prompt or override
+  judgeRubricDomain?: JudgeRubricDomain | 'auto'
+  // Phase 18: Enforce provider diversity across council models (default: true)
+  enforceProviderDiversity?: boolean
 
   // Cost controls
   estimatedCostPerTurn?: number

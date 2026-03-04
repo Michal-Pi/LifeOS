@@ -1,9 +1,41 @@
-import type { AgentConfig, CreateAgentInput, CreateWorkflowInput, Workflow } from '@lifeos/agents'
+import type { AgentConfig, CreateAgentInput, CreateWorkflowInput, TemplateParameter, Workflow } from '@lifeos/agents'
 import { hashAgentConfig } from '@lifeos/agents'
 import type { WorkflowTemplatePreset, WorkflowGraphTemplate } from '@/agents/templatePresets'
 import type { BuiltinToolMeta } from '@/agents/builtinTools'
 import { agentTemplatePresets, type AgentTemplatePreset } from '@/agents/templatePresets'
 import { applyContentTypeCustomization } from '@/services/contentTypeCustomizer'
+
+/**
+ * Validates template parameter values against the template's parameter definitions.
+ * Returns resolved values with defaults applied, or throws if required parameters are missing.
+ */
+export function validateTemplateParameters(
+  parameterDefs: Record<string, TemplateParameter> | undefined,
+  providedValues: Record<string, string>
+): Record<string, string> {
+  if (!parameterDefs || Object.keys(parameterDefs).length === 0) {
+    return providedValues
+  }
+
+  const resolved: Record<string, string> = { ...providedValues }
+  const missing: string[] = []
+
+  for (const [key, def] of Object.entries(parameterDefs)) {
+    if (resolved[key] === undefined || resolved[key] === '') {
+      if (def.defaultValue !== undefined) {
+        resolved[key] = def.defaultValue
+      } else if (def.required) {
+        missing.push(key)
+      }
+    }
+  }
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required template parameters: ${missing.join(', ')}`)
+  }
+
+  return resolved
+}
 
 type TemplateCustomization = {
   name?: string

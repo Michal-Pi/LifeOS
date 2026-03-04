@@ -223,6 +223,25 @@ export function InteractiveWorkflowGraph({
     return { nodes, edges }
   }, [graph, nodeStatuses, onNodeClick, nw, nh])
 
+  // Progress summary
+  const progressSummary = useMemo(() => {
+    let completed = 0
+    let failed = 0
+    let running = 0
+    const total = graph.nodes.length
+
+    for (const [, entry] of nodeStatuses) {
+      if (entry.status === 'completed') completed++
+      else if (entry.status === 'failed') failed++
+      else if (entry.status === 'running') running++
+    }
+
+    const finished = completed + failed
+    const percent = total > 0 ? Math.round((finished / total) * 100) : 0
+
+    return { completed, failed, running, total, finished, percent }
+  }, [graph.nodes.length, nodeStatuses])
+
   const gridColor = useMemo(() => {
     void theme
     if (typeof window === 'undefined') return 'var(--border)'
@@ -253,6 +272,22 @@ export function InteractiveWorkflowGraph({
         />
       </ReactFlow>
 
+      {progressSummary.total > 0 && progressSummary.finished > 0 && (
+        <div className="workflow-graph__progress">
+          <div className="workflow-graph__progress-bar">
+            <div
+              className="workflow-graph__progress-fill"
+              style={{ width: `${progressSummary.percent}%` }}
+            />
+          </div>
+          <span className="workflow-graph__progress-label">
+            {progressSummary.completed}/{progressSummary.total} nodes complete
+            {progressSummary.failed > 0 && ` · ${progressSummary.failed} failed`}
+            {progressSummary.running > 0 && ` · ${progressSummary.running} running`}
+          </span>
+        </div>
+      )}
+
       <style>{`
         .workflow-node__status {
           margin-right: 6px;
@@ -265,6 +300,32 @@ export function InteractiveWorkflowGraph({
         .workflow-graph-container {
           position: relative;
           min-height: 300px;
+        }
+        .workflow-graph__progress {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 8px 16px;
+          border-top: 1px solid var(--border);
+          background: var(--background-secondary);
+          font-size: 12px;
+          color: var(--muted-foreground);
+        }
+        .workflow-graph__progress-bar {
+          flex: 0 0 120px;
+          height: 6px;
+          border-radius: 3px;
+          background: var(--muted);
+          overflow: hidden;
+        }
+        .workflow-graph__progress-fill {
+          height: 100%;
+          border-radius: 3px;
+          background: var(--success);
+          transition: width 0.3s ease;
+        }
+        .workflow-graph__progress-label {
+          white-space: nowrap;
         }
       `}</style>
     </div>

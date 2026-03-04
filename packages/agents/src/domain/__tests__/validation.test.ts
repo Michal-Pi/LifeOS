@@ -3,6 +3,7 @@ import {
   AgentConfigSchema,
   CreateAgentInputSchema,
   WorkflowSchema,
+  WorkflowTemplateSchema,
   RunSchema,
   MessageSchema,
   ToolDefinitionSchema,
@@ -239,6 +240,55 @@ describe('validation schemas', () => {
       }
 
       const result = ToolDefinitionSchema.safeParse(validTool)
+      expect(result.success).toBe(true)
+    })
+  })
+
+  describe('WorkflowTemplateSchema — parameters', () => {
+    const baseTemplate = {
+      templateId: 'template:123',
+      userId: 'user123',
+      name: 'Test Template',
+      workflowConfig: {
+        name: 'Test Workflow',
+        agentIds: ['agent:123'],
+        workflowType: 'sequential' as const,
+      },
+      createdAtMs: Date.now(),
+      updatedAtMs: Date.now(),
+    }
+
+    it('validates template without parameters', () => {
+      const result = WorkflowTemplateSchema.safeParse(baseTemplate)
+      expect(result.success).toBe(true)
+    })
+
+    it('validates template with valid parameters', () => {
+      const result = WorkflowTemplateSchema.safeParse({
+        ...baseTemplate,
+        parameters: {
+          topic: { description: 'Research topic', required: true },
+          audience: { description: 'Target audience', required: false, defaultValue: 'general' },
+        },
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('validates template with required parameter with default', () => {
+      const result = WorkflowTemplateSchema.safeParse({
+        ...baseTemplate,
+        parameters: {
+          tone: { description: 'Writing tone', required: true, defaultValue: 'professional' },
+        },
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('validates template with empty parameters object', () => {
+      const result = WorkflowTemplateSchema.safeParse({
+        ...baseTemplate,
+        parameters: {},
+      })
       expect(result.success).toBe(true)
     })
   })

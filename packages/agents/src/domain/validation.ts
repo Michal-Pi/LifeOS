@@ -22,6 +22,30 @@ export const AgentRoleSchema = z.enum([
   'executor',
   'supervisor',
   'custom',
+  // Dialectical roles
+  'thesis_generator',
+  'antithesis_agent',
+  'contradiction_tracker',
+  'synthesis_agent',
+  'meta_reflection',
+  'schema_induction',
+  // Deep research roles
+  'research_planner',
+  'claim_extractor',
+  'gap_analyst',
+  'answer_generator',
+  // Workflow-specific roles
+  'coordinator',
+  'validator',
+  'formatter',
+  'summarizer',
+  'router',
+  // Domain-specific roles
+  'writer',
+  'editor',
+  'analyst',
+  'advisor',
+  'translator',
 ])
 
 export const ModelProviderSchema = z.enum(['openai', 'anthropic', 'google', 'xai'])
@@ -78,6 +102,8 @@ export const WorkflowNodeTypeSchema = z.enum([
   'answer_generation',
   // Composition node
   'subworkflow',
+  // Approval node
+  'human_approval',
 ])
 
 export const WorkflowEdgeConditionTypeSchema = z.enum([
@@ -86,6 +112,7 @@ export const WorkflowEdgeConditionTypeSchema = z.enum([
   'contains',
   'regex',
   'llm_evaluate',
+  'error',
 ])
 export const PromptTypeSchema = z.enum(['agent', 'tone-of-voice', 'workflow', 'tool', 'synthesis'])
 export const PromptCategorySchema = z.enum([
@@ -161,6 +188,8 @@ export const ExpertCouncilModelSchema = z.object({
   systemPrompt: z.string().optional(),
 })
 
+export const JudgeRubricDomainSchema = z.enum(['research', 'creative', 'analytical', 'code', 'factual', 'auto'])
+
 export const ExpertCouncilConfigSchema = z.object({
   enabled: z.boolean(),
   defaultMode: ExecutionModeSchema,
@@ -180,6 +209,8 @@ export const ExpertCouncilConfigSchema = z.object({
   minCouncilSize: z.number().int().min(2),
   maxCouncilSize: z.number().int().min(2).max(10),
   requireConsensusThreshold: z.number().min(0).max(100).optional(),
+  judgeRubricDomain: JudgeRubricDomainSchema.optional(),
+  enforceProviderDiversity: z.boolean().optional(),
   estimatedCostPerTurn: z.number().nonnegative().optional(),
   maxCostPerTurn: z.number().nonnegative().optional(),
   enableCaching: z.boolean(),
@@ -358,6 +389,8 @@ export const WorkflowSchema = z.object({
   heterogeneousModels: z.boolean().optional(),
   adaptiveFanOut: z.boolean().optional(),
   maxBudget: z.number().nonnegative().optional(),
+  maxTokensPerWorker: z.number().int().positive().optional(),
+  enableCheckpointing: z.boolean().optional(),
   archived: z.boolean(),
   createdAtMs: z.number().int().positive(),
   updatedAtMs: z.number().int().positive(),
@@ -383,6 +416,12 @@ export const AgentTemplateSchema = z.object({
   updatedAtMs: z.number().int().positive(),
 })
 
+export const TemplateParameterSchema = z.object({
+  description: z.string(),
+  required: z.boolean(),
+  defaultValue: z.string().optional(),
+})
+
 export const WorkflowTemplateSchema = z.object({
   templateId: z.string(),
   userId: z.string(),
@@ -397,6 +436,7 @@ export const WorkflowTemplateSchema = z.object({
     syncState: true,
     version: true,
   }),
+  parameters: z.record(z.string(), TemplateParameterSchema).optional(),
   createdAtMs: z.number().int().positive(),
   updatedAtMs: z.number().int().positive(),
 })
