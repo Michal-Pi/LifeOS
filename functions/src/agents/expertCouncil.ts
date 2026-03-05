@@ -114,7 +114,7 @@ const TIER_MAP: Record<ModelTier, Record<ModelProvider, string>> = {
   },
   balanced: {
     openai: 'gpt-5.2',
-    anthropic: 'claude-sonnet-4-5',
+    anthropic: 'claude-sonnet-4-6',
     google: 'gemini-2.5-pro',
     xai: 'grok-4-1-fast-non-reasoning',
   },

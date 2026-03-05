@@ -56,7 +56,7 @@ Guidelines:
 - Keep bullet points concise and specific
 - Highlight actionable items and conclusions
 - Use 2-4 core themes or topics discussed`,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     maxTokens: 4096,
     enabled: true,
   },
@@ -84,7 +84,7 @@ Respond in JSON format:
 
 Only include claims that are verifiable factual statements. Skip opinions, subjective statements, and obvious facts.
 If no factual claims are found, return an empty array.`,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     maxTokens: 4096,
     enabled: true,
   },
@@ -266,7 +266,7 @@ Respond in JSON:
     "Third priority fix (with specific rewrite suggestion)"
   ]
 }`,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     maxTokens: 4096,
     enabled: true,
   },
@@ -282,7 +282,7 @@ Guidelines:
 - If making factual claims, be precise — prefer specifics over vague statements
 - When the user's prompt implies extending existing content, maintain continuity with what came before
 - Output only the new content, no meta-commentary or explanations`,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     maxTokens: 4096,
     enabled: true,
   },
@@ -311,7 +311,7 @@ Respond in JSON format:
 ]
 
 Extract the paragraph path from the input format: [index] (path): text`,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     maxTokens: 4096,
     enabled: true,
   },
@@ -331,18 +331,23 @@ Guidelines:
 
 Respond with a JSON array of tag strings:
 ["tag1", "tag2", "tag3"]`,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     maxTokens: 4096,
     enabled: true,
   },
 }
 
-// ==================== Phase 31: update_todo and delete_todo tools ====================
+// ==================== Phase 31-34: Agent Tool Config Stubs ====================
+//
+// These are tool schema definitions only (no execute function).
+// Runtime implementations should be added to functions/src/agents/advancedTools.ts
+// with proper execute functions and registered via registerTool().
 
+/** Tool config for updating an existing todo item. */
 export const updateTodoToolConfig = {
   toolId: 'tool:update_todo',
   name: 'update_todo',
-  description: 'Update an existing todo item — change its title, status, priority, or due date',
+  description: 'Update an existing todo item — change its title, status, urgency, importance, or due date',
   parameters: {
     type: 'object' as const,
     properties: {
@@ -351,17 +356,25 @@ export const updateTodoToolConfig = {
         type: 'object',
         properties: {
           title: { type: 'string', description: 'New title' },
-          status: { type: 'string', enum: ['pending', 'in_progress', 'completed'], description: 'New status' },
-          priority: { type: 'string', enum: ['low', 'medium', 'high'], description: 'New priority' },
+          description: { type: 'string', description: 'New description' },
+          status: {
+            type: 'string',
+            enum: ['inbox', 'next_action', 'scheduled', 'waiting', 'someday', 'done'],
+            description: 'New status',
+          },
+          urgency: { type: 'string', description: 'Urgency level' },
+          importance: { type: 'number', description: 'Importance score (1-10)' },
           dueDate: { type: 'string', description: 'ISO date string for due date' },
+          estimatedMinutes: { type: 'number', description: 'Estimated time in minutes' },
         },
-        description: 'Fields to update',
+        description: 'Fields to update (only provided fields are changed)',
       },
     },
     required: ['todoId', 'updates'],
   },
-}
+} as const
 
+/** Tool config for deleting an existing todo item. */
 export const deleteTodoToolConfig = {
   toolId: 'tool:delete_todo',
   name: 'delete_todo',
@@ -373,10 +386,9 @@ export const deleteTodoToolConfig = {
     },
     required: ['todoId'],
   },
-}
+} as const
 
-// ==================== Phase 32: memory_recall tool ====================
-
+/** Tool config for searching past run outputs and goals. */
 export const memoryRecallToolConfig = {
   toolId: 'tool:memory_recall',
   name: 'memory_recall',
@@ -384,7 +396,7 @@ export const memoryRecallToolConfig = {
   parameters: {
     type: 'object' as const,
     properties: {
-      query: { type: 'string', description: 'Search query to find relevant past runs' },
+      query: { type: 'string', description: 'Search query to find relevant past runs (max 500 chars)' },
       timeRange: {
         type: 'object',
         properties: {
@@ -397,10 +409,9 @@ export const memoryRecallToolConfig = {
     },
     required: ['query'],
   },
-}
+} as const
 
-// ==================== Phase 33: generate_chart tool ====================
-
+/** Tool config for generating charts as base64 PNG images. */
 export const generateChartToolConfig = {
   toolId: 'tool:generate_chart',
   name: 'generate_chart',
@@ -414,10 +425,10 @@ export const generateChartToolConfig = {
         items: {
           type: 'object',
           properties: {
-            label: { type: 'string' },
-            value: { type: 'number' },
-            x: { type: 'number' },
-            y: { type: 'number' },
+            label: { type: 'string', description: 'Data label (required for bar/pie/line charts)' },
+            value: { type: 'number', description: 'Data value (required for bar/pie/line charts)' },
+            x: { type: 'number', description: 'X coordinate (required for scatter charts)' },
+            y: { type: 'number', description: 'Y coordinate (required for scatter charts)' },
           },
         },
         description: 'Data points for the chart',
@@ -426,8 +437,8 @@ export const generateChartToolConfig = {
       options: {
         type: 'object',
         properties: {
-          width: { type: 'number', description: 'Width in pixels (default 600)' },
-          height: { type: 'number', description: 'Height in pixels (default 400)' },
+          width: { type: 'number', description: 'Width in pixels (default 600, max 2000)' },
+          height: { type: 'number', description: 'Height in pixels (default 400, max 2000)' },
           colors: { type: 'array', items: { type: 'string' }, description: 'Custom colors' },
         },
         description: 'Optional rendering options',
@@ -435,10 +446,19 @@ export const generateChartToolConfig = {
     },
     required: ['chartType', 'data', 'title'],
   },
-}
+} as const
 
-// ==================== Phase 34: code_interpreter and webhook_call tools ====================
-
+/**
+ * Tool config for executing JavaScript code in a sandboxed environment.
+ *
+ * SECURITY: The execute implementation MUST:
+ * - Use vm2/isolated-vm or equivalent sandbox with no filesystem/network access
+ * - Enforce a 5-second execution timeout
+ * - Limit memory to 64MB
+ * - Block require(), import(), eval(), Function(), process, and global access
+ * - Limit code length to 10,000 characters
+ * - Capture stdout via console override
+ */
 export const codeInterpreterToolConfig = {
   toolId: 'tool:code_interpreter',
   name: 'code_interpreter',
@@ -447,27 +467,38 @@ export const codeInterpreterToolConfig = {
     type: 'object' as const,
     properties: {
       language: { type: 'string', enum: ['javascript'], description: 'Programming language (only JavaScript supported)' },
-      code: { type: 'string', description: 'Code to execute' },
+      code: { type: 'string', description: 'Code to execute (max 10,000 characters)' },
     },
     required: ['language', 'code'],
   },
-}
+} as const
 
+/**
+ * Tool config for making HTTP calls to user-configured allowed domains.
+ *
+ * SECURITY: The execute implementation MUST:
+ * - Validate URL hostname against user's pre-configured allowed domains list
+ * - Reject private/internal IPs (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, ::1)
+ * - Require HTTPS (reject http:// URLs)
+ * - Strip sensitive headers (Authorization, Cookie, X-Forwarded-For) from responses
+ * - Limit response body to 10KB
+ * - Enforce a 10-second timeout
+ */
 export const webhookCallToolConfig = {
   toolId: 'tool:webhook_call',
   name: 'webhook_call',
-  description: 'Make an HTTP call to a user-configured allowed domain',
+  description: 'Make an HTTPS call to a user-configured allowed domain',
   parameters: {
     type: 'object' as const,
     properties: {
-      url: { type: 'string', description: 'URL to call (must be in allowed domains list)' },
+      url: { type: 'string', description: 'HTTPS URL to call (must be in user-configured allowed domains list)' },
       method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE'], description: 'HTTP method' },
-      headers: { type: 'object', description: 'Request headers' },
-      body: { type: 'string', description: 'Request body (for POST/PUT)' },
+      headers: { type: 'object', description: 'Request headers (Authorization and Cookie headers are stripped)' },
+      body: { type: 'string', description: 'Request body (for POST/PUT only; ignored for GET/DELETE)' },
     },
     required: ['url', 'method'],
   },
-}
+} as const
 
 /**
  * A claim extracted from text during fact-check phase 1.

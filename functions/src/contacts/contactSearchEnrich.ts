@@ -185,7 +185,7 @@ async function extractWithClaude(
     .join('\n')
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-5',
+    model: 'claude-sonnet-4-6',
     max_tokens: 2048,
     system: EXTRACTION_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userPrompt }],
@@ -414,7 +414,7 @@ Rules:
   const userPrompt = `Person: ${name}\n\nSearch Results:\n${resultsText}${scrapedText}\n\nExtract the targeted fields from these results. Return JSON only.`
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-5',
+    model: 'claude-sonnet-4-6',
     max_tokens: 2048,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
@@ -494,7 +494,7 @@ async function synthesizeWorkerOutputs(
   const userPrompt = `Synthesize a comprehensive profile for: ${name}${company ? ` at ${company}` : ''}\n\nWorker Research:\n${workerSummaries}`
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-5',
+    model: 'claude-sonnet-4-6',
     max_tokens: 4096,
     system: SYNTHESIS_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userPrompt }],

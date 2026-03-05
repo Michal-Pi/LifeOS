@@ -112,7 +112,7 @@ describe('enforceProviderDiversity', () => {
   it('no-op when already diverse', () => {
     const models = [
       makeModel('openai', 'gpt-5.2'),
-      makeModel('anthropic', 'claude-sonnet-4-5'),
+      makeModel('anthropic', 'claude-sonnet-4-6'),
       makeModel('google', 'gemini-2.5-pro'),
     ]
 

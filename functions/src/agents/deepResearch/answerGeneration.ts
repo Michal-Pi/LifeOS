@@ -14,6 +14,8 @@ import type {
   RunBudget,
   SublationOutput,
   ContradictionOutput,
+  CounterclaimResult,
+  SourceRecord,
   EvidenceType,
 } from '@lifeos/agents'
 import { validateEvidenceType } from '@lifeos/agents'
@@ -41,15 +43,21 @@ function buildAnswerPrompt(
   query: string,
   kgSummary: string,
   synthesisContext: string,
-  contradictionContext: string
+  contradictionContext: string,
+  counterclaimContext?: string,
+  rawSourceContext?: string
 ): string {
   return `Research query: "${query}"
 
 ${kgSummary}
 
+${rawSourceContext ?? ''}
+
 ${synthesisContext}
 
 ${contradictionContext}
+
+${counterclaimContext ?? ''}
 
 Generate a comprehensive research answer as JSON:
 {
@@ -94,6 +102,18 @@ Generate a comprehensive research answer as JSON:
 // ----- Main Generation -----
 
 /**
+ * Options for additional context passed to answer generation.
+ */
+export interface AnswerGenerationOptions {
+  /** Counterclaim results from the counterclaim_search phase */
+  counterclaims?: CounterclaimResult[]
+  /** Raw source records for fallback when KG is empty (e.g. quick mode) */
+  rawSources?: SourceRecord[]
+  /** Source content map for fallback when KG is empty (e.g. quick mode) */
+  rawSourceContentMap?: Record<string, string>
+}
+
+/**
  * Generate the final structured answer from KG state and dialectical outputs.
  */
 export async function generateAnswer(
@@ -102,16 +122,31 @@ export async function generateAnswer(
   executeProvider: ProviderExecuteFn,
   budget: RunBudget,
   synthesis?: SublationOutput | null,
-  contradictions?: ContradictionOutput[]
+  contradictions?: ContradictionOutput[],
+  options?: AnswerGenerationOptions
 ): Promise<{ answer: DeepResearchAnswer; updatedBudget: RunBudget }> {
   let currentBudget = { ...budget }
 
   const kgSummary = buildDetailedKGSummary(kg)
   const synthesisContext = formatSynthesisContext(synthesis)
   const contradictionContext = formatContradictionContext(contradictions ?? [])
+  const counterclaimContext = formatCounterclaimResults(options?.counterclaims ?? [])
+
+  // When KG is empty (e.g. quick mode), fall back to raw source content
+  const kgStats = kg.getStats()
+  const kgIsEmpty = kgStats.nodesByType.claim === 0 && kgStats.nodesByType.source === 0
+  const rawSourceContext =
+    kgIsEmpty && options?.rawSources?.length
+      ? formatRawSourceContext(options.rawSources, options.rawSourceContentMap ?? {})
+      : ''
 
   const totalPromptLen =
-    kgSummary.length + synthesisContext.length + contradictionContext.length + query.length
+    kgSummary.length +
+    synthesisContext.length +
+    contradictionContext.length +
+    counterclaimContext.length +
+    rawSourceContext.length +
+    query.length
   const estimatedCost = estimateLLMCost('claude-opus', totalPromptLen / 4 + 300, 2000)
 
   if (!canAffordOperation(currentBudget, estimatedCost)) {
@@ -125,7 +160,14 @@ export async function generateAnswer(
   try {
     const output = await executeProvider(
       ANSWER_SYSTEM_PROMPT,
-      buildAnswerPrompt(query, kgSummary, synthesisContext, contradictionContext)
+      buildAnswerPrompt(
+        query,
+        kgSummary,
+        synthesisContext,
+        contradictionContext,
+        counterclaimContext,
+        rawSourceContext
+      )
     )
 
     currentBudget = recordSpend(currentBudget, estimatedCost, totalPromptLen / 4 + 2000, 'llm')
@@ -293,6 +335,62 @@ function formatContradictionContext(contradictions: ContradictionOutput[]): stri
     for (const c of resolved) {
       lines.push(`- ${c.description}`)
     }
+  }
+
+  return lines.join('\n')
+}
+
+function formatCounterclaimResults(counterclaims: CounterclaimResult[]): string {
+  if (counterclaims.length === 0) return ''
+
+  const lines = ['## Counterclaim Analysis']
+  lines.push(`Found ${counterclaims.length} counterclaim(s) challenging extracted claims.\n`)
+
+  const byStrength = {
+    strong: counterclaims.filter((c) => c.strength === 'strong'),
+    moderate: counterclaims.filter((c) => c.strength === 'moderate'),
+    weak: counterclaims.filter((c) => c.strength === 'weak'),
+  }
+
+  for (const [strength, items] of Object.entries(byStrength)) {
+    if (items.length === 0) continue
+    lines.push(`### ${strength.charAt(0).toUpperCase() + strength.slice(1)} Counterclaims`)
+    for (const cc of items) {
+      lines.push(`- [against claim ${cc.originalClaimId}] ${cc.counterargument}`)
+      if (cc.evidenceBasis) {
+        lines.push(`  Evidence basis: ${cc.evidenceBasis}`)
+      }
+    }
+  }
+
+  return lines.join('\n')
+}
+
+function formatRawSourceContext(
+  sources: SourceRecord[],
+  contentMap: Record<string, string>
+): string {
+  if (sources.length === 0) return ''
+
+  const lines = ['## Raw Source Evidence (quick mode — no KG available)']
+  lines.push(
+    `${sources.length} source(s) were fetched. Use these directly as evidence.\n`
+  )
+
+  for (const source of sources.slice(0, 15)) {
+    const content = contentMap[source.sourceId] ?? ''
+    lines.push(`### ${source.title || source.url}`)
+    lines.push(`- URL: ${source.url}`)
+    lines.push(`- Type: ${source.sourceType}`)
+    if (source.relevanceScore != null) {
+      lines.push(`- Relevance: ${source.relevanceScore.toFixed(2)}`)
+    }
+    if (content) {
+      // Truncate content to avoid blowing up the prompt
+      const truncated = content.length > 2000 ? content.substring(0, 2000) + '...' : content
+      lines.push(`- Content snippet:\n${truncated}`)
+    }
+    lines.push('')
   }
 
   return lines.join('\n')

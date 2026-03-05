@@ -106,7 +106,7 @@ async function loadMailboxAIToolSettings(userId: string): Promise<MailboxAIToolS
   }
 }
 
-const DEFAULT_MODEL = 'claude-sonnet-4-5'
+const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
 function resolveModelName(modelName: string): string {
   if (MODEL_PRICING[modelName]) return modelName

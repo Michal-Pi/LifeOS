@@ -79,6 +79,7 @@ export type WorkflowNodeType =
   | 'agent'
   | 'tool'
   | 'human_input'
+  | 'fork'
   | 'join'
   | 'end'
   | 'research_request'
@@ -274,7 +275,11 @@ export interface AgentTemplate {
 }
 
 export interface TemplateParameter {
+  /** Human-readable label (also used as the substitution key) */
+  name?: string
   description: string
+  /** Data type hint for UI rendering (default: 'string') */
+  type?: 'string' | 'number' | 'boolean'
   required: boolean
   defaultValue?: string
 }

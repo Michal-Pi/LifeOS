@@ -28,7 +28,7 @@ describe('inferTierFromModel', () => {
     ['gemini-3-pro', 'thinking'],
     ['grok-4', 'thinking'],
     ['gpt-5.2', 'balanced'],
-    ['claude-sonnet-4-5', 'balanced'],
+    ['claude-sonnet-4-6', 'balanced'],
     ['gemini-2.5-pro', 'balanced'],
     ['grok-4-1-fast-non-reasoning', 'balanced'],
     ['gpt-5-mini', 'fast'],
@@ -48,7 +48,7 @@ describe('inferTierFromModel', () => {
 describe('resolveEffectiveModel', () => {
   const anthropicAgent = {
     modelProvider: 'anthropic' as ModelProvider,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     modelTier: 'balanced' as ModelTier,
   }
 
@@ -102,7 +102,7 @@ describe('resolveEffectiveModel', () => {
       const result = resolveEffectiveModel(anthropicAgent, 'as_designed', undefined, 'core')
       expect(result).toEqual({
         provider: 'anthropic',
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-4-6',
         resolvedTier: 'balanced',
       })
     })
@@ -127,7 +127,7 @@ describe('resolveEffectiveModel', () => {
       const result = resolveEffectiveModel(anthropicAgent, 'cost_saving', undefined, 'critical')
       expect(result).toEqual({
         provider: 'anthropic',
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-4-6',
         resolvedTier: 'balanced',
       })
     })
@@ -225,7 +225,7 @@ describe('resolveEffectiveModel', () => {
     it('defaults executionMode to as_designed', () => {
       const result = resolveEffectiveModel(anthropicAgent, undefined, undefined, 'core')
       expect(result.resolvedTier).toBe('balanced')
-      expect(result.model).toBe('claude-sonnet-4-5')
+      expect(result.model).toBe('claude-sonnet-4-6')
     })
   })
 })

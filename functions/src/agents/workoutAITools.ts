@@ -141,7 +141,7 @@ async function loadExerciseLibrary(userId: string): Promise<ExerciseLibraryItem[
   return snapshot.docs.map((doc) => doc.data() as ExerciseLibraryItem)
 }
 
-const DEFAULT_MODEL = 'claude-sonnet-4-5'
+const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
 function resolveModelName(modelName: string): string {
   if (MODEL_PRICING[modelName]) return modelName

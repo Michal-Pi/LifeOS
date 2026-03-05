@@ -1,52 +1,26 @@
 /**
  * Quick Research Mode Tests — Phase 25
  *
- * Tests that quick mode routes correctly from search_and_ingest → answer_generation,
- * skipping claim extraction, KG, dialectical phases, and gap analysis.
+ * Tests the routing function that determines whether quick mode
+ * skips claim extraction and dialectical phases.
  */
 
 import { describe, it, expect } from 'vitest'
+import { routeAfterSearch } from '../langgraph/deepResearchGraph.js'
 import type { DeepResearchRunConfig } from '@lifeos/agents'
 
-// Test the routing function logic directly
-// (The full graph integration is tested via createDeepResearchGraph which is integration-level)
-
 describe('Quick Research Mode routing', () => {
-  it('quick mode config has mode set to quick', () => {
-    const config: DeepResearchRunConfig = {
-      query: 'test query',
-      maxBudgetUsd: 5,
-      searchDepth: 'standard',
-      includeAcademic: false,
-      includeSemanticSearch: false,
-      thesisLenses: [],
-      maxGapIterations: 1,
-      maxDialecticalCycles: 0,
-      mode: 'quick',
-    }
-
-    expect(config.mode).toBe('quick')
+  it('quick mode routes to answer_generation, skipping claim extraction', () => {
+    const result = routeAfterSearch({} as never, 'quick')
+    expect(result).toBe('answer_generation')
   })
 
-  it('full mode config defaults to full', () => {
-    const config: DeepResearchRunConfig = {
-      query: 'test query',
-      maxBudgetUsd: 10,
-      searchDepth: 'standard',
-      includeAcademic: true,
-      includeSemanticSearch: true,
-      thesisLenses: ['economic', 'systems'],
-      maxGapIterations: 3,
-      maxDialecticalCycles: 2,
-    }
-
-    expect(config.mode).toBeUndefined()
-    // Default should be treated as 'full'
-    const effectiveMode = config.mode ?? 'full'
-    expect(effectiveMode).toBe('full')
+  it('full mode routes to claim_extraction', () => {
+    const result = routeAfterSearch({} as never, 'full')
+    expect(result).toBe('claim_extraction')
   })
 
-  it('quick mode uses fewer thesis lenses', () => {
+  it('quick mode config disables dialectical cycles and gap iterations', () => {
     const quickConfig: DeepResearchRunConfig = {
       query: 'simple question',
       maxBudgetUsd: 2,
@@ -59,13 +33,15 @@ describe('Quick Research Mode routing', () => {
       mode: 'quick',
     }
 
-    // Quick mode should not need thesis lenses since it skips dialectical phases
+    // Quick mode should skip dialectical phases and gap iterations
     expect(quickConfig.thesisLenses).toHaveLength(0)
     expect(quickConfig.maxDialecticalCycles).toBe(0)
     expect(quickConfig.maxGapIterations).toBe(0)
+    // Verify routing matches
+    expect(routeAfterSearch({} as never, quickConfig.mode!)).toBe('answer_generation')
   })
 
-  it('full mode runs all steps with thesis lenses', () => {
+  it('full mode config with lenses routes through claim extraction', () => {
     const fullConfig: DeepResearchRunConfig = {
       query: 'complex research topic',
       maxBudgetUsd: 10,
@@ -78,29 +54,7 @@ describe('Quick Research Mode routing', () => {
       mode: 'full',
     }
 
-    expect(fullConfig.thesisLenses).toHaveLength(3)
-    expect(fullConfig.maxDialecticalCycles).toBeGreaterThan(0)
-    expect(fullConfig.maxGapIterations).toBeGreaterThan(0)
-  })
-
-  it('quick mode produces valid DeepResearchAnswer shape', () => {
-    // This tests that the answer type doesn't require KG-dependent fields
-    const answer = {
-      directAnswer: 'Quick answer based on search results',
-      supportingClaims: [],
-      counterclaims: [],
-      openUncertainties: ['No deep analysis performed'],
-      confidenceAssessment: { overall: 0.6, byTopic: {} },
-      citations: [],
-      knowledgeGraphSummary: {
-        claimCount: 0,
-        conceptCount: 0,
-        contradictionCount: 0,
-        resolvedCount: 0,
-      },
-    }
-
-    expect(answer.directAnswer).toBeTruthy()
-    expect(answer.knowledgeGraphSummary.claimCount).toBe(0)
+    expect(routeAfterSearch({} as never, fullConfig.mode!)).toBe('claim_extraction')
+    expect(fullConfig.thesisLenses.length).toBeGreaterThan(0)
   })
 })

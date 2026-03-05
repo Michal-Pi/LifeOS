@@ -163,7 +163,7 @@ export const getDefaultModelForProvider = (provider: ModelProvider): string => {
     case 'openai':
       return 'gpt-5.2'
     case 'anthropic':
-      return 'claude-sonnet-4-5'
+      return 'claude-sonnet-4-6'
     case 'google':
       return 'gemini-2.5-pro'
     case 'xai':

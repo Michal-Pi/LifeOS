@@ -75,7 +75,7 @@ function makeConfig(overrides?: Partial<ExpertCouncilConfig>): ExpertCouncilConf
       {
         modelId: 'model-b',
         provider: 'anthropic',
-        modelName: 'claude-sonnet-4-5',
+        modelName: 'claude-sonnet-4-6',
         temperature: 0.7,
       },
       { modelId: 'model-c', provider: 'google', modelName: 'gemini-2.5-pro', temperature: 0.7 },

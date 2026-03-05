@@ -113,7 +113,7 @@ Output a JSON object with this exact structure:
 }
 
 IMPORTANT: Output ONLY valid JSON, no additional text or explanation.`,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     maxTokens: 4096,
     enabled: true,
   },
@@ -164,7 +164,7 @@ If all blocks already have exercises, return:
 }
 
 IMPORTANT: Output ONLY valid JSON, no additional text or explanation.`,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     maxTokens: 4096,
     enabled: true,
   },

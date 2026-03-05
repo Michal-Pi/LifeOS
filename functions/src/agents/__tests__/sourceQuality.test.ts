@@ -52,9 +52,18 @@ describe('computeSourceQualityScore', () => {
     expect(computeSourceQualityScore(academic)).toBeGreaterThan(computeSourceQualityScore(web))
   })
 
-  it('boosts recent sources', () => {
-    const recent = makeSource({ fetchedAtMs: Date.now() })
-    const old = makeSource({ fetchedAtMs: Date.now() - 15 * 365.25 * 24 * 60 * 60 * 1000 })
+  it('boosts recent sources by publication year', () => {
+    const currentYear = new Date().getFullYear()
+    const recent = makeSource({
+      sourceType: 'academic',
+      domain: 'journal.com',
+      scholarMetadata: { year: currentYear },
+    })
+    const old = makeSource({
+      sourceType: 'academic',
+      domain: 'journal.com',
+      scholarMetadata: { year: currentYear - 15 },
+    })
 
     expect(computeSourceQualityScore(recent)).toBeGreaterThan(computeSourceQualityScore(old))
   })
@@ -94,21 +103,23 @@ describe('computeSourceQualityScore', () => {
 })
 
 describe('applyQualityScoresToClaims', () => {
-  it('adjusts claim confidence by source quality', () => {
+  it('adjusts claim confidence using weighted blend (70/30)', () => {
     const sources = [makeSource({ sourceId: 'src_1', sourceQualityScore: 0.5 })]
     const claims = [makeClaim({ sourceId: 'src_1', confidence: 0.8 })]
 
     const result = applyQualityScoresToClaims(claims, sources)
 
-    expect(result[0].confidence).toBe(0.4) // 0.8 * 0.5
+    // Weighted blend: 0.8 * 0.7 + 0.8 * 0.5 * 0.3 = 0.56 + 0.12 = 0.68
+    expect(result[0].confidence).toBeCloseTo(0.68, 2)
   })
 
-  it('uses default 0.5 for unknown sources', () => {
+  it('uses default 0.5 quality for unknown sources', () => {
     const claims = [makeClaim({ sourceId: 'unknown_src', confidence: 1.0 })]
 
     const result = applyQualityScoresToClaims(claims, [])
 
-    expect(result[0].confidence).toBe(0.5)
+    // Weighted blend: 1.0 * 0.7 + 1.0 * 0.5 * 0.3 = 0.7 + 0.15 = 0.85
+    expect(result[0].confidence).toBeCloseTo(0.85, 2)
   })
 
   it('caps confidence at 1.0', () => {

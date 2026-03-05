@@ -143,7 +143,7 @@ async function loadAIToolSettings(userId: string): Promise<AIToolSettings> {
   }
 }
 
-const DEFAULT_MODEL = 'claude-sonnet-4-5'
+const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
 /**
  * Validate that a model name exists in our pricing table.
@@ -258,7 +258,7 @@ async function runSearch(
     runId: 'standalone',
     searchToolKeys,
     provider: 'anthropic',
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     iteration: 0,
   })
 }

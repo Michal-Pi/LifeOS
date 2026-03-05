@@ -8,12 +8,23 @@ describe('Quick Dialectic Mode (Phase 28)', () => {
     expect(config.mode).toBeUndefined()
   })
 
-  it('quick mode uses only 2 lenses', () => {
+  it('default config creates at least 2 thesis agents', () => {
+    const config = createDefaultDialecticalConfig()
+    expect(config.thesisAgents.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('default config enables KG persistence and community detection', () => {
+    const config = createDefaultDialecticalConfig()
+    expect(config.enableKGPersistence).toBe(true)
+    expect(config.enableCommunityDetection).toBe(true)
+  })
+
+  it('quick mode overrides disable KG and limit cycles', () => {
     const config: DialecticalWorkflowConfig = {
       ...createDefaultDialecticalConfig(),
       mode: 'quick',
       thesisAgents: [
-        { lens: 'adversarial', modelProvider: 'anthropic', modelName: 'claude-sonnet-4-5' },
+        { lens: 'adversarial', modelProvider: 'anthropic', modelName: 'claude-sonnet-4-6' },
         { lens: 'economic', modelProvider: 'openai', modelName: 'o1' },
       ],
       maxCycles: 1,
@@ -25,29 +36,19 @@ describe('Quick Dialectic Mode (Phase 28)', () => {
     expect(config.thesisAgents).toHaveLength(2)
     expect(config.maxCycles).toBe(1)
     expect(config.enableKGPersistence).toBe(false)
+    expect(config.enableCommunityDetection).toBe(false)
   })
 
-  it('full mode config has no restrictions', () => {
+  it('full mode inherits all defaults without restriction', () => {
+    const defaults = createDefaultDialecticalConfig()
     const config: DialecticalWorkflowConfig = {
-      ...createDefaultDialecticalConfig(),
+      ...defaults,
       mode: 'full',
     }
 
     expect(config.mode).toBe('full')
-    expect(config.thesisAgents.length).toBeGreaterThanOrEqual(2)
-    expect(config.maxCycles).toBeGreaterThan(1)
-  })
-
-  it('quick mode skips KG', () => {
-    const config: DialecticalWorkflowConfig = {
-      ...createDefaultDialecticalConfig(),
-      mode: 'quick',
-      enableKGPersistence: false,
-      enableCommunityDetection: false,
-    }
-
-    expect(config.enableKGPersistence).toBe(false)
-    expect(config.enableCommunityDetection).toBe(false)
+    expect(config.thesisAgents.length).toBe(defaults.thesisAgents.length)
+    expect(config.maxCycles).toBe(defaults.maxCycles)
   })
 })
 
@@ -57,12 +58,12 @@ describe('Progressive Deepening (Phase 27)', () => {
     expect(config.contradictionSeverityFilter).toBeUndefined()
   })
 
-  it('can set severity filter to high', () => {
+  it('can set severity filter to HIGH', () => {
     const config: DialecticalWorkflowConfig = {
       ...createDefaultDialecticalConfig(),
-      contradictionSeverityFilter: 'high',
+      contradictionSeverityFilter: 'HIGH',
     }
-    expect(config.contradictionSeverityFilter).toBe('high')
+    expect(config.contradictionSeverityFilter).toBe('HIGH')
   })
 })
 

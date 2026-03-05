@@ -61,7 +61,7 @@ function makeCouncilConfig(overrides?: Partial<ExpertCouncilConfig>): ExpertCoun
       {
         modelId: 'model-b',
         provider: 'anthropic',
-        modelName: 'claude-sonnet-4-5',
+        modelName: 'claude-sonnet-4-6',
         temperature: 0.7,
       },
       { modelId: 'model-c', provider: 'google', modelName: 'gemini-2.5-pro', temperature: 0.7 },
@@ -142,7 +142,7 @@ describe('Expert Council Quick Mode (Phase 19)', () => {
     const config = makeCouncilConfig({
       judgeModels: [
         { modelId: 'judge-1', provider: 'openai', modelName: 'gpt-5.2' },
-        { modelId: 'judge-2', provider: 'anthropic', modelName: 'claude-sonnet-4-5' },
+        { modelId: 'judge-2', provider: 'anthropic', modelName: 'claude-sonnet-4-6' },
       ],
     })
     setupProviderOutputs([
@@ -287,7 +287,7 @@ describe('Dynamic Composition (Phase 19)', () => {
 
   const availableModels: ExpertCouncilConfig['councilModels'] = [
     { modelId: 'model-a', provider: 'openai', modelName: 'gpt-5.2' },
-    { modelId: 'model-b', provider: 'anthropic', modelName: 'claude-sonnet-4-5' },
+    { modelId: 'model-b', provider: 'anthropic', modelName: 'claude-sonnet-4-6' },
     { modelId: 'model-c', provider: 'google', modelName: 'gemini-2.5-pro' },
     { modelId: 'model-d', provider: 'xai', modelName: 'grok-4-1-fast-non-reasoning' },
   ]

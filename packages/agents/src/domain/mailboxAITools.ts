@@ -86,7 +86,7 @@ Output ONLY valid JSON in this exact format:
   "tone": "professional|casual|formal|friendly|brief",
   "alternateVersions": ["A more formal version", "A more casual version"]
 }`,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     maxTokens: 4096,
     enabled: true,
   },
@@ -122,7 +122,7 @@ Output ONLY valid JSON array in this exact format:
     "reason": "Brief explanation of why this action is recommended"
   }
 ]`,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     maxTokens: 4096,
     enabled: true,
   },
@@ -164,7 +164,7 @@ Guidelines:
 - For languageProfile, analyze the tone and vocabulary of their messages
 - If limited information is available, focus on what can be inferred from message content
 - Never fabricate specific factual claims (job titles, companies) without evidence`,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     maxTokens: 4096,
     enabled: true,
   },
@@ -206,7 +206,7 @@ Output ONLY valid JSON array:
     "confidence": 0.9
   }
 ]`,
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
     maxTokens: 2048,
     enabled: true,
   },

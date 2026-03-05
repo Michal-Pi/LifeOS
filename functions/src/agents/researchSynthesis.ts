@@ -56,7 +56,7 @@ const fallbackSynthesis = (request: DeepResearchRequest): string => {
 const buildSynthesisAgent = (userId: string, provider: 'openai' | 'anthropic'): AgentConfig => {
   const now = Date.now()
   const agentId = `agent:research-synthesis:${randomUUID()}`
-  const modelName = provider === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-5.2'
+  const modelName = provider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-5.2'
   return {
     agentId: agentId as AgentConfig['agentId'],
     userId,

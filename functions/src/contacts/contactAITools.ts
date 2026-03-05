@@ -21,7 +21,7 @@ import { contactRef, interactionsCollection } from './paths.js'
 
 const log = createLogger('ContactAITools')
 
-const DEFAULT_MODEL = 'claude-sonnet-4-5'
+const DEFAULT_MODEL = 'claude-sonnet-4-6'
 
 async function executePrompt(
   client: Anthropic,

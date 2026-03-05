@@ -13,11 +13,12 @@ describe('Tool Definitions (Phases 31-34)', () => {
       expect(updateTodoToolConfig.parameters.required).toContain('updates')
     })
 
-    it('supports status, title, priority, dueDate updates', () => {
+    it('supports status, title, urgency, importance, and dueDate updates', () => {
       const props = updateTodoToolConfig.parameters.properties.updates.properties
       expect(props).toHaveProperty('title')
       expect(props).toHaveProperty('status')
-      expect(props).toHaveProperty('priority')
+      expect(props).toHaveProperty('urgency')
+      expect(props).toHaveProperty('importance')
       expect(props).toHaveProperty('dueDate')
     })
   })

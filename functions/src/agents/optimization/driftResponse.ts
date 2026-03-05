@@ -217,7 +217,7 @@ export function getDefaultRules(
         {
           actionType: 'switch_model',
           params: {
-            targetModel: 'claude-sonnet-4-5',
+            targetModel: 'claude-sonnet-4-6',
             reason: 'quality_degradation',
           },
           fallbackAction: {

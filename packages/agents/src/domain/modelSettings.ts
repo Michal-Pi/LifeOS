@@ -73,8 +73,8 @@ export const DEFAULT_MODEL_CONFIGS: Record<ModelProvider, ProviderModelConfig> =
     enabled: true,
   },
   anthropic: {
-    defaultModel: 'claude-sonnet-4-5',
-    availableModels: ['claude-opus-4-6', 'claude-sonnet-4-5', 'claude-haiku-4-5'],
+    defaultModel: 'claude-sonnet-4-6',
+    availableModels: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
     enabled: true,
   },
   google: {
@@ -108,7 +108,7 @@ export const MODEL_OPTIONS_BY_PROVIDER: Record<ModelProvider, ModelOption[]> = {
   ],
   anthropic: [
     { value: 'claude-opus-4-6', label: 'Claude Opus 4.6 (Thinking)' },
-    { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5 (Normal)' },
+    { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (Normal)' },
     { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (Fast)' },
   ],
   google: [
@@ -158,7 +158,7 @@ export const MODEL_TIER_MAP: Record<ModelTier, Record<ModelProvider, string>> = 
   },
   balanced: {
     openai: 'gpt-5.2',
-    anthropic: 'claude-sonnet-4-5',
+    anthropic: 'claude-sonnet-4-6',
     google: 'gemini-2.5-pro',
     xai: 'grok-4-1-fast-non-reasoning',
   },

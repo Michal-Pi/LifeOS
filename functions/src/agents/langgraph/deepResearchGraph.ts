@@ -1055,7 +1055,12 @@ function createAnswerNode(
       providerFn,
       state.budget,
       state.synthesis,
-      state.contradictions
+      state.contradictions,
+      {
+        counterclaims: state.counterclaims,
+        rawSources: state.sources,
+        rawSourceContentMap: state.sourceContentMap,
+      }
     )
 
     // Record final answer as message
@@ -1127,7 +1132,7 @@ function routeDialecticalMeta(state: DeepResearchState): 'thesis_generation' | '
  * Route after search_and_ingest based on mode (Phase 25).
  * Quick mode skips directly to answer_generation.
  */
-function routeAfterSearch(
+export function routeAfterSearch(
   state: DeepResearchState,
   mode: 'full' | 'quick'
 ): 'claim_extraction' | 'answer_generation' {

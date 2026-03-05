@@ -100,7 +100,7 @@ const DEFAULT_CONFIG: RetrievalAgentConfig = {
   maxDepth: 3,
   topK: 10,
   modelProvider: 'anthropic',
-  modelName: 'claude-sonnet-4-5',
+  modelName: 'claude-sonnet-4-6',
   temperature: 0.3,
 }
 

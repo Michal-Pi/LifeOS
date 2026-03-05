@@ -24,7 +24,8 @@ export const MODEL_PRICING: Record<string, { input: number; output: number }> = 
 
   // ── Anthropic — Current ───────────────────────────────────────────
   'claude-opus-4-6': { input: 5.0, output: 25.0 }, // Thinking
-  'claude-sonnet-4-5': { input: 3.0, output: 15.0 }, // Normal (alias)
+  'claude-sonnet-4-6': { input: 3.0, output: 15.0 }, // Normal (latest)
+  'claude-sonnet-4-5': { input: 3.0, output: 15.0 }, // Normal (legacy alias)
   'claude-haiku-4-5': { input: 1.0, output: 5.0 }, // Fast (alias)
   'claude-sonnet-4-5-20250929': { input: 3.0, output: 15.0 }, // Normal (dated)
   'claude-haiku-4-5-20251001': { input: 1.0, output: 5.0 }, // Fast (dated)

@@ -355,7 +355,7 @@ Format:
     description: 'Drafts engaging, well-structured content.',
     supportsContentTypeCustomization: true,
     agentConfig: {
-      name: 'Content Writer (Balanced)',
+      name: 'Thought Leadership Writer (Balanced)',
       role: 'synthesizer',
       systemPrompt: `You are a Content Writer creating thought leadership posts.
 Writing principles:
@@ -661,7 +661,7 @@ Structure:
 Tone: Warm, conversational, and authoritative. Adapt style to the audience and content type.
 Use markdown formatting. Aim for 600-1500 words.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.8,
       maxTokens: 4000,
       description: 'Creative content with storytelling and vivid language.',
@@ -1342,7 +1342,7 @@ Focus on:
 
 Be thoughtful and thorough. Quality of connections matters more than quantity.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.5,
       maxTokens: 3000,
       description: 'Note analysis, topic creation, tagging, and knowledge graph building.',
@@ -1627,7 +1627,7 @@ Output format:
 If DIG_DEEPER, specify exactly which gaps need filling and what search angles to pursue.
 If SUFFICIENT, provide the compiled report ready for evaluation.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.4,
       maxTokens: 4000,
       description: 'Compiles research, identifies gaps, assesses sufficiency.',
@@ -1743,7 +1743,7 @@ You MUST output exactly one of: COMPLETE or ITERATE as the final decision.`,
 ## LOCALE TIPS
 Use serp_search gl/hl params for region-specific results. Use semantic_search category, date, and domain filters. Use search_scholar for academic rigor.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.4,
       maxTokens: 6000,
       description:
@@ -1951,7 +1951,7 @@ This report was generated using adaptive multi-tool research with progressive de
 - If DEEP, aim for 2000-4000 words.
 - If VERY_THOROUGH, aim for 4000-8000 words with maximum detail.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.5,
       maxTokens: 8000,
       description:
@@ -2105,7 +2105,7 @@ Output format:
 [Output the improved sections directly, ready to replace the originals]
 Be specific and constructive. Every suggestion should be directly implementable.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.4,
       maxTokens: 3000,
       description: 'Refines project plans with concrete improvements.',
@@ -2298,7 +2298,7 @@ Output format:
 - Weaknesses: [What's missing or poorly supported]
 Be thorough but focused. Quality of analysis matters more than length.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.4,
       maxTokens: 3000,
       description: 'Deep analysis of document sections with critical assessment.',
@@ -2972,7 +2972,7 @@ Summarize the key facts and data points discovered through your searches. Cite s
 
 Ground every claim in the evidence you gathered. Flag where evidence is thin or contradictory.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.6,
       maxTokens: 4000,
       description: 'Economic thesis agent with research-first protocol.',
@@ -3214,7 +3214,7 @@ Be specific in your queries. Target different aspects of the topic to maximize c
 Include both foundational and cutting-edge sources.
 Output valid JSON.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5-20250514',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.4,
       maxTokens: 2000,
       description: 'Sense-making and search planning for deep research.',
@@ -3300,13 +3300,13 @@ Output valid JSON only.`,
       toolIds: [],
     },
   },
-  // ── Phase 35: Analysis Planner & Executive Summary Writer ──
+  // ── Phase 35: Analysis Planner (Balanced) & Executive Summary Writer (Balanced) ──
   {
-    name: 'Analysis Planner',
+    name: 'Analysis Planner (Balanced)',
     description:
       'Generates structured hypotheses, identifies data requirements, and suggests visualization plans for analytical questions.',
     agentConfig: {
-      name: 'Analysis Planner',
+      name: 'Analysis Planner (Balanced)',
       role: 'planner',
       systemPrompt: `You are an analysis planner. Given a question or goal, you:
 1. Define the core question precisely
@@ -3325,11 +3325,11 @@ Output a structured plan with clear sections for each hypothesis, the data neede
     },
   },
   {
-    name: 'Executive Summary Writer',
+    name: 'Executive Summary Writer (Balanced)',
     description:
       'Produces executive summaries using the MAIN framework (Motive, Answer, Impact, Next steps).',
     agentConfig: {
-      name: 'Executive Summary Writer',
+      name: 'Executive Summary Writer (Balanced)',
       role: 'synthesizer',
       systemPrompt: `You produce executive summaries using the MAIN framework:
 
@@ -3351,13 +3351,13 @@ Rules:
       toolIds: [],
     },
   },
-  // ── Phase 36: Goal Decomposition Coach & Network Segmentation Expert ──
+  // ── Phase 36: Goal Decomposition Coach (Balanced) & Network Segmentation Expert (Balanced) ──
   {
-    name: 'Goal Decomposition Coach',
+    name: 'Goal Decomposition Coach (Balanced)',
     description:
       'Decomposes goals into hierarchical KPI trees using MECE principles with measurable sub-goals.',
     agentConfig: {
-      name: 'Goal Decomposition Coach',
+      name: 'Goal Decomposition Coach (Balanced)',
       role: 'custom',
       systemPrompt: `You decompose goals into hierarchical KPI trees using MECE (Mutually Exclusive, Collectively Exhaustive) principles.
 
@@ -3371,7 +3371,7 @@ For any goal, you:
 
 Output a structured KPI tree with clear ownership, metrics, and targets.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.4,
       maxTokens: 2500,
       description: 'MECE goal decomposition with KPI trees, leading/lagging indicators.',
@@ -3379,11 +3379,11 @@ Output a structured KPI tree with clear ownership, metrics, and targets.`,
     },
   },
   {
-    name: 'Network Segmentation Expert',
+    name: 'Network Segmentation Expert (Balanced)',
     description:
       'Analyzes contacts and interactions to segment networks into actionable categories.',
     agentConfig: {
-      name: 'Network Segmentation Expert',
+      name: 'Network Segmentation Expert (Balanced)',
       role: 'custom',
       systemPrompt: `You analyze the user's contacts and interactions to segment their network into actionable categories.
 
@@ -3399,7 +3399,7 @@ For each segment, provide:
 - Suggested outreach cadence
 - Conversation starters or talking points`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.5,
       maxTokens: 2000,
       description: 'Behavioral/demographic/value network segmentation with actionable recommendations.',
@@ -3416,8 +3416,8 @@ For each segment, provide:
       role: 'custom',
       systemPrompt: `You are the LifeOS Analytics Orchestrator. Based on the user's question, route to the appropriate analytics agent:
 
-- Use Analysis Planner for hypothesis-driven analysis questions ("What drives...", "Why is...", "How does X affect Y...")
-- Use Goal Decomposition Coach for goal/KPI questions ("How do I achieve...", "Break down...", "What metrics...")
+- Use Analysis Planner (Balanced) for hypothesis-driven analysis questions ("What drives...", "Why is...", "How does X affect Y...")
+- Use Goal Decomposition Coach (Balanced) for goal/KPI questions ("How do I achieve...", "Break down...", "What metrics...")
 - Use Personal Data Analyst for direct data queries ("Show me...", "How many...", "What was my...")
 
 Analyze the user's intent and delegate to the right specialist. Synthesize results if multiple agents are needed.`,
@@ -3511,7 +3511,7 @@ Output a competitive content analysis with actionable differentiation opportunit
 
 Write posts that feel authentic and drive meaningful engagement.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.7,
       maxTokens: 1500,
       description: 'Algorithm-optimized LinkedIn post writer.',
@@ -3667,8 +3667,8 @@ Output a thematic summary grouped by topic, not chronologically.`,
       modelName: 'gpt-5-mini',
       temperature: 0.3,
       maxTokens: 1500,
-      description: 'Weekly notes and content summarization.',
-      toolIds: ['tool:query_firestore'],
+      description: 'Weekly notes and content summarization. (tools: list_notes, read_note)',
+      toolIds: ['tool:list_notes', 'tool:read_note'],
     },
   },
   {
@@ -3729,7 +3729,7 @@ Make prompts specific and thought-provoking, not generic.`,
 Use the "Offer Creation" framework: Outcome + Time + Effort + Risk = Compelling Offer.
 Be direct and strategic. Challenge weak positioning.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.5,
       maxTokens: 2000,
       description: 'Go-to-market offer creation and positioning.',
@@ -3751,7 +3751,7 @@ Be direct and strategic. Challenge weak positioning.`,
 
 Prioritize channels by effort-to-impact ratio. Be specific about budget allocation.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.5,
       maxTokens: 2000,
       description: 'Marketing strategy and channel planning for GTM.',
@@ -3773,7 +3773,7 @@ Prioritize channels by effort-to-impact ratio. Be specific about budget allocati
 
 Focus on content that builds authority and drives inbound interest.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.5,
       maxTokens: 2000,
       description: 'GTM content strategy with funnel alignment.',
@@ -3795,7 +3795,7 @@ Focus on content that builds authority and drives inbound interest.`,
 
 Be tactical and specific. Provide templates and scripts, not just strategy.`,
       modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
       temperature: 0.5,
       maxTokens: 2000,
       description: 'Sales process and pipeline strategy for GTM.',
@@ -4630,8 +4630,13 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
     defaultAgentTemplateName: 'Academic Research Analyst (Balanced)',
     workflowGraphTemplate: {
       version: 1,
-      startNodeId: 'scholar',
+      startNodeId: 'fork_search',
       nodes: [
+        {
+          id: 'fork_search',
+          type: 'fork',
+          label: 'Parallel Search',
+        },
         {
           id: 'scholar',
           type: 'agent',
@@ -4669,6 +4674,8 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
         },
       ],
       edges: [
+        { from: 'fork_search', to: 'scholar', condition: { type: 'always' } },
+        { from: 'fork_search', to: 'semantic', condition: { type: 'always' } },
         { from: 'scholar', to: 'join_research', condition: { type: 'always' } },
         { from: 'semantic', to: 'join_research', condition: { type: 'always' } },
         { from: 'join_research', to: 'synthesis', condition: { type: 'always' } },
@@ -4923,15 +4930,15 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
   {
     name: 'LifeOS Analytics Orchestrator',
     description:
-      'Meta-orchestrator that routes analytics questions to the right specialist: Analysis Planner, Goal Decomposition Coach, or Personal Data Analyst.',
+      'Meta-orchestrator that routes analytics questions to the right specialist: Analysis Planner (Balanced), Goal Decomposition Coach (Balanced), or Personal Data Analyst.',
     category: 'analytics',
     icon: 'SEARCH',
     tags: ['analytics', 'orchestrator', 'supervisor', 'data-analysis'],
     featureBadges: ['Intent routing', 'Multi-specialist', 'Adaptive analysis'],
     agentTemplateNames: [
       'Analytics Router (Fast)',
-      'Analysis Planner',
-      'Goal Decomposition Coach',
+      'Analysis Planner (Balanced)',
+      'Goal Decomposition Coach (Balanced)',
       'Personal Data Analyst (Balanced)',
     ],
     defaultAgentTemplateName: 'Analytics Router (Fast)',
@@ -4956,12 +4963,12 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
     tags: ['analytics', 'pipeline', 'sequential', 'personal-data'],
     featureBadges: ['Hypothesis-driven', 'Data analysis', 'Executive summary', 'MAIN framework'],
     agentTemplateNames: [
-      'Analysis Planner',
+      'Analysis Planner (Balanced)',
       'Personal Data Analyst (Balanced)',
       'Results Collector (Fast)',
-      'Executive Summary Writer',
+      'Executive Summary Writer (Balanced)',
     ],
-    defaultAgentTemplateName: 'Analysis Planner',
+    defaultAgentTemplateName: 'Analysis Planner (Balanced)',
     parameters: {
       question: {
         name: 'question',
@@ -4973,7 +4980,7 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
     workflowConfig: {
       name: 'Personal Analytics Pipeline',
       description:
-        'Sequential analytics pipeline: Analysis Planner → Data Analyst → Results Collector → Executive Summary.',
+        'Sequential analytics pipeline: Analysis Planner (Balanced) → Data Analyst → Results Collector → Executive Summary.',
       agentIds: [],
       defaultAgentId: undefined,
       workflowType: 'sequential',
@@ -5207,6 +5214,16 @@ const validateWorkflowTemplatePresets = () => {
         `Workflow template '${preset.name}' references missing agent template(s): ${missingAgents.join(
           ', '
         )}`
+      )
+    }
+
+    // Verify defaultAgentTemplateName is in the agent list
+    if (
+      preset.defaultAgentTemplateName &&
+      !preset.agentTemplateNames.includes(preset.defaultAgentTemplateName)
+    ) {
+      throw new Error(
+        `Workflow template '${preset.name}' has defaultAgentTemplateName '${preset.defaultAgentTemplateName}' which is not in agentTemplateNames`
       )
     }
 

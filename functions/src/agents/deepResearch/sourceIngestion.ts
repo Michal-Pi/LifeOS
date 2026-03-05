@@ -107,10 +107,10 @@ export async function executeSearchPlan(
     }
   }
 
-  // Deduplicate by URL
+  // Deduplicate by URL (strip query params, fragments, and trailing slashes)
   const seen = new Set<string>()
   const deduped = results.filter((r) => {
-    const key = r.url.replace(/\/$/, '').toLowerCase()
+    const key = normalizeUrlForDedup(r.url)
     if (seen.has(key)) return false
     seen.add(key)
     return true
@@ -353,13 +353,23 @@ function chunkByParagraphs(
 export function deduplicateSources(sources: SourceRecord[]): SourceRecord[] {
   const byUrl = new Map<string, SourceRecord>()
   for (const source of sources) {
-    const key = source.url.replace(/\/$/, '').toLowerCase()
+    const key = normalizeUrlForDedup(source.url)
     const existing = byUrl.get(key)
     if (!existing || (source.relevanceScore ?? 0) > (existing.relevanceScore ?? 0)) {
       byUrl.set(key, source)
     }
   }
   return [...byUrl.values()]
+}
+
+/** Strip query params, fragments, and trailing slashes for dedup comparison. */
+function normalizeUrlForDedup(url: string): string {
+  try {
+    const parsed = new URL(url)
+    return (parsed.origin + parsed.pathname).replace(/\/+$/, '').toLowerCase()
+  } catch {
+    return url.replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase()
+  }
 }
 
 // ----- Source Ranking (Phase 22) -----

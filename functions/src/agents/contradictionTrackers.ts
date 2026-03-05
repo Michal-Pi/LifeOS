@@ -581,7 +581,7 @@ export async function crossVerifyContradictions(
   apiKeys: ProviderKeys,
   judgeModel: { provider: string; modelName: string } = {
     provider: 'anthropic',
-    modelName: 'claude-sonnet-4-5',
+    modelName: 'claude-sonnet-4-6',
   }
 ): Promise<{
   verified: ContradictionOutput[]

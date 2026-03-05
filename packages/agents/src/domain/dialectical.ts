@@ -335,13 +335,17 @@ export interface Community {
 }
 
 /**
- * Stored concept for cross-run reuse (Phase 29)
+ * Stored concept for cross-run reuse (Phase 29).
+ * Uses branded types for type safety across the domain boundary.
  */
 export interface StoredConcept {
-  conceptId: string
+  conceptId: ConceptId
+  userId: string
   name: string
   definition: string
   version: number
+  previousVersionId?: ConceptId
+  conceptType: 'ENTITY' | 'PROCESS' | 'PROPERTY' | 'RELATION' | 'ABSTRACT'
   sourceRunId: string
   tags: string[]
   createdAt: number
@@ -460,8 +464,9 @@ export interface DialecticalWorkflowConfig {
 
   // Meta-reflection
   velocityThreshold: number // Below this, consider terminating
-  /** Filter contradictions by severity for progressive deepening (Phase 27) */
-  contradictionSeverityFilter?: 'all' | 'high' | 'critical'
+  /** Filter contradictions by severity for progressive deepening (Phase 27).
+   *  Uses uppercase to match ContradictionSeverity values. 'ALL' = no filter. */
+  contradictionSeverityFilter?: 'ALL' | 'HIGH' | 'MEDIUM' | 'LOW'
   maxCycles: number
   minCycles: number
 
@@ -613,7 +618,7 @@ export const THESIS_AGENT_PRESETS = {
     {
       lens: 'economic' as ThesisLens,
       modelProvider: 'anthropic' as ModelProvider,
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
     },
     {
       lens: 'systems' as ThesisLens,
@@ -632,7 +637,7 @@ export const THESIS_AGENT_PRESETS = {
     {
       lens: 'economic' as ThesisLens,
       modelProvider: 'anthropic' as ModelProvider,
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
     },
     {
       lens: 'behavioral' as ThesisLens,
@@ -651,7 +656,7 @@ export const THESIS_AGENT_PRESETS = {
     {
       lens: 'systems' as ThesisLens,
       modelProvider: 'anthropic' as ModelProvider,
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
     },
     {
       lens: 'technical' as ThesisLens,
@@ -670,7 +675,7 @@ export const THESIS_AGENT_PRESETS = {
     {
       lens: 'historical' as ThesisLens,
       modelProvider: 'anthropic' as ModelProvider,
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
     },
     {
       lens: 'political' as ThesisLens,
@@ -689,7 +694,7 @@ export const THESIS_AGENT_PRESETS = {
     {
       lens: 'ecological' as ThesisLens,
       modelProvider: 'anthropic' as ModelProvider,
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
     },
     {
       lens: 'economic' as ThesisLens,
@@ -708,7 +713,7 @@ export const THESIS_AGENT_PRESETS = {
     {
       lens: 'economic' as ThesisLens,
       modelProvider: 'anthropic' as ModelProvider,
-      modelName: 'claude-sonnet-4-5',
+      modelName: 'claude-sonnet-4-6',
     },
     {
       lens: 'systems' as ThesisLens,
@@ -736,9 +741,9 @@ export const THESIS_AGENT_PRESETS = {
 /**
  * Best model per lens for provider diversity (Phase 26)
  */
-export const LENS_MODEL_PRESETS: Record<ThesisLens, { provider: string; modelName: string }> = {
-  adversarial: { provider: 'anthropic', modelName: 'claude-sonnet-4-5' },
-  systems:     { provider: 'anthropic', modelName: 'claude-sonnet-4-5' },
+export const LENS_MODEL_PRESETS: Record<ThesisLens, { provider: ModelProvider; modelName: string }> = {
+  adversarial: { provider: 'anthropic', modelName: 'claude-sonnet-4-6' },
+  systems:     { provider: 'anthropic', modelName: 'claude-sonnet-4-6' },
   economic:    { provider: 'openai',    modelName: 'o1' },
   technical:   { provider: 'openai',    modelName: 'o1' },
   behavioral:  { provider: 'google',    modelName: 'gemini-2.5-pro' },
@@ -799,7 +804,7 @@ export type CreateDialecticalSessionInput = Omit<
 export function createDefaultDialecticalConfig(): DialecticalWorkflowConfig {
   return {
     thesisAgents: [
-      { lens: 'economic', modelProvider: 'anthropic', modelName: 'claude-sonnet-4-5' },
+      { lens: 'economic', modelProvider: 'anthropic', modelName: 'claude-sonnet-4-6' },
       { lens: 'systems', modelProvider: 'openai', modelName: 'gpt-5.2' },
       { lens: 'adversarial', modelProvider: 'google', modelName: 'gemini-2.5-pro' },
     ],

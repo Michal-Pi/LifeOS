@@ -57,8 +57,8 @@ describe('mailboxAITools domain', () => {
       expect(config.enabled).toBe(true)
     })
 
-    it('responseDraft uses claude-sonnet-4-5', () => {
-      expect(DEFAULT_MAILBOX_AI_TOOLS.responseDraft.modelName).toBe('claude-sonnet-4-5')
+    it('responseDraft uses claude-sonnet-4-6', () => {
+      expect(DEFAULT_MAILBOX_AI_TOOLS.responseDraft.modelName).toBe('claude-sonnet-4-6')
     })
 
     it('senderResearch systemPrompt mentions SenderPersona', () => {

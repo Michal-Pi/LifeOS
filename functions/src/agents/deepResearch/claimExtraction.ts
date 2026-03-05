@@ -46,7 +46,8 @@ Rules:
 Output valid JSON only, no markdown fences.`
 
 function buildExtractionUserPrompt(chunk: string, query: string): string {
-  return `Research query: "${query}"
+  return `Research query:
+<user_query>${query}</user_query>
 
 Extract atomic claims from this text. For each claim, provide:
 - claimText: The claim as a clear, self-contained statement
@@ -222,7 +223,7 @@ export async function mapClaimsToKG(
       confidence: claim.confidence,
       sourceEpisodeId: `episode:source:${claim.sourceId}` as EpisodeId,
       sourceAgentId: 'agent:deep_research_extractor' as AgentId,
-      sourceLens: 'economic' as ThesisLens,
+      sourceLens: 'systems' as ThesisLens, // neutral default — claims from extraction are not lens-specific
     }
 
     const kgClaim = await kg.addClaim(claimInput)
@@ -272,12 +273,8 @@ function parseExtractionResult(
   section?: string
 ): ExtractedClaim[] {
   try {
-    // Try to extract JSON from the output
-    const jsonMatch = output.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) return []
-
-    const parsed = JSON.parse(jsonMatch[0]) as { claims?: RawExtractedClaim[] }
-    if (!parsed.claims || !Array.isArray(parsed.claims)) return []
+    const parsed = safeParseJson(output) as { claims?: RawExtractedClaim[] } | null
+    if (!parsed?.claims || !Array.isArray(parsed.claims)) return []
 
     return parsed.claims
       .filter((c) => c.claimText && typeof c.claimText === 'string')
@@ -293,26 +290,6 @@ function parseExtractionResult(
   } catch (err) {
     log.warn('Failed to parse extraction result', { error: String(err) })
     return []
-  }
-}
-
-function _mapEvidenceTypeToEpistemic(
-  evidenceType: EvidenceType
-): 'DEFINITION' | 'CAUSAL' | 'CORRELATIONAL' | 'NORMATIVE' | 'MEASUREMENT' {
-  switch (evidenceType) {
-    case 'empirical':
-    case 'statistical':
-      return 'MEASUREMENT'
-    case 'meta_analysis':
-    case 'review':
-      return 'CORRELATIONAL'
-    case 'theoretical':
-      return 'DEFINITION'
-    case 'expert_opinion':
-    case 'anecdotal':
-      return 'NORMATIVE'
-    default:
-      return 'DEFINITION'
   }
 }
 
@@ -355,7 +332,8 @@ export function buildBatchExtractionPrompt(
     .map((s, idx) => `--- SOURCE ${idx + 1} [${s.sourceId}] ---\n${s.content.substring(0, 3000)}`)
     .join('\n\n')
 
-  return `Research query: "${query}"
+  return `Research query:
+<user_query>${query}</user_query>
 
 Extract atomic claims from each source below. For each claim, provide:
 - sourceIndex: Which source (1-indexed) this claim came from
@@ -382,12 +360,11 @@ export function parseBatchExtractionOutput(
   output: string,
   sources: Array<{ sourceId: string; section?: string }>
 ): ExtractedClaim[] {
-  try {
-    const jsonMatch = output.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) return []
+  if (sources.length === 0) return []
 
-    const parsed = JSON.parse(jsonMatch[0]) as { claims?: RawBatchClaim[] }
-    if (!parsed.claims || !Array.isArray(parsed.claims)) return []
+  try {
+    const parsed = safeParseJson(output) as { claims?: RawBatchClaim[] } | null
+    if (!parsed?.claims || !Array.isArray(parsed.claims)) return []
 
     return parsed.claims
       .filter((c) => c.claimText && typeof c.claimText === 'string')
@@ -443,17 +420,18 @@ export async function extractClaimsFromSourceBatch(
     batchSize,
   })
 
-  for (const batch of batches) {
-    // Estimate cost for this batch (3000 chars per source / 4 chars per token + output)
+  for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+    const batch = batches[batchIdx]
+    // Estimate cost for this batch (3000 chars per source / 4 chars per token + output, with 1.3x safety margin)
     const inputTokens = batch.reduce(
       (sum, s) => sum + Math.min(3000, (contentMap[s.sourceId] ?? '').length) / 4,
       0
     )
-    const estimatedCost = estimateLLMCost('gpt-5-mini', inputTokens + 200, 800)
+    const estimatedCost = estimateLLMCost('gpt-5-mini', Math.ceil(inputTokens * 1.3) + 200, 800)
 
     if (!canAffordOperation(currentBudget, estimatedCost)) {
       log.info('Budget limit reached during batch extraction', {
-        remainingBatches: batches.length - batches.indexOf(batch),
+        remainingBatches: batches.length - batchIdx,
       })
       break
     }
@@ -484,6 +462,30 @@ export async function extractClaimsFromSourceBatch(
 
   const deduped = deduplicateClaims(allClaims)
   return { claims: deduped, updatedBudget: currentBudget }
+}
+
+// ----- JSON Extraction -----
+
+/**
+ * Extract the first balanced JSON object from a string.
+ * Uses brace counting instead of greedy regex to handle edge cases.
+ */
+function safeParseJson(text: string): unknown | null {
+  const start = text.indexOf('{')
+  if (start === -1) return null
+  let depth = 0
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === '{') depth++
+    else if (text[i] === '}') depth--
+    if (depth === 0) {
+      try {
+        return JSON.parse(text.slice(start, i + 1))
+      } catch {
+        return null
+      }
+    }
+  }
+  return null
 }
 
 // ----- Provider Execution Type -----

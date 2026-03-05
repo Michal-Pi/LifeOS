@@ -18,7 +18,7 @@ const buildAgent = (
   temperature: number
 ): AgentConfig => {
   const now = Date.now()
-  const modelName = provider === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-5.2'
+  const modelName = provider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-5.2'
   return {
     agentId: `agent:pm-${name.toLowerCase()}:${randomUUID()}` as AgentConfig['agentId'],
     userId,
