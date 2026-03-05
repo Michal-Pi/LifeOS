@@ -260,6 +260,8 @@ export interface DeepResearchRunConfig {
   maxDialecticalCycles: number
   /** Research mode: 'full' runs complete pipeline, 'quick' skips KG and gap analysis (Phase 25) */
   mode?: 'full' | 'quick'
+  /** Max multi-hop search depth for recursive sub-question searches (Phase 46, default 2) */
+  maxMultiHopDepth?: number
 }
 
 /**
