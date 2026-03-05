@@ -41,6 +41,7 @@ export * from './ports/channelAdapter'
 export * from './ports/exampleLibraryRepository'
 export * from './ports/evaluationRepository'
 export * from './ports/contactRepository'
+export * from './ports/conceptRepository'
 
 // ID utilities (re-exported from @lifeos/core)
 export { asId, newId } from '@lifeos/core'

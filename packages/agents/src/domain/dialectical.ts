@@ -334,6 +334,20 @@ export interface Community {
   temporal: BiTemporalEdge
 }
 
+/**
+ * Stored concept for cross-run reuse (Phase 29)
+ */
+export interface StoredConcept {
+  conceptId: string
+  name: string
+  definition: string
+  version: number
+  sourceRunId: string
+  tags: string[]
+  createdAt: number
+  updatedAt: number
+}
+
 // ----- Bi-Temporal Edge -----
 
 /**
@@ -446,6 +460,8 @@ export interface DialecticalWorkflowConfig {
 
   // Meta-reflection
   velocityThreshold: number // Below this, consider terminating
+  /** Filter contradictions by severity for progressive deepening (Phase 27) */
+  contradictionSeverityFilter?: 'all' | 'high' | 'critical'
   maxCycles: number
   minCycles: number
 
@@ -457,6 +473,12 @@ export interface DialecticalWorkflowConfig {
   // Retrieval
   retrievalDepth: number // How many hops in the graph
   retrievalTopK: number // Top K related concepts to retrieve
+
+  /** Enable deep research fusion with dialectical workflow (Phase 30) */
+  enableResearchFusion?: boolean
+
+  /** Quick vs full dialectic mode (Phase 28) */
+  mode?: 'full' | 'quick'
 }
 
 /**
@@ -710,6 +732,21 @@ export const THESIS_AGENT_PRESETS = {
     },
   ],
 } as const
+
+/**
+ * Best model per lens for provider diversity (Phase 26)
+ */
+export const LENS_MODEL_PRESETS: Record<ThesisLens, { provider: string; modelName: string }> = {
+  adversarial: { provider: 'anthropic', modelName: 'claude-sonnet-4-5' },
+  systems:     { provider: 'anthropic', modelName: 'claude-sonnet-4-5' },
+  economic:    { provider: 'openai',    modelName: 'o1' },
+  technical:   { provider: 'openai',    modelName: 'o1' },
+  behavioral:  { provider: 'google',    modelName: 'gemini-2.5-pro' },
+  historical:  { provider: 'google',    modelName: 'gemini-2.5-pro' },
+  political:   { provider: 'xai',       modelName: 'grok-4' },
+  ecological:  { provider: 'xai',       modelName: 'grok-4' },
+  custom:      { provider: 'openai',    modelName: 'gpt-5.2' },
+}
 
 export type ThesisAgentPreset = keyof typeof THESIS_AGENT_PRESETS
 
