@@ -270,7 +270,12 @@ Provide:
 2. Category scores
 3. Critical issues (must fix)
 4. Recommendations (should improve)
-Be constructive but thorough.`,
+Be constructive but thorough.
+
+DECISION OUTPUT:
+If this plan needs revisions, start your response with "NEEDS_REVISION:" followed by specific issues to fix.
+If this plan is approved, start your response with "APPROVED:" followed by a brief quality summary.
+Limit: only 1 revision cycle is allowed. If this is already a revised plan, approve it with notes.`,
       modelProvider: 'openai',
       modelName: 'gpt-5.2',
       temperature: 0.2,
@@ -4310,7 +4315,16 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
         },
         { from: 'gap_researcher', to: 'planner', condition: { type: 'always' } },
         { from: 'improvement', to: 'quality_review', condition: { type: 'always' } },
-        { from: 'quality_review', to: 'end_node', condition: { type: 'always' } },
+        {
+          from: 'quality_review',
+          to: 'improvement',
+          condition: { type: 'contains', value: 'NEEDS_REVISION' },
+        },
+        {
+          from: 'quality_review',
+          to: 'end_node',
+          condition: { type: 'contains', value: 'APPROVED' },
+        },
       ],
       limits: { maxNodeVisits: 5, maxEdgeRepeats: 3 },
     },
