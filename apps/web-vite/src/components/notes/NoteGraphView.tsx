@@ -10,10 +10,23 @@ import { ReactFlow, Background, Controls, type Edge, type Node } from '@xyflow/r
 import '@xyflow/react/dist/style.css'
 import type { NoteGraph, NoteGraphEdgeType } from '@lifeos/notes'
 
+export interface SuggestedEdge {
+  fromNoteId: string
+  toNoteId: string
+  reason: string
+  strength: number // 0-1
+}
+
 type NoteGraphViewProps = {
   graph: NoteGraph
   onNodeClick?: (noteId: string) => void
   highlightedNoteIds?: Set<string>
+  /** Phase 47: Suggested connections rendered as dashed lines */
+  suggestedEdges?: SuggestedEdge[]
+  /** Callback when a suggested edge is confirmed */
+  onConfirmSuggestedEdge?: (fromNoteId: string, toNoteId: string) => void
+  /** Callback when a suggested edge is dismissed */
+  onDismissSuggestedEdge?: (fromNoteId: string, toNoteId: string) => void
 }
 
 const NODE_WIDTH = 200
@@ -56,6 +69,7 @@ export function NoteGraphView({
   graph,
   onNodeClick,
   highlightedNoteIds = new Set(),
+  suggestedEdges = [],
 }: NoteGraphViewProps) {
   const { theme } = useTheme()
 
@@ -194,8 +208,28 @@ export function NoteGraphView({
       }
     })
 
-    return { nodes: reactFlowNodes, edges: reactFlowEdges }
-  }, [graph, highlightedNoteIds])
+    // Phase 47: Add suggested edges as dashed lines
+    const suggestedFlowEdges: Edge[] = suggestedEdges.map((edge) => ({
+      id: `suggested-${edge.fromNoteId}-${edge.toNoteId}`,
+      source: edge.fromNoteId,
+      target: edge.toNoteId,
+      animated: false,
+      style: {
+        stroke: 'var(--accent-dim, var(--accent))',
+        strokeWidth: 1,
+        strokeDasharray: '6 3',
+        opacity: 0.5 + edge.strength * 0.3,
+      },
+      label: edge.reason,
+      labelStyle: {
+        fill: 'var(--muted-foreground)',
+        fontSize: 9,
+        fontStyle: 'italic',
+      },
+    }))
+
+    return { nodes: reactFlowNodes, edges: [...reactFlowEdges, ...suggestedFlowEdges] }
+  }, [graph, highlightedNoteIds, suggestedEdges])
 
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
