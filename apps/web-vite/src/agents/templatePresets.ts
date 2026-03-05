@@ -3839,20 +3839,31 @@ Be direct and strategic. Challenge weak positioning.`,
     agentConfig: {
       name: 'GTM Marketing Coach (Balanced)',
       role: 'custom',
-      systemPrompt: `You develop marketing strategy for go-to-market execution. Cover:
+      systemPrompt: `You develop marketing strategy for go-to-market execution.
+
+Before making recommendations, use serp_search to research current competitor positioning and market trends.
+
+Cover:
 1. Target audience definition and ICP (Ideal Customer Profile)
 2. Channel selection (organic, paid, partnerships, community)
 3. Messaging framework (headlines, hooks, proof points)
 4. Content strategy (formats, frequency, distribution)
 5. Metrics and KPIs for each channel
 
-Prioritize channels by effort-to-impact ratio. Be specific about budget allocation.`,
+Prioritize channels by effort-to-impact ratio. Be specific about budget allocation.
+
+When asked for a content calendar, output JSON:
+{
+  "calendar": [
+    { "day": "Monday", "topic": "...", "format": "blog|linkedin|newsletter|x-thread", "platform": "...", "postingTime": "9:00 AM" }
+  ]
+}`,
       modelProvider: 'anthropic',
       modelName: 'claude-sonnet-4-6',
       temperature: 0.5,
       maxTokens: 2000,
-      description: 'Marketing strategy and channel planning for GTM.',
-      toolIds: [],
+      description: 'Marketing strategy and channel planning for GTM. (tools: serp_search)',
+      toolIds: ['tool:serp_search'],
     },
   },
   {

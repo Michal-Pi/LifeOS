@@ -140,6 +140,17 @@ export interface ContentPipelineConfig {
   seoFirstMode?: boolean
 }
 
+// ----- Coaching Context (Phase 48) -----
+
+export interface CoachingContext {
+  businessDescription: string
+  targetAudience: string
+  competitorNames: string[]
+  pastDecisions: Array<{ date: string; decision: string; outcome?: string }>
+  competitiveLandscape?: string
+  contentCalendar?: Array<{ day: string; topic: string; format: string; platform: string }>
+}
+
 // ----- Structured Plan Output (Phase 42) -----
 
 export interface StructuredPlanTask {
