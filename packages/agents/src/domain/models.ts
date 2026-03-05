@@ -112,7 +112,13 @@ export type WorkflowEdgeConditionType =
   | 'llm_evaluate'
   | 'error'
 
-export type JoinAggregationMode = 'list' | 'ranked' | 'consensus' | 'synthesize' | 'dedup_combine'
+export type JoinAggregationMode =
+  | 'list'
+  | 'ranked'
+  | 'consensus'
+  | 'synthesize'
+  | 'dedup_combine'
+  | 'concatenate'
 
 export type ExecutionMode = 'full' | 'quick' | 'single' | 'custom'
 

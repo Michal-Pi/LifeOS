@@ -460,6 +460,96 @@ Focus on discoverability while maintaining quality.`,
       toolIds: ['tool:serp_search'],
     },
   },
+  // ── Phase 44: Multi-Format Writers ──
+  {
+    name: 'Blog Article Writer (Fast)',
+    description: 'Writes long-form blog articles (1000-2000 words) with headers, intro, body, and conclusion.',
+    agentConfig: {
+      name: 'Blog Article Writer (Fast)',
+      role: 'writer',
+      systemPrompt: `You are a Blog Article Writer creating long-form content (1000-2000 words).
+Structure:
+1. **Title** — clear, SEO-friendly
+2. **Introduction** (150-200 words) — hook + thesis
+3. **Body** (3-5 sections with H2 headers) — main insights, evidence, examples
+4. **Conclusion** (100-150 words) — key takeaways + CTA
+
+Writing principles:
+- Use clear, engaging language
+- Include subheadings for scanability
+- Support claims with evidence and examples
+- Use bullet points and numbered lists where appropriate
+- End with a strong call to action
+- Use markdown formatting throughout`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.7,
+      maxTokens: 5000,
+      description: 'Long-form blog article writer.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'Newsletter Writer (Fast)',
+    description: 'Writes email newsletters (500-800 words) with subject line, sections, and CTAs.',
+    agentConfig: {
+      name: 'Newsletter Writer (Fast)',
+      role: 'writer',
+      systemPrompt: `You are a Newsletter Writer creating email-optimized content (500-800 words).
+Structure:
+1. **Subject Line** — compelling, under 50 characters
+2. **Preview Text** — 40-90 character teaser
+3. **Opening** — personal greeting + hook (2-3 sentences)
+4. **Main Section** — key insight or story (200-300 words)
+5. **Secondary Section** — supporting point or resource (100-150 words)
+6. **CTA** — one clear call to action
+7. **Sign-off** — personal closing
+
+Writing principles:
+- Write like you're emailing a smart friend
+- One main idea per newsletter
+- Use short paragraphs (2-3 sentences max)
+- Include 1-2 links max
+- Make the CTA specific and actionable`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.7,
+      maxTokens: 2500,
+      description: 'Email newsletter writer.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'X Thread Writer (Fast)',
+    description: 'Writes X/Twitter threads (8-15 tweets) with hooks and engagement CTAs.',
+    agentConfig: {
+      name: 'X Thread Writer (Fast)',
+      role: 'writer',
+      systemPrompt: `You are an X/Twitter Thread Writer creating viral thread content (8-15 tweets).
+Structure:
+1. **Tweet 1 (Hook)** — bold claim, surprising stat, or provocative question (under 280 chars)
+2. **Tweets 2-4** — set up the problem or context
+3. **Tweets 5-10** — main insights, numbered for clarity
+4. **Tweet 11-13** — examples, evidence, or case study
+5. **Final Tweet** — summary + engagement CTA ("Follow for more", "Retweet if you agree", etc.)
+
+Writing principles:
+- Each tweet must stand alone AND flow in sequence
+- Use "↓" or "🧵" in tweet 1 to signal a thread
+- Number tweets (1/, 2/, etc.)
+- Keep tweets under 280 characters each
+- Use line breaks within tweets for readability
+- End with a question or CTA to drive replies
+- Avoid links in middle tweets (kills reach)
+- Use 1-2 relevant hashtags only on the last tweet`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.7,
+      maxTokens: 3000,
+      description: 'X/Twitter thread writer.',
+      toolIds: [],
+    },
+  },
   {
     name: 'Fact Checker (Fast)',
     description: 'Validates accuracy of claims and data.',
@@ -5150,6 +5240,121 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
       workflowType: 'sequential',
       maxIterations: 10,
       memoryMessageLimit: 150,
+    },
+  },
+  // ── Phase 44: Multi-Format Content Factory (graph) ──
+  {
+    name: 'Multi-Format Content Factory',
+    description:
+      'One research input → four parallel outputs: blog article, newsletter, X thread, and LinkedIn post.',
+    category: 'content',
+    icon: 'PLAN',
+    tags: ['content', 'multi-format', 'parallel', 'writing'],
+    featureBadges: ['Multi-format', 'Parallel writers', 'Research-backed', '4x content output'],
+    agentTemplateNames: [
+      'Content Strategist (Balanced)',
+      'Content Research Analyst (Balanced)',
+      'Blog Article Writer (Fast)',
+      'Newsletter Writer (Fast)',
+      'X Thread Writer (Fast)',
+      'LinkedIn Draft Writer (Balanced)',
+    ],
+    defaultAgentTemplateName: 'Content Strategist (Balanced)',
+    parameters: {
+      topic: {
+        name: 'topic',
+        description: 'The content topic to create in multiple formats',
+        type: 'string',
+        required: true,
+      },
+      audience: {
+        name: 'audience',
+        description: 'Target audience for the content',
+        type: 'string',
+        required: true,
+      },
+    },
+    workflowGraphTemplate: {
+      version: 1,
+      startNodeId: 'strategist',
+      nodes: [
+        {
+          id: 'strategist',
+          type: 'agent',
+          label: 'Content Strategy',
+          agentTemplateName: 'Content Strategist (Balanced)',
+        },
+        {
+          id: 'researcher',
+          type: 'agent',
+          label: 'Research',
+          agentTemplateName: 'Content Research Analyst (Balanced)',
+        },
+        {
+          id: 'fork_writers',
+          type: 'fork',
+          label: 'Fan Out to Writers',
+        },
+        {
+          id: 'blog_writer',
+          type: 'agent',
+          label: 'Blog Article',
+          agentTemplateName: 'Blog Article Writer (Fast)',
+        },
+        {
+          id: 'newsletter_writer',
+          type: 'agent',
+          label: 'Newsletter',
+          agentTemplateName: 'Newsletter Writer (Fast)',
+        },
+        {
+          id: 'x_thread_writer',
+          type: 'agent',
+          label: 'X Thread',
+          agentTemplateName: 'X Thread Writer (Fast)',
+        },
+        {
+          id: 'linkedin_writer',
+          type: 'agent',
+          label: 'LinkedIn Post',
+          agentTemplateName: 'LinkedIn Draft Writer (Balanced)',
+        },
+        {
+          id: 'join_outputs',
+          type: 'join',
+          label: 'Combine Formats',
+          aggregationMode: 'concatenate',
+        },
+        {
+          id: 'end_node',
+          type: 'end',
+          label: 'Done',
+        },
+      ],
+      edges: [
+        { from: 'strategist', to: 'researcher', condition: { type: 'always' } },
+        { from: 'researcher', to: 'fork_writers', condition: { type: 'always' } },
+        { from: 'fork_writers', to: 'blog_writer', condition: { type: 'always' } },
+        { from: 'fork_writers', to: 'newsletter_writer', condition: { type: 'always' } },
+        { from: 'fork_writers', to: 'x_thread_writer', condition: { type: 'always' } },
+        { from: 'fork_writers', to: 'linkedin_writer', condition: { type: 'always' } },
+        { from: 'blog_writer', to: 'join_outputs', condition: { type: 'always' } },
+        { from: 'newsletter_writer', to: 'join_outputs', condition: { type: 'always' } },
+        { from: 'x_thread_writer', to: 'join_outputs', condition: { type: 'always' } },
+        { from: 'linkedin_writer', to: 'join_outputs', condition: { type: 'always' } },
+        { from: 'join_outputs', to: 'end_node', condition: { type: 'always' } },
+      ],
+      limits: { maxNodeVisits: 5, maxEdgeRepeats: 1 },
+    },
+    workflowConfig: {
+      name: 'Multi-Format Content Factory',
+      description:
+        'Research → parallel fan-out to 4 format-specific writers → concatenated multi-format output.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'graph',
+      maxIterations: 10,
+      memoryMessageLimit: 120,
     },
   },
   // ── Phase 39: LinkedIn Content Factory (sequential) ──

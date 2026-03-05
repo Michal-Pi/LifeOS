@@ -169,6 +169,7 @@ export const JoinAggregationModeSchema = z.enum([
   'consensus',
   'synthesize',
   'dedup_combine',
+  'concatenate',
 ])
 
 export const ExecutionModeSchema = z.enum(['full', 'quick', 'single', 'custom'])
