@@ -119,4 +119,6 @@ export interface ProjectManagerConfig {
   requireAssumptionValidation: boolean
   enableConflictDetection: boolean
   enableUserProfiling: boolean
+  /** Planning mode: 'full' runs all agents; 'quick' skips Risk Analyst + Quality Reviewer */
+  mode?: 'full' | 'quick'
 }

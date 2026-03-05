@@ -4125,16 +4125,17 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
   {
     name: 'Project Plan Builder',
     description:
-      'Iterative planning with gap research, multi-provider evaluation, and quality review.',
+      'Iterative planning with gap research, multi-provider evaluation, time-aware scheduling, and quality review.',
     category: 'planning',
     icon: 'PLAN',
     tags: ['planning', 'project-management', 'iterative'],
-    featureBadges: ['Iterative refinement', 'Multi-provider', 'Gap research'],
+    featureBadges: ['Iterative refinement', 'Multi-provider', 'Gap research', 'Time-aware'],
     agentTemplateNames: [
       'Project Structure Planner (Thinking/Claude)',
       'Project Structure Planner (Thinking)',
       'Completeness Evaluator (Thinking)',
       'Project Gap Researcher (Balanced)',
+      'Time-Aware Planner (Balanced)',
       'Plan Improvement Agent (Balanced)',
       'Plan Quality Reviewer (Thinking)',
     ],
@@ -4148,6 +4149,12 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
           type: 'agent',
           label: 'Create Plan',
           agentTemplateName: 'Project Structure Planner (Thinking/Claude)',
+        },
+        {
+          id: 'time_check',
+          type: 'agent',
+          label: 'Schedule Check',
+          agentTemplateName: 'Time-Aware Planner (Balanced)',
         },
         {
           id: 'evaluator',
@@ -4181,7 +4188,8 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
         },
       ],
       edges: [
-        { from: 'planner', to: 'evaluator', condition: { type: 'always' } },
+        { from: 'planner', to: 'time_check', condition: { type: 'always' } },
+        { from: 'time_check', to: 'evaluator', condition: { type: 'always' } },
         {
           from: 'evaluator',
           to: 'gap_researcher',
@@ -4201,12 +4209,65 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
     workflowConfig: {
       name: 'Project Plan Builder',
       description:
-        'Iterative planning with gap research, multi-provider evaluation, and quality review.',
+        'Iterative planning with gap research, multi-provider evaluation, time-aware scheduling, and quality review.',
       agentIds: [],
       defaultAgentId: undefined,
       workflowType: 'graph',
       maxIterations: 15,
       memoryMessageLimit: 120,
+    },
+  },
+  // ── WS3b: Quick Project Plan (graph) ──
+  {
+    name: 'Quick Project Plan',
+    description:
+      'Lightweight project planning: create a plan and ground it in your real schedule. Skips risk analysis and quality review for fast turnaround.',
+    category: 'planning',
+    icon: 'PLAN',
+    tags: ['planning', 'project-management', 'quick'],
+    featureBadges: ['Quick mode', 'Time-aware'],
+    agentTemplateNames: [
+      'Project Structure Planner (Thinking/Claude)',
+      'Time-Aware Planner (Balanced)',
+    ],
+    defaultAgentTemplateName: 'Project Structure Planner (Thinking/Claude)',
+    workflowGraphTemplate: {
+      version: 1,
+      startNodeId: 'planner',
+      nodes: [
+        {
+          id: 'planner',
+          type: 'agent',
+          label: 'Create Plan',
+          agentTemplateName: 'Project Structure Planner (Thinking/Claude)',
+        },
+        {
+          id: 'time_check',
+          type: 'agent',
+          label: 'Schedule Check',
+          agentTemplateName: 'Time-Aware Planner (Balanced)',
+        },
+        {
+          id: 'end_node',
+          type: 'end',
+          label: 'Done',
+        },
+      ],
+      edges: [
+        { from: 'planner', to: 'time_check', condition: { type: 'always' } },
+        { from: 'time_check', to: 'end_node', condition: { type: 'always' } },
+      ],
+      limits: { maxNodeVisits: 3, maxEdgeRepeats: 1 },
+    },
+    workflowConfig: {
+      name: 'Quick Project Plan',
+      description:
+        'Lightweight project planning with time-aware scheduling. Skips risk analysis and quality review.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'graph',
+      maxIterations: 5,
+      memoryMessageLimit: 60,
     },
   },
   // ── WS4: Data Scraper (custom) ──
