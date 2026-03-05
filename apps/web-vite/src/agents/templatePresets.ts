@@ -3300,6 +3300,508 @@ Output valid JSON only.`,
       toolIds: [],
     },
   },
+  // ── Phase 35: Analysis Planner & Executive Summary Writer ──
+  {
+    name: 'Analysis Planner',
+    description:
+      'Generates structured hypotheses, identifies data requirements, and suggests visualization plans for analytical questions.',
+    agentConfig: {
+      name: 'Analysis Planner',
+      role: 'planner',
+      systemPrompt: `You are an analysis planner. Given a question or goal, you:
+1. Define the core question precisely
+2. Generate 2-3 testable hypotheses
+3. Identify data requirements for each hypothesis
+4. Suggest visualization plans for results
+5. Recommend the order of analysis steps
+
+Output a structured plan with clear sections for each hypothesis, the data needed, and how results should be visualized.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.4,
+      maxTokens: 2000,
+      description: 'Structures analytical questions into testable hypotheses with data requirements.',
+      toolIds: ['tool:query_firestore', 'tool:calculate'],
+    },
+  },
+  {
+    name: 'Executive Summary Writer',
+    description:
+      'Produces executive summaries using the MAIN framework (Motive, Answer, Impact, Next steps).',
+    agentConfig: {
+      name: 'Executive Summary Writer',
+      role: 'synthesizer',
+      systemPrompt: `You produce executive summaries using the MAIN framework:
+
+**M**otive — Why this matters (1-2 sentences establishing context and urgency)
+**A**nswer — The key finding (the core insight or recommendation)
+**I**mpact — What changes (quantified consequences, risks, or opportunities)
+**N**ext steps — Concrete actions (3-5 prioritized, time-bound next steps)
+
+Rules:
+- Keep summaries under 500 words
+- Lead with the most important insight
+- Use data and specifics, not vague language
+- Every next step must be actionable and assignable`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.3,
+      maxTokens: 1500,
+      description: 'MAIN-framework executive summaries: Motive, Answer, Impact, Next steps.',
+      toolIds: [],
+    },
+  },
+  // ── Phase 36: Goal Decomposition Coach & Network Segmentation Expert ──
+  {
+    name: 'Goal Decomposition Coach',
+    description:
+      'Decomposes goals into hierarchical KPI trees using MECE principles with measurable sub-goals.',
+    agentConfig: {
+      name: 'Goal Decomposition Coach',
+      role: 'custom',
+      systemPrompt: `You decompose goals into hierarchical KPI trees using MECE (Mutually Exclusive, Collectively Exhaustive) principles.
+
+For any goal, you:
+1. Clarify the top-level objective and success criteria
+2. Break down into 3-5 MECE sub-goals
+3. For each sub-goal, identify leading indicators (predictive) and lagging indicators (outcome)
+4. Suggest specific tracking methods and data sources
+5. Flag dependencies between sub-goals
+6. Recommend review cadence (daily/weekly/monthly)
+
+Output a structured KPI tree with clear ownership, metrics, and targets.`,
+      modelProvider: 'anthropic',
+      modelName: 'claude-sonnet-4-5',
+      temperature: 0.4,
+      maxTokens: 2500,
+      description: 'MECE goal decomposition with KPI trees, leading/lagging indicators.',
+      toolIds: ['tool:query_firestore', 'tool:list_todos', 'tool:list_calendar_events'],
+    },
+  },
+  {
+    name: 'Network Segmentation Expert',
+    description:
+      'Analyzes contacts and interactions to segment networks into actionable categories.',
+    agentConfig: {
+      name: 'Network Segmentation Expert',
+      role: 'custom',
+      systemPrompt: `You analyze the user's contacts and interactions to segment their network into actionable categories.
+
+Segmentation dimensions:
+1. **Energy**: High-energy givers vs. energy drains
+2. **Engagement**: Active collaborators, dormant connections, new opportunities
+3. **Value**: Mentors, peers, mentees, connectors, domain experts
+4. **Recency**: Recent contact, overdue follow-up, lost touch
+
+For each segment, provide:
+- Who belongs in it (based on available data)
+- Recommended action (reconnect, deepen, maintain, deprioritize)
+- Suggested outreach cadence
+- Conversation starters or talking points`,
+      modelProvider: 'anthropic',
+      modelName: 'claude-sonnet-4-5',
+      temperature: 0.5,
+      maxTokens: 2000,
+      description: 'Behavioral/demographic/value network segmentation with actionable recommendations.',
+      toolIds: ['tool:query_firestore', 'tool:list_calendar_events'],
+    },
+  },
+  // ── Phase 37-40: Additional agent templates for workflow presets ──
+  {
+    name: 'Analytics Router (Fast)',
+    description:
+      'Routes analytics questions to the appropriate specialist agent based on intent classification.',
+    agentConfig: {
+      name: 'Analytics Router (Fast)',
+      role: 'custom',
+      systemPrompt: `You are the LifeOS Analytics Orchestrator. Based on the user's question, route to the appropriate analytics agent:
+
+- Use Analysis Planner for hypothesis-driven analysis questions ("What drives...", "Why is...", "How does X affect Y...")
+- Use Goal Decomposition Coach for goal/KPI questions ("How do I achieve...", "Break down...", "What metrics...")
+- Use Personal Data Analyst for direct data queries ("Show me...", "How many...", "What was my...")
+
+Analyze the user's intent and delegate to the right specialist. Synthesize results if multiple agents are needed.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.2,
+      maxTokens: 1000,
+      description: 'Routes analytics queries to the right specialist agent.',
+      toolIds: ['tool:expert_council_execute'],
+    },
+  },
+  {
+    name: 'Results Collector (Fast)',
+    description: 'Collects and structures analysis results for downstream summarization.',
+    agentConfig: {
+      name: 'Results Collector (Fast)',
+      role: 'custom',
+      systemPrompt: `You collect and structure analysis results from upstream agents. Your job is to:
+1. Extract key findings and data points
+2. Organize them by theme or hypothesis
+3. Flag any contradictions or gaps in the data
+4. Prepare a clean, structured handoff for the summary writer
+
+Output a structured collection of findings with clear labels and confidence levels.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.2,
+      maxTokens: 1500,
+      description: 'Structures analysis results for downstream summarization.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'LinkedIn Content Researcher (Fast)',
+    description: 'Researches topics and competitors for LinkedIn content creation.',
+    agentConfig: {
+      name: 'LinkedIn Content Researcher (Fast)',
+      role: 'researcher',
+      systemPrompt: `You research topics for LinkedIn content creation. For any given topic:
+1. Identify trending angles and conversations in the space
+2. Find 3-5 data points or statistics to reference
+3. Analyze what top voices are saying about the topic
+4. Identify contrarian or fresh perspectives
+5. Note common mistakes or misconceptions to address
+
+Output structured research notes ready for a content writer.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.4,
+      maxTokens: 1500,
+      description: 'Topic research and trend analysis for LinkedIn content.',
+      toolIds: ['tool:serp_search'],
+    },
+  },
+  {
+    name: 'LinkedIn Competitor Analyst (Fast)',
+    description: 'Analyzes competitor LinkedIn content strategy and positioning.',
+    agentConfig: {
+      name: 'LinkedIn Competitor Analyst (Fast)',
+      role: 'researcher',
+      systemPrompt: `You analyze competitor content strategy for LinkedIn positioning. For a given industry:
+1. Identify top content themes competitors use
+2. Analyze their posting frequency and engagement patterns
+3. Find content gaps they're not addressing
+4. Suggest differentiation angles
+5. Recommend content hooks that outperform
+
+Output a competitive content analysis with actionable differentiation opportunities.`,
+      modelProvider: 'google',
+      modelName: 'gemini-2.5-flash',
+      temperature: 0.4,
+      maxTokens: 1500,
+      description: 'Competitive content analysis for LinkedIn differentiation.',
+      toolIds: ['tool:serp_search'],
+    },
+  },
+  {
+    name: 'LinkedIn Draft Writer (Balanced)',
+    description: 'Writes engaging LinkedIn posts optimized for the platform algorithm.',
+    agentConfig: {
+      name: 'LinkedIn Draft Writer (Balanced)',
+      role: 'custom',
+      systemPrompt: `You write engaging LinkedIn posts. Follow these principles:
+1. Hook in the first line (pattern interrupt, bold claim, or question)
+2. Use short paragraphs (1-2 sentences max)
+3. Include a personal angle or story
+4. End with a clear call-to-action or question
+5. Use line breaks liberally for readability
+6. Keep posts 150-300 words for optimal engagement
+7. Avoid hashtag spam (3-5 relevant hashtags max)
+
+Write posts that feel authentic and drive meaningful engagement.`,
+      modelProvider: 'anthropic',
+      modelName: 'claude-sonnet-4-5',
+      temperature: 0.7,
+      maxTokens: 1500,
+      description: 'Algorithm-optimized LinkedIn post writer.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'LinkedIn Final Polish (Fast)',
+    description: 'Final editing pass for LinkedIn content — grammar, tone, and platform optimization.',
+    agentConfig: {
+      name: 'LinkedIn Final Polish (Fast)',
+      role: 'custom',
+      systemPrompt: `You do a final editing pass on LinkedIn posts. Check for:
+1. Grammar and spelling errors
+2. Tone consistency (professional but conversational)
+3. Hook strength (is the first line compelling?)
+4. CTA clarity (is there a clear next step?)
+5. Length optimization (trim if over 300 words)
+6. Hashtag relevance (3-5 max, industry-specific)
+7. Readability (short paragraphs, line breaks)
+
+Make minimal, precise edits. Preserve the author's voice.`,
+      modelProvider: 'anthropic',
+      modelName: 'claude-haiku-4-5',
+      temperature: 0.2,
+      maxTokens: 1500,
+      description: 'Final editing and platform optimization for LinkedIn posts.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'Morning Calendar Checker (Fast)',
+    description: 'Reviews today\'s calendar and summarizes upcoming commitments.',
+    agentConfig: {
+      name: 'Morning Calendar Checker (Fast)',
+      role: 'custom',
+      systemPrompt: `You review today's calendar and provide a concise morning briefing. Include:
+1. Total number of meetings today
+2. Key meetings that need preparation (flag any back-to-back or conflicts)
+3. Available focus time blocks
+4. Any upcoming deadlines from calendar events
+
+Be brief and action-oriented. Use bullet points. Flag anything urgent.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.2,
+      maxTokens: 1000,
+      description: 'Morning calendar review with conflict detection.',
+      toolIds: ['tool:list_calendar_events', 'tool:get_current_time'],
+    },
+  },
+  {
+    name: 'Morning Meeting Prep (Fast)',
+    description: 'Prepares brief summaries and talking points for today\'s meetings.',
+    agentConfig: {
+      name: 'Morning Meeting Prep (Fast)',
+      role: 'custom',
+      systemPrompt: `You prepare brief meeting summaries for the day. For each meeting:
+1. What is this meeting about?
+2. Key topics or agenda items to prepare
+3. Any action items from previous related meetings
+4. Suggested talking points or questions
+
+Keep each meeting prep to 3-5 bullet points. Focus on what's actionable.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.3,
+      maxTokens: 1200,
+      description: 'Meeting preparation with talking points.',
+      toolIds: ['tool:list_calendar_events', 'tool:get_current_time'],
+    },
+  },
+  {
+    name: 'Morning Todo Reviewer (Fast)',
+    description: 'Reviews pending todos and suggests daily priorities.',
+    agentConfig: {
+      name: 'Morning Todo Reviewer (Fast)',
+      role: 'custom',
+      systemPrompt: `You review the user's pending todos and suggest today's priorities. Consider:
+1. Overdue items (highest priority)
+2. Items due today
+3. Items blocking other work
+4. Quick wins (under 15 min)
+
+Output a prioritized list of 3-5 items to focus on today with brief rationale.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.2,
+      maxTokens: 1000,
+      description: 'Daily todo prioritization and review.',
+      toolIds: ['tool:list_todos', 'tool:get_current_time'],
+    },
+  },
+  {
+    name: 'Morning Priority Synthesizer (Fast)',
+    description: 'Synthesizes calendar and todo data into a concise morning action plan.',
+    agentConfig: {
+      name: 'Morning Priority Synthesizer (Fast)',
+      role: 'synthesizer',
+      systemPrompt: `You synthesize calendar and todo information into a concise morning action plan. Structure:
+
+**Today's Focus** (1 sentence — the most important thing to accomplish)
+
+**Priority Actions** (3-5 items, time-blocked if possible)
+
+**Watch Out For** (conflicts, tight deadlines, preparation needed)
+
+**Quick Wins** (items completable in under 15 minutes)
+
+Keep the entire briefing under 300 words. Be specific and actionable.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.3,
+      maxTokens: 1000,
+      description: 'Morning action plan synthesis.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'Weekly Habit Analyst (Fast)',
+    description: 'Analyzes weekly habit and activity patterns from user data.',
+    agentConfig: {
+      name: 'Weekly Habit Analyst (Fast)',
+      role: 'custom',
+      systemPrompt: `You analyze the user's weekly habits and activity patterns. Look for:
+1. Consistency of routines (meeting patterns, todo completion rates)
+2. Energy patterns (when are most tasks completed?)
+3. Habit streaks and breaks
+4. Time allocation across categories (work, personal, health)
+
+Provide data-backed observations, not judgments. Highlight both wins and areas for improvement.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.3,
+      maxTokens: 1500,
+      description: 'Weekly habit and pattern analysis.',
+      toolIds: ['tool:query_firestore', 'tool:list_todos', 'tool:list_calendar_events'],
+    },
+  },
+  {
+    name: 'Weekly Notes Summarizer (Fast)',
+    description: 'Summarizes notes and captured content from the past week.',
+    agentConfig: {
+      name: 'Weekly Notes Summarizer (Fast)',
+      role: 'custom',
+      systemPrompt: `You summarize the user's notes and captured content from the past week. For each note:
+1. Extract the key insight or decision
+2. Identify connections to other notes or projects
+3. Flag any unresolved questions or action items
+
+Output a thematic summary grouped by topic, not chronologically.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.3,
+      maxTokens: 1500,
+      description: 'Weekly notes and content summarization.',
+      toolIds: ['tool:query_firestore'],
+    },
+  },
+  {
+    name: 'Weekly Project Progress Tracker (Fast)',
+    description: 'Tracks project progress and flags blockers from the past week.',
+    agentConfig: {
+      name: 'Weekly Project Progress Tracker (Fast)',
+      role: 'custom',
+      systemPrompt: `You track project progress over the past week. For each active project:
+1. What was accomplished this week?
+2. What's blocked or at risk?
+3. What's the next milestone?
+4. Is the project on track?
+
+Be concise. Use a traffic-light system (green/yellow/red) for status.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.2,
+      maxTokens: 1500,
+      description: 'Weekly project progress tracking with status indicators.',
+      toolIds: ['tool:query_firestore', 'tool:list_todos'],
+    },
+  },
+  {
+    name: 'Weekly Reflection Prompter (Fast)',
+    description: 'Generates personalized reflection prompts based on the week\'s data.',
+    agentConfig: {
+      name: 'Weekly Reflection Prompter (Fast)',
+      role: 'custom',
+      systemPrompt: `You generate personalized reflection prompts based on the user's week. Create 5-7 prompts that:
+1. Reference specific events or patterns from their data
+2. Encourage meta-cognition about decisions made
+3. Prompt energy and motivation awareness
+4. Suggest areas for intentional adjustment next week
+
+Make prompts specific and thought-provoking, not generic.`,
+      modelProvider: 'openai',
+      modelName: 'gpt-5-mini',
+      temperature: 0.6,
+      maxTokens: 1000,
+      description: 'Data-driven weekly reflection prompts.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'GTM Offer Coach (Balanced)',
+    description: 'Helps define and refine product/service offers for go-to-market.',
+    agentConfig: {
+      name: 'GTM Offer Coach (Balanced)',
+      role: 'custom',
+      systemPrompt: `You help define and refine product/service offers for go-to-market strategy. Cover:
+1. Value proposition clarity (what problem, for whom, why you?)
+2. Offer structure (pricing, packaging, tiers)
+3. Positioning against alternatives
+4. Risk reversals and guarantees
+5. Urgency and scarcity elements
+
+Use the "Offer Creation" framework: Outcome + Time + Effort + Risk = Compelling Offer.
+Be direct and strategic. Challenge weak positioning.`,
+      modelProvider: 'anthropic',
+      modelName: 'claude-sonnet-4-5',
+      temperature: 0.5,
+      maxTokens: 2000,
+      description: 'Go-to-market offer creation and positioning.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'GTM Marketing Coach (Balanced)',
+    description: 'Develops marketing strategy and channel selection for go-to-market.',
+    agentConfig: {
+      name: 'GTM Marketing Coach (Balanced)',
+      role: 'custom',
+      systemPrompt: `You develop marketing strategy for go-to-market execution. Cover:
+1. Target audience definition and ICP (Ideal Customer Profile)
+2. Channel selection (organic, paid, partnerships, community)
+3. Messaging framework (headlines, hooks, proof points)
+4. Content strategy (formats, frequency, distribution)
+5. Metrics and KPIs for each channel
+
+Prioritize channels by effort-to-impact ratio. Be specific about budget allocation.`,
+      modelProvider: 'anthropic',
+      modelName: 'claude-sonnet-4-5',
+      temperature: 0.5,
+      maxTokens: 2000,
+      description: 'Marketing strategy and channel planning for GTM.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'GTM Content Strategist (Balanced)',
+    description: 'Creates content strategy aligned with go-to-market objectives.',
+    agentConfig: {
+      name: 'GTM Content Strategist (Balanced)',
+      role: 'custom',
+      systemPrompt: `You create content strategy aligned with go-to-market objectives. Deliver:
+1. Content pillars (3-5 themes that support the positioning)
+2. Content calendar framework (types, frequency, channels)
+3. Funnel-aligned content (awareness, consideration, decision)
+4. Repurposing strategy (one piece of content → multiple formats)
+5. Distribution plan (where and how to share each piece)
+
+Focus on content that builds authority and drives inbound interest.`,
+      modelProvider: 'anthropic',
+      modelName: 'claude-sonnet-4-5',
+      temperature: 0.5,
+      maxTokens: 2000,
+      description: 'GTM content strategy with funnel alignment.',
+      toolIds: [],
+    },
+  },
+  {
+    name: 'GTM Sales Coach (Balanced)',
+    description: 'Develops sales process and pipeline strategy for go-to-market.',
+    agentConfig: {
+      name: 'GTM Sales Coach (Balanced)',
+      role: 'custom',
+      systemPrompt: `You develop sales strategy for go-to-market execution. Cover:
+1. Sales process stages and criteria for advancement
+2. Outreach templates and sequences
+3. Objection handling framework
+4. Qualification criteria (BANT, MEDDIC, or similar)
+5. Pipeline metrics and conversion targets
+
+Be tactical and specific. Provide templates and scripts, not just strategy.`,
+      modelProvider: 'anthropic',
+      modelName: 'claude-sonnet-4-5',
+      temperature: 0.5,
+      maxTokens: 2000,
+      description: 'Sales process and pipeline strategy for GTM.',
+      toolIds: [],
+    },
+  },
 ]
 
 export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
@@ -4415,6 +4917,259 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
       workflowType: 'deep_research',
       maxIterations: 100,
       memoryMessageLimit: 500,
+    },
+  },
+  // ── Phase 37: Analytics Orchestrator (supervisor) ──
+  {
+    name: 'LifeOS Analytics Orchestrator',
+    description:
+      'Meta-orchestrator that routes analytics questions to the right specialist: Analysis Planner, Goal Decomposition Coach, or Personal Data Analyst.',
+    category: 'analytics',
+    icon: 'SEARCH',
+    tags: ['analytics', 'orchestrator', 'supervisor', 'data-analysis'],
+    featureBadges: ['Intent routing', 'Multi-specialist', 'Adaptive analysis'],
+    agentTemplateNames: [
+      'Analytics Router (Fast)',
+      'Analysis Planner',
+      'Goal Decomposition Coach',
+      'Personal Data Analyst (Balanced)',
+    ],
+    defaultAgentTemplateName: 'Analytics Router (Fast)',
+    workflowConfig: {
+      name: 'LifeOS Analytics Orchestrator',
+      description:
+        'Routes analytics questions to the right specialist agent based on intent classification.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'supervisor',
+      maxIterations: 15,
+      memoryMessageLimit: 150,
+    },
+  },
+  // ── Phase 38: Personal Analytics Pipeline (sequential) ──
+  {
+    name: 'Personal Analytics Pipeline',
+    description:
+      'End-to-end analytics pipeline: plan analysis → query data → collect results → executive summary.',
+    category: 'analytics',
+    icon: 'SEARCH',
+    tags: ['analytics', 'pipeline', 'sequential', 'personal-data'],
+    featureBadges: ['Hypothesis-driven', 'Data analysis', 'Executive summary', 'MAIN framework'],
+    agentTemplateNames: [
+      'Analysis Planner',
+      'Personal Data Analyst (Balanced)',
+      'Results Collector (Fast)',
+      'Executive Summary Writer',
+    ],
+    defaultAgentTemplateName: 'Analysis Planner',
+    parameters: {
+      question: {
+        name: 'question',
+        description: 'The analytics question to answer',
+        type: 'string',
+        required: true,
+      },
+    },
+    workflowConfig: {
+      name: 'Personal Analytics Pipeline',
+      description:
+        'Sequential analytics pipeline: Analysis Planner → Data Analyst → Results Collector → Executive Summary.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'sequential',
+      maxIterations: 10,
+      memoryMessageLimit: 150,
+    },
+  },
+  // ── Phase 39: Content Pipeline (sequential) ──
+  {
+    name: 'Content Pipeline',
+    description:
+      'One-click content creation: strategy → research → write → edit → SEO optimization.',
+    category: 'content',
+    icon: 'PLAN',
+    tags: ['content', 'pipeline', 'sequential', 'writing'],
+    featureBadges: ['Content strategy', 'Research-backed', 'SEO optimized', 'Professional editing'],
+    agentTemplateNames: [
+      'Content Strategist (Balanced)',
+      'Content Research Analyst (Balanced)',
+      'Thought Leadership Writer (Balanced)',
+      'Content Polish Editor (Balanced)',
+      'SEO Specialist (Balanced)',
+    ],
+    defaultAgentTemplateName: 'Content Strategist (Balanced)',
+    parameters: {
+      topic: {
+        name: 'topic',
+        description: 'The content topic to write about',
+        type: 'string',
+        required: true,
+      },
+      audience: {
+        name: 'audience',
+        description: 'Target audience for the content',
+        type: 'string',
+        required: true,
+      },
+      format: {
+        name: 'format',
+        description: 'Content format (blog post, whitepaper, newsletter, etc.)',
+        type: 'string',
+        required: false,
+      },
+    },
+    workflowConfig: {
+      name: 'Content Pipeline',
+      description:
+        'Sequential content creation: Content Strategist → Research Analyst → Writer → Editor → SEO Specialist.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'sequential',
+      maxIterations: 10,
+      memoryMessageLimit: 150,
+    },
+  },
+  // ── Phase 39: LinkedIn Content Factory (sequential) ──
+  {
+    name: 'LinkedIn Content Factory',
+    description:
+      'End-to-end LinkedIn post creation: research → competitor analysis → draft → critique → final polish.',
+    category: 'content',
+    icon: 'PLAN',
+    tags: ['linkedin', 'content', 'social-media', 'sequential'],
+    featureBadges: ['Topic research', 'Competitive analysis', 'Algorithm-optimized', 'Expert critique'],
+    agentTemplateNames: [
+      'LinkedIn Content Researcher (Fast)',
+      'LinkedIn Competitor Analyst (Fast)',
+      'LinkedIn Draft Writer (Balanced)',
+      'LinkedIn Post Critic (Fast)',
+      'LinkedIn Final Polish (Fast)',
+    ],
+    defaultAgentTemplateName: 'LinkedIn Content Researcher (Fast)',
+    parameters: {
+      topic: {
+        name: 'topic',
+        description: 'The topic for the LinkedIn post',
+        type: 'string',
+        required: true,
+      },
+      industry: {
+        name: 'industry',
+        description: 'Your industry or niche for competitive context',
+        type: 'string',
+        required: false,
+      },
+    },
+    workflowConfig: {
+      name: 'LinkedIn Content Factory',
+      description:
+        'Sequential LinkedIn content: Topic Research → Competitor Analysis → Draft Writer → Critic → Final Polish.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'sequential',
+      maxIterations: 10,
+      memoryMessageLimit: 100,
+    },
+  },
+  // ── Phase 40: Morning Brief (sequential) ──
+  {
+    name: 'Morning Brief',
+    description:
+      'Daily morning briefing: calendar check → meeting prep → todo review → priority action plan.',
+    category: 'productivity',
+    icon: 'PLAN',
+    tags: ['morning', 'brief', 'daily', 'productivity', 'sequential'],
+    featureBadges: ['Calendar review', 'Meeting prep', 'Todo prioritization', 'Action plan'],
+    agentTemplateNames: [
+      'Morning Calendar Checker (Fast)',
+      'Morning Meeting Prep (Fast)',
+      'Morning Todo Reviewer (Fast)',
+      'Morning Priority Synthesizer (Fast)',
+    ],
+    defaultAgentTemplateName: 'Morning Calendar Checker (Fast)',
+    workflowConfig: {
+      name: 'Morning Brief',
+      description:
+        'Daily morning briefing: Calendar Check → Meeting Prep → Todo Review → Priority Suggestions.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'sequential',
+      maxIterations: 8,
+      memoryMessageLimit: 80,
+    },
+  },
+  // ── Phase 40: Weekly Review (sequential) ──
+  {
+    name: 'Weekly Review',
+    description:
+      'Weekly reflection workflow: habit analysis → notes summary → project progress → reflection prompts.',
+    category: 'productivity',
+    icon: 'PLAN',
+    tags: ['weekly', 'review', 'reflection', 'productivity', 'sequential'],
+    featureBadges: ['Habit tracking', 'Note synthesis', 'Progress tracking', 'Reflection prompts'],
+    agentTemplateNames: [
+      'Weekly Habit Analyst (Fast)',
+      'Weekly Notes Summarizer (Fast)',
+      'Weekly Project Progress Tracker (Fast)',
+      'Weekly Reflection Prompter (Fast)',
+    ],
+    defaultAgentTemplateName: 'Weekly Habit Analyst (Fast)',
+    workflowConfig: {
+      name: 'Weekly Review',
+      description:
+        'Weekly reflection: Habit Analysis → Notes Summary → Project Progress → Reflection Prompts.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'sequential',
+      maxIterations: 8,
+      memoryMessageLimit: 100,
+    },
+  },
+  // ── Phase 40: Go-to-Market Pipeline (sequential) ──
+  {
+    name: 'Go-to-Market Pipeline',
+    description:
+      'GTM strategy pipeline: offer coaching → marketing strategy → content strategy → sales process.',
+    category: 'business',
+    icon: 'PLAN',
+    tags: ['gtm', 'go-to-market', 'business', 'strategy', 'sequential'],
+    featureBadges: ['Offer creation', 'Marketing strategy', 'Content planning', 'Sales process'],
+    agentTemplateNames: [
+      'GTM Offer Coach (Balanced)',
+      'GTM Marketing Coach (Balanced)',
+      'GTM Content Strategist (Balanced)',
+      'GTM Sales Coach (Balanced)',
+    ],
+    defaultAgentTemplateName: 'GTM Offer Coach (Balanced)',
+    parameters: {
+      business: {
+        name: 'business',
+        description: 'Your business or company name',
+        type: 'string',
+        required: true,
+      },
+      product: {
+        name: 'product',
+        description: 'The product or service to bring to market',
+        type: 'string',
+        required: true,
+      },
+      targetAudience: {
+        name: 'targetAudience',
+        description: 'Your target audience or ideal customer profile',
+        type: 'string',
+        required: false,
+      },
+    },
+    workflowConfig: {
+      name: 'Go-to-Market Pipeline',
+      description:
+        'Sequential GTM strategy: Offer Coach → Marketing Coach → Content Strategy → Sales Coach.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'sequential',
+      maxIterations: 10,
+      memoryMessageLimit: 150,
     },
   },
 ]
