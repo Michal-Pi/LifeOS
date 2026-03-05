@@ -5104,6 +5104,54 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
       memoryMessageLimit: 150,
     },
   },
+  // ── Phase 43: Content Pipeline SEO-First (sequential) ──
+  {
+    name: 'Content Pipeline (SEO-First)',
+    description:
+      'SEO-first content creation: SEO keywords → strategy → research → write → edit. Keywords guide writing from the start.',
+    category: 'content',
+    icon: 'PLAN',
+    tags: ['content', 'pipeline', 'sequential', 'seo', 'writing'],
+    featureBadges: ['SEO-first', 'Keyword-driven', 'Research-backed', 'Professional editing'],
+    agentTemplateNames: [
+      'SEO Specialist (Balanced)',
+      'Content Strategist (Balanced)',
+      'Content Research Analyst (Balanced)',
+      'Thought Leadership Writer (Balanced)',
+      'Content Polish Editor (Balanced)',
+    ],
+    defaultAgentTemplateName: 'SEO Specialist (Balanced)',
+    parameters: {
+      topic: {
+        name: 'topic',
+        description: 'The content topic to write about',
+        type: 'string',
+        required: true,
+      },
+      audience: {
+        name: 'audience',
+        description: 'Target audience for the content',
+        type: 'string',
+        required: true,
+      },
+      format: {
+        name: 'format',
+        description: 'Content format (blog post, whitepaper, newsletter, etc.)',
+        type: 'string',
+        required: false,
+      },
+    },
+    workflowConfig: {
+      name: 'Content Pipeline (SEO-First)',
+      description:
+        'SEO-first sequential content creation: SEO Specialist → Strategist → Research → Writer → Editor.',
+      agentIds: [],
+      defaultAgentId: undefined,
+      workflowType: 'sequential',
+      maxIterations: 10,
+      memoryMessageLimit: 150,
+    },
+  },
   // ── Phase 39: LinkedIn Content Factory (sequential) ──
   {
     name: 'LinkedIn Content Factory',

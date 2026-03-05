@@ -120,6 +120,20 @@ export type DeepResearchPriority = 'low' | 'medium' | 'high' | 'critical'
 export type DeepResearchStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
 export type DeepResearchSource = 'claude' | 'chatgpt' | 'gemini' | 'other'
 
+// ----- Brand Voice & Content Pipeline Config (Phase 43) -----
+
+export interface BrandVoice {
+  tone: string
+  vocabulary: string[]
+  structure: string
+  examples: string[]
+}
+
+export interface ContentPipelineConfig {
+  brandVoice?: BrandVoice
+  seoFirstMode?: boolean
+}
+
 // ----- Structured Plan Output (Phase 42) -----
 
 export interface StructuredPlanTask {
