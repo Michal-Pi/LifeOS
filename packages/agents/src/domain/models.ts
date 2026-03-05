@@ -120,6 +120,28 @@ export type DeepResearchPriority = 'low' | 'medium' | 'high' | 'critical'
 export type DeepResearchStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
 export type DeepResearchSource = 'claude' | 'chatgpt' | 'gemini' | 'other'
 
+// ----- Structured Plan Output (Phase 42) -----
+
+export interface StructuredPlanTask {
+  title: string
+  description: string
+  dependencies: string[]
+  estimatedHours: number
+  assignee?: string
+  milestone?: string
+}
+
+export interface StructuredPlanMilestone {
+  name: string
+  tasks: StructuredPlanTask[]
+}
+
+export interface StructuredPlan {
+  projectName: string
+  milestones: StructuredPlanMilestone[]
+  summary: string
+}
+
 // ----- Agent Configuration -----
 
 export interface AgentConfig {

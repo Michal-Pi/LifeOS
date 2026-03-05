@@ -75,23 +75,34 @@ export const agentTemplatePresets: AgentTemplatePreset[] = [
       name: 'Project Structure Planner (Thinking)',
       role: 'planner',
       systemPrompt: `You are a Strategic Planner creating project structures.
-Your output format:
-# Project: [Name]
-## Chapter 1: [Name]
-**Goal**: [What this chapter achieves]
-**Duration**: [Estimated time]
-**Dependencies**: [What must be done first]
-### Milestones
-- [Milestone 1]
-- [Milestone 2]
-## Chapter 2: [Name]
-...
 Focus on:
 - Logical flow and dependencies
 - Realistic timelines
 - Clear deliverables
 - Risk awareness
-Create 3-7 chapters for a complete project structure.`,
+Create 3-7 milestones for a complete project structure.
+
+OUTPUT FORMAT: You MUST output valid JSON with this structure:
+{
+  "projectName": "...",
+  "milestones": [
+    {
+      "name": "...",
+      "tasks": [
+        {
+          "title": "...",
+          "description": "...",
+          "dependencies": ["task title"],
+          "estimatedHours": 2,
+          "assignee": "user",
+          "milestone": "Milestone 1"
+        }
+      ]
+    }
+  ],
+  "summary": "..."
+}
+Output valid JSON only. No markdown fences, no extra text.`,
       modelProvider: 'openai',
       modelName: 'o1',
       temperature: 0.5,
@@ -2838,32 +2849,6 @@ OUTPUT FORMAT:
       role: 'planner',
       systemPrompt: `You are a Strategic Planner creating project structures with exceptional depth and foresight.
 
-Your output format:
-# Project: [Name]
-
-## Executive Summary
-[2-3 sentences on project vision, key outcomes, and critical success factors]
-
-## Chapter 1: [Name]
-**Goal**: [What this chapter achieves]
-**Duration**: [Estimated time]
-**Dependencies**: [What must be done first]
-**Success Criteria**: [How we know this chapter is complete]
-### Milestones
-- [Milestone 1] — [Deliverable]
-- [Milestone 2] — [Deliverable]
-### Risks & Mitigations
-- [Risk 1]: [Mitigation strategy]
-
-## Chapter 2: [Name]
-...
-
-## Critical Path Analysis
-[Identify the sequence of tasks that determines minimum project duration]
-
-## Resource Considerations
-[Key skills, tools, or external dependencies needed]
-
 Focus on:
 - Logical flow and dependencies
 - Realistic timelines with buffer
@@ -2871,7 +2856,29 @@ Focus on:
 - Risk awareness and proactive mitigation
 - Stakeholder communication points
 
-Create 3-7 chapters for a complete project structure. Think deeply about hidden dependencies and second-order effects.`,
+Create 3-7 milestones for a complete project structure. Think deeply about hidden dependencies and second-order effects.
+
+OUTPUT FORMAT: You MUST output valid JSON with this structure:
+{
+  "projectName": "...",
+  "milestones": [
+    {
+      "name": "...",
+      "tasks": [
+        {
+          "title": "...",
+          "description": "...",
+          "dependencies": ["task title"],
+          "estimatedHours": 2,
+          "assignee": "user",
+          "milestone": "Milestone 1"
+        }
+      ]
+    }
+  ],
+  "summary": "..."
+}
+Output valid JSON only. No markdown fences, no extra text.`,
       modelProvider: 'anthropic',
       modelName: 'claude-opus-4-6',
       temperature: 0.5,

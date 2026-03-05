@@ -28,6 +28,7 @@ export type WorkflowEventType =
   | 'tool_start'
   | 'tool_done'
   | 'tool_failed'
+  | 'plan_approved'
   | 'token_delta'
   | 'waiting_for_input'
   | 'input_received'
@@ -479,6 +480,23 @@ export function stepCompletedEvent(params: {
       estimatedCost: params.cumulativeCost,
       tokensUsed: params.cumulativeTokens,
     },
+  })
+}
+
+/**
+ * Create a plan approved event (Phase 42)
+ * Fires after a structured plan is approved, triggering todo creation.
+ */
+export function planApprovedEvent(
+  workflowId: string,
+  runId: string,
+  plan: { projectName: string; taskCount: number }
+): WorkflowEvent {
+  return createEvent({
+    type: 'plan_approved',
+    workflowId,
+    runId,
+    data: { projectName: plan.projectName, taskCount: plan.taskCount },
   })
 }
 
