@@ -337,6 +337,138 @@ Respond with a JSON array of tag strings:
   },
 }
 
+// ==================== Phase 31: update_todo and delete_todo tools ====================
+
+export const updateTodoToolConfig = {
+  toolId: 'tool:update_todo',
+  name: 'update_todo',
+  description: 'Update an existing todo item — change its title, status, priority, or due date',
+  parameters: {
+    type: 'object' as const,
+    properties: {
+      todoId: { type: 'string', description: 'ID of the todo to update' },
+      updates: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'New title' },
+          status: { type: 'string', enum: ['pending', 'in_progress', 'completed'], description: 'New status' },
+          priority: { type: 'string', enum: ['low', 'medium', 'high'], description: 'New priority' },
+          dueDate: { type: 'string', description: 'ISO date string for due date' },
+        },
+        description: 'Fields to update',
+      },
+    },
+    required: ['todoId', 'updates'],
+  },
+}
+
+export const deleteTodoToolConfig = {
+  toolId: 'tool:delete_todo',
+  name: 'delete_todo',
+  description: 'Delete an existing todo item',
+  parameters: {
+    type: 'object' as const,
+    properties: {
+      todoId: { type: 'string', description: 'ID of the todo to delete' },
+    },
+    required: ['todoId'],
+  },
+}
+
+// ==================== Phase 32: memory_recall tool ====================
+
+export const memoryRecallToolConfig = {
+  toolId: 'tool:memory_recall',
+  name: 'memory_recall',
+  description: 'Search past run outputs and goals for relevant context and continuity',
+  parameters: {
+    type: 'object' as const,
+    properties: {
+      query: { type: 'string', description: 'Search query to find relevant past runs' },
+      timeRange: {
+        type: 'object',
+        properties: {
+          from: { type: 'string', description: 'ISO date string for range start' },
+          to: { type: 'string', description: 'ISO date string for range end' },
+        },
+        description: 'Optional time range filter',
+      },
+      runType: { type: 'string', description: 'Filter by workflow type (e.g., "sequential", "parallel")' },
+    },
+    required: ['query'],
+  },
+}
+
+// ==================== Phase 33: generate_chart tool ====================
+
+export const generateChartToolConfig = {
+  toolId: 'tool:generate_chart',
+  name: 'generate_chart',
+  description: 'Generate a chart (bar, line, pie, scatter) as a base64 PNG image',
+  parameters: {
+    type: 'object' as const,
+    properties: {
+      chartType: { type: 'string', enum: ['bar', 'line', 'pie', 'scatter'], description: 'Type of chart' },
+      data: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            label: { type: 'string' },
+            value: { type: 'number' },
+            x: { type: 'number' },
+            y: { type: 'number' },
+          },
+        },
+        description: 'Data points for the chart',
+      },
+      title: { type: 'string', description: 'Chart title' },
+      options: {
+        type: 'object',
+        properties: {
+          width: { type: 'number', description: 'Width in pixels (default 600)' },
+          height: { type: 'number', description: 'Height in pixels (default 400)' },
+          colors: { type: 'array', items: { type: 'string' }, description: 'Custom colors' },
+        },
+        description: 'Optional rendering options',
+      },
+    },
+    required: ['chartType', 'data', 'title'],
+  },
+}
+
+// ==================== Phase 34: code_interpreter and webhook_call tools ====================
+
+export const codeInterpreterToolConfig = {
+  toolId: 'tool:code_interpreter',
+  name: 'code_interpreter',
+  description: 'Execute JavaScript code in a sandboxed environment for data analysis and calculations',
+  parameters: {
+    type: 'object' as const,
+    properties: {
+      language: { type: 'string', enum: ['javascript'], description: 'Programming language (only JavaScript supported)' },
+      code: { type: 'string', description: 'Code to execute' },
+    },
+    required: ['language', 'code'],
+  },
+}
+
+export const webhookCallToolConfig = {
+  toolId: 'tool:webhook_call',
+  name: 'webhook_call',
+  description: 'Make an HTTP call to a user-configured allowed domain',
+  parameters: {
+    type: 'object' as const,
+    properties: {
+      url: { type: 'string', description: 'URL to call (must be in allowed domains list)' },
+      method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE'], description: 'HTTP method' },
+      headers: { type: 'object', description: 'Request headers' },
+      body: { type: 'string', description: 'Request body (for POST/PUT)' },
+    },
+    required: ['url', 'method'],
+  },
+}
+
 /**
  * A claim extracted from text during fact-check phase 1.
  * Shared between backend and frontend for the interactive two-step flow.
