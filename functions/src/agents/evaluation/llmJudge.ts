@@ -157,6 +157,56 @@ export const DEFAULT_CRITERIA: Record<string, EvalCriterion[]> = {
       scoreRange: { min: 1, max: 5 },
     },
   ],
+  oracle: [
+    {
+      name: 'mechanistic_clarity',
+      description: 'How clearly does the output explain causal mechanisms and system behavior?',
+      weight: 1 / 6,
+      prompt:
+        'Rate the mechanistic clarity of the scenario planning output. Consider: Are causal mechanisms explicit, disciplined, and more than narrative summary? Score 1-5.',
+      scoreRange: { min: 1, max: 5 },
+    },
+    {
+      name: 'completeness',
+      description: 'How completely does the output cover the strategic scenario space?',
+      weight: 1 / 6,
+      prompt:
+        'Rate the completeness of the Oracle output. Consider: Are key uncertainties, scenarios, implications, and signposts adequately covered? Score 1-5.',
+      scoreRange: { min: 1, max: 5 },
+    },
+    {
+      name: 'causal_discipline',
+      description: 'How rigorous is the causal reasoning and second-order thinking?',
+      weight: 1 / 6,
+      prompt:
+        'Rate the causal discipline of the Oracle output. Consider: Are chains of cause and effect explicit, bounded, and free from shallow correlation claims? Score 1-5.',
+      scoreRange: { min: 1, max: 5 },
+    },
+    {
+      name: 'decision_usefulness',
+      description: 'How useful is the output for making strategic decisions?',
+      weight: 1 / 6,
+      prompt:
+        'Rate the decision usefulness of the Oracle output. Consider: Are strategic moves, signposts, thresholds, or no-regret actions actionable? Score 1-5.',
+      scoreRange: { min: 1, max: 5 },
+    },
+    {
+      name: 'uncertainty_hygiene',
+      description: 'How well does the output distinguish confidence, uncertainty, and assumptions?',
+      weight: 1 / 6,
+      prompt:
+        'Rate the uncertainty hygiene of the Oracle output. Consider: Are assumptions explicit, confidence calibrated, and unresolved tensions surfaced honestly? Score 1-5.',
+      scoreRange: { min: 1, max: 5 },
+    },
+    {
+      name: 'evidence_quality',
+      description: 'How well grounded is the output in evidence and traceability?',
+      weight: 1 / 6,
+      prompt:
+        'Rate the evidence quality of the Oracle output. Consider: Are claims grounded in evidence, traceable, and supported with credible sources or axioms where appropriate? Score 1-5.',
+      scoreRange: { min: 1, max: 5 },
+    },
+  ],
   default: [
     {
       name: 'task_completion',

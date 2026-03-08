@@ -1,0 +1,1122 @@
+{
+  "meta": {
+    "name": "Oracle Axiom Cookbook",
+    "version": "1.0",
+    "description": "Structured reasoning playbook for Oracle scenario planning agents. Organized by analytical question (what you're trying to figure out), not by knowledge domain (where the axiom comes from). Three layers: Recipes (structured analytical workflows), Techniques (reusable reasoning patterns), and Pantry (reverse-indexed axiom library).",
+    "total_recipes": 21,
+    "total_techniques": 15,
+    "total_axioms": 142,
+    "recipe_categories": [
+      {"id": "A", "name": "Why is it this way?", "subtitle": "Structure Analysis", "primary_phase": "Phase 1"},
+      {"id": "B", "name": "What happens next?", "subtitle": "Dynamics & Trajectories", "primary_phase": "Phase 2–3"},
+      {"id": "C", "name": "What could go wrong?", "subtitle": "Risk & Failure Modes", "primary_phase": "Phase 3 (Red Team)"},
+      {"id": "D", "name": "How confident should we be?", "subtitle": "Calibration & Epistemic Quality", "primary_phase": "All phases (Gates)"},
+      {"id": "E", "name": "What should we recommend?", "subtitle": "Strategic Response", "primary_phase": "Phase 3 (Backcasting)"}
+    ]
+  },
+
+  "recipes": [
+    {
+      "id": "A1",
+      "name": "Why is this market structured this way?",
+      "category": "A",
+      "question": "Given an industry or market, decompose the structural forces that produced the current configuration: who has power, why, and what holds it in place.",
+      "when_to_use": "Phase 1 decomposition of any market, industry, or competitive landscape. Also useful in Phase 2 when assessing whether a trend could reshape market structure.",
+      "oracle_phases": ["Phase 1", "Phase 2"],
+      "oracle_agents": ["Decomposer", "Systems Mapper"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Map the basic economics",
+          "axioms": ["AXM-058", "AXM-014", "AXM-015"],
+          "instruction": "Start with Supply and Demand Equilibrium (AXM-058). What determines supply? What determines demand? Where is the current equilibrium? Then check for Economies of Scale (AXM-014) — do larger players have structural cost advantages? At what point do Diseconomies of Scale (AXM-015) emerge?"
+        },
+        {
+          "step": 2,
+          "action": "Check for network effects and platform dynamics",
+          "axioms": ["AXM-038", "AXM-005", "AXM-061"],
+          "instruction": "Are there Direct or Indirect Network Effects (AXM-038)? If so, does Metcalfe's Law (AXM-005) apply? Is this a Two-Sided Market (AXM-061)? Network effects + economies of scale often explain concentration."
+        },
+        {
+          "step": 3,
+          "action": "Assess switching costs and lock-in",
+          "axioms": ["AXM-062", "AXM-036", "AXM-049"],
+          "instruction": "What are the Switching Costs (AXM-062) — financial, learning, data, relationship? Is there Path Dependence (AXM-036) that makes the current structure sticky? Does this create Winner-Take-All dynamics (AXM-049)?"
+        },
+        {
+          "step": 4,
+          "action": "Identify the firm boundary logic",
+          "axioms": ["AXM-003", "AXM-051", "AXM-016"],
+          "instruction": "Apply Coase's Theory (AXM-003): why are certain activities inside firms vs. outsourced? Is there Asymmetric Information (AXM-051) that prevents efficient market transactions? Are there Principal-Agent Problems (AXM-016) that shape vertical integration decisions?"
+        },
+        {
+          "step": 5,
+          "action": "Map power and competitive dynamics",
+          "axioms": ["AXM-060", "AXM-064", "AXM-017"],
+          "instruction": "What are the Complementary Goods (AXM-060) relationships? Who is commoditizing whose complement? Use Wardley Mapping logic (AXM-064) to place components on the evolution axis. Where does each player's Comparative Advantage (AXM-017) lie?"
+        }
+      ],
+      "techniques": ["T01", "T12", "T10"],
+      "traps": [
+        {"trap": "Assuming the current structure is stable", "antidote": "Check for Path Dependence (AXM-036) + Tipping Points (AXM-037) — stable ≠ permanent. Ask: what would shift the binding constraint?"},
+        {"trap": "Confusing correlation with causation in market structure", "antidote": "Use Chesterton's Fence (AXM-128) — understand why the structure exists before assuming it's inefficient."},
+        {"trap": "Survivorship Bias", "antidote": "Check AXM-054: are you studying the market as shaped by survivors? What about the companies/models that failed?"}
+      ],
+      "output_template": "Market structure analysis: (1) Dominant economic forces, (2) Network/platform dynamics if present, (3) Lock-in mechanisms, (4) Firm boundary logic, (5) Power distribution and Wardley position, (6) Structural stability assessment — what holds it in place and what could shift it."
+    },
+
+    {
+      "id": "A2",
+      "name": "Why does this organization behave this way?",
+      "category": "A",
+      "question": "Given organizational behavior that seems irrational or suboptimal, find the structural explanation: what incentives, constraints, and information asymmetries produce this behavior?",
+      "when_to_use": "Phase 1 when decomposing stakeholder behavior. Phase 3 when modeling how actors will respond to scenarios. Any time the analysis says 'they should just...' — that's a signal to apply this recipe.",
+      "oracle_phases": ["Phase 1", "Phase 3"],
+      "oracle_agents": ["Decomposer", "Red Team"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Start with incentives, not character",
+          "axioms": ["AXM-110", "AXM-132"],
+          "instruction": "Apply Incentive Superpower (AXM-110): what are the actors being rewarded for? What are they punished for? Then check Fundamental Attribution Error (AXM-132): are you attributing behavior to character ('they're incompetent') when incentives explain it ('they're rationally responding to what they're measured on')?"
+        },
+        {
+          "step": 2,
+          "action": "Map the principal-agent structure",
+          "axioms": ["AXM-016", "AXM-052", "AXM-010"],
+          "instruction": "Who is the agent, who is the principal (AXM-016)? Where is the Moral Hazard (AXM-052) — who bears risk vs. who makes decisions? Has Goodhart's Law (AXM-010) decoupled their metrics from their actual goals?"
+        },
+        {
+          "step": 3,
+          "action": "Check organizational structure constraints",
+          "axioms": ["AXM-011", "AXM-001", "AXM-043", "AXM-004"],
+          "instruction": "Apply Conway's Law (AXM-011): does their system architecture mirror their org structure? Brooks' Law (AXM-001): are they adding people to a late project? Alignment Tax (AXM-043): how much of their effort goes to coordination? Dunbar's Number (AXM-004): have they exceeded the cognitive limit for informal coordination?"
+        },
+        {
+          "step": 4,
+          "action": "Look for systems archetypes",
+          "axioms": ["AXM-033", "AXM-118", "AXM-119", "AXM-080"],
+          "instruction": "Is this a Shifting the Burden pattern (AXM-033) — symptomatic fix undermining the fundamental solution? Fixes that Fail (AXM-118) — quick fix creating delayed consequences? Eroding Goals (AXM-119) — lowering standards instead of raising performance? How much Organizational Debt (AXM-080) has accumulated?"
+        },
+        {
+          "step": 5,
+          "action": "Understand before prescribing",
+          "axioms": ["AXM-128", "AXM-044", "AXM-075"],
+          "instruction": "Apply Chesterton's Fence (AXM-128): before recommending change, understand WHY things are this way. Check Parkinson's Law (AXM-044): has work expanded to fill available resources? Peter Principle (AXM-075): are people in roles that exceed their competence because of promotion-based-on-current-role?"
+        }
+      ],
+      "techniques": ["T01", "T12", "T08", "T10"],
+      "traps": [
+        {"trap": "Assuming malice or stupidity", "antidote": "Hanlon's Razor (AXM-105): structural explanations are more likely and more actionable than character explanations."},
+        {"trap": "Projecting your own context", "antidote": "Curse of Knowledge (AXM-056): your information and constraints are different from theirs. Model from THEIR perspective."},
+        {"trap": "Recommending change without understanding transition costs", "antidote": "Activation Energy (AXM-131): the end state may be better, but the transition barrier may be prohibitive without a catalyst."}
+      ],
+      "output_template": "Organizational behavior analysis: (1) Incentive map (what actors are optimizing for), (2) Principal-agent structure, (3) Structural constraints (org design, coordination costs), (4) Active systems archetypes, (5) Assessment: rational behavior given constraints, or genuinely dysfunctional?"
+    },
+
+    {
+      "id": "A3",
+      "name": "Why hasn't this obvious improvement happened?",
+      "category": "A",
+      "question": "When something seems like it should have already happened but hasn't, find the hidden barriers. This is the 'it seems obvious, so why not?' recipe — the most dangerous analytical trap in scenario planning.",
+      "when_to_use": "Whenever analysis produces a claim like 'companies should obviously adopt X' or 'this market should have consolidated by now.' The word 'should' is the trigger — reality is the way it is for reasons.",
+      "oracle_phases": ["Phase 1", "Phase 2"],
+      "oracle_agents": ["Decomposer", "Verifier", "Red Team"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Check for activation energy barriers",
+          "axioms": ["AXM-131", "AXM-025", "AXM-114"],
+          "instruction": "Apply Activation Energy (AXM-131): the end state may be better, but what's the transition cost? Status Quo Bias (AXM-025): people prefer the current state. Default Effect (AXM-114): the current approach has the enormous advantage of being the default. Is the improvement genuinely better enough to overcome these combined barriers?"
+        },
+        {
+          "step": 2,
+          "action": "Check for switching cost and lock-in",
+          "axioms": ["AXM-062", "AXM-036", "AXM-057"],
+          "instruction": "Switching Costs (AXM-062) may be higher than visible. Path Dependence (AXM-036) may have locked in the current approach. Sunk Cost Fallacy (AXM-057) may keep actors invested in the status quo even when they know the alternative is better."
+        },
+        {
+          "step": 3,
+          "action": "Check for coordination failure",
+          "axioms": ["AXM-027", "AXM-030", "AXM-028"],
+          "instruction": "Is this a Prisoner's Dilemma (AXM-027) — individually rational to NOT adopt even though collective adoption would be better? Tragedy of the Commons (AXM-030) — shared resource problem? Is there no Schelling Focal Point (AXM-028) to coordinate around?"
+        },
+        {
+          "step": 4,
+          "action": "Check for previous failed attempts",
+          "axioms": ["AXM-127", "AXM-118", "AXM-033"],
+          "instruction": "Cobra Effect (AXM-127): was this tried before and did it backfire? Fixes that Fail (AXM-118): did a previous attempt create consequences that made the problem worse? Shifting the Burden (AXM-033): is there a symptomatic fix already in place that reduces urgency for the fundamental improvement?"
+        },
+        {
+          "step": 5,
+          "action": "Assess what would need to change",
+          "axioms": ["AXM-034", "AXM-037", "AXM-133"],
+          "instruction": "Use Leverage Points (AXM-034) to identify where intervention would be most effective. Check for Tipping Points (AXM-037): is there a threshold that hasn't been crossed yet? Overton Window (AXM-133): is the idea within the range of acceptability, or does the window need to shift first?"
+        }
+      ],
+      "techniques": ["T03", "T01", "T08", "T13"],
+      "traps": [
+        {"trap": "Assuming the improvement is as obvious as it seems", "antidote": "WYSIATI (AXM-100): you're working with the information you have. The actors in the system have different information and constraints."},
+        {"trap": "Underestimating coordination costs", "antidote": "Alignment Tax (AXM-043): even if everyone agrees, the coordination cost of collective action may exceed individual switching costs."},
+        {"trap": "Ignoring the beneficiaries of the status quo", "antidote": "Incentive Superpower (AXM-110): someone benefits from things being the way they are. Who, and what's their power?"}
+      ],
+      "output_template": "Barrier analysis: (1) Transition barriers (activation energy, switching costs, sunk costs), (2) Coordination failures, (3) Previous attempts and their consequences, (4) Required catalysts and leverage points, (5) Assessment: is this improvement genuinely blocked or just delayed?"
+    },
+
+    {
+      "id": "A4",
+      "name": "What is the binding constraint?",
+      "category": "A",
+      "question": "In any system with multiple potential bottlenecks, identify the ONE constraint that actually limits throughput. Everything else is noise until this is addressed.",
+      "when_to_use": "Phase 1 when decomposing why a system underperforms. Phase 3 when assessing whether a scenario's proposed mechanism actually targets the binding constraint.",
+      "oracle_phases": ["Phase 1", "Phase 3"],
+      "oracle_agents": ["Decomposer", "Verifier"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Identify the constraint",
+          "axioms": ["AXM-012", "AXM-007"],
+          "instruction": "Apply Theory of Constraints (AXM-012): system throughput = throughput of the tightest constraint. Use Amdahl's Law (AXM-007): even with infinite scaling of non-bottleneck components, the serial bottleneck determines the ceiling. Where is the constraint?"
+        },
+        {
+          "step": 2,
+          "action": "Verify it's the real constraint, not a decoy",
+          "axioms": ["AXM-122", "AXM-085"],
+          "instruction": "Check for Premature Optimization (AXM-122): is effort being directed at the wrong bottleneck? Bikeshedding (AXM-085): are people optimizing the thing they understand rather than the thing that matters?"
+        },
+        {
+          "step": 3,
+          "action": "Understand what happens when this constraint is relieved",
+          "axioms": ["AXM-013", "AXM-032"],
+          "instruction": "Diminishing Marginal Returns (AXM-013): relieving the constraint has decreasing returns. Limits to Growth (AXM-032): a new constraint will immediately emerge. What is the NEXT constraint? How much headroom does relieving the current one provide?"
+        },
+        {
+          "step": 4,
+          "action": "Check if the constraint is being managed or avoided",
+          "axioms": ["AXM-033", "AXM-120"],
+          "instruction": "Shifting the Burden (AXM-033): is there a workaround that makes the constraint tolerable but prevents addressing it? Growth and Underinvestment (AXM-120): is underinvestment in removing the constraint being rationalized as market conditions?"
+        }
+      ],
+      "techniques": ["T08", "T02", "T10"],
+      "traps": [
+        {"trap": "Confusing symptoms with constraints", "antidote": "Iceberg Model (AXM-116): the visible symptom is at the event level. The constraint is at the structural or mental model level."},
+        {"trap": "Multiple constraints masquerading as one", "antidote": "Check whether 'the constraint' is actually several interacting constraints — if so, they may need to be addressed simultaneously."}
+      ],
+      "output_template": "Constraint analysis: (1) The binding constraint and evidence it's binding, (2) Verification it's the real constraint, (3) What happens when it's relieved (next constraint), (4) How it's currently being managed or avoided."
+    },
+
+    {
+      "id": "B1",
+      "name": "Where is this trend heading?",
+      "category": "B",
+      "question": "Given an observed trend, assess where it sits on its trajectory, what limits it will hit, and what the plausible future states are.",
+      "when_to_use": "Phase 2 trend analysis. Core recipe for every trend the Scanner identifies.",
+      "oracle_phases": ["Phase 2"],
+      "oracle_agents": ["Scanner", "Impact Assessor"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Locate position on the S-curve",
+          "axioms": ["AXM-045", "AXM-046"],
+          "instruction": "Apply Innovation S-Curve (AXM-045): is this trend in early exploration, rapid improvement, or approaching plateau? Crossing the Chasm (AXM-046): if it's a technology trend, has it crossed from early adopters to early majority? Or is it in the chasm?"
+        },
+        {
+          "step": 2,
+          "action": "Identify the carrying capacity and limits",
+          "axioms": ["AXM-032", "AXM-013", "AXM-012"],
+          "instruction": "Limits to Growth (AXM-032): what's the ceiling? What constraint will slow this trend? Diminishing Returns (AXM-013): where do additional inputs stop producing proportional outputs? Theory of Constraints (AXM-012): what bottleneck will this hit?"
+        },
+        {
+          "step": 3,
+          "action": "Trace second-order effects",
+          "axioms": ["AXM-095", "AXM-031", "AXM-047"],
+          "instruction": "MANDATORY Second-Order Thinking (AXM-095): trace at least 3 steps forward. Map Feedback Loops (AXM-031): is this trend self-reinforcing or self-limiting? Check for Jevons Paradox (AXM-047): could efficiency gains increase rather than decrease consumption?"
+        },
+        {
+          "step": 4,
+          "action": "Calibrate the timeline",
+          "axioms": ["AXM-076", "AXM-055", "AXM-124"],
+          "instruction": "Apply Amara's Law (AXM-076): are you overestimating near-term impact and underestimating long-term impact? Planning Fallacy (AXM-055): are timelines anchored optimistically? Reference Class Forecasting (AXM-124): what happened with analogous past trends?"
+        },
+        {
+          "step": 5,
+          "action": "Assess vulnerability to disruption",
+          "axioms": ["AXM-039", "AXM-059", "AXM-037"],
+          "instruction": "Disruption Theory (AXM-039): could this trend be disrupted by a simpler, cheaper alternative serving overlooked segments? Creative Destruction (AXM-059): what existing value will this trend destroy? Tipping Points (AXM-037): are there thresholds where the trend's dynamics shift qualitatively?"
+        }
+      ],
+      "techniques": ["T02", "T04", "T05", "T15"],
+      "traps": [
+        {"trap": "Linear extrapolation of exponential change", "antidote": "S-curves are sigmoidal, not linear. Early exponential growth does not continue — but the plateau may be far higher than current levels."},
+        {"trap": "Anchoring on the present", "antidote": "Anchoring Effect (AXM-024): your mental model of 'normal' is anchored on the last few years. This may be a poor guide to the next decade."},
+        {"trap": "Ignoring induced demand", "antidote": "Induced Demand (AXM-048): when something gets cheaper, entirely new use cases emerge. Don't just model existing use cases at lower cost."}
+      ],
+      "output_template": "Trend trajectory: (1) Current position on S-curve, (2) Carrying capacity and limiting constraints, (3) Second-order effects (3+ step causal chain), (4) Calibrated timeline with reference class, (5) Disruption vulnerability, (6) Key thresholds and tipping points."
+    },
+
+    {
+      "id": "B2",
+      "name": "What happens when this gets cheaper/faster/easier?",
+      "category": "B",
+      "question": "When a capability becomes dramatically cheaper (typically via AI or technology), trace the economic and behavioral consequences. This is the core AI impact recipe.",
+      "when_to_use": "Phase 2–3 when analyzing the impact of cost reduction, automation, or AI-driven efficiency gains on an industry or capability.",
+      "oracle_phases": ["Phase 2", "Phase 3"],
+      "oracle_agents": ["Scanner", "Scenario Developer", "Equilibrium Analyst"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Apply Jevons and induced demand",
+          "axioms": ["AXM-047", "AXM-048"],
+          "instruction": "Jevons Paradox (AXM-047): when X gets cheaper, demand for X may INCREASE not decrease. If coding becomes 10x faster, the result may be 20x more code written, not 10x fewer programmers. Induced Demand (AXM-048): entirely new use cases emerge that were previously infeasible. What becomes newly possible?"
+        },
+        {
+          "step": 2,
+          "action": "Identify the newly scarce complement",
+          "axioms": ["AXM-060", "AXM-021"],
+          "instruction": "Complementary Goods (AXM-060): when X becomes cheap, what is X's complement? That complement's value increases. Attention Economics (AXM-021): if production becomes cheap, curation/selection becomes the scarce resource. What was previously bundled with X that now gets unbundled and repriced?"
+        },
+        {
+          "step": 3,
+          "action": "Trace the value chain restructuring",
+          "axioms": ["AXM-064", "AXM-003", "AXM-040"],
+          "instruction": "Wardley Evolution (AXM-064): the component that got cheap moves rightward on the evolution axis. What does this do to adjacent components? Coase's Theory (AXM-003): does the cost change shift the make-vs-buy boundary? Modularity Theory (AXM-040): does cheaper X enable more modular architectures?"
+        },
+        {
+          "step": 4,
+          "action": "Model the competitive dynamics",
+          "axioms": ["AXM-068", "AXM-059", "AXM-049"],
+          "instruction": "Wright's Law (AXM-068): cost reduction compounds — the first mover on the learning curve has a lasting advantage. Creative Destruction (AXM-059): whose existing value is destroyed? Winner-Take-All (AXM-049): does the cost reduction amplify scale advantages?"
+        },
+        {
+          "step": 5,
+          "action": "Apply second-order discipline",
+          "axioms": ["AXM-095", "AXM-031", "AXM-091"],
+          "instruction": "Second-Order Thinking (AXM-095): 1st effect (cost drops) → 2nd effect (new actors enter) → 3rd effect (incumbents respond) → 4th effect (market restructures). Feedback Loops (AXM-031): are the effects self-reinforcing? Reflexivity (AXM-091): do expectations about the cost reduction change the rate at which it happens?"
+        }
+      ],
+      "techniques": ["T02", "T01", "T04", "T13"],
+      "traps": [
+        {"trap": "Asking 'who loses their job?' instead of 'what becomes newly possible?'", "antidote": "The first-order job displacement question is less predictive than the induced demand question. Focus on new possibility, not old replacement."},
+        {"trap": "Assuming current task decomposition persists", "antidote": "When X gets 10x cheaper, jobs don't just have less X — jobs get redesigned around the assumption that X is abundant. The task boundaries shift."},
+        {"trap": "Ignoring Gresham's Law", "antidote": "AXM-088: if AI-generated output floods a channel, quality standards may drop as bad drives out good. Build in quality mechanism analysis."}
+      ],
+      "output_template": "Cost reduction impact: (1) Jevons/induced demand effects, (2) Newly scarce complements, (3) Value chain restructuring, (4) Competitive dynamics, (5) Second-order causal chain (≥4 steps), (6) Timeline with Wright's Law cost curve."
+    },
+
+    {
+      "id": "B3",
+      "name": "How will actors respond to this change?",
+      "category": "B",
+      "question": "Model how rational actors (competitors, regulators, customers, employees) will respond to a change, including their responses to each other's responses.",
+      "when_to_use": "Phase 3 scenario development. Whenever a scenario involves a change that actors will respond to — which is virtually all scenarios.",
+      "oracle_phases": ["Phase 3"],
+      "oracle_agents": ["Scenario Developer", "Equilibrium Analyst"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Map each actor's incentive structure",
+          "axioms": ["AXM-110", "AXM-016", "AXM-125"],
+          "instruction": "For each major actor: Incentive Superpower (AXM-110) — what are they optimizing? Principal-Agent (AXM-016) — who decides vs. who bears consequences? Skin in the Game (AXM-125) — who has symmetric vs. asymmetric exposure to outcomes?"
+        },
+        {
+          "step": 2,
+          "action": "Model strategic interaction",
+          "axioms": ["AXM-026", "AXM-027", "AXM-089"],
+          "instruction": "Nash Equilibrium (AXM-026): what's the stable outcome where no actor benefits from unilateral change? Prisoner's Dilemma (AXM-027): are actors trapped in a suboptimal equilibrium? Keynesian Beauty Contest (AXM-089): are actors optimizing for what they think others will do rather than what's objectively best?"
+        },
+        {
+          "step": 3,
+          "action": "Assess response speed and constraints",
+          "axioms": ["AXM-025", "AXM-062", "AXM-131"],
+          "instruction": "Status Quo Bias (AXM-025): how strong is inertia? Switching Costs (AXM-062): what does changing course cost each actor? Activation Energy (AXM-131): what's the transition barrier even for actors who want to change?"
+        },
+        {
+          "step": 4,
+          "action": "Trace the response chain",
+          "axioms": ["AXM-095", "AXM-091", "AXM-031"],
+          "instruction": "Second-Order Thinking (AXM-095): Actor A responds → Actor B adjusts → Actor A re-adjusts. Trace at least 3 rounds. Reflexivity (AXM-091): do expectations change the reality? Feedback Loops (AXM-031): does the response chain converge to a new equilibrium or diverge into instability?"
+        }
+      ],
+      "techniques": ["T01", "T12", "T02", "T04"],
+      "traps": [
+        {"trap": "Modeling actors as rational optimizers with full information", "antidote": "Bounded Rationality (AXM-022): actors satisfice, they don't optimize. They have limited information and cognitive capacity."},
+        {"trap": "Fundamental Attribution Error in competitor modeling", "antidote": "AXM-132: model competitors as rational agents responding to their constraints, not as geniuses or fools."},
+        {"trap": "Ignoring the Overton Window", "antidote": "AXM-133: some responses are not taken because they're outside the range of acceptable options, not because no one thought of them."}
+      ],
+      "output_template": "Actor response analysis: (1) Incentive map per actor, (2) Strategic interaction dynamics, (3) Response speed and constraints per actor, (4) Multi-round response chain (≥3 rounds), (5) Likely new equilibrium or divergence assessment."
+    },
+
+    {
+      "id": "B4",
+      "name": "Will this adoption succeed or stall?",
+      "category": "B",
+      "question": "Given a new technology, practice, or standard, assess whether it will achieve broad adoption or get stuck.",
+      "when_to_use": "Phase 2 trend assessment. Phase 3 when a scenario hinges on adoption of a specific technology or practice.",
+      "oracle_phases": ["Phase 2", "Phase 3"],
+      "oracle_agents": ["Scanner", "Impact Assessor", "Scenario Developer"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Position on the adoption curve",
+          "axioms": ["AXM-046", "AXM-045"],
+          "instruction": "Crossing the Chasm (AXM-046): which segment is currently adopting? Is this pre-chasm (early adopters) or post-chasm (early majority)? S-Curve (AXM-045): is the technology still in exploration or has it reached the rapid-improvement phase?"
+        },
+        {
+          "step": 2,
+          "action": "Assess the switching economics",
+          "axioms": ["AXM-062", "AXM-025", "AXM-114", "AXM-131"],
+          "instruction": "What's the total Switching Cost (AXM-062) — financial + learning + data + relationship + psychological? Status Quo Bias (AXM-025) + Default Effect (AXM-114): how strong is inertia? What Activation Energy (AXM-131) is required? Is there a catalyst?"
+        },
+        {
+          "step": 3,
+          "action": "Check for network effects and critical mass",
+          "axioms": ["AXM-038", "AXM-028", "AXM-117"],
+          "instruction": "Network Effects (AXM-038): does adoption by others increase value for each user? If so, is there a critical mass threshold? Schelling Focal Point (AXM-028): is there a natural coordination point? Success to Successful (AXM-117): will early adopters accumulate advantages that accelerate adoption?"
+        },
+        {
+          "step": 4,
+          "action": "Look for the whole product",
+          "axioms": ["AXM-020", "AXM-065", "AXM-040"],
+          "instruction": "Cognitive Load (AXM-020): does adoption require learning that exceeds users' capacity? Hick's Law (AXM-065): are there too many options confusing potential adopters? Modularity (AXM-040): can users adopt incrementally or must they switch everything at once?"
+        },
+        {
+          "step": 5,
+          "action": "Calibrate with reference class",
+          "axioms": ["AXM-124", "AXM-076", "AXM-071"],
+          "instruction": "Reference Class Forecasting (AXM-124): what happened with analogous past adoptions? Amara's Law (AXM-076): are expectations calibrated to the hype cycle? Lindy Effect (AXM-071): how durable is what this is replacing?"
+        }
+      ],
+      "techniques": ["T05", "T13", "T02", "T10"],
+      "traps": [
+        {"trap": "Technology determinism — assuming better tech always wins", "antidote": "Switching costs, network effects, and defaults can keep inferior technology in place for decades (QWERTY, VHS, etc.)."},
+        {"trap": "Survivorship Bias in adoption precedents", "antidote": "AXM-054: you're studying successful adoptions. For every technology that crossed the chasm, many didn't. What's the base rate?"},
+        {"trap": "Confusing enthusiasm with adoption", "antidote": "Early adopter enthusiasm is not a reliable signal of mainstream adoption. The chasm separates the two."}
+      ],
+      "output_template": "Adoption assessment: (1) Adoption curve position, (2) Switching economics, (3) Network effects and critical mass status, (4) Whole product readiness, (5) Reference class calibration, (6) Verdict: likely adoption path and timeline."
+    },
+
+    {
+      "id": "B5",
+      "name": "What feedback loops are at play?",
+      "category": "B",
+      "question": "Map the reinforcing and balancing feedback loops in a system, identify which loop currently dominates, and find the conditions under which dominance shifts.",
+      "when_to_use": "Phase 1 (Systems Mapper) and Phase 3 (Equilibrium Analyst). The core systems thinking recipe.",
+      "oracle_phases": ["Phase 1", "Phase 3"],
+      "oracle_agents": ["Systems Mapper", "Equilibrium Analyst"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Identify all major loops",
+          "axioms": ["AXM-031", "AXM-117", "AXM-032"],
+          "instruction": "Map Reinforcing and Balancing Loops (AXM-031). Check for Success to Successful archetype (AXM-117) — self-reinforcing advantage accumulation. Check for Limits to Growth (AXM-032) — reinforcing loop hitting a balancing constraint."
+        },
+        {
+          "step": 2,
+          "action": "Determine current loop dominance",
+          "axioms": ["AXM-037", "AXM-084"],
+          "instruction": "Which loop currently drives system behavior? Where are the Tipping Points (AXM-037) where dominance shifts? Are there Threshold Effects (AXM-084) that would trigger a different loop to take over?"
+        },
+        {
+          "step": 3,
+          "action": "Check for delays and oscillation",
+          "axioms": ["AXM-074", "AXM-072"],
+          "instruction": "Bathtub Theorem (AXM-074): stocks accumulate slowly even when flows change rapidly — what's the delay between action and visible effect? Little's Law (AXM-072): how does system capacity relate to throughput and cycle time? Delays in feedback create oscillation and overshoot."
+        },
+        {
+          "step": 4,
+          "action": "Identify leverage points",
+          "axioms": ["AXM-034", "AXM-073"],
+          "instruction": "Leverage Points (AXM-034): where in this loop structure would a small change produce a big effect? Ashby's Law (AXM-073): does the controller have sufficient variety to manage these dynamics?"
+        },
+        {
+          "step": 5,
+          "action": "Assess for reflexivity and observer effects",
+          "axioms": ["AXM-091", "AXM-136"],
+          "instruction": "Reflexivity (AXM-091): do actors' beliefs about the loops change the loops themselves? Observer Effect (AXM-136): does measurement or analysis of the system alter its behavior?"
+        }
+      ],
+      "techniques": ["T04", "T13", "T02", "T08"],
+      "traps": [
+        {"trap": "Mapping too many loops (analysis paralysis)", "antidote": "Identify the 3-5 DOMINANT loops. The rest are noise at this level of analysis. Use Pareto (AXM-006): 20% of loops drive 80% of behavior."},
+        {"trap": "Ignoring delays", "antidote": "Most systems thinking errors come from ignoring delays. A feedback loop with a 3-year delay looks like no feedback at all in the short term."},
+        {"trap": "Assuming loop structure is fixed", "antidote": "Niche Construction (AXM-139): actors actively modify the loop structure. The loops you map today may not be the same loops operating in the future scenario."}
+      ],
+      "output_template": "Feedback loop analysis: (1) Loop map (reinforcing and balancing), (2) Current dominant loop, (3) Delay structure, (4) Tipping points where dominance shifts, (5) Leverage points, (6) Reflexivity assessment."
+    },
+
+    {
+      "id": "C1",
+      "name": "What would make this scenario impossible?",
+      "category": "C",
+      "question": "The Inversion recipe. Instead of arguing FOR the scenario, systematically identify conditions that would guarantee its failure. Then check whether those conditions hold.",
+      "when_to_use": "Phase 3 Red Team evaluation. MANDATORY for every scenario before it passes Gate C.",
+      "oracle_phases": ["Phase 3"],
+      "oracle_agents": ["Red Team"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Apply inversion",
+          "axioms": ["AXM-093"],
+          "instruction": "Inversion (AXM-093): list 3-5 conditions that would GUARANTEE this scenario fails or is impossible. Be specific — not 'things don't change' but 'X specific mechanism is blocked because Y specific constraint exists.'"
+        },
+        {
+          "step": 2,
+          "action": "Check each failure condition against reality",
+          "axioms": ["AXM-129", "AXM-083"],
+          "instruction": "For each failure condition: Falsifiability (AXM-129) — is this testable? Can we look at evidence? Bayes' Theorem (AXM-083) — given current evidence, what's the probability this failure condition holds? Be honest about uncertainty."
+        },
+        {
+          "step": 3,
+          "action": "Check for hidden assumptions",
+          "axioms": ["AXM-100", "AXM-023", "AXM-054"],
+          "instruction": "WYSIATI (AXM-100): what information is the scenario built on that might be incomplete? Confirmation Bias (AXM-023): has the scenario been constructed from evidence that supports it while ignoring disconfirming evidence? Survivorship Bias (AXM-054): is the scenario modeled on a success case while ignoring similar cases that failed?"
+        },
+        {
+          "step": 4,
+          "action": "Test logical and causal coherence",
+          "axioms": ["AXM-104", "AXM-103"],
+          "instruction": "Occam's Razor (AXM-104): does this scenario require more assumptions than necessary? Can a simpler mechanism produce the same outcome? Narrative Fallacy (AXM-103): is the scenario compelling because it tells a good story, or because the causal logic is sound? Separate the two."
+        },
+        {
+          "step": 5,
+          "action": "Issue verdict",
+          "axioms": ["AXM-094"],
+          "instruction": "Map vs. Territory (AXM-094): state explicitly — this scenario is a model, not a prediction. List: (a) conditions that would invalidate it, (b) the earliest observable signals of invalidation, (c) confidence assessment. The scenario passes Red Team if no failure condition has P > 0.7."
+        }
+      ],
+      "techniques": ["T03", "T06", "T10", "T05"],
+      "traps": [
+        {"trap": "Weak inversion (failure conditions too vague to test)", "antidote": "Each failure condition must be specific enough to have a testable indicator."},
+        {"trap": "Attacking the narrative instead of the mechanism", "antidote": "Focus on causal logic, not storytelling quality. An ugly scenario with strong causal logic beats a beautiful scenario with weak foundations."},
+        {"trap": "Over-applying Red Team (killing every scenario)", "antidote": "The goal is not to prove scenarios wrong — it's to test their structural integrity. Genuine uncertainty is healthy."}
+      ],
+      "output_template": "Inversion analysis: (1) 3-5 specific failure conditions, (2) Evidence assessment per condition, (3) Hidden assumption audit, (4) Causal coherence test, (5) Verdict: structurally sound / needs revision / fatally flawed."
+    },
+
+    {
+      "id": "C2",
+      "name": "Is this extreme outcome plausible?",
+      "category": "C",
+      "question": "When a scenario involves an extreme or transformative outcome, assess whether the conditions for such an outcome actually exist. The Lollapalooza recipe.",
+      "when_to_use": "Phase 3 when scoring scenarios for plausibility, especially for high-impact scenarios that seem either too dramatic or not dramatic enough.",
+      "oracle_phases": ["Phase 3"],
+      "oracle_agents": ["Red Team", "Consistency Checker"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Run the Lollapalooza scan",
+          "axioms": ["AXM-097"],
+          "instruction": "Lollapalooza Effect (AXM-097): count the number of independent reinforcing forces in the scenario pointing in the same direction. If ≥3 with no identified balancing force: tag as lollapalooza candidate. The extreme outcome is MORE plausible than linear analysis suggests."
+        },
+        {
+          "step": 2,
+          "action": "Check the distribution type",
+          "axioms": ["AXM-069", "AXM-082"],
+          "instruction": "Power Law Distribution (AXM-069): is the underlying phenomenon fat-tailed? If so, extreme events are far more likely than normal distribution assumes. Law of Large Numbers (AXM-082): is the sample size large enough to have seen tail events? If the phenomenon is fat-tailed, standard risk assessment is too conservative."
+        },
+        {
+          "step": 3,
+          "action": "Look for tipping point conditions",
+          "axioms": ["AXM-037", "AXM-084", "AXM-031"],
+          "instruction": "Tipping Points (AXM-037): are the preconditions for a phase transition accumulating? Threshold Effects (AXM-084): is there a discontinuity point? Feedback Loops (AXM-031): are reinforcing loops approaching the point where they dominate all balancing loops?"
+        },
+        {
+          "step": 4,
+          "action": "Historical precedent check",
+          "axioms": ["AXM-124", "AXM-101", "AXM-102"],
+          "instruction": "Reference Class Forecasting (AXM-124): has this TYPE of extreme outcome occurred before in analogous situations? What was the base rate? Base Rate Neglect (AXM-101): is the vivid scenario narrative causing you to overweight this specific case vs. the statistical base rate? Availability Heuristic (AXM-102): is this extreme outcome top-of-mind because of recent similar events?"
+        },
+        {
+          "step": 5,
+          "action": "Assess non-ergodicity",
+          "axioms": ["AXM-087", "AXM-137"],
+          "instruction": "Ergodicity (AXM-087): even if this outcome is unlikely ON AVERAGE, is it the kind of event that could be catastrophic for a specific organization? Seneca's Asymmetry (AXM-137): is the downside disproportionately worse than the upside is good? If so, the scenario deserves weight beyond its probability."
+        }
+      ],
+      "techniques": ["T07", "T05", "T13", "T06"],
+      "traps": [
+        {"trap": "Dismissing extreme outcomes because they're improbable", "antidote": "In fat-tailed distributions, improbable outcomes account for most of the expected impact. Probability × Impact is what matters, not probability alone."},
+        {"trap": "Accepting extreme outcomes because the story is compelling", "antidote": "Narrative Fallacy (AXM-103): separate narrative quality from structural plausibility. Does the mechanism actually support this outcome?"},
+        {"trap": "Anchoring on recent extreme events", "antidote": "Availability Heuristic (AXM-102): recent pandemics, market crashes, or AI breakthroughs anchor our sense of what's extreme. Check the longer historical record."}
+      ],
+      "output_template": "Extreme outcome assessment: (1) Lollapalooza scan result, (2) Distribution type (normal vs. fat-tailed), (3) Tipping point proximity, (4) Historical precedent and base rate, (5) Non-ergodicity/asymmetry assessment, (6) Verdict: plausible extreme / implausible without lollapalooza / genuine black swan territory."
+    },
+
+    {
+      "id": "C3",
+      "name": "What are we not seeing?",
+      "category": "C",
+      "question": "Systematically identify blind spots in the analysis. What evidence is missing, what domains haven't been considered, and what assumptions are invisible?",
+      "when_to_use": "Phase 3 Red Team evaluation. Also valuable at Phase 1 gate and Phase 2 gate as a completeness check.",
+      "oracle_phases": ["Phase 1", "Phase 2", "Phase 3"],
+      "oracle_agents": ["Red Team", "Weak Signal Hunter"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Run the WYSIATI check",
+          "axioms": ["AXM-100", "AXM-102", "AXM-023"],
+          "instruction": "WYSIATI (AXM-100): what information was used to construct this analysis? What information was NOT sought? Availability Heuristic (AXM-102): is the evidence skewed toward recent, vivid, or personally experienced events? Confirmation Bias (AXM-023): was disconfirming evidence actively sought?"
+        },
+        {
+          "step": 2,
+          "action": "Check domain coverage",
+          "axioms": ["AXM-109", "AXM-096"],
+          "instruction": "Multi-Disciplinary Lattice (AXM-109): which domains have been applied? Which have NOT? (STEEP+V: Social, Technological, Economic, Environmental, Political, Values). Circle of Competence (AXM-096): where are the model's and analysts' blind spots?"
+        },
+        {
+          "step": 3,
+          "action": "Look for invisible assumptions",
+          "axioms": ["AXM-024", "AXM-121", "AXM-123"],
+          "instruction": "Anchoring Effect (AXM-024): what anchors are embedded in the analysis? Hindsight Bias (AXM-121): are we treating current conditions as more inevitable than they actually were? First Conclusion Bias (AXM-123): was the first plausible explanation accepted without exploring alternatives?"
+        },
+        {
+          "step": 4,
+          "action": "Seek anti-available evidence",
+          "axioms": ["AXM-054", "AXM-053"],
+          "instruction": "Survivorship Bias (AXM-054): what failures and non-events are we not seeing? Regression to the Mean (AXM-053): are we attributing trends to causes when they may simply be noise reverting?"
+        },
+        {
+          "step": 5,
+          "action": "Check for observer effects",
+          "axioms": ["AXM-136", "AXM-091"],
+          "instruction": "Observer Effect (AXM-136): does our analysis itself change the system? Reflexivity (AXM-091): will publishing these scenarios change which scenario materializes?"
+        }
+      ],
+      "techniques": ["T09", "T06", "T10", "T11"],
+      "traps": [
+        {"trap": "Treating 'we looked and found nothing' as 'nothing is there'", "antidote": "Absence of evidence ≠ evidence of absence. Not finding disconfirming evidence may mean it wasn't available, not that it doesn't exist."},
+        {"trap": "Analysis paralysis from too many blind spots", "antidote": "Prioritize: which blind spots, if filled, would most change the analysis? Focus there."}
+      ],
+      "output_template": "Blind spot audit: (1) WYSIATI inventory (information used vs. not sought), (2) Domain coverage gaps, (3) Invisible assumptions, (4) Anti-available evidence, (5) Observer effects, (6) Priority blind spots to address."
+    },
+
+    {
+      "id": "C4",
+      "name": "Will this intervention backfire?",
+      "category": "C",
+      "question": "For any proposed response to a scenario (policy, strategy, investment), check whether it will produce unintended consequences that worsen the original problem.",
+      "when_to_use": "Phase 3 backcasting when evaluating strategic recommendations. Also during Red Team evaluation of scenario responses.",
+      "oracle_phases": ["Phase 3"],
+      "oracle_agents": ["Red Team", "Equilibrium Analyst"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Check for perverse incentives",
+          "axioms": ["AXM-127", "AXM-010"],
+          "instruction": "Cobra Effect (AXM-127): does this intervention create incentives to produce MORE of the problem? Goodhart's Law (AXM-010): if you're targeting a metric, will the metric decouple from the underlying goal?"
+        },
+        {
+          "step": 2,
+          "action": "Check for systems archetypes",
+          "axioms": ["AXM-118", "AXM-033", "AXM-119"],
+          "instruction": "Fixes that Fail (AXM-118): does the intervention have delayed consequences that worsen the original problem? Shifting the Burden (AXM-033): does the intervention address symptoms and reduce urgency for the fundamental solution? Eroding Goals (AXM-119): does it implicitly lower standards?"
+        },
+        {
+          "step": 3,
+          "action": "Trace second-order effects",
+          "axioms": ["AXM-095", "AXM-031"],
+          "instruction": "Second-Order Thinking (AXM-095): the intervention has a first-order effect (intended). What's the second-order effect (response to the intervention)? Third-order (response to the response)? Feedback Loops (AXM-031): does the intervention create new reinforcing or balancing loops?"
+        },
+        {
+          "step": 4,
+          "action": "Check actor responses",
+          "axioms": ["AXM-110", "AXM-026", "AXM-052"],
+          "instruction": "Incentive Superpower (AXM-110): how will each affected actor respond to the intervention based on their incentives? Nash Equilibrium (AXM-026): what's the new equilibrium after actors respond? Moral Hazard (AXM-052): does the intervention insulate anyone from consequences?"
+        },
+        {
+          "step": 5,
+          "action": "Apply Chesterton's Fence",
+          "axioms": ["AXM-128", "AXM-077"],
+          "instruction": "Chesterton's Fence (AXM-128): does the intervention remove or change something without understanding why it exists? Second-System Effect (AXM-077): is this an over-engineered response based on lessons from a previous failure?"
+        }
+      ],
+      "techniques": ["T01", "T02", "T03", "T04"],
+      "traps": [
+        {"trap": "Assuming good intentions prevent bad outcomes", "antidote": "Systems don't care about intentions. The structure of the intervention determines its effects, not the motivation behind it."},
+        {"trap": "Ignoring time delays", "antidote": "Many interventions look effective in the short term and backfire after a delay. Explicitly ask: 'what happens in 2 years, not just 2 months?'"},
+        {"trap": "Treating the intervention as isolated from the system", "antidote": "The intervention becomes part of the system. Model it as such."}
+      ],
+      "output_template": "Backfire analysis: (1) Perverse incentive check, (2) Systems archetype match, (3) Second-order effect chain, (4) Actor response prediction, (5) Chesterton's Fence check, (6) Verdict: low/medium/high backfire risk + recommended modifications."
+    },
+
+    {
+      "id": "D1",
+      "name": "Is this estimate anchored or calibrated?",
+      "category": "D",
+      "question": "For any quantitative claim or timeline estimate, check whether it's an informed estimate or an anchored guess. Apply calibration corrections.",
+      "when_to_use": "All phases, at every gate. Any time a number appears in the analysis — timeline, market size, adoption rate, probability.",
+      "oracle_phases": ["Phase 1", "Phase 2", "Phase 3"],
+      "oracle_agents": ["Verifier", "Rubric Evaluator"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Identify the anchor",
+          "axioms": ["AXM-024", "AXM-055"],
+          "instruction": "Anchoring Effect (AXM-024): every estimate has an anchor. What is it? Is it the most recent data point? A round number? A cited source? Planning Fallacy (AXM-055): if it's a timeline, add 50-200% based on project type."
+        },
+        {
+          "step": 2,
+          "action": "Apply outside view",
+          "axioms": ["AXM-124", "AXM-101"],
+          "instruction": "Reference Class Forecasting (AXM-124): find the reference class of similar estimates. What's the base rate of outcomes in that class? Base Rate Neglect (AXM-101): is the specific narrative overriding statistical reality?"
+        },
+        {
+          "step": 3,
+          "action": "Widen the confidence interval",
+          "axioms": ["AXM-111", "AXM-141", "AXM-067"],
+          "instruction": "Probabilistic Thinking (AXM-111): express as a range, not a point estimate. Superforecasting calibration (AXM-141): confidence intervals are almost always too narrow. Widen them. Dunning-Kruger (AXM-067): the less expertise in this domain, the wider the interval should be."
+        },
+        {
+          "step": 4,
+          "action": "Check for fat tails",
+          "axioms": ["AXM-069", "AXM-087"],
+          "instruction": "Power Law Distribution (AXM-069): if the phenomenon is fat-tailed, the mean is misleading and the variance may be infinite. Ergodicity (AXM-087): is the average outcome meaningful for a single entity's experience?"
+        }
+      ],
+      "techniques": ["T05", "T06", "T10"],
+      "traps": [
+        {"trap": "Adjusting from the anchor instead of starting from the reference class", "antidote": "Start with the base rate, THEN adjust for specifics — not the reverse. The base rate should dominate."},
+        {"trap": "False precision", "antidote": "A precise number (42.7%) implies more knowledge than a range (35-55%). Use the precision level that matches your actual knowledge."}
+      ],
+      "output_template": "Calibration check: (1) Anchor identified, (2) Reference class and base rate, (3) Calibrated estimate with confidence interval, (4) Distribution type assessment."
+    },
+
+    {
+      "id": "D2",
+      "name": "Are we confusing good story with good evidence?",
+      "category": "D",
+      "question": "Separate narrative quality (how compelling the scenario reads) from structural quality (how well the causal logic holds up). The most dangerous scenarios are the ones that feel right but aren't.",
+      "when_to_use": "Phase 3 gate evaluation. Every scenario passes through this check.",
+      "oracle_phases": ["Phase 3"],
+      "oracle_agents": ["Verifier", "Red Team"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Separate narrative from structure",
+          "axioms": ["AXM-103", "AXM-100"],
+          "instruction": "Narrative Fallacy (AXM-103): is the scenario compelling because the STORY is good or because the CAUSAL LOGIC is sound? WYSIATI (AXM-100): does the narrative create a feeling of completeness despite thin evidence?"
+        },
+        {
+          "step": 2,
+          "action": "Audit the evidence chain",
+          "axioms": ["AXM-083", "AXM-082"],
+          "instruction": "For each major claim: Bayes' Theorem (AXM-083) — what's the prior? What evidence updates it? By how much? Law of Large Numbers (AXM-082) — is the evidence based on sufficient sample size? Technique: Evidence Audit (T06)."
+        },
+        {
+          "step": 3,
+          "action": "Check for storytelling biases",
+          "axioms": ["AXM-121", "AXM-098"],
+          "instruction": "Hindsight Bias (AXM-121): does the scenario narrative make the outcome seem inevitable? Resulting (AXM-098): are we evaluating the scenario on its reasoning quality or on whether it matches what we expect to happen?"
+        },
+        {
+          "step": 4,
+          "action": "Assess independent of narrative",
+          "axioms": ["AXM-129", "AXM-104"],
+          "instruction": "Falsifiability (AXM-129): does the scenario make predictions that could be disproved? If not, it's not useful. Occam's Razor (AXM-104): does the scenario use the minimum necessary assumptions?"
+        }
+      ],
+      "techniques": ["T06", "T03", "T10"],
+      "traps": [
+        {"trap": "Killing scenarios because they sound dramatic", "antidote": "Dramatic narratives can have strong structural foundations. Judge the mechanism, not the tone."},
+        {"trap": "Accepting bland scenarios because they sound reasonable", "antidote": "A scenario that says 'things continue roughly as they are' can be the LEAST plausible if structural forces are shifting."}
+      ],
+      "output_template": "Narrative vs. structure audit: (1) Narrative quality score, (2) Structural quality score, (3) Gap assessment, (4) Evidence chain audit results, (5) Falsifiability of key predictions."
+    },
+
+    {
+      "id": "D3",
+      "name": "Is this consensus real or manufactured?",
+      "category": "D",
+      "question": "When models or evaluators agree, check whether the agreement reflects genuine convergence on strong evidence or groupthink / common training bias.",
+      "when_to_use": "Expert Council evaluation. Any time convergence exceeds expectations.",
+      "oracle_phases": ["Phase 1", "Phase 2", "Phase 3"],
+      "oracle_agents": ["Expert Council synthesis"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Check the independence of agreement",
+          "axioms": ["AXM-023", "AXM-099"],
+          "instruction": "Confirmation Bias (AXM-023): did each model see the others' outputs before forming its view? (In Oracle, Round 1 is blind — but check). System 1/System 2 (AXM-099): are models pattern-matching to an obvious answer rather than reasoning deeply?"
+        },
+        {
+          "step": 2,
+          "action": "Look for groupthink signals",
+          "axioms": ["AXM-078", "AXM-085"],
+          "instruction": "Arrow's Impossibility (AXM-078): with 3+ options, aggregate agreement may be an artifact of the voting mechanism. Bikeshedding (AXM-085): are models agreeing on the easy parts and diverging on the hard parts?"
+        },
+        {
+          "step": 3,
+          "action": "Assess whether dissent was possible",
+          "axioms": ["AXM-133", "AXM-028"],
+          "instruction": "Overton Window (AXM-133): is the 'consensus' position simply the only one within the currently acceptable range? Schelling Focal Point (AXM-028): did all models converge on a salient, obvious answer because it was prominent, not because it was best?"
+        },
+        {
+          "step": 4,
+          "action": "Apply Integrative Thinking if split",
+          "axioms": ["AXM-106"],
+          "instruction": "If consensus IS lacking (which is the healthy signal for complex questions): Integrative Thinking (AXM-106) — don't just record the disagreement. Construct a model that resolves the tension by asking 'what would have to be true for both to be partially right?'"
+        }
+      ],
+      "techniques": ["T11", "T06", "T09"],
+      "traps": [
+        {"trap": "Treating high agreement as evidence of truth", "antidote": "Four models trained on similar data may converge on the same wrong answer. Agreement is evidence of consistency, not necessarily truth."},
+        {"trap": "Treating all disagreement as noise", "antidote": "Persistent dissent may be the most valuable signal in the analysis. The dissenting model may have seen something the others missed."}
+      ],
+      "output_template": "Consensus audit: (1) Independence of agreement, (2) Groupthink signals, (3) Was dissent structurally possible?, (4) If split: integrative synthesis result, (5) Confidence in consensus."
+    },
+
+    {
+      "id": "D4",
+      "name": "What's the right confidence level for this type of claim?",
+      "category": "D",
+      "question": "Different types of claims warrant different confidence levels. Match confidence to claim type rather than letting narrative coherence set confidence.",
+      "when_to_use": "All phases. Applied to every confidence-scored item in the Reasoning Ledger.",
+      "oracle_phases": ["Phase 1", "Phase 2", "Phase 3"],
+      "oracle_agents": ["Verifier", "Rubric Evaluator"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Classify the claim type",
+          "axioms": ["AXM-141"],
+          "instruction": "Superforecasting calibration (AXM-141): Match claim type to expected confidence range. Empirical facts: 0.8-0.95. Structural mechanisms: 0.6-0.8. Trend extrapolations: 0.4-0.7. Behavioral predictions: 0.3-0.6. Timing predictions: 0.2-0.5. Novel/unprecedented claims: 0.15-0.4."
+        },
+        {
+          "step": 2,
+          "action": "Check for overconfidence signals",
+          "axioms": ["AXM-067", "AXM-100", "AXM-111"],
+          "instruction": "Dunning-Kruger (AXM-067): is the analysis in a domain where model competence is well-established? WYSIATI (AXM-100): is confidence inflated by narrative coherence rather than evidence coverage? Probabilistic Thinking (AXM-111): has the estimate been stress-tested with specific counter-evidence?"
+        },
+        {
+          "step": 3,
+          "action": "Apply ergodicity check",
+          "axioms": ["AXM-087", "AXM-069"],
+          "instruction": "Ergodicity (AXM-087): for the specific entity this analysis serves, does the average-case probability apply? Or is this a non-ergodic situation where path-dependent outcomes matter more? Power Law (AXM-069): if the distribution is fat-tailed, point estimates of confidence are misleading."
+        },
+        {
+          "step": 4,
+          "action": "Final calibration",
+          "axioms": ["AXM-094", "AXM-098"],
+          "instruction": "Map vs. Territory (AXM-094): state the gap between model confidence and real-world confidence. Resulting (AXM-098): this confidence level reflects reasoning quality, not outcome prediction."
+        }
+      ],
+      "techniques": ["T05", "T06", "T10"],
+      "traps": [
+        {"trap": "Uniform confidence (everything at 0.7)", "antidote": "Different claims genuinely warrant different confidence. If everything has the same confidence, the calibration is broken."},
+        {"trap": "False humility (everything at 0.5)", "antidote": "Some things are more knowable than others. Well-established mechanisms with strong evidence should have higher confidence than novel speculations."}
+      ],
+      "output_template": "Confidence calibration: (1) Claim classification, (2) Appropriate confidence range for claim type, (3) Overconfidence check, (4) Ergodicity assessment, (5) Final calibrated confidence with justification."
+    },
+
+    {
+      "id": "E1",
+      "name": "What are the no-regret moves?",
+      "category": "E",
+      "question": "Identify actions that are beneficial across most scenarios, have bounded downside, and preserve future optionality. These are the highest-priority recommendations.",
+      "when_to_use": "Phase 3 backcasting. The first question to answer in strategic response.",
+      "oracle_phases": ["Phase 3"],
+      "oracle_agents": ["Scenario Developer"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Screen for downside protection",
+          "axioms": ["AXM-137", "AXM-108"],
+          "instruction": "Seneca's Asymmetry (AXM-137): does this move have bounded downside? Is the worst case survivable? Margin of Safety (AXM-108): how much buffer exists between expected outcome and disaster?"
+        },
+        {
+          "step": 2,
+          "action": "Test across scenarios",
+          "axioms": ["AXM-092", "AXM-140"],
+          "instruction": "Antifragility (AXM-092): does this move benefit from uncertainty? Does it get stronger under stress? Resilience vs. Robustness vs. Antifragility (AXM-140): which type of response is this move — robust (resists change), resilient (springs back), or antifragile (gains from disorder)? Tag appropriately."
+        },
+        {
+          "step": 3,
+          "action": "Check for optionality preservation",
+          "axioms": ["AXM-036", "AXM-062"],
+          "instruction": "Path Dependence (AXM-036): does this move create lock-in that reduces future flexibility? Switching Costs (AXM-062): does it increase or decrease future switching costs? A true no-regret move preserves or increases optionality."
+        },
+        {
+          "step": 4,
+          "action": "Validate via inversion",
+          "axioms": ["AXM-093", "AXM-138"],
+          "instruction": "Inversion (AXM-093): what would make this move regrettable? Under what conditions would it backfire? Via Negativa (AXM-138): is the no-regret move about starting something new, or about stopping something harmful? Subtraction is often more reliably no-regret than addition."
+        }
+      ],
+      "techniques": ["T03", "T14", "T02"],
+      "traps": [
+        {"trap": "False no-regret (creates hidden lock-in)", "antidote": "Check for hidden path dependence. 'Building a team in area X' is not no-regret if area X turns out to be wrong — you've created organizational commitment."},
+        {"trap": "No-regret as excuse for indecision", "antidote": "If ALL recommendations are no-regret, the analysis hasn't produced enough insight to justify scenario-specific bets. Some scenarios warrant directional bets."}
+      ],
+      "output_template": "No-regret moves: For each move — (1) Downside bound, (2) Cross-scenario benefit score, (3) Optionality impact, (4) Inversion check, (5) Priority ranking."
+    },
+
+    {
+      "id": "E2",
+      "name": "Where are the options to buy?",
+      "category": "E",
+      "question": "Identify small, specific investments NOW that create the ability (not obligation) to act LATER if a specific scenario materializes. Real options, not vague hedges.",
+      "when_to_use": "Phase 3 backcasting. For scenario-specific recommendations that don't warrant full commitment.",
+      "oracle_phases": ["Phase 3"],
+      "oracle_agents": ["Scenario Developer"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Identify the option",
+          "axioms": ["AXM-092", "AXM-131"],
+          "instruction": "Antifragility (AXM-092): options create antifragility — capped downside (option cost), uncapped upside (option value if exercised). Activation Energy (AXM-131): the option reduces future activation energy, so you can move fast IF the scenario materializes."
+        },
+        {
+          "step": 2,
+          "action": "Define the trigger",
+          "axioms": ["AXM-084", "AXM-037"],
+          "instruction": "Threshold Effects (AXM-084): what observable signal triggers exercising this option? Tipping Points (AXM-037): what early-warning indicators would suggest the scenario is materializing? Be specific: 'when X metric crosses Y threshold within Z timeframe.'"
+        },
+        {
+          "step": 3,
+          "action": "Cost the option",
+          "axioms": ["AXM-018", "AXM-013"],
+          "instruction": "Opportunity Cost (AXM-018): what else could this investment be used for? Diminishing Returns (AXM-013): is the option premium proportional to the option value? Don't over-invest in options."
+        },
+        {
+          "step": 4,
+          "action": "Assess expiration",
+          "axioms": ["AXM-071", "AXM-081"],
+          "instruction": "Lindy Effect (AXM-071): how long does this option remain valid? Does it expire? Hyperbolic Discounting (AXM-081): are stakeholders undervaluing the long-term option because of preference for near-term certainty?"
+        }
+      ],
+      "techniques": ["T14", "T13", "T15"],
+      "traps": [
+        {"trap": "Confusing 'we should watch this' with 'buy an option'", "antidote": "Watching is passive. An option requires a specific investment that creates a specific capability. What exactly would you spend, and what exactly would it enable?"},
+        {"trap": "Too many options (option portfolio bloat)", "antidote": "Each option has a carrying cost. Prioritize: which scenarios have the highest expected impact AND the cheapest options to buy?"}
+      ],
+      "output_template": "Options to buy: For each — (1) What to invest, (2) What capability it creates, (3) Exercise trigger (specific and observable), (4) Option cost vs. value, (5) Expiration assessment."
+    },
+
+    {
+      "id": "E3",
+      "name": "What should we stop doing?",
+      "category": "E",
+      "question": "Via Negativa for strategy. Identify current activities, assumptions, and investments that should be stopped or reduced. Subtraction is often higher-value and lower-risk than addition.",
+      "when_to_use": "Phase 3 backcasting. The counterpart to 'what should we start?' — and often more actionable.",
+      "oracle_phases": ["Phase 3"],
+      "oracle_agents": ["Scenario Developer", "Red Team"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Identify subtraction candidates",
+          "axioms": ["AXM-138", "AXM-080", "AXM-135"],
+          "instruction": "Via Negativa (AXM-138): what current activities are net-negative or net-zero value? Organizational Debt (AXM-080): what legacy structures, processes, or roles are maintained from historical necessity that no longer applies? Entropy (AXM-135): what is being maintained purely to prevent degradation, without producing value?"
+        },
+        {
+          "step": 2,
+          "action": "Check for systems archetypes",
+          "axioms": ["AXM-033", "AXM-118", "AXM-119"],
+          "instruction": "Shifting the Burden (AXM-033): are there symptomatic fixes that should be stopped to force fundamental solutions? Fixes that Fail (AXM-118): are there interventions that are making problems worse? Eroding Goals (AXM-119): are there areas where standards have quietly dropped?"
+        },
+        {
+          "step": 3,
+          "action": "Apply Chesterton's Fence before removing",
+          "axioms": ["AXM-128", "AXM-057"],
+          "instruction": "Chesterton's Fence (AXM-128): for each subtraction candidate — WHY does this exist? Understand before removing. Sunk Cost Fallacy (AXM-057): is the activity being maintained because of past investment rather than future value? If the reason is sunk cost, that's a strong signal to stop."
+        },
+        {
+          "step": 4,
+          "action": "Assess across scenarios",
+          "axioms": ["AXM-093", "AXM-095"],
+          "instruction": "Inversion (AXM-093): in which scenarios would continuing this activity be actively harmful? Second-Order Thinking (AXM-095): what becomes possible when this activity is stopped? (Freed resources, removed constraints, eliminated coordination costs.)"
+        }
+      ],
+      "techniques": ["T03", "T08", "T01", "T02"],
+      "traps": [
+        {"trap": "Addition bias — defaulting to 'start' recommendations", "antidote": "Ensure at least 30% of strategic recommendations are subtractive. If all recommendations are additions, the portfolio is biased."},
+        {"trap": "Removing the wrong Chesterton's Fence", "antidote": "Step 3 is critical. Some things that look useless are load-bearing walls. Understand before removing."}
+      ],
+      "output_template": "Subtraction recommendations: For each — (1) What to stop, (2) Why it exists (Chesterton's Fence), (3) Why it should stop, (4) What stopping frees up, (5) Risk of stopping."
+    },
+
+    {
+      "id": "E4",
+      "name": "How will the competitive landscape reshape?",
+      "category": "E",
+      "question": "Trace how the competitive structure of an industry will change under each scenario. Who wins, who loses, what new positions emerge.",
+      "when_to_use": "Phase 3 scenario development. The strategic implications section of each scenario.",
+      "oracle_phases": ["Phase 3"],
+      "oracle_agents": ["Scenario Developer", "Equilibrium Analyst"],
+      "axiom_sequence": [
+        {
+          "step": 1,
+          "action": "Apply Wardley evolution",
+          "axioms": ["AXM-064", "AXM-045"],
+          "instruction": "Wardley Mapping (AXM-064): where are key components moving on the evolution axis? Which are commoditizing? S-Curve (AXM-045): which technologies are plateauing, creating openings for successors?"
+        },
+        {
+          "step": 2,
+          "action": "Model creative destruction",
+          "axioms": ["AXM-059", "AXM-039", "AXM-139"],
+          "instruction": "Creative Destruction (AXM-059): what existing value is being destroyed? By whom? Disruption Theory (AXM-039): is the disruption bottom-up (serving overlooked segments first)? Niche Construction (AXM-139): are powerful actors actively reshaping the competitive landscape?"
+        },
+        {
+          "step": 3,
+          "action": "Assess concentration dynamics",
+          "axioms": ["AXM-049", "AXM-038", "AXM-117"],
+          "instruction": "Winner-Take-All (AXM-049): does this scenario strengthen or weaken WTA dynamics? Network Effects (AXM-038): how do network effects shift? Success to Successful (AXM-117): which initial advantages compound?"
+        },
+        {
+          "step": 4,
+          "action": "Identify new positions",
+          "axioms": ["AXM-060", "AXM-017", "AXM-003"],
+          "instruction": "Complementary Goods (AXM-060): what new complements emerge? Comparative Advantage (AXM-017): which capabilities become relatively more valuable? Coase's Theory (AXM-003): does the firm boundary shift?"
+        },
+        {
+          "step": 5,
+          "action": "Calibrate competitive response timing",
+          "axioms": ["AXM-025", "AXM-090", "AXM-081"],
+          "instruction": "Status Quo Bias (AXM-025): incumbents will respond slower than expected. Resource Curse (AXM-090): incumbents with cash cows may under-invest in transformation. Hyperbolic Discounting (AXM-081): actors will over-invest in near-term defense vs. long-term positioning."
+        }
+      ],
+      "techniques": ["T01", "T02", "T04", "T15"],
+      "traps": [
+        {"trap": "Assuming the current competitive structure persists", "antidote": "Under significant change, the competitive structure itself reshapes. New categories emerge, old ones merge or disappear."},
+        {"trap": "Single-winner predictions", "antidote": "Most competitive restructuring produces multiple winners in different niches, not a single dominant player."}
+      ],
+      "output_template": "Competitive landscape shift: (1) Wardley position changes, (2) Creative destruction map, (3) Concentration dynamics, (4) New positions and opportunities, (5) Timing of competitive response."
+    }
+  ],
+
+  "techniques": [
+    {
+      "id": "T01",
+      "name": "Incentive Chain Tracing",
+      "description": "For each relevant actor: (1) What are they measured on? (2) What are they rewarded for? (3) What information do they have? (4) What constraints do they face? (5) What is their rational response given 1-4? → Predicted behavior.",
+      "key_axioms": ["AXM-110", "AXM-016", "AXM-052", "AXM-132"],
+      "used_in_recipes": ["A2", "A3", "B3", "C4", "E3", "E4"],
+      "common_errors": ["Assuming actors have the same information as the analyst", "Confusing stated goals with actual incentives", "Forgetting implicit incentives (status, cognitive comfort, career risk)"],
+      "output": "Per-actor incentive map: Metric → Reward → Information → Constraints → Predicted behavior"
+    },
+    {
+      "id": "T02",
+      "name": "Second-Order Chain",
+      "description": "For every causal claim, trace at minimum 3 steps: (1) First-order effect (direct consequence), (2) Second-order effect (response to the consequence), (3) Countervailing force (what pushes back), (4) Required conditions (what must hold for the chain to proceed). If the chain reverses sign at step 2, that's the most important finding.",
+      "key_axioms": ["AXM-095", "AXM-031", "AXM-047"],
+      "used_in_recipes": ["A4", "B1", "B2", "B3", "B5", "C4", "E1", "E3", "E4"],
+      "common_errors": ["Stopping at step 1", "Assuming each step has the same sign as step 1", "Ignoring time delays between steps", "Forgetting that different actors drive different steps"],
+      "output": "Causal chain: Effect₁ → Response₂ → Countervailing₃ → Conditions₄ (with time estimates per step)"
+    },
+    {
+      "id": "T03",
+      "name": "Inversion Pass",
+      "description": "Instead of arguing FOR a claim or scenario, argue AGAINST it. (1) List 3-5 conditions that guarantee failure. (2) For each, assess P(condition_holds). (3) If any condition has P > 0.7, the claim is in serious trouble. (4) For each condition, identify the earliest observable indicator.",
+      "key_axioms": ["AXM-093", "AXM-129"],
+      "used_in_recipes": ["C1", "C4", "E1", "E3"],
+      "common_errors": ["Weak inversion (conditions too vague to test)", "Inversion without follow-through (listing conditions but not assessing them)", "Using inversion to kill everything (the goal is to test, not to destroy)"],
+      "output": "Failure conditions list: Condition → P(holds) → Observable indicator → Assessment"
+    },
+    {
+      "id": "T04",
+      "name": "Causal Loop Diagramming",
+      "description": "Map the reinforcing and balancing feedback loops in a system. (1) Identify key variables. (2) Draw causal links with polarity (+ same direction, - opposite direction). (3) Identify loops (even number of - links = reinforcing, odd = balancing). (4) Determine which loop currently dominates. (5) Find conditions where dominance shifts.",
+      "key_axioms": ["AXM-031", "AXM-032", "AXM-034", "AXM-037"],
+      "used_in_recipes": ["B1", "B3", "B5", "C4", "E4"],
+      "common_errors": ["Mapping too many variables (focus on 5-8 key variables)", "Missing delays (delays create oscillation)", "Forgetting that loop dominance shifts over time", "Treating the map as the territory"],
+      "output": "Loop diagram: Variables → Links with polarity → Named loops → Dominant loop → Shift conditions"
+    },
+    {
+      "id": "T05",
+      "name": "Outside View First",
+      "description": "For any estimate or prediction: (1) Identify the reference class (similar past cases). (2) Find the base rate of outcomes in that class. (3) Start with the base rate as your estimate. (4) THEN adjust for specific features of this case. (5) The adjustment should be small (≤25%) unless strong evidence supports a larger adjustment.",
+      "key_axioms": ["AXM-124", "AXM-101", "AXM-055", "AXM-141"],
+      "used_in_recipes": ["B1", "B4", "C1", "C2", "D1", "D4"],
+      "common_errors": ["Starting with the inside view and then 'checking' against the base rate (anchoring on the inside view)", "Choosing a reference class that's too narrow (insufficient data) or too broad (irrelevant)", "Adjusting too much from the base rate based on 'this case is different'"],
+      "output": "Calibrated estimate: Reference class → Base rate → Specific adjustments → Final estimate with confidence interval"
+    },
+    {
+      "id": "T06",
+      "name": "Evidence Audit",
+      "description": "For each major claim in the analysis: (1) What's the evidence? (2) Source quality (primary/secondary/tertiary, peer-reviewed/editorial/anecdotal). (3) Recency (when was this established?). (4) Conflicts (does other evidence contradict?). (5) What would change your mind? (If nothing could, the claim is not evidence-based.)",
+      "key_axioms": ["AXM-083", "AXM-082", "AXM-129", "AXM-100"],
+      "used_in_recipes": ["C1", "C3", "D1", "D2"],
+      "common_errors": ["Treating all sources as equal quality", "Not asking 'what would change my mind?'", "Counting number of sources rather than assessing independence", "Ignoring evidence that contradicts the narrative"],
+      "output": "Per-claim evidence card: Claim → Evidence → Source quality → Recency → Conflicts → Changeability criterion"
+    },
+    {
+      "id": "T07",
+      "name": "Lollapalooza Scan",
+      "description": "Count the number of independent reinforcing forces pointing in the same direction in a scenario or prediction. (1) List all causal forces. (2) Assess independence (are they truly separate or manifestations of one force?). (3) Count independent reinforcing forces. (4) If ≥3 with no identified balancing force: tag as lollapalooza candidate. (5) Check historical precedent for this level of confluence.",
+      "key_axioms": ["AXM-097", "AXM-069", "AXM-037"],
+      "used_in_recipes": ["C2"],
+      "common_errors": ["Counting non-independent forces (three effects of one cause is not lollapalooza)", "Missing balancing forces (they're often less visible than reinforcing forces)", "Assuming lollapalooza means certain (it means higher probability of extreme outcome, not certainty)"],
+      "output": "Lollapalooza assessment: Independent reinforcing forces → Count → Balancing forces identified → Historical precedent → Verdict"
+    },
+    {
+      "id": "T08",
+      "name": "Binding Constraint Identification",
+      "description": "In any underperforming system: (1) List candidate constraints. (2) For each: if this were magically removed, would throughput increase? (3) The one where the answer is most clearly 'yes' is the binding constraint. (4) Check: is effort being directed at this constraint or elsewhere? (5) What's the next constraint after this one is relieved?",
+      "key_axioms": ["AXM-012", "AXM-007", "AXM-122"],
+      "used_in_recipes": ["A3", "A4", "E3"],
+      "common_errors": ["Confusing symptoms (visible problems) with the binding constraint (structural limit)", "Optimizing non-constraints (feels productive but doesn't improve throughput)", "Assuming there's only one constraint (there's one BINDING constraint, but the next one matters for planning)"],
+      "output": "Constraint analysis: Candidates → Binding constraint (with evidence) → Current effort allocation → Next constraint"
+    },
+    {
+      "id": "T09",
+      "name": "Anti-Availability Search",
+      "description": "Deliberately seek evidence that is: (1) Not recent (historical patterns, slow-moving trends). (2) Not vivid (statistical data over anecdotes). (3) Not personally experienced (other industries, geographies, time periods). (4) Not confirming (specifically seek disconfirming evidence). This counteracts the natural bias toward available, vivid, recent, confirming evidence.",
+      "key_axioms": ["AXM-102", "AXM-023", "AXM-054"],
+      "used_in_recipes": ["C3", "D3"],
+      "common_errors": ["Treating this as a checkbox exercise (the value is in what you FIND, not in the search itself)", "Giving anti-available evidence less weight because it's less vivid (that's the bias reasserting itself)", "Only seeking disconfirming evidence (the goal is balance, not contrarianism)"],
+      "output": "Anti-availability findings: Historical evidence → Statistical evidence → Cross-domain evidence → Disconfirming evidence → Impact on analysis"
+    },
+    {
+      "id": "T10",
+      "name": "Boundary Condition Check",
+      "description": "For every axiom or model applied: (1) Check the axiom's stated boundary conditions. (2) Does the current context fall within those boundaries? (3) If outside boundaries: the axiom may not apply. Note this explicitly. (4) If near a boundary: the axiom applies with reduced confidence. (5) Map vs. Territory reminder: the axiom is a model, not reality.",
+      "key_axioms": ["AXM-094", "AXM-096"],
+      "used_in_recipes": ["A1", "A2", "A4", "B4", "C1", "D1", "D2", "D4"],
+      "common_errors": ["Applying axioms outside their boundary conditions without noting it", "Treating boundary conditions as binary (in/out) when they're often gradual", "Forgetting that boundary conditions are themselves models and may be wrong"],
+      "output": "Boundary check: Axiom applied → Context features → Boundary conditions met? → Confidence adjustment if near boundary"
+    },
+    {
+      "id": "T11",
+      "name": "Integrative Synthesis",
+      "description": "When two models or positions conflict: (1) Articulate each position fully and fairly. (2) Identify what is TRUE and useful in each. (3) Identify the core tension — what exactly do they disagree about? (4) Ask: 'What would have to be true for both to be partially right?' (5) Construct a new model C that resolves the tension. (6) If the tension cannot be resolved: it may be a genuine tradeoff. Preserve it explicitly.",
+      "key_axioms": ["AXM-106"],
+      "used_in_recipes": ["D3"],
+      "common_errors": ["Weak synthesis (just splitting the difference)", "Dropping the minority view instead of integrating it", "Forcing synthesis when the disagreement is genuine (some tensions cannot be resolved)"],
+      "output": "Synthesis: Position A (what's true in it) → Position B (what's true in it) → Core tension → Integrative model C or explicit tradeoff"
+    },
+    {
+      "id": "T12",
+      "name": "Stakeholder Incentive Map",
+      "description": "Comprehensive map of all relevant actors: (1) List all stakeholders affected by or affecting the situation. (2) For each: what do they want? What do they fear? What information do they have? What power do they hold? What constraints bind them? (3) Map interactions: who influences whom? Where are alliances and conflicts? (4) Identify the actors who can block change vs. enable it.",
+      "key_axioms": ["AXM-110", "AXM-016", "AXM-125", "AXM-051"],
+      "used_in_recipes": ["A1", "A2", "B3"],
+      "common_errors": ["Missing stakeholders (especially: regulators, adjacent industries, future entrants)", "Treating all stakeholders as equally important", "Modeling stakeholders as monolithic (organizations have internal politics)"],
+      "output": "Stakeholder map: Per actor — Goals, Fears, Information, Power, Constraints, Interactions, Block/Enable potential"
+    },
+    {
+      "id": "T13",
+      "name": "Threshold Identification",
+      "description": "Find the critical thresholds where a system's behavior changes qualitatively: (1) For each key variable, ask: at what value does the system behave DIFFERENTLY? (2) Map the variable's current position relative to the threshold. (3) Assess the direction and speed of movement toward/away from the threshold. (4) Identify early warning signals that the threshold is approaching. (5) Check for hysteresis: is the return threshold different from the forward threshold?",
+      "key_axioms": ["AXM-037", "AXM-084", "AXM-046"],
+      "used_in_recipes": ["A3", "B1", "B4", "B5", "C2", "E2"],
+      "common_errors": ["Assuming thresholds are known in advance (they usually aren't — look for critical slowing down as a warning)", "Treating threshold crossing as instant (there's usually a transition period)", "Ignoring hysteresis (it may be much harder to reverse a threshold crossing than to trigger it)"],
+      "output": "Threshold map: Variable → Threshold value (est.) → Current position → Movement direction/speed → Early warning signals → Hysteresis assessment"
+    },
+    {
+      "id": "T14",
+      "name": "Real Options Framing",
+      "description": "For each strategic recommendation: (1) What is the cost to create the option? (2) What specific capability does the option create? (3) Under what conditions would you exercise it? (specific, observable triggers). (4) What is the value if exercised? (5) What happens if you don't exercise? (you lose only the option premium). (6) When does the option expire?",
+      "key_axioms": ["AXM-092", "AXM-018", "AXM-131"],
+      "used_in_recipes": ["E1", "E2"],
+      "common_errors": ["Confusing 'watching' with 'buying an option' (options require specific investment)", "Underestimating the carrying cost of options (monitoring, maintenance, opportunity cost)", "Having too many options (option portfolio bloat — each option has a cost)"],
+      "output": "Real option card: Investment cost → Capability created → Exercise trigger → Value if exercised → Expiration → Carrying cost"
+    },
+    {
+      "id": "T15",
+      "name": "Temporal Decomposition",
+      "description": "Break any 'X will happen' claim into a sequence of stages with rough timelines: (1) Preconditions — what must be true before X can begin? (are they met?) (2) Trigger — what event or threshold initiates X? (3) First-order effects — what happens immediately? (4) Second-order responses — how do actors respond? (5) New equilibrium — what's the stable state after adjustment? Assign rough timeline ranges to each stage.",
+      "key_axioms": ["AXM-055", "AXM-076", "AXM-074"],
+      "used_in_recipes": ["B1", "B2", "E4"],
+      "common_errors": ["Compressing the timeline (things take longer than you think — AXM-055)", "Assuming all stages happen sequentially (some are parallel)", "Treating the new equilibrium as the end state (it's just the next starting point)"],
+      "output": "Temporal decomposition: Preconditions (met?) → Trigger → Effect₁ (timeline) → Response₂ (timeline) → New equilibrium (timeline)"
+    }
+  ]
+}
