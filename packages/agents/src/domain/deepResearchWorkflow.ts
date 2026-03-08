@@ -213,6 +213,9 @@ export interface DeepResearchAnswer {
     contradictionCount: number
     resolvedCount: number
   }
+  metadata?: {
+    degradedPhases: string[]
+  }
 }
 
 // ----- KG Snapshots (for visualization) -----
@@ -262,6 +265,28 @@ export interface DeepResearchRunConfig {
   mode?: 'full' | 'quick'
   /** Max multi-hop search depth for recursive sub-question searches (Phase 46, default 2) */
   maxMultiHopDepth?: number
+  /** When true (default), all research completes before dialectical reasoning begins.
+   *  When false, research and dialectical phases interleave (legacy behavior). */
+  researchFirstMode?: boolean
+  /** KG enrichment feature flags (all default true) */
+  kgEnrichment?: KGEnrichmentConfig
+}
+
+/**
+ * Feature flags for KG enrichment during research and dialectical phases.
+ * All flags default to true when undefined.
+ */
+export interface KGEnrichmentConfig {
+  /** Boost claim confidence when corroborating sources found (noisy-OR) */
+  enableCorroborationBoost?: boolean
+  /** Create 'supports' edges between similar (but not identical) claims */
+  enableSupportsEdges?: boolean
+  /** Detect contradictions during research via heuristic opposing-term analysis */
+  enableEarlyContradictions?: boolean
+  /** Merge near-duplicate concepts via keyword overlap */
+  enableFuzzyConceptMerge?: boolean
+  /** Infer transitive causal chains (A→B + B→C = A→C) across sources */
+  enableCausalBridging?: boolean
 }
 
 /**

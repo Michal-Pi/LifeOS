@@ -10,8 +10,13 @@
 import type { SourceRecord, CounterclaimResult, ExtractedClaim } from '@lifeos/agents'
 import type { ProviderExecuteFn } from './claimExtraction.js'
 import { createLogger } from '../../lib/logger.js'
+import { safeParseJson } from '../shared/jsonParser.js'
 
 const log = createLogger('SourceQuality')
+
+function sanitizeForPrompt(input: string, maxLength = 500): string {
+  return input.replace(/[{}\\"<>]/g, ' ').substring(0, maxLength).trim()
+}
 
 // High-authority domains score higher.
 // Specific domains listed first, TLD patterns (starting with '.') at end.
@@ -115,8 +120,8 @@ export function applyQualityScoresToClaims(
 
   return claims.map((claim) => {
     const qualityScore = sourceScoreMap.get(claim.sourceId) ?? 0.5
-    // Weighted blend: 70% original confidence, 30% quality-adjusted
-    const adjusted = claim.confidence * 0.7 + claim.confidence * qualityScore * 0.3
+    // Weighted blend: 70% original confidence, 30% source quality
+    const adjusted = claim.confidence * 0.7 + qualityScore * 0.3
     return {
       ...claim,
       confidence: Math.min(1, Math.max(0, adjusted)),
@@ -125,12 +130,28 @@ export function applyQualityScoresToClaims(
 }
 
 /**
- * Generate counterclaims for the top claims using an adversarial agent.
+ * Adversarial search executor — abstracts the search + ingest pipeline
+ * so generateCounterclaims doesn't import it directly.
+ */
+export interface AdversarialSearchFn {
+  (queries: string[]): Promise<{
+    sources: SourceRecord[]
+    contentMap: Record<string, string>
+  }>
+}
+
+/**
+ * Generate counterclaims via full adversarial search pipeline:
+ * 1. LLM generates targeted adversarial search queries
+ * 2. Execute those queries via real search infrastructure
+ * 3. Extract counterclaims from adversarial sources
+ * 4. Cross-reference against original claims
  */
 export async function generateCounterclaims(
   claims: ExtractedClaim[],
   query: string,
-  executeProvider: ProviderExecuteFn
+  executeProvider: ProviderExecuteFn,
+  adversarialSearch?: AdversarialSearchFn,
 ): Promise<CounterclaimResult[]> {
   // Take top claims by confidence — spread to avoid mutating the input array
   const topClaims = [...claims].sort((a, b) => b.confidence - a.confidence).slice(0, 10)
@@ -142,20 +163,81 @@ export async function generateCounterclaims(
     .join('\n')
 
   try {
-    const response = await executeProvider(
-      `You are an adversarial research analyst. Your job is to find the strongest counterarguments to claims. Be rigorous and evidence-based. Output valid JSON only, no markdown fences.`,
-      `Research question:
-<user_query>${query}</user_query>
+    // Phase 1: Generate adversarial search queries
+    const queryResponse = await executeProvider(
+      `You are an adversarial research analyst. Your job is to find the strongest evidence AGAINST the claims presented. Generate targeted search queries that would find counter-evidence, rival theories, failed replications, or critical analyses. Output valid JSON only, no markdown fences.`,
+      `## Research Question
+${sanitizeForPrompt(query)}
 
-For each claim below, generate the strongest counterargument. Rate each as strong/moderate/weak.
-
-Claims:
+## Claims to Challenge
 ${claimList}
 
-Respond with JSON: { "counterclaims": [{ "claimIndex": 1, "counterargument": "...", "strength": "strong|moderate|weak", "evidenceBasis": "..." }, ...] }`
+## Task
+Generate 3-5 search queries designed to find evidence that CONTRADICTS or WEAKENS these claims. Prioritize:
+1. Studies with opposing conclusions
+2. Methodological criticisms of supporting evidence
+3. Counter-examples from different contexts or time periods
+4. Failed replications or contradictory studies
+5. Alternative explanations or rival theories
+
+## Output Schema
+{ "adversarialQueries": ["query1", "query2", ...], "rationale": "brief explanation of strategy" }
+
+Output valid JSON only. No markdown fences.`
     )
 
-    const parsed = safeParseJson(response) as {
+    const queryParsed = safeParseJson(queryResponse) as {
+      adversarialQueries?: string[]
+      rationale?: string
+    } | null
+
+    const adversarialQueries = queryParsed?.adversarialQueries?.filter(
+      (q): q is string => typeof q === 'string' && q.length > 0
+    ) ?? []
+
+    // Phase 2: Execute adversarial search (if search function provided and queries generated)
+    let adversarialContext = ''
+    if (adversarialSearch && adversarialQueries.length > 0) {
+      try {
+        const { sources: advSources, contentMap } = await adversarialSearch(adversarialQueries)
+
+        if (advSources.length > 0) {
+          // Build context from adversarial sources for the counterclaim generator
+          const sourceSnippets = advSources.slice(0, 5).map((s) => {
+            const content = contentMap[s.sourceId]?.substring(0, 1500) ?? ''
+            return `### ${s.title} (${s.domain})\nURL: ${s.url}\n${content}`
+          })
+          adversarialContext = `\n\n## Adversarial Sources Found\nThe following sources contain potential counter-evidence:\n\n${sourceSnippets.join('\n\n')}`
+
+          log.info('Adversarial search found sources', {
+            queriesExecuted: adversarialQueries.length,
+            sourcesFound: advSources.length,
+          })
+        }
+      } catch (err) {
+        log.warn('Adversarial search failed, falling back to LLM-only', { error: String(err) })
+      }
+    }
+
+    // Phase 3: Generate counterclaims (grounded in adversarial sources when available)
+    const counterResponse = await executeProvider(
+      `You are an adversarial research analyst who generates the strongest possible counterarguments to claims. ${adversarialContext ? 'You have access to real counter-evidence sources — cite them specifically using [title](url) format.' : ''} Prioritize accuracy over agreement. Ground counterarguments in evidence, logic, or established alternative frameworks. Output valid JSON only, no markdown fences.`,
+      `## Research Question
+${sanitizeForPrompt(query)}
+
+## Task
+For each claim below, generate the single strongest counterargument. Rate the counterargument strength as strong/moderate/weak based on evidence quality.${adversarialContext ? ' You MUST cite specific sources from the adversarial sources section using [title](url) format in your evidenceBasis.' : ''}
+
+## Claims
+${claimList}${adversarialContext}
+
+## Output Schema
+{ "counterclaims": [{ "claimIndex": 1, "counterargument": "...", "strength": "strong" | "moderate" | "weak", "evidenceBasis": "what evidence or reasoning supports this counterargument — cite [title](url) from adversarial sources when available" }] }
+
+Output valid JSON only. No markdown fences.`
+    )
+
+    const parsed = safeParseJson(counterResponse) as {
       counterclaims?: Array<{
         claimIndex?: number
         counterargument?: string
@@ -190,28 +272,6 @@ Respond with JSON: { "counterclaims": [{ "claimIndex": 1, "counterargument": "..
     log.warn('Counterclaim generation failed', { error: String(err) })
     return []
   }
-}
-
-/**
- * Extract the first balanced JSON object from a string.
- * Uses brace counting instead of greedy regex to handle edge cases.
- */
-function safeParseJson(text: string): unknown | null {
-  const start = text.indexOf('{')
-  if (start === -1) return null
-  let depth = 0
-  for (let i = start; i < text.length; i++) {
-    if (text[i] === '{') depth++
-    else if (text[i] === '}') depth--
-    if (depth === 0) {
-      try {
-        return JSON.parse(text.slice(start, i + 1))
-      } catch {
-        return null
-      }
-    }
-  }
-  return null
 }
 
 /** Simple FNV-1a-style hash for claim text → stable short identifier. */

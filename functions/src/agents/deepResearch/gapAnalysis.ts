@@ -15,6 +15,7 @@
 import type { GapAnalysisResult, GapItem, SearchPlan, RunBudget } from '@lifeos/agents'
 import type { KnowledgeHypergraph } from '../knowledgeHypergraph.js'
 import { recordSpend, estimateLLMCost, canAffordOperation } from './budgetController.js'
+import { planMultiHopSearch } from './multiHopSearch.js'
 import type { ProviderExecuteFn } from './claimExtraction.js'
 import { createLogger } from '../../lib/logger.js'
 
@@ -22,39 +23,58 @@ const log = createLogger('GapAnalysis')
 
 // ----- Prompts -----
 
-const GAP_ANALYSIS_SYSTEM_PROMPT = `You are a knowledge gap analyst. Given a research query and a summary of the current knowledge graph state, identify what is missing, uncertain, or contradicted.
+const GAP_ANALYSIS_SYSTEM_PROMPT = `CRITICAL: Output valid JSON only. No markdown fences, no explanation, no preamble.
 
-Focus on:
-1. Claims supported by only one source (fragile evidence)
-2. Important subtopics not yet covered
-3. Unresolved contradictions that need more evidence
-4. Areas where confidence is low
-5. Missing perspectives (only one viewpoint exists)
+## Role
+You are a knowledge gap analyst specializing in identifying weaknesses, blind spots, and fragile evidence within a research knowledge graph.
 
-For each gap, suggest specific search queries that would help fill it.
+## Task
+Given a research query and the current knowledge graph state, identify what is missing, uncertain, or contradicted. For each gap, suggest specific search queries that would fill it.
 
-Output valid JSON only, no markdown fences.`
+## Gap Categories (evaluate all five)
+1. Fragile evidence: Claims supported by only one source.
+2. Uncovered subtopics: Important aspects of the query not yet addressed.
+3. Unresolved contradictions: Conflicting claims that need more evidence to adjudicate.
+4. Low-confidence areas: Claims where the evidence language is hedged or uncertain.
+5. Missing perspectives: Topics where only one viewpoint or methodology is represented.
+
+## Rules
+1. Every gap must include at least one actionable search query to fill it.
+2. Prioritize gaps that would most improve the overall answer quality.
+3. Set shouldContinue to false only when coverage is genuinely sufficient (>=0.8) or all gaps are low-priority.
+4. If you are uncertain about whether a gap exists, include it with a lower priority rather than omitting it.
+
+CRITICAL (restated): Output valid JSON only. No other text.`
 
 function buildGapAnalysisPrompt(query: string, kgSummary: string): string {
-  return `Research query: "${query}"
+  return `## Research Query
+"${query}"
 
-Current knowledge graph state:
+## Current Knowledge Graph State
 ${kgSummary}
 
-Analyze the gaps in the current knowledge and respond with JSON:
+## Task
+Analyze the knowledge graph for gaps across all five categories (fragile evidence, uncovered subtopics, unresolved contradictions, low-confidence areas, missing perspectives).
+
+## Output Schema
 {
   "gaps": [
     {
-      "description": "What is missing or uncertain",
-      "missingEvidenceFor": ["concept or claim names"],
+      "description": "What is missing, uncertain, or contradicted",
+      "missingEvidenceFor": ["Specific concept or claim names that lack sufficient evidence"],
       "uncertaintyScore": 0.0-1.0,
-      "suggestedQueries": ["specific search queries"],
-      "priority": "high" | "medium" | "low"
+      "suggestedQueries": ["Specific, actionable search queries to fill this gap"],
+      "priority": "high | medium | low"
     }
   ],
   "overallCoverageScore": 0.0-1.0,
-  "shouldContinue": true/false
-}`
+  "shouldContinue": true or false
+}
+
+## Scoring Guidance
+- overallCoverageScore: 0.0 = no coverage, 0.5 = partial, 0.8+ = sufficient for a comprehensive answer.
+- shouldContinue: true when high-priority gaps remain and additional research would meaningfully improve the answer.
+- priority: "high" = gap would significantly change the answer, "medium" = gap would add useful nuance, "low" = gap is minor or tangential.`
 }
 
 // ----- Main Analysis -----
@@ -66,14 +86,21 @@ export async function analyzeKnowledgeGaps(
   kg: KnowledgeHypergraph,
   query: string,
   executeProvider: ProviderExecuteFn,
-  budget: RunBudget
+  budget: RunBudget,
+  /** Maximum multi-hop depth for follow-up searches (Phase 46, default 2) */
+  maxMultiHopDepth: number = 2,
+  modelName?: string,
 ): Promise<{ result: GapAnalysisResult; updatedBudget: RunBudget }> {
   let currentBudget = { ...budget }
 
   // Build KG summary for the LLM
   const kgSummary = buildKGSummary(kg)
 
-  const estimatedCost = estimateLLMCost('gpt-5-mini', kgSummary.length / 4 + 200, 800)
+  const costModel = modelName ?? 'generic-llm'
+  if (!modelName) {
+    log.debug('Gap analysis cost estimate using fallback model', { modelName: costModel })
+  }
+  const estimatedCost = estimateLLMCost(costModel, kgSummary.length / 4 + 200, 800)
   if (!canAffordOperation(currentBudget, estimatedCost)) {
     return {
       result: {
@@ -97,7 +124,19 @@ export async function analyzeKnowledgeGaps(
 
     // If continuing, build a search plan from gap suggestions
     if (result.shouldContinue && result.gaps.length > 0) {
-      result.newSearchPlan = buildSearchPlanFromGaps(result.gaps)
+      const basePlan = buildSearchPlanFromGaps(result.gaps)
+
+      // Phase 46: Enrich with multi-hop sub-questions for deeper coverage
+      const multiHop = planMultiHopSearch(query, result, currentBudget, maxMultiHopDepth)
+      if (multiHop.subQuestions.length > 0) {
+        basePlan.serpQueries.push(...multiHop.subQuestions.slice(0, 3))
+        log.info('Multi-hop sub-questions added', {
+          count: multiHop.subQuestions.length,
+          hop: multiHop.hopsUsed,
+        })
+      }
+
+      result.newSearchPlan = basePlan
     }
 
     log.info('Gap analysis complete', {
@@ -136,10 +175,15 @@ function buildKGSummary(kg: KnowledgeHypergraph): string {
   lines.push(`- Concepts: ${stats.nodesByType.concept}`)
   lines.push(`- Sources: ${stats.nodesByType.source}`)
   lines.push(`- Active contradictions: ${contradictions.length}`)
+  // Count supports edges across all claims
+  const supportsEdgeCount = claims.reduce((sum, n) => {
+    return sum + kg.getOutEdges(n.id).filter((e) => e.data.type === 'supports').length
+  }, 0)
+  lines.push(`- Supports edges: ${supportsEdgeCount}`)
   lines.push('')
 
-  // Top claims (by confidence)
-  const sortedClaims = claims
+  // Tiered claims: top 15 by confidence (full detail) + bottom 10 (brief, most likely to have gaps)
+  const allMappedClaims = claims
     .map((n) => {
       const data = n.data as unknown as Record<string, unknown>
       return {
@@ -150,16 +194,30 @@ function buildKGSummary(kg: KnowledgeHypergraph): string {
       }
     })
     .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 15)
 
-  lines.push('## Top Claims')
-  for (const claim of sortedClaims) {
-    const sourceCount = kg
-      .getOutEdges(claim.id)
-      .filter((e) => e.data.type === 'sourced_from').length
-    lines.push(`- [c=${claim.confidence.toFixed(2)}, sources=${sourceCount}] ${claim.text}`)
+  const topClaims = allMappedClaims.slice(0, 15)
+  const bottomClaims = allMappedClaims.length > 15
+    ? allMappedClaims.slice(-Math.min(10, allMappedClaims.length - 15))
+    : []
+
+  lines.push('## Top Claims (highest confidence, well-supported)')
+  for (const claim of topClaims) {
+    const outEdges = kg.getOutEdges(claim.id)
+    const sourceCount = outEdges.filter((e) => e.data.type === 'sourced_from').length
+    const data = kg.getNode(claim.id)?.data as Record<string, unknown> | undefined
+    const corr = Number(data?.corroborationCount ?? 1)
+    const supCount = outEdges.filter((e) => e.data.type === 'supports').length
+    lines.push(`- [c=${claim.confidence.toFixed(2)}, sources=${sourceCount}, corr=${corr}, supports=${supCount}] ${claim.text}`)
   }
   lines.push('')
+
+  if (bottomClaims.length > 0) {
+    lines.push('## Weakest Claims (lowest confidence, most likely to have gaps)')
+    for (const claim of bottomClaims) {
+      lines.push(`- [c=${claim.confidence.toFixed(2)}] ${claim.text}`)
+    }
+    lines.push('')
+  }
 
   // Concepts
   lines.push('## Concepts')

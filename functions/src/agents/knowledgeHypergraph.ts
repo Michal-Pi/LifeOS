@@ -137,31 +137,31 @@ export class KnowledgeHypergraph {
   // ----- Collection Paths -----
 
   private claimsPath(): string {
-    return `users/${this.userId}/dialectical/sessions/${this.sessionId}/claims`
+    return `users/${this.userId}/dialecticalSessions/${this.sessionId}/claims`
   }
 
   private mechanismsPath(): string {
-    return `users/${this.userId}/dialectical/sessions/${this.sessionId}/mechanisms`
+    return `users/${this.userId}/dialecticalSessions/${this.sessionId}/mechanisms`
   }
 
   private contradictionsPath(): string {
-    return `users/${this.userId}/dialectical/sessions/${this.sessionId}/contradictions`
+    return `users/${this.userId}/dialecticalSessions/${this.sessionId}/contradictions`
   }
 
   private conceptsPath(): string {
-    return `users/${this.userId}/dialectical/sessions/${this.sessionId}/concepts`
+    return `users/${this.userId}/dialecticalSessions/${this.sessionId}/concepts`
   }
 
   private regimesPath(): string {
-    return `users/${this.userId}/dialectical/sessions/${this.sessionId}/regimes`
+    return `users/${this.userId}/dialecticalSessions/${this.sessionId}/regimes`
   }
 
   private communitiesPath(): string {
-    return `users/${this.userId}/dialectical/sessions/${this.sessionId}/communities`
+    return `users/${this.userId}/dialecticalSessions/${this.sessionId}/communities`
   }
 
   private sourcesPath(): string {
-    return `users/${this.userId}/dialectical/sessions/${this.sessionId}/sources`
+    return `users/${this.userId}/dialecticalSessions/${this.sessionId}/sources`
   }
 
   // ----- Node Operations -----
@@ -182,11 +182,34 @@ export class KnowledgeHypergraph {
   }
 
   /**
+   * Get all nodes in the graph.
+   */
+  getAllNodes(): KGNode[] {
+    return this.graph
+      .nodes()
+      .map((id) => this.graph.node(id) as KGNode)
+      .filter(Boolean)
+  }
+
+  /**
    * Remove a node from the graph
    */
   removeNode(id: string): void {
     this.graph.removeNode(id)
     this.dirty = true
+  }
+
+  pruneExpiredNodes(beforeTimestamp?: number): { prunedCount: number } {
+    const cutoff = beforeTimestamp ?? Date.now()
+    let prunedCount = 0
+    for (const node of this.getAllNodes()) {
+      const temporal = (node.data as { temporal?: { tExpired?: number | null } })?.temporal
+      if (temporal?.tExpired && temporal.tExpired < cutoff) {
+        this.removeNode(node.id)
+        prunedCount++
+      }
+    }
+    return { prunedCount }
   }
 
   /**
@@ -277,7 +300,10 @@ export class KnowledgeHypergraph {
       if (visited.has(current.node)) continue
       visited.add(current.node)
 
-      const neighbors = this.graph.successors(current.node) ?? []
+      // Use bidirectional BFS — dialectical relationships are often bidirectional
+      const successors = this.graph.successors(current.node) ?? []
+      const predecessors = this.graph.predecessors(current.node) ?? []
+      const neighbors = new Set([...successors, ...predecessors])
       for (const neighbor of neighbors) {
         const newPath = [...current.path, neighbor]
         if (neighbor === target) {
@@ -307,7 +333,10 @@ export class KnowledgeHypergraph {
         return current.distance
       }
 
-      const neighbors = this.graph.successors(current.node) ?? []
+      // Bidirectional traversal for action distance
+      const successors = this.graph.successors(current.node) ?? []
+      const predecessors = this.graph.predecessors(current.node) ?? []
+      const neighbors = new Set([...successors, ...predecessors])
       for (const neighbor of neighbors) {
         queue.push({ node: neighbor, distance: current.distance + 1 })
       }
@@ -417,9 +446,74 @@ export class KnowledgeHypergraph {
   // ----- Claim Operations -----
 
   /**
+   * Find an existing claim by normalized text (case-insensitive, whitespace-normalized).
+   */
+  findClaimByNormalizedText(text: string): Claim | null {
+    const normalized = text.toLowerCase().trim().replace(/\s+/g, ' ')
+    const claims = this.getNodesByType('claim')
+    for (const node of claims) {
+      const claim = node.data as Claim
+      const existingNorm = claim.text.toLowerCase().trim().replace(/\s+/g, ' ')
+      if (existingNorm === normalized) return claim
+    }
+    return null
+  }
+
+  /**
    * Add a claim to the graph
    */
   async addClaim(input: CreateClaimInput): Promise<Claim> {
+    // Check for duplicate claim by normalized text
+    const existing = this.findClaimByNormalizedText(input.text)
+    if (existing) {
+      // Corroboration confidence boost (noisy-OR)
+      const oldConf = existing.confidence
+      const newConf = input.confidence ?? 0.5
+      const boostedConf = Math.min(0.99, 1 - (1 - oldConf) * (1 - newConf))
+      existing.confidence = boostedConf
+
+      const count = (existing.corroborationCount ?? 1) + 1
+      existing.corroborationCount = count
+
+      const sourceIds = existing.corroboratingSourceIds ?? []
+      const newSourceId = input.sourceEpisodeId?.replace('episode:source:', '')
+      if (newSourceId && !sourceIds.includes(newSourceId)) {
+        sourceIds.push(newSourceId)
+      }
+      existing.corroboratingSourceIds = sourceIds
+
+      // Update in-memory node data
+      const node = this.getNode(existing.claimId)
+      if (node) {
+        node.data = existing
+      }
+
+      // Persist corroboration update
+      await this.db.doc(`${this.claimsPath()}/${existing.claimId}`).update({
+        confidence: existing.confidence,
+        corroborationCount: count,
+        corroboratingSourceIds: sourceIds,
+      })
+
+      // Attach any missing source edges from the new input
+      if (input.sourceEpisodeId) {
+        const existingSourceEdges = this.getOutEdges(existing.claimId)
+        const alreadyLinked = existingSourceEdges.some(
+          (e) =>
+            e.data.type === 'sourced_from' &&
+            e.target === input.sourceEpisodeId
+        )
+        if (!alreadyLinked) {
+          this.addEdge(existing.claimId, input.sourceEpisodeId, {
+            type: 'sourced_from',
+            weight: input.confidence ?? 0.5,
+            temporal: createBiTemporalEdge(),
+          })
+        }
+      }
+      return existing
+    }
+
     const claimId = `claim_${Date.now()}_${Math.random().toString(36).slice(2)}` as ClaimId
     const temporal = createBiTemporalEdge()
 
@@ -429,6 +523,8 @@ export class KnowledgeHypergraph {
       status: 'ACTIVE',
       temporal,
       contradictionIds: [],
+      corroborationCount: 1,
+      corroboratingSourceIds: [],
     }
 
     // Add to in-memory graph
@@ -492,6 +588,16 @@ export class KnowledgeHypergraph {
    * Add a concept to the graph
    */
   async addConcept(input: CreateConceptInput): Promise<Concept> {
+    // Check for existing concept with same normalized name (deduplication)
+    const normalizedName = input.name.toLowerCase().trim()
+    const existingConcepts = this.getNodesByType('concept')
+    const existing = existingConcepts.find(
+      (n) => (n.data as Concept).name.toLowerCase().trim() === normalizedName
+    )
+    if (existing) {
+      return existing.data as Concept
+    }
+
     const conceptId = `concept_${Date.now()}_${Math.random().toString(36).slice(2)}` as ConceptId
     const temporal = createBiTemporalEdge()
 
@@ -924,26 +1030,44 @@ export class KnowledgeHypergraph {
     const claims = this.getNodesByType('claim')
     const mechanisms = this.getNodesByType('mechanism')
     const concepts = this.getNodesByType('concept')
-    // Note: regimes are loaded but not used for edge rebuilding in current implementation
-    this.getNodesByType('regime')
+    const contradictions = this.getNodesByType('contradiction')
     const communities = this.getNodesByType('community')
 
-    // Rebuild claim -> concept edges
+    // Track added edges to prevent duplicates during rebuild
+    const addedEdges = new Set<string>()
+    const safeAddEdge = (from: string, to: string, data: KGEdge) => {
+      const key = `${from}->${to}:${data.type}`
+      if (addedEdges.has(key)) return
+      addedEdges.add(key)
+      this.addEdge(from, to, data)
+    }
+
+    // Rebuild claim -> concept edges and claim -> source edges
     for (const node of claims) {
       const claim = node.data as Claim
       for (const conceptId of claim.conceptIds) {
-        this.addEdge(claim.claimId, conceptId, {
+        safeAddEdge(claim.claimId, conceptId, {
           type: 'references',
           weight: 1,
           temporal: claim.temporal,
         })
       }
       if (claim.regimeId) {
-        this.addEdge(claim.claimId, claim.regimeId, {
+        safeAddEdge(claim.claimId, claim.regimeId, {
           type: 'scoped_to',
           weight: 1,
           temporal: claim.temporal,
         })
+      }
+      if (claim.sourceEpisodeId) {
+        const sourceNode = this.getNode(claim.sourceEpisodeId)
+        if (sourceNode) {
+          safeAddEdge(claim.claimId, claim.sourceEpisodeId, {
+            type: 'sourced_from',
+            weight: claim.confidence ?? 0.5,
+            temporal: claim.temporal,
+          })
+        }
       }
     }
 
@@ -952,7 +1076,7 @@ export class KnowledgeHypergraph {
       const mechanism = node.data as Mechanism
       for (const claimId of mechanism.participantClaimIds) {
         const role = mechanism.roles[claimId] ?? 'CONDITION'
-        this.addEdge(mechanism.mechanismId, claimId, {
+        safeAddEdge(mechanism.mechanismId, claimId, {
           type: 'part_of',
           weight: role === 'CAUSE' || role === 'EFFECT' ? 1 : 0.5,
           temporal: mechanism.temporal,
@@ -965,17 +1089,29 @@ export class KnowledgeHypergraph {
     for (const node of concepts) {
       const concept = node.data as Concept
       for (const parentId of concept.parentConceptIds) {
-        this.addEdge(concept.conceptId, parentId, {
+        safeAddEdge(concept.conceptId, parentId, {
           type: 'is_a',
           weight: 1,
           temporal: concept.temporal,
         })
       }
       for (const relatedId of concept.relatedConceptIds) {
-        this.addEdge(concept.conceptId, relatedId, {
+        safeAddEdge(concept.conceptId, relatedId, {
           type: 'related_to',
           weight: 0.5,
           temporal: concept.temporal,
+        })
+      }
+    }
+
+    // Rebuild contradiction -> claim edges
+    for (const node of contradictions) {
+      const contradiction = node.data as Contradiction
+      for (const claimId of contradiction.claimIds) {
+        safeAddEdge(contradiction.contradictionId, claimId, {
+          type: 'contradicts',
+          weight: 1,
+          temporal: contradiction.temporal,
         })
       }
     }
@@ -985,7 +1121,7 @@ export class KnowledgeHypergraph {
       const community = node.data as Community
       const memberIds = [...community.conceptIds, ...community.claimIds, ...community.mechanismIds]
       for (const memberId of memberIds) {
-        this.addEdge(memberId, community.communityId, {
+        safeAddEdge(memberId, community.communityId, {
           type: 'member_of',
           weight: 1,
           temporal: community.temporal,

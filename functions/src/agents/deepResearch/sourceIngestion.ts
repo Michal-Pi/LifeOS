@@ -26,6 +26,13 @@ import {
   getRelevanceThreshold,
   canAffordOperation,
 } from './budgetController.js'
+import { classifyQueryType, getSearchStrategy } from './searchRouter.js'
+import {
+  computeQueryHash,
+  getCachedSearchResults,
+  cacheSearchResults,
+  type SearchSource,
+} from './searchCache.js'
 import { createLogger } from '../../lib/logger.js'
 
 const log = createLogger('SourceIngestion')
@@ -40,12 +47,68 @@ export async function executeSearchPlan(
   plan: SearchPlan,
   toolRegistry: ToolRegistry,
   context: ToolExecutionContext,
-  budget: RunBudget
+  budget: RunBudget,
+  /** Optional Firestore instance for search result caching (Phase 45) */
+  firestore?: FirebaseFirestore.Firestore
 ): Promise<{ results: SearchResult[]; updatedBudget: RunBudget }> {
   let currentBudget = { ...budget }
   const COST_PER_SEARCH = 0.002
 
-  // Collect all planned searches upfront
+  // Phase 45: Apply smart search routing to skip unnecessary search types
+  const primaryQuery =
+    plan.serpQueries[0] ?? plan.scholarQueries[0] ?? plan.semanticQueries[0] ?? ''
+  const strategy = getSearchStrategy(classifyQueryType(primaryQuery))
+  const routedPlan: SearchPlan = {
+    ...plan,
+    serpQueries: strategy.useSERP ? plan.serpQueries : [],
+    scholarQueries: strategy.useScholar ? plan.scholarQueries : [],
+    semanticQueries: strategy.useSemantic ? plan.semanticQueries : [],
+  }
+
+  // Phase 45: Check cache for each query and collect cached results
+  const cachedResults: SearchResult[] = []
+  const uncachedSerp: string[] = []
+  const uncachedScholar: string[] = []
+  const uncachedSemantic: string[] = []
+
+  if (firestore && context.userId) {
+    for (const q of routedPlan.serpQueries) {
+      const hash = computeQueryHash(q)
+      const cached = await getCachedSearchResults(context.userId, hash, 'serp', firestore)
+      if (cached) {
+        cachedResults.push(...(cached as SearchResult[]))
+      } else {
+        uncachedSerp.push(q)
+      }
+    }
+    for (const q of routedPlan.scholarQueries) {
+      const hash = computeQueryHash(q)
+      const cached = await getCachedSearchResults(context.userId, hash, 'scholar', firestore)
+      if (cached) {
+        cachedResults.push(...(cached as SearchResult[]))
+      } else {
+        uncachedScholar.push(q)
+      }
+    }
+    for (const q of routedPlan.semanticQueries) {
+      const hash = computeQueryHash(q)
+      const cached = await getCachedSearchResults(context.userId, hash, 'semantic', firestore)
+      if (cached) {
+        cachedResults.push(...(cached as SearchResult[]))
+      } else {
+        uncachedSemantic.push(q)
+      }
+    }
+    if (cachedResults.length > 0) {
+      log.info('Search cache hits', { count: cachedResults.length })
+    }
+  } else {
+    uncachedSerp.push(...routedPlan.serpQueries)
+    uncachedScholar.push(...routedPlan.scholarQueries)
+    uncachedSemantic.push(...routedPlan.semanticQueries)
+  }
+
+  // Collect all planned searches upfront (only uncached queries)
   const serpTool = toolRegistry.get('serp_search')
   const scholarTool = toolRegistry.get('search_scholar')
   const semanticTool = toolRegistry.get('semantic_search')
@@ -54,23 +117,29 @@ export async function executeSearchPlan(
     tool: NonNullable<ReturnType<ToolRegistry['get']>>
     params: Record<string, unknown>
     source: SearchResult['source']
+    query: string
   }
 
   const planned: PlannedSearch[] = []
 
   if (serpTool) {
-    for (const query of plan.serpQueries) {
-      planned.push({ tool: serpTool, params: { query, num: 10 }, source: 'serp' })
+    for (const query of uncachedSerp) {
+      planned.push({ tool: serpTool, params: { query, num: 10 }, source: 'serp', query })
     }
   }
   if (scholarTool) {
-    for (const query of plan.scholarQueries) {
-      planned.push({ tool: scholarTool, params: { query, num: 10 }, source: 'scholar' })
+    for (const query of uncachedScholar) {
+      planned.push({ tool: scholarTool, params: { query, num: 10 }, source: 'scholar', query })
     }
   }
   if (semanticTool) {
-    for (const query of plan.semanticQueries) {
-      planned.push({ tool: semanticTool, params: { query, numResults: 10 }, source: 'semantic' })
+    for (const query of uncachedSemantic) {
+      planned.push({
+        tool: semanticTool,
+        params: { query, numResults: 10 },
+        source: 'semantic',
+        query,
+      })
     }
   }
 
@@ -87,12 +156,24 @@ export async function executeSearchPlan(
   const settled = await Promise.allSettled(
     affordable.map(async (s) => {
       const result = await s.tool.execute(s.params, context)
-      return parseSearchResults(result, s.source)
+      const parsed = parseSearchResults(result, s.source)
+      // Phase 45: Cache successful results
+      if (firestore && context.userId && parsed.length > 0) {
+        const hash = computeQueryHash(s.query)
+        await cacheSearchResults(
+          context.userId,
+          hash,
+          s.source as SearchSource,
+          parsed,
+          firestore
+        ).catch((err) => log.warn('Failed to cache search results', { error: String(err) }))
+      }
+      return parsed
     })
   )
 
   // Collect results and credit back failed searches
-  const results: SearchResult[] = []
+  const results: SearchResult[] = [...cachedResults]
   for (const outcome of settled) {
     if (outcome.status === 'fulfilled') {
       results.push(...outcome.value)
@@ -149,11 +230,14 @@ export async function ingestSources(
 
   // Score relevance of each search result using snippets
   const scored: Array<SearchResult & { relevance: number }> = []
-  for (const result of searchResults) {
-    if (scored.length >= maxSources * 2) break // score up to 2x max to have good candidates
-    const relevance = await scoreRelevanceFn(result.snippet, query)
-    scored.push({ ...result, relevance })
-  }
+  const candidates = searchResults.slice(0, maxSources * 2)
+  const scoredResults = await Promise.all(
+    candidates.map(async (result) => ({
+      ...result,
+      relevance: await scoreRelevanceFn(result.snippet, query),
+    }))
+  )
+  scored.push(...scoredResults)
 
   // Sort by relevance and filter
   scored.sort((a, b) => b.relevance - a.relevance)
@@ -259,6 +343,7 @@ async function fetchDocument(
 /**
  * Chunk a document into sections for claim extraction.
  * Splits on heading boundaries, falling back to paragraph boundaries.
+ * Safety cap: returns at most 50 chunks per document to bound extraction cost.
  */
 export function chunkDocument(
   content: string,
@@ -303,7 +388,7 @@ export function chunkDocument(
     chunks.push(...chunkByParagraphs(content, sourceId, 0, maxChunkSize))
   }
 
-  return chunks
+  return chunks.slice(0, 50) // Safety cap: max 50 chunks per document
 }
 
 function chunkByParagraphs(

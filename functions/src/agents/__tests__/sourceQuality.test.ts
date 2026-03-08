@@ -109,8 +109,8 @@ describe('applyQualityScoresToClaims', () => {
 
     const result = applyQualityScoresToClaims(claims, sources)
 
-    // Weighted blend: 0.8 * 0.7 + 0.8 * 0.5 * 0.3 = 0.56 + 0.12 = 0.68
-    expect(result[0].confidence).toBeCloseTo(0.68, 2)
+    // Weighted blend: 0.8 * 0.7 + 0.5 * 0.3 = 0.56 + 0.15 = 0.71
+    expect(result[0].confidence).toBeCloseTo(0.71, 2)
   })
 
   it('uses default 0.5 quality for unknown sources', () => {

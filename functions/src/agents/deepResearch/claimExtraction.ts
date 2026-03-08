@@ -16,7 +16,6 @@ import type {
   RunBudget,
   DocumentChunk,
   SourceRecord,
-  EvidenceType,
   EpisodeId,
   AgentId,
   ThesisLens,
@@ -28,40 +27,52 @@ import { createBiTemporalEdge } from '@lifeos/agents'
 import { recordSpend, canAffordOperation, estimateLLMCost } from './budgetController.js'
 import { chunkDocument } from './sourceIngestion.js'
 import { createLogger } from '../../lib/logger.js'
+import { safeParseJson } from '../shared/jsonParser.js'
 
 const log = createLogger('ClaimExtraction')
 
 // ----- Extraction Prompt -----
 
-const EXTRACTION_SYSTEM_PROMPT = `You are a precision claim extraction agent. Your task is to extract atomic, verifiable claims from the provided text.
+const EXTRACTION_SYSTEM_PROMPT = `CRITICAL: Output valid JSON only. No markdown fences, no explanation, no preamble.
 
-Rules:
-1. Each claim must be a single, self-contained assertion
-2. Do NOT infer beyond what the text explicitly states
-3. Preserve uncertainty language (e.g., "may", "suggests", "correlates with")
-4. Include the exact quote from the source text that supports each claim
-5. Assign confidence based on the strength of evidence language
-6. Classify evidence type accurately
+## Role
+You are a precision claim extraction agent specializing in decomposing text into atomic, verifiable assertions with epistemic metadata.
 
-Output valid JSON only, no markdown fences.`
+## Rules
+1. Each claim must be a single, self-contained assertion — one fact per claim.
+2. Only state what the text explicitly says. Preserve the author's uncertainty language (e.g., "may", "suggests", "correlates with").
+3. Include the exact quote from the source text that supports each claim.
+4. Assign confidence based on the strength of evidence language in the source (1.0 = definitive statement, 0.5 = suggestive or hedged).
+5. Classify evidence type accurately from the allowed set.
+6. If the text is ambiguous, extract the most conservative interpretation and note the ambiguity.
+
+CRITICAL (restated): Output valid JSON only. No other text.`
+
+function sanitizeForPrompt(input: string, maxLength = 500): string {
+  return input.replace(/[{}\\"<>]/g, ' ').substring(0, maxLength).trim()
+}
 
 function buildExtractionUserPrompt(chunk: string, query: string): string {
-  return `Research query:
-<user_query>${query}</user_query>
+  return `## Context
+Research query: "${sanitizeForPrompt(query)}"
 
-Extract atomic claims from this text. For each claim, provide:
-- claimText: The claim as a clear, self-contained statement
-- confidence: 0-1 based on evidence strength (1.0 = definitive, 0.5 = suggestive)
-- evidenceType: one of "empirical", "theoretical", "anecdotal", "expert_opinion", "meta_analysis", "statistical", "review"
-- sourceQuote: Exact quote from the text supporting this claim (max 200 chars)
-- concepts: Array of key concept names this claim references
-
-Text:
+## Source Text
 """
 ${chunk}
 """
 
-Respond with JSON: { "claims": [...] }`
+## Task
+Extract every atomic, verifiable claim from the source text above that is relevant to the research query.
+
+## Output Schema
+Respond with JSON: { "claims": [...] }
+
+Each claim object must contain:
+- claimText (string): The claim as a clear, self-contained statement.
+- confidence (number, 0.0-1.0): Based on the strength of evidence language. 1.0 = definitive ("X causes Y"), 0.5 = suggestive ("X may cause Y").
+- evidenceType (string): One of "empirical", "theoretical", "anecdotal", "expert_opinion", "meta_analysis", "statistical", "review".
+- sourceQuote (string, max 200 chars): The exact quote from the source text supporting this claim.
+- concepts (string[]): Key concept names this claim references.`
 }
 
 // ----- Types -----
@@ -85,7 +96,8 @@ export async function extractClaimsFromSource(
   content: string,
   query: string,
   executeProvider: ProviderExecuteFn,
-  budget: RunBudget
+  budget: RunBudget,
+  modelName?: string,
 ): Promise<{ claims: ExtractedClaim[]; updatedBudget: RunBudget }> {
   let currentBudget = { ...budget }
   const chunks = chunkDocument(content, source.sourceId)
@@ -101,9 +113,16 @@ export async function extractClaimsFromSource(
   })
 
   const allClaims: ExtractedClaim[] = []
+  const costModel = modelName ?? 'generic-llm'
+  if (!modelName) {
+    log.debug('Claim extraction cost estimate using fallback model', {
+      sourceId: source.sourceId,
+      modelName: costModel,
+    })
+  }
 
   for (const chunk of chunksToProcess) {
-    const estimatedCost = estimateLLMCost('gpt-5-mini', chunk.text.length / 4, 500)
+    const estimatedCost = estimateLLMCost(costModel, chunk.text.length / 4, 500)
     if (!canAffordOperation(currentBudget, estimatedCost)) {
       log.info('Budget limit reached during extraction', { sourceId: source.sourceId })
       break
@@ -221,7 +240,7 @@ export async function mapClaimsToKG(
       conceptIds,
       claimType: 'ASSERTION',
       confidence: claim.confidence,
-      sourceEpisodeId: `episode:source:${claim.sourceId}` as EpisodeId,
+      sourceEpisodeId: claim.sourceId as EpisodeId,
       sourceAgentId: 'agent:deep_research_extractor' as AgentId,
       sourceLens: 'systems' as ThesisLens, // neutral default — claims from extraction are not lens-specific
     }
@@ -247,15 +266,21 @@ export async function mapClaimsToKG(
         claim.claimText
       )
     if (isCausal && conceptIds.length >= 2) {
-      kg.addEdge(conceptIds[0], conceptIds[1], {
-        type: 'causal_link',
-        weight: claim.confidence,
-        temporal: createBiTemporalEdge(),
-        metadata: {
-          claimId: kgClaim.claimId,
-          direction: 'cause_to_effect',
-        },
-      })
+      const existingEdges = kg.getEdges(conceptIds[0], conceptIds[1])
+      const hasDuplicateCausal = existingEdges.some(
+        (e) => e.type === 'causal_link' && e.metadata?.claimId === kgClaim.claimId
+      )
+      if (!hasDuplicateCausal) {
+        kg.addEdge(conceptIds[0], conceptIds[1], {
+          type: 'causal_link',
+          weight: claim.confidence,
+          temporal: createBiTemporalEdge(),
+          metadata: {
+            claimId: kgClaim.claimId,
+            direction: 'cause_to_effect',
+          },
+        })
+      }
     }
   }
 
@@ -308,18 +333,21 @@ function deduplicateClaims(claims: ExtractedClaim[]): ExtractedClaim[] {
 
 // ----- Batch Extraction (Phase 21) -----
 
-const BATCH_EXTRACTION_SYSTEM_PROMPT = `You are a precision claim extraction agent. Your task is to extract atomic, verifiable claims from MULTIPLE source documents provided in a single batch.
+const BATCH_EXTRACTION_SYSTEM_PROMPT = `CRITICAL: Output valid JSON only. No markdown fences, no explanation, no preamble. Attribute each claim to the correct source by its sourceIndex (1-indexed).
 
-Rules:
-1. Each claim must be a single, self-contained assertion
-2. Do NOT infer beyond what the text explicitly states
-3. Preserve uncertainty language (e.g., "may", "suggests", "correlates with")
-4. Include the exact quote from the source text that supports each claim
-5. Assign confidence based on the strength of evidence language
-6. Classify evidence type accurately
-7. CRITICAL: Attribute each claim to the correct source by its sourceIndex (1-indexed)
+## Role
+You are a precision claim extraction agent specializing in decomposing multiple source documents into atomic, verifiable assertions with epistemic metadata.
 
-Output valid JSON only, no markdown fences.`
+## Rules
+1. Each claim must be a single, self-contained assertion — one fact per claim.
+2. Only state what each text explicitly says. Preserve the author's uncertainty language (e.g., "may", "suggests", "correlates with").
+3. Include the exact quote from the source text that supports each claim.
+4. Assign confidence based on the strength of evidence language (1.0 = definitive, 0.5 = suggestive).
+5. Classify evidence type accurately from the allowed set.
+6. Attribute each claim to the correct source using its sourceIndex (1-indexed). Misattribution is a critical error.
+7. If the text is ambiguous, extract the most conservative interpretation.
+
+CRITICAL (restated): Output valid JSON only. Attribute every claim to the correct sourceIndex.`
 
 /**
  * Build a prompt for batch extraction of claims from multiple sources.
@@ -332,21 +360,25 @@ export function buildBatchExtractionPrompt(
     .map((s, idx) => `--- SOURCE ${idx + 1} [${s.sourceId}] ---\n${s.content.substring(0, 3000)}`)
     .join('\n\n')
 
-  return `Research query:
-<user_query>${query}</user_query>
+  return `## Context
+Research query: "${sanitizeForPrompt(query)}"
 
-Extract atomic claims from each source below. For each claim, provide:
-- sourceIndex: Which source (1-indexed) this claim came from
-- claimText: The claim as a clear, self-contained statement
-- confidence: 0-1 based on evidence strength (1.0 = definitive, 0.5 = suggestive)
-- evidenceType: one of "empirical", "theoretical", "anecdotal", "expert_opinion", "meta_analysis", "statistical", "review"
-- sourceQuote: Exact quote from the text supporting this claim (max 200 chars)
-- concepts: Array of key concept names this claim references
-
-Sources:
+## Sources
 ${sourceBlocks}
 
-Respond with JSON: { "claims": [{ "sourceIndex": 1, "claimText": "...", ... }, ...] }`
+## Task
+Extract every atomic, verifiable claim from each source above that is relevant to the research query. Attribute each claim to its correct source.
+
+## Output Schema
+Respond with JSON: { "claims": [{ "sourceIndex": 1, "claimText": "...", ... }, ...] }
+
+Each claim object must contain:
+- sourceIndex (integer, 1-indexed): Which source this claim came from. Must match exactly.
+- claimText (string): The claim as a clear, self-contained statement.
+- confidence (number, 0.0-1.0): Based on evidence strength. 1.0 = definitive, 0.5 = suggestive.
+- evidenceType (string): One of "empirical", "theoretical", "anecdotal", "expert_opinion", "meta_analysis", "statistical", "review".
+- sourceQuote (string, max 200 chars): Exact quote from the source text supporting this claim.
+- concepts (string[]): Key concept names this claim references.`
 }
 
 interface RawBatchClaim extends RawExtractedClaim {
@@ -369,7 +401,15 @@ export function parseBatchExtractionOutput(
     return parsed.claims
       .filter((c) => c.claimText && typeof c.claimText === 'string')
       .map((c) => {
-        const idx = Math.max(0, Math.min(sources.length - 1, (Number(c.sourceIndex) || 1) - 1))
+        const rawIdx = (Number(c.sourceIndex) || 1) - 1
+        const idx = Math.max(0, Math.min(sources.length - 1, rawIdx))
+        if (rawIdx !== idx) {
+          log.warn('Claim attribution index clamped', {
+            rawIndex: c.sourceIndex,
+            clampedTo: idx,
+            sourceCount: sources.length,
+          })
+        }
         const source = sources[idx]
         return {
           claimText: c.claimText!.trim(),
@@ -399,10 +439,17 @@ export async function extractClaimsFromSourceBatch(
   query: string,
   executeProvider: ProviderExecuteFn,
   budget: RunBudget,
-  batchSize: number = 3
+  batchSize: number = 3,
+  modelName?: string,
 ): Promise<{ claims: ExtractedClaim[]; updatedBudget: RunBudget }> {
   let currentBudget = { ...budget }
   const allClaims: ExtractedClaim[] = []
+  const costModel = modelName ?? 'generic-llm'
+  if (!modelName) {
+    log.debug('Batch claim extraction cost estimate using fallback model', {
+      modelName: costModel,
+    })
+  }
 
   // Filter to sources that have content
   const sourcesWithContent = sources.filter((s) => contentMap[s.sourceId])
@@ -427,7 +474,7 @@ export async function extractClaimsFromSourceBatch(
       (sum, s) => sum + Math.min(3000, (contentMap[s.sourceId] ?? '').length) / 4,
       0
     )
-    const estimatedCost = estimateLLMCost('gpt-5-mini', Math.ceil(inputTokens * 1.3) + 200, 800)
+    const estimatedCost = estimateLLMCost(costModel, Math.ceil(inputTokens * 1.3) + 200, 800)
 
     if (!canAffordOperation(currentBudget, estimatedCost)) {
       log.info('Budget limit reached during batch extraction', {
@@ -462,30 +509,6 @@ export async function extractClaimsFromSourceBatch(
 
   const deduped = deduplicateClaims(allClaims)
   return { claims: deduped, updatedBudget: currentBudget }
-}
-
-// ----- JSON Extraction -----
-
-/**
- * Extract the first balanced JSON object from a string.
- * Uses brace counting instead of greedy regex to handle edge cases.
- */
-function safeParseJson(text: string): unknown | null {
-  const start = text.indexOf('{')
-  if (start === -1) return null
-  let depth = 0
-  for (let i = start; i < text.length; i++) {
-    if (text[i] === '{') depth++
-    else if (text[i] === '}') depth--
-    if (depth === 0) {
-      try {
-        return JSON.parse(text.slice(start, i + 1))
-      } catch {
-        return null
-      }
-    }
-  }
-  return null
 }
 
 // ----- Provider Execution Type -----

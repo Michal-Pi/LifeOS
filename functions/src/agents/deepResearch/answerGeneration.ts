@@ -16,7 +16,9 @@ import type {
   ContradictionOutput,
   CounterclaimResult,
   SourceRecord,
-  EvidenceType,
+  CompactGraph,
+  ThesisOutput,
+  NegationOutput,
 } from '@lifeos/agents'
 import { validateEvidenceType } from '@lifeos/agents'
 import type { KnowledgeHypergraph } from '../knowledgeHypergraph.js'
@@ -28,16 +30,23 @@ const log = createLogger('AnswerGeneration')
 
 // ----- Prompts -----
 
-const ANSWER_SYSTEM_PROMPT = `You are a research answer generator. You synthesize evidence from a knowledge graph into a structured, well-cited answer.
+const ANSWER_SYSTEM_PROMPT = `CRITICAL: Output valid JSON only. No markdown fences, no explanation, no preamble.
 
-Rules:
-1. Only make claims supported by the provided evidence
-2. Clearly distinguish high-confidence from low-confidence claims
-3. Present counterclaims and unresolved contradictions honestly
-4. Cite sources for every claim using [sourceId] format
-5. Identify remaining uncertainties
+## Role
+You are a senior research synthesizer who produces structured, well-cited answers from knowledge graph evidence. You are intellectually rigorous, creative in connecting ideas, and uncompromising on source traceability.
 
-Output valid JSON only, no markdown fences.`
+## Rules
+1. EVERY factual claim in directAnswer MUST include an inline citation with the actual source URL — use [sourceId](url) format. NEVER write vague attributions like "sources suggest", "research indicates", or "the evidence shows" without a specific source.
+2. Clearly distinguish high-confidence claims (multiple corroborating sources) from low-confidence claims (single source). Show confidence levels inline.
+3. Present counterclaims and unresolved contradictions honestly — do not hide disagreement. Show the tension between competing views.
+4. When dialectical reasoning (theses/negations) is provided, use it to generate novel insights by synthesizing opposing perspectives. Don't just list points — reason through the dialectical tension to arrive at creative, non-obvious conclusions.
+5. Identify remaining uncertainties explicitly in the openUncertainties field.
+6. If the evidence is insufficient to answer part of the query, state that directly rather than speculating.
+7. Prioritize accuracy over validation. If the evidence contradicts a commonly held view, say so with evidence.
+8. Use the causal chains and graph structure to explain WHY things are connected, not just WHAT is connected.
+9. For each supportingClaim, the sources array must contain actual URLs (not source IDs). Map sourceIds to their URLs using the Source Attribution Map.
+
+CRITICAL (restated): Output valid JSON only. No other text.`
 
 function buildAnswerPrompt(
   query: string,
@@ -45,13 +54,21 @@ function buildAnswerPrompt(
   synthesisContext: string,
   contradictionContext: string,
   counterclaimContext?: string,
-  rawSourceContext?: string
+  rawSourceContext?: string,
+  dialecticalContext?: string,
+  graphStructureContext?: string
 ): string {
-  return `Research query: "${query}"
+  return `## Research Query
+"${query}"
 
+## Evidence Base
 ${kgSummary}
 
 ${rawSourceContext ?? ''}
+
+${graphStructureContext ?? ''}
+
+${dialecticalContext ?? ''}
 
 ${synthesisContext}
 
@@ -59,14 +76,24 @@ ${contradictionContext}
 
 ${counterclaimContext ?? ''}
 
-Generate a comprehensive research answer as JSON:
+## Task
+Synthesize all evidence above into a comprehensive, well-cited research answer.
+
+CRITICAL CITATION RULES:
+1. Every factual claim in directAnswer MUST cite its source using [sourceId](url) format — e.g. [src_1](https://example.com).
+2. If you cannot attribute a claim to a specific source, explicitly say "based on the knowledge graph analysis" and explain the logical chain.
+3. When multiple sources agree, cite all of them: [src_1](url1), [src_2](url2).
+4. For claims derived from dialectical reasoning (thesis/negation interplay), explain the reasoning chain rather than citing a source.
+5. Never write vague attributions like "sources suggest" or "research indicates" — be specific.
+
+## Output Schema
 {
-  "directAnswer": "A clear, well-supported answer to the research query (2-4 paragraphs)",
+  "directAnswer": "A clear, well-supported answer with inline citations [sourceId](url) (3-5 paragraphs)",
   "supportingClaims": [
     {
       "claimText": "An atomic claim supporting the answer",
       "confidence": 0.0-1.0,
-      "sources": ["source URLs"],
+      "sources": ["source URLs — actual URLs, not IDs"],
       "evidenceType": "empirical|theoretical|meta_analysis|statistical|expert_opinion|anecdotal|review"
     }
   ],
@@ -111,6 +138,14 @@ export interface AnswerGenerationOptions {
   rawSources?: SourceRecord[]
   /** Source content map for fallback when KG is empty (e.g. quick mode) */
   rawSourceContentMap?: Record<string, string>
+  /** Merged CompactGraph — the full serialized knowledge graph */
+  mergedGraph?: CompactGraph | null
+  /** Theses from dialectical reasoning (current cycle) */
+  theses?: ThesisOutput[]
+  /** Negations from dialectical reasoning (current cycle) */
+  negations?: NegationOutput[]
+  /** Actual model used for answer generation when available */
+  modelName?: string
 }
 
 /**
@@ -131,6 +166,8 @@ export async function generateAnswer(
   const synthesisContext = formatSynthesisContext(synthesis)
   const contradictionContext = formatContradictionContext(contradictions ?? [])
   const counterclaimContext = formatCounterclaimResults(options?.counterclaims ?? [])
+  const dialecticalContext = formatDialecticalContext(options?.theses, options?.negations)
+  const graphStructureContext = formatGraphStructure(options?.mergedGraph)
 
   // When KG is empty (e.g. quick mode), fall back to raw source content
   const kgStats = kg.getStats()
@@ -139,56 +176,51 @@ export async function generateAnswer(
     kgIsEmpty && options?.rawSources?.length
       ? formatRawSourceContext(options.rawSources, options.rawSourceContentMap ?? {})
       : ''
-
   const totalPromptLen =
     kgSummary.length +
     synthesisContext.length +
     contradictionContext.length +
     counterclaimContext.length +
+    dialecticalContext.length +
+    graphStructureContext.length +
     rawSourceContext.length +
     query.length
-  const estimatedCost = estimateLLMCost('claude-opus', totalPromptLen / 4 + 300, 2000)
+  const costModel = options?.modelName ?? 'generic-llm'
+  if (!options?.modelName) {
+    log.debug('Answer generation cost estimate using fallback model', { modelName: costModel })
+  }
+  const estimatedCost = estimateLLMCost(costModel, totalPromptLen / 4 + 300, 2000)
 
   if (!canAffordOperation(currentBudget, estimatedCost)) {
-    log.warn('Budget insufficient for answer generation, producing minimal answer')
-    return {
-      answer: buildMinimalAnswer(kg, query),
-      updatedBudget: currentBudget,
-    }
+    throw new Error('Budget insufficient for answer generation')
   }
 
-  try {
-    const output = await executeProvider(
-      ANSWER_SYSTEM_PROMPT,
-      buildAnswerPrompt(
-        query,
-        kgSummary,
-        synthesisContext,
-        contradictionContext,
-        counterclaimContext,
-        rawSourceContext
-      )
+  const output = await executeProvider(
+    ANSWER_SYSTEM_PROMPT,
+    buildAnswerPrompt(
+      query,
+      kgSummary,
+      synthesisContext,
+      contradictionContext,
+      counterclaimContext,
+      rawSourceContext,
+      dialecticalContext,
+      graphStructureContext
     )
+  )
 
-    currentBudget = recordSpend(currentBudget, estimatedCost, totalPromptLen / 4 + 2000, 'llm')
+  currentBudget = recordSpend(currentBudget, estimatedCost, totalPromptLen / 4 + 2000, 'llm')
 
-    const answer = parseAnswerResult(output, kg)
+  const answer = parseAnswerResult(output, kg)
 
-    log.info('Answer generation complete', {
-      supportingClaims: answer.supportingClaims.length,
-      counterclaims: answer.counterclaims.length,
-      citations: answer.citations.length,
-      confidence: answer.confidenceAssessment.overall,
-    })
+  log.info('Answer generation complete', {
+    supportingClaims: answer.supportingClaims.length,
+    counterclaims: answer.counterclaims.length,
+    citations: answer.citations.length,
+    confidence: answer.confidenceAssessment.overall,
+  })
 
-    return { answer, updatedBudget: currentBudget }
-  } catch (err) {
-    log.warn('Answer generation failed, producing minimal answer', { error: String(err) })
-    return {
-      answer: buildMinimalAnswer(kg, query),
-      updatedBudget: currentBudget,
-    }
-  }
+  return { answer, updatedBudget: currentBudget }
 }
 
 // ----- KG Summary for Answer Generation -----
@@ -240,16 +272,24 @@ function buildDetailedKGSummary(kg: KnowledgeHypergraph): string {
     })
 
   lines.push('## Claims (ranked by evidence strength)')
-  for (const claim of rankedClaims.slice(0, 20)) {
+  for (const claim of rankedClaims.slice(0, 50)) {
+    const singleSourceMarker = claim.sourceCount < 2 ? ' [single-source]' : ''
     lines.push(
-      `- [confidence=${claim.confidence.toFixed(2)}, sources=${claim.sourceCount}, type=${claim.evidenceType}] ${claim.text}`
+      `- [confidence=${claim.confidence.toFixed(2)}, sources=${claim.sourceCount}, type=${claim.evidenceType}] ${claim.text}${singleSourceMarker}`
     )
     if (claim.sourceQuote) {
-      lines.push(`  Quote: "${claim.sourceQuote.substring(0, 150)}"`)
+      lines.push(`  Quote: "${claim.sourceQuote.substring(0, 200)}"`)
     }
-    if (claim.sourceUrls.length > 0) {
-      lines.push(`  Sources: ${claim.sourceUrls.join(', ')}`)
+    for (let i = 0; i < claim.sourceUrls.length; i++) {
+      const url = claim.sourceUrls[i]
+      const title = claim.sourceTitles[i] || 'unknown'
+      if (url) {
+        lines.push(`  Source: [${title}](${url})`)
+      }
     }
+  }
+  if (rankedClaims.length > 50) {
+    lines.push(`  ... and ${rankedClaims.length - 50} additional claims`)
   }
   lines.push('')
 
@@ -324,9 +364,12 @@ function formatContradictionContext(contradictions: ContradictionOutput[]): stri
   )
 
   if (unresolved.length > 0) {
-    lines.push('### Unresolved')
+    lines.push('### Unresolved — these tensions should be addressed in the answer')
     for (const c of unresolved) {
       lines.push(`- [${c.severity}] ${c.type}: ${c.description}`)
+      if (c.participatingClaims && c.participatingClaims.length > 0) {
+        lines.push(`  Involved claims: ${c.participatingClaims.join(', ')}`)
+      }
     }
   }
 
@@ -366,6 +409,149 @@ function formatCounterclaimResults(counterclaims: CounterclaimResult[]): string 
   return lines.join('\n')
 }
 
+function formatDialecticalContext(
+  theses?: ThesisOutput[],
+  negations?: NegationOutput[]
+): string {
+  if ((!theses || theses.length === 0) && (!negations || negations.length === 0)) return ''
+
+  const lines = ['## Dialectical Reasoning (Thesis-Antithesis Analysis)']
+  lines.push('The following competing perspectives were generated and stress-tested:\n')
+
+  if (theses && theses.length > 0) {
+    lines.push('### Theses')
+    for (const t of theses) {
+      lines.push(`#### Thesis [${t.lens}] (confidence: ${t.confidence.toFixed(2)})`)
+      lines.push(`Unit of analysis: ${t.unitOfAnalysis}`)
+      lines.push(`Temporal grain: ${t.temporalGrain}`)
+      if (t.causalModel.length > 0) {
+        lines.push('Causal model:')
+        for (const cm of t.causalModel.slice(0, 5)) {
+          lines.push(`  - ${cm}`)
+        }
+      }
+      if (t.falsificationCriteria.length > 0) {
+        lines.push('Falsification criteria:')
+        for (const fc of t.falsificationCriteria.slice(0, 3)) {
+          lines.push(`  - ${fc}`)
+        }
+      }
+      if (t.decisionImplications.length > 0) {
+        lines.push('Decision implications:')
+        for (const di of t.decisionImplications.slice(0, 3)) {
+          lines.push(`  - ${di}`)
+        }
+      }
+      if (t.regimeAssumptions.length > 0) {
+        lines.push('Regime assumptions:')
+        for (const ra of t.regimeAssumptions.slice(0, 3)) {
+          lines.push(`  - ${ra}`)
+        }
+      }
+      lines.push('')
+    }
+  }
+
+  if (negations && negations.length > 0) {
+    lines.push('### Negations (Critical Challenges)')
+    for (const n of negations) {
+      lines.push(`#### Challenge to [${n.targetThesisAgentId}]`)
+      lines.push(`Rewrite operator: ${n.rewriteOperator}`)
+      if (n.rivalFraming) {
+        lines.push(`Rival framing: ${n.rivalFraming}`)
+      }
+      if (n.internalTensions.length > 0) {
+        lines.push('Internal tensions identified:')
+        for (const t of n.internalTensions.slice(0, 3)) {
+          lines.push(`  - ${t}`)
+        }
+      }
+      if (n.categoryAttacks.length > 0) {
+        lines.push('Category attacks:')
+        for (const ca of n.categoryAttacks.slice(0, 3)) {
+          lines.push(`  - ${ca}`)
+        }
+      }
+      if (n.preservedValid.length > 0) {
+        lines.push('Preserved as valid:')
+        for (const pv of n.preservedValid.slice(0, 3)) {
+          lines.push(`  - ${pv}`)
+        }
+      }
+      lines.push('')
+    }
+  }
+
+  return lines.join('\n')
+}
+
+function formatGraphStructure(graph?: CompactGraph | null): string {
+  if (!graph || graph.nodes.length === 0) return ''
+
+  const lines = ['## Knowledge Graph Structure']
+  lines.push(`Graph: ${graph.nodes.length} nodes, ${graph.edges.length} edges`)
+  lines.push(`Summary: ${graph.summary}`)
+  lines.push(`Confidence: ${graph.confidence.toFixed(2)}, Regime: ${graph.regime}`)
+  lines.push('')
+
+  // Show key relationships — the causal and contradiction structure
+  const causalEdges = graph.edges.filter(e => e.rel === 'causes')
+  const contradictEdges = graph.edges.filter(e => e.rel === 'contradicts')
+  const supportEdges = graph.edges.filter(e => e.rel === 'supports')
+
+  const nodeMap = new Map(graph.nodes.map(n => [n.id, n]))
+
+  if (causalEdges.length > 0) {
+    lines.push('### Causal Chains')
+    for (const e of causalEdges.slice(0, 15)) {
+      const from = nodeMap.get(e.from)
+      const to = nodeMap.get(e.to)
+      if (from && to) {
+        const srcInfo = from.sourceUrl ? ` [${from.sourceUrl}]` : ''
+        lines.push(`- "${from.label}" → causes → "${to.label}"${srcInfo}`)
+      }
+    }
+    lines.push('')
+  }
+
+  if (contradictEdges.length > 0) {
+    lines.push('### Contradictions in Graph')
+    for (const e of contradictEdges.slice(0, 10)) {
+      const from = nodeMap.get(e.from)
+      const to = nodeMap.get(e.to)
+      if (from && to) {
+        lines.push(`- "${from.label}" contradicts "${to.label}"`)
+      }
+    }
+    lines.push('')
+  }
+
+  if (supportEdges.length > 0) {
+    lines.push('### Supporting Evidence Chains')
+    for (const e of supportEdges.slice(0, 15)) {
+      const from = nodeMap.get(e.from)
+      const to = nodeMap.get(e.to)
+      if (from && to) {
+        const srcInfo = from.sourceUrl ? ` [${from.sourceUrl}]` : ''
+        lines.push(`- "${from.label}" supports "${to.label}"${srcInfo}`)
+      }
+    }
+    lines.push('')
+  }
+
+  // List nodes with source attribution for traceability
+  const sourcedNodes = graph.nodes.filter(n => n.sourceUrl)
+  if (sourcedNodes.length > 0) {
+    lines.push('### Source Attribution Map')
+    for (const n of sourcedNodes.slice(0, 30)) {
+      lines.push(`- [${n.id}] "${n.label}" (${n.type}) → ${n.sourceUrl}`)
+    }
+    lines.push('')
+  }
+
+  return lines.join('\n')
+}
+
 function formatRawSourceContext(
   sources: SourceRecord[],
   contentMap: Record<string, string>
@@ -398,37 +584,48 @@ function formatRawSourceContext(
 
 // ----- Parsing -----
 
-function parseAnswerResult(output: string, kg: KnowledgeHypergraph): DeepResearchAnswer {
-  try {
-    const jsonMatch = output.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      return buildMinimalAnswer(kg, '')
-    }
+function parseAnswerResult(
+  output: string,
+  kg: KnowledgeHypergraph,
+): DeepResearchAnswer {
+  const jsonMatch = output.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    throw new Error('Answer output did not contain JSON')
+  }
 
-    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>
-    const stats = kg.getStats()
+  const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>
+  if (typeof parsed.directAnswer !== 'string' || parsed.directAnswer.trim().length === 0) {
+    throw new Error('Answer output did not contain a directAnswer')
+  }
 
-    return {
-      directAnswer: String(parsed.directAnswer ?? ''),
-      supportingClaims: parseClaimsArray(parsed.supportingClaims),
-      counterclaims: parseCounterclaimsArray(parsed.counterclaims),
-      openUncertainties: Array.isArray(parsed.openUncertainties)
-        ? (parsed.openUncertainties as string[]).filter((s) => typeof s === 'string')
-        : [],
-      confidenceAssessment: parseConfidenceAssessment(parsed.confidenceAssessment),
-      citations: parseCitationsArray(parsed.citations),
-      knowledgeGraphSummary: {
-        claimCount: stats.nodesByType.claim,
-        conceptCount: stats.nodesByType.concept,
-        contradictionCount: kg.getActiveContradictions().length,
-        resolvedCount: Number(
-          (parsed.knowledgeGraphSummary as Record<string, unknown>)?.resolvedCount ?? 0
-        ),
-      },
-    }
-  } catch (err) {
-    log.warn('Failed to parse answer output', { error: String(err) })
-    return buildMinimalAnswer(kg, '')
+  const stats = kg.getStats()
+  const supportingClaims = markSingleSourceClaims(kg, parseClaimsArray(parsed.supportingClaims))
+  const counterclaims = parseCounterclaimsArray(parsed.counterclaims)
+  const hasUntraceableClaims = hasUntraceableAnswerClaims(
+    kg,
+    parsed.directAnswer,
+    supportingClaims,
+    counterclaims,
+  )
+  const traceabilityWarning = 'Note: Some claims in this analysis could not be traced to indexed sources.'
+
+  return {
+    directAnswer: `${parsed.directAnswer}${hasUntraceableClaims ? `\n\n${traceabilityWarning}` : ''}`,
+    supportingClaims,
+    counterclaims,
+    openUncertainties: Array.isArray(parsed.openUncertainties)
+      ? (parsed.openUncertainties as string[]).filter((s) => typeof s === 'string')
+      : [],
+    confidenceAssessment: parseConfidenceAssessment(parsed.confidenceAssessment),
+    citations: parseCitationsArray(parsed.citations),
+    knowledgeGraphSummary: {
+      claimCount: stats.nodesByType.claim,
+      conceptCount: stats.nodesByType.concept,
+      contradictionCount: kg.getActiveContradictions().length,
+      resolvedCount: Number(
+        (parsed.knowledgeGraphSummary as Record<string, unknown>)?.resolvedCount ?? 0
+      ),
+    },
   }
 }
 
@@ -493,62 +690,80 @@ function parseCitationsArray(raw: unknown): DeepResearchAnswer['citations'] {
     })
 }
 
-// ----- Minimal Answer (Budget Fallback) -----
+function normalizeText(text: string): string {
+  return text.toLowerCase().trim().replace(/\s+/g, ' ')
+}
 
-function buildMinimalAnswer(kg: KnowledgeHypergraph, query: string): DeepResearchAnswer {
-  const stats = kg.getStats()
-  const claims = kg.getNodesByType('claim')
-  const sources = kg.getNodesByType('source')
-  const contradictions = kg.getActiveContradictions()
-
-  // Build answer from top claims
-  const topClaims = claims
-    .map((n) => {
-      const data = n.data as unknown as Record<string, unknown>
-      return {
-        text: String(data.text ?? n.label),
-        confidence: Number(data.confidence ?? 0.5),
-      }
-    })
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 10)
-
-  const directAnswer =
-    topClaims.length > 0
-      ? `Based on ${stats.nodesByType.claim} claims extracted from ${stats.nodesByType.source} sources:\n\n` +
-        topClaims.map((c) => `- ${c.text} (confidence: ${c.confidence.toFixed(2)})`).join('\n')
-      : `Research for "${query}" was limited by budget constraints. ${stats.nodesByType.claim} claims were extracted from ${stats.nodesByType.source} sources.`
-
-  return {
-    directAnswer,
-    supportingClaims: topClaims.slice(0, 5).map((c) => ({
-      claimText: c.text,
-      confidence: c.confidence,
-      sources: [],
-      evidenceType: 'theoretical' as EvidenceType,
-    })),
-    counterclaims: [],
-    openUncertainties: [
-      'Answer was generated with limited budget — full analysis may reveal additional nuances.',
-    ],
-    confidenceAssessment: {
-      overall: topClaims.length > 0 ? topClaims[0].confidence * 0.8 : 0.3,
-      byTopic: {},
-    },
-    citations: sources.slice(0, 10).map((s) => {
-      const data = s.data as unknown as Record<string, unknown>
-      return {
-        sourceId: s.id,
-        url: String(data.url ?? ''),
-        title: String(data.title ?? s.label),
-        relevance: 'Source used in research',
-      }
-    }),
-    knowledgeGraphSummary: {
-      claimCount: stats.nodesByType.claim,
-      conceptCount: stats.nodesByType.concept,
-      contradictionCount: contradictions.length,
-      resolvedCount: 0,
-    },
+function getNodeText(node: ReturnType<KnowledgeHypergraph['getNodesByType']>[number]): string {
+  const data = node.data
+  if (data && typeof data === 'object' && 'text' in data && typeof data.text === 'string') {
+    return data.text
   }
+  return node.label ?? ''
+}
+
+function getClaimTextsFromKg(kg: KnowledgeHypergraph): string[] {
+  return kg.getNodesByType('claim').map((node) => normalizeText(getNodeText(node)))
+}
+
+function getSingleSourceClaimTexts(kg: KnowledgeHypergraph): string[] {
+  return kg.getNodesByType('claim')
+    .filter((node) => kg.getOutEdges(node.id).filter((edge) => edge.data.type === 'sourced_from').length < 2)
+    .map((node) => normalizeText(getNodeText(node)))
+}
+
+function markSingleSourceClaims(
+  kg: KnowledgeHypergraph,
+  claims: DeepResearchAnswer['supportingClaims'],
+): DeepResearchAnswer['supportingClaims'] {
+  const singleSourceClaims = getSingleSourceClaimTexts(kg)
+
+  return claims.map((claim) => {
+    const normalized = normalizeText(claim.claimText)
+    const isSingleSource = singleSourceClaims.some((kgClaim) =>
+      kgClaim === normalized || kgClaim.includes(normalized) || normalized.includes(kgClaim)
+    )
+
+    if (!isSingleSource || claim.claimText.includes('[single-source]')) {
+      return claim
+    }
+
+    return {
+      ...claim,
+      claimText: `${claim.claimText} [single-source]`,
+    }
+  })
+}
+
+function hasMatchingKgClaim(claimText: string, normalizedKgClaims: string[]): boolean {
+  const normalized = normalizeText(claimText)
+  if (!normalized) return true
+
+  return normalizedKgClaims.some((kgClaim) =>
+    kgClaim === normalized ||
+    kgClaim.includes(normalized) ||
+    normalized.includes(kgClaim)
+  )
+}
+
+function hasUntraceableAnswerClaims(
+  kg: KnowledgeHypergraph,
+  directAnswer: string,
+  supportingClaims: DeepResearchAnswer['supportingClaims'],
+  counterclaims: DeepResearchAnswer['counterclaims'],
+): boolean {
+  const normalizedKgClaims = getClaimTextsFromKg(kg)
+  if (normalizedKgClaims.length === 0) return false
+
+  const directAnswerClaimRefs = Array.from(directAnswer.matchAll(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g))
+    .map((match) => match[1]?.trim() ?? '')
+    .filter(Boolean)
+
+  const candidateClaims = [
+    ...supportingClaims.map((claim) => claim.claimText),
+    ...counterclaims.map((claim) => claim.claimText),
+    ...directAnswerClaimRefs,
+  ]
+
+  return candidateClaims.some((claimText) => !hasMatchingKgClaim(claimText, normalizedKgClaims))
 }
