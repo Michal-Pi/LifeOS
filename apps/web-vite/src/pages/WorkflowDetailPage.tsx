@@ -226,6 +226,29 @@ export function WorkflowDetailPage() {
     if (!run) return
 
     if (action === 'stop') {
+      const constraintType = run.constraintPause?.constraintType
+      const shouldFinalizeWithCurrentFindings =
+        constraintType === 'budget' ||
+        constraintType === 'max_gap_iterations' ||
+        constraintType === 'max_dialectical_cycles'
+
+      if (shouldFinalizeWithCurrentFindings) {
+        const context = {
+          ...(run.context ?? {}),
+          constraintOverride: {
+            type: constraintType,
+            action: 'finalize',
+          },
+        }
+        await updateRun(runId as RunId, {
+          status: 'pending',
+          constraintPause: undefined,
+          pendingInput: undefined,
+          context,
+        })
+        return
+      }
+
       await updateRun(runId as RunId, {
         status: 'completed',
         constraintPause: undefined,

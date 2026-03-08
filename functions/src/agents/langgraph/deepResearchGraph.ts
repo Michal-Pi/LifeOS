@@ -1568,12 +1568,30 @@ function createDialecticalMetaNode(
     // Check hard cap first — pause instead of terminating
     if (cycleCount >= maxDialecticalCycles) {
       const constraintOverride = state.context.constraintOverride as
-        | { type: string; newLimit?: number }
+        | { type: string; newLimit?: number; action?: string }
         | undefined
+      const shouldFinalizeWithCurrentFindings =
+        constraintOverride?.type === 'max_dialectical_cycles' &&
+        constraintOverride.action === 'finalize'
       const effectiveMax =
         constraintOverride?.type === 'max_dialectical_cycles' && constraintOverride.newLimit
           ? constraintOverride.newLimit
           : maxDialecticalCycles
+
+      if (shouldFinalizeWithCurrentFindings) {
+        log.info('Finalizing deep research after dialectical cycle cap without increasing limit', {
+          cycles: cycleCount,
+          maxDialecticalCycles: effectiveMax,
+        })
+        return {
+          dialecticalMetaDecision: 'TERMINATE',
+          dialecticalCycleCount: cycleCount,
+          status: 'running',
+          resumeNodeHint: null,
+          constraintPause: null,
+          pendingInput: null,
+        }
+      }
 
       if (cycleCount >= effectiveMax) {
         log.info('Max dialectical cycles reached, pausing for user decision', {
@@ -1749,6 +1767,21 @@ function createGapAnalysisNode(
           constraintOverride?.type === 'budget' && constraintOverride.newLimit
             ? constraintOverride.newLimit
             : currentBudget.maxBudgetUsd
+        if (constraintOverride?.type === 'budget' && constraintOverride.action === 'finalize') {
+          log.info('Budget exhausted, finalizing deep research with current findings', {
+            spent: currentBudget.spentUsd,
+            max: effectiveBudget,
+            coverage: gapResult.overallCoverageScore,
+          })
+          return {
+            phase: 'gap_analysis',
+            gapAnalysis: gapResult,
+            gapIterationsUsed: currentBudget.gapIterationsUsed,
+            budget: currentBudget,
+            searchPlans: newSearchPlans,
+            kgSnapshots: [snapshot],
+          }
+        }
         if (currentBudget.spentUsd >= effectiveBudget * 0.95) {
           log.info('Budget exhausted during gap analysis, pausing for user decision', {
             spent: currentBudget.spentUsd,
@@ -1781,6 +1814,24 @@ function createGapAnalysisNode(
           constraintOverride?.type === 'max_gap_iterations' && constraintOverride.newLimit
             ? constraintOverride.newLimit
             : maxGapIterations
+        if (
+          constraintOverride?.type === 'max_gap_iterations' &&
+          constraintOverride.action === 'finalize'
+        ) {
+          log.info('Gap iteration cap reached, finalizing deep research with current findings', {
+            iterations: currentBudget.gapIterationsUsed,
+            max: effectiveMax,
+            coverage: gapResult.overallCoverageScore,
+          })
+          return {
+            phase: 'gap_analysis',
+            gapAnalysis: gapResult,
+            gapIterationsUsed: currentBudget.gapIterationsUsed,
+            budget: currentBudget,
+            searchPlans: newSearchPlans,
+            kgSnapshots: [snapshot],
+          }
+        }
         if (currentBudget.gapIterationsUsed >= effectiveMax) {
           log.info('Gap iterations exhausted, pausing for user decision', {
             iterations: currentBudget.gapIterationsUsed,
@@ -2308,7 +2359,33 @@ export async function executeDeepResearchWorkflowLangGraph(
     finalOutput: null,
     status: 'running',
     error: null,
+    constraintPause: null,
+    pendingInput: null,
+    resumeNodeHint: null,
   }
+
+  // If resuming (e.g. after user approval or constraint increase), merge previous state
+  // and clear pause indicators so the graph can proceed from the paused node
+  const humanApproval = context?.humanApproval as
+    | { nodeId?: string; response?: string }
+    | undefined
+  const mergedResumeContext = {
+    ...(resumeState?.context ?? {}),
+    ...(freshState.context ?? {}),
+  }
+  const initialState: Partial<DeepResearchState> = resumeState
+    ? {
+        ...freshState,
+        ...resumeState,
+        status: 'running',
+        constraintPause: null,
+        pendingInput: null,
+        // Inject humanApproval into context so sense_making can detect it
+        context: humanApproval
+          ? { ...mergedResumeContext, humanApproval }
+          : mergedResumeContext,
+      }
+    : freshState
 
   let finalState: DeepResearchState
   try {

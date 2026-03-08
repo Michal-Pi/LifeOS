@@ -52,6 +52,12 @@ export function ConstraintPausePanel({
     100,
     Math.round((constraintPause.currentValue / constraintPause.limitValue) * 100)
   )
+  const stopLabel =
+    constraintPause.constraintType === 'budget' ||
+    constraintPause.constraintType === 'max_gap_iterations' ||
+    constraintPause.constraintType === 'max_dialectical_cycles'
+      ? 'Finalize with Current Findings'
+      : 'Stop & Keep Results'
 
   return (
     <div className="constraint-pause-panel">
@@ -99,7 +105,7 @@ export function ConstraintPausePanel({
 
       <div className="constraint-pause-actions">
         <Button variant="ghost" size="sm" onClick={onStop} disabled={isSubmitting}>
-          Stop &amp; Keep Results
+          {stopLabel}
         </Button>
         <Button
           variant="primary"

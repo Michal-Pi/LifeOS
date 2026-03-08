@@ -2569,6 +2569,22 @@ export async function executeDialecticalWorkflowLangGraph(
     degradedPhases: [],
   }
 
+  // If resuming (e.g. after constraint increase), merge previous state
+  const mergedResumeContext = {
+    ...(resumeState?.context ?? {}),
+    ...(freshState.context ?? {}),
+  }
+  const initialState: Partial<DialecticalState> = resumeState
+    ? {
+        ...freshState,
+        ...resumeState,
+        status: 'running',
+        constraintPause: null,
+        pendingInput: null,
+        context: mergedResumeContext,
+      }
+    : freshState
+
   // Execute the graph
   let finalState: DialecticalState
   try {
