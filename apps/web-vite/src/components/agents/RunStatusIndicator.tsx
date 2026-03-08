@@ -30,6 +30,19 @@ export function RunStatusIndicator({
 
   // Determine current status message
   const statusMessage = useMemo(() => {
+    // Special handling for constraint pauses
+    if (run.status === 'waiting_for_input' && run.constraintPause) {
+      const labels: Record<string, string> = {
+        budget: 'Budget limit reached',
+        max_node_visits: 'Node visit limit reached',
+        max_cycles: 'Cycle limit reached',
+        max_gap_iterations: 'Gap iteration limit reached',
+        max_dialectical_cycles: 'Dialectical cycle limit reached',
+      }
+      const label = labels[run.constraintPause.constraintType] ?? 'Limit reached'
+      return `⚠️ ${label} - action required`
+    }
+
     // Special handling for waiting_for_input status
     if (run.status === 'waiting_for_input') {
       return '❓ Question pending - response required'
@@ -37,6 +50,29 @@ export function RunStatusIndicator({
 
     if (run.status !== 'running') {
       return null
+    }
+
+    // Check for reasoning model thinking status
+    const recentThinking = events
+      .slice(-10)
+      .reverse()
+      .find((e) => e.type === 'status' && e.status === 'thinking')
+    if (recentThinking && recentThinking.agentName) {
+      const elapsed = (recentThinking.details?.elapsedSeconds as number) ?? 0
+      const chunks = (recentThinking.details?.chunksReceived as number) ?? 0
+      const silence = (recentThinking.details?.silenceSeconds as number) ?? 0
+      const hasTokens = recentThinking.details?.receivedFirstToken === true
+      const mins = Math.floor(elapsed / 60)
+      const secs = elapsed % 60
+      const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+
+      if (hasTokens) {
+        return `🧠 ${recentThinking.agentName} is generating output... (${timeStr})`
+      }
+      if (silence > 30) {
+        return `🧠 ${recentThinking.agentName} is reasoning... (${timeStr}, stream quiet ${silence}s)`
+      }
+      return `🧠 ${recentThinking.agentName} is reasoning... (${timeStr}${chunks > 0 ? ', stream active' : ''})`
     }
 
     // Check for tool calls

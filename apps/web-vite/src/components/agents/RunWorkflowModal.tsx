@@ -103,8 +103,8 @@ export function RunWorkflowModal({
   const [drBudget, setDrBudget] = useState(10)
   const [drSearchDepth, setDrSearchDepth] = useState<'shallow' | 'standard' | 'deep'>('standard')
   const [drIncludeAcademic, setDrIncludeAcademic] = useState(true)
-  const [drMaxGapIterations, setDrMaxGapIterations] = useState(3)
-  const [drMaxDialecticalCycles, setDrMaxDialecticalCycles] = useState(2)
+  const [drMaxGapIterationsInput, setDrMaxGapIterationsInput] = useState('3')
+  const [drMaxDialecticalCyclesInput, setDrMaxDialecticalCyclesInput] = useState('2')
 
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -364,8 +364,8 @@ export function RunWorkflowModal({
             includeAcademic: drIncludeAcademic,
             includeSemanticSearch: true,
             thesisLenses: ['economic', 'systems', 'adversarial'],
-            maxGapIterations: drMaxGapIterations,
-            maxDialecticalCycles: drMaxDialecticalCycles,
+            maxGapIterations: Number(drMaxGapIterationsInput) || 3,
+            maxDialecticalCycles: Number(drMaxDialecticalCyclesInput) || 2,
           },
         }
       }
@@ -695,31 +695,33 @@ export function RunWorkflowModal({
                   <div className="dr-config-grid">
                     <div className="dr-config-item">
                       <label htmlFor="drBudget">Budget (USD)</label>
-                      <select
+                      <Select
                         id="drBudget"
-                        value={drBudget}
-                        onChange={(e) => setDrBudget(Number(e.target.value))}
-                      >
-                        <option value={1}>$1 (Quick scan)</option>
-                        <option value={5}>$5 (Standard)</option>
-                        <option value={10}>$10 (Thorough)</option>
-                        <option value={25}>$25 (Deep)</option>
-                        <option value={50}>$50 (Exhaustive)</option>
-                      </select>
+                        value={String(drBudget)}
+                        onChange={(val) => setDrBudget(Number(val))}
+                        options={[
+                          { value: '1', label: '$1 (Quick scan)' },
+                          { value: '5', label: '$5 (Standard)' },
+                          { value: '10', label: '$10 (Thorough)' },
+                          { value: '25', label: '$25 (Deep)' },
+                          { value: '50', label: '$50 (Exhaustive)' },
+                        ]}
+                      />
                     </div>
                     <div className="dr-config-item">
                       <label htmlFor="drSearchDepth">Search Depth</label>
-                      <select
+                      <Select
                         id="drSearchDepth"
                         value={drSearchDepth}
-                        onChange={(e) =>
-                          setDrSearchDepth(e.target.value as 'shallow' | 'standard' | 'deep')
+                        onChange={(val) =>
+                          setDrSearchDepth(val as 'shallow' | 'standard' | 'deep')
                         }
-                      >
-                        <option value="shallow">Shallow (fewer sources)</option>
-                        <option value="standard">Standard</option>
-                        <option value="deep">Deep (more sources)</option>
-                      </select>
+                        options={[
+                          { value: 'shallow', label: 'Shallow (fewer sources)' },
+                          { value: 'standard', label: 'Standard' },
+                          { value: 'deep', label: 'Deep (more sources)' },
+                        ]}
+                      />
                     </div>
                     <div className="dr-config-item">
                       <label htmlFor="drGapIterations">Research Loops (1-10)</label>
@@ -728,12 +730,18 @@ export function RunWorkflowModal({
                         type="number"
                         min={1}
                         max={10}
-                        value={drMaxGapIterations}
-                        onChange={(e) =>
-                          setDrMaxGapIterations(
-                            Math.min(10, Math.max(1, Number(e.target.value) || 3))
-                          )
-                        }
+                        value={drMaxGapIterationsInput}
+                        onChange={(e) => setDrMaxGapIterationsInput(e.target.value)}
+                        onBlur={() => {
+                          const n = Number(drMaxGapIterationsInput)
+                          if (!drMaxGapIterationsInput || Number.isNaN(n) || n < 1) {
+                            setDrMaxGapIterationsInput('3')
+                          } else if (n > 10) {
+                            setDrMaxGapIterationsInput('10')
+                          } else {
+                            setDrMaxGapIterationsInput(String(Math.round(n)))
+                          }
+                        }}
                       />
                       <small>How many search-extract-analyze iterations</small>
                     </div>
@@ -744,12 +752,18 @@ export function RunWorkflowModal({
                         type="number"
                         min={1}
                         max={5}
-                        value={drMaxDialecticalCycles}
-                        onChange={(e) =>
-                          setDrMaxDialecticalCycles(
-                            Math.min(5, Math.max(1, Number(e.target.value) || 2))
-                          )
-                        }
+                        value={drMaxDialecticalCyclesInput}
+                        onChange={(e) => setDrMaxDialecticalCyclesInput(e.target.value)}
+                        onBlur={() => {
+                          const n = Number(drMaxDialecticalCyclesInput)
+                          if (!drMaxDialecticalCyclesInput || Number.isNaN(n) || n < 1) {
+                            setDrMaxDialecticalCyclesInput('2')
+                          } else if (n > 5) {
+                            setDrMaxDialecticalCyclesInput('5')
+                          } else {
+                            setDrMaxDialecticalCyclesInput(String(Math.round(n)))
+                          }
+                        }}
                       />
                       <small>How many dialectical cycles per loop</small>
                     </div>

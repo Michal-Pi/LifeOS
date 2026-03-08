@@ -27,6 +27,14 @@ export type RunEventType =
   | 'dialectical_contradiction'
   | 'dialectical_synthesis'
   | 'dialectical_meta'
+  // Oracle scenario planning events
+  | 'oracle_phase'
+  | 'oracle_gate_result'
+  | 'oracle_council_complete'
+  | 'oracle_human_gate'
+  | 'oracle_consistency_check'
+  // Plan management events
+  | 'plan_approved'
 
 export type RunEvent = {
   eventId: string
@@ -52,7 +60,13 @@ export type RunEvent = {
 
 export function useRunEvents(runId: RunId | null) {
   const { user } = useAuth()
-  const [events, setEvents] = useState<RunEvent[]>([])
+  const [eventState, setEventState] = useState<{
+    runId: RunId | null
+    events: RunEvent[]
+  }>({
+    runId: null,
+    events: [],
+  })
 
   useEffect(() => {
     if (!user || !runId) {
@@ -73,7 +87,7 @@ export function useRunEvents(runId: RunId | null) {
               ...(doc.data() as Omit<RunEvent, 'eventId'>),
             }) as RunEvent
         )
-        setEvents(nextEvents)
+        setEventState({ runId, events: nextEvents })
       },
       (error) => {
         console.error('Error fetching run events:', error)
@@ -83,5 +97,7 @@ export function useRunEvents(runId: RunId | null) {
     return () => unsubscribe()
   }, [runId, user])
 
-  return { events: user && runId ? events : [] }
+  return {
+    events: user && runId && eventState.runId === runId ? eventState.events : [],
+  }
 }

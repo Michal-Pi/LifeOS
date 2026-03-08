@@ -208,11 +208,45 @@ export function WorkflowDetailPage() {
     if (!run) return
     const context = {
       ...(run.context ?? {}),
-      humanInput: { nodeId, response },
+      humanApproval: { nodeId, response },
     }
     await updateRun(runId as RunId, {
       status: 'pending',
       pendingInput: null,
+      context,
+    })
+  }
+
+  const handleConstraintResponse = async (
+    runId: string,
+    action: 'increase' | 'stop',
+    newLimit?: number
+  ) => {
+    const run = runs.find((item) => item.runId === runId)
+    if (!run) return
+
+    if (action === 'stop') {
+      await updateRun(runId as RunId, {
+        status: 'completed',
+        constraintPause: undefined,
+        pendingInput: undefined,
+      })
+      return
+    }
+
+    // User chose to increase the limit
+    const constraintType = run.constraintPause?.constraintType
+    const context = {
+      ...(run.context ?? {}),
+      constraintOverride: {
+        type: constraintType,
+        newLimit: newLimit ?? run.constraintPause?.suggestedIncrease,
+      },
+    }
+    await updateRun(runId as RunId, {
+      status: 'pending',
+      constraintPause: undefined,
+      pendingInput: undefined,
       context,
     })
   }
@@ -443,6 +477,7 @@ export function WorkflowDetailPage() {
                   onDelete={handleDeleteRun}
                   onResume={handleResumeRun}
                   onProvideInput={handleProvideInput}
+                  onConstraintResponse={handleConstraintResponse}
                   onRunAgain={handleRunAgain}
                   onContinue={handleContinue}
                   onStop={handleStopRun}

@@ -90,6 +90,12 @@
   overflow-x: hidden;
   padding: 1rem 1.5rem 3%;
   min-height: 0;
+  min-width: 0;
+}
+
+.carousel-content .markdown-content {
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Custom scrollbar for carousel content */
@@ -212,6 +218,9 @@
   flex: 1;
   color: var(--foreground);
   line-height: 1.6;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .message-body.empty-state {

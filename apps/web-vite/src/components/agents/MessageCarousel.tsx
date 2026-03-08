@@ -11,10 +11,11 @@
  */
 
 import type { Run, WorkflowGraph, Message } from '@lifeos/agents'
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, memo } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 import { Button } from '@/components/ui/button'
+import { ConstraintPausePanel } from './ConstraintPausePanel'
 import type { RunEvent } from '@/hooks/useRunEvents'
 
 /**
@@ -31,6 +32,15 @@ function formatPhaseName(phase: string): string {
   }
   return phaseNames[phase] ?? phase
 }
+
+/**
+ * Memoized message content renderer.
+ * Prevents re-renders when the parent carousel updates but the displayed
+ * message content hasn't changed — this preserves text selection.
+ */
+const StableMarkdown = memo(function StableMarkdown({ content }: { content: string }) {
+  return <MarkdownRenderer content={content} />
+})
 
 interface CarouselMessage {
   id: string
@@ -66,6 +76,10 @@ interface MessageCarouselProps {
   finalOutput?: string
   onStop?: () => void
   onProvideInput?: (response: string) => Promise<void>
+  constraintPause?: Run['constraintPause']
+  onConstraintIncrease?: (newLimit: number) => Promise<void>
+  onConstraintStop?: () => Promise<void>
+  isSubmittingConstraint?: boolean
   onSaveAsNote?: (content: string) => Promise<void>
   onSaveAllAsNote?: (content: string) => Promise<void>
   isSavingNote?: boolean
@@ -83,6 +97,10 @@ export function MessageCarousel({
   finalOutput,
   onStop,
   onProvideInput,
+  constraintPause,
+  onConstraintIncrease,
+  onConstraintStop,
+  isSubmittingConstraint = false,
   onSaveAsNote,
   onSaveAllAsNote,
   isSavingNote = false,
@@ -94,6 +112,27 @@ export function MessageCarousel({
   const [userResponse, setUserResponse] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [manualNavigationIndex, setManualNavigationIndex] = useState<number | null>(null)
+  const [hasSelection, setHasSelection] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  // Track whether the user has an active text selection inside the carousel
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const sel = document.getSelection()
+      if (!sel || sel.isCollapsed) {
+        setHasSelection(false)
+        return
+      }
+      // Only freeze if selection is inside the carousel content
+      if (contentRef.current && contentRef.current.contains(sel.anchorNode)) {
+        setHasSelection(true)
+      } else {
+        setHasSelection(false)
+      }
+    }
+    document.addEventListener('selectionchange', handleSelectionChange)
+    return () => document.removeEventListener('selectionchange', handleSelectionChange)
+  }, [])
 
   // Build carousel messages from conversation messages and events
   const carouselMessages = useMemo(() => {
@@ -171,16 +210,26 @@ export function MessageCarousel({
       // Dialectical workflow events - handle these first
       if (event.type === 'dialectical_phase') {
         const details = event.details as Record<string, unknown> | undefined
-        const phase = details?.phase ?? 'unknown'
-        const cycleNumber = details?.cycleNumber ?? 0
-        msgs.push({
-          id: `dialectical-phase-${idx}`,
-          timestamp: event.timestampMs || fallbackTimestamp,
-          type: 'dialectical_phase',
-          content: `**Cycle ${cycleNumber} - ${formatPhaseName(String(phase))}**`,
-          author: 'Dialectical',
-          metadata: { phase, cycleNumber },
-        })
+        // Only show phase events that carry meaningful info (warnings/errors/skips)
+        // Skip bare "start" markers — the actual content events already show what phase we're in
+        const hasWarning = details?.warning === true
+        const hasError = details?.error === true
+        const hasSkip = details?.skipped === true
+        if (hasWarning || hasError || hasSkip) {
+          const phase = details?.phase ?? 'unknown'
+          const cycleNumber = details?.cycleNumber ?? 0
+          const reason = details?.reason as string | undefined
+          const label = hasError ? 'Error' : hasSkip ? 'Skipped' : 'Warning'
+          msgs.push({
+            id: `dialectical-phase-${idx}`,
+            timestamp: event.timestampMs || fallbackTimestamp,
+            type: 'dialectical_phase',
+            content: `**Cycle ${cycleNumber} - ${formatPhaseName(String(phase))}** — ${label}${reason ? `: ${reason}` : ''}`,
+            author: 'Dialectical',
+            metadata: { phase, cycleNumber },
+          })
+        }
+        // else: skip bare start markers — they're noise
       } else if (event.type === 'dialectical_thesis' && event.output) {
         const details = event.details as Record<string, unknown> | undefined
         const lens = details?.lens ?? 'unknown'
@@ -306,8 +355,8 @@ export function MessageCarousel({
       }
     })
 
-    // Add pending question if exists
-    if (pendingInput && run.status === 'waiting_for_input') {
+    // Add pending question if exists (but not if it's a constraint pause)
+    if (pendingInput && run.status === 'waiting_for_input' && !constraintPause) {
       msgs.push({
         id: 'question-pending',
         timestamp: fallbackTimestamp,
@@ -315,6 +364,20 @@ export function MessageCarousel({
         content: pendingInput.prompt,
         author: agentName ?? 'Agent',
         receiver: 'User',
+      })
+    }
+
+    // Add constraint pause message if exists
+    if (constraintPause && run.status === 'waiting_for_input') {
+      const label = constraintPause.constraintType.replace(/_/g, ' ')
+      msgs.push({
+        id: 'constraint-pause',
+        timestamp: fallbackTimestamp,
+        type: 'system',
+        content: `**Limit reached:** ${label}`,
+        author: 'System',
+        receiver: 'User',
+        metadata: { isConstraintPause: true },
       })
     }
 
@@ -382,13 +445,29 @@ export function MessageCarousel({
     msgs.sort((a, b) => a.timestamp - b.timestamp)
 
     return msgs
-  }, [events, messages, run, workflowGraph, pendingInput, agentName, finalOutput])
+  }, [events, messages, run, workflowGraph, pendingInput, constraintPause, agentName, finalOutput])
 
-  // Determine current index: manual navigation takes precedence, otherwise show latest
-  const currentIndex =
-    manualNavigationIndex !== null
+  // Determine current index: manual navigation takes precedence, otherwise show latest.
+  // When the user has an active text selection, freeze the index to preserve selection.
+  const computedIndex = useMemo(() => {
+    return manualNavigationIndex !== null
       ? Math.min(manualNavigationIndex, carouselMessages.length - 1)
       : Math.max(0, carouselMessages.length - 1)
+  }, [manualNavigationIndex, carouselMessages.length])
+
+  const [frozenIndex, setFrozenIndex] = useState(computedIndex)
+  const [prevFrozenDeps, setPrevFrozenDeps] = useState({ computedIndex, hasSelection })
+
+  if (computedIndex !== prevFrozenDeps.computedIndex || hasSelection !== prevFrozenDeps.hasSelection) {
+    setPrevFrozenDeps({ computedIndex, hasSelection })
+    if (!hasSelection) {
+      setFrozenIndex(computedIndex)
+    }
+  }
+
+  const currentIndex = hasSelection
+    ? Math.min(frozenIndex, carouselMessages.length - 1)
+    : computedIndex
 
   const currentMessage = carouselMessages[currentIndex] || null
 
@@ -473,13 +552,16 @@ export function MessageCarousel({
   const isRunning = run.status === 'running' || run.status === 'waiting_for_input'
   const isLiveView = isRunning && currentIndex === carouselMessages.length - 1
   const isQuestion = currentMessage?.type === 'question'
+  const isConstraintPause = currentMessage?.metadata?.isConstraintPause === true
   const isFinalOutput = currentMessage?.metadata?.isFinalOutput === true
 
   return (
     <div className="message-carousel">
       <div className="carousel-header">
         <div className="carousel-title">
-          {isQuestion ? (
+          {isConstraintPause ? (
+            <span className="question-indicator">Limit Reached</span>
+          ) : isQuestion ? (
             <span className="question-indicator">Agent Question</span>
           ) : isFinalOutput ? (
             <span>Final Output</span>
@@ -569,11 +651,18 @@ export function MessageCarousel({
                 </div>
               </div>
 
-              <div className={`message-body ${isFinalOutput ? 'final-output-slide' : ''}`}>
-                {isQuestion ? (
+              <div ref={contentRef} className={`message-body ${isFinalOutput ? 'final-output-slide' : ''}`}>
+                {isConstraintPause && constraintPause ? (
+                  <ConstraintPausePanel
+                    constraintPause={constraintPause}
+                    onIncrease={onConstraintIncrease ?? (async () => {})}
+                    onStop={onConstraintStop ?? (async () => {})}
+                    isSubmitting={isSubmittingConstraint}
+                  />
+                ) : isQuestion ? (
                   <>
                     <div className="question-prompt">
-                      <MarkdownRenderer content={currentMessage.content} />
+                      <StableMarkdown content={currentMessage.content} />
                     </div>
                     <div className="question-input">
                       <textarea
@@ -605,7 +694,7 @@ export function MessageCarousel({
                     </div>
                   </>
                 ) : (
-                  <MarkdownRenderer content={currentMessage.content} />
+                  <StableMarkdown content={currentMessage.content} />
                 )}
               </div>
             </>

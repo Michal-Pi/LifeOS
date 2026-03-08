@@ -9,7 +9,7 @@
  * - Synthesis preview
  */
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import type {
   DialecticalPhase,
   ThesisOutput,
@@ -17,23 +17,38 @@ import type {
   ContradictionOutput,
   SublationOutput,
   MetaDecision,
+  CompactGraph,
+  GraphDiff,
 } from '@lifeos/agents'
+import { DialecticalGraphPanel, type GraphSource } from './DialecticalGraphPanel'
 import './DialecticalCycleVisualization.css'
 
 // ----- Types -----
 
+export interface CycleHistoryEntry {
+  cycle: number
+  theses: ThesisOutput[]
+  negations: NegationOutput[]
+  contradictions: ContradictionOutput[]
+}
+
 export interface CycleState {
   cycleNumber: number
+  maxCycles: number
   phase: DialecticalPhase
   theses: ThesisOutput[]
   negations: NegationOutput[]
   contradictions: ContradictionOutput[]
   synthesis: SublationOutput | null
+  mergedGraph: CompactGraph | null
+  graphHistory: Array<{ cycle: number; diff: GraphDiff }>
   metaDecision: MetaDecision | null
   conceptualVelocity: number
   velocityHistory: number[]
   contradictionDensity: number
   densityHistory: number[]
+  refinedGoal?: string
+  cycleHistory?: CycleHistoryEntry[]
   status: 'running' | 'completed' | 'failed' | 'paused'
   tokensUsed: number
   estimatedCost: number
@@ -42,7 +57,6 @@ export interface CycleState {
 
 interface DialecticalCycleVisualizationProps {
   state: CycleState
-  maxCycles: number
   velocityThreshold: number
   onPause?: () => void
   onResume?: () => void
@@ -77,6 +91,12 @@ const PHASES: { key: DialecticalPhase; label: string; icon: string; description:
   },
   { key: 'sublation', label: 'Sublation', icon: '🔄', description: 'Synthesize opposing views' },
   {
+    key: 'regrounding',
+    label: 'Reground',
+    icon: '🔗',
+    description: 'Reground synthesis in knowledge graph',
+  },
+  {
     key: 'meta_reflection',
     label: 'Meta',
     icon: '🪞',
@@ -88,7 +108,6 @@ const PHASES: { key: DialecticalPhase; label: string; icon: string; description:
 
 export function DialecticalCycleVisualization({
   state,
-  maxCycles,
   velocityThreshold,
   onPause,
   onResume,
@@ -99,6 +118,9 @@ export function DialecticalCycleVisualization({
   // Track elapsed time with state to avoid impure Date.now() during render
   const [elapsedMs, setElapsedMs] = useState(() => Date.now() - state.startedAtMs)
 
+  // Graph panel state: null = hidden, GraphSource = which graph to show
+  const [graphSource, setGraphSource] = useState<GraphSource | null>(null)
+
   useEffect(() => {
     if (state.status !== 'running') return
     const interval = setInterval(() => {
@@ -107,18 +129,40 @@ export function DialecticalCycleVisualization({
     return () => clearInterval(interval)
   }, [state.status, state.startedAtMs])
 
+  const handleOpenMergedGraph = useCallback(() => {
+    setGraphSource({ type: 'merged' })
+  }, [])
+
+  const handleOpenThesisGraph = useCallback(
+    (index: number, thesis: ThesisOutput) => {
+      if (thesis.graph && thesis.graph.nodes.length > 0) {
+        setGraphSource({ type: 'thesis', index, thesis })
+      }
+    },
+    []
+  )
+
+  const handleCloseGraph = useCallback(() => {
+    setGraphSource(null)
+  }, [])
+
   return (
     <div className="dialectical-cycle-viz" role="region" aria-label="Dialectical cycle progress">
       {/* Header */}
       <div className="cycle-header">
         <div className="cycle-info">
           <h3 id="cycle-heading">
-            Dialectical Cycle {state.cycleNumber}/{maxCycles}
+            Dialectical Cycle {state.cycleNumber}/{state.maxCycles}
           </h3>
           <span className={`cycle-status ${state.status}`} role="status" aria-live="polite">
             {state.status.toUpperCase()}
           </span>
         </div>
+        {state.refinedGoal && (
+          <div className="refined-goal" aria-label="Refined goal from meta-reflection">
+            <span className="refined-goal-label">Refined goal:</span> {state.refinedGoal}
+          </div>
+        )}
         <div className="cycle-actions" role="group" aria-label="Cycle controls">
           {state.status === 'running' && onPause && (
             <button
@@ -204,11 +248,45 @@ export function DialecticalCycleVisualization({
         />
       </div>
 
-      {/* Thesis Comparison */}
-      {state.theses.length > 0 && <ThesisComparisonView theses={state.theses} />}
+      {/* Interactive Graph Panel */}
+      {graphSource && state.mergedGraph && (
+        <DialecticalGraphPanel
+          source={graphSource}
+          mergedGraph={state.mergedGraph}
+          theses={state.theses}
+          graphHistory={state.graphHistory}
+          onClose={handleCloseGraph}
+          onSwitchSource={setGraphSource}
+        />
+      )}
 
-      {/* Contradiction List */}
-      {state.contradictions.length > 0 && (
+      {/* Merged Knowledge Graph Summary */}
+      {state.mergedGraph && (
+        <MergedGraphSummary
+          graph={state.mergedGraph}
+          graphHistory={state.graphHistory}
+          onViewGraph={handleOpenMergedGraph}
+        />
+      )}
+
+      {/* Per-Cycle Data View */}
+      {state.cycleHistory && state.cycleHistory.length > 1 && (
+        <CycleSelector
+          cycleHistory={state.cycleHistory}
+          currentTheses={state.theses}
+          currentNegations={state.negations}
+          currentContradictions={state.contradictions}
+          onViewThesisGraph={handleOpenThesisGraph}
+        />
+      )}
+
+      {/* Thesis Comparison (when no per-cycle history or single cycle) */}
+      {(!state.cycleHistory || state.cycleHistory.length <= 1) && state.theses.length > 0 && (
+        <ThesisComparisonView theses={state.theses} onViewThesisGraph={handleOpenThesisGraph} />
+      )}
+
+      {/* Contradiction List (when no per-cycle history or single cycle) */}
+      {(!state.cycleHistory || state.cycleHistory.length <= 1) && state.contradictions.length > 0 && (
         <ContradictionList contradictions={state.contradictions} />
       )}
 
@@ -379,40 +457,126 @@ function MetricsCard({
   )
 }
 
-function ThesisComparisonView({ theses }: { theses: ThesisOutput[] }) {
+function ThesisComparisonView({
+  theses,
+  onViewThesisGraph,
+}: {
+  theses: ThesisOutput[]
+  onViewThesisGraph: (index: number, thesis: ThesisOutput) => void
+}) {
   return (
     <section className="thesis-comparison" aria-labelledby="thesis-comparison-heading">
       <h4 id="thesis-comparison-heading">Theses Comparison</h4>
       <div className="thesis-grid" role="list">
-        {theses.map((thesis, idx) => (
-          <article
-            key={thesis.agentId || idx}
-            className="thesis-card"
-            role="listitem"
-            aria-label={`Thesis from ${thesis.lens} perspective, confidence ${(thesis.confidence * 100).toFixed(0)}%`}
-          >
-            <div className="thesis-header">
-              <span className="thesis-lens">{thesis.lens}</span>
-              <span
-                className="thesis-confidence"
-                aria-label={`Confidence: ${(thesis.confidence * 100).toFixed(0)}%`}
-              >
-                {(thesis.confidence * 100).toFixed(0)}%
+        {theses.map((thesis, idx) => {
+          const hasGraph = thesis.graph && thesis.graph.nodes.length > 0
+          return (
+            <article
+              key={thesis.agentId || idx}
+              className={`thesis-card ${hasGraph ? 'has-graph' : ''}`}
+              role="listitem"
+              aria-label={`Thesis from ${thesis.lens} perspective, confidence ${(thesis.confidence * 100).toFixed(0)}%${hasGraph ? '. Click to view graph.' : ''}`}
+              onClick={hasGraph ? () => onViewThesisGraph(idx, thesis) : undefined}
+            >
+              <div className="thesis-header">
+                <span className="thesis-lens">{thesis.lens}</span>
+                <span
+                  className="thesis-confidence"
+                  aria-label={`Confidence: ${(thesis.confidence * 100).toFixed(0)}%`}
+                >
+                  {(thesis.confidence * 100).toFixed(0)}%
+                </span>
+              </div>
+              <div className="thesis-model">{thesis.model}</div>
+              {thesis.graph ? (
+                <>
+                  <div className="thesis-content">{thesis.graph.summary}</div>
+                  {thesis.graph.reasoning && (
+                    <div className="thesis-reasoning">{thesis.graph.reasoning}</div>
+                  )}
+                  <div className="thesis-graph-stats">
+                    {thesis.graph.nodes.length} nodes, {thesis.graph.edges.length} edges
+                    {thesis.graph.regime && (
+                      <span className="thesis-regime"> | {thesis.graph.regime}</span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="thesis-content">
+                  {thesis.rawText.length > 200
+                    ? `${thesis.rawText.slice(0, 200)}...`
+                    : thesis.rawText}
+                </div>
+              )}
+              <div className="thesis-concepts" role="list" aria-label="Key concepts">
+                {thesis.graph
+                  ? thesis.graph.nodes.slice(0, 5).map((node) => (
+                      <span key={node.id} className="concept-tag" role="listitem" title={node.note}>
+                        {node.label}
+                      </span>
+                    ))
+                  : Object.keys(thesis.conceptGraph)
+                      .slice(0, 5)
+                      .map((concept) => (
+                        <span key={concept} className="concept-tag" role="listitem">
+                          {concept}
+                        </span>
+                      ))}
+              </div>
+              {hasGraph && <div className="thesis-view-graph">View Graph</div>}
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function MergedGraphSummary({
+  graph,
+  graphHistory,
+  onViewGraph,
+}: {
+  graph: CompactGraph
+  graphHistory: Array<{ cycle: number; diff: GraphDiff }>
+  onViewGraph: () => void
+}) {
+  const contradictEdges = graph.edges.filter((e) => e.rel === 'contradicts')
+  const latestDiff = graphHistory.length > 0 ? graphHistory[graphHistory.length - 1] : null
+
+  return (
+    <section className="merged-graph-summary" aria-labelledby="merged-graph-heading">
+      <h4 id="merged-graph-heading">Knowledge Graph</h4>
+      <div className="graph-summary-content">
+        <div className="graph-headline">{graph.summary}</div>
+        {graph.reasoning && <div className="graph-reasoning">{graph.reasoning}</div>}
+        <div className="graph-stats" role="group" aria-label="Graph statistics">
+          <span className="graph-stat">{graph.nodes.length} nodes</span>
+          <span className="graph-stat">{graph.edges.length} edges</span>
+          <span className="graph-stat">{contradictEdges.length} contradictions</span>
+          <span className="graph-stat">confidence: {(graph.confidence * 100).toFixed(0)}%</span>
+        </div>
+        {latestDiff && (
+          <div className="graph-diff" aria-label="Latest changes">
+            <span className="diff-label">Last cycle:</span>
+            {latestDiff.diff.addedNodes.length > 0 && (
+              <span className="diff-added">+{latestDiff.diff.addedNodes.length} nodes</span>
+            )}
+            {latestDiff.diff.removedNodes.length > 0 && (
+              <span className="diff-removed">-{latestDiff.diff.removedNodes.length} nodes</span>
+            )}
+            {latestDiff.diff.resolvedContradictions.length > 0 && (
+              <span className="diff-resolved">
+                {latestDiff.diff.resolvedContradictions.length} resolved
               </span>
-            </div>
-            <div className="thesis-model">{thesis.model}</div>
-            <div className="thesis-content">{thesis.rawText}</div>
-            <div className="thesis-concepts" role="list" aria-label="Key concepts">
-              {Object.keys(thesis.conceptGraph)
-                .slice(0, 5)
-                .map((concept) => (
-                  <span key={concept} className="concept-tag" role="listitem">
-                    {concept}
-                  </span>
-                ))}
-            </div>
-          </article>
-        ))}
+            )}
+          </div>
+        )}
+        <div className="graph-summary-actions">
+          <button className="view-graph-btn" onClick={onViewGraph}>
+            View Interactive Graph
+          </button>
+        </div>
       </div>
     </section>
   )
@@ -470,6 +634,11 @@ function SynthesisPreview({ synthesis }: { synthesis: SublationOutput }) {
   return (
     <section className="synthesis-preview" aria-labelledby="synthesis-preview-heading">
       <h4 id="synthesis-preview-heading">Synthesis</h4>
+      {synthesis.incompleteReason && (
+        <p className="warning-text" role="status">
+          {synthesis.incompleteReason}
+        </p>
+      )}
       <div className="synthesis-content">
         <div className="synthesis-section">
           <h5 id="operators-heading">Operators Applied ({synthesis.operators.length})</h5>
@@ -525,6 +694,65 @@ function SynthesisPreview({ synthesis }: { synthesis: SublationOutput }) {
           </div>
         </div>
       </div>
+    </section>
+  )
+}
+
+function CycleSelector({
+  cycleHistory,
+  currentTheses,
+  currentNegations,
+  currentContradictions,
+  onViewThesisGraph,
+}: {
+  cycleHistory: CycleHistoryEntry[]
+  currentTheses: ThesisOutput[]
+  currentNegations: NegationOutput[]
+  currentContradictions: ContradictionOutput[]
+  onViewThesisGraph: (index: number, thesis: ThesisOutput) => void
+}) {
+  const [selectedCycle, setSelectedCycle] = useState<number | 'all'>('all')
+
+  const viewData = useMemo(() => {
+    if (selectedCycle === 'all') {
+      return { theses: currentTheses, negations: currentNegations, contradictions: currentContradictions }
+    }
+    const entry = cycleHistory.find((h) => h.cycle === selectedCycle)
+    return entry ?? { theses: [], negations: [], contradictions: [] }
+  }, [selectedCycle, cycleHistory, currentTheses, currentNegations, currentContradictions])
+
+  return (
+    <section className="cycle-selector" aria-label="Per-cycle data view">
+      <div className="cycle-tabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={selectedCycle === 'all'}
+          className={`cycle-tab ${selectedCycle === 'all' ? 'active' : ''}`}
+          onClick={() => setSelectedCycle('all')}
+        >
+          All
+        </button>
+        {cycleHistory.map((entry) => (
+          <button
+            key={entry.cycle}
+            role="tab"
+            aria-selected={selectedCycle === entry.cycle}
+            className={`cycle-tab ${selectedCycle === entry.cycle ? 'active' : ''}`}
+            onClick={() => setSelectedCycle(entry.cycle)}
+          >
+            C{entry.cycle}
+            <span className="cycle-tab-count">
+              {entry.theses.length}T {entry.contradictions.length}X
+            </span>
+          </button>
+        ))}
+      </div>
+      {viewData.theses.length > 0 && (
+        <ThesisComparisonView theses={viewData.theses} onViewThesisGraph={onViewThesisGraph} />
+      )}
+      {viewData.contradictions.length > 0 && (
+        <ContradictionList contradictions={viewData.contradictions} />
+      )}
     </section>
   )
 }

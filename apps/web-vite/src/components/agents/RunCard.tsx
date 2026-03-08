@@ -14,6 +14,7 @@ import { useWorkflowSteps } from '@/hooks/useWorkflowSteps'
 import { useExpertCouncilTurns } from '@/hooks/useExpertCouncilTurns'
 import { useProjectManager } from '@/hooks/useProjectManager'
 import { useDialecticalState, isDialecticalWorkflow } from '@/hooks/useDialecticalState'
+import { useRunEvents } from '@/hooks/useRunEvents'
 import { ToolCallTimeline } from './ToolCallTimeline'
 import { ExpertCouncilInspector } from './ExpertCouncilInspector'
 import { ProjectManagerChat } from './ProjectManagerChat'
@@ -45,6 +46,7 @@ interface RunCardProps {
   onDelete: (runId: string) => void
   onResume?: (runId: string) => void
   onProvideInput?: (runId: string, nodeId: string, response: string) => Promise<void>
+  onConstraintResponse?: (runId: string, action: 'increase' | 'stop', newLimit?: number) => Promise<void>
   onRunAgain?: (runId: string) => void
   onContinue?: (runId: string) => void
   onStop?: (runId: string) => Promise<void>
@@ -60,6 +62,7 @@ export function RunCard({
   onDelete,
   onResume,
   onProvideInput,
+  onConstraintResponse,
   onRunAgain,
   onContinue,
   onStop,
@@ -72,15 +75,34 @@ export function RunCard({
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showResearchViewer, setShowResearchViewer] = useState(false)
 
+  // Auto-open detail modal when run transitions to waiting_for_input (human gate)
+  const [prevStatus, setPrevStatus] = useState(run.status)
+  if (run.status !== prevStatus) {
+    setPrevStatus(run.status)
+    if (run.status === 'waiting_for_input' && run.pendingInput && !showDetailModal) {
+      setShowDetailModal(true)
+    }
+  }
+
   // Lazy load data only when sections are expanded
   const [workflowExpanded, setWorkflowExpanded] = useState(false)
   const [expertCouncilExpanded, setExpertCouncilExpanded] = useState(false)
   const [projectManagerExpanded, setProjectManagerExpanded] = useState(false)
   const [dialecticalExpanded, setDialecticalExpanded] = useState(false)
 
-  // Dialectical workflow state
+  // Dialectical workflow state — subscribe to events for live visualization
   const isDialectical = isDialecticalWorkflow(workflow.workflowType)
-  const dialecticalState = useDialecticalState(isDialectical ? run : null)
+  // Load events when: running (for live state), expanded, or workflowState.dialectical is missing (event-based fallback)
+  const hasPersistedDialectical = isDialectical && !!run.workflowState?.dialectical
+  const shouldLoadDialecticalEvents =
+    isDialectical && (run.status === 'running' || run.status === 'waiting_for_input' || dialecticalExpanded || !hasPersistedDialectical)
+  const { events: dialecticalEvents } = useRunEvents(
+    shouldLoadDialecticalEvents ? (run.runId as import('@lifeos/agents').RunId) : null
+  )
+  const dialecticalState = useDialecticalState(
+    isDialectical ? run : null,
+    dialecticalEvents
+  )
 
   // Only fetch when running or when explicitly expanded
   const shouldLoadToolCalls = run.status === 'running' || workflowExpanded
@@ -190,17 +212,36 @@ export function RunCard({
   const getStatusBadgeClass = (status: RunStatus) => {
     switch (status) {
       case 'completed':
-        return 'badge-success'
+        return 'badge badge-success'
       case 'failed':
-        return 'badge-error'
+        return 'badge badge-error'
       case 'running':
-        return 'badge-info'
+        return 'badge badge-info'
       case 'paused':
-        return 'badge-warning'
+        return 'badge badge-warning'
       case 'waiting_for_input':
-        return 'badge-waiting'
+        return 'badge badge-waiting'
       default:
         return 'badge'
+    }
+  }
+
+  const getStatusLabel = (status: RunStatus) => {
+    switch (status) {
+      case 'completed':
+        return 'Completed'
+      case 'failed':
+        return 'Failed'
+      case 'running':
+        return 'Running'
+      case 'paused':
+        return 'Paused'
+      case 'waiting_for_input':
+        return 'Waiting for Input'
+      case 'pending':
+        return 'Pending'
+      default:
+        return String(status).replace(/_/g, ' ')
     }
   }
 
@@ -218,7 +259,7 @@ export function RunCard({
       <div className="run-header">
         <div>
           <h4>{run.goal}</h4>
-          <span className={getStatusBadgeClass(run.status)}>{run.status}</span>
+          <span className={getStatusBadgeClass(run.status)}>{getStatusLabel(run.status)}</span>
           {latestTurn ? (
             <span className="badge">Expert Council</span>
           ) : (
@@ -422,8 +463,10 @@ export function RunCard({
           {(dialecticalExpanded || run.status === 'running') && dialecticalState && (
             <DialecticalCycleVisualization
               state={dialecticalState}
-              maxCycles={workflow.maxIterations ?? 10}
               velocityThreshold={0.2}
+              onTerminate={onStop ? () => onStop(run.runId) : undefined}
+              onPause={onStop ? () => onStop(run.runId) : undefined}
+              onResume={onResume ? () => onResume(run.runId) : undefined}
             />
           )}
           {(dialecticalExpanded || run.status === 'running') && !dialecticalState && (
@@ -493,7 +536,11 @@ export function RunCard({
 
       <div className="run-actions">
         <Button variant="ghost" size="sm" onClick={() => setShowDetailModal(true)}>
-          {isRunning ? (
+          {run.status === 'waiting_for_input' && run.pendingInput ? (
+            <>
+              <span className="live-dot" style={{ backgroundColor: 'var(--color-warning, #f59e0b)' }} /> Respond to Agent
+            </>
+          ) : isRunning ? (
             <>
               <span className="live-dot" /> Live View
             </>
@@ -538,6 +585,7 @@ export function RunCard({
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
         onProvideInput={onProvideInput}
+        onConstraintResponse={onConstraintResponse}
         onStop={onStop}
       />
     </div>
