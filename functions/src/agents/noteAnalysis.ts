@@ -327,19 +327,22 @@ async function extractClaims(
 
   const extractionPrompt = `${config.systemPrompt}
 
-IMPORTANT: Identify at most 3 of the most critical verifiable claims — the ones that matter most for the document's credibility. Skip trivial or obvious facts.
+## Task
+Identify at most 3 of the most critical verifiable claims -- the ones that matter most for the document's credibility. Skip trivial or obvious facts.
 
-For each claim provide exactly 1 short, specific search query that would best verify or refute it.
-Indicate whether "serp" (for factual/news verification) or "semantic" (for conceptual/academic verification) search is more appropriate.
+## Rules
+1. For each claim, provide exactly 1 short, specific search query that would best verify or refute it.
+2. Indicate whether "serp" (factual/news verification) or "semantic" (conceptual/academic verification) search is more appropriate.
+3. Set confidence based on your existing knowledge. State "uncertain" when you genuinely cannot assess the claim.
 
-Respond in JSON format:
+## Output Schema (JSON array, no markdown fences)
 [
   {
-    "claim": "the exact claim",
-    "confidence": "high|medium|low|uncertain",
+    "claim": "the exact claim from the text",
+    "confidence": "high" | "medium" | "low" | "uncertain",
     "explanation": "why this confidence level",
     "suggestedSources": ["source1", "source2"],
-    "searchQueries": [{"query": "search query text", "searchType": "serp"}]
+    "searchQueries": [{"query": "search query text", "searchType": "serp" | "semantic"}]
   }
 ]`
 
@@ -432,28 +435,31 @@ async function synthesizeFactCheck(
     }
   })
 
-  const synthesisPrompt = `You are a fact-checking expert. You have been given claims extracted from a document and REAL web search results for each claim.
+  const synthesisPrompt = `You are a fact-checking synthesis expert. You receive claims extracted from a document and REAL web search results for each claim.
 
-For each claim, provide:
-1. A verdict: "verified" (strong evidence supports it), "likely_true" (some evidence supports, none contradicts), "disputed" (conflicting evidence), "likely_false" (evidence contradicts it), or "unverifiable" (no relevant evidence found)
-2. Updated confidence level based on the evidence: high, medium, low, or uncertain
-3. Explanation citing specific sources from the search results
-4. Which sources support or contradict the claim
+Only cite sources from the provided search results. State "unverifiable" when no relevant evidence exists rather than speculating.
 
-CRITICAL: Only cite sources from the provided search results. Do NOT invent or hallucinate sources.
+## Task
+For each claim, determine:
+1. Verdict: "verified" (strong evidence supports), "likely_true" (some evidence, none contradicts), "disputed" (conflicting evidence), "likely_false" (evidence contradicts), or "unverifiable" (no relevant evidence found).
+2. Confidence: updated based on evidence quality -- "high", "medium", "low", or "uncertain".
+3. Explanation: cite specific sources from the search results.
+4. Sources: which results support or contradict the claim.
 
-Respond in JSON format:
+## Output Schema (JSON array, no markdown fences)
 [
   {
     "claim": "the exact claim text",
-    "verdict": "verified|likely_true|disputed|likely_false|unverifiable",
-    "confidence": "high|medium|low|uncertain",
-    "explanation": "evidence-based explanation citing sources",
+    "verdict": "verified" | "likely_true" | "disputed" | "likely_false" | "unverifiable",
+    "confidence": "high" | "medium" | "low" | "uncertain",
+    "explanation": "evidence-based explanation citing specific sources",
     "sources": [
       {"title": "Source Title", "url": "https://...", "snippet": "relevant excerpt", "supports": true}
     ]
   }
-]`
+]
+
+Only cite sources from the provided search results. Do not invent or fabricate sources.`
 
   const userPrompt = `Claims and their search evidence:\n\n${JSON.stringify(claimsWithEvidence, null, 2)}`
 
