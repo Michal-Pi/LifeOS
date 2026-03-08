@@ -50,6 +50,17 @@ export function safeParseJson<T>(text: string): T | null {
   return raw as T | null
 }
 
+/** Strip trailing commas before ] or } (common LLM JSON mistake) */
+function stripTrailingCommas(json: string): string {
+  return json.replace(/,\s*([}\]])/g, '$1')
+}
+
+function tryParse(json: string): unknown | null {
+  try { return JSON.parse(json) } catch { /* ignore */ }
+  try { return JSON.parse(stripTrailingCommas(json)) } catch { /* ignore */ }
+  return null
+}
+
 function extractJson(text: string): unknown | null {
   // 1. Strip markdown fences
   const cleaned = text.replace(/```(?:json)?\s*([\s\S]*?)```/g, '$1').trim()
@@ -57,13 +68,15 @@ function extractJson(text: string): unknown | null {
   // 2. Try regex extraction (object)
   const objMatch = cleaned.match(/\{[\s\S]*\}/)
   if (objMatch) {
-    try { return JSON.parse(objMatch[0]) } catch { /* fall through */ }
+    const result = tryParse(objMatch[0])
+    if (result !== null) return result
   }
 
   // 3. Try regex extraction (array)
   const arrMatch = cleaned.match(/\[[\s\S]*\]/)
   if (arrMatch) {
-    try { return JSON.parse(arrMatch[0]) } catch { /* fall through */ }
+    const result = tryParse(arrMatch[0])
+    if (result !== null) return result
   }
 
   // 4. Try brace counting for nested objects
@@ -74,7 +87,9 @@ function extractJson(text: string): unknown | null {
       if (cleaned[i] === '{') depth++
       else if (cleaned[i] === '}') depth--
       if (depth === 0) {
-        try { return JSON.parse(cleaned.slice(start, i + 1)) } catch { break }
+        const result = tryParse(cleaned.slice(start, i + 1))
+        if (result !== null) return result
+        break
       }
     }
   }
