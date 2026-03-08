@@ -45,13 +45,18 @@ import type { ProviderKeys } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
 import type { ToolRegistry } from '../toolExecutor.js'
-import { executeAgentWithEvents, handleAskUserInterrupt, type AgentExecutionContext } from './utils.js'
+import {
+  executeAgentWithEvents,
+  handleAskUserInterrupt,
+  type AgentExecutionContext,
+} from './utils.js'
 import { DialecticalStateAnnotation, type DialecticalState } from './stateAnnotations.js'
 import { runCompetitiveSynthesis, runSynthesisCrossNegation } from '../sublationEngine.js'
 import { runMetaReflection, calculateConceptualVelocity } from '../metaReflection.js'
 import { recordMessage } from '../messageStore.js'
 import { runSchemaInduction, type SchemaInductionInput } from '../schemaInduction.js'
 import { executeRetrievalAgent, type RetrievalContext } from '../retrievalAgent.js'
+import { safeParseJson } from '../shared/jsonParser.js'
 import { selectBestTemplate, getAttenuatedSteps } from '../optimization/retrievalTemplates.js'
 import { KnowledgeHypergraph } from '../knowledgeHypergraph.js'
 import {
@@ -71,7 +76,11 @@ import {
   writeIterationUsageSummary,
   type HistoricalIterationData,
 } from './iterationHistory.js'
-import { analyzeGraphGaps, evaluateResearchNeed, type GraphGapDirectives } from '../deepResearch/graphGapAnalysis.js'
+import {
+  analyzeGraphGaps,
+  evaluateResearchNeed,
+  type GraphGapDirectives,
+} from '../deepResearch/graphGapAnalysis.js'
 import { executeSearchPlan, ingestSources } from '../deepResearch/sourceIngestion.js'
 import {
   extractClaimsFromSourceBatch,
@@ -228,9 +237,7 @@ function formatAgentMessage(
 
 // ----- Phase Implementations -----
 
-function createInputNormalizerNode(
-  execContext: AgentExecutionContext,
-) {
+function createInputNormalizerNode(execContext: AgentExecutionContext) {
   return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
     log.info('Dialectical: Input Normalizer phase')
     await emitPhaseEvent(execContext, 'input_normalizer', state.cycleNumber, { goal: state.goal })
@@ -248,10 +255,11 @@ function createGoalFramingNode(
   framingAgent: AgentConfig,
   execContext: AgentExecutionContext,
   config: DialecticalWorkflowConfig,
-  kg: KnowledgeHypergraph | null,
+  kg: KnowledgeHypergraph | null
 ) {
   return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
-    const normalizedInput = state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
+    const normalizedInput =
+      state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
     log.info('Dialectical: Goal Framing phase', {
       hasContext: normalizedInput.hasContext,
       hasKnowledgeGraph: !!kg,
@@ -301,11 +309,7 @@ Return JSON:
 
     const goalFrame = parseDialecticalGoalFrame(
       step.output,
-      createFallbackDialecticalGoalFrame(
-        state.goal,
-        !!kg,
-        !!config.enableExternalResearch,
-      ),
+      createFallbackDialecticalGoalFrame(state.goal, !!kg, !!config.enableExternalResearch)
     )
 
     return {
@@ -328,10 +332,11 @@ Return JSON:
 function createContextSeedingNode(
   seedingAgent: AgentConfig,
   execContext: AgentExecutionContext,
-  kg: KnowledgeHypergraph | null,
+  kg: KnowledgeHypergraph | null
 ) {
   return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
-    const normalizedInput = state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
+    const normalizedInput =
+      state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
     const contextSources = normalizedInput.sources
     const contentMap = normalizedInput.contentMap
 
@@ -355,7 +360,7 @@ function createContextSeedingNode(
         },
         userPrompt,
         undefined,
-        execContext.apiKeys,
+        execContext.apiKeys
       )
       return result.output ?? ''
     }
@@ -369,7 +374,7 @@ function createContextSeedingNode(
         providerFn,
         researchBudget,
         Math.min(contextSources.length, 4),
-        seedingAgent.modelName,
+        seedingAgent.modelName
       )
 
       const seededGraph = buildStarterCompactGraphFromClaims(claims)
@@ -379,7 +384,7 @@ function createContextSeedingNode(
           contextSources,
           kg,
           `dialectical:${state.runId}` as DialecticalSessionId,
-          execContext.userId,
+          execContext.userId
         )
       }
 
@@ -390,7 +395,7 @@ function createContextSeedingNode(
           claims.length,
           seededGraph.nodes.length,
           seededGraph.edges.length,
-          0,
+          0
         ),
       }
     } catch (error) {
@@ -414,7 +419,7 @@ function createContextSeedingNode(
 function createDecideResearchNode(
   execContext: AgentExecutionContext,
   config: DialecticalWorkflowConfig,
-  position: 'pre_cycle' | 'post_synthesis',
+  position: 'pre_cycle' | 'post_synthesis'
 ) {
   return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
     if (!config.enableReactiveResearch) {
@@ -434,20 +439,16 @@ function createDecideResearchNode(
 
     const directives: GraphGapDirectives = {
       cycleNumber: state.cycleNumber,
-      budget: state.researchBudget ?? createRunBudget(config.researchBudgetUsd ?? 5, config.researchSearchDepth ?? 'standard'),
-      focusAreas: position === 'pre_cycle'
-        ? (state.context.focusAreas as string[] | undefined)
-        : undefined,
+      budget:
+        state.researchBudget ??
+        createRunBudget(config.researchBudgetUsd ?? 5, config.researchSearchDepth ?? 'standard'),
+      focusAreas:
+        position === 'pre_cycle' ? (state.context.focusAreas as string[] | undefined) : undefined,
       refinedGoal: effectiveGoal !== state.goal ? effectiveGoal : undefined,
       contradictions: position === 'post_synthesis' ? state.contradictions : undefined,
     }
 
-    const result = evaluateResearchNeed(
-      state.mergedGraph,
-      state.goal,
-      directives,
-      position,
-    )
+    const result = evaluateResearchNeed(state.mergedGraph, state.goal, directives, position)
 
     const decision = result.needsResearch ? 'Research needed' : 'No research needed'
     await recordMessage(
@@ -489,7 +490,7 @@ function createDecideResearchNode(
 function createExecuteResearchNode(
   execContext: AgentExecutionContext,
   config: DialecticalWorkflowConfig,
-  kg: KnowledgeHypergraph | null,
+  kg: KnowledgeHypergraph | null
 ) {
   return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
     if (!state.researchDecision?.needsResearch || !state.researchDecision.searchPlan) {
@@ -503,10 +504,9 @@ function createExecuteResearchNode(
       throw new Error('Reactive research requires toolRegistry and searchToolKeys')
     }
 
-    let currentBudget = state.researchBudget ?? createRunBudget(
-      config.researchBudgetUsd ?? 5,
-      config.researchSearchDepth ?? 'standard',
-    )
+    let currentBudget =
+      state.researchBudget ??
+      createRunBudget(config.researchBudgetUsd ?? 5, config.researchSearchDepth ?? 'standard')
 
     try {
       // Build tool execution context
@@ -524,8 +524,12 @@ function createExecuteResearchNode(
       }
 
       // Execute search plan
-      const { results: searchResults, updatedBudget: budgetAfterSearch } =
-        await executeSearchPlan(searchPlan, execContext.toolRegistry, toolContext, currentBudget)
+      const { results: searchResults, updatedBudget: budgetAfterSearch } = await executeSearchPlan(
+        searchPlan,
+        execContext.toolRegistry,
+        toolContext,
+        currentBudget
+      )
       currentBudget = budgetAfterSearch
 
       log.info(`[ReactiveResearch] Search returned ${searchResults.length} results`)
@@ -537,14 +541,27 @@ function createExecuteResearchNode(
       if (searchResults.length > 0) {
         // Ingest sources
         const keywordRelevanceScorer = async (snippet: string, query: string): Promise<number> => {
-          const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3)
+          const queryWords = query
+            .toLowerCase()
+            .split(/\s+/)
+            .filter((w) => w.length > 3)
           const snippetLower = snippet.toLowerCase()
-          const matches = queryWords.filter(w => snippetLower.includes(w))
+          const matches = queryWords.filter((w) => snippetLower.includes(w))
           return queryWords.length > 0 ? matches.length / queryWords.length : 0.5
         }
 
-        const { sources, contentMap, updatedBudget: budgetAfterIngest } =
-          await ingestSources(searchResults, effectiveGoal, execContext.toolRegistry, toolContext, currentBudget, keywordRelevanceScorer)
+        const {
+          sources,
+          contentMap,
+          updatedBudget: budgetAfterIngest,
+        } = await ingestSources(
+          searchResults,
+          effectiveGoal,
+          execContext.toolRegistry,
+          toolContext,
+          currentBudget,
+          keywordRelevanceScorer
+        )
         currentBudget = budgetAfterIngest
 
         // Apply source quality scores
@@ -587,19 +604,25 @@ function createExecuteResearchNode(
               providerFn,
               currentBudget,
               3,
-              'gpt-4o-mini',
+              'gpt-4o-mini'
             )
           currentBudget = budgetAfterExtraction
 
           newClaims = applyQualityScoresToClaims(claims, newSources)
-          log.info(`[ReactiveResearch] Extracted ${newClaims.length} claims from ${newSources.length} sources`)
+          log.info(
+            `[ReactiveResearch] Extracted ${newClaims.length} claims from ${newSources.length} sources`
+          )
         }
 
         // Map reactive research claims to the actual KG
         if (kg && newClaims.length > 0) {
           const sessionId = `dialectical:${state.runId}` as DialecticalSessionId
           const { addedClaimIds, addedConceptIds } = await mapClaimsToKG(
-            newClaims, newSources, kg, sessionId, execContext.userId
+            newClaims,
+            newSources,
+            kg,
+            sessionId,
+            execContext.userId
           )
           // Run enrichment passes on newly mapped claims
           const enrichment = config.kgEnrichment
@@ -627,7 +650,7 @@ function createExecuteResearchNode(
         if (newClaims.length > 0 || newSources.length > 0) {
           researchEvidence = {
             claims: newClaims.slice(0, 15),
-            sources: newSources.map(s => ({
+            sources: newSources.map((s) => ({
               sourceId: s.sourceId,
               title: s.title,
               url: s.url,
@@ -647,7 +670,9 @@ function createExecuteResearchNode(
         context: { ...state.context, researchEvidence },
       }
     } catch (error) {
-      throw new Error(`[ReactiveResearch] Execute research failed: ${error instanceof Error ? error.message : String(error)}`)
+      throw new Error(
+        `[ReactiveResearch] Execute research failed: ${error instanceof Error ? error.message : String(error)}`
+      )
     }
   }
 }
@@ -671,7 +696,10 @@ function createResearchEnrichmentNode(
     if (cycleNumber > 1) {
       const quotaHit = await checkQuotaSoft(execContext.userId)
       if (quotaHit) {
-        log.info('Quota exceeded mid-cycle, pausing for user decision', { cycleNumber, ...quotaHit })
+        log.info('Quota exceeded mid-cycle, pausing for user decision', {
+          cycleNumber,
+          ...quotaHit,
+        })
         return {
           cycleNumber,
           status: 'waiting_for_input',
@@ -683,15 +711,19 @@ function createResearchEnrichmentNode(
             partialOutput: state.synthesis
               ? `Completed ${cycleNumber - 1} dialectical cycles. Current synthesis has ${state.synthesis.preservedElements?.length ?? 0} preserved elements and ${state.synthesis.newClaims?.length ?? 0} new claims.`
               : `Completed ${cycleNumber - 1} dialectical cycles.`,
-            suggestedIncrease: quotaHit.unit === 'USD'
-              ? quotaHit.limitValue * 2
-              : Math.ceil(quotaHit.limitValue * 1.5),
+            suggestedIncrease:
+              quotaHit.unit === 'USD'
+                ? quotaHit.limitValue * 2
+                : Math.ceil(quotaHit.limitValue * 1.5),
           },
         } as Partial<DialecticalState>
       }
       const rateHit = await checkRunRateLimitSoft(execContext.userId)
       if (rateHit) {
-        log.info('Rate limit exceeded mid-cycle, pausing for user decision', { cycleNumber, ...rateHit })
+        log.info('Rate limit exceeded mid-cycle, pausing for user decision', {
+          cycleNumber,
+          ...rateHit,
+        })
         return {
           cycleNumber,
           status: 'waiting_for_input',
@@ -714,9 +746,12 @@ function createResearchEnrichmentNode(
       hasResearch: !!config.enableExternalResearch,
     })
 
-    const effectiveGoal = state.goalFrame?.canonicalGoal || (state.context.refinedGoal as string) || state.goal
-    const focusAreas = state.goalFrame?.focusAreas || (state.context.focusAreas as string[] | undefined) || []
-    const normalizedInput = state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
+    const effectiveGoal =
+      state.goalFrame?.canonicalGoal || (state.context.refinedGoal as string) || state.goal
+    const focusAreas =
+      state.goalFrame?.focusAreas || (state.context.focusAreas as string[] | undefined) || []
+    const normalizedInput =
+      state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
     const userContextText = normalizedInput.contextSummary
 
     // === Phase A: Internal KG retrieval (existing behavior, preserved) ===
@@ -738,11 +773,16 @@ function createResearchEnrichmentNode(
           templateConfig = { maxSteps: attenuatedSteps.length }
         }
 
-        const retrievalResult = await executeRetrievalAgent(effectiveGoal, kg, execContext.apiKeys, {
-          maxSteps: templateConfig.maxSteps ?? 10,
-          maxDepth: 3,
-          topK: 10,
-        })
+        const retrievalResult = await executeRetrievalAgent(
+          effectiveGoal,
+          kg,
+          execContext.apiKeys,
+          {
+            maxSteps: templateConfig.maxSteps ?? 10,
+            maxDepth: 3,
+            topK: 10,
+          }
+        )
 
         retrievedContext = formatRetrievalContext(retrievalResult.context)
 
@@ -765,7 +805,12 @@ function createResearchEnrichmentNode(
     let newSources: SourceRecord[] = []
     let newClaims: ExtractedClaim[] = []
 
-    if (config.enableExternalResearch && !config.enableReactiveResearch && execContext.toolRegistry && execContext.searchToolKeys) {
+    if (
+      config.enableExternalResearch &&
+      !config.enableReactiveResearch &&
+      execContext.toolRegistry &&
+      execContext.searchToolKeys
+    ) {
       // Initialize budget on first cycle
       if (!updatedBudget) {
         updatedBudget = createRunBudget(
@@ -826,22 +871,31 @@ function createResearchEnrichmentNode(
 
           // Ingest top sources (relevance-first)
           if (searchResults.length > 0) {
-            const keywordRelevanceScorer = async (snippet: string, query: string): Promise<number> => {
-              const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3)
+            const keywordRelevanceScorer = async (
+              snippet: string,
+              query: string
+            ): Promise<number> => {
+              const queryWords = query
+                .toLowerCase()
+                .split(/\s+/)
+                .filter((w) => w.length > 3)
               const snippetLower = snippet.toLowerCase()
-              const matches = queryWords.filter(w => snippetLower.includes(w))
+              const matches = queryWords.filter((w) => snippetLower.includes(w))
               return queryWords.length > 0 ? matches.length / queryWords.length : 0.5
             }
 
-            const { sources, contentMap, updatedBudget: budgetAfterIngest } =
-              await ingestSources(
-                searchResults,
-                effectiveGoal,
-                execContext.toolRegistry,
-                toolContext,
-                updatedBudget,
-                keywordRelevanceScorer
-              )
+            const {
+              sources,
+              contentMap,
+              updatedBudget: budgetAfterIngest,
+            } = await ingestSources(
+              searchResults,
+              effectiveGoal,
+              execContext.toolRegistry,
+              toolContext,
+              updatedBudget,
+              keywordRelevanceScorer
+            )
             updatedBudget = budgetAfterIngest
 
             // Apply source quality scores
@@ -884,14 +938,16 @@ function createResearchEnrichmentNode(
                   providerFn,
                   updatedBudget,
                   3,
-                  'gpt-4o-mini',
+                  'gpt-4o-mini'
                 )
               updatedBudget = budgetAfterExtraction
 
               // Quality-weight claims by source authority
               newClaims = applyQualityScoresToClaims(claims, sources)
 
-              log.info(`Extracted ${newClaims.length} quality-scored claims from ${sources.length} sources`)
+              log.info(
+                `Extracted ${newClaims.length} quality-scored claims from ${sources.length} sources`
+              )
             }
           }
 
@@ -899,7 +955,7 @@ function createResearchEnrichmentNode(
           if (newClaims.length > 0 || newSources.length > 0) {
             researchEvidence = {
               claims: newClaims.slice(0, 15),
-              sources: newSources.map(s => ({
+              sources: newSources.map((s) => ({
                 sourceId: s.sourceId,
                 title: s.title,
                 url: s.url,
@@ -1041,16 +1097,17 @@ function createThesisGenerationNode(
 
       // Validate research evidence before injection — avoid leaking empty/stale state
       const rawEvidence = state.context.researchEvidence as ResearchEvidence | null | undefined
-      const hasValidEvidence = rawEvidence &&
-        rawEvidence.claims?.length > 0
+      const hasValidEvidence = rawEvidence && rawEvidence.claims?.length > 0
       const evidence = hasValidEvidence ? rawEvidence : null
 
       const thesisPrompt = buildThesisPrompt(
-        state.goal, lens, state.mergedGraph,
+        state.goal,
+        lens,
+        state.mergedGraph,
         evidence,
         state.cycleNumber === 1
           ? (state.context.userContextText as string | null | undefined)
-          : null,
+          : null
       )
 
       try {
@@ -1087,7 +1144,9 @@ function createThesisGenerationNode(
 
         return { step, thesis }
       } catch (error) {
-        throw new Error(`Thesis agent ${agent.name} failed: ${error instanceof Error ? error.message : String(error)}`)
+        throw new Error(
+          `Thesis agent ${agent.name} failed: ${error instanceof Error ? error.message : String(error)}`
+        )
       }
     })
 
@@ -1114,7 +1173,7 @@ function createThesisGenerationNode(
     if (kg) {
       const sessionId = `dialectical:${state.runId}` as DialecticalSessionId
       for (const thesis of newTheses) {
-        const claimNodes = thesis.graph?.nodes.filter(n => n.type === 'claim') ?? []
+        const claimNodes = thesis.graph?.nodes.filter((n) => n.type === 'claim') ?? []
         if (claimNodes.length === 0) continue
         const claimIds: string[] = []
         for (const node of claimNodes) {
@@ -1133,7 +1192,9 @@ function createThesisGenerationNode(
             })
             claimIds.push(kgClaim.claimId)
           } catch (err) {
-            throw new Error(`Failed to add thesis claim to KG for ${node.id}: ${err instanceof Error ? err.message : String(err)}`)
+            throw new Error(
+              `Failed to add thesis claim to KG for ${node.id}: ${err instanceof Error ? err.message : String(err)}`
+            )
           }
         }
         if (claimIds.length > 0) {
@@ -1243,10 +1304,14 @@ function createCrossNegationNode(
 
       // Skip negation if target thesis has no substantive content
       const hasGraph = targetThesis.graph && targetThesis.graph.nodes.length > 0
-      const hasRawText = targetThesis.rawText && targetThesis.rawText.trim().length >= 20
-        && !targetThesis.rawText.startsWith('[PARTIAL RESULT')
+      const hasRawText =
+        targetThesis.rawText &&
+        targetThesis.rawText.trim().length >= 20 &&
+        !targetThesis.rawText.startsWith('[PARTIAL RESULT')
       if (!hasGraph && !hasRawText) {
-        throw new Error(`Target thesis from ${targetThesis.lens} lens has insufficient content for negation`)
+        throw new Error(
+          `Target thesis from ${targetThesis.lens} lens has insufficient content for negation`
+        )
       }
 
       const negationPrompt = buildNegationPrompt(thesis, targetThesis)
@@ -1262,7 +1327,10 @@ function createCrossNegationNode(
                 phase: 'cross_negation',
               },
               execContext,
-              { stepNumber: state.steps.length + pairIdx + 1, maxIterations: budget.perNegationAgent }
+              {
+                stepNumber: state.steps.length + pairIdx + 1,
+                maxIterations: budget.perNegationAgent,
+              }
             )
 
             const negation = parseNegationOutput(step.output, agent.agentId, targetThesis.agentId)
@@ -1276,7 +1344,9 @@ function createCrossNegationNode(
 
             return { step, negation }
           } catch (error) {
-            throw new Error(`Negation by ${agent.name} failed: ${error instanceof Error ? error.message : String(error)}`)
+            throw new Error(
+              `Negation by ${agent.name} failed: ${error instanceof Error ? error.message : String(error)}`
+            )
           }
         })()
       )
@@ -1284,7 +1354,14 @@ function createCrossNegationNode(
 
     const settled = await Promise.allSettled(negationPromises)
     const results = settled
-      .filter((result): result is PromiseFulfilledResult<{ step: AgentExecutionStep; negation: NegationOutput }> => result.status === 'fulfilled')
+      .filter(
+        (
+          result
+        ): result is PromiseFulfilledResult<{
+          step: AgentExecutionStep
+          negation: NegationOutput
+        }> => result.status === 'fulfilled'
+      )
       .map((result) => result.value)
 
     const newSteps = results.map((r) => r.step)
@@ -1428,7 +1505,9 @@ function createContradictionCrystallizationNode(
             .filter((cid) => kg.getNode(cid) !== undefined)
 
           if (claimIds.length === 0) {
-            throw new Error(`Contradiction ${c.id} has no matching KG claims: ${c.participatingClaims.join(', ')}`)
+            throw new Error(
+              `Contradiction ${c.id} has no matching KG claims: ${c.participatingClaims.join(', ')}`
+            )
           }
 
           await kg.addContradiction({
@@ -1446,11 +1525,16 @@ function createContradictionCrystallizationNode(
           })
           persisted++
         } catch (err) {
-          throw new Error(`Failed to persist contradiction ${c.id} to KG: ${err instanceof Error ? err.message : String(err)}`)
+          throw new Error(
+            `Failed to persist contradiction ${c.id} to KG: ${err instanceof Error ? err.message : String(err)}`
+          )
         }
       }
       if (persisted > 0) {
-        log.info('Persisted contradictions to KG', { persisted, total: filteredContradictions.length })
+        log.info('Persisted contradictions to KG', {
+          persisted,
+          total: filteredContradictions.length,
+        })
       }
     }
 
@@ -1548,9 +1632,7 @@ function createSublationNode(
       state.mergedGraph,
       state.cycleNumber,
       state.context.researchEvidence as ResearchEvidence | null | undefined,
-      state.cycleNumber === 1
-        ? (state.context.userContextText as string | null | undefined)
-        : null,
+      state.cycleNumber === 1 ? (state.context.userContextText as string | null | undefined) : null
     )
     log.info('Sublation prompt built', {
       promptLength: sublationPrompt.length,
@@ -1574,7 +1656,10 @@ function createSublationNode(
           { stepNumber: state.steps.length + 1, maxIterations: budget.perSynthesisAgent }
         ),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Sublation agent timed out after 180s')), SUBLATION_TIMEOUT_MS)
+          setTimeout(
+            () => reject(new Error('Sublation agent timed out after 180s')),
+            SUBLATION_TIMEOUT_MS
+          )
         ),
       ])
     } catch (error) {
@@ -1633,7 +1718,9 @@ function createSublationNode(
         const { applied } = await applyKGDiffToGraph(kgDiff, kg, sessionId, execContext.userId)
         log.info('Applied KGDiff to graph (single-agent sublation)', applied)
       } catch (err) {
-        throw new Error(`Failed to apply KGDiff to graph: ${err instanceof Error ? err.message : String(err)}`)
+        throw new Error(
+          `Failed to apply KGDiff to graph: ${err instanceof Error ? err.message : String(err)}`
+        )
       }
     }
 
@@ -1641,9 +1728,7 @@ function createSublationNode(
     const velocity = calculateConceptualVelocity(synthesis, kgDiff, state.theses)
 
     // Build graph history entry if we have a diff
-    const graphHistoryEntry = graphDiff
-      ? [{ cycle: state.cycleNumber, diff: graphDiff }]
-      : []
+    const graphHistoryEntry = graphDiff ? [{ cycle: state.cycleNumber, diff: graphDiff }] : []
 
     return {
       phase: 'meta_reflection',
@@ -1737,7 +1822,9 @@ async function runCompetitiveSublation(
       const { applied } = await applyKGDiffToGraph(kgDiff, kg, sessionId, execContext.userId)
       log.info('Applied KGDiff to graph (competitive sublation)', applied)
     } catch (err) {
-      throw new Error(`Failed to apply KGDiff to graph: ${err instanceof Error ? err.message : String(err)}`)
+      throw new Error(
+        `Failed to apply KGDiff to graph: ${err instanceof Error ? err.message : String(err)}`
+      )
     }
   }
 
@@ -1816,14 +1903,20 @@ function createMetaReflectionNode(
         schemaSteps = [schemaResult.step]
         log.info(`Schema induction found ${communities.length} communities`)
       } catch (error) {
-        throw new Error(`Schema induction failed: ${error instanceof Error ? error.message : String(error)}`)
+        throw new Error(
+          `Schema induction failed: ${error instanceof Error ? error.message : String(error)}`
+        )
       }
     }
 
     // Gather prior meta decisions for context continuity
-    const previousDecisions = (state.context.metaDecisionHistory as Array<{
-      cycle: number; decision: MetaDecision; reasoning: string; focusAreas?: string[]
-    }>) ?? []
+    const previousDecisions =
+      (state.context.metaDecisionHistory as Array<{
+        cycle: number
+        decision: MetaDecision
+        reasoning: string
+        focusAreas?: string[]
+      }>) ?? []
 
     // Run enhanced meta-reflection using state's accumulated metrics history
     const metaResult = await runMetaReflection(
@@ -1838,9 +1931,10 @@ function createMetaReflectionNode(
         communities,
         kgDiff: state.kgDiff ?? null,
         mergedGraph: state.mergedGraph ?? null,
-        latestGraphDiff: state.graphHistory.length > 0
-          ? state.graphHistory[state.graphHistory.length - 1].diff
-          : null,
+        latestGraphDiff:
+          state.graphHistory.length > 0
+            ? state.graphHistory[state.graphHistory.length - 1].diff
+            : null,
         previousMetrics: state.cycleMetricsHistory,
         previousDecisions,
         tokensUsedThisCycle: tokensThisCycle,
@@ -2037,7 +2131,9 @@ function extractClaimsFromTheses(theses: ThesisOutput[]) {
 /**
  * Route based on meta-reflection decision
  */
-function routeMetaDecision(state: DialecticalState): 'goal_framing' | 'research_enrichment' | typeof END {
+function routeMetaDecision(
+  state: DialecticalState
+): 'goal_framing' | 'research_enrichment' | typeof END {
   if (state.status === 'waiting_for_input') {
     return END // Constraint pause — exit graph so executor can handle
   }
@@ -2164,10 +2260,7 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
     createCrossNegationNode(agents, execContext, cfg, iterationBudget)
   )
 
-  graph.addNode(
-    'crystallize',
-    createContradictionCrystallizationNode(execContext, cfg, kg)
-  )
+  graph.addNode('crystallize', createContradictionCrystallizationNode(execContext, cfg, kg))
 
   graph.addNode(
     'sublate',
@@ -2201,7 +2294,10 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
     // --- Reactive research topology (Phase 4) ---
     graph.addNode('decide_research_pre', createDecideResearchNode(execContext, cfg, 'pre_cycle'))
     graph.addNode('execute_research', createExecuteResearchNode(execContext, cfg, kg))
-    graph.addNode('decide_research_post', createDecideResearchNode(execContext, cfg, 'post_synthesis'))
+    graph.addNode(
+      'decide_research_post',
+      createDecideResearchNode(execContext, cfg, 'post_synthesis')
+    )
     graph.addNode('execute_research_post', createExecuteResearchNode(execContext, cfg, kg))
 
     graph.addEdge(START, 'input_normalizer' as typeof START)
@@ -2221,16 +2317,14 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
 
     graph.addEdge('execute_research' as typeof START, 'research_enrichment' as typeof START)
     graph.addEdge('research_enrichment' as typeof START, 'generate_theses' as typeof START)
-    graph.addConditionalEdges(
-      'generate_theses' as typeof START,
-      edgeOrEnd('cross_negation'),
-      { cross_negation: 'cross_negation' as typeof START, [END]: END }
-    )
-    graph.addConditionalEdges(
-      'cross_negation' as typeof START,
-      edgeOrEnd('crystallize'),
-      { crystallize: 'crystallize' as typeof START, [END]: END }
-    )
+    graph.addConditionalEdges('generate_theses' as typeof START, edgeOrEnd('cross_negation'), {
+      cross_negation: 'cross_negation' as typeof START,
+      [END]: END,
+    })
+    graph.addConditionalEdges('cross_negation' as typeof START, edgeOrEnd('crystallize'), {
+      crystallize: 'crystallize' as typeof START,
+      [END]: END,
+    })
     graph.addEdge('crystallize' as typeof START, 'sublate' as typeof START)
     graph.addEdge('sublate' as typeof START, 'decide_research_post' as typeof START)
 
@@ -2265,22 +2359,19 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
     graph.addEdge('goal_framing' as typeof START, 'context_seeding' as typeof START)
     graph.addEdge('context_seeding' as typeof START, 'research_enrichment' as typeof START)
     graph.addEdge('research_enrichment' as typeof START, 'generate_theses' as typeof START)
-    graph.addConditionalEdges(
-      'generate_theses' as typeof START,
-      edgeOrEnd('cross_negation'),
-      { cross_negation: 'cross_negation' as typeof START, [END]: END }
-    )
-    graph.addConditionalEdges(
-      'cross_negation' as typeof START,
-      edgeOrEnd('crystallize'),
-      { crystallize: 'crystallize' as typeof START, [END]: END }
-    )
+    graph.addConditionalEdges('generate_theses' as typeof START, edgeOrEnd('cross_negation'), {
+      cross_negation: 'cross_negation' as typeof START,
+      [END]: END,
+    })
+    graph.addConditionalEdges('cross_negation' as typeof START, edgeOrEnd('crystallize'), {
+      crystallize: 'crystallize' as typeof START,
+      [END]: END,
+    })
     graph.addEdge('crystallize' as typeof START, 'sublate' as typeof START)
-    graph.addConditionalEdges(
-      'sublate' as typeof START,
-      edgeOrEnd('meta_reflect'),
-      { meta_reflect: 'meta_reflect' as typeof START, [END]: END }
-    )
+    graph.addConditionalEdges('sublate' as typeof START, edgeOrEnd('meta_reflect'), {
+      meta_reflect: 'meta_reflect' as typeof START,
+      [END]: END,
+    })
 
     // Add conditional edge for cycle continuation
     graph.addConditionalEdges('meta_reflect' as typeof START, routeMetaDecision, {
@@ -2426,7 +2517,10 @@ export async function executeDialecticalWorkflowLangGraph(
     error: null,
     // Research state
     researchBudget: config.dialecticalConfig.enableExternalResearch
-      ? createRunBudget(config.dialecticalConfig.researchBudgetUsd ?? 1.0, config.dialecticalConfig.researchSearchDepth ?? 'standard')
+      ? createRunBudget(
+          config.dialecticalConfig.researchBudgetUsd ?? 1.0,
+          config.dialecticalConfig.researchSearchDepth ?? 'standard'
+        )
       : null,
     researchSources: [],
     researchClaims: [],
@@ -2436,7 +2530,7 @@ export async function executeDialecticalWorkflowLangGraph(
   // Execute the graph
   let finalState: DialecticalState
   try {
-    finalState = await compiledGraph.invoke(initialState) as DialecticalState
+    finalState = (await compiledGraph.invoke(initialState)) as DialecticalState
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e)
     const errorStack = e instanceof Error ? e.stack : undefined
@@ -2573,34 +2667,7 @@ export async function executeDialecticalWorkflowLangGraph(
  * Handles both pure JSON and JSON embedded in markdown code blocks
  */
 function extractJsonFromOutput(output: string): unknown | null {
-  // Try to extract from markdown code block first
-  const codeBlockMatch = output.match(/```(?:json)?\s*([\s\S]*?)```/)
-  if (codeBlockMatch) {
-    try {
-      return JSON.parse(codeBlockMatch[1].trim())
-    } catch {
-      // Continue to try other patterns
-    }
-  }
-
-  // Try to parse the entire output as JSON
-  try {
-    return JSON.parse(output)
-  } catch {
-    // Continue to try other patterns
-  }
-
-  // Try to find JSON object in the output
-  const jsonMatch = output.match(/\{[\s\S]*\}/)
-  if (jsonMatch) {
-    try {
-      return JSON.parse(jsonMatch[0])
-    } catch {
-      // Fall through to return null
-    }
-  }
-
-  return null
+  return safeParseJson(output)
 }
 
 function parseThesisOutput(
@@ -2654,7 +2721,14 @@ function parseThesisOutput(
 
   if (typeof parsed === 'object' && parsed !== null) {
     const obj = parsed as Record<string, unknown>
-    const candidateKeys = ['structuredThesis', 'thesis', 'graph', 'conceptGraph', 'mergedGraph', 'knowledgeGraph']
+    const candidateKeys = [
+      'structuredThesis',
+      'thesis',
+      'graph',
+      'conceptGraph',
+      'mergedGraph',
+      'knowledgeGraph',
+    ]
     for (const key of candidateKeys) {
       if (obj[key] && typeof obj[key] === 'object') {
         const nested = CompactGraphSchema.safeParse(obj[key])
@@ -2709,17 +2783,23 @@ function parseNegationOutput(
     const rawParsed = parsed as Record<string, unknown>
     let rewriteOperators: NegationOutput['rewriteOperators']
     if (Array.isArray(rawParsed.rewriteOperators)) {
-      rewriteOperators = (rawParsed.rewriteOperators as Array<Record<string, unknown>>).map(op => {
-        const type = String(op.type ?? '').trim().toUpperCase() as NegationOutput['rewriteOperator']
-        if (!validRewriteOperators.has(type)) {
-          throw new Error(`Negation output from ${agentId} contained invalid rewrite operator: ${String(op.type ?? '')}`)
+      rewriteOperators = (rawParsed.rewriteOperators as Array<Record<string, unknown>>).map(
+        (op) => {
+          const type = String(op.type ?? '')
+            .trim()
+            .toUpperCase() as NegationOutput['rewriteOperator']
+          if (!validRewriteOperators.has(type)) {
+            throw new Error(
+              `Negation output from ${agentId} contained invalid rewrite operator: ${String(op.type ?? '')}`
+            )
+          }
+          return {
+            type,
+            target: (op.target as string) ?? '',
+            rationale: (op.rationale as string) ?? '',
+          }
         }
-        return {
-          type,
-          target: (op.target as string) ?? '',
-          rationale: (op.rationale as string) ?? '',
-        }
-      })
+      )
     }
 
     return {
@@ -2736,7 +2816,9 @@ function parseNegationOutput(
     }
   }
 
-  throw new Error(`Negation output from ${agentId} did not match schema: ${validated.error.message}`)
+  throw new Error(
+    `Negation output from ${agentId} did not match schema: ${validated.error.message}`
+  )
 }
 
 interface GraphSublationResult {
@@ -2765,17 +2847,18 @@ function parseSublationOutput(output: string): GraphSublationResult {
         negatedElements: validatedDiff.removedNodes,
         newConceptGraph: {},
         newClaims: validatedGraph.nodes
-          .filter(n => n.type === 'claim')
-          .map(n => ({ id: n.id, text: n.label, confidence: validatedGraph.confidence })),
+          .filter((n) => n.type === 'claim')
+          .map((n) => ({ id: n.id, text: n.label, confidence: validatedGraph.confidence })),
         newPredictions: validatedGraph.nodes
-          .filter(n => n.type === 'prediction')
-          .map(n => ({ id: n.id, text: n.label, threshold: 'TBD' })),
+          .filter((n) => n.type === 'prediction')
+          .map((n) => ({ id: n.id, text: n.label, threshold: 'TBD' })),
         schemaDiff: {
           resolvedContradictions: validatedResolved,
         },
-        incompleteReason: typeof (parsed as Record<string, unknown>).incompleteReason === 'string'
-          ? String((parsed as Record<string, unknown>).incompleteReason)
-          : undefined,
+        incompleteReason:
+          typeof (parsed as Record<string, unknown>).incompleteReason === 'string'
+            ? String((parsed as Record<string, unknown>).incompleteReason)
+            : undefined,
       },
       mergedGraph: validatedGraph,
       graphDiff: validatedDiff,
@@ -2836,7 +2919,7 @@ function extractContradictions(
 function deriveKGDiff(
   synthesis: SublationOutput,
   contradictions: ContradictionOutput[],
-  graphDiff?: GraphDiff | null,
+  graphDiff?: GraphDiff | null
 ): KGDiff {
   // When graph format is used, operators is [] — derive from graphDiff instead
   if (graphDiff && synthesis.operators.length === 0) {
@@ -2850,13 +2933,13 @@ function deriveKGDiff(
     edgeReversals: [],
     regimeScopings: [],
     temporalizations: [],
-    newClaims: synthesis.newClaims.map(c => ({ id: c.id, text: c.text })),
+    newClaims: synthesis.newClaims.map((c) => ({ id: c.id, text: c.text })),
     supersededClaims: synthesis.negatedElements,
     newContradictions: contradictions,
     resolvedContradictions: contradictions
-      .filter(c => synthesis.operators.some(op => op.target === c.id))
-      .map(c => c.id),
-    newPredictions: synthesis.newPredictions.map(p => ({ id: p.id, text: p.text })),
+      .filter((c) => synthesis.operators.some((op) => op.target === c.id))
+      .map((c) => c.id),
+    newPredictions: synthesis.newPredictions.map((p) => ({ id: p.id, text: p.text })),
   }
 
   for (const op of synthesis.operators) {
@@ -2899,24 +2982,24 @@ function deriveKGDiff(
 function deriveKGDiffFromGraphDiff(
   graphDiff: GraphDiff,
   synthesis: SublationOutput,
-  contradictions: ContradictionOutput[],
+  contradictions: ContradictionOutput[]
 ): KGDiff {
   // Modified nodes = concept refinement (structural change for velocity)
-  const conceptSplits = graphDiff.modifiedNodes.map(m => ({
+  const conceptSplits = graphDiff.modifiedNodes.map((m) => ({
     from: m.oldLabel,
     to: [m.newLabel],
   }))
 
   // Edges added with rel='mediates' → new mediators
   const newMediators = graphDiff.addedEdges
-    .filter(e => e.rel === 'mediates')
-    .map(e => ({ edge: `${e.from}->${e.to}`, mediator: e.from }))
+    .filter((e) => e.rel === 'mediates')
+    .map((e) => ({ edge: `${e.from}->${e.to}`, mediator: e.from }))
 
   // Detect edge reversals: removed A→B + added B→A with same rel
   const edgeReversals: Array<{ edge: string }> = []
   for (const removed of graphDiff.removedEdges) {
     const reversed = graphDiff.addedEdges.find(
-      a => a.from === removed.to && a.to === removed.from && a.rel === removed.rel
+      (a) => a.from === removed.to && a.to === removed.from && a.rel === removed.rel
     )
     if (reversed) {
       edgeReversals.push({ edge: `${removed.from}->${removed.to}` })
@@ -2925,19 +3008,20 @@ function deriveKGDiffFromGraphDiff(
 
   // Resolved contradictions: from graphDiff + schemaDiff (Bug 1 fix)
   const resolvedFromDiff = graphDiff.resolvedContradictions ?? []
-  const resolvedFromSchema = (synthesis.schemaDiff?.resolvedContradictions as string[] | undefined) ?? []
+  const resolvedFromSchema =
+    (synthesis.schemaDiff?.resolvedContradictions as string[] | undefined) ?? []
   // Deduplicate: graphDiff has edge IDs, schemaDiff has descriptions — keep both
   const resolvedContradictions = [...new Set([...resolvedFromDiff, ...resolvedFromSchema])]
 
   // New contradictions: match graphDiff IDs against crystallized contradictions
   const newContradictionIds = new Set(graphDiff.newContradictions ?? [])
-  const matchedContradictions = newContradictionIds.size > 0
-    ? contradictions.filter(c => newContradictionIds.has(c.id))
-    : contradictions
+  const matchedContradictions =
+    newContradictionIds.size > 0
+      ? contradictions.filter((c) => newContradictionIds.has(c.id))
+      : contradictions
   // If no ID matches found, use all contradictions (the LLM may use different IDs)
-  const newContradictions = matchedContradictions.length > 0
-    ? matchedContradictions
-    : contradictions
+  const newContradictions =
+    matchedContradictions.length > 0 ? matchedContradictions : contradictions
 
   return {
     conceptSplits,
@@ -2946,11 +3030,11 @@ function deriveKGDiffFromGraphDiff(
     edgeReversals,
     regimeScopings: [],
     temporalizations: [],
-    newClaims: synthesis.newClaims.map(c => ({ id: c.id, text: c.text })),
+    newClaims: synthesis.newClaims.map((c) => ({ id: c.id, text: c.text })),
     supersededClaims: graphDiff.removedNodes,
     newContradictions,
     resolvedContradictions,
-    newPredictions: synthesis.newPredictions.map(p => ({ id: p.id, text: p.text })),
+    newPredictions: synthesis.newPredictions.map((p) => ({ id: p.id, text: p.text })),
   }
 }
 
@@ -2972,7 +3056,7 @@ function formatFinalOutput(state: DialecticalState): string {
   // Knowledge graph summary
   if (state.mergedGraph) {
     const graph = state.mergedGraph
-    const contradictEdges = graph.edges.filter(e => e.rel === 'contradicts')
+    const contradictEdges = graph.edges.filter((e) => e.rel === 'contradicts')
     parts.push(`\n## Knowledge Graph`)
     parts.push(`**${graph.summary}**`)
     parts.push(`\n${graph.reasoning}`)
@@ -2982,8 +3066,13 @@ function formatFinalOutput(state: DialecticalState): string {
     parts.push(`- Regime: ${graph.regime}`)
     if (state.graphHistory.length > 0) {
       const totalAdded = state.graphHistory.reduce((s, h) => s + h.diff.addedNodes.length, 0)
-      const totalResolved = state.graphHistory.reduce((s, h) => s + h.diff.resolvedContradictions.length, 0)
-      parts.push(`- Evolution: +${totalAdded} nodes added, ${totalResolved} contradictions resolved across ${state.graphHistory.length} cycles`)
+      const totalResolved = state.graphHistory.reduce(
+        (s, h) => s + h.diff.resolvedContradictions.length,
+        0
+      )
+      parts.push(
+        `- Evolution: +${totalAdded} nodes added, ${totalResolved} contradictions resolved across ${state.graphHistory.length} cycles`
+      )
     }
   }
 
@@ -3028,12 +3117,14 @@ function formatFinalOutput(state: DialecticalState): string {
     const sorted = [...state.researchSources]
       .sort((a, b) => (b.sourceQualityScore ?? 0) - (a.sourceQualityScore ?? 0))
       .slice(0, 10)
-    sorted.forEach(s => {
+    sorted.forEach((s) => {
       const quality = s.sourceQualityScore ? ` (quality: ${s.sourceQualityScore.toFixed(2)})` : ''
       parts.push(`- [${s.domain}] ${s.title}${quality} — ${s.url}`)
     })
     if (state.researchClaims && state.researchClaims.length > 0) {
-      parts.push(`\n*${state.researchClaims.length} claims extracted from ${state.researchSources.length} sources*`)
+      parts.push(
+        `\n*${state.researchClaims.length} claims extracted from ${state.researchSources.length} sources*`
+      )
     }
   }
 

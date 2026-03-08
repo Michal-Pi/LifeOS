@@ -1204,13 +1204,11 @@ function createOracleGraph(config: OracleGraphConfig) {
     )
 
     // Parse verification results and update claim confidences
-    const parsed = requireParsedJson(
-      safeParseJson<{
-        verifiedClaims: Array<{ claimId: string; adjustedConfidence: number }>
-        axiomGroundingPercent: number
-      }>(step.output),
-      'Verifier'
-    )
+    const VERIFIER_SCHEMA = '{"verifiedClaims":[{"claimId":"CLM-001","adjustedConfidence":0.8}],"axiomGroundingPercent":0.75}'
+    const parsed = await parseJsonWithRetry<{
+      verifiedClaims: Array<{ claimId: string; adjustedConfidence: number }>
+      axiomGroundingPercent: number
+    }>(step.output, 'Verifier', VERIFIER_SCHEMA, '{"verifiedClaims":[],"axiomGroundingPercent":0}', state.goal, config.verifier, execContext, 'verifier', 4, state.runId)
 
     // Update claims with adjusted confidence
     const updatedClaims = state.claims.map((c) => {
@@ -1425,10 +1423,8 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'scanner' }
     )
 
-    const parsed = requireParsedJson(
-      safeParseJson<{ trends: TrendObject[] }>(step.output),
-      'Scanner'
-    )
+    const SCANNER_SCHEMA = '{"trends":[{"id":"T-001","steepCategory":"social|technological|economic|environmental|political|values","statement":"...","impactScore":0.8,"uncertaintyScore":0.5}]}'
+    const parsed = await parseJsonWithRetry<{ trends: TrendObject[] }>(step.output, 'Scanner', SCANNER_SCHEMA, '{"trends":[]}', state.goal, config.scanner, execContext, 'scanner', 5, state.runId)
 
     return {
       currentPhase: 'trend_scanning' as const,
@@ -1468,13 +1464,11 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'impact_assessor' }
     )
 
-    const parsed = requireParsedJson(
-      safeParseJson<{
-        crossImpactMatrix: CrossImpactEntry[]
-        criticalUncertainties: UncertaintyObject[]
-      }>(step.output),
-      'Impact assessor'
-    )
+    const IMPACT_SCHEMA = '{"crossImpactMatrix":[{"trendA":"T-001","trendB":"T-002","interaction":"+|-|neutral","strength":0.8}],"criticalUncertainties":[{"id":"U-001","statement":"...","importance":0.9,"uncertainty":0.7}]}'
+    const parsed = await parseJsonWithRetry<{
+      crossImpactMatrix: CrossImpactEntry[]
+      criticalUncertainties: UncertaintyObject[]
+    }>(step.output, 'Impact assessor', IMPACT_SCHEMA, '{"crossImpactMatrix":[],"criticalUncertainties":[]}', state.goal, config.impactAssessor, execContext, 'impact_assessor', 6, state.runId)
 
     return {
       crossImpactMatrix: parsed.crossImpactMatrix ?? [],
@@ -1518,18 +1512,16 @@ function createOracleGraph(config: OracleGraphConfig) {
     )
 
     // Weak signals become additional trends
-    const parsed = requireParsedJson(
-      safeParseJson<{
-        weakSignals: Array<{
-          id: string
-          statement: string
-          category: string
-          potentialImpact: number
-          confidence: number
-        }>
-      }>(step.output),
-      'Weak signal hunter'
-    )
+    const WEAK_SIGNAL_SCHEMA = '{"weakSignals":[{"id":"WS-001","statement":"...","category":"...","potentialImpact":0.7,"confidence":0.5}]}'
+    const parsed = await parseJsonWithRetry<{
+      weakSignals: Array<{
+        id: string
+        statement: string
+        category: string
+        potentialImpact: number
+        confidence: number
+      }>
+    }>(step.output, 'Weak signal hunter', WEAK_SIGNAL_SCHEMA, '{"weakSignals":[]}', state.goal, config.weakSignalHunter, execContext, 'weak_signal_hunter', 7, state.runId)
 
     // Map weak signal categories to STEEP+V
     const weakSignalTrends: TrendObject[] = (parsed.weakSignals ?? []).map((ws) => ({
@@ -1941,19 +1933,17 @@ function createOracleGraph(config: OracleGraphConfig) {
     )
 
     // Parse the selected skeletons as preliminary scenarios
-    const parsed = requireParsedJson(
-      safeParseJson<{
-        selectedSkeletons: string[]
-        candidateSkeletons: Array<{
-          id: string
-          premise: Record<string, string>
-          consistency: number
-          plausibility: number
-          divergence: number
-        }>
-      }>(step.output),
-      'Equilibrium analyst'
-    )
+    const EQ_SCHEMA = '{"selectedSkeletons":["SK-001"],"candidateSkeletons":[{"id":"SK-001","premise":{},"consistency":0.8,"plausibility":0.7,"divergence":0.6}]}'
+    const parsed = await parseJsonWithRetry<{
+      selectedSkeletons: string[]
+      candidateSkeletons: Array<{
+        id: string
+        premise: Record<string, string>
+        consistency: number
+        plausibility: number
+        divergence: number
+      }>
+    }>(step.output, 'Equilibrium analyst', EQ_SCHEMA, '{"selectedSkeletons":[],"candidateSkeletons":[]}', state.goal, config.equilibriumAnalyst, execContext, 'equilibrium_analyst', 8, state.runId)
 
     const selected = (
       parsed?.candidateSkeletons?.filter((s) => parsed.selectedSkeletons?.includes(s.id)) ?? []
@@ -2025,10 +2015,8 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'scenario_developer' }
     )
 
-    const parsed = requireParsedJson(
-      safeParseJson<{ scenarios: OracleScenario[] }>(step.output),
-      'Scenario developer'
-    )
+    const SCENARIO_SCHEMA = '{"scenarios":[{"id":"SCN-001","name":"...","narrative":"...","premise":{},"reinforcedPrinciples":[],"disruptedPrinciples":[],"feedbackLoops":[],"implications":"...","signposts":[],"tailRisks":[],"assumptionRegister":[]}]}'
+    const parsed = await parseJsonWithRetry<{ scenarios: OracleScenario[] }>(step.output, 'Scenario developer', SCENARIO_SCHEMA, '{"scenarios":[]}', state.goal, config.scenarioDeveloper, execContext, 'scenario_developer', 9, state.runId)
     if (!Array.isArray(parsed.scenarios) || parsed.scenarios.length === 0) {
       throw new Error('Scenario developer did not return any scenarios')
     }
@@ -2084,21 +2072,19 @@ function createOracleGraph(config: OracleGraphConfig) {
     )
 
     // Red team results get attached as tail risks on scenarios
-    const parsed = requireParsedJson(
-      safeParseJson<{
-        assessments: Array<{
-          scenarioId: string
-          failureConditions?: Array<{
-            condition: string
-            probability: number
-            earlyIndicator: string
-          }>
-          tailRisks: string[]
-          overallRobustness: string
+    const RED_TEAM_SCHEMA = '{"assessments":[{"scenarioId":"SCN-001","failureConditions":[{"condition":"...","probability":0.3,"earlyIndicator":"..."}],"tailRisks":["..."],"overallRobustness":"high|medium|low"}]}'
+    const parsed = await parseJsonWithRetry<{
+      assessments: Array<{
+        scenarioId: string
+        failureConditions?: Array<{
+          condition: string
+          probability: number
+          earlyIndicator: string
         }>
-      }>(step.output),
-      'Red team'
-    )
+        tailRisks: string[]
+        overallRobustness: string
+      }>
+    }>(step.output, 'Red team', RED_TEAM_SCHEMA, '{"assessments":[]}', state.goal, config.redTeam, execContext, 'red_team', 10, state.runId)
     if (!Array.isArray(parsed.assessments) || parsed.assessments.length === 0) {
       throw new Error('Red team did not return any scenario assessments')
     }
@@ -2269,13 +2255,11 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'backcasting' }
     )
 
-    const parsed = requireParsedJson(
-      safeParseJson<{
-        backcastTimelines: BackcastTimeline[]
-        strategicMoves: StrategicMove[]
-      }>(step.output),
-      'Backcasting'
-    )
+    const BACKCAST_SCHEMA = '{"backcastTimelines":[{"scenarioId":"SCN-001","milestones":[{"year":2027,"event":"...","probability":0.7}]}],"strategicMoves":[{"id":"SM-001","action":"...","timing":"...","scenarioIds":["SCN-001"]}]}'
+    const parsed = await parseJsonWithRetry<{
+      backcastTimelines: BackcastTimeline[]
+      strategicMoves: StrategicMove[]
+    }>(step.output, 'Backcasting', BACKCAST_SCHEMA, '{"backcastTimelines":[],"strategicMoves":[]}', state.goal, config.scenarioDeveloper, execContext, 'backcasting', 11, state.runId)
     if (!Array.isArray(parsed.backcastTimelines) || !Array.isArray(parsed.strategicMoves)) {
       throw new Error('Backcasting output did not include timelines and strategic moves')
     }
