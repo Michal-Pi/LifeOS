@@ -81,9 +81,7 @@ import {
   buildFallbackSummary,
   parsePhaseSummary,
 } from '../oracle/phaseSummarizer.js'
-import {
-  createExpertCouncilPipeline,
-} from '../expertCouncil.js'
+import { createExpertCouncilPipeline } from '../expertCouncil.js'
 import {
   runTier1Checks,
   buildBatchedTier2Prompt,
@@ -168,7 +166,7 @@ function updateCostTracker(
   tracker: OracleCostTracker,
   costInput: Pick<AgentExecutionStep, 'model' | 'tokensUsed' | 'estimatedCost'>,
   phase: number,
-  component: 'llm' | 'search' | 'council' | 'evaluation',
+  component: 'llm' | 'search' | 'council' | 'evaluation'
 ): OracleCostTracker {
   const cost = Number.isFinite(costInput.estimatedCost) ? costInput.estimatedCost : 0
   const model = costInput.model || 'unknown'
@@ -193,7 +191,7 @@ function simpleHash(input: string): string {
   let hash = 0
   for (let i = 0; i < input.length; i++) {
     const char = input.charCodeAt(i)
-    hash = ((hash << 5) - hash) + char
+    hash = (hash << 5) - hash + char
     hash |= 0
   }
   return hash.toString(36)
@@ -203,7 +201,7 @@ function trackCost(
   state: OracleState,
   costInput: Pick<AgentExecutionStep, 'model' | 'tokensUsed' | 'estimatedCost'>,
   phase: number,
-  component: 'llm' | 'search' | 'council' | 'evaluation',
+  component: 'llm' | 'search' | 'council' | 'evaluation'
 ): { costTracker: OracleCostTracker } {
   return { costTracker: updateCostTracker(state.costTracker, costInput, phase, component) }
 }
@@ -301,39 +299,28 @@ function normalizeWeakSignalCategory(category: string | undefined): TrendObject[
   const value = (category ?? '').toLowerCase().trim()
   if (!value) return 'values'
 
-  if (
-    value.includes('tech') ||
-    value.includes('digital') ||
-    value.includes('ai')
-  ) return 'technological'
-  if (
-    value.includes('econ') ||
-    value.includes('market') ||
-    value.includes('financial')
-  ) return 'economic'
-  if (
-    value.includes('env') ||
-    value.includes('ecolog') ||
-    value.includes('climate')
-  ) return 'environmental'
+  if (value.includes('tech') || value.includes('digital') || value.includes('ai'))
+    return 'technological'
+  if (value.includes('econ') || value.includes('market') || value.includes('financial'))
+    return 'economic'
+  if (value.includes('env') || value.includes('ecolog') || value.includes('climate'))
+    return 'environmental'
   if (
     value.includes('polit') ||
     value.includes('policy') ||
     value.includes('govern') ||
     value.includes('regulator') ||
     value.includes('geo')
-  ) return 'political'
+  )
+    return 'political'
   if (
     value.includes('social') ||
     value.includes('socio') ||
     value.includes('cultur') ||
     value.includes('demograph')
-  ) return 'social'
-  if (
-    value.includes('value') ||
-    value.includes('ethic') ||
-    value.includes('norm')
-  ) return 'values'
+  )
+    return 'social'
+  if (value.includes('value') || value.includes('ethic') || value.includes('norm')) return 'values'
 
   log.debug('Weak signal category unmapped, defaulting to values', { raw: category })
   return 'values'
@@ -366,7 +353,10 @@ function extractTopSearchResult(raw: unknown): {
 
 export async function collectEvidenceFromSearchPlan(
   searchPlan: OracleSearchPlan,
-  config: Pick<OracleGraphConfig, 'toolRegistry' | 'searchToolKeys' | 'userId' | 'workflow' | 'runId'>,
+  config: Pick<
+    OracleGraphConfig,
+    'toolRegistry' | 'searchToolKeys' | 'userId' | 'workflow' | 'runId'
+  >
 ): Promise<{ evidence: OracleEvidence[]; failedQueries: string[] }> {
   const plannedQueries = Object.entries(searchPlan).flatMap(([category, queries]) =>
     queries.map((query) => ({ category: normalizeEvidenceCategory(category), query }))
@@ -381,41 +371,43 @@ export async function collectEvidenceFromSearchPlan(
     throw new Error('Evidence gathering requires serp_search and Serper credentials')
   }
 
-  const settled = await Promise.allSettled(plannedQueries.map(async ({ category, query }, index) => {
-    const timestamp = Date.now()
-    const raw = await searchTool.execute(
-      { query, maxResults: 3, searchType: 'search' },
-      {
-        userId: config.userId,
-        agentId: 'oracle_context_gatherer',
-        workflowId: config.workflow.workflowId,
-        runId: config.runId,
-        provider: 'openai',
-        modelName: 'oracle-evidence-search',
-        iteration: 0,
-        searchToolKeys: config.searchToolKeys,
-        toolRegistry: config.toolRegistry,
-      },
-    )
+  const settled = await Promise.allSettled(
+    plannedQueries.map(async ({ category, query }, index) => {
+      const timestamp = Date.now()
+      const raw = await searchTool.execute(
+        { query, maxResults: 3, searchType: 'search' },
+        {
+          userId: config.userId,
+          agentId: 'oracle_context_gatherer',
+          workflowId: config.workflow.workflowId,
+          runId: config.runId,
+          provider: 'openai',
+          modelName: 'oracle-evidence-search',
+          iteration: 0,
+          searchToolKeys: config.searchToolKeys,
+          toolRegistry: config.toolRegistry,
+        }
+      )
 
-    const top = extractTopSearchResult(raw)
-    if (!top) {
-      throw new Error(`Evidence search for query "${query}" returned no usable results`)
-    }
+      const top = extractTopSearchResult(raw)
+      if (!top) {
+        throw new Error(`Evidence search for query "${query}" returned no usable results`)
+      }
 
-    return {
-      id: buildEvidenceId(index),
-      category,
-      query,
-      source: top.source ?? top.title ?? query,
-      url: top.url ?? '',
-      date: top.date ?? new Date(timestamp).toISOString().slice(0, 10),
-      timestamp,
-      excerpt: top.snippet?.slice(0, 200) ?? '',
-      reliability: 0.7,
-      searchTool: 'serper',
-    } satisfies OracleEvidence
-  }))
+      return {
+        id: buildEvidenceId(index),
+        category,
+        query,
+        source: top.source ?? top.title ?? query,
+        url: top.url ?? '',
+        date: top.date ?? new Date(timestamp).toISOString().slice(0, 10),
+        timestamp,
+        excerpt: top.snippet?.slice(0, 200) ?? '',
+        reliability: 0.7,
+        searchTool: 'serper',
+      } satisfies OracleEvidence
+    })
+  )
 
   const evidence: OracleEvidence[] = []
   const failedQueries: string[] = []
@@ -447,7 +439,7 @@ export async function collectEvidenceFromSearchPlan(
 function maybeGateEscalation(
   gateResult: Pick<OracleGateResult, 'passed' | 'feedback'>,
   currentGateRefinements: number,
-  maxRefinementsPerGate: number,
+  maxRefinementsPerGate: number
 ): Partial<OracleState> {
   if (gateResult.passed || currentGateRefinements < maxRefinementsPerGate) {
     return {}
@@ -465,7 +457,7 @@ function maybeGateEscalation(
 }
 
 function getLowDiversityScenarioPairs(
-  scenarios: OracleState['scenarioPortfolio'],
+  scenarios: OracleState['scenarioPortfolio']
 ): Array<{ scenarioA: string; scenarioB: string; overlap: number }> {
   const warnings: Array<{ scenarioA: string; scenarioB: string; overlap: number }> = []
 
@@ -497,7 +489,7 @@ function getLowDiversityScenarioPairs(
 async function runCouncilAtGate(
   config: OracleGraphConfig,
   gateType: OracleCouncilRecord['gateType'],
-  prompt: string,
+  prompt: string
 ): Promise<{ councilRecord: OracleCouncilRecord; totalCost: number; totalTokens: number } | null> {
   if (!config.councilConfig?.enabled) return null
 
@@ -512,7 +504,7 @@ async function runCouncilAtGate(
     config.runId as RunId,
     prompt,
     config.councilConfig,
-    config.councilConfig.defaultMode ?? 'quick',
+    config.councilConfig.defaultMode ?? 'quick'
   )
 
   const models = turn.stage1.responses
@@ -538,12 +530,14 @@ async function runCouncilAtGate(
   }
 
   const totalTokens =
-    turn.stage1.responses.reduce((sum, r) => sum + (r.tokensUsed ?? 0), 0)
-    + turn.stage2.reviews.reduce((sum, review) => sum + (review.tokensUsed ?? 0), 0)
-    + (turn.stage3.tokensUsed ?? 0)
+    turn.stage1.responses.reduce((sum, r) => sum + (r.tokensUsed ?? 0), 0) +
+    turn.stage2.reviews.reduce((sum, review) => sum + (review.tokensUsed ?? 0), 0) +
+    (turn.stage3.tokensUsed ?? 0)
 
   await emitOracleEvent(config, 'oracle_council_complete', {
-    gateType, convergenceRate, modelsUsed: models.length,
+    gateType,
+    convergenceRate,
+    modelsUsed: models.length,
     hasDissent: persistentDissent.length > 0,
   })
 
@@ -554,15 +548,21 @@ async function runCouncilAtGate(
 
 async function emitOracleEvent(
   config: OracleGraphConfig,
-  type: 'oracle_phase' | 'oracle_gate_result' | 'oracle_council_complete' | 'oracle_human_gate' | 'oracle_consistency_check',
-  details: Record<string, unknown>,
+  type:
+    | 'oracle_phase'
+    | 'oracle_gate_result'
+    | 'oracle_council_complete'
+    | 'oracle_human_gate'
+    | 'oracle_consistency_check',
+  details: Record<string, unknown>
 ): Promise<void> {
   if (!config.eventWriter) return
   try {
     await config.eventWriter.writeEvent({ type, details })
   } catch (err) {
     log.debug('Oracle event emission failed (non-critical)', {
-      type, error: err instanceof Error ? err.message : String(err),
+      type,
+      error: err instanceof Error ? err.message : String(err),
     })
   }
 }
@@ -573,7 +573,7 @@ async function emitOracleEvent(
  */
 function checkBudgetExceeded(
   tracker: OracleCostTracker,
-  maxBudgetUsd: number,
+  maxBudgetUsd: number
 ): ConstraintPauseInfo | null {
   if (tracker.total >= maxBudgetUsd) {
     return {
@@ -590,7 +590,7 @@ function checkBudgetExceeded(
 function getBudgetPauseUpdate(
   state: OracleState,
   nodeId: string,
-  maxBudgetUsd: number,
+  maxBudgetUsd: number
 ): Partial<OracleState> | null {
   const budgetPause = checkBudgetExceeded(state.costTracker, maxBudgetUsd)
   if (!budgetPause) return null
@@ -688,50 +688,59 @@ function buildPersistedOracleWorkflowState(state: OracleState): Record<string, u
 
 function determineOracleStartNode(state: OracleState): string {
   const resumeNodeHint = state.resumeNodeHint
-  if (resumeNodeHint && [
-    'input_normalizer',
-    'context_gathering',
-    'evidence_gathering',
-    'context_seeding',
-    'decomposer',
-    'systems_mapper',
-    'verifier',
-    'gate_a',
-    'council_gate_a',
-    'phase_1_summary',
-    'scanner',
-    'impact_assessor',
-    'weak_signal_hunter',
-    'gate_b',
-    'council_gate_b',
-    'phase_2_summary',
-    'human_gate',
-    'consistency_check',
-    'equilibrium_analyst',
-    'scenario_developer',
-    'red_team',
-    'gate_c',
-    'council_final',
-    'backcasting',
-  ].includes(resumeNodeHint)) {
+  if (
+    resumeNodeHint &&
+    [
+      'input_normalizer',
+      'context_gathering',
+      'evidence_gathering',
+      'context_seeding',
+      'decomposer',
+      'systems_mapper',
+      'verifier',
+      'gate_a',
+      'council_gate_a',
+      'phase_1_summary',
+      'scanner',
+      'impact_assessor',
+      'weak_signal_hunter',
+      'gate_b',
+      'council_gate_b',
+      'phase_2_summary',
+      'human_gate',
+      'consistency_check',
+      'equilibrium_analyst',
+      'scenario_developer',
+      'red_team',
+      'gate_c',
+      'council_final',
+      'backcasting',
+    ].includes(resumeNodeHint)
+  ) {
     return resumeNodeHint
   }
 
   const hasPriorProgress =
-    state.scope !== null
-    || state.claims.length > 0
-    || state.evidence.length > 0
-    || state.phaseSummaries.length > 0
-    || state.trends.length > 0
-    || state.scenarioPortfolio.length > 0
+    state.scope !== null ||
+    state.claims.length > 0 ||
+    state.evidence.length > 0 ||
+    state.phaseSummaries.length > 0 ||
+    state.trends.length > 0 ||
+    state.scenarioPortfolio.length > 0
 
   if (!state.normalizedInput && !hasPriorProgress) return 'input_normalizer'
 
   const hasPhase1Summary = state.phaseSummaries.some((summary) => summary.phase === 'decomposition')
-  const hasPhase2Summary = state.phaseSummaries.some((summary) => summary.phase === 'trend_scanning')
+  const hasPhase2Summary = state.phaseSummaries.some(
+    (summary) => summary.phase === 'trend_scanning'
+  )
 
   if (state.humanGateApproved) return 'human_gate'
-  if (state.currentPhase === 'scenario_simulation' || hasPhase2Summary || state.scenarioPortfolio.length > 0) {
+  if (
+    state.currentPhase === 'scenario_simulation' ||
+    hasPhase2Summary ||
+    state.scenarioPortfolio.length > 0
+  ) {
     return 'equilibrium_analyst'
   }
   if (state.currentPhase === 'trend_scanning' || hasPhase1Summary || state.trends.length > 0) {
@@ -795,9 +804,14 @@ function createOracleGraph(config: OracleGraphConfig) {
     if (budgetPause) return budgetPause
 
     log.info('Phase 0: Context Gathering', { runId: state.runId })
-    await emitOracleEvent(config, 'oracle_phase', { phase: 0, phaseName: 'context_gathering', status: 'started' })
+    await emitOracleEvent(config, 'oracle_phase', {
+      phase: 0,
+      phaseName: 'context_gathering',
+      status: 'started',
+    })
 
-    const normalizedInput = state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
+    const normalizedInput =
+      state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
     const prompt = buildContextGathererPrompt(state.goal, oracleConfig.depthMode)
     const agent = { ...config.contextGatherer, systemPrompt: prompt }
 
@@ -828,7 +842,7 @@ function createOracleGraph(config: OracleGraphConfig) {
     }
     const parsed = parseOracleGoalFrame(
       step.output,
-      createFallbackOracleGoalFrame(state.goal, fallbackScope, fallbackSearchPlan),
+      createFallbackOracleGoalFrame(state.goal, fallbackScope, fallbackSearchPlan)
     )
     if (!parsed.scope) {
       throw new Error('Context gathering output is missing scope')
@@ -837,7 +851,11 @@ function createOracleGraph(config: OracleGraphConfig) {
       throw new Error('Context gathering output is missing a usable searchPlan')
     }
 
-    await emitOracleEvent(config, 'oracle_phase', { phase: 0, phaseName: 'context_gathering', status: 'completed' })
+    await emitOracleEvent(config, 'oracle_phase', {
+      phase: 0,
+      phaseName: 'context_gathering',
+      status: 'completed',
+    })
 
     return {
       currentPhase: 'context_gathering' as const,
@@ -854,7 +872,10 @@ function createOracleGraph(config: OracleGraphConfig) {
   graph.addNode('evidence_gathering', async (state: OracleState) => {
     log.info('Phase 0: Evidence Gathering', { runId: state.runId })
 
-    const { evidence, failedQueries } = await collectEvidenceFromSearchPlan(state.searchPlan, config)
+    const { evidence, failedQueries } = await collectEvidenceFromSearchPlan(
+      state.searchPlan,
+      config
+    )
 
     return {
       currentPhase: 'context_gathering' as const,
@@ -864,7 +885,8 @@ function createOracleGraph(config: OracleGraphConfig) {
   })
 
   graph.addNode('context_seeding', async (state: OracleState) => {
-    const normalizedInput = state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
+    const normalizedInput =
+      state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
     const contextSources = normalizedInput.sources
     const contentMap = normalizedInput.contentMap
 
@@ -889,7 +911,7 @@ function createOracleGraph(config: OracleGraphConfig) {
         },
         userPrompt,
         undefined,
-        config.apiKeys,
+        config.apiKeys
       )
       return result.output ?? ''
     }
@@ -912,7 +934,7 @@ function createOracleGraph(config: OracleGraphConfig) {
           gapIterationsUsed: 0,
         },
         Math.min(contextSources.length, 4),
-        config.decomposer.modelName,
+        config.decomposer.modelName
       )
 
       const topEvidence = state.evidence.slice(0, 10)
@@ -931,7 +953,9 @@ function createOracleGraph(config: OracleGraphConfig) {
       }))
       const starterGraph = buildStarterOracleGraphFromClaims(seededClaims)
       const mergedClaims = dedupeOracleClaims([...state.claims, ...seededClaims])
-      const evidenceLinkedCount = seededClaims.filter((claim) => claim.evidenceIds.length > 0).length
+      const evidenceLinkedCount = seededClaims.filter(
+        (claim) => claim.evidenceIds.length > 0
+      ).length
 
       return {
         claims: mergedClaims,
@@ -941,7 +965,7 @@ function createOracleGraph(config: OracleGraphConfig) {
           seededClaims.length,
           starterGraph.nodes.length,
           starterGraph.edges.length,
-          evidenceLinkedCount,
+          evidenceLinkedCount
         ),
       }
     } catch (error) {
@@ -963,7 +987,11 @@ function createOracleGraph(config: OracleGraphConfig) {
     if (budgetPause) return budgetPause
 
     log.info('Phase 1: Decomposer', { runId: state.runId })
-    await emitOracleEvent(config, 'oracle_phase', { phase: 1, phaseName: 'decomposition', status: 'started' })
+    await emitOracleEvent(config, 'oracle_phase', {
+      phase: 1,
+      phaseName: 'decomposition',
+      status: 'started',
+    })
 
     const scope = state.scope!
     const prompt = buildDecomposerPrompt(
@@ -973,7 +1001,7 @@ function createOracleGraph(config: OracleGraphConfig) {
       oracleConfig.depthMode,
       state.evidence,
       state.goalFrame?.verificationTargets ?? [],
-      claimsSummary(state.claims),
+      claimsSummary(state.claims)
     )
     const agent = { ...config.decomposer, systemPrompt: prompt }
 
@@ -991,10 +1019,66 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'decomposer', stepNumber: 2 }
     )
 
-    const parsed = requireParsedJson(safeParseJson<{
+    let parsed = safeParseJson<{
       claims: OracleClaim[]
       assumptions: OracleAssumption[]
-    }>(step.output), 'Decomposer')
+    }>(step.output)
+
+    // Retry 1: same provider, strict JSON-only re-prompt
+    if (!parsed) {
+      log.warn('Decomposer JSON parse failed, retrying with strict prompt', { runId: state.runId })
+      const retryAgent = {
+        ...config.decomposer,
+        systemPrompt:
+          'You are a JSON formatter. Convert the following analysis into ONLY a valid JSON object. Output nothing else — no markdown, no explanation, no commentary. Just the JSON.\n\nRequired schema:\n{"claims":[{"id":"CLM-001","type":"descriptive|causal|forecast","text":"...","confidence":0.7,"confidenceBasis":"data|model_consensus|expert_judgment|speculative","assumptions":[],"evidenceIds":[],"dependencies":[],"axiomRefs":[],"subQuestionId":"SQ-001"}],"assumptions":[{"id":"ASM-001","type":"economic|technical|behavioral|regulatory|structural","statement":"...","sensitivity":"high|medium|low","observables":["..."],"confidence":0.6}]}',
+      }
+      const retryStep = await executeAgentWithEvents(
+        retryAgent,
+        `Convert this text to JSON:\n\n${step.output.slice(0, 8000)}`,
+        {},
+        execContext,
+        { nodeId: 'decomposer', stepNumber: 2 }
+      )
+      parsed = safeParseJson<{
+        claims: OracleClaim[]
+        assumptions: OracleAssumption[]
+      }>(retryStep.output)
+    }
+
+    // Retry 2: cheap model (Haiku) with relevance check + JSON extraction
+    if (!parsed) {
+      log.warn('Decomposer retry 1 failed, falling back to Haiku with relevance gate', {
+        runId: state.runId,
+      })
+      const haikuAgent: AgentConfig = {
+        ...config.decomposer,
+        name: 'decomposer-json-fixer',
+        modelProvider: 'anthropic',
+        modelName: 'claude-haiku',
+        systemPrompt: `You are a strict JSON extraction assistant. You will receive text that was supposed to be a JSON analysis of a strategic question, but may instead be an error message, refusal, or irrelevant text.
+
+Step 1: Determine if the text contains substantive analysis relevant to the goal: "${state.goal}"
+- If the text is an error message, API failure, refusal, or completely unrelated to the goal, respond with EXACTLY: {"claims":[],"assumptions":[]}
+- If the text contains relevant analysis (even partial), proceed to step 2.
+
+Step 2: Extract the analysis into this exact JSON schema. Output ONLY valid JSON, nothing else.
+{"claims":[{"id":"CLM-001","type":"descriptive|causal|forecast","text":"<claim>","confidence":0.7,"confidenceBasis":"data|model_consensus|expert_judgment|speculative","assumptions":[],"evidenceIds":[],"dependencies":[],"axiomRefs":[],"subQuestionId":"SQ-001"}],"assumptions":[{"id":"ASM-001","type":"economic|technical|behavioral|regulatory|structural","statement":"<statement>","sensitivity":"high|medium|low","observables":["<observable>"],"confidence":0.6}]}`,
+        temperature: 0,
+      }
+      const haikuStep = await executeAgentWithEvents(
+        haikuAgent,
+        step.output.slice(0, 8000),
+        {},
+        execContext,
+        { nodeId: 'decomposer', stepNumber: 2 }
+      )
+      parsed = safeParseJson<{
+        claims: OracleClaim[]
+        assumptions: OracleAssumption[]
+      }>(haikuStep.output)
+    }
+
+    parsed = requireParsedJson(parsed, 'Decomposer')
 
     // Enrich claims with metadata the LLM may not have provided
     const enrichedClaims = (parsed.claims ?? []).map((c) => ({
@@ -1040,7 +1124,7 @@ function createOracleGraph(config: OracleGraphConfig) {
       state.phaseSummaries,
       oracleConfig.depthMode,
       state.evidence,
-      knowledgeGraphSummary(state.knowledgeGraph),
+      knowledgeGraphSummary(state.knowledgeGraph)
     )
     const agent = { ...config.systemsMapper, systemPrompt: prompt }
 
@@ -1057,11 +1141,14 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'systems_mapper', stepNumber: 3 }
     )
 
-    const parsed = requireParsedJson(safeParseJson<{
-      nodes: OracleKnowledgeGraph['nodes']
-      edges: OracleKnowledgeGraph['edges']
-      loops: OracleKnowledgeGraph['loops']
-    }>(step.output), 'Systems mapper')
+    const parsed = requireParsedJson(
+      safeParseJson<{
+        nodes: OracleKnowledgeGraph['nodes']
+        edges: OracleKnowledgeGraph['edges']
+        loops: OracleKnowledgeGraph['loops']
+      }>(step.output),
+      'Systems mapper'
+    )
 
     const kg: OracleKnowledgeGraph = {
       nodes: parsed.nodes ?? [],
@@ -1089,7 +1176,7 @@ function createOracleGraph(config: OracleGraphConfig) {
       state.phaseSummaries,
       oracleConfig.depthMode,
       state.evidence,
-      state.goalFrame?.verificationTargets ?? [],
+      state.goalFrame?.verificationTargets ?? []
     )
     const agent = { ...config.verifier, systemPrompt: prompt }
 
@@ -1107,17 +1194,18 @@ function createOracleGraph(config: OracleGraphConfig) {
     )
 
     // Parse verification results and update claim confidences
-    const parsed = requireParsedJson(safeParseJson<{
-      verifiedClaims: Array<{ claimId: string; adjustedConfidence: number }>
-      axiomGroundingPercent: number
-    }>(step.output), 'Verifier')
+    const parsed = requireParsedJson(
+      safeParseJson<{
+        verifiedClaims: Array<{ claimId: string; adjustedConfidence: number }>
+        axiomGroundingPercent: number
+      }>(step.output),
+      'Verifier'
+    )
 
     // Update claims with adjusted confidence
     const updatedClaims = state.claims.map((c) => {
       const verification = parsed.verifiedClaims?.find((v) => v.claimId === c.id)
-      return verification
-        ? { ...c, confidence: verification.adjustedConfidence }
-        : c
+      return verification ? { ...c, confidence: verification.adjustedConfidence } : c
     })
 
     return {
@@ -1160,9 +1248,8 @@ function createOracleGraph(config: OracleGraphConfig) {
 
     // Compute axiom grounding from claims
     const claimsWithAxioms = state.claims.filter((c) => c.axiomRefs && c.axiomRefs.length > 0)
-    const axiomGroundingPercent = state.claims.length > 0
-      ? claimsWithAxioms.length / state.claims.length
-      : 0
+    const axiomGroundingPercent =
+      state.claims.length > 0 ? claimsWithAxioms.length / state.claims.length : 0
 
     const { gateResult } = evaluateGate(
       {
@@ -1173,18 +1260,24 @@ function createOracleGraph(config: OracleGraphConfig) {
         maxRefinements: oracleConfig.maxRefinementsPerGate,
       },
       rubricResult.scores,
-      rubricResult.llmFeedback,
+      rubricResult.llmFeedback
     )
 
     await emitOracleEvent(config, 'oracle_gate_result', {
-      gate: 'gate_a', passed: gateResult.passed, averageScore: gateResult.averageScore,
+      gate: 'gate_a',
+      passed: gateResult.passed,
+      averageScore: gateResult.averageScore,
       refinement: state.currentGateRefinements,
     })
 
     return {
       gateResults: [gateResult],
       currentGateRefinements: gateResult.passed ? 0 : state.currentGateRefinements + 1,
-      ...maybeGateEscalation(gateResult, state.currentGateRefinements + 1, oracleConfig.maxRefinementsPerGate),
+      ...maybeGateEscalation(
+        gateResult,
+        state.currentGateRefinements + 1,
+        oracleConfig.maxRefinementsPerGate
+      ),
       steps: [step],
       totalTokensUsed: step.tokensUsed,
       totalEstimatedCost: step.estimatedCost,
@@ -1207,20 +1300,20 @@ function createOracleGraph(config: OracleGraphConfig) {
     let step: AgentExecutionStep | null = null
 
     try {
-      step = await executeAgentWithEvents(
-        agent,
-        phaseContent,
-        {},
-        execContext,
-        { nodeId: 'phase_1_summary' }
-      )
+      step = await executeAgentWithEvents(agent, phaseContent, {}, execContext, {
+        nodeId: 'phase_1_summary',
+      })
 
       const summary = parsePhaseSummary('decomposition', step.output)
       if (!summary) {
         throw new Error('Phase 1 summary output could not be parsed')
       }
 
-      await emitOracleEvent(config, 'oracle_phase', { phase: 1, phaseName: 'decomposition', status: 'completed' })
+      await emitOracleEvent(config, 'oracle_phase', {
+        phase: 1,
+        phaseName: 'decomposition',
+        status: 'completed',
+      })
 
       return {
         phaseSummaries: [summary],
@@ -1235,11 +1328,7 @@ function createOracleGraph(config: OracleGraphConfig) {
         error: err instanceof Error ? err.message : String(err),
       })
 
-      const fallbackSummary = buildFallbackSummary(
-        'decomposition',
-        state.claims,
-        state.assumptions,
-      )
+      const fallbackSummary = buildFallbackSummary('decomposition', state.claims, state.assumptions)
 
       await emitOracleEvent(config, 'oracle_phase', {
         phase: 1,
@@ -1288,7 +1377,16 @@ function createOracleGraph(config: OracleGraphConfig) {
       councilRecords: [result.councilRecord],
       totalTokensUsed: result.totalTokens,
       totalEstimatedCost: result.totalCost,
-      ...trackCost(state, { model: 'expert_council', tokensUsed: result.totalTokens, estimatedCost: result.totalCost }, 1, 'council'),
+      ...trackCost(
+        state,
+        {
+          model: 'expert_council',
+          tokensUsed: result.totalTokens,
+          estimatedCost: result.totalCost,
+        },
+        1,
+        'council'
+      ),
     }
   })
 
@@ -1299,7 +1397,11 @@ function createOracleGraph(config: OracleGraphConfig) {
     if (budgetPause) return budgetPause
 
     log.info('Phase 2: Scanner', { runId: state.runId })
-    await emitOracleEvent(config, 'oracle_phase', { phase: 2, phaseName: 'trend_scanning', status: 'started' })
+    await emitOracleEvent(config, 'oracle_phase', {
+      phase: 2,
+      phaseName: 'trend_scanning',
+      status: 'started',
+    })
 
     const scope = state.scope!
     const prompt = buildScannerPrompt(scope, state.phaseSummaries, oracleConfig.depthMode)
@@ -1313,7 +1415,10 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'scanner' }
     )
 
-    const parsed = requireParsedJson(safeParseJson<{ trends: TrendObject[] }>(step.output), 'Scanner')
+    const parsed = requireParsedJson(
+      safeParseJson<{ trends: TrendObject[] }>(step.output),
+      'Scanner'
+    )
 
     return {
       currentPhase: 'trend_scanning' as const,
@@ -1332,10 +1437,17 @@ function createOracleGraph(config: OracleGraphConfig) {
     log.info('Phase 2: Impact Assessor', { runId: state.runId })
 
     const trendsSummary = state.trends
-      .map((t) => `${t.id} [${t.steepCategory}] ${t.statement} (impact: ${t.impactScore}, uncertainty: ${t.uncertaintyScore})`)
+      .map(
+        (t) =>
+          `${t.id} [${t.steepCategory}] ${t.statement} (impact: ${t.impactScore}, uncertainty: ${t.uncertaintyScore})`
+      )
       .join('\n')
 
-    const prompt = buildImpactAssessorPrompt(trendsSummary, state.phaseSummaries, oracleConfig.depthMode)
+    const prompt = buildImpactAssessorPrompt(
+      trendsSummary,
+      state.phaseSummaries,
+      oracleConfig.depthMode
+    )
     const agent = { ...config.impactAssessor, systemPrompt: prompt }
 
     const step = await executeAgentWithEvents(
@@ -1346,10 +1458,13 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'impact_assessor' }
     )
 
-    const parsed = requireParsedJson(safeParseJson<{
-      crossImpactMatrix: CrossImpactEntry[]
-      criticalUncertainties: UncertaintyObject[]
-    }>(step.output), 'Impact assessor')
+    const parsed = requireParsedJson(
+      safeParseJson<{
+        crossImpactMatrix: CrossImpactEntry[]
+        criticalUncertainties: UncertaintyObject[]
+      }>(step.output),
+      'Impact assessor'
+    )
 
     return {
       crossImpactMatrix: parsed.crossImpactMatrix ?? [],
@@ -1374,11 +1489,14 @@ function createOracleGraph(config: OracleGraphConfig) {
     log.info('Phase 2: Weak Signal Hunter', { runId: state.runId })
 
     const scope = state.scope!
-    const trendsSummary = state.trends
-      .map((t) => `${t.id}: ${t.statement}`)
-      .join('\n')
+    const trendsSummary = state.trends.map((t) => `${t.id}: ${t.statement}`).join('\n')
 
-    const prompt = buildWeakSignalHunterPrompt(scope, trendsSummary, state.phaseSummaries, oracleConfig.depthMode)
+    const prompt = buildWeakSignalHunterPrompt(
+      scope,
+      trendsSummary,
+      state.phaseSummaries,
+      oracleConfig.depthMode
+    )
     const agent = { ...config.weakSignalHunter, systemPrompt: prompt }
 
     const step = await executeAgentWithEvents(
@@ -1390,15 +1508,18 @@ function createOracleGraph(config: OracleGraphConfig) {
     )
 
     // Weak signals become additional trends
-    const parsed = requireParsedJson(safeParseJson<{
-      weakSignals: Array<{
-        id: string
-        statement: string
-        category: string
-        potentialImpact: number
-        confidence: number
-      }>
-    }>(step.output), 'Weak signal hunter')
+    const parsed = requireParsedJson(
+      safeParseJson<{
+        weakSignals: Array<{
+          id: string
+          statement: string
+          category: string
+          potentialImpact: number
+          confidence: number
+        }>
+      }>(step.output),
+      'Weak signal hunter'
+    )
 
     // Map weak signal categories to STEEP+V
     const weakSignalTrends: TrendObject[] = (parsed.weakSignals ?? []).map((ws) => ({
@@ -1458,18 +1579,24 @@ function createOracleGraph(config: OracleGraphConfig) {
         maxRefinements: oracleConfig.maxRefinementsPerGate,
       },
       rubricResult.scores,
-      rubricResult.llmFeedback,
+      rubricResult.llmFeedback
     )
 
     await emitOracleEvent(config, 'oracle_gate_result', {
-      gate: 'gate_b', passed: gateResult.passed, averageScore: gateResult.averageScore,
+      gate: 'gate_b',
+      passed: gateResult.passed,
+      averageScore: gateResult.averageScore,
       refinement: state.currentGateRefinements,
     })
 
     return {
       gateResults: [gateResult],
       currentGateRefinements: gateResult.passed ? 0 : state.currentGateRefinements + 1,
-      ...maybeGateEscalation(gateResult, state.currentGateRefinements + 1, oracleConfig.maxRefinementsPerGate),
+      ...maybeGateEscalation(
+        gateResult,
+        state.currentGateRefinements + 1,
+        oracleConfig.maxRefinementsPerGate
+      ),
       steps: [step],
       totalTokensUsed: step.tokensUsed,
       totalEstimatedCost: step.estimatedCost,
@@ -1492,20 +1619,20 @@ function createOracleGraph(config: OracleGraphConfig) {
     let step: AgentExecutionStep | null = null
 
     try {
-      step = await executeAgentWithEvents(
-        agent,
-        phaseContent,
-        {},
-        execContext,
-        { nodeId: 'phase_2_summary' }
-      )
+      step = await executeAgentWithEvents(agent, phaseContent, {}, execContext, {
+        nodeId: 'phase_2_summary',
+      })
 
       const summary = parsePhaseSummary('trend_scanning', step.output)
       if (!summary) {
         throw new Error('Phase 2 summary output could not be parsed')
       }
 
-      await emitOracleEvent(config, 'oracle_phase', { phase: 2, phaseName: 'trend_scanning', status: 'completed' })
+      await emitOracleEvent(config, 'oracle_phase', {
+        phase: 2,
+        phaseName: 'trend_scanning',
+        status: 'completed',
+      })
 
       return {
         phaseSummaries: [summary],
@@ -1525,7 +1652,7 @@ function createOracleGraph(config: OracleGraphConfig) {
         state.claims,
         state.assumptions,
         state.trends,
-        state.uncertainties,
+        state.uncertainties
       )
 
       await emitOracleEvent(config, 'oracle_phase', {
@@ -1565,7 +1692,9 @@ function createOracleGraph(config: OracleGraphConfig) {
 
     log.info('Council Gate B: Expert Council review', { runId: state.runId })
 
-    const trendsSummary = state.trends.map((t) => `${t.id} [${t.steepCategory}]: ${t.statement}`).join('\n')
+    const trendsSummary = state.trends
+      .map((t) => `${t.id} [${t.steepCategory}]: ${t.statement}`)
+      .join('\n')
     const prompt = `Evaluate the trend scanning phase for: "${state.goal}"\n\nTrends: ${state.trends.length}, Uncertainties: ${state.uncertainties.length}, Cross-impact entries: ${state.crossImpactMatrix.length}\n\nTrends:\n${trendsSummary}\n\nAssess: Is STEEP+V coverage balanced? Are trend interactions properly captured? Are weak signals adequately identified?`
 
     const result = await runCouncilAtGate(config, 'gate_b', prompt)
@@ -1576,7 +1705,16 @@ function createOracleGraph(config: OracleGraphConfig) {
       councilRecords: [result.councilRecord],
       totalTokensUsed: result.totalTokens,
       totalEstimatedCost: result.totalCost,
-      ...trackCost(state, { model: 'expert_council', tokensUsed: result.totalTokens, estimatedCost: result.totalCost }, 2, 'council'),
+      ...trackCost(
+        state,
+        {
+          model: 'expert_council',
+          tokensUsed: result.totalTokens,
+          estimatedCost: result.totalCost,
+        },
+        2,
+        'council'
+      ),
     }
   })
 
@@ -1599,7 +1737,8 @@ function createOracleGraph(config: OracleGraphConfig) {
 
     log.info('Human gate: pausing for user approval', { runId: state.runId })
     await emitOracleEvent(config, 'oracle_human_gate', {
-      status: 'paused', uncertaintyCount: state.uncertainties.length,
+      status: 'paused',
+      uncertaintyCount: state.uncertainties.length,
     })
 
     const uncertaintiesSummary = state.uncertainties
@@ -1633,7 +1772,7 @@ function createOracleGraph(config: OracleGraphConfig) {
       state.claims,
       state.assumptions,
       state.knowledgeGraph,
-      state.evidence,
+      state.evidence
     )
 
     log.info('Tier 1 consistency check complete', {
@@ -1656,16 +1795,16 @@ function createOracleGraph(config: OracleGraphConfig) {
       for (let batchStart = 0; batchStart < flagsToConfirm.length; batchStart += BATCH_SIZE) {
         const batch = flagsToConfirm.slice(batchStart, batchStart + BATCH_SIZE)
         const batchPrompt = buildBatchedTier2Prompt(batch, state.claims)
-        const agent = { ...config.verifier, systemPrompt: 'You are a consistency checker for a scenario planning system. Respond with a JSON array only.' }
+        const agent = {
+          ...config.verifier,
+          systemPrompt:
+            'You are a consistency checker for a scenario planning system. Respond with a JSON array only.',
+        }
 
         try {
-          const step = await executeAgentWithEvents(
-            agent,
-            batchPrompt,
-            {},
-            execContext,
-            { nodeId: 'consistency_check' }
-          )
+          const step = await executeAgentWithEvents(agent, batchPrompt, {}, execContext, {
+            nodeId: 'consistency_check',
+          })
 
           tier2TokensUsed += step.tokensUsed
           tier2Cost += step.estimatedCost
@@ -1692,7 +1831,8 @@ function createOracleGraph(config: OracleGraphConfig) {
       }
     }
 
-    const totalItems = state.claims.length + state.assumptions.length + state.knowledgeGraph.edges.length
+    const totalItems =
+      state.claims.length + state.assumptions.length + state.knowledgeGraph.edges.length
     const report = buildConsistencyReport(confirmedFlags, totalItems)
 
     log.info('Consistency check complete', {
@@ -1731,16 +1871,24 @@ function createOracleGraph(config: OracleGraphConfig) {
   // ===== PHASE 3: Scenario Simulation =====
 
   graph.addNode('equilibrium_analyst', async (state: OracleState) => {
-    const budgetPause = getBudgetPauseUpdate(state, 'equilibrium_analyst', oracleConfig.maxBudgetUsd)
+    const budgetPause = getBudgetPauseUpdate(
+      state,
+      'equilibrium_analyst',
+      oracleConfig.maxBudgetUsd
+    )
     if (budgetPause) return budgetPause
 
     log.info('Phase 3: Equilibrium Analyst', { runId: state.runId })
-    await emitOracleEvent(config, 'oracle_phase', { phase: 3, phaseName: 'scenario_simulation', status: 'started' })
+    await emitOracleEvent(config, 'oracle_phase', {
+      phase: 3,
+      phaseName: 'scenario_simulation',
+      status: 'started',
+    })
 
     // Cache check: skip LLM call if inputs haven't changed since last run
     const cacheInput = JSON.stringify({
-      u: state.uncertainties.map(u => u.id + u.variable),
-      c: state.crossImpactMatrix.map(e => e.sourceId + e.targetId + e.strength),
+      u: state.uncertainties.map((u) => u.id + u.variable),
+      c: state.crossImpactMatrix.map((e) => e.sourceId + e.targetId + e.strength),
     })
     const cacheHash = simpleHash(cacheInput)
 
@@ -1761,14 +1909,16 @@ function createOracleGraph(config: OracleGraphConfig) {
       .map((e) => `${e.sourceId} → ${e.targetId}: ${e.effect} (${e.strength})`)
       .join('\n')
 
-    const targetScenarioCount = oracleConfig.scenarioCount ?? (oracleConfig.depthMode === 'quick' ? 3 : oracleConfig.depthMode === 'deep' ? 6 : 4)
+    const targetScenarioCount =
+      oracleConfig.scenarioCount ??
+      (oracleConfig.depthMode === 'quick' ? 3 : oracleConfig.depthMode === 'deep' ? 6 : 4)
     const prompt = buildEquilibriumAnalystPrompt(
       uncertaintiesSummary,
       crossImpactSummary,
       state.phaseSummaries,
       targetScenarioCount,
       state.humanGateFeedback,
-      oracleConfig.depthMode,
+      oracleConfig.depthMode
     )
     const agent = { ...config.equilibriumAnalyst, systemPrompt: prompt }
 
@@ -1781,20 +1931,23 @@ function createOracleGraph(config: OracleGraphConfig) {
     )
 
     // Parse the selected skeletons as preliminary scenarios
-    const parsed = requireParsedJson(safeParseJson<{
-      selectedSkeletons: string[]
-      candidateSkeletons: Array<{
-        id: string
-        premise: Record<string, string>
-        consistency: number
-        plausibility: number
-        divergence: number
-      }>
-    }>(step.output), 'Equilibrium analyst')
+    const parsed = requireParsedJson(
+      safeParseJson<{
+        selectedSkeletons: string[]
+        candidateSkeletons: Array<{
+          id: string
+          premise: Record<string, string>
+          consistency: number
+          plausibility: number
+          divergence: number
+        }>
+      }>(step.output),
+      'Equilibrium analyst'
+    )
 
-    const selected = (parsed?.candidateSkeletons
-      ?.filter((s) => parsed.selectedSkeletons?.includes(s.id))
-      ?? []).slice(0, targetScenarioCount)
+    const selected = (
+      parsed?.candidateSkeletons?.filter((s) => parsed.selectedSkeletons?.includes(s.id)) ?? []
+    ).slice(0, targetScenarioCount)
 
     if (parsed.candidateSkeletons.length === 0) {
       throw new Error('Equilibrium analyst did not return any candidate skeletons')
@@ -1850,7 +2003,7 @@ function createOracleGraph(config: OracleGraphConfig) {
       skeletonsSummary,
       state.phaseSummaries,
       state.humanGateFeedback,
-      oracleConfig.depthMode,
+      oracleConfig.depthMode
     )
     const agent = { ...config.scenarioDeveloper, systemPrompt: prompt }
 
@@ -1904,7 +2057,12 @@ function createOracleGraph(config: OracleGraphConfig) {
       .map((s) => `${s.id} "${s.name}": ${s.narrative.slice(0, 300)}`)
       .join('\n\n')
 
-    const prompt = buildRedTeamPrompt(scenariosSummary, state.phaseSummaries, state.humanGateFeedback, oracleConfig.depthMode)
+    const prompt = buildRedTeamPrompt(
+      scenariosSummary,
+      state.phaseSummaries,
+      state.humanGateFeedback,
+      oracleConfig.depthMode
+    )
     const agent = { ...config.redTeam, systemPrompt: prompt }
 
     const step = await executeAgentWithEvents(
@@ -1916,14 +2074,21 @@ function createOracleGraph(config: OracleGraphConfig) {
     )
 
     // Red team results get attached as tail risks on scenarios
-    const parsed = requireParsedJson(safeParseJson<{
-      assessments: Array<{
-        scenarioId: string
-        failureConditions?: Array<{ condition: string; probability: number; earlyIndicator: string }>
-        tailRisks: string[]
-        overallRobustness: string
-      }>
-    }>(step.output), 'Red team')
+    const parsed = requireParsedJson(
+      safeParseJson<{
+        assessments: Array<{
+          scenarioId: string
+          failureConditions?: Array<{
+            condition: string
+            probability: number
+            earlyIndicator: string
+          }>
+          tailRisks: string[]
+          overallRobustness: string
+        }>
+      }>(step.output),
+      'Red team'
+    )
     if (!Array.isArray(parsed.assessments) || parsed.assessments.length === 0) {
       throw new Error('Red team did not return any scenario assessments')
     }
@@ -1935,8 +2100,9 @@ function createOracleGraph(config: OracleGraphConfig) {
         throw new Error(`Red team assessment missing for scenario ${s.id}`)
       }
       // Merge failure conditions as tail risks for richer output
-      const failureRisks = (assessment.failureConditions ?? [])
-        .map((fc) => `${fc.condition} (P=${fc.probability}, indicator: ${fc.earlyIndicator})`)
+      const failureRisks = (assessment.failureConditions ?? []).map(
+        (fc) => `${fc.condition} (P=${fc.probability}, indicator: ${fc.earlyIndicator})`
+      )
       return {
         ...s,
         tailRisks: [...s.tailRisks, ...(assessment.tailRisks ?? []), ...failureRisks],
@@ -1986,18 +2152,24 @@ function createOracleGraph(config: OracleGraphConfig) {
         maxRefinements: oracleConfig.maxRefinementsPerGate,
       },
       rubricResult.scores,
-      rubricResult.llmFeedback,
+      rubricResult.llmFeedback
     )
 
     await emitOracleEvent(config, 'oracle_gate_result', {
-      gate: 'gate_c', passed: gateResult.passed, averageScore: gateResult.averageScore,
+      gate: 'gate_c',
+      passed: gateResult.passed,
+      averageScore: gateResult.averageScore,
       refinement: state.currentGateRefinements,
     })
 
     return {
       gateResults: [gateResult],
       currentGateRefinements: gateResult.passed ? 0 : state.currentGateRefinements + 1,
-      ...maybeGateEscalation(gateResult, state.currentGateRefinements + 1, oracleConfig.maxRefinementsPerGate),
+      ...maybeGateEscalation(
+        gateResult,
+        state.currentGateRefinements + 1,
+        oracleConfig.maxRefinementsPerGate
+      ),
       steps: [step],
       totalTokensUsed: step.tokensUsed,
       totalEstimatedCost: step.estimatedCost,
@@ -2018,7 +2190,10 @@ function createOracleGraph(config: OracleGraphConfig) {
     log.info('Council Final: Expert Council review', { runId: state.runId })
 
     const scenariosSummary = state.scenarioPortfolio
-      .map((s) => `${s.id} "${s.name}": ${s.narrative.slice(0, 400)}\nSignposts: ${s.signposts.join(', ')}\nTail risks: ${s.tailRisks.join(', ')}`)
+      .map(
+        (s) =>
+          `${s.id} "${s.name}": ${s.narrative.slice(0, 400)}\nSignposts: ${s.signposts.join(', ')}\nTail risks: ${s.tailRisks.join(', ')}`
+      )
       .join('\n\n')
 
     const humanFeedback = state.humanGateFeedback
@@ -2043,7 +2218,16 @@ function createOracleGraph(config: OracleGraphConfig) {
       councilRecords: [result.councilRecord],
       totalTokensUsed: result.totalTokens,
       totalEstimatedCost: result.totalCost,
-      ...trackCost(state, { model: 'expert_council', tokensUsed: result.totalTokens, estimatedCost: result.totalCost }, 3, 'council'),
+      ...trackCost(
+        state,
+        {
+          model: 'expert_council',
+          tokensUsed: result.totalTokens,
+          estimatedCost: result.totalCost,
+        },
+        3,
+        'council'
+      ),
     }
   })
 
@@ -2059,7 +2243,12 @@ function createOracleGraph(config: OracleGraphConfig) {
       .map((s) => `${s.id} "${s.name}": ${s.narrative.slice(0, 300)}`)
       .join('\n\n')
 
-    const prompt = buildBackcastingPrompt(scenariosSummary, state.phaseSummaries, state.humanGateFeedback, oracleConfig.depthMode)
+    const prompt = buildBackcastingPrompt(
+      scenariosSummary,
+      state.phaseSummaries,
+      state.humanGateFeedback,
+      oracleConfig.depthMode
+    )
     const agent = { ...config.scenarioDeveloper, systemPrompt: prompt }
 
     const step = await executeAgentWithEvents(
@@ -2070,10 +2259,13 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'backcasting' }
     )
 
-    const parsed = requireParsedJson(safeParseJson<{
-      backcastTimelines: BackcastTimeline[]
-      strategicMoves: StrategicMove[]
-    }>(step.output), 'Backcasting')
+    const parsed = requireParsedJson(
+      safeParseJson<{
+        backcastTimelines: BackcastTimeline[]
+        strategicMoves: StrategicMove[]
+      }>(step.output),
+      'Backcasting'
+    )
     if (!Array.isArray(parsed.backcastTimelines) || !Array.isArray(parsed.strategicMoves)) {
       throw new Error('Backcasting output did not include timelines and strategic moves')
     }
@@ -2103,7 +2295,10 @@ function createOracleGraph(config: OracleGraphConfig) {
     }
 
     const scenarios = state.scenarioPortfolio
-      .map((s) => `## ${s.name}\n${s.narrative}\n\n**Signposts:** ${s.signposts.join(', ')}\n**Tail risks:** ${s.tailRisks.join(', ')}`)
+      .map(
+        (s) =>
+          `## ${s.name}\n${s.narrative}\n\n**Signposts:** ${s.signposts.join(', ')}\n**Tail risks:** ${s.tailRisks.join(', ')}`
+      )
       .join('\n\n---\n\n')
 
     const moves = state.strategicMoves
@@ -2126,9 +2321,10 @@ function createOracleGraph(config: OracleGraphConfig) {
       warnings.push(`Human gate feedback applied: ${state.humanGateFeedback}`)
     }
 
-    const warningsSection = warnings.length > 0
-      ? `\n## Warnings\n${warnings.map((warning) => `- ${warning}`).join('\n')}\n`
-      : ''
+    const warningsSection =
+      warnings.length > 0
+        ? `\n## Warnings\n${warnings.map((warning) => `- ${warning}`).join('\n')}\n`
+        : ''
 
     const output = `# Oracle Scenario Planning Report: ${state.scope?.topic ?? state.goal}
 
@@ -2157,16 +2353,36 @@ ${moves}
 ## Strategic Moves by Type
 
 ### No-Regret Moves
-${state.strategicMoves.filter((m) => m.type === 'no_regret').map((m) => `- ${m.description} (timing: ${m.timing})`).join('\n') || '(none)'}
+${
+  state.strategicMoves
+    .filter((m) => m.type === 'no_regret')
+    .map((m) => `- ${m.description} (timing: ${m.timing})`)
+    .join('\n') || '(none)'
+}
 
 ### Options to Buy
-${state.strategicMoves.filter((m) => m.type === 'option_to_buy').map((m) => `- ${m.description} (timing: ${m.timing})`).join('\n') || '(none)'}
+${
+  state.strategicMoves
+    .filter((m) => m.type === 'option_to_buy')
+    .map((m) => `- ${m.description} (timing: ${m.timing})`)
+    .join('\n') || '(none)'
+}
 
 ### Hedges
-${state.strategicMoves.filter((m) => m.type === 'hedge').map((m) => `- ${m.description} (timing: ${m.timing})`).join('\n') || '(none)'}
+${
+  state.strategicMoves
+    .filter((m) => m.type === 'hedge')
+    .map((m) => `- ${m.description} (timing: ${m.timing})`)
+    .join('\n') || '(none)'
+}
 
 ### Kill Criteria
-${state.strategicMoves.filter((m) => m.type === 'kill_criterion').map((m) => `- ${m.description} (timing: ${m.timing})`).join('\n') || '(none)'}
+${
+  state.strategicMoves
+    .filter((m) => m.type === 'kill_criterion')
+    .map((m) => `- ${m.description} (timing: ${m.timing})`)
+    .join('\n') || '(none)'
+}
 
 ${warningsSection}
 
@@ -2176,7 +2392,11 @@ Total: $${state.costTracker.total.toFixed(4)}
 ## Model Limitations
 *These scenarios are useful fictions — structured explorations of possibility space, not predictions. They are constrained by the evidence, axioms, and assumptions available at the time of analysis. The map is not the territory (AXM-094).*`
 
-    await emitOracleEvent(config, 'oracle_phase', { phase: 3, phaseName: 'scenario_simulation', status: 'completed' })
+    await emitOracleEvent(config, 'oracle_phase', {
+      phase: 3,
+      phaseName: 'scenario_simulation',
+      status: 'completed',
+    })
 
     return {
       finalOutput: output,
@@ -2216,7 +2436,7 @@ Total: $${state.costTracker.total.toFixed(4)}
   // Phase 1 chain
   graph.addConditionalEdges(
     'decomposer' as typeof START,
-    (state: OracleState) => state.status === 'paused' ? END : 'systems_mapper',
+    (state: OracleState) => (state.status === 'paused' ? END : 'systems_mapper'),
     { systems_mapper: 'systems_mapper' as typeof START, [END]: END }
   )
   graph.addConditionalEdges(
@@ -2330,7 +2550,8 @@ Total: $${state.costTracker.total.toFixed(4)}
     if (checkBudgetExceeded(state.costTracker, oracleConfig.maxBudgetUsd)) return 'council_final'
     const lastGateC = [...state.gateResults].reverse().find((g) => g.gateType === 'gate_c')
     if (lastGateC?.passed) return 'council_final'
-    if (state.currentGateRefinements < oracleConfig.maxRefinementsPerGate) return 'scenario_developer'
+    if (state.currentGateRefinements < oracleConfig.maxRefinementsPerGate)
+      return 'scenario_developer'
     return 'council_final'
   })
 
@@ -2356,7 +2577,7 @@ export async function executeOracleWorkflowLangGraph(
   config: OracleGraphConfig,
   goal: string,
   context?: Record<string, unknown>,
-  resumeState?: Partial<OracleState>,
+  resumeState?: Partial<OracleState>
 ): Promise<{
   output: string
   steps: AgentExecutionStep[]
@@ -2398,7 +2619,12 @@ export async function executeOracleWorkflowLangGraph(
       scenarioPortfolio: [],
       gateResults: [],
       phaseSummaries: [],
-      costTracker: { total: 0, byPhase: {}, byModel: {}, byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 } },
+      costTracker: {
+        total: 0,
+        byPhase: {},
+        byModel: {},
+        byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 },
+      },
       knowledgeGraph: { nodes: [], edges: [], loops: [] },
       claims: [],
       searchPlan: {},
@@ -2428,7 +2654,12 @@ export async function executeOracleWorkflowLangGraph(
       scenarioPortfolio: [],
       gateResults: [],
       phaseSummaries: [],
-      costTracker: { total: 0, byPhase: {}, byModel: {}, byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 } },
+      costTracker: {
+        total: 0,
+        byPhase: {},
+        byModel: {},
+        byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 },
+      },
       knowledgeGraph: { nodes: [], edges: [], loops: [] },
       claims: [],
       searchPlan: {},
@@ -2473,7 +2704,12 @@ export async function executeOracleWorkflowLangGraph(
     gateEscalationFeedback: null,
     councilRecords: [],
     _skeletonCache: null,
-    costTracker: { total: 0, byPhase: {}, byModel: {}, byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 } },
+    costTracker: {
+      total: 0,
+      byPhase: {},
+      byModel: {},
+      byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 },
+    },
     steps: [],
     totalTokensUsed: 0,
     totalEstimatedCost: 0,
@@ -2488,7 +2724,8 @@ export async function executeOracleWorkflowLangGraph(
 
   // If resuming (e.g. after human gate approval), merge previous state
   // and ensure humanGateApproved is set so the gate passes on re-entry
-  const humanGateFeedback = extractHumanGateFeedback(context) ?? resumeState?.humanGateFeedback ?? null
+  const humanGateFeedback =
+    extractHumanGateFeedback(context) ?? resumeState?.humanGateFeedback ?? null
   const initialState: Partial<OracleState> = resumeState
     ? {
         ...freshState,
@@ -2513,8 +2750,8 @@ export async function executeOracleWorkflowLangGraph(
     // Gate B refinement: scanner→impact_assessor→weak_signal_hunter→gate_b = 4 per loop
     // Gate C refinement: scenario_developer→red_team→gate_c = 3 per loop
     const maxRef = config.oracleConfig.maxRefinementsPerGate
-    const recursionLimit = 22 + (maxRef * (4 + 4 + 3)) + 10 // safety margin
-    finalState = await compiledGraph.invoke(initialState, { recursionLimit }) as OracleState
+    const recursionLimit = 22 + maxRef * (4 + 4 + 3) + 10 // safety margin
+    finalState = (await compiledGraph.invoke(initialState, { recursionLimit })) as OracleState
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e)
     log.error('Oracle graph execution failed', { error: errorMessage, runId })
@@ -2527,7 +2764,12 @@ export async function executeOracleWorkflowLangGraph(
       scenarioPortfolio: [],
       gateResults: [],
       phaseSummaries: [],
-      costTracker: { total: 0, byPhase: {}, byModel: {}, byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 } },
+      costTracker: {
+        total: 0,
+        byPhase: {},
+        byModel: {},
+        byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 },
+      },
       knowledgeGraph: { nodes: [], edges: [], loops: [] },
       claims: [],
       searchPlan: {},
@@ -2552,7 +2794,12 @@ export async function executeOracleWorkflowLangGraph(
     scenarioPortfolio: finalState.scenarioPortfolio ?? [],
     gateResults: finalState.gateResults ?? [],
     phaseSummaries: finalState.phaseSummaries ?? [],
-    costTracker: finalState.costTracker ?? { total: 0, byPhase: {}, byModel: {}, byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 } },
+    costTracker: finalState.costTracker ?? {
+      total: 0,
+      byPhase: {},
+      byModel: {},
+      byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 },
+    },
     knowledgeGraph: finalState.knowledgeGraph ?? { nodes: [], edges: [], loops: [] },
     claims: finalState.claims ?? [],
     searchPlan: finalState.searchPlan ?? {},
