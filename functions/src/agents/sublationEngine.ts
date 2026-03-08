@@ -161,17 +161,11 @@ export async function runCompetitiveSynthesis(
 
       return candidate
     } catch (error) {
-      log.error('Synthesis agent failed', error, { agentName: agent.name })
-      return null
+      throw new Error(`Synthesis agent ${agent.name} failed: ${error instanceof Error ? error.message : String(error)}`)
     }
   })
 
-  const results = await Promise.all(candidatePromises)
-  const candidates = results.filter((r): r is SynthesisCandidate => r !== null)
-
-  if (candidates.length === 0) {
-    throw new Error('All synthesis agents failed')
-  }
+  const candidates = await Promise.all(candidatePromises)
 
   // Score each candidate
   const scoredCandidates = candidates.map((c) => scoreSynthesisCandidate(c, theses, contradictions))
@@ -234,8 +228,7 @@ export async function runSynthesisCrossNegation(
     // Find the corresponding agent
     const agent = synthesisAgents.find((a) => a.agentId === sourceSynthesis.agentId)
     if (!agent) {
-      log.warn('Agent not found for cross-negation', { agentId: sourceSynthesis.agentId })
-      return null
+      throw new Error(`Agent not found for cross-negation: ${sourceSynthesis.agentId}`)
     }
 
     const prompt = buildSynthesisNegationPrompt(sourceSynthesis, targetSynthesis, theses)
@@ -263,18 +256,13 @@ export async function runSynthesisCrossNegation(
 
       return { negation, step }
     } catch (error) {
-      log.error('Synthesis negation failed', error, { agentName: agent.name })
-      return null
+      throw new Error(`Synthesis negation by ${agent.name} failed: ${error instanceof Error ? error.message : String(error)}`)
     }
   })
 
   const results = await Promise.all(negationPromises)
-  const successfulResults = results.filter(
-    (r): r is { negation: SynthesisNegation; step: AgentExecutionStep } => r !== null
-  )
-
-  const negations = successfulResults.map((r) => r.negation)
-  const steps = successfulResults.map((r) => r.step)
+  const negations = results.map((r) => r.negation)
+  const steps = results.map((r) => r.step)
 
   // Refine syntheses based on negations
   const refinedSyntheses = refineSyntheses(scoredSyntheses, negations, theses, contradictions)
@@ -307,18 +295,27 @@ function scoreSynthesisCandidate(
 ): ScoredSynthesis {
   const synthesis = candidate.synthesis
 
-  // Parsimony: fewer operators = higher score
+  // Parsimony: fewer operators = higher score, but zero operators is penalized
+  // (a synthesis that changes nothing is not parsimonious — it's inert)
   const operatorCount = synthesis.operators?.length ?? 0
   const parsimony =
-    operatorCount <= MAX_OPERATORS_THRESHOLD
-      ? 1 - operatorCount / MAX_OPERATORS_THRESHOLD
-      : Math.max(0, 0.5 - (operatorCount - MAX_OPERATORS_THRESHOLD) * 0.1)
+    operatorCount === 0
+      ? 0.2
+      : operatorCount <= MAX_OPERATORS_THRESHOLD
+        ? 1 - operatorCount / MAX_OPERATORS_THRESHOLD
+        : Math.max(0, 0.5 - (operatorCount - MAX_OPERATORS_THRESHOLD) * 0.1)
 
   // Scope: more preserved elements and resolved contradictions = higher score
   const totalElements = theses.reduce((sum, t) => {
-    const graphSize = Object.keys(t.conceptGraph).length
-    const claimCount = t.falsificationCriteria.length + t.decisionImplications.length
-    return sum + graphSize + claimCount
+    if (t.graph) {
+      // Graph-native: count nodes + edges as total addressable elements
+      return sum + t.graph.nodes.length + t.graph.edges.length
+    }
+    // Legacy: concept graph keys + falsification criteria + decision implications
+    return sum + Math.max(
+      Object.keys(t.conceptGraph).length + t.falsificationCriteria.length + t.decisionImplications.length,
+      1, // Ensure at least 1 per thesis
+    )
   }, 0)
 
   const preservedCount = synthesis.preservedElements.length
@@ -333,7 +330,10 @@ function scoreSynthesisCandidate(
 
   // Scope combines preservation and resolution
   const preservationRate = totalElements > 0 ? preservedCount / totalElements : 0.5
-  const scope = 0.4 * preservationRate + 0.6 * resolutionRate
+  // Weight contradiction resolution more heavily than preservation:
+  // a synthesis that keeps many elements but fails to resolve tensions
+  // should not outrank one that actually advances the dialectic.
+  const scope = 0.2 * preservationRate + 0.8 * resolutionRate
 
   // Novelty: new claims and predictions
   const newClaimsCount = synthesis.newClaims?.length ?? 0
@@ -372,9 +372,13 @@ function findResolvedContradictions(
     const participatingClaims = contradiction.participatingClaims
 
     // A contradiction is "resolved" if:
-    // 1. An operator targets one of the participating claims
+    // 1. A resolution-appropriate operator targets one of the participating claims
+    //    (SPLIT/TEMPORALIZE don't resolve contradictions — they restructure)
     // 2. The contradiction is explicitly mentioned as resolved in schemaDiff
-    const isTargeted = operators.some((op) => participatingClaims.includes(op.target))
+    const RESOLUTION_OPERATORS = new Set(['MERGE', 'ADD_MEDIATOR', 'REVERSE_EDGE', 'SCOPE_TO_REGIME'])
+    const isTargeted = operators.some(
+      (op) => participatingClaims.includes(op.target) && RESOLUTION_OPERATORS.has(op.type)
+    )
 
     // Check schema diff for explicit resolution
     const schemaDiff = synthesis.schemaDiff ?? {}
@@ -469,42 +473,68 @@ function buildCompetitiveSynthesisPrompt(
 ): string {
   const strategy = agentIndex < totalAgents / 2 ? 'PARSIMONY' : 'SCOPE'
 
-  return `You are generating a synthesis (Aufhebung) that preserves, negates, and transcends the competing theses.
+  // Use compact graphs if available, fall back to truncated rawText
+  const thesesRepr = theses.map((t, i) => {
+    if (t.graph) return `[${i + 1}] (${t.lens}): ${JSON.stringify(t.graph)}`
+    return `[${i + 1}] (${t.lens}): ${t.rawText.length > 3000 ? t.rawText.slice(0, 3000) + '\n[...truncated]' : t.rawText}`
+  }).join('\n\n')
 
-STRATEGY: ${strategy}
+  const negationsRepr = negations.map((n, i) =>
+    `[${i + 1}]: tensions=${JSON.stringify(n.internalTensions)}, attacks=${JSON.stringify(n.categoryAttacks)}, operator=${n.rewriteOperator}`
+  ).join('\n')
+
+  return `CRITICAL: Output ONLY a valid JSON object. No markdown fences, no explanation, no preamble.
+
+## Role
+You are a competitive synthesis agent performing Aufhebung — merging thesis graphs into a single evolved knowledge graph.
+
+## Strategy: ${strategy}
 ${
   strategy === 'PARSIMONY'
-    ? 'Prioritize simplicity: use as few rewrite operators as possible while still resolving key contradictions.'
-    : 'Prioritize completeness: resolve as many contradictions as possible while preserving valuable elements.'
+    ? 'Optimize for simplicity: minimize node count, prefer clean edge structures, resolve the highest-impact contradictions first.'
+    : 'Optimize for completeness: resolve as many contradictions as possible, preserve all valid nodes, maximize evidence coverage.'
 }
 
-THESES:
-${theses.map((t, i) => `[${i + 1}] (${t.lens}): ${t.rawText}`).join('\n\n')}
+## Thesis Graphs
+${thesesRepr}
 
-NEGATIONS:
-${negations.map((n, i) => `[${i + 1}]: ${n.rawText}`).join('\n\n')}
+## Negations
+${negationsRepr}
 
-CONTRADICTIONS TO RESOLVE:
+## Contradictions to Resolve
 ${contradictions.map((c) => `- [${c.id}] ${c.severity} ${c.type}: ${c.description}`).join('\n')}
 
-Generate a synthesis with the following JSON structure:
+## Output Schema
 {
-  "operators": [
-    {"type": "SPLIT|MERGE|REVERSE_EDGE|ADD_MEDIATOR|SCOPE_TO_REGIME|TEMPORALIZE", "target": "concept_name", "args": {}, "rationale": "why this operator"}
-  ],
-  "preservedElements": ["elements from theses that are kept"],
-  "negatedElements": ["elements that are rejected"],
-  "newConceptGraph": {"concept": ["related_concepts"]},
-  "newClaims": [{"id": "claim_1", "text": "claim text", "confidence": 0.8}],
-  "newPredictions": [{"id": "pred_1", "text": "testable prediction", "threshold": "success criteria"}],
-  "resolvedContradictionIds": ["c_id1", "c_id2"]
+  "mergedGraph": {
+    "nodes": [{"id": "n1", "label": "<=80 chars", "type": "claim|concept|mechanism|prediction", "note": "optional <=150 chars"}],
+    "edges": [{"from": "n1", "to": "n2", "rel": "causes|contradicts|supports|mediates|scopes", "weight": 0.0-1.0}],
+    "summary": "<=200 char headline of the synthesis",
+    "reasoning": "<=500 chars synthesizing qualitative insights from all theses",
+    "confidence": 0.0-1.0,
+    "regime": "Conditions under which this synthesis holds",
+    "temporalGrain": "Time scale of analysis"
+  },
+  "diff": {
+    "addedNodes": ["IDs of nodes added"],
+    "removedNodes": ["IDs of nodes removed"],
+    "addedEdges": [{"from": "n1", "to": "n2", "rel": "causes"}],
+    "removedEdges": [],
+    "modifiedNodes": [],
+    "resolvedContradictions": ["Descriptions of contradictions resolved"],
+    "newContradictions": ["Descriptions of new contradictions discovered"]
+  },
+  "resolvedContradictions": ["Which input contradictions were resolved and how"]
 }
 
-Your synthesis MUST:
-1. Use typed rewrite operators (no free-text transformations)
-2. Explicitly list which contradictions are resolved
-3. Preserve valid elements from all theses
-4. Generate at least one testable prediction`
+## Rules
+1. Merge all thesis graphs into one coherent graph.
+2. Resolve contradictions by replacing 'contradicts' edges with 'mediates' or 'supports' edges where evidence permits.
+3. The reasoning field must synthesize qualitative insights from all thesis reasonings — not repeat one.
+4. If you are uncertain about a resolution, note the remaining uncertainty in the relevant node's "note" field.
+${contradictions.length > 0 ? '5. You MUST resolve at least one HIGH-severity contradiction.' : '5. Focus on integrating the strongest elements from all theses.'}
+
+CRITICAL (restated): Output ONLY the JSON object. No other text.`
 }
 
 function buildSynthesisNegationPrompt(
@@ -512,71 +542,100 @@ function buildSynthesisNegationPrompt(
   targetSynthesis: ScoredSynthesis,
   theses: ThesisOutput[]
 ): string {
-  return `You are critiquing another synthesis candidate to identify areas for improvement.
+  // Use graph nodes as key concepts when available
+  const thesesRepr = theses.map((t, i) => {
+    if (t.graph) return `[${i + 1}] ${t.lens}: ${t.graph.summary} (${t.graph.nodes.length} nodes)`
+    return `[${i + 1}] ${t.lens}: Key concepts: ${Object.keys(t.conceptGraph).slice(0, 5).join(', ')}`
+  }).join('\n')
 
-YOUR SYNTHESIS (${sourceSynthesis.agentName}):
+  return `CRITICAL: Output ONLY a valid JSON object. No markdown fences, no explanation.
+
+## Role
+You are a synthesis critic evaluating a competing synthesis candidate. Your goal is to identify genuine weaknesses, not to validate.
+
+## Your Synthesis (${sourceSynthesis.agentName})
 Score: parsimony=${sourceSynthesis.scores.parsimony.toFixed(2)}, scope=${sourceSynthesis.scores.scope.toFixed(2)}
 Operators: ${JSON.stringify(sourceSynthesis.synthesis.operators)}
 Preserved: ${sourceSynthesis.synthesis.preservedElements.join(', ')}
 Contradictions resolved: ${sourceSynthesis.contradictionsResolved.join(', ')}
 
-TARGET SYNTHESIS TO CRITIQUE (${targetSynthesis.agentName}):
+## Target Synthesis to Critique (${targetSynthesis.agentName})
 Score: parsimony=${targetSynthesis.scores.parsimony.toFixed(2)}, scope=${targetSynthesis.scores.scope.toFixed(2)}
 ${targetSynthesis.rawText}
 
-ORIGINAL THESES:
-${theses.map((t, i) => `[${i + 1}] ${t.lens}: Key concepts: ${Object.keys(t.conceptGraph).slice(0, 5).join(', ')}`).join('\n')}
+## Original Theses
+${thesesRepr}
 
-Provide a critique with the following JSON structure:
+## Task
+Critique the target synthesis. Identify what it missed, what it overclaimed, and what specific transformations would improve it.
+
+## Output Schema
 {
-  "critiques": ["specific issues with the target synthesis"],
-  "missingElements": ["elements from theses that should have been preserved"],
-  "overreaches": ["claims or operators that go beyond what the evidence supports"],
+  "critiques": ["Specific issues with the target synthesis, referencing concrete nodes or claims"],
+  "missingElements": ["Elements from the original theses that should have been preserved but were lost"],
+  "overreaches": ["Claims or operators in the target that go beyond what the evidence supports"],
   "proposedRefinements": [
-    {"type": "SPLIT|MERGE|...", "target": "concept", "args": {}, "rationale": "improvement reason"}
+    {"type": "SPLIT|MERGE|REVERSE_EDGE|ADD_MEDIATOR|SCOPE_TO_REGIME|TEMPORALIZE", "target": "concept or claim ID", "args": {}, "rationale": "Why this transformation improves the synthesis"}
   ]
 }
 
-Focus on:
-1. Missing preservation of valid thesis elements
-2. Contradictions that remain unresolved
-3. Operators that are unnecessary or harmful
-4. Claims that lack support from the original theses`
+## Evaluation Priorities
+1. Missing preservation: Valid thesis elements that the target synthesis dropped.
+2. Unresolved contradictions: HIGH-severity contradictions the target failed to address.
+3. Unnecessary operators: Transformations that add complexity without resolving a real problem.
+4. Unsupported claims: New claims in the synthesis not grounded in the original theses.
+5. Prioritize accuracy over validation — flag genuine weaknesses.
+
+CRITICAL (restated): Output ONLY the JSON object. No other text.`
 }
 
 // ----- Parsers -----
 
 function parseSynthesisOutput(output: string): SublationOutput {
-  try {
-    // Try to extract JSON from the output
-    const jsonMatch = output.match(/\{[\s\S]*\}/)?.[0]
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch)
-      return {
-        operators: parsed.operators ?? [],
-        preservedElements: parsed.preservedElements ?? [],
-        negatedElements: parsed.negatedElements ?? [],
-        newConceptGraph: parsed.newConceptGraph ?? {},
-        newClaims: parsed.newClaims ?? [],
-        newPredictions: parsed.newPredictions ?? [],
-        schemaDiff: {
-          resolvedContradictions: parsed.resolvedContradictionIds ?? [],
-        },
-      }
-    }
-  } catch (error) {
-    log.warn('Failed to parse synthesis JSON, using defaults', { error })
+  const codeBlockMatch = output.match(/```(?:json)?\s*([\s\S]*?)```/)
+  const jsonMatch = codeBlockMatch
+    ? codeBlockMatch[1].trim()
+    : output.match(/\{[\s\S]*\}/)?.[0]
+  if (!jsonMatch) {
+    throw new Error('Synthesis output did not contain JSON')
   }
 
-  // Return empty synthesis if parsing fails
+  const parsed = JSON.parse(jsonMatch)
+
+  if (parsed.mergedGraph?.nodes && parsed.diff) {
+    const graph = parsed.mergedGraph
+    const diff = parsed.diff
+    return {
+      operators: [],
+      preservedElements: diff.addedNodes ?? [],
+      negatedElements: diff.removedNodes ?? [],
+      newConceptGraph: {},
+      newClaims: (graph.nodes ?? [])
+        .filter((n: { type: string }) => n.type === 'claim')
+        .map((n: { id: string; label: string }) => ({ id: n.id, text: n.label, confidence: graph.confidence ?? 0.7 })),
+      newPredictions: (graph.nodes ?? [])
+        .filter((n: { type: string }) => n.type === 'prediction')
+        .map((n: { id: string; label: string }) => ({ id: n.id, text: n.label, threshold: 'TBD' })),
+      schemaDiff: {
+        resolvedContradictions: parsed.resolvedContradictions ?? diff.resolvedContradictions ?? [],
+      },
+    }
+  }
+
+  if (!Array.isArray(parsed.operators)) {
+    throw new Error('Synthesis output did not contain operators or mergedGraph')
+  }
+
   return {
-    operators: [],
-    preservedElements: [],
-    negatedElements: [],
-    newConceptGraph: {},
-    newClaims: [],
-    newPredictions: [],
-    schemaDiff: null,
+    operators: parsed.operators ?? [],
+    preservedElements: parsed.preservedElements ?? [],
+    negatedElements: parsed.negatedElements ?? [],
+    newConceptGraph: parsed.newConceptGraph ?? {},
+    newClaims: parsed.newClaims ?? [],
+    newPredictions: parsed.newPredictions ?? [],
+    schemaDiff: {
+      resolvedContradictions: parsed.resolvedContradictionIds ?? [],
+    },
   }
 }
 
@@ -585,31 +644,19 @@ function parseSynthesisNegation(
   sourceAgentId: string,
   targetCandidateId: string
 ): SynthesisNegation {
-  try {
-    const jsonMatch = output.match(/\{[\s\S]*\}/)?.[0]
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch)
-      return {
-        sourceAgentId,
-        targetCandidateId,
-        critiques: parsed.critiques ?? [],
-        missingElements: parsed.missingElements ?? [],
-        overreaches: parsed.overreaches ?? [],
-        proposedRefinements: parsed.proposedRefinements ?? [],
-        rawText: output,
-      }
-    }
-  } catch (error) {
-    log.warn('Failed to parse synthesis negation JSON', { error })
+  const jsonMatch = output.match(/\{[\s\S]*\}/)?.[0]
+  if (!jsonMatch) {
+    throw new Error(`Synthesis negation from ${sourceAgentId} did not contain JSON`)
   }
 
+  const parsed = JSON.parse(jsonMatch)
   return {
     sourceAgentId,
     targetCandidateId,
-    critiques: [],
-    missingElements: [],
-    overreaches: [],
-    proposedRefinements: [],
+    critiques: parsed.critiques ?? [],
+    missingElements: parsed.missingElements ?? [],
+    overreaches: parsed.overreaches ?? [],
+    proposedRefinements: parsed.proposedRefinements ?? [],
     rawText: output,
   }
 }

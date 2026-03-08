@@ -13,6 +13,24 @@ import type {
   RunBudget,
   SourceRecord,
 } from './deepResearchWorkflow'
+import type {
+  OraclePhase,
+  OracleScope,
+  OracleClaim,
+  OracleAssumption,
+  OracleEvidence,
+  OracleKnowledgeGraph,
+  TrendObject,
+  UncertaintyObject,
+  CrossImpactEntry,
+  OracleScenario,
+  BackcastTimeline,
+  StrategicMove,
+  OraclePhaseSummary,
+  OracleGateResult,
+  OracleCouncilRecord,
+  OracleCostTracker,
+} from './oracleWorkflow'
 
 // ----- Agent Execution Step -----
 
@@ -30,6 +48,8 @@ export interface AgentExecutionStep {
   executedAtMs: number
   iterationsUsed?: number
   agentRole?: string
+  /** Populated when the agent invoked the ask_user tool to request user input */
+  askUserInterrupt?: { question: string }
 }
 
 // ----- Iteration Usage Summary -----
@@ -182,6 +202,7 @@ export interface ThesisOutput {
   regimeAssumptions: string[]
   confidence: number
   rawText: string
+  graph?: CompactGraph
 }
 
 /**
@@ -195,6 +216,8 @@ export interface NegationOutput {
   preservedValid: string[]
   rivalFraming: string
   rewriteOperator: RewriteOperatorType
+  /** Multiple rewrite operators for compound transformations */
+  rewriteOperators?: Array<{ type: RewriteOperatorType; target: string; rationale: string }>
   operatorArgs: Record<string, unknown>
   rawText: string
 }
@@ -223,6 +246,7 @@ export interface SublationOutput {
   newClaims: Array<{ id: string; text: string; confidence: number }>
   newPredictions: Array<{ id: string; text: string; threshold: string }>
   schemaDiff: Record<string, unknown> | null
+  incompleteReason?: string
 }
 
 /**
@@ -241,6 +265,61 @@ export interface RewriteOperator {
   target: string
   args: Record<string, unknown>
   rationale: string
+}
+
+/**
+ * Compact graph representation of a thesis.
+ * Structure (~400 chars) + reasoning (≤500 chars) for hybrid token efficiency + nuance.
+ */
+export interface CompactGraph {
+  nodes: Array<{
+    id: string
+    label: string
+    type: 'claim' | 'concept' | 'mechanism' | 'prediction'
+    note?: string
+    /** Source attribution for research-backed nodes */
+    sourceId?: string
+    sourceUrl?: string
+    sourceConfidence?: number
+  }>
+  edges: Array<{
+    from: string
+    to: string
+    rel: 'causes' | 'contradicts' | 'supports' | 'mediates' | 'scopes'
+    weight?: number
+  }>
+  summary: string
+  reasoning: string
+  confidence: number
+  regime: string
+  temporalGrain: string
+}
+
+/**
+ * Snapshot of a KG serialized to a CompactGraph at a point in time.
+ * Used to capture KG state between research and dialectical phases.
+ */
+export interface KGCompactSnapshot {
+  graph: CompactGraph
+  claimCount: number
+  conceptCount: number
+  sourceCount: number
+  contradictionEdgeCount: number
+  snapshotAtMs: number
+  gapIteration: number
+}
+
+/**
+ * Diff between two graphs — tracks what changed per cycle
+ */
+export interface GraphDiff {
+  addedNodes: string[]
+  removedNodes: string[]
+  addedEdges: Array<{ from: string; to: string; rel: string }>
+  removedEdges: Array<{ from: string; to: string; rel: string }>
+  modifiedNodes: Array<{ id: string; oldLabel: string; newLabel: string }>
+  resolvedContradictions: string[]
+  newContradictions: string[]
 }
 
 /**
@@ -299,6 +378,44 @@ export interface DeepResearchWorkflowState {
   kgSessionId: string | null
   gapIterationsUsed: number
   answer: DeepResearchAnswer | null
+  mergedGraph?: CompactGraph
+  graphHistory?: Array<{ cycle: number; diff: GraphDiff }>
+}
+
+/**
+ * State extension for Oracle scenario planning workflows
+ */
+export interface OracleWorkflowState {
+  currentPhase: OraclePhase
+  scope: OracleScope | null
+
+  // Reasoning Ledger
+  reasoningLedger: {
+    claims: OracleClaim[]
+    assumptions: OracleAssumption[]
+    evidence: OracleEvidence[]
+  }
+
+  // Knowledge Graph
+  knowledgeGraph: OracleKnowledgeGraph
+
+  // Phase 2 outputs
+  trends: TrendObject[]
+  uncertainties: UncertaintyObject[]
+  crossImpactMatrix: CrossImpactEntry[]
+  humanGateApproved: boolean
+
+  // Phase 3 outputs
+  scenarioPortfolio: OracleScenario[]
+  backcastTimelines: BackcastTimeline[]
+  strategicMoves: StrategicMove[]
+
+  // Cross-cutting
+  phaseSummaries: OraclePhaseSummary[]
+  gateResults: OracleGateResult[]
+  councilRecords: OracleCouncilRecord[]
+  costTracker: OracleCostTracker
+  refinementCounts: Record<string, number>
 }
 
 // ----- Unified Workflow State -----
@@ -321,6 +438,9 @@ export interface UnifiedWorkflowState extends CoreWorkflowState {
 
   // Deep research extension
   deepResearch?: DeepResearchWorkflowState
+
+  // Oracle scenario planning extension
+  oracle?: OracleWorkflowState
 }
 
 // ----- State Initialization -----
@@ -425,5 +545,42 @@ export function createInitialDeepResearchState(): DeepResearchWorkflowState {
     kgSessionId: null,
     gapIterationsUsed: 0,
     answer: null,
+  }
+}
+
+/**
+ * Create initial Oracle scenario planning state extension
+ */
+export function createInitialOracleState(): OracleWorkflowState {
+  return {
+    currentPhase: 'context_gathering',
+    scope: null,
+    reasoningLedger: {
+      claims: [],
+      assumptions: [],
+      evidence: [],
+    },
+    knowledgeGraph: {
+      nodes: [],
+      edges: [],
+      loops: [],
+    },
+    trends: [],
+    uncertainties: [],
+    crossImpactMatrix: [],
+    humanGateApproved: false,
+    scenarioPortfolio: [],
+    backcastTimelines: [],
+    strategicMoves: [],
+    phaseSummaries: [],
+    gateResults: [],
+    councilRecords: [],
+    costTracker: {
+      total: 0,
+      byPhase: {},
+      byModel: {},
+      byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 },
+    },
+    refinementCounts: {},
   }
 }

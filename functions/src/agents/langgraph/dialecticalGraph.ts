@@ -24,11 +24,17 @@ import type {
   NegationOutput,
   ContradictionOutput,
   SublationOutput,
+  KGDiff,
+  CompactGraph,
+  GraphDiff,
   MetaDecision,
   Community,
+  Run,
   DialecticalSessionId,
   ClaimId,
   ConceptId,
+  EpisodeId,
+  ThesisLens,
   WorkflowExecutionMode,
   ModelTier,
   WorkflowCriticality,
@@ -39,10 +45,10 @@ import type { ProviderKeys } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
 import type { ToolRegistry } from '../toolExecutor.js'
-import { executeAgentWithEvents, type AgentExecutionContext } from './utils.js'
+import { executeAgentWithEvents, handleAskUserInterrupt, type AgentExecutionContext } from './utils.js'
 import { DialecticalStateAnnotation, type DialecticalState } from './stateAnnotations.js'
 import { runCompetitiveSynthesis, runSynthesisCrossNegation } from '../sublationEngine.js'
-import { runMetaReflection } from '../metaReflection.js'
+import { runMetaReflection, calculateConceptualVelocity } from '../metaReflection.js'
 import { recordMessage } from '../messageStore.js'
 import { runSchemaInduction, type SchemaInductionInput } from '../schemaInduction.js'
 import { executeRetrievalAgent, type RetrievalContext } from '../retrievalAgent.js'
@@ -52,6 +58,8 @@ import {
   ThesisOutputSchema,
   NegationOutputSchema,
   SublationOutputSchema,
+  CompactGraphSchema,
+  GraphSublationOutputSchema,
 } from './structuredOutputSchemas.js'
 import {
   runContradictionTrackers,
@@ -63,7 +71,47 @@ import {
   writeIterationUsageSummary,
   type HistoricalIterationData,
 } from './iterationHistory.js'
+import { analyzeGraphGaps, evaluateResearchNeed, type GraphGapDirectives } from '../deepResearch/graphGapAnalysis.js'
+import { executeSearchPlan, ingestSources } from '../deepResearch/sourceIngestion.js'
+import {
+  extractClaimsFromSourceBatch,
+  mapClaimsToKG,
+  type ProviderExecuteFn,
+} from '../deepResearch/claimExtraction.js'
+import {
+  createSupportsEdges,
+  scanForResearchContradictions,
+  mergeNearDuplicateConcepts,
+  bridgeCausalChains,
+  applyKGDiffToGraph,
+} from '../deepResearch/kgEnrichment.js'
+import {
+  computeSourceQualityScore,
+  applyQualityScoresToClaims,
+} from '../deepResearch/sourceQuality.js'
+import { createRunBudget } from '../deepResearch/budgetController.js'
+import { executeWithProvider } from '../providerService.js'
+import type { ToolExecutionContext } from '../toolExecutor.js'
+import type { RunBudget, SourceRecord, ExtractedClaim } from '@lifeos/agents'
+import { checkQuotaSoft } from '../quotaManager.js'
+import { checkRunRateLimitSoft } from '../rateLimiter.js'
 import { createLogger } from '../../lib/logger.js'
+import {
+  buildThesisPrompt,
+  buildNegationPrompt,
+  buildSublationPrompt,
+  type ResearchEvidence,
+} from './dialecticalPrompts.js'
+import {
+  buildEmptyStartupSeedSummary,
+  createFallbackDialecticalGoalFrame,
+  normalizeStartupInput,
+  parseDialecticalGoalFrame,
+} from '../startup/inputNormalizer.js'
+import {
+  buildStarterCompactGraphFromClaims,
+  buildStartupSeedSummary,
+} from '../startup/starterGraph.js'
 
 const log = createLogger('DialecticalGraph')
 
@@ -75,6 +123,7 @@ const log = createLogger('DialecticalGraph')
 export interface DialecticalGraphConfig {
   workflow: Workflow
   dialecticalConfig: DialecticalWorkflowConfig
+  goalFramer?: AgentConfig
   thesisAgents: AgentConfig[]
   synthesisAgents: AgentConfig[] // Multiple synthesis agents for competitive synthesis
   metaAgent: AgentConfig
@@ -179,97 +228,719 @@ function formatAgentMessage(
 
 // ----- Phase Implementations -----
 
+function createInputNormalizerNode(
+  execContext: AgentExecutionContext,
+) {
+  return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
+    log.info('Dialectical: Input Normalizer phase')
+    await emitPhaseEvent(execContext, 'input_normalizer', state.cycleNumber, { goal: state.goal })
+
+    const normalizedInput = normalizeStartupInput(state.goal, state.context)
+    return {
+      goal: normalizedInput.normalizedGoal,
+      normalizedInput,
+      startupSeedSummary: buildEmptyStartupSeedSummary(normalizedInput.sources.length),
+    }
+  }
+}
+
+function createGoalFramingNode(
+  framingAgent: AgentConfig,
+  execContext: AgentExecutionContext,
+  config: DialecticalWorkflowConfig,
+  kg: KnowledgeHypergraph | null,
+) {
+  return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
+    const normalizedInput = state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
+    log.info('Dialectical: Goal Framing phase', {
+      hasContext: normalizedInput.hasContext,
+      hasKnowledgeGraph: !!kg,
+    })
+    await emitPhaseEvent(execContext, 'goal_framing', state.cycleNumber, {
+      hasContext: normalizedInput.hasContext,
+      hasKnowledgeGraph: !!kg,
+    })
+
+    const contextSection = normalizedInput.contextSummary
+      ? `\n${normalizedInput.contextSummary}\n`
+      : ''
+
+    const prompt = `Frame this dialectical reasoning run and return JSON only.
+
+GOAL: ${state.goal}
+${contextSection}
+You are preparing a multi-lens dialectical analysis.
+
+Return JSON:
+{
+  "canonicalGoal": "<normalized goal>",
+  "coreQuestion": "<single core question>",
+  "subquestions": ["subquestion 1", "subquestion 2"],
+  "keyConcepts": ["concept 1", "concept 2"],
+  "verificationTargets": ["what must be tested", "what could falsify a thesis"],
+  "plannerRationale": "<why this framing is appropriate>",
+  "focusAreas": ["areas to prioritize in analysis"],
+  "candidateTensions": ["likely contradictions or tensions"],
+  "retrievalIntent": {
+    "useKnowledgeGraph": ${kg ? 'true' : 'false'},
+    "useExternalResearch": ${config.enableExternalResearch ? 'true' : 'false'}
+  }
+}`
+
+    const step = await executeAgentWithEvents(
+      framingAgent,
+      prompt,
+      {
+        goal: state.goal,
+        contextSummary: normalizedInput.contextSummary,
+        phase: 'goal_framing',
+      },
+      execContext,
+      { stepNumber: state.steps.length + 1, maxIterations: 2 }
+    )
+
+    const goalFrame = parseDialecticalGoalFrame(
+      step.output,
+      createFallbackDialecticalGoalFrame(
+        state.goal,
+        !!kg,
+        !!config.enableExternalResearch,
+      ),
+    )
+
+    return {
+      goalFrame,
+      context: {
+        ...state.context,
+        refinedGoal: goalFrame.canonicalGoal,
+        focusAreas: goalFrame.focusAreas,
+        candidateTensions: goalFrame.candidateTensions,
+        verificationTargets: goalFrame.verificationTargets,
+        keyConcepts: goalFrame.keyConcepts,
+      },
+      steps: [step],
+      totalTokensUsed: step.tokensUsed,
+      totalEstimatedCost: step.estimatedCost,
+    }
+  }
+}
+
+function createContextSeedingNode(
+  seedingAgent: AgentConfig,
+  execContext: AgentExecutionContext,
+  kg: KnowledgeHypergraph | null,
+) {
+  return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
+    const normalizedInput = state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
+    const contextSources = normalizedInput.sources
+    const contentMap = normalizedInput.contentMap
+
+    if (contextSources.length === 0) {
+      log.info('Dialectical: no attached context to seed')
+      return {
+        startupSeedSummary: buildEmptyStartupSeedSummary(0),
+      }
+    }
+
+    await emitPhaseEvent(execContext, 'context_seeding', state.cycleNumber, {
+      sourceCount: contextSources.length,
+    })
+
+    const researchBudget = state.researchBudget ?? createRunBudget(1.0, 'standard')
+    const providerFn: ProviderExecuteFn = async (systemPrompt, userPrompt) => {
+      const result = await executeWithProvider(
+        {
+          ...seedingAgent,
+          systemPrompt,
+        },
+        userPrompt,
+        undefined,
+        execContext.apiKeys,
+      )
+      return result.output ?? ''
+    }
+
+    try {
+      const effectiveGoal = state.goalFrame?.canonicalGoal ?? state.goal
+      const { claims } = await extractClaimsFromSourceBatch(
+        contextSources,
+        contentMap,
+        effectiveGoal,
+        providerFn,
+        researchBudget,
+        Math.min(contextSources.length, 4),
+        seedingAgent.modelName,
+      )
+
+      const seededGraph = buildStarterCompactGraphFromClaims(claims)
+      if (kg && claims.length > 0) {
+        await mapClaimsToKG(
+          claims,
+          contextSources,
+          kg,
+          `dialectical:${state.runId}` as DialecticalSessionId,
+          execContext.userId,
+        )
+      }
+
+      return {
+        mergedGraph: seededGraph,
+        startupSeedSummary: buildStartupSeedSummary(
+          contextSources.length,
+          claims.length,
+          seededGraph.nodes.length,
+          seededGraph.edges.length,
+          0,
+        ),
+      }
+    } catch (error) {
+      log.warn('Dialectical context seeding failed; continuing without starter graph', {
+        error: error instanceof Error ? error.message : String(error),
+      })
+      return {
+        degradedPhases: ['context_seeding'],
+        startupSeedSummary: buildEmptyStartupSeedSummary(contextSources.length),
+      }
+    }
+  }
+}
+
+// ----- Reactive Research Nodes (Phase 4) -----
+
+/**
+ * Decide whether targeted research is needed at the given position in the cycle.
+ * When `enableReactiveResearch` is false, always returns needsResearch: false.
+ */
+function createDecideResearchNode(
+  execContext: AgentExecutionContext,
+  config: DialecticalWorkflowConfig,
+  position: 'pre_cycle' | 'post_synthesis',
+) {
+  return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
+    if (!config.enableReactiveResearch) {
+      return {
+        researchDecision: {
+          needsResearch: false,
+          searchPlan: null,
+          gapTypes: [],
+          phase: position,
+          intensity: 'none' as const,
+          rationale: 'Reactive research disabled',
+        },
+      }
+    }
+
+    const effectiveGoal = (state.context.refinedGoal as string) || state.goal
+
+    const directives: GraphGapDirectives = {
+      cycleNumber: state.cycleNumber,
+      budget: state.researchBudget ?? createRunBudget(config.researchBudgetUsd ?? 5, config.researchSearchDepth ?? 'standard'),
+      focusAreas: position === 'pre_cycle'
+        ? (state.context.focusAreas as string[] | undefined)
+        : undefined,
+      refinedGoal: effectiveGoal !== state.goal ? effectiveGoal : undefined,
+      contradictions: position === 'post_synthesis' ? state.contradictions : undefined,
+    }
+
+    const result = evaluateResearchNeed(
+      state.mergedGraph,
+      state.goal,
+      directives,
+      position,
+    )
+
+    const decision = result.needsResearch ? 'Research needed' : 'No research needed'
+    await recordMessage(
+      {
+        userId: execContext.userId,
+        runId: execContext.runId,
+        role: 'system',
+        content: `[RESEARCH DECISION] ${decision} (${position}): ${result.rationale}`,
+      },
+      { skipPrune: true }
+    )
+
+    if (execContext.eventWriter) {
+      await emitPhaseEvent(execContext, `decide_research_${position}`, state.cycleNumber, {
+        needsResearch: result.needsResearch,
+        gapTypes: result.gapTypes,
+        intensity: result.researchIntensity,
+        rationale: result.rationale,
+      })
+    }
+
+    return {
+      researchDecision: {
+        needsResearch: result.needsResearch,
+        searchPlan: result.searchPlan,
+        gapTypes: result.gapTypes,
+        phase: position,
+        intensity: result.researchIntensity as 'targeted' | 'verification' | 'none',
+        rationale: result.rationale,
+      },
+    }
+  }
+}
+
+/**
+ * Execute targeted research based on the decision from decide_research.
+ * No-op if researchDecision.needsResearch is false.
+ */
+function createExecuteResearchNode(
+  execContext: AgentExecutionContext,
+  config: DialecticalWorkflowConfig,
+  kg: KnowledgeHypergraph | null,
+) {
+  return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
+    if (!state.researchDecision?.needsResearch || !state.researchDecision.searchPlan) {
+      return {}
+    }
+
+    const searchPlan = state.researchDecision.searchPlan
+    const effectiveGoal = (state.context.refinedGoal as string) || state.goal
+
+    if (!execContext.toolRegistry || !execContext.searchToolKeys) {
+      throw new Error('Reactive research requires toolRegistry and searchToolKeys')
+    }
+
+    let currentBudget = state.researchBudget ?? createRunBudget(
+      config.researchBudgetUsd ?? 5,
+      config.researchSearchDepth ?? 'standard',
+    )
+
+    try {
+      // Build tool execution context
+      const toolContext: ToolExecutionContext = {
+        userId: execContext.userId,
+        agentId: 'system:dialectical_research',
+        workflowId: execContext.workflowId,
+        runId: execContext.runId,
+        eventWriter: execContext.eventWriter,
+        toolRegistry: execContext.toolRegistry,
+        searchToolKeys: execContext.searchToolKeys,
+        provider: 'openai',
+        modelName: 'gpt-4o-mini',
+        iteration: 0,
+      }
+
+      // Execute search plan
+      const { results: searchResults, updatedBudget: budgetAfterSearch } =
+        await executeSearchPlan(searchPlan, execContext.toolRegistry, toolContext, currentBudget)
+      currentBudget = budgetAfterSearch
+
+      log.info(`[ReactiveResearch] Search returned ${searchResults.length} results`)
+
+      let newSources: SourceRecord[] = []
+      let newClaims: ExtractedClaim[] = []
+      let researchEvidence: ResearchEvidence | null = null
+
+      if (searchResults.length > 0) {
+        // Ingest sources
+        const keywordRelevanceScorer = async (snippet: string, query: string): Promise<number> => {
+          const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3)
+          const snippetLower = snippet.toLowerCase()
+          const matches = queryWords.filter(w => snippetLower.includes(w))
+          return queryWords.length > 0 ? matches.length / queryWords.length : 0.5
+        }
+
+        const { sources, contentMap, updatedBudget: budgetAfterIngest } =
+          await ingestSources(searchResults, effectiveGoal, execContext.toolRegistry, toolContext, currentBudget, keywordRelevanceScorer)
+        currentBudget = budgetAfterIngest
+
+        // Apply source quality scores
+        for (const source of sources) {
+          source.sourceQualityScore = computeSourceQualityScore(source)
+        }
+        newSources = sources
+
+        // Extract claims
+        if (Object.keys(contentMap).length > 0) {
+          const providerFn: ProviderExecuteFn = async (systemPrompt, userPrompt) => {
+            const result = await executeWithProvider(
+              {
+                agentId: asId('agent:dialectical_research_extractor'),
+                userId: execContext.userId,
+                name: 'Research Extractor',
+                role: 'researcher',
+                systemPrompt,
+                modelProvider: 'openai',
+                modelName: 'gpt-4o-mini',
+                temperature: 0.1,
+                archived: false,
+                createdAtMs: Date.now(),
+                updatedAtMs: Date.now(),
+                syncState: 'synced',
+                version: 1,
+              },
+              userPrompt,
+              undefined,
+              execContext.apiKeys
+            )
+            return result.output ?? ''
+          }
+
+          const { claims, updatedBudget: budgetAfterExtraction } =
+            await extractClaimsFromSourceBatch(
+              newSources,
+              contentMap,
+              effectiveGoal,
+              providerFn,
+              currentBudget,
+              3,
+              'gpt-4o-mini',
+            )
+          currentBudget = budgetAfterExtraction
+
+          newClaims = applyQualityScoresToClaims(claims, newSources)
+          log.info(`[ReactiveResearch] Extracted ${newClaims.length} claims from ${newSources.length} sources`)
+        }
+
+        // Map reactive research claims to the actual KG
+        if (kg && newClaims.length > 0) {
+          const sessionId = `dialectical:${state.runId}` as DialecticalSessionId
+          const { addedClaimIds, addedConceptIds } = await mapClaimsToKG(
+            newClaims, newSources, kg, sessionId, execContext.userId
+          )
+          // Run enrichment passes on newly mapped claims
+          const enrichment = config.kgEnrichment
+          if (addedClaimIds.length > 0) {
+            if (enrichment?.enableSupportsEdges !== false) {
+              createSupportsEdges(addedClaimIds, kg)
+            }
+            if (enrichment?.enableEarlyContradictions !== false) {
+              scanForResearchContradictions(addedClaimIds, kg)
+            }
+          }
+          if (addedConceptIds.length > 0 && enrichment?.enableFuzzyConceptMerge !== false) {
+            await mergeNearDuplicateConcepts(addedConceptIds, kg)
+          }
+          if (enrichment?.enableCausalBridging !== false) {
+            bridgeCausalChains(kg)
+          }
+          log.info('[ReactiveResearch] Mapped claims to KG', {
+            claimsAdded: addedClaimIds.length,
+            conceptsAdded: addedConceptIds.length,
+          })
+        }
+
+        // Build research evidence
+        if (newClaims.length > 0 || newSources.length > 0) {
+          researchEvidence = {
+            claims: newClaims.slice(0, 15),
+            sources: newSources.map(s => ({
+              sourceId: s.sourceId,
+              title: s.title,
+              url: s.url,
+              domain: s.domain,
+              qualityScore: s.sourceQualityScore ?? 0.5,
+            })),
+            gapTypes: state.researchDecision?.gapTypes ?? [],
+            searchRationale: state.researchDecision?.rationale ?? '',
+          }
+        }
+      }
+
+      return {
+        researchBudget: currentBudget,
+        researchSources: newSources,
+        researchClaims: newClaims,
+        context: { ...state.context, researchEvidence },
+      }
+    } catch (error) {
+      throw new Error(`[ReactiveResearch] Execute research failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+}
+
 /**
  * Phase 1: Retrieve Context
  * Query the knowledge graph for relevant concepts, claims, and contradictions.
  * Uses the heuristic retrieval agent with template-based optimization.
  */
-function createRetrieveContextNode(
+function createResearchEnrichmentNode(
   execContext: AgentExecutionContext,
   config: DialecticalWorkflowConfig,
   kg: KnowledgeHypergraph | null
 ) {
   return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
-    log.info(`Dialectical cycle ${state.cycleNumber + 1}: Retrieve Context phase`)
+    const cycleNumber = state.cycleNumber + 1
+    const degradedPhases: string[] = []
+    log.info(`Dialectical cycle ${cycleNumber}: Research Enrichment phase`)
 
-    // Emit phase transition event
-    await emitPhaseEvent(execContext, 'retrieve_context', state.cycleNumber + 1, {
-      hasKnowledgeGraph: !!kg,
-    })
-
-    // If no knowledge graph is available, pass through existing context
-    if (!kg) {
-      log.info('No knowledge hypergraph available, using initial context')
-      return {
-        phase: 'thesis_generation',
-        cycleNumber: state.cycleNumber + 1,
-        totalTokensUsed: 0,
-        totalEstimatedCost: 0,
+    // Mid-cycle quota/rate check — pause instead of crashing
+    if (cycleNumber > 1) {
+      const quotaHit = await checkQuotaSoft(execContext.userId)
+      if (quotaHit) {
+        log.info('Quota exceeded mid-cycle, pausing for user decision', { cycleNumber, ...quotaHit })
+        return {
+          cycleNumber,
+          status: 'waiting_for_input',
+          constraintPause: {
+            constraintType: quotaHit.quotaType,
+            currentValue: quotaHit.currentValue,
+            limitValue: quotaHit.limitValue,
+            unit: quotaHit.unit,
+            partialOutput: state.synthesis
+              ? `Completed ${cycleNumber - 1} dialectical cycles. Current synthesis has ${state.synthesis.preservedElements?.length ?? 0} preserved elements and ${state.synthesis.newClaims?.length ?? 0} new claims.`
+              : `Completed ${cycleNumber - 1} dialectical cycles.`,
+            suggestedIncrease: quotaHit.unit === 'USD'
+              ? quotaHit.limitValue * 2
+              : Math.ceil(quotaHit.limitValue * 1.5),
+          },
+        } as Partial<DialecticalState>
+      }
+      const rateHit = await checkRunRateLimitSoft(execContext.userId)
+      if (rateHit) {
+        log.info('Rate limit exceeded mid-cycle, pausing for user decision', { cycleNumber, ...rateHit })
+        return {
+          cycleNumber,
+          status: 'waiting_for_input',
+          constraintPause: {
+            constraintType: rateHit.limitType,
+            currentValue: rateHit.currentValue,
+            limitValue: rateHit.limitValue,
+            unit: rateHit.unit,
+            partialOutput: state.synthesis
+              ? `Completed ${cycleNumber - 1} dialectical cycles. Current synthesis has ${state.synthesis.preservedElements?.length ?? 0} preserved elements and ${state.synthesis.newClaims?.length ?? 0} new claims.`
+              : `Completed ${cycleNumber - 1} dialectical cycles.`,
+            suggestedIncrease: Math.ceil(rateHit.limitValue * 1.5),
+          },
+        } as Partial<DialecticalState>
       }
     }
 
-    try {
-      // Try to select the best retrieval template for this workflow
-      const template = await selectBestTemplate(execContext.userId, {
-        workflowType: 'dialectical',
-        preferValidated: true,
-      })
+    await emitPhaseEvent(execContext, 'research_enrichment', cycleNumber, {
+      hasKnowledgeGraph: !!kg,
+      hasResearch: !!config.enableExternalResearch,
+    })
 
-      // Get attenuated steps if template exists (progressive narrowing)
-      let templateConfig: { maxSteps?: number } = {}
-      if (template) {
-        const attenuatedSteps = getAttenuatedSteps(template, {
-          currentCycle: state.cycleNumber,
-          maxCycles: config.maxCycles,
-          attenuationFactor: 0.3,
+    const effectiveGoal = state.goalFrame?.canonicalGoal || (state.context.refinedGoal as string) || state.goal
+    const focusAreas = state.goalFrame?.focusAreas || (state.context.focusAreas as string[] | undefined) || []
+    const normalizedInput = state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
+    const userContextText = normalizedInput.contextSummary
+
+    // === Phase A: Internal KG retrieval (existing behavior, preserved) ===
+    let retrievedContext: Record<string, unknown> = {}
+    if (kg) {
+      try {
+        const template = await selectBestTemplate(execContext.userId, {
+          workflowType: 'dialectical',
+          preferValidated: true,
         })
-        templateConfig = { maxSteps: attenuatedSteps.length }
-        log.info(`Using retrieval template "${template.name}" with ${attenuatedSteps.length} steps`)
+
+        let templateConfig: { maxSteps?: number } = {}
+        if (template) {
+          const attenuatedSteps = getAttenuatedSteps(template, {
+            currentCycle: state.cycleNumber,
+            maxCycles: config.maxCycles,
+            attenuationFactor: 0.3,
+          })
+          templateConfig = { maxSteps: attenuatedSteps.length }
+        }
+
+        const retrievalResult = await executeRetrievalAgent(effectiveGoal, kg, execContext.apiKeys, {
+          maxSteps: templateConfig.maxSteps ?? 10,
+          maxDepth: 3,
+          topK: 10,
+        })
+
+        retrievedContext = formatRetrievalContext(retrievalResult.context)
+
+        log.info(
+          `KG retrieval: ${retrievalResult.context.claims.length} claims, ` +
+            `${retrievalResult.context.concepts.length} concepts`
+        )
+      } catch (error) {
+        log.warn('KG retrieval failed; continuing without retrieved context', {
+          cycleNumber,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        degradedPhases.push('kg_retrieval')
+      }
+    }
+
+    // === Phase B: External research (FIX #3, #5, #6) ===
+    let researchEvidence: ResearchEvidence | null = null
+    let updatedBudget: RunBudget | null = state.researchBudget ?? null
+    let newSources: SourceRecord[] = []
+    let newClaims: ExtractedClaim[] = []
+
+    if (config.enableExternalResearch && !config.enableReactiveResearch && execContext.toolRegistry && execContext.searchToolKeys) {
+      // Initialize budget on first cycle
+      if (!updatedBudget) {
+        updatedBudget = createRunBudget(
+          config.researchBudgetUsd ?? 1.0,
+          config.researchSearchDepth ?? 'standard'
+        )
       }
 
-      // Execute retrieval agent
-      const retrievalResult = await executeRetrievalAgent(state.goal, kg, execContext.apiKeys, {
-        maxSteps: templateConfig.maxSteps ?? 10,
-        maxDepth: 3,
-        topK: 10,
+      // FIX #5: Analyze mergedGraph for research needs (uses contradictions, thin areas, etc.)
+      const gapResult = analyzeGraphGaps(state.mergedGraph, state.goal, {
+        focusAreas,
+        refinedGoal: effectiveGoal !== state.goal ? effectiveGoal : undefined,
+        contradictions: state.contradictions,
+        cycleNumber,
+        budget: updatedBudget,
+        contextSummary: userContextText ?? undefined,
       })
 
-      log.info(
-        `Retrieval complete: ${retrievalResult.context.claims.length} claims, ` +
-          `${retrievalResult.context.concepts.length} concepts, ` +
-          `${retrievalResult.context.mechanisms.length} mechanisms, ` +
-          `${retrievalResult.nodesVisited} nodes visited in ${retrievalResult.totalDurationMs}ms`
-      )
-
-      // Merge retrieved context with existing context
-      const retrievedContext = formatRetrievalContext(retrievalResult.context)
-      const mergedContext = {
-        ...state.context,
-        ...retrievedContext,
-        retrievalStrategy: retrievalResult.strategy,
-        retrievalSteps: retrievalResult.steps.length,
-      }
-
-      return {
-        phase: 'thesis_generation',
-        cycleNumber: state.cycleNumber + 1,
-        context: mergedContext,
-        totalTokensUsed: 0,
-        totalEstimatedCost: 0,
-      }
-    } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error)
-      log.warn('Retrieval agent failed, continuing with existing context', { error: errMsg })
-      await emitPhaseEvent(execContext, 'retrieve_context', state.cycleNumber + 1, {
-        warning: true,
-        reason: `Retrieval failed, using existing context: ${errMsg}`,
+      log.info('Graph gap analysis', {
+        needsResearch: gapResult.needsResearch,
+        gapTypes: gapResult.gapTypes,
+        intensity: gapResult.researchIntensity,
       })
-      return {
-        phase: 'thesis_generation',
-        cycleNumber: state.cycleNumber + 1,
-        totalTokensUsed: 0,
-        totalEstimatedCost: 0,
+
+      if (gapResult.needsResearch && gapResult.searchPlan) {
+        await emitPhaseEvent(execContext, 'research_enrichment', cycleNumber, {
+          researchTriggered: true,
+          gapTypes: gapResult.gapTypes,
+          intensity: gapResult.researchIntensity,
+        })
+
+        try {
+          // Build tool execution context for search tools
+          const toolContext: ToolExecutionContext = {
+            userId: execContext.userId,
+            agentId: 'system:dialectical_research',
+            workflowId: execContext.workflowId,
+            runId: execContext.runId,
+            eventWriter: execContext.eventWriter,
+            toolRegistry: execContext.toolRegistry,
+            searchToolKeys: execContext.searchToolKeys,
+            provider: 'openai',
+            modelName: 'gpt-4o-mini',
+            iteration: 0,
+          }
+
+          // FIX #3, #6: Execute search using existing infrastructure
+          const { results: searchResults, updatedBudget: budgetAfterSearch } =
+            await executeSearchPlan(
+              gapResult.searchPlan,
+              execContext.toolRegistry,
+              toolContext,
+              updatedBudget
+            )
+          updatedBudget = budgetAfterSearch
+
+          log.info(`Search returned ${searchResults.length} results`)
+
+          // Ingest top sources (relevance-first)
+          if (searchResults.length > 0) {
+            const keywordRelevanceScorer = async (snippet: string, query: string): Promise<number> => {
+              const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3)
+              const snippetLower = snippet.toLowerCase()
+              const matches = queryWords.filter(w => snippetLower.includes(w))
+              return queryWords.length > 0 ? matches.length / queryWords.length : 0.5
+            }
+
+            const { sources, contentMap, updatedBudget: budgetAfterIngest } =
+              await ingestSources(
+                searchResults,
+                effectiveGoal,
+                execContext.toolRegistry,
+                toolContext,
+                updatedBudget,
+                keywordRelevanceScorer
+              )
+            updatedBudget = budgetAfterIngest
+
+            // Apply source quality scores
+            for (const source of sources) {
+              source.sourceQualityScore = computeSourceQualityScore(source)
+            }
+            newSources = sources
+
+            // Extract claims from fetched content
+            if (Object.keys(contentMap).length > 0) {
+              const providerFn: ProviderExecuteFn = async (systemPrompt, userPrompt) => {
+                const result = await executeWithProvider(
+                  {
+                    agentId: asId('agent:dialectical_research_extractor'),
+                    userId: execContext.userId,
+                    name: 'Research Extractor',
+                    role: 'researcher',
+                    systemPrompt,
+                    modelProvider: 'openai',
+                    modelName: 'gpt-4o-mini',
+                    temperature: 0.1,
+                    archived: false,
+                    createdAtMs: Date.now(),
+                    updatedAtMs: Date.now(),
+                    syncState: 'synced',
+                    version: 1,
+                  },
+                  userPrompt,
+                  undefined,
+                  execContext.apiKeys
+                )
+                return result.output ?? ''
+              }
+
+              const { claims, updatedBudget: budgetAfterExtraction } =
+                await extractClaimsFromSourceBatch(
+                  sources,
+                  contentMap,
+                  effectiveGoal,
+                  providerFn,
+                  updatedBudget,
+                  3,
+                  'gpt-4o-mini',
+                )
+              updatedBudget = budgetAfterExtraction
+
+              // Quality-weight claims by source authority
+              newClaims = applyQualityScoresToClaims(claims, sources)
+
+              log.info(`Extracted ${newClaims.length} quality-scored claims from ${sources.length} sources`)
+            }
+          }
+
+          // Build research evidence for thesis/sublation prompt injection (FIX #1)
+          if (newClaims.length > 0 || newSources.length > 0) {
+            researchEvidence = {
+              claims: newClaims.slice(0, 15),
+              sources: newSources.map(s => ({
+                sourceId: s.sourceId,
+                title: s.title,
+                url: s.url,
+                domain: s.domain,
+                qualityScore: s.sourceQualityScore ?? 0.5,
+              })),
+              gapTypes: gapResult.gapTypes,
+              searchRationale: gapResult.rationale,
+            }
+          }
+        } catch (error) {
+          log.warn('External research failed; continuing without external evidence', {
+            cycleNumber,
+            error: error instanceof Error ? error.message : String(error),
+          })
+          degradedPhases.push('external_research')
+        }
       }
+    }
+
+    // Build merged context for downstream phases (FIX #1)
+    const mergedContext: Record<string, unknown> = {
+      constraintOverride: state.context.constraintOverride,
+      originalGoal: state.context.originalGoal,
+      refinedGoal: state.context.refinedGoal,
+      focusAreas,
+      ...retrievedContext,
+      researchEvidence,
+      userContextText,
+    }
+
+    return {
+      phase: 'thesis_generation',
+      cycleNumber,
+      context: mergedContext,
+      researchBudget: updatedBudget,
+      researchSources: newSources,
+      researchClaims: newClaims,
+      degradedPhases,
+      totalTokensUsed: 0,
+      totalEstimatedCost: 0,
     }
   }
 }
@@ -339,7 +1010,8 @@ function createThesisGenerationNode(
   thesisAgents: AgentConfig[],
   execContext: AgentExecutionContext,
   config: DialecticalWorkflowConfig,
-  budget: IterationBudget
+  budget: IterationBudget,
+  kg: KnowledgeHypergraph | null = null
 ) {
   return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
     log.info(
@@ -356,22 +1028,40 @@ function createThesisGenerationNode(
       checkModelHeterogeneity(thesisAgents)
     }
 
+    const thesisLenses = thesisAgents.map((_, idx) => config.thesisAgents[idx]?.lens ?? 'custom')
+    const hasDuplicateLenses = new Set(thesisLenses).size < thesisLenses.length
+    if (hasDuplicateLenses) {
+      throw new Error(`Thesis agents have duplicate lenses: ${thesisLenses.join(', ')}`)
+    }
+
     // Execute all thesis agents in parallel
     const thesisPromises = thesisAgents.map(async (agent, idx) => {
       const lensConfig = config.thesisAgents[idx]
       const lens = lensConfig?.lens ?? 'custom'
 
-      const thesisPrompt = buildThesisPrompt(state.goal, lens, state.context)
+      // Validate research evidence before injection — avoid leaking empty/stale state
+      const rawEvidence = state.context.researchEvidence as ResearchEvidence | null | undefined
+      const hasValidEvidence = rawEvidence &&
+        rawEvidence.claims?.length > 0
+      const evidence = hasValidEvidence ? rawEvidence : null
+
+      const thesisPrompt = buildThesisPrompt(
+        state.goal, lens, state.mergedGraph,
+        evidence,
+        state.cycleNumber === 1
+          ? (state.context.userContextText as string | null | undefined)
+          : null,
+      )
 
       try {
         const step = await executeAgentWithEvents(
           agent,
           thesisPrompt,
           {
-            ...state.context,
             cycleNumber: state.cycleNumber,
             lens,
             phase: 'thesis_generation',
+            goal: state.goal,
           },
           execContext,
           { stepNumber: state.steps.length + idx + 1, maxIterations: budget.perThesisAgent }
@@ -380,40 +1070,82 @@ function createThesisGenerationNode(
         // Parse the thesis output (in production, use structured output)
         const thesis = parseThesisOutput(step.output, agent.agentId, step.model, lens)
 
-        // Emit thesis event and record message
+        // Emit thesis event with all structured fields (null/empty defaults for frontend)
         await emitAgentOutput(execContext, 'dialectical_thesis', agent, step.output, {
           lens,
           cycleNumber: state.cycleNumber,
           confidence: thesis.confidence,
+          graph: thesis.graph ?? null,
+          conceptGraph: thesis.conceptGraph ?? {},
+          causalModel: thesis.causalModel ?? [],
+          falsificationCriteria: thesis.falsificationCriteria ?? [],
+          decisionImplications: thesis.decisionImplications ?? [],
+          unitOfAnalysis: thesis.unitOfAnalysis ?? '',
+          temporalGrain: thesis.temporalGrain ?? '',
+          regimeAssumptions: thesis.regimeAssumptions ?? [],
         })
 
         return { step, thesis }
       } catch (error) {
-        log.error(`Thesis agent ${agent.name} failed`, error)
-        return null
+        throw new Error(`Thesis agent ${agent.name} failed: ${error instanceof Error ? error.message : String(error)}`)
       }
     })
 
     const results = await Promise.all(thesisPromises)
-    const successfulResults = results.filter((r) => r !== null)
 
-    const newSteps = successfulResults.map((r) => r.step)
-    const newTheses = successfulResults.map((r) => r.thesis)
+    const newSteps = results.map((r) => r.step)
+    const newTheses = results.map((r) => r.thesis)
 
-    // Validate minimum thesis count for dialectical reasoning
+    // Check if any agent requested user input
+    const interruptedStep = newSteps.find((s) => s.askUserInterrupt)
+    if (interruptedStep) {
+      const interrupt = handleAskUserInterrupt(interruptedStep, 'thesis_generation')
+      if (interrupt) {
+        return { steps: newSteps, ...interrupt }
+      }
+    }
+
     if (newTheses.length < 2) {
-      const failedCount = thesisAgents.length - newTheses.length
-      const errorMsg = `Thesis generation failed: only ${newTheses.length} of ${thesisAgents.length} agents succeeded (${failedCount} failed). Minimum 2 theses required for dialectical reasoning.`
-      log.error(errorMsg)
+      throw new Error(`Thesis generation requires at least 2 theses, got ${newTheses.length}`)
+    }
 
-      await emitPhaseEvent(execContext, 'thesis_generation', state.cycleNumber, {
-        error: true,
-        successCount: newTheses.length,
-        failedCount,
-        reason: errorMsg,
-      })
-
-      throw new Error(errorMsg)
+    // Build agent-to-KG-claim mapping from thesis graph nodes
+    const agentToClaimIds: Record<string, string[]> = {}
+    if (kg) {
+      const sessionId = `dialectical:${state.runId}` as DialecticalSessionId
+      for (const thesis of newTheses) {
+        const claimNodes = thesis.graph?.nodes.filter(n => n.type === 'claim') ?? []
+        if (claimNodes.length === 0) continue
+        const claimIds: string[] = []
+        for (const node of claimNodes) {
+          try {
+            const kgClaim = await kg.addClaim({
+              sessionId,
+              userId: execContext.userId,
+              text: node.label,
+              normalizedText: node.label.toLowerCase().trim().replace(/\s+/g, ' '),
+              conceptIds: [],
+              claimType: 'ASSERTION',
+              confidence: thesis.confidence,
+              sourceEpisodeId: `episode:thesis:${state.runId}:${thesis.agentId}` as EpisodeId,
+              sourceAgentId: asId<'agent'>(`agent:${thesis.agentId}`),
+              sourceLens: thesis.lens as ThesisLens,
+            })
+            claimIds.push(kgClaim.claimId)
+          } catch (err) {
+            throw new Error(`Failed to add thesis claim to KG for ${node.id}: ${err instanceof Error ? err.message : String(err)}`)
+          }
+        }
+        if (claimIds.length > 0) {
+          agentToClaimIds[thesis.agentId] = claimIds
+        }
+      }
+      if (Object.keys(agentToClaimIds).length > 0) {
+        log.info('Built agent-to-claim mapping', {
+          agents: Object.keys(agentToClaimIds).length,
+          totalClaims: Object.values(agentToClaimIds).reduce((s, ids) => s + ids.length, 0),
+        })
+      }
     }
 
     const totalTokens = newSteps.reduce((sum, s) => sum + s.tokensUsed, 0)
@@ -425,6 +1157,7 @@ function createThesisGenerationNode(
       steps: newSteps,
       totalTokensUsed: totalTokens,
       totalEstimatedCost: totalCost,
+      agentClaimMapping: agentToClaimIds,
     }
   }
 }
@@ -470,16 +1203,51 @@ function createCrossNegationNode(
     const negationPromises: Promise<{
       step: AgentExecutionStep
       negation: NegationOutput
-    } | null>[] = []
+    }>[] = []
 
-    // Each agent critiques theses from other agents
-    for (let i = 0; i < thesisAgents.length && i < state.theses.length; i++) {
-      const agent = thesisAgents[i]
-      const thesis = state.theses[i]
+    // Build negation pairs: all-pairs when enabled, round-robin otherwise
+    const useAllPairs = config.enableAllPairsNegation === true
+    const pairs: Array<{ agentIdx: number; targetIdx: number }> = []
 
-      // This agent critiques the next thesis in a round-robin fashion
-      const targetIdx = (i + 1) % state.theses.length
+    if (useAllPairs) {
+      // All-pairs: each thesis critiques every other thesis
+      for (let i = 0; i < state.theses.length; i++) {
+        for (let j = 0; j < state.theses.length; j++) {
+          if (i !== j) pairs.push({ agentIdx: i, targetIdx: j })
+        }
+      }
+      // Cap total negations if configured
+      const maxNegations = config.maxNegationsPerCycle ?? pairs.length
+      if (pairs.length > maxNegations) {
+        // Shuffle and truncate to cap — ensures diverse pairings
+        for (let k = pairs.length - 1; k > 0; k--) {
+          const r = Math.floor(Math.random() * (k + 1))
+          ;[pairs[k], pairs[r]] = [pairs[r], pairs[k]]
+        }
+        pairs.length = maxNegations
+      }
+    } else {
+      // Round-robin: each agent critiques the next thesis
+      for (let i = 0; i < thesisAgents.length && i < state.theses.length; i++) {
+        const targetIdx = (i + 1) % state.theses.length
+        pairs.push({ agentIdx: i, targetIdx })
+      }
+    }
+
+    // Each agent critiques assigned target theses
+    for (let pairIdx = 0; pairIdx < pairs.length; pairIdx++) {
+      const { agentIdx, targetIdx } = pairs[pairIdx]
+      const agent = thesisAgents[agentIdx % thesisAgents.length]
+      const thesis = state.theses[agentIdx]
       const targetThesis = state.theses[targetIdx]
+
+      // Skip negation if target thesis has no substantive content
+      const hasGraph = targetThesis.graph && targetThesis.graph.nodes.length > 0
+      const hasRawText = targetThesis.rawText && targetThesis.rawText.trim().length >= 20
+        && !targetThesis.rawText.startsWith('[PARTIAL RESULT')
+      if (!hasGraph && !hasRawText) {
+        throw new Error(`Target thesis from ${targetThesis.lens} lens has insufficient content for negation`)
+      }
 
       const negationPrompt = buildNegationPrompt(thesis, targetThesis)
 
@@ -490,14 +1258,11 @@ function createCrossNegationNode(
               agent,
               negationPrompt,
               {
-                ...state.context,
                 cycleNumber: state.cycleNumber,
                 phase: 'cross_negation',
-                sourceThesis: thesis,
-                targetThesis: targetThesis,
               },
               execContext,
-              { stepNumber: state.steps.length + i + 1, maxIterations: budget.perNegationAgent }
+              { stepNumber: state.steps.length + pairIdx + 1, maxIterations: budget.perNegationAgent }
             )
 
             const negation = parseNegationOutput(step.output, agent.agentId, targetThesis.agentId)
@@ -511,31 +1276,39 @@ function createCrossNegationNode(
 
             return { step, negation }
           } catch (error) {
-            const errMsg = error instanceof Error ? error.message : String(error)
-            log.error(`Negation by ${agent.name} failed`, error)
-            await emitPhaseEvent(execContext, 'cross_negation', state.cycleNumber, {
-              warning: true,
-              failedAgent: agent.name,
-              reason: `Negation agent failed: ${errMsg}`,
-            })
-            return null
+            throw new Error(`Negation by ${agent.name} failed: ${error instanceof Error ? error.message : String(error)}`)
           }
         })()
       )
     }
 
-    const results = await Promise.all(negationPromises)
-    const successfulResults = results.filter((r) => r !== null)
+    const settled = await Promise.allSettled(negationPromises)
+    const results = settled
+      .filter((result): result is PromiseFulfilledResult<{ step: AgentExecutionStep; negation: NegationOutput }> => result.status === 'fulfilled')
+      .map((result) => result.value)
 
-    const newSteps = successfulResults.map((r) => r.step)
-    const newNegations = successfulResults.map((r) => r.negation)
+    const newSteps = results.map((r) => r.step)
+    const newNegations = results.map((r) => r.negation)
+
+    // Check if any negation agent requested user input
+    const interruptedNegStep = newSteps.find((s) => s.askUserInterrupt)
+    if (interruptedNegStep) {
+      const interrupt = handleAskUserInterrupt(interruptedNegStep, 'cross_negation')
+      if (interrupt) {
+        return { steps: newSteps, ...interrupt }
+      }
+    }
 
     if (newNegations.length === 0) {
-      log.warn(`All ${thesisAgents.length} negation agents failed - proceeding without negations`)
-      await emitPhaseEvent(execContext, 'cross_negation', state.cycleNumber, {
-        warning: true,
-        reason: `All ${thesisAgents.length} negation agents failed - contradiction detection will be limited`,
+      log.warn('Cross-negation produced zero negations, continuing in degraded mode', {
+        cycleNumber: state.cycleNumber,
+        thesisCount: state.theses.length,
       })
+      return {
+        phase: 'contradiction_crystallization',
+        negations: [],
+        degradedPhases: ['cross_negation'],
+      }
     }
 
     const totalTokens = newSteps.reduce((sum, s) => sum + s.tokensUsed, 0)
@@ -557,7 +1330,8 @@ function createCrossNegationNode(
  */
 function createContradictionCrystallizationNode(
   execContext: AgentExecutionContext,
-  config: DialecticalWorkflowConfig
+  config: DialecticalWorkflowConfig,
+  kg: KnowledgeHypergraph | null = null
 ) {
   return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
     log.info(`Dialectical cycle ${state.cycleNumber}: Contradiction Crystallization phase`)
@@ -568,13 +1342,8 @@ function createContradictionCrystallizationNode(
       negationCount: state.negations.length,
     })
 
-    // Warn if input data is empty or degraded
     if (state.negations.length === 0) {
-      log.warn('Contradiction crystallization proceeding with zero negations')
-      await emitPhaseEvent(execContext, 'contradiction_crystallization', state.cycleNumber, {
-        warning: true,
-        reason: 'No negations available - contradictions will be limited',
-      })
+      throw new Error('Contradiction crystallization requires negations')
     }
 
     // Build tracker context for specialized contradiction detection
@@ -590,14 +1359,25 @@ function createContradictionCrystallizationNode(
       state.theses,
       state.negations,
       config,
-      trackerContext
+      trackerContext,
+      state.agentClaimMapping
     )
 
     // Filter by action distance if configured
-    const filteredContradictions =
+    let filteredContradictions =
       config.minActionDistance > 0
         ? contradictions.filter((c) => c.actionDistance <= config.minActionDistance)
         : contradictions
+
+    // Phase 27: Filter by severity for progressive deepening
+    if (config.contradictionSeverityFilter && config.contradictionSeverityFilter !== 'ALL') {
+      const severityOrder = { HIGH: 3, MEDIUM: 2, LOW: 1 }
+      const threshold = severityOrder[config.contradictionSeverityFilter] ?? 0
+      filteredContradictions = filteredContradictions.filter((c) => {
+        const sev = (c.severity ?? '').toUpperCase()
+        return (severityOrder[sev as keyof typeof severityOrder] ?? 0) >= threshold
+      })
+    }
 
     log.info(
       `Found ${contradictions.length} contradictions, ${filteredContradictions.length} within action distance`
@@ -635,9 +1415,57 @@ function createContradictionCrystallizationNode(
       )
     }
 
+    // Persist contradictions to KnowledgeHypergraph
+    if (kg && filteredContradictions.length > 0) {
+      const sessionId = `dialectical:${state.runId}` as DialecticalSessionId
+      let persisted = 0
+      for (const c of filteredContradictions) {
+        try {
+          // participatingClaims should contain KG claim IDs (via agentClaimMapping).
+          // Attempt to resolve them; skip persistence if no valid claim IDs found.
+          const claimIds = c.participatingClaims
+            .map((pc) => (pc.startsWith('claim_') ? pc : `claim:${pc}`) as ClaimId)
+            .filter((cid) => kg.getNode(cid) !== undefined)
+
+          if (claimIds.length === 0) {
+            throw new Error(`Contradiction ${c.id} has no matching KG claims: ${c.participatingClaims.join(', ')}`)
+          }
+
+          await kg.addContradiction({
+            sessionId,
+            userId: execContext.userId,
+            type: c.type as 'SYNCHRONIC' | 'DIACHRONIC' | 'REGIME_SHIFT',
+            severity: c.severity as 'HIGH' | 'MEDIUM' | 'LOW',
+            trackerType: c.trackerAgent as 'LOGIC' | 'PRAGMATIC' | 'SEMANTIC' | 'BOUNDARY',
+            description: c.description,
+            detailedAnalysis: c.description,
+            claimIds,
+            actionDistance: c.actionDistance,
+            discoveredInCycle: state.cycleNumber,
+            discoveredByAgentId: asId<'agent'>(`agent:${c.trackerAgent}`),
+          })
+          persisted++
+        } catch (err) {
+          throw new Error(`Failed to persist contradiction ${c.id} to KG: ${err instanceof Error ? err.message : String(err)}`)
+        }
+      }
+      if (persisted > 0) {
+        log.info('Persisted contradictions to KG', { persisted, total: filteredContradictions.length })
+      }
+    }
+
+    // Calculate contradiction density for this cycle
+    // Count actual claims from thesis graphs (not just thesis count)
+    const totalClaims = state.theses.reduce((sum, t) => {
+      return sum + (t.graph?.nodes.length ?? Math.max(Object.keys(t.conceptGraph).length, 1))
+    }, 0)
+    const density = totalClaims > 0 ? filteredContradictions.length / totalClaims : 0
+
     return {
       phase: 'sublation',
       contradictions: filteredContradictions,
+      contradictionDensity: density,
+      densityHistory: [density],
       totalTokensUsed: 0,
       totalEstimatedCost: 0,
     }
@@ -671,7 +1499,8 @@ function createSublationNode(
   execContext: AgentExecutionContext,
   config: DialecticalWorkflowConfig,
   enableCompetitive: boolean,
-  budget: IterationBudget
+  budget: IterationBudget,
+  kg: KnowledgeHypergraph | null = null
 ) {
   return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
     log.info(`Dialectical cycle ${state.cycleNumber}: Sublation phase`)
@@ -683,44 +1512,104 @@ function createSublationNode(
       competitive: enableCompetitive && synthesisAgents.length > 1,
     })
 
-    // Warn if no contradictions available for synthesis
     if (state.contradictions.length === 0) {
-      log.warn('Sublation proceeding with zero contradictions - synthesis may be shallow')
-      await emitPhaseEvent(execContext, 'sublation', state.cycleNumber, {
-        warning: true,
-        reason: 'No contradictions to resolve - synthesis will be based on theses only',
-      })
+      throw new Error('Sublation requires at least one contradiction')
     }
+
+    log.info('Sublation checkpoint: post-warning', {
+      competitive: enableCompetitive,
+      synthesisAgentCount: synthesisAgents.length,
+      thesesCount: state.theses.length,
+      negationsCount: state.negations.length,
+      stepsCount: state.steps.length,
+      cycleNumber: state.cycleNumber,
+    })
 
     // Use competitive synthesis if enabled and multiple agents available
     if (enableCompetitive && synthesisAgents.length > 1) {
-      return runCompetitiveSublation(state, synthesisAgents, execContext, config)
+      log.info('Sublation: entering competitive path')
+      return runCompetitiveSublation(state, synthesisAgents, execContext, config, kg)
     }
 
     // Fall back to single-agent synthesis
     const synthesisAgent = synthesisAgents[0]
+    log.info('Sublation: single-agent path', {
+      agentName: synthesisAgent.name,
+      agentId: synthesisAgent.agentId,
+      provider: synthesisAgent.modelProvider,
+      model: synthesisAgent.modelName,
+      hasTools: (synthesisAgent.toolIds?.length ?? 0) > 0,
+    })
+
     const sublationPrompt = buildSublationPrompt(
       state.theses,
       state.negations,
-      state.contradictions
+      state.contradictions,
+      state.mergedGraph,
+      state.cycleNumber,
+      state.context.researchEvidence as ResearchEvidence | null | undefined,
+      state.cycleNumber === 1
+        ? (state.context.userContextText as string | null | undefined)
+        : null,
     )
+    log.info('Sublation prompt built', {
+      promptLength: sublationPrompt.length,
+      stepNumber: state.steps.length + 1,
+      budgetPerSynthesis: budget.perSynthesisAgent,
+    })
 
-    const step = await executeAgentWithEvents(
-      synthesisAgent,
-      sublationPrompt,
-      {
-        ...state.context,
+    // Wrap in timeout to prevent indefinite hangs (e.g. Firestore/API connection issues)
+    const SUBLATION_TIMEOUT_MS = 180_000 // 3 minutes
+    let step: AgentExecutionStep
+    try {
+      step = await Promise.race([
+        executeAgentWithEvents(
+          synthesisAgent,
+          sublationPrompt,
+          {
+            cycleNumber: state.cycleNumber,
+            phase: 'sublation',
+          },
+          execContext,
+          { stepNumber: state.steps.length + 1, maxIterations: budget.perSynthesisAgent }
+        ),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Sublation agent timed out after 180s')), SUBLATION_TIMEOUT_MS)
+        ),
+      ])
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      log.warn('Sublation agent execution failed, continuing in degraded mode', {
+        error: msg,
         cycleNumber: state.cycleNumber,
-        phase: 'sublation',
-        theses: state.theses,
-        negations: state.negations,
-        contradictions: state.contradictions,
-      },
-      execContext,
-      { stepNumber: state.steps.length + 1, maxIterations: budget.perSynthesisAgent }
-    )
+      })
+      return {
+        phase: 'meta_reflection',
+        synthesis: {
+          operators: [],
+          preservedElements: [],
+          negatedElements: [],
+          newConceptGraph: {},
+          newClaims: [],
+          newPredictions: [],
+          schemaDiff: null,
+          incompleteReason: `Sublation degraded: ${msg}`,
+        },
+        mergedGraph: state.mergedGraph,
+        kgDiff: null,
+        conceptualVelocity: 0,
+        velocityHistory: [0],
+        degradedPhases: ['sublation'],
+      }
+    }
 
-    const synthesis = parseSublationOutput(step.output)
+    // Check if sublation agent requested user input
+    const sublationInterrupt = handleAskUserInterrupt(step, 'sublation')
+    if (sublationInterrupt) {
+      return { steps: [step], ...sublationInterrupt }
+    }
+
+    const { synthesis, mergedGraph: newMergedGraph, graphDiff } = parseSublationOutput(step.output)
 
     // Emit synthesis event and record message
     await emitAgentOutput(execContext, 'dialectical_synthesis', synthesisAgent, step.output, {
@@ -728,15 +1617,42 @@ function createSublationNode(
       operatorCount: synthesis.operators.length,
       preservedCount: synthesis.preservedElements.length,
       negatedCount: synthesis.negatedElements.length,
+      incompleteReason: synthesis.incompleteReason,
+      hasGraph: !!newMergedGraph,
+      mergedGraph: newMergedGraph ?? undefined,
+      graphDiff: graphDiff ?? undefined,
     })
 
-    // Calculate conceptual velocity (rate of change in concepts)
-    const velocity = calculateConceptualVelocity(state, synthesis)
+    // Derive KG diff from synthesis operators (or graphDiff when graph format)
+    const kgDiff = deriveKGDiff(synthesis, state.contradictions, graphDiff)
+
+    // Apply KGDiff to actual KnowledgeHypergraph
+    if (kg && kgDiff) {
+      try {
+        const sessionId = `dialectical:${state.runId}` as DialecticalSessionId
+        const { applied } = await applyKGDiffToGraph(kgDiff, kg, sessionId, execContext.userId)
+        log.info('Applied KGDiff to graph (single-agent sublation)', applied)
+      } catch (err) {
+        throw new Error(`Failed to apply KGDiff to graph: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+
+    // Calculate conceptual velocity using the unified function from metaReflection
+    const velocity = calculateConceptualVelocity(synthesis, kgDiff, state.theses)
+
+    // Build graph history entry if we have a diff
+    const graphHistoryEntry = graphDiff
+      ? [{ cycle: state.cycleNumber, diff: graphDiff }]
+      : []
 
     return {
       phase: 'meta_reflection',
       synthesis,
+      mergedGraph: newMergedGraph ?? state.mergedGraph,
+      graphHistory: graphHistoryEntry,
+      kgDiff,
       conceptualVelocity: velocity,
+      velocityHistory: [velocity],
       steps: [step],
       totalTokensUsed: step.tokensUsed,
       totalEstimatedCost: step.estimatedCost,
@@ -751,7 +1667,8 @@ async function runCompetitiveSublation(
   state: DialecticalState,
   synthesisAgents: AgentConfig[],
   execContext: AgentExecutionContext,
-  config: DialecticalWorkflowConfig
+  config: DialecticalWorkflowConfig,
+  kg: KnowledgeHypergraph | null = null
 ): Promise<Partial<DialecticalState>> {
   log.info(`Running competitive synthesis with ${synthesisAgents.length} agents`)
 
@@ -790,9 +1707,6 @@ async function runCompetitiveSublation(
   const winner = finalSyntheses[0]
   const synthesis = winner.synthesis
 
-  // Calculate velocity from winning synthesis
-  const velocity = calculateConceptualVelocity(state, synthesis)
-
   const allSteps = [...competitiveResult.steps, ...crossNegationSteps]
   const totalTokensUsed = allSteps.reduce((sum, s) => sum + s.tokensUsed, 0)
   const totalEstimatedCost = allSteps.reduce((sum, s) => sum + s.estimatedCost, 0)
@@ -801,10 +1715,47 @@ async function runCompetitiveSublation(
     `Competitive synthesis complete. Winner: ${winner.agentName} (score: ${winner.scores.total.toFixed(3)})`
   )
 
+  // Try to extract mergedGraph from winner's raw output (competitive candidates
+  // may have produced graph-format sublation). Fall back to state's existing graph.
+  let competitiveMergedGraph: CompactGraph | null = state.mergedGraph
+  let competitiveGraphDiff: GraphDiff | null = null
+  if (winner.rawText) {
+    const parsed = parseSublationOutput(winner.rawText)
+    if (parsed.mergedGraph) {
+      competitiveMergedGraph = parsed.mergedGraph
+      competitiveGraphDiff = parsed.graphDiff
+    }
+  }
+
+  // Derive KG diff from winning synthesis (uses graphDiff when graph format)
+  const kgDiff = deriveKGDiff(synthesis, state.contradictions, competitiveGraphDiff)
+
+  // Apply KGDiff to actual KnowledgeHypergraph
+  if (kg && kgDiff) {
+    try {
+      const sessionId = `dialectical:${state.runId}` as DialecticalSessionId
+      const { applied } = await applyKGDiffToGraph(kgDiff, kg, sessionId, execContext.userId)
+      log.info('Applied KGDiff to graph (competitive sublation)', applied)
+    } catch (err) {
+      throw new Error(`Failed to apply KGDiff to graph: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  // Calculate velocity from winning synthesis using unified function
+  const velocity = calculateConceptualVelocity(synthesis, kgDiff, state.theses)
+
+  const graphHistoryEntry = competitiveGraphDiff
+    ? [{ cycle: state.cycleNumber, diff: competitiveGraphDiff }]
+    : []
+
   return {
     phase: 'meta_reflection',
     synthesis,
+    mergedGraph: competitiveMergedGraph,
+    graphHistory: graphHistoryEntry,
+    kgDiff,
     conceptualVelocity: velocity,
+    velocityHistory: [velocity],
     steps: allSteps,
     totalTokensUsed,
     totalEstimatedCost,
@@ -865,11 +1816,14 @@ function createMetaReflectionNode(
         schemaSteps = [schemaResult.step]
         log.info(`Schema induction found ${communities.length} communities`)
       } catch (error) {
-        log.warn('Schema induction failed, continuing without communities', {
-          error: String(error),
-        })
+        throw new Error(`Schema induction failed: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
+
+    // Gather prior meta decisions for context continuity
+    const previousDecisions = (state.context.metaDecisionHistory as Array<{
+      cycle: number; decision: MetaDecision; reasoning: string; focusAreas?: string[]
+    }>) ?? []
 
     // Run enhanced meta-reflection using state's accumulated metrics history
     const metaResult = await runMetaReflection(
@@ -883,7 +1837,12 @@ function createMetaReflectionNode(
         synthesis: state.synthesis,
         communities,
         kgDiff: state.kgDiff ?? null,
+        mergedGraph: state.mergedGraph ?? null,
+        latestGraphDiff: state.graphHistory.length > 0
+          ? state.graphHistory[state.graphHistory.length - 1].diff
+          : null,
         previousMetrics: state.cycleMetricsHistory,
+        previousDecisions,
         tokensUsedThisCycle: tokensThisCycle,
         costThisCycle,
       },
@@ -911,8 +1870,58 @@ function createMetaReflectionNode(
     })
 
     if (metaResult.decision === 'TERMINATE') {
+      // Check if termination is due to max cycles constraint
+      const isMaxCyclesHit = metaResult.reasoning?.includes('Maximum cycles')
+      const constraintOverride = state.context.constraintOverride as
+        | { type: string; newLimit?: number }
+        | undefined
+
+      if (isMaxCyclesHit) {
+        // Check if user already increased the limit
+        const effectiveMax =
+          constraintOverride?.type === 'max_cycles' && constraintOverride.newLimit
+            ? constraintOverride.newLimit
+            : config.maxCycles
+
+        if (state.cycleNumber >= effectiveMax) {
+          // Pause and ask user instead of terminating
+          log.info('Max cycles constraint reached, pausing for user decision', {
+            cycles: state.cycleNumber,
+            maxCycles: effectiveMax,
+          })
+          return {
+            metaDecision: metaResult.decision,
+            cycleMetricsHistory: [metaResult.metrics],
+            status: 'waiting_for_input',
+            constraintPause: {
+              constraintType: 'max_cycles',
+              currentValue: state.cycleNumber,
+              limitValue: effectiveMax,
+              unit: 'cycles',
+              partialOutput: state.synthesis
+                ? `Completed ${state.cycleNumber} dialectical cycles. Current synthesis has ${state.synthesis.preservedElements?.length ?? 0} preserved elements and ${state.synthesis.newClaims?.length ?? 0} new claims.`
+                : `Completed ${state.cycleNumber} dialectical cycles.`,
+              suggestedIncrease: effectiveMax + 3,
+            },
+            steps: allSteps,
+            totalTokensUsed,
+            totalEstimatedCost,
+          }
+        }
+        // User increased limit and we're still under — continue instead of terminating
+        return {
+          metaDecision: 'CONTINUE' as MetaDecision,
+          cycleMetricsHistory: [metaResult.metrics],
+          steps: allSteps,
+          totalTokensUsed,
+          totalEstimatedCost,
+        }
+      }
+
+      // Non-constraint termination (velocity threshold, convergence, etc.) — complete normally
       return {
         metaDecision: metaResult.decision,
+        cycleMetricsHistory: [metaResult.metrics],
         finalOutput: formatFinalOutput(state),
         status: 'completed',
         steps: allSteps,
@@ -921,14 +1930,30 @@ function createMetaReflectionNode(
       }
     }
 
-    // Handle RESPECIFY - update goal if refined
-    const updatedContext =
-      metaResult.decision === 'RESPECIFY' && metaResult.refinedGoal
-        ? { ...state.context, originalGoal: state.goal, refinedGoal: metaResult.refinedGoal }
-        : state.context
+    // Handle CONTINUE/RESPECIFY — persist focusAreas, refinedGoal, and decision history for next cycle
+    const updatedContext: Record<string, unknown> = {
+      ...state.context,
+      // Persist focusAreas from meta-reflection for retrieve_context
+      focusAreas: metaResult.focusAreas ?? state.context.focusAreas,
+      // Accumulate meta decision history for context continuity
+      metaDecisionHistory: [
+        ...previousDecisions,
+        {
+          cycle: state.cycleNumber,
+          decision: metaResult.decision,
+          reasoning: metaResult.reasoning,
+          focusAreas: metaResult.focusAreas,
+        },
+      ],
+    }
+    if (metaResult.decision === 'RESPECIFY' && metaResult.refinedGoal) {
+      updatedContext.originalGoal = state.goal
+      updatedContext.refinedGoal = metaResult.refinedGoal
+    }
 
     return {
       metaDecision: metaResult.decision,
+      cycleMetricsHistory: [metaResult.metrics],
       context: updatedContext,
       steps: allSteps,
       totalTokensUsed,
@@ -1012,12 +2037,17 @@ function extractClaimsFromTheses(theses: ThesisOutput[]) {
 /**
  * Route based on meta-reflection decision
  */
-function routeMetaDecision(state: DialecticalState): 'retrieve_context' | typeof END {
+function routeMetaDecision(state: DialecticalState): 'goal_framing' | 'research_enrichment' | typeof END {
+  if (state.status === 'waiting_for_input') {
+    return END // Constraint pause — exit graph so executor can handle
+  }
   if (state.metaDecision === 'TERMINATE' || state.status === 'completed') {
     return END
   }
-  // CONTINUE or RESPECIFY both loop back to retrieve context
-  return 'retrieve_context'
+  if (state.metaDecision === 'RESPECIFY') {
+    return 'goal_framing'
+  }
+  return 'research_enrichment'
 }
 
 // ----- Graph Creation -----
@@ -1025,10 +2055,15 @@ function routeMetaDecision(state: DialecticalState): 'retrieve_context' | typeof
 /**
  * Create a dialectical workflow graph
  */
+function hasConfiguredApiKeys(apiKeys: ProviderKeys): boolean {
+  return Object.values(apiKeys).some((key) => typeof key === 'string' && key.trim().length > 0)
+}
+
 export function createDialecticalGraph(config: DialecticalGraphConfig) {
   const {
     workflow,
     dialecticalConfig,
+    goalFramer,
     thesisAgents,
     synthesisAgents,
     metaAgent,
@@ -1047,6 +2082,27 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
     tierOverride,
     workflowCriticality,
   } = config
+
+  // Validate required agents
+  if (!thesisAgents || thesisAgents.length === 0) {
+    throw new Error('Dialectical graph requires at least 1 thesis agent')
+  }
+  if (!synthesisAgents || synthesisAgents.length === 0) {
+    throw new Error('Dialectical graph requires at least 1 synthesis agent')
+  }
+  if (!hasConfiguredApiKeys(apiKeys)) {
+    throw new Error('Dialectical graph requires at least 1 configured API key')
+  }
+
+  // Phase 28: Quick dialectic mode — 2 lenses, 1 cycle, no KG
+  const isQuickMode = dialecticalConfig.mode === 'quick'
+  const cfg = { ...dialecticalConfig }
+  const agents = [...thesisAgents]
+  if (isQuickMode) {
+    cfg.maxCycles = 1
+    agents.splice(2) // Limit to first 2 lenses
+    log.info('Quick dialectic mode: 1 cycle, 2 lenses, no KG')
+  }
 
   // Create the state graph
   const graph = new StateGraph(DialecticalStateAnnotation)
@@ -1067,10 +2123,10 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
 
   // Calculate iteration budget for each agent role
   const iterationBudget = calculateIterationBudget({
-    workflowMaxIterations: workflow.maxIterations ?? 80,
-    thesisAgents,
+    workflowMaxIterations: workflow.maxIterations ?? 8,
+    thesisAgents: agents,
     synthesisAgentCount: synthesisAgents.length,
-    dialecticalConfig,
+    dialecticalConfig: cfg,
     historicalData: config.historicalData,
   })
   log.info(
@@ -1080,8 +2136,9 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
   )
 
   // Initialize knowledge hypergraph (use provided or create from sessionId)
-  let kg: KnowledgeHypergraph | null = knowledgeHypergraph ?? null
-  if (!kg && sessionId) {
+  // Phase 28: Skip KG in quick mode
+  let kg: KnowledgeHypergraph | null = isQuickMode ? null : (knowledgeHypergraph ?? null)
+  if (!kg && sessionId && !isQuickMode) {
     kg = new KnowledgeHypergraph(sessionId, userId)
     log.info(`Created new KnowledgeHypergraph for session ${sessionId}`)
   }
@@ -1089,22 +2146,27 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
   // Note: cycleMetricsHistory is now tracked in DialecticalStateAnnotation
   // and persisted across checkpoint restores
 
-  // Add nodes for each phase
-  graph.addNode('retrieve_context', createRetrieveContextNode(execContext, dialecticalConfig, kg))
+  // --- Always register shared nodes ---
+  const framingAgent = goalFramer ?? metaAgent
+
+  graph.addNode('input_normalizer', createInputNormalizerNode(execContext))
+  graph.addNode('goal_framing', createGoalFramingNode(framingAgent, execContext, cfg, kg))
+  graph.addNode('context_seeding', createContextSeedingNode(framingAgent, execContext, kg))
+  graph.addNode('research_enrichment', createResearchEnrichmentNode(execContext, cfg, kg))
 
   graph.addNode(
     'generate_theses',
-    createThesisGenerationNode(thesisAgents, execContext, dialecticalConfig, iterationBudget)
+    createThesisGenerationNode(agents, execContext, cfg, iterationBudget, kg)
   )
 
   graph.addNode(
     'cross_negation',
-    createCrossNegationNode(thesisAgents, execContext, dialecticalConfig, iterationBudget)
+    createCrossNegationNode(agents, execContext, cfg, iterationBudget)
   )
 
   graph.addNode(
     'crystallize',
-    createContradictionCrystallizationNode(execContext, dialecticalConfig)
+    createContradictionCrystallizationNode(execContext, cfg, kg)
   )
 
   graph.addNode(
@@ -1112,9 +2174,10 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
     createSublationNode(
       synthesisAgents,
       execContext,
-      dialecticalConfig,
+      cfg,
       enableCompetitiveSynthesis,
-      iterationBudget
+      iterationBudget,
+      kg
     )
   )
 
@@ -1124,26 +2187,108 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
       metaAgent,
       schemaAgent,
       execContext,
-      dialecticalConfig,
+      cfg,
       enableSchemaInduction,
       iterationBudget
     )
   )
 
-  // Add linear edges for the 6-phase cycle
-  // Note: Type assertions needed because LangGraph's strict typing requires compile-time node names
-  graph.addEdge(START, 'retrieve_context' as typeof START)
-  graph.addEdge('retrieve_context' as typeof START, 'generate_theses' as typeof START)
-  graph.addEdge('generate_theses' as typeof START, 'cross_negation' as typeof START)
-  graph.addEdge('cross_negation' as typeof START, 'crystallize' as typeof START)
-  graph.addEdge('crystallize' as typeof START, 'sublate' as typeof START)
-  graph.addEdge('sublate' as typeof START, 'meta_reflect' as typeof START)
+  // Helper: route to next node unless paused for user input
+  const edgeOrEnd = (target: string) => (state: DialecticalState) =>
+    state.status === 'waiting_for_input' ? END : target
 
-  // Add conditional edge for cycle continuation
-  graph.addConditionalEdges('meta_reflect' as typeof START, routeMetaDecision, {
-    retrieve_context: 'retrieve_context' as typeof START,
-    [END]: END,
-  })
+  if (cfg.enableReactiveResearch) {
+    // --- Reactive research topology (Phase 4) ---
+    graph.addNode('decide_research_pre', createDecideResearchNode(execContext, cfg, 'pre_cycle'))
+    graph.addNode('execute_research', createExecuteResearchNode(execContext, cfg, kg))
+    graph.addNode('decide_research_post', createDecideResearchNode(execContext, cfg, 'post_synthesis'))
+    graph.addNode('execute_research_post', createExecuteResearchNode(execContext, cfg, kg))
+
+    graph.addEdge(START, 'input_normalizer' as typeof START)
+    graph.addEdge('input_normalizer' as typeof START, 'goal_framing' as typeof START)
+    graph.addEdge('goal_framing' as typeof START, 'context_seeding' as typeof START)
+    graph.addEdge('context_seeding' as typeof START, 'decide_research_pre' as typeof START)
+
+    graph.addConditionalEdges(
+      'decide_research_pre' as typeof START,
+      (state: DialecticalState) =>
+        state.researchDecision?.needsResearch ? 'execute_research' : 'research_enrichment',
+      {
+        execute_research: 'execute_research' as typeof START,
+        research_enrichment: 'research_enrichment' as typeof START,
+      }
+    )
+
+    graph.addEdge('execute_research' as typeof START, 'research_enrichment' as typeof START)
+    graph.addEdge('research_enrichment' as typeof START, 'generate_theses' as typeof START)
+    graph.addConditionalEdges(
+      'generate_theses' as typeof START,
+      edgeOrEnd('cross_negation'),
+      { cross_negation: 'cross_negation' as typeof START, [END]: END }
+    )
+    graph.addConditionalEdges(
+      'cross_negation' as typeof START,
+      edgeOrEnd('crystallize'),
+      { crystallize: 'crystallize' as typeof START, [END]: END }
+    )
+    graph.addEdge('crystallize' as typeof START, 'sublate' as typeof START)
+    graph.addEdge('sublate' as typeof START, 'decide_research_post' as typeof START)
+
+    graph.addConditionalEdges(
+      'decide_research_post' as typeof START,
+      (state: DialecticalState) =>
+        state.researchDecision?.needsResearch ? 'execute_research_post' : 'meta_reflect',
+      {
+        execute_research_post: 'execute_research_post' as typeof START,
+        meta_reflect: 'meta_reflect' as typeof START,
+      }
+    )
+
+    graph.addEdge('execute_research_post' as typeof START, 'meta_reflect' as typeof START)
+
+    graph.addConditionalEdges(
+      'meta_reflect' as typeof START,
+      (state: DialecticalState) => {
+        if (state.status === 'waiting_for_input') return END
+        if (state.metaDecision === 'TERMINATE' || state.status === 'completed') return END
+        return 'decide_research_pre'
+      },
+      {
+        decide_research_pre: 'decide_research_pre' as typeof START,
+        [END]: END,
+      }
+    )
+  } else {
+    // --- Legacy topology (unchanged) ---
+    graph.addEdge(START, 'input_normalizer' as typeof START)
+    graph.addEdge('input_normalizer' as typeof START, 'goal_framing' as typeof START)
+    graph.addEdge('goal_framing' as typeof START, 'context_seeding' as typeof START)
+    graph.addEdge('context_seeding' as typeof START, 'research_enrichment' as typeof START)
+    graph.addEdge('research_enrichment' as typeof START, 'generate_theses' as typeof START)
+    graph.addConditionalEdges(
+      'generate_theses' as typeof START,
+      edgeOrEnd('cross_negation'),
+      { cross_negation: 'cross_negation' as typeof START, [END]: END }
+    )
+    graph.addConditionalEdges(
+      'cross_negation' as typeof START,
+      edgeOrEnd('crystallize'),
+      { crystallize: 'crystallize' as typeof START, [END]: END }
+    )
+    graph.addEdge('crystallize' as typeof START, 'sublate' as typeof START)
+    graph.addConditionalEdges(
+      'sublate' as typeof START,
+      edgeOrEnd('meta_reflect'),
+      { meta_reflect: 'meta_reflect' as typeof START, [END]: END }
+    )
+
+    // Add conditional edge for cycle continuation
+    graph.addConditionalEdges('meta_reflect' as typeof START, routeMetaDecision, {
+      goal_framing: 'goal_framing' as typeof START,
+      research_enrichment: 'research_enrichment' as typeof START,
+      [END]: END,
+    })
+  }
 
   // Compile with optional checkpointing
   if (config.enableCheckpointing) {
@@ -1173,11 +2318,14 @@ export async function executeDialecticalWorkflowLangGraph(
   // Full dialectical state for visualization
   dialecticalState: {
     cycleNumber: number
+    maxCycles: number
     phase: string
     theses: ThesisOutput[]
     negations: NegationOutput[]
     contradictions: ContradictionOutput[]
     synthesis: SublationOutput | null
+    mergedGraph: CompactGraph | null
+    graphHistory: Array<{ cycle: number; diff: GraphDiff }>
     conceptualVelocity: number
     velocityHistory: number[]
     contradictionDensity: number
@@ -1186,10 +2334,58 @@ export async function executeDialecticalWorkflowLangGraph(
     tokensUsed: number
     estimatedCost: number
     startedAtMs: number
+    researchSourceCount: number
+    researchClaimCount: number
+    researchBudgetSpent: number
+    degradedPhases: string[]
   }
+  startup?: {
+    normalizedInput: Record<string, unknown> | null
+    goalFrame: Record<string, unknown> | null
+    startupSeedSummary: Record<string, unknown> | null
+  }
+  constraintPause?: Run['constraintPause']
+  pendingInput?: { prompt: string; nodeId: string }
 }> {
   const { workflow, userId, runId } = config
   const startedAtMs = Date.now()
+  const trimmedGoal = goal.trim()
+
+  if (trimmedGoal.length === 0) {
+    return {
+      output: 'Dialectical reasoning failed: Goal is required',
+      steps: [],
+      totalTokensUsed: 0,
+      totalEstimatedCost: 0,
+      totalCycles: 0,
+      conceptualVelocity: 0,
+      contradictionsFound: 0,
+      status: 'failed',
+      dialecticalState: {
+        cycleNumber: 0,
+        maxCycles: config.dialecticalConfig.maxCycles,
+        phase: 'retrieve_context',
+        theses: [],
+        negations: [],
+        contradictions: [],
+        synthesis: null,
+        mergedGraph: null,
+        graphHistory: [],
+        conceptualVelocity: 0,
+        velocityHistory: [],
+        contradictionDensity: 0,
+        densityHistory: [],
+        metaDecision: null,
+        tokensUsed: 0,
+        estimatedCost: 0,
+        startedAtMs,
+        researchSourceCount: 0,
+        researchClaimCount: 0,
+        researchBudgetSpent: 0,
+        degradedPhases: [],
+      },
+    }
+  }
 
   // Fetch historical iteration data for budget learning
   let historicalData: HistoricalIterationData | null = null
@@ -1206,14 +2402,19 @@ export async function executeDialecticalWorkflowLangGraph(
     workflowId: workflow.workflowId,
     runId,
     userId,
-    goal,
+    goal: trimmedGoal,
     context: context ?? {},
+    normalizedInput: null,
+    goalFrame: null,
+    startupSeedSummary: null,
     cycleNumber: 0,
     phase: 'retrieve_context',
     theses: [],
     negations: [],
     contradictions: [],
     synthesis: null,
+    mergedGraph: null,
+    graphHistory: [],
     conceptualVelocity: 1.0, // Start high
     contradictionDensity: 0,
     metaDecision: null,
@@ -1223,10 +2424,63 @@ export async function executeDialecticalWorkflowLangGraph(
     finalOutput: null,
     status: 'running',
     error: null,
+    // Research state
+    researchBudget: config.dialecticalConfig.enableExternalResearch
+      ? createRunBudget(config.dialecticalConfig.researchBudgetUsd ?? 1.0, config.dialecticalConfig.researchSearchDepth ?? 'standard')
+      : null,
+    researchSources: [],
+    researchClaims: [],
+    degradedPhases: [],
   }
 
   // Execute the graph
-  const finalState = await compiledGraph.invoke(initialState)
+  let finalState: DialecticalState
+  try {
+    finalState = await compiledGraph.invoke(initialState) as DialecticalState
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e)
+    const errorStack = e instanceof Error ? e.stack : undefined
+    log.error('Dialectical graph execution failed', {
+      error: errorMessage,
+      stack: errorStack,
+      workflowId: workflow.workflowId,
+      runId,
+      goal: trimmedGoal.slice(0, 200),
+    })
+    return {
+      output: `Dialectical reasoning failed: ${errorMessage}`,
+      steps: [],
+      totalTokensUsed: 0,
+      totalEstimatedCost: 0,
+      totalCycles: 0,
+      conceptualVelocity: 0,
+      contradictionsFound: 0,
+      status: 'failed' as const,
+      dialecticalState: {
+        cycleNumber: 0,
+        maxCycles: config.dialecticalConfig.maxCycles,
+        phase: 'retrieve_context' as const,
+        theses: [],
+        negations: [],
+        contradictions: [],
+        synthesis: null,
+        mergedGraph: null,
+        graphHistory: [],
+        conceptualVelocity: 0,
+        velocityHistory: [],
+        contradictionDensity: 0,
+        densityHistory: [],
+        metaDecision: null,
+        tokensUsed: 0,
+        estimatedCost: 0,
+        startedAtMs,
+        researchSourceCount: 0,
+        researchClaimCount: 0,
+        researchBudgetSpent: 0,
+        degradedPhases: [],
+      },
+    }
+  }
 
   // Write iteration usage summary for future budget learning
   try {
@@ -1235,7 +2489,7 @@ export async function executeDialecticalWorkflowLangGraph(
       config.thesisAgents.reduce((sum, a) => sum + (a.toolIds?.length ?? 0), 0) / thesisAgentCount
     // Reconstruct the budget used for this run (same params as createDialecticalGraph)
     const budgetUsed = calculateIterationBudget({
-      workflowMaxIterations: workflow.maxIterations ?? 80,
+      workflowMaxIterations: workflow.maxIterations ?? 8,
       thesisAgents: config.thesisAgents,
       synthesisAgentCount: config.synthesisAgents.length,
       dialecticalConfig: config.dialecticalConfig,
@@ -1268,13 +2522,18 @@ export async function executeDialecticalWorkflowLangGraph(
     conceptualVelocity: finalState.conceptualVelocity ?? 0,
     contradictionsFound: finalState.contradictions?.length ?? 0,
     status: finalState.status ?? 'completed',
+    constraintPause: finalState.constraintPause ?? undefined,
+    pendingInput: finalState.pendingInput ?? undefined,
     dialecticalState: {
       cycleNumber: finalState.cycleNumber ?? 0,
+      maxCycles: config.dialecticalConfig.maxCycles,
       phase: finalState.phase ?? 'meta_reflection',
       theses: finalState.theses ?? [],
       negations: finalState.negations ?? [],
       contradictions: finalState.contradictions ?? [],
       synthesis: finalState.synthesis ?? null,
+      mergedGraph: finalState.mergedGraph ?? null,
+      graphHistory: finalState.graphHistory ?? [],
       conceptualVelocity: finalState.conceptualVelocity ?? 0,
       velocityHistory: finalState.velocityHistory ?? [finalState.conceptualVelocity ?? 0],
       contradictionDensity,
@@ -1283,79 +2542,31 @@ export async function executeDialecticalWorkflowLangGraph(
       tokensUsed: finalState.totalTokensUsed ?? 0,
       estimatedCost: finalState.totalEstimatedCost ?? 0,
       startedAtMs,
+      // Research metrics
+      researchSourceCount: finalState.researchSources?.length ?? 0,
+      researchClaimCount: finalState.researchClaims?.length ?? 0,
+      researchBudgetSpent: finalState.researchBudget?.spentUsd ?? 0,
+      degradedPhases: finalState.degradedPhases ?? [],
+    },
+    startup: {
+      normalizedInput: finalState.normalizedInput
+        ? {
+            normalizedGoal: finalState.normalizedInput.normalizedGoal,
+            contextSummary: finalState.normalizedInput.contextSummary,
+            hasContext: finalState.normalizedInput.hasContext,
+            noteCount: finalState.normalizedInput.noteCount,
+            fileCount: finalState.normalizedInput.fileCount,
+            rawCharCount: finalState.normalizedInput.rawCharCount,
+            warnings: finalState.normalizedInput.warnings,
+          }
+        : null,
+      goalFrame: (finalState.goalFrame as Record<string, unknown> | null) ?? null,
+      startupSeedSummary: (finalState.startupSeedSummary as Record<string, unknown> | null) ?? null,
     },
   }
 }
 
 // ----- Helper Functions -----
-
-function buildThesisPrompt(goal: string, lens: string, context: Record<string, unknown>): string {
-  return `You are generating a thesis about the following topic from a ${lens} perspective.
-
-TOPIC: ${goal}
-
-CONTEXT:
-${JSON.stringify(context, null, 2)}
-
-Generate a structured thesis with:
-1. CONCEPT GRAPH: Key concepts and their relationships
-2. CAUSAL MODEL: Cause-effect chains
-3. FALSIFICATION CRITERIA: What would disprove this thesis
-4. DECISION IMPLICATIONS: What actions follow from this thesis
-5. UNIT OF ANALYSIS: The primary subject of analysis
-6. TEMPORAL GRAIN: Time scale of the analysis
-7. REGIME ASSUMPTIONS: Conditions under which this thesis holds
-8. CONFIDENCE: Your confidence level (0-1)
-
-Respond in a structured format.`
-}
-
-function buildNegationPrompt(sourceThesis: ThesisOutput, targetThesis: ThesisOutput): string {
-  return `You are critiquing a thesis using determinate negation.
-
-YOUR THESIS:
-${sourceThesis.rawText}
-
-TARGET THESIS TO CRITIQUE:
-${targetThesis.rawText}
-
-Provide a determinate negation that:
-1. INTERNAL TENSIONS: Identify contradictions within the target thesis
-2. CATEGORY ATTACKS: Challenge the categories used
-3. PRESERVED VALID: What should be preserved from the target thesis
-4. RIVAL FRAMING: Propose an alternative framing
-5. REWRITE OPERATOR: Specify a typed operator (SPLIT, MERGE, REVERSE_EDGE, ADD_MEDIATOR, SCOPE_TO_REGIME, TEMPORALIZE)
-6. OPERATOR ARGS: Arguments for the operator
-
-Do NOT simply disagree. You must specify what transformation would improve the thesis.`
-}
-
-function buildSublationPrompt(
-  theses: ThesisOutput[],
-  negations: NegationOutput[],
-  contradictions: ContradictionOutput[]
-): string {
-  return `You are generating a synthesis (Aufhebung) that preserves, negates, and transcends the competing theses.
-
-THESES:
-${theses.map((t, i) => `[${i + 1}] (${t.lens}): ${t.rawText}`).join('\n\n')}
-
-NEGATIONS:
-${negations.map((n, i) => `[${i + 1}]: ${n.rawText}`).join('\n\n')}
-
-CONTRADICTIONS:
-${contradictions.map((c) => `- [${c.severity}] ${c.type}: ${c.description}`).join('\n')}
-
-Generate a synthesis that:
-1. OPERATORS: List the rewrite operators to apply
-2. PRESERVED: Elements from theses that are preserved
-3. NEGATED: Elements that are rejected
-4. NEW CONCEPT GRAPH: Updated concept relationships
-5. NEW CLAIMS: New claims that emerge from synthesis
-6. NEW PREDICTIONS: Testable predictions
-
-The synthesis must resolve at least one HIGH severity contradiction.`
-}
 
 /**
  * Extract JSON from LLM output
@@ -1398,49 +2609,79 @@ function parseThesisOutput(
   model: string,
   lens: string
 ): ThesisOutput {
-  // Try to parse structured output using Zod schema
   const parsed = extractJsonFromOutput(output)
+  if (!parsed) {
+    throw new Error(`Thesis output from ${agentId} did not contain valid JSON`)
+  }
 
-  if (parsed) {
-    try {
-      const validated = ThesisOutputSchema.safeParse(parsed)
-      if (validated.success) {
-        return {
-          agentId,
-          model,
-          lens,
-          conceptGraph: validated.data.conceptGraph,
-          causalModel: validated.data.causalModel,
-          falsificationCriteria: validated.data.falsificationCriteria,
-          decisionImplications: validated.data.decisionImplications,
-          unitOfAnalysis: validated.data.unitOfAnalysis,
-          temporalGrain: validated.data.temporalGrain,
-          regimeAssumptions: validated.data.regimeAssumptions,
-          confidence: validated.data.confidence,
-          rawText: output,
-        }
-      }
-      log.warn('Thesis output validation failed', { error: validated.error.message })
-    } catch (error) {
-      log.warn('Thesis output parsing failed', { error: String(error) })
+  const graphValidated = CompactGraphSchema.safeParse(parsed)
+  if (graphValidated.success) {
+    const graph = graphValidated.data as CompactGraph
+    return {
+      agentId,
+      model,
+      lens,
+      conceptGraph: {},
+      causalModel: [],
+      falsificationCriteria: [],
+      decisionImplications: [],
+      unitOfAnalysis: '',
+      temporalGrain: graph.temporalGrain,
+      regimeAssumptions: graph.regime ? [graph.regime] : [],
+      confidence: graph.confidence,
+      rawText: graph.summary,
+      graph,
     }
   }
 
-  // Fallback: return placeholder with raw text
-  return {
-    agentId,
-    model,
-    lens,
-    conceptGraph: {},
-    causalModel: [],
-    falsificationCriteria: [],
-    decisionImplications: [],
-    unitOfAnalysis: '',
-    temporalGrain: '',
-    regimeAssumptions: [],
-    confidence: 0.7,
-    rawText: output,
+  const validated = ThesisOutputSchema.safeParse(parsed)
+  if (validated.success) {
+    return {
+      agentId,
+      model,
+      lens,
+      conceptGraph: validated.data.conceptGraph,
+      causalModel: validated.data.causalModel,
+      falsificationCriteria: validated.data.falsificationCriteria,
+      decisionImplications: validated.data.decisionImplications,
+      unitOfAnalysis: validated.data.unitOfAnalysis,
+      temporalGrain: validated.data.temporalGrain,
+      regimeAssumptions: validated.data.regimeAssumptions,
+      confidence: validated.data.confidence,
+      rawText: output,
+    }
   }
+
+  if (typeof parsed === 'object' && parsed !== null) {
+    const obj = parsed as Record<string, unknown>
+    const candidateKeys = ['structuredThesis', 'thesis', 'graph', 'conceptGraph', 'mergedGraph', 'knowledgeGraph']
+    for (const key of candidateKeys) {
+      if (obj[key] && typeof obj[key] === 'object') {
+        const nested = CompactGraphSchema.safeParse(obj[key])
+        if (nested.success) {
+          const graph = nested.data as CompactGraph
+          log.info('Extracted CompactGraph from nested key', { key, lens })
+          return {
+            agentId,
+            model,
+            lens,
+            conceptGraph: {},
+            causalModel: [],
+            falsificationCriteria: [],
+            decisionImplications: [],
+            unitOfAnalysis: '',
+            temporalGrain: graph.temporalGrain,
+            regimeAssumptions: graph.regime ? [graph.regime] : [],
+            confidence: graph.confidence,
+            rawText: graph.summary,
+            graph,
+          }
+        }
+      }
+    }
+  }
+
+  throw new Error(`Thesis output from ${agentId} did not match supported schemas`)
 }
 
 function parseNegationOutput(
@@ -1448,86 +2689,126 @@ function parseNegationOutput(
   agentId: string,
   targetAgentId: string
 ): NegationOutput {
+  const validRewriteOperators = new Set<NegationOutput['rewriteOperator']>([
+    'SPLIT',
+    'MERGE',
+    'REVERSE_EDGE',
+    'ADD_MEDIATOR',
+    'SCOPE_TO_REGIME',
+    'TEMPORALIZE',
+  ])
+
   // Try to parse structured output using Zod schema
   const parsed = extractJsonFromOutput(output)
+  if (!parsed) {
+    throw new Error(`Negation output from ${agentId} did not contain valid JSON`)
+  }
 
-  if (parsed) {
-    try {
-      const validated = NegationOutputSchema.safeParse(parsed)
-      if (validated.success) {
-        return {
-          agentId,
-          targetThesisAgentId: targetAgentId,
-          internalTensions: validated.data.internalTensions,
-          categoryAttacks: validated.data.categoryAttacks,
-          preservedValid: validated.data.preservedValid,
-          rivalFraming: validated.data.rivalFraming,
-          rewriteOperator: validated.data.rewriteOperator,
-          operatorArgs: validated.data.operatorArgs,
-          rawText: output,
+  const validated = NegationOutputSchema.safeParse(parsed)
+  if (validated.success) {
+    const rawParsed = parsed as Record<string, unknown>
+    let rewriteOperators: NegationOutput['rewriteOperators']
+    if (Array.isArray(rawParsed.rewriteOperators)) {
+      rewriteOperators = (rawParsed.rewriteOperators as Array<Record<string, unknown>>).map(op => {
+        const type = String(op.type ?? '').trim().toUpperCase() as NegationOutput['rewriteOperator']
+        if (!validRewriteOperators.has(type)) {
+          throw new Error(`Negation output from ${agentId} contained invalid rewrite operator: ${String(op.type ?? '')}`)
         }
-      }
-      log.warn('Negation output validation failed', { error: validated.error.message })
-    } catch (error) {
-      log.warn('Negation output parsing failed', { error: String(error) })
+        return {
+          type,
+          target: (op.target as string) ?? '',
+          rationale: (op.rationale as string) ?? '',
+        }
+      })
+    }
+
+    return {
+      agentId,
+      targetThesisAgentId: targetAgentId,
+      internalTensions: validated.data.internalTensions,
+      categoryAttacks: validated.data.categoryAttacks,
+      preservedValid: validated.data.preservedValid,
+      rivalFraming: validated.data.rivalFraming,
+      rewriteOperator: validated.data.rewriteOperator,
+      rewriteOperators,
+      operatorArgs: validated.data.operatorArgs,
+      rawText: output,
     }
   }
 
-  // Fallback: return placeholder with raw text
-  return {
-    agentId,
-    targetThesisAgentId: targetAgentId,
-    internalTensions: [],
-    categoryAttacks: [],
-    preservedValid: [],
-    rivalFraming: '',
-    rewriteOperator: 'SPLIT',
-    operatorArgs: {},
-    rawText: output,
-  }
+  throw new Error(`Negation output from ${agentId} did not match schema: ${validated.error.message}`)
 }
 
-function parseSublationOutput(output: string): SublationOutput {
-  // Try to parse structured output using Zod schema
-  const parsed = extractJsonFromOutput(output)
+interface GraphSublationResult {
+  synthesis: SublationOutput
+  mergedGraph: CompactGraph | null
+  graphDiff: GraphDiff | null
+}
 
-  if (parsed) {
-    try {
-      const validated = SublationOutputSchema.safeParse(parsed)
-      if (validated.success) {
-        return {
-          operators: validated.data.operators,
-          preservedElements: validated.data.preservedElements,
-          negatedElements: validated.data.negatedElements,
-          newConceptGraph: validated.data.newConceptGraph,
-          newClaims: validated.data.newClaims,
-          newPredictions: validated.data.newPredictions,
-          schemaDiff: null,
-        }
-      }
-      log.warn('Sublation output validation failed', { error: validated.error.message })
-    } catch (error) {
-      log.warn('Sublation output parsing failed', { error: String(error) })
+function parseSublationOutput(output: string): GraphSublationResult {
+  const parsed = extractJsonFromOutput(output)
+  if (!parsed) {
+    throw new Error('Sublation output did not contain valid JSON')
+  }
+
+  const graphValidated = GraphSublationOutputSchema.safeParse(parsed)
+  if (graphValidated.success) {
+    const {
+      mergedGraph: validatedGraph,
+      diff: validatedDiff,
+      resolvedContradictions: validatedResolved,
+    } = graphValidated.data
+    return {
+      synthesis: {
+        operators: [],
+        preservedElements: validatedDiff.addedNodes,
+        negatedElements: validatedDiff.removedNodes,
+        newConceptGraph: {},
+        newClaims: validatedGraph.nodes
+          .filter(n => n.type === 'claim')
+          .map(n => ({ id: n.id, text: n.label, confidence: validatedGraph.confidence })),
+        newPredictions: validatedGraph.nodes
+          .filter(n => n.type === 'prediction')
+          .map(n => ({ id: n.id, text: n.label, threshold: 'TBD' })),
+        schemaDiff: {
+          resolvedContradictions: validatedResolved,
+        },
+        incompleteReason: typeof (parsed as Record<string, unknown>).incompleteReason === 'string'
+          ? String((parsed as Record<string, unknown>).incompleteReason)
+          : undefined,
+      },
+      mergedGraph: validatedGraph,
+      graphDiff: validatedDiff,
     }
   }
 
-  // Fallback: return placeholder
-  return {
-    operators: [],
-    preservedElements: [],
-    negatedElements: [],
-    newConceptGraph: {},
-    newClaims: [],
-    newPredictions: [],
-    schemaDiff: null,
+  const validated = SublationOutputSchema.safeParse(parsed)
+  if (validated.success) {
+    return {
+      synthesis: {
+        operators: validated.data.operators,
+        preservedElements: validated.data.preservedElements,
+        negatedElements: validated.data.negatedElements,
+        newConceptGraph: validated.data.newConceptGraph,
+        newClaims: validated.data.newClaims,
+        newPredictions: validated.data.newPredictions,
+        schemaDiff: null,
+        incompleteReason: validated.data.incompleteReason,
+      },
+      mergedGraph: null,
+      graphDiff: null,
+    }
   }
+
+  throw new Error(`Sublation output did not match supported schemas: ${validated.error.message}`)
 }
 
 function extractContradictions(
   theses: ThesisOutput[],
   negations: NegationOutput[],
   config: DialecticalWorkflowConfig,
-  trackerContext?: ContradictionTrackerContext
+  trackerContext?: ContradictionTrackerContext,
+  agentClaimMapping?: Record<string, string[]>
 ): ContradictionOutput[] {
   // Use the 4 specialized contradiction trackers
   if (trackerContext && config.enabledTrackers.length > 0) {
@@ -1535,7 +2816,8 @@ function extractContradictions(
       theses,
       negations,
       config.enabledTrackers,
-      trackerContext
+      trackerContext,
+      agentClaimMapping
     )
 
     log.info(
@@ -1545,33 +2827,137 @@ function extractContradictions(
     return result.allContradictions
   }
 
-  // Fallback: generate placeholder contradictions from negations
-  return negations.map((n, i) => ({
-    id: `c_${Date.now()}_${i}`,
-    type: 'SYNCHRONIC' as const,
-    severity: 'MEDIUM' as const,
-    actionDistance: 2,
-    participatingClaims: [n.agentId, n.targetThesisAgentId],
-    trackerAgent: 'placeholder',
-    description: `Contradiction identified between thesis agents`,
+  throw new Error('Contradiction extraction requires trackerContext and enabled trackers')
+}
+
+/**
+ * Derive a KGDiff from a SublationOutput by mapping rewrite operators to diff fields.
+ */
+function deriveKGDiff(
+  synthesis: SublationOutput,
+  contradictions: ContradictionOutput[],
+  graphDiff?: GraphDiff | null,
+): KGDiff {
+  // When graph format is used, operators is [] — derive from graphDiff instead
+  if (graphDiff && synthesis.operators.length === 0) {
+    return deriveKGDiffFromGraphDiff(graphDiff, synthesis, contradictions)
+  }
+
+  const diff: KGDiff = {
+    conceptSplits: [],
+    conceptMerges: [],
+    newMediators: [],
+    edgeReversals: [],
+    regimeScopings: [],
+    temporalizations: [],
+    newClaims: synthesis.newClaims.map(c => ({ id: c.id, text: c.text })),
+    supersededClaims: synthesis.negatedElements,
+    newContradictions: contradictions,
+    resolvedContradictions: contradictions
+      .filter(c => synthesis.operators.some(op => op.target === c.id))
+      .map(c => c.id),
+    newPredictions: synthesis.newPredictions.map(p => ({ id: p.id, text: p.text })),
+  }
+
+  for (const op of synthesis.operators) {
+    switch (op.type) {
+      case 'SPLIT':
+        diff.conceptSplits.push({ from: op.target, to: (op.args.to as string[]) ?? [] })
+        break
+      case 'MERGE':
+        diff.conceptMerges.push({ from: (op.args.from as string[]) ?? [], to: op.target })
+        break
+      case 'ADD_MEDIATOR':
+        diff.newMediators.push({ edge: op.target, mediator: (op.args.mediator as string) ?? '' })
+        break
+      case 'REVERSE_EDGE':
+        diff.edgeReversals.push({ edge: op.target })
+        break
+      case 'SCOPE_TO_REGIME':
+        diff.regimeScopings.push({
+          claim: op.target,
+          regime: (op.args.regime as string) ?? '',
+        })
+        break
+      case 'TEMPORALIZE':
+        diff.temporalizations.push({
+          claims: (op.args.claims as string[]) ?? [op.target],
+          sequence: (op.args.sequence as string[]) ?? [],
+        })
+        break
+    }
+  }
+
+  return diff
+}
+
+/**
+ * Derive KGDiff from a GraphDiff (graph-format sublation output).
+ * Maps graph structural changes to the legacy KGDiff fields so that
+ * velocity, learning rate, and convergence metrics work correctly.
+ */
+function deriveKGDiffFromGraphDiff(
+  graphDiff: GraphDiff,
+  synthesis: SublationOutput,
+  contradictions: ContradictionOutput[],
+): KGDiff {
+  // Modified nodes = concept refinement (structural change for velocity)
+  const conceptSplits = graphDiff.modifiedNodes.map(m => ({
+    from: m.oldLabel,
+    to: [m.newLabel],
   }))
+
+  // Edges added with rel='mediates' → new mediators
+  const newMediators = graphDiff.addedEdges
+    .filter(e => e.rel === 'mediates')
+    .map(e => ({ edge: `${e.from}->${e.to}`, mediator: e.from }))
+
+  // Detect edge reversals: removed A→B + added B→A with same rel
+  const edgeReversals: Array<{ edge: string }> = []
+  for (const removed of graphDiff.removedEdges) {
+    const reversed = graphDiff.addedEdges.find(
+      a => a.from === removed.to && a.to === removed.from && a.rel === removed.rel
+    )
+    if (reversed) {
+      edgeReversals.push({ edge: `${removed.from}->${removed.to}` })
+    }
+  }
+
+  // Resolved contradictions: from graphDiff + schemaDiff (Bug 1 fix)
+  const resolvedFromDiff = graphDiff.resolvedContradictions ?? []
+  const resolvedFromSchema = (synthesis.schemaDiff?.resolvedContradictions as string[] | undefined) ?? []
+  // Deduplicate: graphDiff has edge IDs, schemaDiff has descriptions — keep both
+  const resolvedContradictions = [...new Set([...resolvedFromDiff, ...resolvedFromSchema])]
+
+  // New contradictions: match graphDiff IDs against crystallized contradictions
+  const newContradictionIds = new Set(graphDiff.newContradictions ?? [])
+  const matchedContradictions = newContradictionIds.size > 0
+    ? contradictions.filter(c => newContradictionIds.has(c.id))
+    : contradictions
+  // If no ID matches found, use all contradictions (the LLM may use different IDs)
+  const newContradictions = matchedContradictions.length > 0
+    ? matchedContradictions
+    : contradictions
+
+  return {
+    conceptSplits,
+    conceptMerges: [], // Can't reliably detect from GraphDiff
+    newMediators,
+    edgeReversals,
+    regimeScopings: [],
+    temporalizations: [],
+    newClaims: synthesis.newClaims.map(c => ({ id: c.id, text: c.text })),
+    supersededClaims: graphDiff.removedNodes,
+    newContradictions,
+    resolvedContradictions,
+    newPredictions: synthesis.newPredictions.map(p => ({ id: p.id, text: p.text })),
+  }
 }
 
-function calculateConceptualVelocity(state: DialecticalState, synthesis: SublationOutput): number {
-  // Calculate rate of conceptual change
-  // Higher velocity = more new concepts being introduced
-  // Lower velocity = convergence, good signal to terminate
-
-  const newConcepts = synthesis.newClaims.length + (synthesis.operators?.length ?? 0)
-  const totalConcepts = state.theses.length + newConcepts
-
-  if (totalConcepts === 0) return 0
-
-  // Decay velocity over cycles to encourage termination
-  const cycleDecay = Math.pow(0.9, state.cycleNumber)
-
-  return Math.min(1.0, (newConcepts / Math.max(1, state.theses.length)) * cycleDecay)
-}
+// Local calculateConceptualVelocity removed — use the unified version
+// from metaReflection.ts (exported as calculateConceptualVelocity) which
+// accounts for KG diff operations (splits, merges, mediators, reversals,
+// contradictions) for consistent velocity across UI and termination.
 
 function formatFinalOutput(state: DialecticalState): string {
   const parts: string[] = []
@@ -1583,6 +2969,24 @@ function formatFinalOutput(state: DialecticalState): string {
   parts.push(`- Contradictions found: ${state.contradictions.length}`)
   parts.push(`- Final velocity: ${state.conceptualVelocity.toFixed(2)}`)
 
+  // Knowledge graph summary
+  if (state.mergedGraph) {
+    const graph = state.mergedGraph
+    const contradictEdges = graph.edges.filter(e => e.rel === 'contradicts')
+    parts.push(`\n## Knowledge Graph`)
+    parts.push(`**${graph.summary}**`)
+    parts.push(`\n${graph.reasoning}`)
+    parts.push(`\n- ${graph.nodes.length} nodes, ${graph.edges.length} edges`)
+    parts.push(`- Confidence: ${(graph.confidence * 100).toFixed(0)}%`)
+    parts.push(`- Unresolved contradictions: ${contradictEdges.length}`)
+    parts.push(`- Regime: ${graph.regime}`)
+    if (state.graphHistory.length > 0) {
+      const totalAdded = state.graphHistory.reduce((s, h) => s + h.diff.addedNodes.length, 0)
+      const totalResolved = state.graphHistory.reduce((s, h) => s + h.diff.resolvedContradictions.length, 0)
+      parts.push(`- Evolution: +${totalAdded} nodes added, ${totalResolved} contradictions resolved across ${state.graphHistory.length} cycles`)
+    }
+  }
+
   if (state.synthesis) {
     parts.push(`\n## Synthesis`)
     parts.push(`Preserved elements: ${state.synthesis.preservedElements.length}`)
@@ -1593,7 +2997,12 @@ function formatFinalOutput(state: DialecticalState): string {
   parts.push(`\n## Key Theses`)
   state.theses.slice(0, 3).forEach((t, i) => {
     parts.push(`\n### Thesis ${i + 1} (${t.lens})`)
-    parts.push(t.rawText)
+    if (t.graph) {
+      parts.push(`**${t.graph.summary}**`)
+      if (t.graph.reasoning) parts.push(t.graph.reasoning)
+    } else {
+      parts.push(t.rawText)
+    }
   })
 
   if (state.contradictions.length > 0) {
@@ -1601,6 +3010,31 @@ function formatFinalOutput(state: DialecticalState): string {
     state.contradictions.slice(0, 5).forEach((c, i) => {
       parts.push(`${i + 1}. [${c.severity}] ${c.type}: ${c.description}`)
     })
+  }
+
+  if (state.synthesis?.incompleteReason) {
+    parts.push(`\n## Partial Analysis Warning`)
+    parts.push(state.synthesis.incompleteReason)
+  }
+
+  if (state.degradedPhases.length > 0) {
+    parts.push(`\n## Degraded Phases`)
+    parts.push([...new Set(state.degradedPhases)].join(', '))
+  }
+
+  // Research sources bibliography
+  if (state.researchSources && state.researchSources.length > 0) {
+    parts.push(`\n## Sources`)
+    const sorted = [...state.researchSources]
+      .sort((a, b) => (b.sourceQualityScore ?? 0) - (a.sourceQualityScore ?? 0))
+      .slice(0, 10)
+    sorted.forEach(s => {
+      const quality = s.sourceQualityScore ? ` (quality: ${s.sourceQualityScore.toFixed(2)})` : ''
+      parts.push(`- [${s.domain}] ${s.title}${quality} — ${s.url}`)
+    })
+    if (state.researchClaims && state.researchClaims.length > 0) {
+      parts.push(`\n*${state.researchClaims.length} claims extracted from ${state.researchSources.length} sources*`)
+    }
   }
 
   return parts.join('\n')

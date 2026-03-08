@@ -111,7 +111,8 @@ function generateContradictionId(
 export function runLogicTracker(
   theses: ThesisOutput[],
   negations: NegationOutput[],
-  context: ContradictionTrackerContext
+  context: ContradictionTrackerContext,
+  agentClaimMapping?: Record<string, string[]>
 ): ContradictionTrackerResult {
   const startTime = Date.now()
   const contradictions: ContradictionOutput[] = []
@@ -156,14 +157,15 @@ export function runLogicTracker(
               stmt1Lower.replace('not ', '') === stmt2Lower.replace('not ', ''))
 
           if (hasOpposingTerms) {
-            // Note: participatingClaims contains thesis agent IDs that authored the contradicting claims
-            // The actual claim text is included in the description for traceability
             contradictions.push({
               id: generateContradictionId('LOGIC', contraIndex++, context.cycleNumber),
               type: 'SYNCHRONIC',
               severity: 'MEDIUM',
               actionDistance: 2,
-              participatingClaims: [agentId1, agentId2],
+              participatingClaims: [
+                ...(agentClaimMapping?.[agentId1] ?? [agentId1]),
+                ...(agentClaimMapping?.[agentId2] ?? [agentId2]),
+              ],
               trackerAgent: 'logic_tracker',
               description: `Contradictory causal claims: "${stmt1}" (${agentId1}) vs "${stmt2}" (${agentId2})`,
             })
@@ -189,7 +191,10 @@ export function runLogicTracker(
           type: 'SYNCHRONIC',
           severity: 'MEDIUM',
           actionDistance: 3,
-          participatingClaims: [negation.agentId, negation.targetThesisAgentId],
+          participatingClaims: [
+            ...(agentClaimMapping?.[negation.agentId] ?? [negation.agentId]),
+            ...(agentClaimMapping?.[negation.targetThesisAgentId] ?? [negation.targetThesisAgentId]),
+          ],
           trackerAgent: 'logic_tracker',
           description: `Logical tension: ${tension}`,
         })
@@ -208,6 +213,19 @@ export function runLogicTracker(
 // ----- Pragmatic Tracker -----
 
 /**
+ * Extract the action verb and object from a decision statement.
+ * Used for entity-level contradiction detection: only flag contradiction
+ * if the same object has opposing verbs.
+ */
+function extractActionObject(decision: string): { verb: string; object: string } | null {
+  const verbs = 'increase|decrease|expand|contract|invest|divest|build|demolish|hire|fire|buy|sell|start|stop|accelerate|decelerate|centralize|decentralize'
+  const match = decision.match(
+    new RegExp(`^(${verbs})\\s+(?:the\\s+|a\\s+|an\\s+)?(.+?)(?:\\s+(?:by|to|from|in)\\b|[,.]|$)`, 'i')
+  )
+  return match ? { verb: match[1].toLowerCase(), object: match[2].toLowerCase().trim() } : null
+}
+
+/**
  * PRAGMATIC Tracker: Detects action/decision incompatibilities
  *
  * Looks for:
@@ -218,7 +236,8 @@ export function runLogicTracker(
 export function runPragmaticTracker(
   theses: ThesisOutput[],
   negations: NegationOutput[],
-  context: ContradictionTrackerContext
+  context: ContradictionTrackerContext,
+  agentClaimMapping?: Record<string, string[]>
 ): ContradictionTrackerResult {
   const startTime = Date.now()
   const contradictions: ContradictionOutput[] = []
@@ -246,6 +265,10 @@ export function runPragmaticTracker(
       const decision1Lower = d1.decision.toLowerCase()
       const decision2Lower = d2.decision.toLowerCase()
 
+      // Entity-level extraction: only flag contradiction if same object with opposing verb
+      const entity1 = extractActionObject(d1.decision)
+      const entity2 = extractActionObject(d2.decision)
+
       // Check for opposing actions
       const opposingPairs = [
         ['increase', 'decrease'],
@@ -264,12 +287,20 @@ export function runPragmaticTracker(
           (decision1Lower.includes(action1) && decision2Lower.includes(action2)) ||
           (decision1Lower.includes(action2) && decision2Lower.includes(action1))
         ) {
+          // If entity extraction succeeded for both, only flag if same object
+          if (entity1 && entity2 && entity1.object !== entity2.object) {
+            continue // Different objects — not a true contradiction
+          }
+
           contradictions.push({
             id: generateContradictionId('PRAGMATIC', contraIndex++, context.cycleNumber),
             type: 'SYNCHRONIC',
             severity: 'HIGH',
             actionDistance: 1, // Direct action conflict = highest priority
-            participatingClaims: [d1.agentId, d2.agentId],
+            participatingClaims: [
+              ...(agentClaimMapping?.[d1.agentId] ?? [d1.agentId]),
+              ...(agentClaimMapping?.[d2.agentId] ?? [d2.agentId]),
+            ],
             trackerAgent: 'pragmatic_tracker',
             description: `Opposing actions recommended: "${d1.decision}" (${d1.agentId}) vs "${d2.decision}" (${d2.agentId})`,
           })
@@ -300,7 +331,8 @@ export function runPragmaticTracker(
 export function runSemanticTracker(
   theses: ThesisOutput[],
   negations: NegationOutput[],
-  context: ContradictionTrackerContext
+  context: ContradictionTrackerContext,
+  agentClaimMapping?: Record<string, string[]>
 ): ContradictionTrackerResult {
   const startTime = Date.now()
   const contradictions: ContradictionOutput[] = []
@@ -340,7 +372,10 @@ export function runSemanticTracker(
           type: 'SYNCHRONIC',
           severity: 'MEDIUM',
           actionDistance: 3,
-          participatingClaims: [negation.agentId, negation.targetThesisAgentId],
+          participatingClaims: [
+            ...(agentClaimMapping?.[negation.agentId] ?? [negation.agentId]),
+            ...(agentClaimMapping?.[negation.targetThesisAgentId] ?? [negation.targetThesisAgentId]),
+          ],
           trackerAgent: 'semantic_tracker',
           description: `Semantic issue identified: ${attack}`,
         })
@@ -374,7 +409,10 @@ export function runSemanticTracker(
               type: 'SYNCHRONIC',
               severity: 'LOW',
               actionDistance: 4,
-              participatingClaims: [usages[i].agentId, usages[j].agentId],
+              participatingClaims: [
+                ...(agentClaimMapping?.[usages[i].agentId] ?? [usages[i].agentId]),
+                ...(agentClaimMapping?.[usages[j].agentId] ?? [usages[j].agentId]),
+              ],
               trackerAgent: 'semantic_tracker',
               description: `Concept "${concept}" used differently: ${usages[i].lens} lens relates it to [${[...set1].slice(0, 3).join(', ')}...] while ${usages[j].lens} lens relates it to [${[...set2].slice(0, 3).join(', ')}...]`,
             })
@@ -394,6 +432,20 @@ export function runSemanticTracker(
 
 // ----- Boundary Tracker -----
 
+/** Normalize free-form LLM temporal grains to the canonical vocabulary */
+const TEMPORAL_GRAIN_MAP: Record<string, string> = {
+  days: 'immediate', hours: 'immediate', now: 'immediate', today: 'immediate',
+  weeks: 'short_term', months: 'short_term', weekly: 'short_term', monthly: 'short_term',
+  quarters: 'medium_term', 'quarter': 'medium_term', year: 'medium_term', annual: 'medium_term',
+  years: 'long_term', decades: 'long_term', decade: 'long_term', '5+ years': 'long_term',
+  centuries: 'historical', past: 'historical', historical: 'historical',
+}
+
+function normalizeTemporalGrain(grain: string): string {
+  const lower = grain.toLowerCase().trim()
+  return TEMPORAL_GRAIN_MAP[lower] ?? lower
+}
+
 /**
  * BOUNDARY Tracker: Detects regime/context mismatches
  *
@@ -405,17 +457,18 @@ export function runSemanticTracker(
 export function runBoundaryTracker(
   theses: ThesisOutput[],
   negations: NegationOutput[],
-  context: ContradictionTrackerContext
+  context: ContradictionTrackerContext,
+  agentClaimMapping?: Record<string, string[]>
 ): ContradictionTrackerResult {
   const startTime = Date.now()
   const contradictions: ContradictionOutput[] = []
 
   let contraIndex = 0
 
-  // Check for temporal grain mismatches
+  // Check for temporal grain mismatches (normalize free-form LLM grains first)
   const temporalGroups = new Map<string, ThesisOutput[]>()
   for (const thesis of theses) {
-    const grain = thesis.temporalGrain
+    const grain = normalizeTemporalGrain(thesis.temporalGrain)
     if (!temporalGroups.has(grain)) {
       temporalGroups.set(grain, [])
     }
@@ -433,8 +486,8 @@ export function runBoundaryTracker(
 
       // More than TEMPORAL_BOUNDARY_THRESHOLD levels apart = significant temporal boundary issue
       if (maxIdx - minIdx > TEMPORAL_BOUNDARY_THRESHOLD) {
-        const shortTermTheses = theses.filter((t) => temporalOrder.indexOf(t.temporalGrain) <= 1)
-        const longTermTheses = theses.filter((t) => temporalOrder.indexOf(t.temporalGrain) >= 3)
+        const shortTermTheses = theses.filter((t) => temporalOrder.indexOf(normalizeTemporalGrain(t.temporalGrain)) <= 1)
+        const longTermTheses = theses.filter((t) => temporalOrder.indexOf(normalizeTemporalGrain(t.temporalGrain)) >= 3)
 
         for (const st of shortTermTheses) {
           for (const lt of longTermTheses) {
@@ -443,7 +496,10 @@ export function runBoundaryTracker(
               type: 'DIACHRONIC',
               severity: 'MEDIUM',
               actionDistance: 3,
-              participatingClaims: [st.agentId, lt.agentId],
+              participatingClaims: [
+                ...(agentClaimMapping?.[st.agentId] ?? [st.agentId]),
+                ...(agentClaimMapping?.[lt.agentId] ?? [lt.agentId]),
+              ],
               trackerAgent: 'boundary_tracker',
               description: `Temporal scope mismatch: ${st.lens} uses ${st.temporalGrain} grain while ${lt.lens} uses ${lt.temporalGrain} grain`,
             })
@@ -490,7 +546,10 @@ export function runBoundaryTracker(
                 type: 'REGIME_SHIFT',
                 severity: 'MEDIUM',
                 actionDistance: 2,
-                participatingClaims: [agent1.agentId, agent2.agentId],
+                participatingClaims: [
+                  ...(agentClaimMapping?.[agent1.agentId] ?? [agent1.agentId]),
+                  ...(agentClaimMapping?.[agent2.agentId] ?? [agent2.agentId]),
+                ],
                 trackerAgent: 'boundary_tracker',
                 description: `Conflicting regime assumptions: ${agent1.lens} assumes "${a1}" conditions while ${agent2.lens} assumes "${a2}" conditions`,
               })
@@ -521,7 +580,8 @@ export function runContradictionTrackers(
   theses: ThesisOutput[],
   negations: NegationOutput[],
   enabledTrackers: ContradictionTrackerType[],
-  context: ContradictionTrackerContext
+  context: ContradictionTrackerContext,
+  agentClaimMapping?: Record<string, string[]>
 ): {
   allContradictions: ContradictionOutput[]
   trackerResults: ContradictionTrackerResult[]
@@ -532,19 +592,19 @@ export function runContradictionTrackers(
 
   // Run enabled trackers
   if (enabledTrackers.includes('LOGIC')) {
-    trackerResults.push(runLogicTracker(theses, negations, context))
+    trackerResults.push(runLogicTracker(theses, negations, context, agentClaimMapping))
   }
 
   if (enabledTrackers.includes('PRAGMATIC')) {
-    trackerResults.push(runPragmaticTracker(theses, negations, context))
+    trackerResults.push(runPragmaticTracker(theses, negations, context, agentClaimMapping))
   }
 
   if (enabledTrackers.includes('SEMANTIC')) {
-    trackerResults.push(runSemanticTracker(theses, negations, context))
+    trackerResults.push(runSemanticTracker(theses, negations, context, agentClaimMapping))
   }
 
   if (enabledTrackers.includes('BOUNDARY')) {
-    trackerResults.push(runBoundaryTracker(theses, negations, context))
+    trackerResults.push(runBoundaryTracker(theses, negations, context, agentClaimMapping))
   }
 
   // Merge and deduplicate contradictions

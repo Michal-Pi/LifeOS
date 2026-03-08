@@ -16,6 +16,7 @@
 import type { Id } from '@lifeos/core'
 import type { AgentId, ModelProvider, WorkflowId, RunId } from './models'
 import type { RewriteOperatorType } from './workflowState'
+import type { KGEnrichmentConfig } from './deepResearchWorkflow'
 
 // ----- IDs -----
 
@@ -162,6 +163,10 @@ export interface Claim {
   // Relationships
   conceptIds: ConceptId[] // Concepts this claim involves
   contradictionIds: ContradictionId[] // Contradictions involving this claim
+
+  // Corroboration tracking (optional for backward compat)
+  corroborationCount?: number // Number of independent sources confirming this claim (default 1)
+  corroboratingSourceIds?: string[] // Source IDs that contributed to this claim's confidence
 }
 
 /**
@@ -453,6 +458,11 @@ export interface DialecticalWorkflowConfig {
   // Negation
   enableCrossNegation: boolean // Each thesis agent critiques others
   negationDepth: number // How many levels of negation
+  /** When true, each thesis is critiqued by ALL other agents (N*(N-1) pairs).
+   *  When false (default), uses round-robin (each thesis gets one critique). */
+  enableAllPairsNegation?: boolean
+  /** Cap on total negations per cycle to control cost (only for all-pairs mode) */
+  maxNegationsPerCycle?: number
 
   // Contradiction tracking
   enabledTrackers: ContradictionTrackerType[]
@@ -484,6 +494,22 @@ export interface DialecticalWorkflowConfig {
 
   /** Quick vs full dialectic mode (Phase 28) */
   mode?: 'full' | 'quick'
+
+  /** Enable external web/scholar/semantic search during retrieve_context */
+  enableExternalResearch?: boolean
+
+  /** Maximum budget for external research across all cycles (USD) */
+  researchBudgetUsd?: number
+
+  /** Search depth for research: 'shallow' (quick), 'standard', 'deep' */
+  researchSearchDepth?: 'shallow' | 'standard' | 'deep'
+
+  /** Enable reactive research: explicit decide/execute research nodes per cycle.
+   *  When false (default), existing front-loaded research behavior is preserved. */
+  enableReactiveResearch?: boolean
+
+  /** KG enrichment feature flags (all default true) */
+  kgEnrichment?: KGEnrichmentConfig
 }
 
 /**
@@ -759,7 +785,7 @@ export type ThesisAgentPreset = keyof typeof THESIS_AGENT_PRESETS
 
 // Note: RewriteOperatorType and RewriteOperator are already defined in workflowState.ts
 // Re-export them here for convenience
-export type { RewriteOperatorType, RewriteOperator, KGDiff } from './workflowState'
+export type { RewriteOperatorType, RewriteOperator, KGDiff, CompactGraph, GraphDiff } from './workflowState'
 
 // ----- Input Types -----
 
@@ -824,5 +850,8 @@ export function createDefaultDialecticalConfig(): DialecticalWorkflowConfig {
     communityDetectionMethod: 'LLM_GROUPING',
     retrievalDepth: 3,
     retrievalTopK: 10,
+    enableExternalResearch: true,
+    researchBudgetUsd: 1.0,
+    researchSearchDepth: 'standard',
   }
 }

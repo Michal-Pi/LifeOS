@@ -24,6 +24,8 @@ import type {
   DialecticalWorkflowConfig,
   Community,
   KGDiff,
+  CompactGraph,
+  GraphDiff,
 } from '@lifeos/agents'
 import { createLogger } from '../lib/logger.js'
 import { executeAgentWithEvents, type AgentExecutionContext } from './langgraph/utils.js'
@@ -36,8 +38,8 @@ const log = createLogger('MetaReflection')
 const DEFAULT_VELOCITY_THRESHOLD = 0.1
 /** Number of cycles to compute velocity trend */
 const VELOCITY_TREND_WINDOW = 3
-/** Minimum cycles before auto-termination */
-const MIN_CYCLES_BEFORE_TERMINATE = 2
+/** Minimum cycles before auto-termination (increased from 2 to prevent premature termination when early cycles have degraded negation quality) */
+const MIN_CYCLES_BEFORE_TERMINATE = 3
 /** Contradiction density threshold (contradictions per claim) */
 const HIGH_CONTRADICTION_DENSITY = 0.5
 /** Low learning rate threshold */
@@ -65,8 +67,7 @@ const VELOCITY_WEIGHT_REVERSALS = 0.5
 const VELOCITY_WEIGHT_NEW_CONTRADICTIONS = 0.2
 /** Weight for resolved contradictions (reduces velocity) */
 const VELOCITY_WEIGHT_RESOLVED_CONTRADICTIONS = 0.1
-/** Decay factor per thesis beyond 2 */
-const VELOCITY_THESIS_DECAY = 0.95
+// Thesis decay removed — weighted velocity already normalizes by max-expected counts
 
 // ----- Max Expected Counts for Normalization -----
 
@@ -105,7 +106,9 @@ export interface CycleMetrics {
   totalContradictions: number
   highSeverityContradictions: number
   resolvedContradictions: number
+  unresolvedContradictions: number
   contradictionDensity: number
+  coverage: number
 
   // Thesis metrics
   thesisCount: number
@@ -144,7 +147,10 @@ export interface MetaReflectionInput {
   synthesis: SublationOutput | null
   communities: Community[]
   kgDiff: KGDiff | null
+  mergedGraph?: CompactGraph | null
+  latestGraphDiff?: GraphDiff | null
   previousMetrics: CycleMetrics[]
+  previousDecisions?: Array<{ cycle: number; decision: MetaDecision; reasoning: string; focusAreas?: string[] }>
   tokensUsedThisCycle: number
   costThisCycle: number
 }
@@ -232,7 +238,8 @@ function calculateCycleMetrics(
   input: MetaReflectionInput,
   config: DialecticalWorkflowConfig
 ): CycleMetrics {
-  const { theses, contradictions, synthesis, communities, kgDiff, previousMetrics } = input
+  const { theses, negations, contradictions, synthesis, communities, kgDiff, previousMetrics } =
+    input
 
   // Velocity calculation
   const velocity = calculateConceptualVelocity(synthesis, kgDiff, theses)
@@ -242,11 +249,21 @@ function calculateCycleMetrics(
   // Contradiction metrics
   const highSeverityContradictions = contradictions.filter((c) => c.severity === 'HIGH').length
   const resolvedContradictions = kgDiff?.resolvedContradictions?.length ?? 0
-  const totalClaims = theses.reduce((sum, t) => {
-    const claimCount = t.falsificationCriteria.length + t.decisionImplications.length
-    return sum + claimCount
-  }, 0)
-  const contradictionDensity = totalClaims > 0 ? contradictions.length / totalClaims : 0
+  const unresolvedContradictions = countUnresolvedContradictions(contradictions, kgDiff)
+  const totalClaims =
+    theses.reduce((sum, t) => {
+      if (t.graph) return sum + t.graph.nodes.filter((n) => n.type === 'claim').length
+      return sum + t.falsificationCriteria.length + t.decisionImplications.length
+    }, 0) +
+    negations.reduce(
+      (sum, n) => sum + n.internalTensions.length + n.categoryAttacks.length,
+      0
+    )
+  const contradictionDensity = contradictions.length / Math.max(totalClaims, 1)
+  const totalClaimsForCoverage = input.mergedGraph?.nodes.filter((node) => node.type === 'claim').length
+    ?? theses.reduce((sum, thesis) => sum + (thesis.graph?.nodes.filter((node) => node.type === 'claim').length ?? 0), 0)
+  const claimsAddressed = new Set(contradictions.flatMap((contradiction) => contradiction.participatingClaims)).size
+  const coverage = totalClaimsForCoverage > 0 ? claimsAddressed / totalClaimsForCoverage : 0
 
   // Thesis metrics
   const averageThesisConfidence =
@@ -286,7 +303,9 @@ function calculateCycleMetrics(
     totalContradictions: contradictions.length,
     highSeverityContradictions,
     resolvedContradictions,
+    unresolvedContradictions,
     contradictionDensity,
+    coverage,
     thesisCount: theses.length,
     averageThesisConfidence,
     lensDistribution,
@@ -295,7 +314,7 @@ function calculateCycleMetrics(
     noveltyScore,
     communityCount: communities.length,
     avgCommunitySize,
-    crossCommunityRelations: 0, // Would need CrossCommunityRelation[] input
+    crossCommunityRelations: 0, // Not included in scoring calculations
     learningRate,
     convergenceScore,
     tokensUsed: input.tokensUsedThisCycle,
@@ -309,7 +328,7 @@ function calculateCycleMetrics(
 function calculateConceptualVelocity(
   synthesis: SublationOutput | null,
   kgDiff: KGDiff | null,
-  theses: ThesisOutput[]
+  _theses: ThesisOutput[]
 ): number {
   if (!synthesis && !kgDiff) return 1.0 // High velocity at start
 
@@ -361,10 +380,32 @@ function calculateConceptualVelocity(
   // Normalize to 0-1
   const velocity = Math.min(1, Math.max(0, changeScore / maxPossibleChange))
 
-  // Decay based on thesis count (more theses = more expected change)
-  const thesisDecay = Math.pow(VELOCITY_THESIS_DECAY, theses.length - 2)
+  // Blend change velocity with resolution depth:
+  // 60% change velocity + 40% resolution depth when contradictions were detected.
+  // If there were no contradictions to resolve, keep the raw velocity unchanged.
+  const contradictionsDetected = kgDiff?.newContradictions?.length ?? 0
+  const contradictionsResolved = kgDiff?.resolvedContradictions?.length ?? 0
+  const resolutionDepth = contradictionsDetected > 0
+    ? contradictionsResolved / contradictionsDetected
+    : 0
+  if (contradictionsDetected === 0) {
+    return velocity
+  }
 
-  return velocity * thesisDecay
+  return velocity * 0.6 + resolutionDepth * 0.4
+}
+
+function countUnresolvedContradictions(
+  contradictions: ContradictionOutput[],
+  kgDiff: KGDiff | null,
+): number {
+  const resolved = new Set((kgDiff?.resolvedContradictions ?? []).map((entry) => entry.toLowerCase()))
+
+  return contradictions.filter((contradiction) => {
+    const id = contradiction.id.toLowerCase()
+    const description = contradiction.description.toLowerCase()
+    return !resolved.has(id) && !resolved.has(description)
+  }).length
 }
 
 /**
@@ -461,11 +502,9 @@ interface AutoTerminationResult {
  */
 function checkAutoTermination(
   metrics: CycleMetrics,
-  _input: MetaReflectionInput,
+  input: MetaReflectionInput,
   config: DialecticalWorkflowConfig
 ): AutoTerminationResult | null {
-  // Note: _input reserved for future heuristic checks
-
   // Check max cycles
   if (metrics.cycleNumber >= config.maxCycles) {
     return {
@@ -474,31 +513,53 @@ function checkAutoTermination(
     }
   }
 
+  // Check if negation quality was degraded this cycle
+  // (empty negations poison metrics — don't auto-terminate based on low velocity/learning rate)
+  const totalNegations = input.negations.length
+  const emptyNegations = input.negations.filter(
+    n => n.internalTensions.length === 0 && n.categoryAttacks.length === 0
+  ).length
+  const negationQualityDegraded = totalNegations > 0 && emptyNegations / totalNegations > 0.5
+
   // Check velocity threshold (only after minCycles)
   if (metrics.cycleNumber >= config.minCycles) {
-    if (metrics.velocity < config.velocityThreshold) {
+    if (metrics.velocity < config.velocityThreshold && !negationQualityDegraded) {
+      const isConverged = metrics.unresolvedContradictions === 0
       // Check for velocity plateau
       if (
         metrics.velocityTrend === 'stable' &&
         metrics.velocityHistory.length >= VELOCITY_TREND_WINDOW
       ) {
         return {
-          reason: `Velocity (${metrics.velocity.toFixed(3)}) below threshold (${config.velocityThreshold}) with stable trend`,
+          reason: isConverged
+            ? `Velocity (${metrics.velocity.toFixed(3)}) below threshold (${config.velocityThreshold}) with stable trend and no unresolved contradictions — dialectic appears converged`
+            : `Velocity (${metrics.velocity.toFixed(3)}) below threshold (${config.velocityThreshold}) with stable trend but ${metrics.unresolvedContradictions} unresolved contradictions remain — dialectic appears stalled`,
           warnings: [],
         }
       }
     }
   }
 
-  // Check for learning stagnation
+  // Check for learning stagnation (skip if negation quality was degraded)
   if (
     metrics.learningRate < LOW_LEARNING_RATE &&
-    metrics.cycleNumber >= MIN_CYCLES_BEFORE_TERMINATE
+    metrics.cycleNumber >= MIN_CYCLES_BEFORE_TERMINATE &&
+    !negationQualityDegraded
   ) {
     return {
       reason: `Learning rate (${metrics.learningRate.toFixed(3)}) too low - concepts not solidifying`,
       warnings: ['Consider respecifying the goal with more constraints'],
     }
+  }
+
+  // If negation quality was degraded, log a warning but allow the workflow to continue
+  if (negationQualityDegraded) {
+    log.warn('Negation quality degraded, skipping velocity/learning rate auto-termination', {
+      totalNegations,
+      emptyNegations,
+      velocity: metrics.velocity,
+      learningRate: metrics.learningRate,
+    })
   }
 
   // Check for complete convergence
@@ -565,61 +626,91 @@ function buildMetaReflectionPrompt(
   const cycleProgress = `${input.cycleNumber}/${config.maxCycles}`
   const velocityStatus =
     metrics.velocity < config.velocityThreshold
-      ? '⚠️ BELOW THRESHOLD'
+      ? 'BELOW THRESHOLD'
       : metrics.velocityTrend === 'decreasing'
-        ? '📉 Decreasing'
-        : '✓ Healthy'
+        ? 'Decreasing'
+        : 'Healthy'
 
-  return `You are the meta-reflection agent evaluating the dialectical cycle.
+  return `CRITICAL: Output ONLY a valid JSON object. No markdown fences, no explanation.
 
-GOAL: ${input.goal}
+## Role
+You are the meta-reflection agent — the executive function of the dialectical system. You evaluate cycle metrics and decide whether to continue, terminate, or redirect the dialectic.
 
-CYCLE PROGRESS: ${cycleProgress}
-VELOCITY: ${metrics.velocity.toFixed(3)} (threshold: ${config.velocityThreshold}) ${velocityStatus}
-CONVERGENCE: ${(metrics.convergenceScore * 100).toFixed(1)}%
-LEARNING RATE: ${(metrics.learningRate * 100).toFixed(1)}%
+## Goal
+${input.goal}
 
-CONTRADICTION STATUS:
+## Cycle Metrics
+
+### Progress
+- Cycle: ${cycleProgress}
+- Velocity: ${metrics.velocity.toFixed(3)} (threshold: ${config.velocityThreshold}) [${velocityStatus}]
+- Convergence: ${(metrics.convergenceScore * 100).toFixed(1)}%
+- Learning rate: ${(metrics.learningRate * 100).toFixed(1)}%
+
+### Contradictions
 - Total: ${metrics.totalContradictions}
 - HIGH severity: ${metrics.highSeverityContradictions}
 - Resolved this cycle: ${metrics.resolvedContradictions}
+- Still unresolved: ${metrics.unresolvedContradictions}
 - Density: ${(metrics.contradictionDensity * 100).toFixed(1)}% (contradictions per claim)
+- Coverage: ${(metrics.coverage * 100).toFixed(1)}% of claim space has been engaged by at least one contradiction
 
-THESIS QUALITY:
+### Thesis Quality
 - Count: ${metrics.thesisCount}
 - Avg confidence: ${(metrics.averageThesisConfidence * 100).toFixed(1)}%
 - Lens distribution: ${JSON.stringify(metrics.lensDistribution)}
 
-SYNTHESIS QUALITY:
+### Synthesis Quality
 - Operators used: ${metrics.operatorCount}
 - Preserved ratio: ${(metrics.preservedRatio * 100).toFixed(1)}%
 - Novelty score: ${(metrics.noveltyScore * 100).toFixed(1)}%
 
-COMMUNITY STATUS:
-- Communities: ${metrics.communityCount}
+### Communities
+- Count: ${metrics.communityCount}
 - Avg size: ${metrics.avgCommunitySize.toFixed(1)} concepts
 
-COST THIS CYCLE: ${metrics.tokensUsed} tokens, $${metrics.estimatedCost.toFixed(4)}
+### Cost
+- Tokens: ${metrics.tokensUsed}, Estimated cost: $${metrics.estimatedCost.toFixed(4)}
+${input.mergedGraph ? `
+### Knowledge Graph State
+- Nodes: ${input.mergedGraph.nodes.length}
+- Edges: ${input.mergedGraph.edges.length}
+- Unresolved 'contradicts' edges: ${input.mergedGraph.edges.filter(e => e.rel === 'contradicts').length}
+- Summary: ${input.mergedGraph.summary}
+- Reasoning: ${input.mergedGraph.reasoning}` : ''}${input.latestGraphDiff ? `
+### Graph Evolution (this cycle)
+- Added nodes: ${input.latestGraphDiff.addedNodes.length}
+- Removed nodes: ${input.latestGraphDiff.removedNodes.length}
+- Resolved contradictions: ${input.latestGraphDiff.resolvedContradictions.length}
+- New contradictions: ${input.latestGraphDiff.newContradictions.length}` : ''}${input.previousDecisions && input.previousDecisions.length > 0 ? `
 
-Based on this analysis, decide:
-- **CONTINUE**: More cycles needed, goal remains appropriate
-- **TERMINATE**: Sufficient progress made, end the dialectic
-- **RESPECIFY**: Goal needs refinement based on discoveries
+### Prior Meta Decisions
+${input.previousDecisions.map(d => `- Cycle ${d.cycle}: **${d.decision}** — ${d.reasoning}${d.focusAreas?.length ? ` (focus: ${d.focusAreas.join(', ')})` : ''}`).join('\n')}
 
-Respond with JSON:
+Consider whether previous focus areas were addressed and whether the reasoning from prior decisions still holds.` : ''}
+
+## Decision Options
+- **CONTINUE**: More cycles needed. Specify focusAreas for the next cycle.
+- **TERMINATE**: The dialectic has converged sufficiently or further cycles would not justify the cost.
+- **RESPECIFY**: Discoveries during the dialectic suggest the original goal should be refined. Provide a refinedGoal.
+
+## Output Schema
 {
-  "decision": "CONTINUE|TERMINATE|RESPECIFY",
-  "reasoning": "Explanation for the decision",
-  "refinedGoal": "New goal if RESPECIFY",
-  "focusAreas": ["areas to focus on next cycle if CONTINUE"]
+  "decision": "CONTINUE | TERMINATE | RESPECIFY",
+  "reasoning": "Specific explanation citing metrics that support this decision",
+  "refinedGoal": "New goal text (required if RESPECIFY, omit otherwise)",
+  "focusAreas": ["Specific areas to prioritize next cycle (required if CONTINUE, omit otherwise)"]
 }
 
-Consider:
-1. Are high-severity contradictions being resolved?
-2. Is the learning rate positive (new concepts solidifying)?
-3. Is the velocity trend sustainable?
-4. Have we discovered something that changes the original goal?
-5. Is continuing worth the additional cost?`
+## Decision Criteria (evaluate each)
+1. Are HIGH-severity contradictions being resolved cycle over cycle?
+2. Is the learning rate positive — are new concepts solidifying into the graph?
+3. Is the velocity trend sustainable, or is the system stagnating?
+4. Has enough of the claim space been explored, or is contradiction coverage still too shallow?
+5. Have discoveries emerged that invalidate or significantly narrow the original goal?
+6. Does the expected value of another cycle justify its token cost?
+
+CRITICAL (restated): Output ONLY the JSON object. No other text.`
 }
 
 // ----- Parsers -----
@@ -636,22 +727,21 @@ function parseMetaReflectionOutput(output: string): ParsedMetaReflection {
     const jsonMatch = output.match(/\{[\s\S]*\}/)?.[0]
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch)
+      if (typeof parsed.reasoning !== 'string' || parsed.reasoning.trim().length === 0) {
+        throw new Error('Meta-reflection output is missing reasoning')
+      }
       return {
         decision: mapMetaDecision(parsed.decision),
-        reasoning: parsed.reasoning ?? 'No reasoning provided',
+        reasoning: parsed.reasoning,
         refinedGoal: parsed.refinedGoal,
         focusAreas: parsed.focusAreas,
       }
     }
   } catch (error) {
-    log.warn('Failed to parse meta-reflection JSON', { error })
+    throw new Error(`Failed to parse meta-reflection JSON: ${error instanceof Error ? error.message : String(error)}`)
   }
 
-  // Default to CONTINUE if parsing fails
-  return {
-    decision: 'CONTINUE',
-    reasoning: 'Failed to parse meta-agent output, defaulting to CONTINUE',
-  }
+  throw new Error('Meta-reflection output did not contain JSON')
 }
 
 function mapMetaDecision(raw: string): MetaDecision {
