@@ -28,7 +28,7 @@ import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
 import type { ToolRegistry } from '../toolExecutor.js'
 import { createFirestoreCheckpointer } from './firestoreCheckpointer.js'
-import { executeAgentWithEvents, type AgentExecutionContext } from './utils.js'
+import { executeAgentWithEvents, handleAskUserInterrupt, type AgentExecutionContext } from './utils.js'
 import { ParallelStateAnnotation, type ParallelState } from './stateAnnotations.js'
 import { agentFailedEvent, formatEventForLog } from './events.js'
 import { ErrorCodes } from '../shared/config.js'
@@ -400,6 +400,22 @@ export function createParallelGraph(config: ParallelGraphConfig) {
       }
     }
 
+    // Check if any agent requested user input
+    const interruptedStep = successfulSteps.find((s) => s.askUserInterrupt)
+    if (interruptedStep) {
+      const interrupt = handleAskUserInterrupt(interruptedStep, interruptedStep.agentId)
+      if (interrupt) {
+        return {
+          agentOutputs,
+          steps: successfulSteps,
+          failedAgents,
+          totalTokensUsed: totalTokens,
+          totalEstimatedCost: totalCost,
+          ...interrupt,
+        }
+      }
+    }
+
     log.info('Parallel execution completed', {
       succeeded: successfulSteps.length,
       total: effectiveAgents.length,
@@ -480,10 +496,10 @@ export function createParallelGraph(config: ParallelGraphConfig) {
     }
   })
 
-  // Merge node - only runs if we didn't fail in parallel_execution
+  // Merge node - only runs if we didn't fail or pause in parallel_execution
   graph.addNode('merge', async (state: ParallelState) => {
-    // If already failed, don't override status
-    if (state.status === 'failed') {
+    // If paused for user input or already failed, don't override status
+    if (state.status === 'waiting_for_input' || state.status === 'failed') {
       return {}
     }
 
@@ -513,6 +529,9 @@ export function createParallelGraph(config: ParallelGraphConfig) {
       mergedOutput,
       finalOutput: mergedOutput,
       status: finalStatus,
+      error: hasFailures && hasSuccesses
+        ? `Partial failure: ${state.failedAgents.length} agent(s) failed: ${state.failedAgents.map((a: FailedAgent) => a.agentName).join(', ')}`
+        : null,
     }
   })
 
@@ -546,6 +565,7 @@ export async function executeParallelWorkflowLangGraph(
   totalSteps: number
   status: UnifiedWorkflowState['status']
   error?: string
+  pendingInput?: { prompt: string; nodeId: string }
 }> {
   const { workflow, userId, runId } = config
 
@@ -581,5 +601,6 @@ export async function executeParallelWorkflowLangGraph(
     totalSteps: finalState.steps?.length ?? 0,
     status: finalState.status ?? 'completed',
     error: finalState.error ?? undefined,
+    pendingInput: finalState.pendingInput ?? undefined,
   }
 }

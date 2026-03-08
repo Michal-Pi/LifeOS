@@ -26,7 +26,7 @@ import { executeWithProvider } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
 import type { ToolRegistry } from '../toolExecutor.js'
-import { executeAgentWithEvents, type AgentExecutionContext } from './utils.js'
+import { executeAgentWithEvents, handleAskUserInterrupt, type AgentExecutionContext } from './utils.js'
 import { SequentialStateAnnotation, type SequentialState } from './stateAnnotations.js'
 import { estimateTokenCount } from '../anthropicService.js'
 
@@ -59,7 +59,7 @@ export async function compressAgentOutput(output: string, apiKeys: ProviderKeys)
     name: 'Context Compressor',
     role: 'synthesizer',
     systemPrompt:
-      'You are a context compression agent. Summarize the following output concisely, preserving all key findings, data, decisions, action items, and conclusions. Remove redundancy and filler. Output ONLY the compressed summary.',
+      'You are a context compression specialist. Condense the input into the shortest possible summary that preserves all key findings, data points, decisions, action items, and conclusions. Remove redundancy, filler, and preamble. Output ONLY the compressed summary — no explanation of what you did.',
     // Hardcoded to cheapest available model — compression is a utility task
     // where cost efficiency matters more than provider consistency with the workflow.
     modelProvider: 'openai',
@@ -103,7 +103,7 @@ export async function scoreAgentOutput(
     name: 'Quality Scorer',
     role: 'critic',
     systemPrompt:
-      'Score the following output 1-5 on how well it achieves the stated goal. Respond with ONLY a single integer 1-5.',
+      'You are a quality scorer. Given a goal and an output, rate how well the output achieves the goal on a 1-5 scale. 1 = completely fails, 3 = partially achieves, 5 = fully achieves. Respond with ONLY a single integer (1, 2, 3, 4, or 5). No explanation.',
     modelProvider: 'openai',
     modelName: 'gpt-4o-mini',
     temperature: 0.1,
@@ -211,6 +211,18 @@ export function createSequentialGraph(config: SequentialGraphConfig) {
         stepNumber: i + 1,
         totalSteps: agents.length,
       })
+
+      // Check for ask_user interrupt
+      const interrupt = handleAskUserInterrupt(step, `agent_${i}`)
+      if (interrupt) {
+        return {
+          currentAgentIndex: i,
+          steps: [step],
+          totalTokensUsed: step.tokensUsed,
+          totalEstimatedCost: step.estimatedCost,
+          ...interrupt,
+        }
+      }
 
       // Track extra tokens/cost from quality gate retry
       let extraTokens = 0
@@ -329,6 +341,10 @@ export function createSequentialGraph(config: SequentialGraphConfig) {
     graph.addConditionalEdges(
       `agent_${i}` as typeof START,
       (state: SequentialState) => {
+        // If paused for user input — go to END
+        if (state.status === 'waiting_for_input') {
+          return END
+        }
         // If finalOutput is set, the workflow completed early — go to END
         if (state.finalOutput !== null && state.finalOutput !== undefined) {
           return END
@@ -368,6 +384,7 @@ export async function executeSequentialWorkflowLangGraph(
   totalEstimatedCost: number
   totalSteps: number
   status: UnifiedWorkflowState['status']
+  pendingInput?: { prompt: string; nodeId: string }
 }> {
   const { workflow, userId, runId } = config
 
@@ -401,5 +418,6 @@ export async function executeSequentialWorkflowLangGraph(
     totalEstimatedCost: finalState.totalEstimatedCost ?? 0,
     totalSteps: finalState.steps?.length ?? 0,
     status: finalState.status ?? 'completed',
+    pendingInput: finalState.pendingInput ?? undefined,
   }
 }

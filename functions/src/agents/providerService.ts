@@ -12,6 +12,7 @@ import type { AgentConfig } from '@lifeos/agents'
 // discovery fast. Each SDK (Anthropic, OpenAI, Google AI, Grok/xAI) is only
 // loaded when its provider is actually invoked.
 import { AgentError, ERROR_MESSAGES } from './errorHandler.js'
+import { DEFAULT_MODELS } from './providerKeys.js'
 import type { StreamContext } from './streamingTypes.js'
 import type { BaseToolExecutionContext } from './toolExecutor.js'
 
@@ -70,7 +71,7 @@ export async function executeWithProvider(
       return {
         ...result,
         provider: 'openai',
-        model: agent.modelName ?? 'gpt-5-mini',
+        model: agent.modelName ?? DEFAULT_MODELS.openai,
       }
     }
 
@@ -87,7 +88,7 @@ export async function executeWithProvider(
       return {
         ...result,
         provider: 'anthropic',
-        model: agent.modelName ?? 'claude-haiku-4-5',
+        model: agent.modelName ?? DEFAULT_MODELS.anthropic,
       }
     }
 
@@ -104,7 +105,7 @@ export async function executeWithProvider(
       return {
         ...result,
         provider: 'google',
-        model: agent.modelName ?? 'gemini-3-flash',
+        model: agent.modelName ?? DEFAULT_MODELS.google,
       }
     }
 
@@ -121,7 +122,7 @@ export async function executeWithProvider(
       return {
         ...result,
         provider: 'xai',
-        model: agent.modelName ?? 'grok-3-mini',
+        model: agent.modelName ?? DEFAULT_MODELS.grok,
       }
     }
 
@@ -164,7 +165,7 @@ export async function executeWithProviderStreaming(
       return {
         ...result,
         provider: 'openai',
-        model: agent.modelName ?? 'gpt-5-mini',
+        model: agent.modelName ?? DEFAULT_MODELS.openai,
       }
     }
 
@@ -189,7 +190,7 @@ export async function executeWithProviderStreaming(
       return {
         ...result,
         provider: 'anthropic',
-        model: agent.modelName ?? 'claude-haiku-4-5',
+        model: agent.modelName ?? DEFAULT_MODELS.anthropic,
       }
     }
 
@@ -206,7 +207,7 @@ export async function executeWithProviderStreaming(
       return {
         ...result,
         provider: 'google',
-        model: agent.modelName ?? 'gemini-3-flash',
+        model: agent.modelName ?? DEFAULT_MODELS.google,
       }
     }
 
@@ -223,7 +224,7 @@ export async function executeWithProviderStreaming(
       return {
         ...result,
         provider: 'xai',
-        model: agent.modelName ?? 'grok-3-mini',
+        model: agent.modelName ?? DEFAULT_MODELS.grok,
       }
     }
 

@@ -9,7 +9,7 @@
 import type { ModelProvider } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 import { AgentError } from './errorHandler.js'
-import { updateDailyCostLimit } from './rateLimiter.js'
+import { updateDailyCostLimit, updateDailyTokenRateLimit } from './rateLimiter.js'
 import { createLogger } from '../lib/logger.js'
 
 const log = createLogger('QuotaManager')
@@ -166,6 +166,52 @@ function resetExpiredPeriod(record: QuotaRecord): QuotaRecord {
   }
 
   return record
+}
+
+/**
+ * Soft quota check — returns exceeded quota info instead of throwing.
+ * Used for pause-and-prompt flow in graph cycles.
+ */
+export type QuotaExceeded = {
+  exceeded: true
+  quotaType: 'quota_tokens' | 'quota_cost' | 'quota_runs'
+  currentValue: number
+  limitValue: number
+  unit: string
+}
+
+export async function checkQuotaSoft(userId: string): Promise<QuotaExceeded | null> {
+  const dailyRecord = await getQuotaRecord(userId, 'daily')
+  const reset = resetExpiredPeriod(dailyRecord)
+
+  if (reset.totalRuns >= reset.maxRuns) {
+    return {
+      exceeded: true,
+      quotaType: 'quota_runs',
+      currentValue: reset.totalRuns,
+      limitValue: reset.maxRuns,
+      unit: 'runs',
+    }
+  }
+  if (reset.totalTokens >= reset.maxTokens) {
+    return {
+      exceeded: true,
+      quotaType: 'quota_tokens',
+      currentValue: reset.totalTokens,
+      limitValue: reset.maxTokens,
+      unit: 'tokens',
+    }
+  }
+  if (reset.totalCost >= reset.maxCost) {
+    return {
+      exceeded: true,
+      quotaType: 'quota_cost',
+      currentValue: reset.totalCost,
+      limitValue: reset.maxCost,
+      unit: 'USD',
+    }
+  }
+  return null
 }
 
 /**
@@ -422,4 +468,40 @@ export async function updateDailyCostQuota(userId: string, newLimit: number): Pr
   await updateDailyCostLimit(userId, newLimit)
 
   log.info('Updated daily cost quota', { userId, newLimit: `$${newLimit.toFixed(2)}` })
+}
+
+/**
+ * Update daily token limit for a user (called when user increases quota via ConstraintPausePanel)
+ */
+export async function updateDailyTokenQuota(userId: string, newLimit: number): Promise<void> {
+  const db = getFirestore()
+  const docRef = db.collection('users').doc(userId).collection('agentUsage').doc('quota_daily')
+
+  await getQuotaRecord(userId, 'daily')
+
+  await docRef.update({
+    maxTokens: newLimit,
+    lastUpdatedMs: Date.now(),
+  })
+
+  await updateDailyTokenRateLimit(userId, newLimit)
+
+  log.info('Updated daily token quota', { userId, newLimit: newLimit.toLocaleString() })
+}
+
+/**
+ * Update daily run limit for a user (called when user increases quota via ConstraintPausePanel)
+ */
+export async function updateDailyRunQuota(userId: string, newLimit: number): Promise<void> {
+  const db = getFirestore()
+  const docRef = db.collection('users').doc(userId).collection('agentUsage').doc('quota_daily')
+
+  await getQuotaRecord(userId, 'daily')
+
+  await docRef.update({
+    maxRuns: newLimit,
+    lastUpdatedMs: Date.now(),
+  })
+
+  log.info('Updated daily run quota', { userId, newLimit })
 }

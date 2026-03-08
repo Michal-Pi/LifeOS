@@ -36,7 +36,7 @@ export const ThesisOutputSchema = z.object({
     .record(z.string(), z.array(z.string()))
     .describe('Map of concept names to related concepts'),
   causalModel: z.array(z.string()).describe('List of cause-effect relationships as strings'),
-  falsificationCriteria: z.array(z.string()).describe('Conditions that would disprove this thesis'),
+  falsificationCriteria: z.array(z.string()).min(1).describe('Conditions that would disprove this thesis (at least one required)'),
   decisionImplications: z.array(z.string()).describe('Actions that follow from this thesis'),
   unitOfAnalysis: z
     .string()
@@ -118,6 +118,10 @@ export const SublationOutputSchema = z.object({
     .describe('Updated concept relationships after synthesis'),
   newClaims: z.array(NewClaimSchema).describe('New claims that emerge from the synthesis'),
   newPredictions: z.array(NewPredictionSchema).describe('Testable predictions from the synthesis'),
+  incompleteReason: z
+    .string()
+    .optional()
+    .describe('Why the synthesis is partial or incomplete when the sublation step degraded'),
 })
 
 export type SublationOutputParsed = z.infer<typeof SublationOutputSchema>
@@ -324,6 +328,73 @@ function zodToJsonSchema(schema: z.ZodTypeAny): Record<string, unknown> {
   // Fallback for unknown types
   return { type: 'object' }
 }
+
+// ----- Compact Graph Schema -----
+
+const CompactGraphNodeSchema = z.object({
+  id: z.string().describe('Short node ID, e.g. "n1"'),
+  label: z.string().max(80).describe('Node label, ≤80 chars'),
+  type: z.enum(['claim', 'concept', 'mechanism', 'prediction']),
+  note: z.string().max(150).optional().describe('Qualifications or caveats, ≤150 chars'),
+  sourceId: z.string().optional().describe('Source record ID for research-backed nodes'),
+  sourceUrl: z.string().optional().describe('Source URL for research-backed nodes'),
+  sourceConfidence: z.number().min(0).max(1).optional().describe('Quality-weighted source confidence'),
+})
+
+const CompactGraphEdgeSchema = z.object({
+  from: z.string().describe('Source node ID'),
+  to: z.string().describe('Target node ID'),
+  rel: z.enum(['causes', 'contradicts', 'supports', 'mediates', 'scopes']),
+  weight: z.number().min(0).max(1).optional().describe('Confidence weight'),
+})
+
+export const CompactGraphSchema = z.object({
+  nodes: z.array(CompactGraphNodeSchema).max(10).describe('Graph nodes, max 10'),
+  edges: z.array(CompactGraphEdgeSchema).describe('Typed edges between nodes'),
+  summary: z.string().max(200).describe('Human-readable headline, ≤200 chars'),
+  reasoning: z.string().max(500).describe('Qualitative texture: hedging, nuance, emergent insights, ≤500 chars'),
+  confidence: z.number().min(0).max(1),
+  regime: z.string().describe('Conditions under which this holds'),
+  temporalGrain: z.string().describe('Time scale of analysis'),
+})
+
+export type CompactGraphParsed = z.infer<typeof CompactGraphSchema>
+
+// ----- Graph Diff Schema -----
+
+export const GraphDiffSchema = z.object({
+  addedNodes: z.array(z.string()).describe('IDs of nodes added this cycle'),
+  removedNodes: z.array(z.string()).describe('IDs of nodes removed this cycle'),
+  addedEdges: z.array(z.object({
+    from: z.string(),
+    to: z.string(),
+    rel: z.string(),
+  })).describe('Edges added this cycle'),
+  removedEdges: z.array(z.object({
+    from: z.string(),
+    to: z.string(),
+    rel: z.string(),
+  })).describe('Edges removed this cycle'),
+  modifiedNodes: z.array(z.object({
+    id: z.string(),
+    oldLabel: z.string(),
+    newLabel: z.string(),
+  })).describe('Nodes whose labels were updated'),
+  resolvedContradictions: z.array(z.string()).describe('IDs of contradicts edges removed'),
+  newContradictions: z.array(z.string()).describe('IDs of new contradicts edges added'),
+})
+
+export type GraphDiffParsed = z.infer<typeof GraphDiffSchema>
+
+// ----- Graph-based Sublation Output Schema -----
+
+export const GraphSublationOutputSchema = z.object({
+  mergedGraph: CompactGraphSchema.describe('The merged and evolved knowledge graph'),
+  diff: GraphDiffSchema.describe('What changed from the prior merged graph'),
+  resolvedContradictions: z.array(z.string()).describe('Descriptions of contradictions resolved'),
+})
+
+export type GraphSublationOutputParsed = z.infer<typeof GraphSublationOutputSchema>
 
 // ----- Pre-built Tool Definitions -----
 

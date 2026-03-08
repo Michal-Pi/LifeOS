@@ -21,7 +21,7 @@ import type {
   DriftResponseExecution,
   OptimizationEvent,
 } from '@lifeos/agents'
-import { asId } from '@lifeos/agents'
+import { MODEL_TIER_MAP, asId } from '@lifeos/agents'
 import type { AgentId, DriftAlertId } from '@lifeos/agents'
 import type { DriftAlert } from '@lifeos/agents'
 
@@ -301,7 +301,7 @@ export function getDefaultRules(
         {
           actionType: 'switch_model',
           params: {
-            targetModel: 'gpt-5-mini',
+            targetModel: MODEL_TIER_MAP.fast.openai,
             reason: 'cost_reduction',
           },
         },

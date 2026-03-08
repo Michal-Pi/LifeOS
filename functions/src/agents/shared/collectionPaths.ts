@@ -186,29 +186,31 @@ export const ExampleLibraryPaths = {
 // ----- Dialectical Collections (Future) -----
 
 export const DialecticalPaths = {
-  /** Sessions: users/{userId}/dialectical/sessions/{sessionId} */
-  sessions: (userId: string) => `users/${userId}/dialectical/sessions`,
+  /** Sessions collection: users/{userId}/dialecticalSessions */
+  sessions: (userId: string) => `users/${userId}/dialecticalSessions`,
+  /** Session document: users/{userId}/dialecticalSessions/{sessionId} */
   session: (userId: string, sessionId: string) =>
-    `users/${userId}/dialectical/sessions/${sessionId}`,
+    `users/${userId}/dialecticalSessions/${sessionId}`,
 
-  /** Episodes: users/{userId}/dialectical/episodes/{episodeId} */
-  episodes: (userId: string) => `users/${userId}/dialectical/episodes`,
+  /** Episodes collection: users/{userId}/dialecticalEpisodes */
+  episodes: (userId: string) => `users/${userId}/dialecticalEpisodes`,
   episode: (userId: string, episodeId: string) =>
-    `users/${userId}/dialectical/episodes/${episodeId}`,
+    `users/${userId}/dialecticalEpisodes/${episodeId}`,
 
-  /** Claims: users/{userId}/dialectical/claims/{claimId} */
-  claims: (userId: string) => `users/${userId}/dialectical/claims`,
-  claim: (userId: string, claimId: string) => `users/${userId}/dialectical/claims/${claimId}`,
+  /** Claims collection: users/{userId}/dialecticalClaims */
+  claims: (userId: string) => `users/${userId}/dialecticalClaims`,
+  claim: (userId: string, claimId: string) =>
+    `users/${userId}/dialecticalClaims/${claimId}`,
 
-  /** Concepts: users/{userId}/dialectical/concepts/{conceptId} */
-  concepts: (userId: string) => `users/${userId}/dialectical/concepts`,
+  /** Concepts collection: users/{userId}/dialecticalConcepts */
+  concepts: (userId: string) => `users/${userId}/dialecticalConcepts`,
   concept: (userId: string, conceptId: string) =>
-    `users/${userId}/dialectical/concepts/${conceptId}`,
+    `users/${userId}/dialecticalConcepts/${conceptId}`,
 
-  /** Contradictions: users/{userId}/dialectical/contradictions/{contraId} */
-  contradictions: (userId: string) => `users/${userId}/dialectical/contradictions`,
+  /** Contradictions collection: users/{userId}/dialecticalContradictions */
+  contradictions: (userId: string) => `users/${userId}/dialecticalContradictions`,
   contradiction: (userId: string, contraId: string) =>
-    `users/${userId}/dialectical/contradictions/${contraId}`,
+    `users/${userId}/dialecticalContradictions/${contraId}`,
 } as const
 
 // ----- Consolidated Export -----

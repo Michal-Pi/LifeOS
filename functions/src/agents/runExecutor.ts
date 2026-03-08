@@ -28,12 +28,26 @@ import {
 } from './expertCouncil.js'
 import { buildConversationContext } from './messageStore.js'
 import { loadProviderKeys, loadSearchToolKeys } from './providerKeys.js'
-import { checkQuota, updateQuota, shouldSendQuotaAlert } from './quotaManager.js'
-import { checkRunRateLimit, recordRunUsage } from './rateLimiter.js'
+import {
+  checkQuotaSoft,
+  updateQuota,
+  shouldSendQuotaAlert,
+  updateDailyCostQuota,
+  updateDailyTokenQuota,
+  updateDailyRunQuota,
+} from './quotaManager.js'
+import {
+  checkRunRateLimitSoft,
+  recordRunUsage,
+  updateDailyCostLimit,
+  updateRunsPerHourLimit,
+  updateDailyTokenRateLimit,
+} from './rateLimiter.js'
 import { createRunEventWriter } from './runEvents.js'
 import { loadToolRegistryForUser } from './toolExecutor.js'
 import { evaluateRunOutput } from './evaluation.js'
 import { executeWorkflow } from './workflowExecutor.js'
+import { sanitizeForFirestore } from './langgraph/firestoreSanitizer.js'
 
 const log = createLogger('RunExecutor')
 
@@ -41,9 +55,30 @@ type MemorySettings = {
   memoryMessageLimit?: number
 }
 
-// Function configuration (matching existing patterns)
+function extractOracleResumeState(workflowState: Run['workflowState']): Record<string, unknown> | undefined {
+  if (!workflowState || typeof workflowState !== 'object') return undefined
+
+  const stateRecord = workflowState as Record<string, unknown>
+  const nestedResumeState = stateRecord.oracleResumeState
+  if (nestedResumeState && typeof nestedResumeState === 'object') {
+    return nestedResumeState as Record<string, unknown>
+  }
+
+  // Backward compatibility for runs persisted before the nested resume snapshot.
+  if (
+    Array.isArray(stateRecord.scenarioPortfolio) ||
+    Array.isArray(stateRecord.phaseSummaries) ||
+    Array.isArray(stateRecord.gateResults)
+  ) {
+    return stateRecord
+  }
+
+  return undefined
+}
+
+// Function configuration — dialectical workflows can run 20+ minutes across multiple cycles
 const FUNCTION_CONFIG = {
-  timeoutSeconds: 540,
+  timeoutSeconds: 1800,
   memory: '1GiB' as const,
 }
 
@@ -146,20 +181,79 @@ async function executeRun(params: {
     log.info(`Creating event writer for run ${runId}`)
     const eventWriter = createRunEventWriter({ userId, runId, workflowId })
 
-    // Phase 5E: Check rate limits and quotas before starting
+    // Phase 5E: Soft-check rate limits and quotas — pause instead of failing
+    const constraintOverride = (run.context as Record<string, unknown> | undefined)
+      ?.constraintOverride as { type: string; newLimit?: number } | undefined
+
+    // If resuming with a quota/rate override, apply the new limit first
+    if (constraintOverride?.newLimit) {
+      await applyConstraintOverride(userId, constraintOverride.type, constraintOverride.newLimit)
+    }
+
     log.info(`Checking rate limits for user ${userId}`)
-    await checkRunRateLimit(userId)
+    const rateExceeded = await checkRunRateLimitSoft(userId)
+    if (rateExceeded) {
+      log.info(`Rate limit exceeded for user ${userId}, pausing run ${runId}`, rateExceeded)
+      await runRef.update({
+        status: 'waiting_for_input',
+        constraintPause: {
+          constraintType: rateExceeded.limitType,
+          currentValue: rateExceeded.currentValue,
+          limitValue: rateExceeded.limitValue,
+          unit: rateExceeded.unit,
+          partialOutput: 'Run has not started yet — rate limit was reached before execution.',
+          suggestedIncrease: Math.ceil(rateExceeded.limitValue * 1.5),
+        },
+      })
+      await eventWriter.writeEvent({ type: 'status', workflowId, status: 'waiting_for_input' })
+      return
+    }
 
     log.info(`Checking quota for user ${userId}`)
-    await checkQuota(userId)
+    const quotaExceeded = await checkQuotaSoft(userId)
+    if (quotaExceeded) {
+      log.info(`Quota exceeded for user ${userId}, pausing run ${runId}`, quotaExceeded)
+      await runRef.update({
+        status: 'waiting_for_input',
+        constraintPause: {
+          constraintType: quotaExceeded.quotaType,
+          currentValue: quotaExceeded.currentValue,
+          limitValue: quotaExceeded.limitValue,
+          unit: quotaExceeded.unit,
+          partialOutput: 'Run has not started yet — daily quota was reached before execution.',
+          suggestedIncrease: quotaExceeded.unit === 'USD'
+            ? quotaExceeded.limitValue * 2
+            : Math.ceil(quotaExceeded.limitValue * 1.5),
+        },
+      })
+      await eventWriter.writeEvent({ type: 'status', workflowId, status: 'waiting_for_input' })
+      return
+    }
 
-    // Update status to running
+    // Update status to running (transactional to prevent duplicate execution)
     log.info(`Updating run ${runId} status to 'running'`)
-    await runRef.update({
-      status: 'running',
-      currentStep: run.currentStep ?? 0,
-      pendingInput: null,
+    let claimedByUs = false
+    await db.runTransaction(async (txn) => {
+      const snap = await txn.get(runRef)
+      const currentStatus = snap.data()?.status
+      if (currentStatus !== 'pending') {
+        // Another instance already claimed this run — not an error, just a race.
+        log.info(`Run ${runId} already claimed by another instance (status: ${currentStatus}), yielding`)
+        claimedByUs = false
+        return
+      }
+      claimedByUs = true
+      txn.update(runRef, {
+        status: 'running',
+        currentStep: run.currentStep ?? 0,
+        pendingInput: null,
+      })
     })
+
+    if (!claimedByUs) {
+      log.info(`Run ${runId} is being handled by another instance, exiting gracefully`)
+      return
+    }
 
     log.info(`Writing 'running' status event for run ${runId}`)
     await eventWriter.writeEvent({
@@ -214,16 +308,31 @@ async function executeRun(params: {
           })
         : ''
 
+    const oracleResumeState = workflow.workflowType === 'oracle'
+      ? extractOracleResumeState(run.workflowState)
+      : undefined
+
+    const runContext =
+      run.context && typeof run.context === 'object'
+        ? { ...(run.context as Record<string, unknown>) }
+        : {}
+
+    if (conversationHistory) {
+      runContext.conversationHistory = conversationHistory
+    }
+    if (oracleResumeState) {
+      runContext.resumeState = oracleResumeState
+    }
+
     const runWithContext: Run = {
       ...run,
-      context: {
-        ...run.context,
-        ...(conversationHistory ? { conversationHistory } : {}),
-      },
+      context: runContext,
     }
     const contextHash = buildExpertCouncilContextHash(
       runWithContext.context as Record<string, unknown>
     )
+
+    let councilUsageRecorded = false
 
     log.info('Checking Expert Council configuration')
     const expertCouncilConfig = workflow.expertCouncilConfig
@@ -275,6 +384,7 @@ async function executeRun(params: {
           (turn.stage3.tokensUsed ?? 0)
 
         await recordRunUsage(userId, totalTokensUsed, turn.totalCost)
+        councilUsageRecorded = true
 
         const firstProvider = turn.stage1.responses[0]?.provider ?? 'openai'
         await updateQuota(userId, firstProvider, totalTokensUsed, turn.totalCost)
@@ -367,9 +477,7 @@ async function executeRun(params: {
 
     // Check for failed status returned by workflow executor (e.g. dialectical graph failures)
     if (result.status === 'failed') {
-      throw new Error(
-        (result as unknown as { error?: string }).error || 'Workflow execution failed'
-      )
+      throw new Error(result.error || 'Workflow execution failed')
     }
 
     if (result.status === 'waiting_for_input') {
@@ -389,8 +497,9 @@ async function executeRun(params: {
 
       await runRef.update({
         status: 'waiting_for_input',
-        pendingInput: result.pendingInput,
-        workflowState: result.workflowState ?? run.workflowState,
+        pendingInput: result.pendingInput ?? null,
+        constraintPause: result.constraintPause ?? null,
+        workflowState: sanitizeForFirestore(result.workflowState ?? run.workflowState) ?? null,
         output: result.output,
         tokensUsed: result.totalTokensUsed,
         estimatedCost: result.totalEstimatedCost,
@@ -468,7 +577,7 @@ async function executeRun(params: {
       const runUpdates: Record<string, unknown> = {
         status: 'paused',
         pendingInput: null,
-        workflowState: result.workflowState ?? run.workflowState,
+        workflowState: sanitizeForFirestore(result.workflowState ?? run.workflowState) ?? null,
         output: result.output,
         tokensUsed: result.totalTokensUsed,
         estimatedCost: result.totalEstimatedCost,
@@ -493,13 +602,17 @@ async function executeRun(params: {
     }
 
     // Phase 5E: Record usage in rate limiter and quota manager
-    await recordRunUsage(userId, result.totalTokensUsed, result.totalEstimatedCost)
+    if (!councilUsageRecorded) {
+      await recordRunUsage(userId, result.totalTokensUsed, result.totalEstimatedCost)
+    }
 
     // Update quota with provider-specific usage (use first agent's provider as representative)
     const firstAgent = await db.doc(`users/${userId}/agents/${workflow.agentIds[0]}`).get()
     const agentData = firstAgent.data() as Record<string, unknown> | undefined
     const provider = (agentData?.modelProvider as ModelProvider | undefined) ?? 'openai'
-    await updateQuota(userId, provider, result.totalTokensUsed, result.totalEstimatedCost)
+    if (!councilUsageRecorded) {
+      await updateQuota(userId, provider, result.totalTokensUsed, result.totalEstimatedCost)
+    }
 
     // Check if quota alert should be sent
     const alert = await shouldSendQuotaAlert(userId)
@@ -545,6 +658,7 @@ async function executeRun(params: {
       completedAtMs: Date.now(),
       totalSteps: result.totalSteps,
       currentStep: result.totalSteps,
+      workflowState: sanitizeForFirestore(result.workflowState ?? run.workflowState) ?? null,
     })
 
     log.info(`Writing 'final' event for run ${runId}`)
@@ -609,6 +723,38 @@ async function executeRun(params: {
     })
 
     log.error(`Run ${runId} error handling complete`)
+  }
+}
+
+/**
+ * Apply a quota/rate constraint override by updating the user's limit in Firestore.
+ */
+async function applyConstraintOverride(
+  userId: string,
+  overrideType: string,
+  newLimit: number
+): Promise<void> {
+  switch (overrideType) {
+    case 'quota_cost':
+      await updateDailyCostQuota(userId, newLimit)
+      break
+    case 'quota_tokens':
+      await updateDailyTokenQuota(userId, newLimit)
+      break
+    case 'quota_runs':
+      await updateDailyRunQuota(userId, newLimit)
+      break
+    case 'rate_runs_per_hour':
+      await updateRunsPerHourLimit(userId, newLimit)
+      break
+    case 'rate_tokens_per_day':
+      await updateDailyTokenRateLimit(userId, newLimit)
+      break
+    case 'rate_cost_per_day':
+      await updateDailyCostLimit(userId, newLimit)
+      break
+    default:
+      log.warn(`Unknown constraint override type: ${overrideType}`)
   }
 }
 

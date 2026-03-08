@@ -13,7 +13,7 @@ import type { AgentConfig } from '@lifeos/agents'
 import { asId, MODEL_PRICING } from '@lifeos/agents'
 
 import { createLogger } from '../lib/logger.js'
-import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
+import { executeWithTimeout, getProviderTimeout, wrapError } from './errorHandler.js'
 import { recordMessage } from './messageStore.js'
 import { checkProviderRateLimit } from './rateLimiter.js'
 import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
@@ -232,31 +232,68 @@ export async function executeWithAnthropic(
       log.info('Iteration started', { iteration, maxIterations: MAX_ITERATIONS })
 
       // Call Anthropic API
+      const requestStartMs = Date.now()
+      const inputTokenEstimate = JSON.stringify(messages).length / 4 // rough estimate
+      const dynamicTimeout = getProviderTimeout(inputTokenEstimate)
+      log.info('Anthropic API request starting', {
+        model: modelName,
+        iteration,
+        maxTokens: agent.maxTokens ?? 2048,
+        messageCount: messages.length,
+        inputTokenEstimate: Math.round(inputTokenEstimate),
+        toolCount: tools?.length ?? 0,
+        timeoutMs: dynamicTimeout,
+      })
+
       const response = await executeWithRetry(
         async () => {
           if (toolContext?.userId) {
             await checkProviderRateLimit(toolContext.userId, 'anthropic')
           }
 
-          return executeWithTimeout(
-            client.messages.create({
+          const callStartMs = Date.now()
+          try {
+            const result = await executeWithTimeout(
+              client.messages.create({
+                model: modelName,
+                max_tokens: agent.maxTokens ?? 2048,
+                temperature: agent.temperature ?? 0.7,
+                system: systemParam,
+                messages,
+                tools,
+              }),
+              dynamicTimeout,
+              'anthropic.messages.create'
+            )
+            const callDurationMs = Date.now() - callStartMs
+            log.info('Anthropic API response received', {
               model: modelName,
-              max_tokens: agent.maxTokens ?? 2048,
-              temperature: agent.temperature ?? 0.7,
-              system: systemParam,
-              messages,
-              tools,
-            }),
-            TIMEOUTS.PROVIDER,
-            'anthropic.messages.create'
-          )
+              durationMs: callDurationMs,
+              inputTokens: result.usage.input_tokens,
+              outputTokens: result.usage.output_tokens,
+              stopReason: result.stop_reason,
+            })
+            return result
+          } catch (error) {
+            const callDurationMs = Date.now() - callStartMs
+            log.error('Anthropic API call failed', error, {
+              model: modelName,
+              durationMs: callDurationMs,
+              timedOut: callDurationMs >= dynamicTimeout - 100,
+              inputTokenEstimate: Math.round(inputTokenEstimate),
+              timeoutMs: dynamicTimeout,
+            })
+            throw error
+          }
         },
         PROVIDER_RETRY_CONFIG,
         (attempt, error, delayMs) => {
+          const elapsedMs = Date.now() - requestStartMs
           log.info('Retrying request', {
             attempt,
             maxRetries: PROVIDER_RETRY_CONFIG.maxRetries,
             delayMs,
+            totalElapsedMs: elapsedMs,
             error: (error as Error).message,
           })
         }
@@ -494,6 +531,9 @@ export async function executeWithAnthropicStreaming(
     return executeWithAnthropic(client, agent, goal, context, toolContext)
   }
 
+  const streamRequestStartMs = Date.now()
+  let finalOutput = ''
+
   try {
     const systemPrompt =
       agent.systemPrompt ?? `You are ${agent.role}. Help the user accomplish their goal.`
@@ -528,7 +568,14 @@ export async function executeWithAnthropicStreaming(
       })
     }
 
-    let finalOutput = ''
+    const streamInputEstimate = Math.round(JSON.stringify(messages).length / 4)
+    log.info('Anthropic streaming request starting', {
+      model: modelName,
+      maxTokens: agent.maxTokens ?? 2048,
+      messageCount: messages.length,
+      inputTokenEstimate: streamInputEstimate,
+      agentName: agent.name,
+    })
 
     const streamResponse = await executeWithRetry(
       async () => {
@@ -546,10 +593,12 @@ export async function executeWithAnthropicStreaming(
       },
       PROVIDER_RETRY_CONFIG,
       (attempt, error, delayMs) => {
+        const elapsedMs = Date.now() - streamRequestStartMs
         log.info('Retrying streaming request', {
           attempt,
           maxRetries: PROVIDER_RETRY_CONFIG.maxRetries,
           delayMs,
+          totalElapsedMs: elapsedMs,
           error: (error as Error).message,
         })
       }
@@ -582,6 +631,15 @@ export async function executeWithAnthropicStreaming(
     })
 
     const finalMessage = await streamResponse.finalMessage()
+    const streamDurationMs = Date.now() - streamRequestStartMs
+    log.info('Anthropic streaming response complete', {
+      model: modelName,
+      durationMs: streamDurationMs,
+      inputTokens: finalMessage.usage?.input_tokens ?? 0,
+      outputTokens: finalMessage.usage?.output_tokens ?? 0,
+      outputLength: finalOutput.length,
+      stopReason: finalMessage.stop_reason,
+    })
 
     if (toolContext) {
       await recordMessage({
@@ -630,7 +688,14 @@ export async function executeWithAnthropicStreaming(
       cacheMetrics,
     }
   } catch (error) {
-    log.error('Streaming execution error', error)
+    const streamDurationMs = Date.now() - streamRequestStartMs
+    log.error('Streaming execution error', error, {
+      model: modelName,
+      durationMs: streamDurationMs,
+      partialOutputLength: finalOutput.length,
+      receivedAnyTokens: finalOutput.length > 0,
+      agentName: agent.name,
+    })
     const agentError = wrapError(error, 'anthropic')
     agentError.details = {
       ...agentError.details,

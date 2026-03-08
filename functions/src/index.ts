@@ -1827,7 +1827,7 @@ export const onCalendarEventCreated = onDocumentCreated(
  */
 export const onRunCreated = onDocumentCreated(
   {
-    timeoutSeconds: 540,
+    timeoutSeconds: 1800,
     memory: '1GiB' as const,
     document: 'users/{userId}/workflows/{workflowId}/runs/{runId}',
   },
@@ -1839,7 +1839,7 @@ export const onRunCreated = onDocumentCreated(
 
 export const onRunUpdated = onDocumentUpdated(
   {
-    timeoutSeconds: 540,
+    timeoutSeconds: 1800,
     memory: '1GiB' as const,
     document: 'users/{userId}/workflows/{workflowId}/runs/{runId}',
   },

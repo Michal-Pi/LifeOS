@@ -11,8 +11,9 @@ import { asId, MODEL_PRICING } from '@lifeos/agents'
 import OpenAI from 'openai'
 
 import { createLogger } from '../lib/logger.js'
-import { executeWithTimeout, TIMEOUTS, wrapError } from './errorHandler.js'
+import { executeWithTimeout, getProviderTimeout, wrapError } from './errorHandler.js'
 import { recordMessage } from './messageStore.js'
+import { DEFAULT_MODELS } from './providerKeys.js'
 import { checkProviderRateLimit } from './rateLimiter.js'
 import { executeWithRetry, PROVIDER_RETRY_CONFIG } from './retryHelper.js'
 import type { StreamContext } from './streamingTypes.js'
@@ -20,6 +21,31 @@ import type { BaseToolExecutionContext } from './toolExecutor.js'
 import { executeTools, getAgentToolsFromRegistry, getBuiltinToolRegistry } from './toolExecutor.js'
 
 const log = createLogger('OpenAIService')
+
+/**
+ * Newer OpenAI models (gpt-5, o-series) use different parameter names
+ * and don't support temperature.
+ */
+function isReasoningModel(modelName: string): boolean {
+  return (
+    modelName.startsWith('gpt-5') ||
+    modelName.startsWith('o1') ||
+    modelName.startsWith('o3') ||
+    modelName.startsWith('o4')
+  )
+}
+
+function getModelParams(
+  modelName: string,
+  maxTokens: number,
+  temperature: number
+): Record<string, unknown> {
+  if (isReasoningModel(modelName)) {
+    // Reasoning models: no temperature, use max_completion_tokens
+    return { max_completion_tokens: maxTokens }
+  }
+  return { max_tokens: maxTokens, temperature }
+}
 
 /**
  * Initialize OpenAI client with API key from Firebase secrets
@@ -67,7 +93,7 @@ export async function executeWithOpenAI(
   context?: Record<string, unknown>,
   toolContext?: BaseToolExecutionContext
 ): Promise<OpenAIExecutionResult> {
-  const modelName = agent.modelName ?? 'gpt-5-mini'
+  const modelName = agent.modelName ?? DEFAULT_MODELS.openai
 
   try {
     // Build the prompt
@@ -119,7 +145,9 @@ export async function executeWithOpenAI(
       iteration++
       log.info('Iteration started', { iteration, maxIterations: MAX_ITERATIONS })
 
-      // Call OpenAI API
+      // Call OpenAI API with dynamic timeout based on message size
+      const inputTokenEstimate = JSON.stringify(messages).length / 4
+      const dynamicTimeout = getProviderTimeout(inputTokenEstimate)
       const response = await executeWithRetry(
         async () => {
           if (toolContext?.userId) {
@@ -130,12 +158,11 @@ export async function executeWithOpenAI(
             client.chat.completions.create({
               model: modelName,
               messages,
-              temperature: agent.temperature ?? 0.7,
-              max_tokens: agent.maxTokens ?? 2048,
+              ...getModelParams(modelName, agent.maxTokens ?? 2048, agent.temperature ?? 0.7),
               tools: tools.length > 0 ? tools : undefined,
               tool_choice: tools.length > 0 ? 'auto' : undefined,
             }),
-            TIMEOUTS.PROVIDER,
+            dynamicTimeout,
             'openai.chat.completions.create'
           )
         },
@@ -318,7 +345,7 @@ export async function executeWithOpenAIStreaming(
   toolContext: BaseToolExecutionContext | undefined,
   stream: StreamContext
 ): Promise<OpenAIExecutionResult> {
-  const modelName = agent.modelName ?? 'gpt-5-mini'
+  const modelName = agent.modelName ?? DEFAULT_MODELS.openai
   const tools = toolContext
     ? getAgentToolsFromRegistry(agent, toolContext.toolRegistry ?? getBuiltinToolRegistry())
     : []
@@ -359,6 +386,8 @@ export async function executeWithOpenAIStreaming(
     let finalOutput = ''
     let usage: { prompt_tokens?: number; completion_tokens?: number } = {}
 
+    const streamInputEstimate = JSON.stringify(messages).length / 4
+    const streamTimeout = getProviderTimeout(streamInputEstimate)
     const response = await executeWithRetry(
       async () => {
         if (toolContext?.userId) {
@@ -369,12 +398,11 @@ export async function executeWithOpenAIStreaming(
           client.chat.completions.create({
             model: modelName,
             messages,
-            temperature: agent.temperature ?? 0.7,
-            max_tokens: agent.maxTokens ?? 2048,
+            ...getModelParams(modelName, agent.maxTokens ?? 2048, agent.temperature ?? 0.7),
             stream: true,
             stream_options: { include_usage: true },
           }),
-          TIMEOUTS.PROVIDER,
+          streamTimeout,
           'openai.chat.completions.create'
         )
       },
@@ -389,25 +417,69 @@ export async function executeWithOpenAIStreaming(
       }
     )
 
-    for await (const chunk of response) {
-      const delta = chunk.choices[0]?.delta?.content ?? ''
-      if (delta) {
-        finalOutput += delta
-        await stream.eventWriter.appendToken(delta, {
+    // For reasoning models, emit periodic heartbeat events so the frontend
+    // can show that the model is still thinking. Also track stream liveness
+    // (whether chunks are still arriving) to distinguish "thinking" from "dead connection".
+    const reasoning = isReasoningModel(modelName)
+    let receivedFirstToken = false
+    let lastChunkMs = Date.now()
+    let chunkCount = 0
+    let heartbeatInterval: ReturnType<typeof setInterval> | undefined
+    const streamStartMs = Date.now()
+
+    if (reasoning) {
+      heartbeatInterval = setInterval(async () => {
+        const elapsedSec = Math.round((Date.now() - streamStartMs) / 1000)
+        const silenceSec = Math.round((Date.now() - lastChunkMs) / 1000)
+        await stream.eventWriter.writeEvent({
+          type: 'status',
           workflowId: toolContext?.workflowId,
           agentId: stream.agentId,
           agentName: stream.agentName,
-          provider: 'openai',
-          model: modelName,
-          step: stream.step,
+          status: 'thinking',
+          details: {
+            elapsedSeconds: elapsedSec,
+            model: modelName,
+            receivedFirstToken,
+            chunksReceived: chunkCount,
+            silenceSeconds: silenceSec,
+          },
         })
-      }
-      if (chunk.usage) {
-        usage = {
-          prompt_tokens: chunk.usage.prompt_tokens ?? usage.prompt_tokens,
-          completion_tokens: chunk.usage.completion_tokens ?? usage.completion_tokens,
+      }, 5000)
+    }
+
+    try {
+      for await (const chunk of response) {
+        lastChunkMs = Date.now()
+        chunkCount++
+        const delta = chunk.choices[0]?.delta?.content ?? ''
+        if (delta) {
+          if (!receivedFirstToken) {
+            receivedFirstToken = true
+            log.info('First content token received', {
+              model: modelName,
+              thinkingDurationMs: Date.now() - streamStartMs,
+            })
+          }
+          finalOutput += delta
+          await stream.eventWriter.appendToken(delta, {
+            workflowId: toolContext?.workflowId,
+            agentId: stream.agentId,
+            agentName: stream.agentName,
+            provider: 'openai',
+            model: modelName,
+            step: stream.step,
+          })
+        }
+        if (chunk.usage) {
+          usage = {
+            prompt_tokens: chunk.usage.prompt_tokens ?? usage.prompt_tokens,
+            completion_tokens: chunk.usage.completion_tokens ?? usage.completion_tokens,
+          }
         }
       }
+    } finally {
+      if (heartbeatInterval) clearInterval(heartbeatInterval)
     }
 
     await stream.eventWriter.flushTokens({

@@ -18,7 +18,7 @@ import type {
   CostQualityAnalysis,
   OptimizationEvent,
 } from '@lifeos/agents'
-import { asId } from '@lifeos/agents'
+import { MODEL_TIER_MAP, asId } from '@lifeos/agents'
 import type { RunId, WorkflowId, AgentId } from '@lifeos/agents'
 
 // ----- Collection Paths -----
@@ -666,7 +666,7 @@ export async function generateRecommendations(
         changes = {
           agentId: bottleneck.agentId,
           reason: 'performance',
-          suggestedModel: 'gpt-5-mini', // Suggest faster model
+          suggestedModel: MODEL_TIER_MAP.fast.openai,
         }
         break
 
@@ -675,7 +675,7 @@ export async function generateRecommendations(
         changes = {
           agentId: bottleneck.agentId,
           reason: 'cost',
-          suggestedModel: 'gpt-5-mini',
+          suggestedModel: MODEL_TIER_MAP.fast.openai,
         }
         break
 

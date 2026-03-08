@@ -8,6 +8,7 @@
 import type {
   AgentConfig,
   Workflow,
+  Run,
   UnifiedWorkflowState,
   AgentExecutionStep,
   WorkflowExecutionMode,
@@ -25,10 +26,12 @@ import { executeSupervisorWorkflowLangGraph } from './supervisorGraph.js'
 import { executeGenericGraphWorkflowLangGraph } from './genericGraph.js'
 import { executeDialecticalWorkflowLangGraph } from './dialecticalGraph.js'
 import { executeDeepResearchWorkflowLangGraph } from './deepResearchGraph.js'
+import { executeOracleWorkflowLangGraph } from './oracleGraph.js'
 import { FirestoreCheckpointer } from './firestoreCheckpointer.js'
 import { WorkflowStatus, wrapWorkflowError, getErrorMessage } from './utils.js'
-import { createDefaultDialecticalConfig, createDefaultDeepResearchConfig } from '@lifeos/agents'
-import type { DeepResearchRunConfig } from '@lifeos/agents'
+import { sanitizeForFirestore } from './firestoreSanitizer.js'
+import { createDefaultDialecticalConfig, createDefaultDeepResearchConfig, createDefaultOracleConfig } from '@lifeos/agents'
+import type { DeepResearchRunConfig, OracleRunConfig } from '@lifeos/agents'
 
 const log = createLogger('LangGraphExecutor')
 
@@ -61,6 +64,7 @@ export interface LangGraphExecutionResult {
   totalSteps: number
   status: UnifiedWorkflowState['status']
   pendingInput?: { prompt: string; nodeId: string }
+  constraintPause?: Run['constraintPause']
   workflowState?: Record<string, unknown>
   error?: string
 }
@@ -128,6 +132,7 @@ export async function executeLangGraphWorkflow(
           totalEstimatedCost: result.totalEstimatedCost,
           totalSteps: result.totalSteps,
           status: result.status,
+          pendingInput: result.pendingInput,
         }
       }
 
@@ -158,6 +163,7 @@ export async function executeLangGraphWorkflow(
           totalEstimatedCost: result.totalEstimatedCost,
           totalSteps: result.totalSteps,
           status: result.status,
+          pendingInput: result.pendingInput,
         }
       }
 
@@ -197,6 +203,7 @@ export async function executeLangGraphWorkflow(
           totalEstimatedCost: result.totalEstimatedCost,
           totalSteps: result.totalSteps,
           status: result.status,
+          pendingInput: result.pendingInput,
         }
       }
 
@@ -278,6 +285,7 @@ export async function executeLangGraphWorkflow(
 
         // Find meta agent
         const metaAgent = agents.find((a) => a.role === 'meta_reflection') ?? synthesisAgents[0]
+        const goalFramer = agents.find((a) => a.role === 'research_planner') ?? metaAgent
 
         if (!agents.find((a) => a.role === 'meta_reflection')) {
           log.warn('No agent with meta_reflection role', { fallback: metaAgent?.name })
@@ -294,6 +302,7 @@ export async function executeLangGraphWorkflow(
             thesisAgents: thesisAgentsToUse,
             synthesisAgents,
             metaAgent,
+            goalFramer,
             apiKeys,
             userId,
             runId,
@@ -315,13 +324,16 @@ export async function executeLangGraphWorkflow(
           totalEstimatedCost: result.totalEstimatedCost,
           totalSteps: result.steps.length,
           status: result.status,
-          workflowState: {
+          pendingInput: result.pendingInput,
+          constraintPause: result.constraintPause,
+          workflowState: sanitizeForFirestore({
             totalCycles: result.totalCycles,
             conceptualVelocity: result.conceptualVelocity,
             contradictionsFound: result.contradictionsFound,
+            startup: result.startup,
             // Full dialectical state for visualization
             dialectical: result.dialecticalState,
-          },
+          }) as Record<string, unknown>,
         }
       }
 
@@ -384,6 +396,8 @@ export async function executeLangGraphWorkflow(
           totalEstimatedCost: result.totalEstimatedCost,
           totalSteps: result.steps.length,
           status: result.status,
+          pendingInput: result.pendingInput,
+          constraintPause: result.constraintPause,
           workflowState: {
             budget: result.budget,
             sources: result.sources,
@@ -391,7 +405,72 @@ export async function executeLangGraphWorkflow(
             kgSnapshots: result.kgSnapshots,
             gapIterationsUsed: result.gapIterationsUsed,
             answer: result.answer,
+            startup: result.startup,
           },
+        }
+      }
+
+      case 'oracle': {
+        // Oracle scenario planning — 4-phase pipeline with axiom-guided reasoning
+        const oracleConfig: OracleRunConfig =
+          (context?.oracleConfig as OracleRunConfig) ??
+          createDefaultOracleConfig()
+
+        // Find agents by Oracle role
+        const contextGatherer = agents.find((a) => a.role === 'context_gatherer') ?? agents[0]
+        const decomposer = agents.find((a) => a.role === 'decomposer') ?? agents[0]
+        const systemsMapper = agents.find((a) => a.role === 'systems_mapper') ?? agents[0]
+        const verifier = agents.find((a) => a.role === 'verifier') ?? agents[0]
+        const scanner = agents.find((a) => a.role === 'scanner') ?? agents[0]
+        const impactAssessor = agents.find((a) => a.role === 'impact_assessor') ?? agents[0]
+        const weakSignalHunter = agents.find((a) => a.role === 'weak_signal_hunter') ?? agents[0]
+        const scenarioDeveloper = agents.find((a) => a.role === 'scenario_developer') ?? agents[0]
+        const equilibriumAnalyst = agents.find((a) => a.role === 'equilibrium_analyst') ?? agents[0]
+        const redTeamAgent = agents.find((a) => a.role === 'red_team') ?? agents[0]
+
+        const result = await executeOracleWorkflowLangGraph(
+          {
+            workflow,
+            oracleConfig,
+            contextGatherer,
+            decomposer,
+            systemsMapper,
+            verifier,
+            scanner,
+            impactAssessor,
+            weakSignalHunter,
+            scenarioDeveloper,
+            equilibriumAnalyst,
+            redTeam: redTeamAgent,
+            apiKeys,
+            userId,
+            runId,
+            eventWriter,
+            toolRegistry,
+            searchToolKeys,
+            enableCheckpointing: checkpointing,
+            executionMode,
+            tierOverride,
+            workflowCriticality,
+            councilConfig: workflow.expertCouncilConfig,
+            enableHumanGate: oracleConfig.enableHumanGate,
+            enableConsistencyChecker: true,
+          },
+          goal,
+          context,
+          (context?.resumeState as Record<string, unknown>) ?? undefined,
+        )
+
+        return {
+          output: result.output,
+          steps: result.steps,
+          totalTokensUsed: result.totalTokensUsed,
+          totalEstimatedCost: result.totalEstimatedCost,
+          totalSteps: result.steps.length,
+          status: result.status,
+          pendingInput: result.pendingInput,
+          constraintPause: result.constraintPause,
+          workflowState: sanitizeForFirestore(result.workflowState ?? {}) as Record<string, unknown>,
         }
       }
 
@@ -426,6 +505,7 @@ export async function executeLangGraphWorkflow(
             totalSteps: result.totalSteps,
             status: result.status,
             pendingInput: result.pendingInput,
+            constraintPause: result.constraintPause,
             workflowState: result.workflowState,
           }
         }
@@ -438,8 +518,11 @@ export async function executeLangGraphWorkflow(
     const wrappedError = wrapWorkflowError(error, workflow.workflowId, runId)
     const errorMessage = getErrorMessage(wrappedError)
 
-    // Log with full stack trace for debugging
-    log.error('Workflow execution failed', wrappedError, {
+    // Log with explicit message/stack (Error objects serialize to {} in GCP structured logs)
+    log.error('Workflow execution failed', {
+      errorMessage,
+      originalMessage: error instanceof Error ? error.message : String(error),
+      originalStack: error instanceof Error ? error.stack : undefined,
       workflowId: workflow.workflowId,
       runId,
     })
@@ -468,6 +551,7 @@ export function isLangGraphSupported(workflowType: string): boolean {
     'custom',
     'dialectical',
     'deep_research',
+    'oracle',
   ].includes(workflowType)
 }
 
@@ -490,6 +574,8 @@ export function getWorkflowTypeDescription(workflowType: string): string {
       return '6-phase Hegelian reasoning cycle (thesis → antithesis → synthesis)'
     case 'deep_research':
       return 'Budget-aware deep research with KG construction, dialectical reasoning, and iterative gap analysis'
+    case 'oracle':
+      return '4-phase scenario planning pipeline with axiom-guided reasoning, Expert Council debate, and stage gates'
     default:
       return `Unknown workflow type: ${workflowType}`
   }

@@ -41,6 +41,7 @@ vi.mock('firebase-admin/firestore', () => ({
   getFirestore: vi.fn().mockReturnValue({
     collection: vi.fn(),
     doc: vi.fn(),
+    settings: vi.fn(),
   }),
 }))
 
@@ -131,7 +132,7 @@ describe('Loop Detection (Phase 16)', () => {
     mockExecuteAgent.mockReset()
   })
 
-  it('terminates gracefully when node exceeds max visits', async () => {
+  it('pauses for user decision when node exceeds max visits', async () => {
     const agents = [makeAgent('Agent A')]
     // Create a cycle: A → B → A with maxNodeVisits = 2
     const graphDef: WorkflowGraph = {
@@ -155,11 +156,14 @@ describe('Loop Detection (Phase 16)', () => {
       'Test goal'
     )
 
-    // Should terminate gracefully (not throw)
-    expect(result.status).toBe('completed')
-    expect(result.output).toContain('auto-terminated')
-    expect(result.output).toContain('exceeded maximum visits')
-    // A runs twice, B runs twice, then A terminates on 3rd attempt (no agent execution)
+    // Should pause for user decision (constraint pause), not throw
+    expect(result.status).toBe('waiting_for_input')
+    expect(result.constraintPause).toBeDefined()
+    expect(result.constraintPause!.constraintType).toBe('max_node_visits')
+    expect(result.constraintPause!.limitValue).toBe(2)
+    expect(result.pendingInput).toBeDefined()
+    expect(result.pendingInput!.prompt).toContain('limit')
+    // A runs twice, B runs twice, then A pauses on 3rd attempt (no agent execution)
     expect(mockExecuteAgent).toHaveBeenCalledTimes(4)
   })
 
@@ -193,7 +197,7 @@ describe('Budget Guardrails (Phase 16)', () => {
     mockExecuteAgent.mockReset()
   })
 
-  it('terminates when cost exceeds maxBudget', async () => {
+  it('pauses for user decision when cost exceeds maxBudget', async () => {
     const agents = [makeAgent('Agent A')]
     // Cycle to accumulate cost
     const graphDef: WorkflowGraph = {
@@ -222,9 +226,13 @@ describe('Budget Guardrails (Phase 16)', () => {
       'Test goal'
     )
 
-    expect(result.status).toBe('completed')
-    expect(result.output).toContain('auto-terminated')
-    expect(result.output).toContain('exceeded budget')
+    expect(result.status).toBe('waiting_for_input')
+    expect(result.constraintPause).toBeDefined()
+    expect(result.constraintPause!.constraintType).toBe('budget')
+    expect(result.constraintPause!.limitValue).toBe(0.1)
+    expect(result.constraintPause!.unit).toBe('USD')
+    expect(result.pendingInput).toBeDefined()
+    expect(result.pendingInput!.prompt).toContain('Budget limit reached')
   })
 
   it('does not trigger when cost is under budget', async () => {

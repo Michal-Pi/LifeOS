@@ -10,6 +10,7 @@
  * 3. Clear error messages directing users to configure keys
  */
 
+import { MODEL_TIER_MAP } from '@lifeos/agents'
 import { getFirestore } from 'firebase-admin/firestore'
 
 import type { ProviderKeys } from './providerService.js'
@@ -137,8 +138,8 @@ export class NoAPIKeyConfiguredError extends Error {
  * Default model names for each provider (used for fallback)
  */
 export const DEFAULT_MODELS: Record<ProviderType, string> = {
-  anthropic: 'claude-haiku-4-5',
-  openai: 'gpt-5-mini',
-  google: 'gemini-3-flash',
-  grok: 'grok-3-mini',
+  anthropic: MODEL_TIER_MAP.fast.anthropic,
+  openai: MODEL_TIER_MAP.fast.openai,
+  google: MODEL_TIER_MAP.fast.google,
+  grok: MODEL_TIER_MAP.fast.xai,
 }

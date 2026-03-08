@@ -35,6 +35,8 @@ export interface RawMessage {
   toRecipients?: string[]
   /** CC recipients (email channels, for Reply All) */
   ccRecipients?: string[]
+  /** Gmail label IDs (Gmail only) */
+  gmailLabelIds?: string[]
 }
 
 /**

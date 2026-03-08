@@ -19,6 +19,7 @@ import { getFirestore, type Firestore, type DocumentReference } from 'firebase-a
 import { createLogger } from '../../lib/logger.js'
 import { CheckpointDocumentSchema } from '@lifeos/agents'
 import { validateOrNull, type ValidationContext } from '../shared/firestoreValidation.js'
+import { sanitizeForFirestore } from './firestoreSanitizer.js'
 
 const log = createLogger('FirestoreCheckpointer')
 
@@ -219,24 +220,34 @@ export class FirestoreCheckpointer extends BaseCheckpointSaver {
     const checkpointId = checkpoint.id ?? `cp_${Date.now()}_${Math.random().toString(36).slice(2)}`
     const timestamp = Date.now()
 
-    const checkpointData = {
+    const checkpointData = sanitizeForFirestore({
       checkpointId,
       checkpoint,
       metadata,
       parentConfig: config.configurable?.checkpoint_id
         ? { configurable: { checkpoint_id: config.configurable.checkpoint_id } }
-        : undefined,
+        : null,
       timestamp,
-    }
+    }) as Record<string, unknown>
 
     // Store in versions subcollection
-    await this.getCheckpointRef(threadId, checkpointId).set(checkpointData)
+    try {
+      await this.getCheckpointRef(threadId, checkpointId).set(checkpointData)
+    } catch (error) {
+      log.error('Failed to save checkpoint version', error, { checkpointId, threadId })
+      throw error
+    }
 
     // Update latest checkpoint pointer
-    await this.getCheckpointRef(threadId).set({
-      ...checkpointData,
-      latestCheckpointId: checkpointId,
-    })
+    try {
+      await this.getCheckpointRef(threadId).set({
+        ...checkpointData,
+        latestCheckpointId: checkpointId,
+      })
+    } catch (error) {
+      log.error('Failed to update latest checkpoint pointer', error, { checkpointId, threadId })
+      throw error
+    }
 
     return {
       ...config,

@@ -21,6 +21,7 @@ import { z } from 'zod'
 
 import type { ProviderKeys } from '../providerService.js'
 import { AgentError, ERROR_MESSAGES } from '../errorHandler.js'
+import { DEFAULT_MODELS } from '../providerKeys.js'
 import {
   ThesisOutputSchema,
   NegationOutputSchema,
@@ -137,7 +138,7 @@ async function executeOpenAIStructured<T>(
   }
 
   const client = new OpenAI({ apiKey })
-  const modelName = agent.modelName ?? 'gpt-5-mini'
+  const modelName = agent.modelName ?? DEFAULT_MODELS.openai
 
   const systemPrompt =
     agent.systemPrompt ?? `You are ${agent.role}. Help the user accomplish their goal.`
@@ -225,7 +226,7 @@ async function executeAnthropicStructured<T>(
   }
 
   const client = new Anthropic({ apiKey })
-  const modelName = agent.modelName ?? 'claude-haiku-4-5'
+  const modelName = agent.modelName ?? DEFAULT_MODELS.anthropic
 
   const systemPrompt =
     agent.systemPrompt ?? `You are ${agent.role}. Help the user accomplish their goal.`
@@ -355,7 +356,7 @@ async function executeGoogleStructured<T>(
   }
 
   const genAI = new GoogleGenerativeAI(apiKey)
-  const modelName = agent.modelName ?? 'gemini-3-flash'
+  const modelName = agent.modelName ?? DEFAULT_MODELS.google
 
   // Convert our tool parameters to Google's expected format
   const googleParams = convertToGoogleSchema(tool.parameters)
@@ -450,7 +451,7 @@ async function executeGrokStructured<T>(
     apiKey,
     baseURL: 'https://api.x.ai/v1',
   })
-  const modelName = agent.modelName ?? 'grok-3-mini'
+  const modelName = agent.modelName ?? DEFAULT_MODELS.grok
 
   const systemPrompt =
     agent.systemPrompt ?? `You are ${agent.role}. Help the user accomplish their goal.`

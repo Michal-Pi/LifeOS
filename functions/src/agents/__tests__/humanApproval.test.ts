@@ -39,6 +39,7 @@ vi.mock('firebase-admin/firestore', () => ({
   getFirestore: vi.fn().mockReturnValue({
     collection: vi.fn(),
     doc: vi.fn(),
+    settings: vi.fn(),
   }),
 }))
 

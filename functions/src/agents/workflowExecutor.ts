@@ -85,7 +85,9 @@ export interface WorkflowExecutionResult {
   totalSteps: number
   status?: Run['status']
   pendingInput?: Run['pendingInput']
+  constraintPause?: Run['constraintPause']
   workflowState?: WorkflowState
+  error?: string
 }
 
 /**
@@ -1552,7 +1554,9 @@ export async function executeWorkflow(
       totalSteps: result.totalSteps,
       status: result.status,
       pendingInput: result.pendingInput,
+      constraintPause: result.constraintPause,
       workflowState: result.workflowState,
+      error: result.error,
     }
   }
 

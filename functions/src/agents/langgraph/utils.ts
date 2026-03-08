@@ -9,18 +9,29 @@
 
 import type {
   AgentConfig,
+  BrandVoice,
+  CoachingContext,
   ModelTier,
   WorkflowCriticality,
   WorkflowExecutionMode,
 } from '@lifeos/agents'
 import type { AgentExecutionStep } from '@lifeos/agents'
 import { resolveEffectiveModel } from '@lifeos/agents'
+import { createLogger } from '../../lib/logger.js'
+
+const log = createLogger('AgentExec')
 import type { ProviderKeys } from '../providerService.js'
 import { executeWithProvider, executeWithProviderStreaming } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
-import type { ToolRegistry } from '../toolExecutor.js'
+import { AskUserInterrupt, type ToolRegistry } from '../toolExecutor.js'
 import type { StreamContext } from '../streamingTypes.js'
+import { injectBrandVoice } from '../brandVoiceInjection.js'
+import { injectCoachingContext } from '../coachingContextInjection.js'
+import {
+  injectHistoricalCalibration,
+  type HistoricalEstimate,
+} from '../historicalCalibration.js'
 
 // ----- Status Constants -----
 
@@ -75,6 +86,10 @@ export interface AgentExecutionOptions {
   additionalContext?: Record<string, unknown>
   maxIterations?: number
   maxTokens?: number // Per-delegation token budget
+  /** Runtime prompt injections — appended to system prompt based on agent role */
+  brandVoice?: BrandVoice
+  coachingContext?: CoachingContext
+  historicalCalibration?: HistoricalEstimate | null
 }
 
 // ----- Agent Execution Utility -----
@@ -129,6 +144,28 @@ export async function executeAgentWithEvents(
       }
     : agent
 
+  // Apply runtime prompt injections based on agent role/name
+  let injectedPrompt = effectiveAgent.systemPrompt
+  if (
+    options.brandVoice &&
+    (effectiveAgent.role === 'writer' || effectiveAgent.role === 'synthesizer')
+  ) {
+    injectedPrompt = injectBrandVoice(injectedPrompt, options.brandVoice)
+  }
+  if (
+    options.coachingContext &&
+    (effectiveAgent.role === 'advisor' || effectiveAgent.role === 'custom')
+  ) {
+    injectedPrompt = injectCoachingContext(injectedPrompt, options.coachingContext)
+  }
+  if (options.historicalCalibration && effectiveAgent.name?.includes('Time-Aware')) {
+    injectedPrompt = injectHistoricalCalibration(injectedPrompt, options.historicalCalibration)
+  }
+  const agentToExecute: AgentConfig =
+    injectedPrompt !== effectiveAgent.systemPrompt
+      ? { ...effectiveAgent, systemPrompt: injectedPrompt }
+      : effectiveAgent
+
   // Build tool execution context
   const toolContext = {
     userId,
@@ -139,6 +176,7 @@ export async function executeAgentWithEvents(
     toolRegistry,
     searchToolKeys,
     maxIterations: options.maxIterations,
+    workflowContext: context,
   }
 
   // Build stream context if event writer is available
@@ -157,6 +195,15 @@ export async function executeAgentWithEvents(
     : stepNumber
       ? `${AgentEventStatus.START}:${stepNumber}`
       : AgentEventStatus.START
+
+  log.info('Executing agent', {
+    agentName: effectiveAgent.name,
+    provider: effectiveAgent.modelProvider,
+    model: effectiveAgent.modelName,
+    step: stepNumber,
+    goalLength: goal.length,
+    streaming: !!streamContext,
+  })
 
   if (eventWriter) {
     await eventWriter.writeEvent({
@@ -182,23 +229,73 @@ export async function executeAgentWithEvents(
     }
   }
 
+  log.info('Agent events emitted, calling provider', {
+    agentName: effectiveAgent.name,
+    provider: effectiveAgent.modelProvider,
+  })
+
   // Build full context
   const fullContext = {
     ...context,
     ...additionalContext,
   }
 
-  // Execute the agent with resolved model
-  const result = streamContext
-    ? await executeWithProviderStreaming(
-        effectiveAgent,
-        goal,
-        fullContext,
-        apiKeys,
-        toolContext,
-        streamContext
-      )
-    : await executeWithProvider(effectiveAgent, goal, fullContext, apiKeys, toolContext)
+  // Execute the agent with resolved model (using injected prompt if applicable)
+  let result
+  try {
+    result = streamContext
+      ? await executeWithProviderStreaming(
+          agentToExecute,
+          goal,
+          fullContext,
+          apiKeys,
+          toolContext,
+          streamContext
+        )
+      : await executeWithProvider(agentToExecute, goal, fullContext, apiKeys, toolContext)
+  } catch (error) {
+    if (error instanceof AskUserInterrupt) {
+      log.info('Agent requested user input via ask_user tool', {
+        agentName: effectiveAgent.name,
+        question: error.question.substring(0, 100),
+      })
+
+      // Flush any buffered streaming tokens and emit status event
+      if (eventWriter) {
+        await eventWriter.flushTokens({
+          workflowId,
+          agentId: effectiveAgent.agentId,
+          agentName: effectiveAgent.name,
+          provider: resolved.provider,
+          model: resolved.model,
+          step: stepNumber,
+        })
+        await eventWriter.writeEvent({
+          type: 'status',
+          workflowId,
+          agentId: effectiveAgent.agentId,
+          agentName: effectiveAgent.name,
+          status: 'ask_user',
+          details: { question: error.question },
+        })
+      }
+
+      // Return a step that signals the pause
+      return {
+        agentId: effectiveAgent.agentId,
+        agentName: effectiveAgent.name,
+        output: `[Waiting for user input] ${error.question}`,
+        tokensUsed: 0,
+        estimatedCost: 0,
+        provider: resolved.provider,
+        model: resolved.model,
+        executedAtMs: Date.now(),
+        agentRole: agent.role,
+        askUserInterrupt: { question: error.question },
+      }
+    }
+    throw error
+  }
 
   // Record execution step
   const step: AgentExecutionStep = {
@@ -257,6 +354,27 @@ export async function executeAgentWithEvents(
   }
 
   return step
+}
+
+// ----- Ask User Interrupt Utility -----
+
+/**
+ * Check an AgentExecutionStep for an ask_user interrupt and return the
+ * standard waiting_for_input state update that all graph types understand.
+ * Returns null if no interrupt is present.
+ */
+export function handleAskUserInterrupt(
+  step: AgentExecutionStep,
+  nodeId: string
+): { status: 'waiting_for_input'; pendingInput: { prompt: string; nodeId: string } } | null {
+  if (!step.askUserInterrupt) return null
+  return {
+    status: 'waiting_for_input' as const,
+    pendingInput: {
+      prompt: step.askUserInterrupt.question,
+      nodeId,
+    },
+  }
 }
 
 // ----- Error Handling -----

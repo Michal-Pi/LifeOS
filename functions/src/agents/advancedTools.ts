@@ -15,8 +15,13 @@ import { searchDriveFiles, downloadDriveFile } from '../google/driveApi.js'
 import { listGmailMessages, readGmailMessage } from '../google/gmailApi.js'
 import { assertValidResearchContext, normalizeResearchQuestions } from './deepResearchValidation.js'
 import type { ToolDefinition, ToolExecutionContext } from './toolExecutor.js'
+import { NoAPIKeyConfiguredError, throwApiError, wrapError } from './errorHandler.js'
 
 const generateId = () => randomUUID()
+
+function sanitizeSearchQuery(query: string, maxLength = 500): string {
+  return query.trim().slice(0, maxLength)
+}
 
 /**
  * Resolve the user's first connected Google account ID.
@@ -752,7 +757,7 @@ export const serpSearchTool: ToolDefinition = {
     required: ['query'],
   },
   execute: async (params, context) => {
-    const query = params.query as string
+    const query = sanitizeSearchQuery(params.query as string)
     const maxResults = Math.min((params.maxResults as number) || 5, 10)
     const searchType = (params.searchType as string) || 'search'
     const gl = params.gl as string | undefined
@@ -760,13 +765,7 @@ export const serpSearchTool: ToolDefinition = {
 
     const apiKey = context?.searchToolKeys?.serper || process.env.SERPER_API_KEY
 
-    if (!apiKey) {
-      return {
-        query,
-        results: [],
-        note: 'Serper API key not configured. Set SERPER_API_KEY in Firebase Functions secrets.',
-      }
-    }
+    if (!apiKey) throw new NoAPIKeyConfiguredError('Serper', 'SERPER_API_KEY')
 
     try {
       const endpoint =
@@ -788,9 +787,7 @@ export const serpSearchTool: ToolDefinition = {
         }),
       })
 
-      if (!response.ok) {
-        throw new Error(`Serper API error: ${response.status} ${response.statusText}`)
-      }
+      if (!response.ok) throwApiError('serp_search', response.status, response.statusText)
 
       const data = (await response.json()) as {
         organic?: Array<{
@@ -847,7 +844,7 @@ export const serpSearchTool: ToolDefinition = {
             : `Found ${results.length} results for "${query}"`,
       }
     } catch (error) {
-      throw new Error(`Serper search failed: ${(error as Error).message}`)
+      throw wrapError(error, 'serp_search')
     }
   },
 }
@@ -915,9 +912,7 @@ export const readUrlTool: ToolDefinition = {
 
       const response = await fetch(`https://r.jina.ai/${url}`, { headers })
 
-      if (!response.ok) {
-        throw new Error(`Jina Reader error: ${response.status} ${response.statusText}`)
-      }
+      if (!response.ok) throwApiError('read_url', response.status, response.statusText)
 
       const content = await response.text()
 
@@ -941,7 +936,7 @@ export const readUrlTool: ToolDefinition = {
         note: `Successfully extracted content from "${title}" (${content.split(/\s+/).length} words)`,
       }
     } catch (error) {
-      throw new Error(`URL reading failed: ${(error as Error).message}`)
+      throw wrapError(error, 'read_url')
     }
   },
 }
@@ -981,13 +976,7 @@ export const scrapeUrlTool: ToolDefinition = {
 
     const apiKey = context?.searchToolKeys?.firecrawl || process.env.FIRECRAWL_API_KEY
 
-    if (!apiKey) {
-      return {
-        url,
-        content: '',
-        note: 'Firecrawl API key not configured. Set FIRECRAWL_API_KEY in Firebase Functions secrets.',
-      }
-    }
+    if (!apiKey) throw new NoAPIKeyConfiguredError('Firecrawl', 'FIRECRAWL_API_KEY')
 
     try {
       const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
@@ -1002,9 +991,7 @@ export const scrapeUrlTool: ToolDefinition = {
         }),
       })
 
-      if (!response.ok) {
-        throw new Error(`Firecrawl API error: ${response.status} ${response.statusText}`)
-      }
+      if (!response.ok) throwApiError('scrape_url', response.status, response.statusText)
 
       const data = (await response.json()) as {
         success: boolean
@@ -1048,7 +1035,7 @@ export const scrapeUrlTool: ToolDefinition = {
         note: `Successfully scraped "${title}" (${content.split(/\s+/).length} words)`,
       }
     } catch (error) {
-      throw new Error(`Firecrawl scraping failed: ${(error as Error).message}`)
+      throw wrapError(error, 'scrape_url')
     }
   },
 }
@@ -1118,7 +1105,7 @@ export const semanticSearchTool: ToolDefinition = {
     required: ['query'],
   },
   execute: async (params, context) => {
-    const query = params.query as string
+    const query = sanitizeSearchQuery(params.query as string)
     const numResults = Math.min((params.numResults as number) || 5, 10)
     const useAutoprompt = params.useAutoprompt !== false
     const category = params.category as string | undefined
@@ -1132,13 +1119,7 @@ export const semanticSearchTool: ToolDefinition = {
 
     const apiKey = context?.searchToolKeys?.exa || process.env.EXA_API_KEY
 
-    if (!apiKey) {
-      return {
-        query,
-        results: [],
-        note: 'Exa API key not configured. Set EXA_API_KEY in Firebase Functions secrets.',
-      }
-    }
+    if (!apiKey) throw new NoAPIKeyConfiguredError('Exa', 'EXA_API_KEY')
 
     try {
       const response = await fetch('https://api.exa.ai/search', {
@@ -1165,9 +1146,7 @@ export const semanticSearchTool: ToolDefinition = {
         }),
       })
 
-      if (!response.ok) {
-        throw new Error(`Exa API error: ${response.status} ${response.statusText}`)
-      }
+      if (!response.ok) throwApiError('semantic_search', response.status, response.statusText)
 
       const data = (await response.json()) as {
         results: Array<{
@@ -1205,7 +1184,7 @@ export const semanticSearchTool: ToolDefinition = {
             : `Found ${results.length} semantically related results for "${query}"`,
       }
     } catch (error) {
-      throw new Error(`Exa semantic search failed: ${(error as Error).message}`)
+      throw wrapError(error, 'semantic_search')
     }
   },
 }
@@ -1229,12 +1208,12 @@ export const searchImagesTool: ToolDefinition = {
     required: ['query'],
   },
   execute: async (params, context) => {
-    const query = params.query as string
+    const query = sanitizeSearchQuery(params.query as string)
     const maxResults = Math.min((params.maxResults as number) || 5, 10)
     const gl = params.gl as string | undefined
     const hl = params.hl as string | undefined
     const apiKey = context?.searchToolKeys?.serper || process.env.SERPER_API_KEY
-    if (!apiKey) return { query, images: [], note: 'Serper API key not configured.' }
+    if (!apiKey) throw new NoAPIKeyConfiguredError('Serper', 'SERPER_API_KEY')
     try {
       const response = await fetch('https://google.serper.dev/images', {
         method: 'POST',
@@ -1246,7 +1225,7 @@ export const searchImagesTool: ToolDefinition = {
           ...(hl ? { hl } : {}),
         }),
       })
-      if (!response.ok) throw new Error(`Serper Images API error: ${response.status}`)
+      if (!response.ok) throwApiError('search_images', response.status, response.statusText)
       const data = (await response.json()) as {
         images?: Array<{
           title: string
@@ -1276,7 +1255,7 @@ export const searchImagesTool: ToolDefinition = {
         note: `Found ${images.length} images for "${query}"`,
       }
     } catch (error) {
-      throw new Error(`Image search failed: ${(error as Error).message}`)
+      throw wrapError(error, 'search_images')
     }
   },
 }
@@ -1300,12 +1279,12 @@ export const searchVideosTool: ToolDefinition = {
     required: ['query'],
   },
   execute: async (params, context) => {
-    const query = params.query as string
+    const query = sanitizeSearchQuery(params.query as string)
     const maxResults = Math.min((params.maxResults as number) || 5, 10)
     const gl = params.gl as string | undefined
     const hl = params.hl as string | undefined
     const apiKey = context?.searchToolKeys?.serper || process.env.SERPER_API_KEY
-    if (!apiKey) return { query, videos: [], note: 'Serper API key not configured.' }
+    if (!apiKey) throw new NoAPIKeyConfiguredError('Serper', 'SERPER_API_KEY')
     try {
       const response = await fetch('https://google.serper.dev/videos', {
         method: 'POST',
@@ -1317,7 +1296,7 @@ export const searchVideosTool: ToolDefinition = {
           ...(hl ? { hl } : {}),
         }),
       })
-      if (!response.ok) throw new Error(`Serper Videos API error: ${response.status}`)
+      if (!response.ok) throwApiError('search_videos', response.status, response.statusText)
       const data = (await response.json()) as {
         videos?: Array<{
           title: string
@@ -1345,7 +1324,7 @@ export const searchVideosTool: ToolDefinition = {
         note: `Found ${videos.length} videos for "${query}"`,
       }
     } catch (error) {
-      throw new Error(`Video search failed: ${(error as Error).message}`)
+      throw wrapError(error, 'search_videos')
     }
   },
 }
@@ -1369,12 +1348,12 @@ export const searchScholarTool: ToolDefinition = {
     required: ['query'],
   },
   execute: async (params, context) => {
-    const query = params.query as string
+    const query = sanitizeSearchQuery(params.query as string)
     const maxResults = Math.min((params.maxResults as number) || 5, 10)
     const yearFrom = params.yearFrom as number | undefined
     const yearTo = params.yearTo as number | undefined
     const apiKey = context?.searchToolKeys?.serper || process.env.SERPER_API_KEY
-    if (!apiKey) return { query, papers: [], note: 'Serper API key not configured.' }
+    if (!apiKey) throw new NoAPIKeyConfiguredError('Serper', 'SERPER_API_KEY')
     try {
       const response = await fetch('https://google.serper.dev/scholar', {
         method: 'POST',
@@ -1386,7 +1365,7 @@ export const searchScholarTool: ToolDefinition = {
           ...(yearTo ? { yearTo } : {}),
         }),
       })
-      if (!response.ok) throw new Error(`Serper Scholar API error: ${response.status}`)
+      if (!response.ok) throwApiError('search_scholar', response.status, response.statusText)
       const data = (await response.json()) as {
         organic?: Array<{
           title: string
@@ -1412,7 +1391,7 @@ export const searchScholarTool: ToolDefinition = {
         note: `Found ${papers.length} academic papers for "${query}"`,
       }
     } catch (error) {
-      throw new Error(`Scholar search failed: ${(error as Error).message}`)
+      throw wrapError(error, 'search_scholar')
     }
   },
 }
@@ -1442,12 +1421,12 @@ export const searchPlacesTool: ToolDefinition = {
     required: ['query'],
   },
   execute: async (params, context) => {
-    const query = params.query as string
+    const query = sanitizeSearchQuery(params.query as string)
     const maxResults = Math.min((params.maxResults as number) || 5, 10)
     const location = params.location as string | undefined
     const gl = params.gl as string | undefined
     const apiKey = context?.searchToolKeys?.serper || process.env.SERPER_API_KEY
-    if (!apiKey) return { query, places: [], note: 'Serper API key not configured.' }
+    if (!apiKey) throw new NoAPIKeyConfiguredError('Serper', 'SERPER_API_KEY')
     try {
       const response = await fetch('https://google.serper.dev/places', {
         method: 'POST',
@@ -1459,7 +1438,7 @@ export const searchPlacesTool: ToolDefinition = {
           ...(gl ? { gl } : {}),
         }),
       })
-      if (!response.ok) throw new Error(`Serper Places API error: ${response.status}`)
+      if (!response.ok) throwApiError('search_places', response.status, response.statusText)
       const data = (await response.json()) as {
         places?: Array<{
           title: string
@@ -1488,7 +1467,7 @@ export const searchPlacesTool: ToolDefinition = {
         note: `Found ${places.length} places for "${query}"`,
       }
     } catch (error) {
-      throw new Error(`Places search failed: ${(error as Error).message}`)
+      throw wrapError(error, 'search_places')
     }
   },
 }
@@ -1533,7 +1512,7 @@ export const findSimilarTool: ToolDefinition = {
     const excludeDomains = params.excludeDomains as string[] | undefined
     const category = params.category as string | undefined
     const apiKey = context?.searchToolKeys?.exa || process.env.EXA_API_KEY
-    if (!apiKey) return { url, results: [], note: 'Exa API key not configured.' }
+    if (!apiKey) throw new NoAPIKeyConfiguredError('Exa', 'EXA_API_KEY')
     try {
       const response = await fetch('https://api.exa.ai/findSimilar', {
         method: 'POST',
@@ -1547,7 +1526,7 @@ export const findSimilarTool: ToolDefinition = {
           contents: { text: { maxCharacters: 500 } },
         }),
       })
-      if (!response.ok) throw new Error(`Exa findSimilar API error: ${response.status}`)
+      if (!response.ok) throwApiError('find_similar', response.status, response.statusText)
       const data = (await response.json()) as {
         results: Array<{
           title: string
@@ -1573,7 +1552,7 @@ export const findSimilarTool: ToolDefinition = {
         note: `Found ${results.length} pages similar to "${url}"`,
       }
     } catch (error) {
-      throw new Error(`Find similar failed: ${(error as Error).message}`)
+      throw wrapError(error, 'find_similar')
     }
   },
 }
@@ -1610,7 +1589,7 @@ export const extractStructuredDataTool: ToolDefinition = {
     const prompt = params.prompt as string
     const schema = params.schema as Record<string, unknown> | undefined
     const apiKey = context?.searchToolKeys?.firecrawl || process.env.FIRECRAWL_API_KEY
-    if (!apiKey) return { urls, extractedData: null, note: 'Firecrawl API key not configured.' }
+    if (!apiKey) throw new NoAPIKeyConfiguredError('Firecrawl', 'FIRECRAWL_API_KEY')
     try {
       const response = await fetch('https://api.firecrawl.dev/v1/extract', {
         method: 'POST',
@@ -1621,7 +1600,7 @@ export const extractStructuredDataTool: ToolDefinition = {
           ...(schema ? { schema } : {}),
         }),
       })
-      if (!response.ok) throw new Error(`Firecrawl Extract API error: ${response.status}`)
+      if (!response.ok) throwApiError('extract_structured_data', response.status, response.statusText)
       const data = (await response.json()) as {
         success: boolean
         data?: Record<string, unknown>
@@ -1633,7 +1612,7 @@ export const extractStructuredDataTool: ToolDefinition = {
         note: `Successfully extracted data from ${urls.length} URL(s)`,
       }
     } catch (error) {
-      throw new Error(`Structured extraction failed: ${(error as Error).message}`)
+      throw wrapError(error, 'extract_structured_data')
     }
   },
 }
@@ -1670,7 +1649,7 @@ export const crawlWebsiteTool: ToolDefinition = {
     const includePaths = params.includePaths as string[] | undefined
     const excludePaths = params.excludePaths as string[] | undefined
     const apiKey = context?.searchToolKeys?.firecrawl || process.env.FIRECRAWL_API_KEY
-    if (!apiKey) return { url, pages: [], note: 'Firecrawl API key not configured.' }
+    if (!apiKey) throw new NoAPIKeyConfiguredError('Firecrawl', 'FIRECRAWL_API_KEY')
     try {
       // Start crawl job
       const startResponse = await fetch('https://api.firecrawl.dev/v1/crawl', {
@@ -1684,7 +1663,7 @@ export const crawlWebsiteTool: ToolDefinition = {
           ...(excludePaths?.length ? { excludePaths } : {}),
         }),
       })
-      if (!startResponse.ok) throw new Error(`Firecrawl Crawl API error: ${startResponse.status}`)
+      if (!startResponse.ok) throwApiError('crawl_website', startResponse.status, startResponse.statusText)
       const startData = (await startResponse.json()) as {
         success: boolean
         id?: string
@@ -1732,7 +1711,7 @@ export const crawlWebsiteTool: ToolDefinition = {
         note: `Crawled ${pages.length} pages from "${url}"${elapsed >= maxWait ? ' (timed out, partial results)' : ''}`,
       }
     } catch (error) {
-      throw new Error(`Website crawl failed: ${(error as Error).message}`)
+      throw wrapError(error, 'crawl_website')
     }
   },
 }
@@ -1759,7 +1738,7 @@ export const mapWebsiteTool: ToolDefinition = {
     const search = params.search as string | undefined
     const limit = Math.min((params.limit as number) || 50, 200)
     const apiKey = context?.searchToolKeys?.firecrawl || process.env.FIRECRAWL_API_KEY
-    if (!apiKey) return { url, urls: [], note: 'Firecrawl API key not configured.' }
+    if (!apiKey) throw new NoAPIKeyConfiguredError('Firecrawl', 'FIRECRAWL_API_KEY')
     try {
       const response = await fetch('https://api.firecrawl.dev/v1/map', {
         method: 'POST',
@@ -1770,7 +1749,7 @@ export const mapWebsiteTool: ToolDefinition = {
           limit,
         }),
       })
-      if (!response.ok) throw new Error(`Firecrawl Map API error: ${response.status}`)
+      if (!response.ok) throwApiError('map_website', response.status, response.statusText)
       const data = (await response.json()) as { success: boolean; links?: string[] }
       if (!data.success) throw new Error('Mapping failed')
       const urls = (data.links || []).slice(0, limit)
@@ -1781,7 +1760,7 @@ export const mapWebsiteTool: ToolDefinition = {
         note: `Found ${urls.length} URLs on "${url}"`,
       }
     } catch (error) {
-      throw new Error(`Website mapping failed: ${(error as Error).message}`)
+      throw wrapError(error, 'map_website')
     }
   },
 }
@@ -1811,7 +1790,7 @@ export const searchWebTool: ToolDefinition = {
     required: ['query'],
   },
   execute: async (params, context) => {
-    const query = params.query as string
+    const query = sanitizeSearchQuery(params.query as string)
     const site = params.site as string | undefined
     const maxResults = Math.min((params.maxResults as number) || 5, 10)
     const withLinksSummary = params.withLinksSummary as boolean | undefined
@@ -1824,7 +1803,7 @@ export const searchWebTool: ToolDefinition = {
       const response = await fetch(`https://s.jina.ai/${encodeURIComponent(fullQuery)}`, {
         headers,
       })
-      if (!response.ok) throw new Error(`Jina Search error: ${response.status}`)
+      if (!response.ok) throwApiError('search_web', response.status, response.statusText)
       const data = (await response.json()) as {
         data?: Array<{
           title: string
@@ -1846,7 +1825,7 @@ export const searchWebTool: ToolDefinition = {
         note: `Found ${results.length} web results for "${query}"`,
       }
     } catch (error) {
-      throw new Error(`Web search failed: ${(error as Error).message}`)
+      throw wrapError(error, 'search_web')
     }
   },
 }
@@ -2412,6 +2391,125 @@ export const readGmailMessageTool: ToolDefinition = {
 }
 
 /**
+ * List Gmail Labels Tool
+ */
+export const listGmailLabelsTool: ToolDefinition = {
+  name: 'list_gmail_labels',
+  description:
+    'List all user-created Gmail labels. Returns label names and IDs. System labels (INBOX, SPAM, etc.) are excluded.',
+  parameters: {
+    type: 'object',
+    properties: {},
+    required: [],
+  },
+  execute: async (_params, context: ToolExecutionContext) => {
+    const accountId = await resolveGoogleAccountId(context.userId)
+    const { getGmailLabelsForUser } = await import('../channels/gmailAdapter.js')
+    const labels = await getGmailLabelsForUser(context.userId, accountId)
+
+    return {
+      count: labels.length,
+      labels: labels.map((l) => ({ id: l.id, name: l.name })),
+      message:
+        labels.length === 0
+          ? 'No user-created labels found'
+          : `Found ${labels.length} labels: ${labels.map((l) => l.name).join(', ')}`,
+    }
+  },
+}
+
+/**
+ * Label Gmail Message Tool (apply labels without archiving)
+ */
+export const labelGmailMessageTool: ToolDefinition = {
+  name: 'label_gmail_message',
+  description:
+    'Apply or remove Gmail labels on a message. Does NOT archive the message. Use archive_gmail_message separately to archive.',
+  parameters: {
+    type: 'object',
+    properties: {
+      messageId: {
+        type: 'string',
+        description: 'The Gmail message ID',
+      },
+      addLabels: {
+        type: 'array',
+        description: 'Label names to add to the message',
+      },
+      removeLabels: {
+        type: 'array',
+        description: 'Label names to remove from the message',
+      },
+    },
+    required: ['messageId'],
+  },
+  execute: async (params, context: ToolExecutionContext) => {
+    const messageId = params.messageId as string
+    const addLabels = (params.addLabels as string[]) ?? []
+    const removeLabels = (params.removeLabels as string[]) ?? []
+
+    const accountId = await resolveGoogleAccountId(context.userId)
+    const { getOrCreateGmailLabel, modifyGmailMessage, listGmailLabels } = await import(
+      '../google/gmailApi.js'
+    )
+
+    const addLabelIds: string[] = []
+    for (const name of addLabels) {
+      addLabelIds.push(await getOrCreateGmailLabel(context.userId, accountId, name))
+    }
+
+    const removeLabelIds: string[] = []
+    if (removeLabels.length > 0) {
+      const allLabels = await listGmailLabels(context.userId, accountId)
+      for (const name of removeLabels) {
+        const label = allLabels.find((l) => l.name === name)
+        if (label) removeLabelIds.push(label.id)
+      }
+    }
+
+    await modifyGmailMessage(context.userId, accountId, messageId, addLabelIds, removeLabelIds)
+
+    return {
+      messageId,
+      labelsAdded: addLabels,
+      labelsRemoved: removeLabels,
+      message: `Updated labels on message ${messageId}: added [${addLabels.join(', ')}], removed [${removeLabels.join(', ')}]`,
+    }
+  },
+}
+
+/**
+ * Archive Gmail Message Tool (archive without labeling)
+ */
+export const archiveGmailMessageTool: ToolDefinition = {
+  name: 'archive_gmail_message',
+  description:
+    'Archive a Gmail message (remove from inbox). Does NOT apply any labels. Use label_gmail_message to apply labels separately.',
+  parameters: {
+    type: 'object',
+    properties: {
+      messageId: {
+        type: 'string',
+        description: 'The Gmail message ID to archive',
+      },
+    },
+    required: ['messageId'],
+  },
+  execute: async (params, context: ToolExecutionContext) => {
+    const messageId = params.messageId as string
+    const accountId = await resolveGoogleAccountId(context.userId)
+    const { modifyGmailMessage } = await import('../google/gmailApi.js')
+
+    await modifyGmailMessage(context.userId, accountId, messageId, [], ['INBOX'])
+
+    return {
+      messageId,
+      message: `Archived message ${messageId} (removed from inbox)`,
+    }
+  },
+}
+
+/**
  * Export all advanced tools for registration
  */
 export const advancedTools: ToolDefinition[] = [
@@ -2444,4 +2542,7 @@ export const advancedTools: ToolDefinition[] = [
   downloadGoogleDriveFileTool,
   listGmailMessagesTool,
   readGmailMessageTool,
+  listGmailLabelsTool,
+  labelGmailMessageTool,
+  archiveGmailMessageTool,
 ]

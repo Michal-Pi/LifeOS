@@ -60,6 +60,19 @@ export type AgentRole =
   | 'analyst'
   | 'advisor'
   | 'translator'
+  // Oracle scenario planning roles
+  | 'context_gatherer'
+  | 'decomposer'
+  | 'systems_mapper'
+  | 'verifier'
+  | 'scanner'
+  | 'impact_assessor'
+  | 'weak_signal_hunter'
+  | 'scenario_developer'
+  | 'equilibrium_analyst'
+  | 'red_team'
+  | 'gate_evaluator'
+  | 'consistency_checker'
 
 export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'xai'
 
@@ -99,6 +112,13 @@ export type WorkflowNodeType =
   | 'kg_construction'
   | 'gap_analysis'
   | 'answer_generation'
+  // Oracle scenario planning phase nodes
+  | 'oracle_context_gathering'
+  | 'oracle_decomposition'
+  | 'oracle_trend_scanning'
+  | 'oracle_scenario_simulation'
+  | 'oracle_gate_evaluation'
+  | 'oracle_council_review'
   // Composition node
   | 'subworkflow'
   // Approval node
@@ -275,6 +295,7 @@ export interface Workflow {
     | 'graph'
     | 'dialectical'
     | 'deep_research'
+    | 'oracle'
   workflowGraph?: WorkflowGraph
   parallelMergeStrategy?: JoinAggregationMode // Only used when workflowType === 'parallel'
   maxIterations?: number // Prevent infinite loops, default 10
@@ -383,6 +404,29 @@ export interface Run {
   pendingInput?: {
     prompt: string
     nodeId: string
+  }
+
+  // Constraint pause — workflow paused because a budget/iteration limit was reached
+  constraintPause?: {
+    constraintType:
+      | 'budget'
+      | 'max_node_visits'
+      | 'max_cycles'
+      | 'max_gap_iterations'
+      | 'max_dialectical_cycles'
+      | 'quota_tokens'
+      | 'quota_cost'
+      | 'quota_runs'
+      | 'rate_runs_per_hour'
+      | 'rate_tokens_per_day'
+      | 'rate_cost_per_day'
+      | 'max_oracle_refinements'
+      | 'oracle_human_gate'
+    currentValue: number
+    limitValue: number
+    unit: string // 'USD', 'visits', 'cycles', 'iterations', 'tokens', 'runs', 'runs/hour'
+    partialOutput?: string // Summary of progress so far
+    suggestedIncrease?: number
   }
 
   workflowState?: WorkflowState
@@ -542,11 +586,14 @@ export interface WorkflowState {
   // Dialectical workflow state (Hegel)
   dialectical?: {
     cycleNumber: number
+    maxCycles: number
     phase: import('./workflowState').DialecticalPhase
     theses: import('./workflowState').ThesisOutput[]
     negations: import('./workflowState').NegationOutput[]
     contradictions: import('./workflowState').ContradictionOutput[]
     synthesis: import('./workflowState').SublationOutput | null
+    mergedGraph: import('./workflowState').CompactGraph | null
+    graphHistory: Array<{ cycle: number; diff: import('./workflowState').GraphDiff }>
     conceptualVelocity: number
     velocityHistory: number[]
     contradictionDensity: number
@@ -555,6 +602,23 @@ export interface WorkflowState {
     tokensUsed: number
     estimatedCost: number
     startedAtMs: number
+  }
+
+  // Oracle scenario planning state
+  // These fields mirror what the executor stores in `workflowState`
+  oracle?: {
+    scenarioPortfolio: import('./oracleWorkflow').OracleScenario[]
+    gateResults: import('./oracleWorkflow').OracleGateResult[]
+    phaseSummaries: import('./oracleWorkflow').OraclePhaseSummary[]
+    costTracker: import('./oracleWorkflow').OracleCostTracker
+    knowledgeGraph: import('./oracleWorkflow').OracleKnowledgeGraph
+    claims: import('./oracleWorkflow').OracleClaim[]
+    trends: import('./oracleWorkflow').TrendObject[]
+    uncertainties: import('./oracleWorkflow').UncertaintyObject[]
+    crossImpactMatrix: import('./oracleWorkflow').CrossImpactEntry[]
+    backcastTimelines: import('./oracleWorkflow').BackcastTimeline[]
+    strategicMoves: import('./oracleWorkflow').StrategicMove[]
+    councilRecords: import('./oracleWorkflow').OracleCouncilRecord[]
   }
 }
 

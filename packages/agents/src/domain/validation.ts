@@ -46,6 +46,19 @@ export const AgentRoleSchema = z.enum([
   'analyst',
   'advisor',
   'translator',
+  // Oracle scenario planning roles
+  'context_gatherer',
+  'decomposer',
+  'systems_mapper',
+  'verifier',
+  'scanner',
+  'impact_assessor',
+  'weak_signal_hunter',
+  'scenario_developer',
+  'equilibrium_analyst',
+  'red_team',
+  'gate_evaluator',
+  'consistency_checker',
 ])
 
 export const ModelProviderSchema = z.enum(['openai', 'anthropic', 'google', 'xai'])
@@ -75,12 +88,14 @@ export const WorkflowTypeSchema = z.enum([
   'graph',
   'dialectical',
   'deep_research',
+  'oracle',
 ])
 
 export const WorkflowNodeTypeSchema = z.enum([
   'agent',
   'tool',
   'human_input',
+  'fork',
   'join',
   'end',
   'research_request',
@@ -100,6 +115,13 @@ export const WorkflowNodeTypeSchema = z.enum([
   'kg_construction',
   'gap_analysis',
   'answer_generation',
+  // Oracle scenario planning phase nodes
+  'oracle_context_gathering',
+  'oracle_decomposition',
+  'oracle_trend_scanning',
+  'oracle_scenario_simulation',
+  'oracle_gate_evaluation',
+  'oracle_council_review',
   // Composition node
   'subworkflow',
   // Approval node
@@ -225,6 +247,21 @@ export const ExpertCouncilConfigSchema = z.object({
   maxCostPerTurn: z.number().nonnegative().optional(),
   enableCaching: z.boolean(),
   cacheExpirationHours: z.number().int().positive(),
+})
+
+// ----- Oracle Config Schema -----
+
+export const OracleDepthModeSchema = z.enum(['quick', 'standard', 'deep'])
+
+export const OracleRunConfigSchema = z.object({
+  depthMode: OracleDepthModeSchema,
+  maxBudgetUsd: z.number().positive().max(500),
+  maxRefinementsPerGate: z.number().int().min(0).max(10).default(3),
+  maxCouncilSessions: z.number().int().min(0).max(10).default(3),
+  enableHumanGate: z.boolean().default(true),
+  scenarioCount: z.number().int().min(1).max(20).optional(),
+  timeHorizon: z.string().optional(),
+  geography: z.string().optional(),
 })
 
 // ----- Tool Schemas -----
@@ -406,7 +443,23 @@ export const WorkflowSchema = z.object({
   updatedAtMs: z.number().int().positive(),
   syncState: SyncStateSchema,
   version: z.number().int().nonnegative(),
-})
+}).refine(
+  (data) => {
+    const graph = data.workflowGraph
+    if (!graph) return true
+    const nodeIds = new Set(graph.nodes.map((n) => n.id))
+    if (!nodeIds.has(graph.startNodeId)) return false
+    // Optionally: every edge from/to must reference a node
+    for (const edge of graph.edges) {
+      if (!nodeIds.has(edge.from) || !nodeIds.has(edge.to)) return false
+    }
+    return true
+  },
+  {
+    message:
+      'workflowGraph.startNodeId must be one of the node ids, and every edge from/to must reference a node id',
+  }
+)
 
 export const AgentTemplateSchema = z.object({
   templateId: z.string(),
@@ -497,6 +550,30 @@ export const RunSchema = z.object({
     .object({
       prompt: z.string(),
       nodeId: z.string(),
+    })
+    .optional(),
+  constraintPause: z
+    .object({
+      constraintType: z.enum([
+        'budget',
+        'max_node_visits',
+        'max_cycles',
+        'max_gap_iterations',
+        'max_dialectical_cycles',
+        'max_oracle_refinements',
+        'oracle_human_gate',
+        'quota_tokens',
+        'quota_cost',
+        'quota_runs',
+        'rate_runs_per_hour',
+        'rate_tokens_per_day',
+        'rate_cost_per_day',
+      ]),
+      currentValue: z.number(),
+      limitValue: z.number(),
+      unit: z.string(),
+      partialOutput: z.string().optional(),
+      suggestedIncrease: z.number().optional(),
     })
     .optional(),
   workflowState: z

@@ -14,6 +14,7 @@ import { StateGraph, END, START, Annotation } from '@langchain/langgraph'
 import type {
   AgentConfig,
   DeepResearchRequest,
+  Run,
   Workflow,
   WorkflowEdge,
   WorkflowGraph,
@@ -35,7 +36,8 @@ import { randomUUID } from 'crypto'
 import jsonLogic from 'json-logic-js'
 import { createLogger } from '../../lib/logger.js'
 import { createFirestoreCheckpointer } from './firestoreCheckpointer.js'
-import { executeAgentWithEvents, type AgentExecutionContext } from './utils.js'
+import { executeAgentWithEvents, handleAskUserInterrupt, type AgentExecutionContext } from './utils.js'
+import { parseStructuredPlan, createTodosFromPlan } from '../planToTodos.js'
 
 const log = createLogger('GenericGraph')
 
@@ -74,7 +76,7 @@ export interface GenericGraphConfig {
 /**
  * State annotation for generic graph workflows
  */
-const GenericGraphStateAnnotation = Annotation.Root({
+export const GenericGraphStateAnnotation = Annotation.Root({
   // Core state
   workflowId: Annotation<string>,
   runId: Annotation<string>,
@@ -162,6 +164,17 @@ const GenericGraphStateAnnotation = Annotation.Root({
   // Pending input
   pendingInput: Annotation<{ prompt: string; nodeId: string } | null>,
 
+  // Constraint pause — workflow paused at a budget/iteration limit
+  constraintPause: Annotation<{
+    constraintType: string
+    currentValue: number
+    limitValue: number
+    unit: string
+    nodeId?: string
+    partialOutput?: string
+    suggestedIncrease?: number
+  } | null>,
+
   // Research state
   pendingResearchRequestId: Annotation<string | null>,
   pendingResearchOutputKey: Annotation<string | null>,
@@ -170,7 +183,7 @@ const GenericGraphStateAnnotation = Annotation.Root({
   nextNodeId: Annotation<string | null>,
 })
 
-type GenericGraphState = typeof GenericGraphStateAnnotation.State
+export type GenericGraphState = typeof GenericGraphStateAnnotation.State
 
 /**
  * Evaluate an edge condition
@@ -295,37 +308,125 @@ export function createGenericGraph(config: GenericGraphConfig) {
     workflowCriticality,
   }
 
+  /**
+   * Build joinBuffers entries for any outgoing edges that target a join node.
+   * Must be called from node handlers (not routing functions) so the reducer processes the update.
+   */
+  function buildJoinBufferUpdate(
+    nodeId: string,
+    agentId?: string,
+    agentName?: string,
+    output?: unknown
+  ): Partial<Pick<GenericGraphState, 'joinBuffers'>> {
+    const entries: Record<string, JoinBufferEntry[]> = {}
+    for (const edge of edgesFromNode.get(nodeId) ?? []) {
+      const target = nodeById.get(edge.to)
+      if (target?.type === 'join') {
+        entries[edge.to] = [
+          {
+            agentId,
+            agentName,
+            output: typeof output === 'string' ? output : JSON.stringify(output),
+          },
+        ]
+      }
+    }
+    return Object.keys(entries).length > 0 ? { joinBuffers: entries } : {}
+  }
+
   // Create the state graph
   const graph = new StateGraph(GenericGraphStateAnnotation)
 
   // Create a node for each workflow node
   for (const node of graphDef.nodes) {
     graph.addNode(node.id, async (state: GenericGraphState) => {
-      // Phase 16: Graceful loop termination (instead of throwing)
+      // Phase 16: Graceful loop termination — pause and ask user
       const currentVisits = (state.visitedCount[node.id] ?? 0) + 1
-      if (currentVisits > maxNodeVisits) {
-        log.warn(`Node ${node.id} exceeded max visits (${maxNodeVisits}), auto-terminating`)
-        return {
-          currentNodeId: node.id,
-          visitedCount: { [node.id]: 1 },
-          status: 'completed' as const,
-          finalOutput: `Workflow auto-terminated: node ${node.id} exceeded maximum visits (${maxNodeVisits})`,
-          nextNodeId: null,
+      const constraintOverride = state.context.constraintOverride as
+        | { type: string; newLimit?: number }
+        | undefined
+
+      // Validate constraint override bounds
+      const MAX_NODE_VISITS_CAP = 100
+      const MAX_BUDGET_CAP = 100 // $100 USD absolute cap
+      if (constraintOverride?.newLimit !== undefined) {
+        if (constraintOverride.type === 'max_node_visits') {
+          constraintOverride.newLimit = Math.min(
+            Math.max(constraintOverride.newLimit, maxNodeVisits),
+            MAX_NODE_VISITS_CAP
+          )
+        } else if (constraintOverride.type === 'budget') {
+          constraintOverride.newLimit = Math.min(
+            Math.max(constraintOverride.newLimit, workflow.maxBudget ?? 0),
+            MAX_BUDGET_CAP
+          )
         }
       }
 
-      // Phase 16: Budget guardrail
+      if (currentVisits > maxNodeVisits) {
+        // Check if user already increased the limit
+        const effectiveLimit =
+          constraintOverride?.type === 'max_node_visits' && constraintOverride.newLimit
+            ? constraintOverride.newLimit
+            : maxNodeVisits
+        if (currentVisits > effectiveLimit) {
+          log.info(`Node ${node.id} hit visit limit (${effectiveLimit}), pausing for user decision`)
+          return {
+            currentNodeId: node.id,
+            visitedCount: { [node.id]: 1 },
+            status: 'waiting_for_input' as const,
+            constraintPause: {
+              constraintType: 'max_node_visits',
+              currentValue: currentVisits,
+              limitValue: effectiveLimit,
+              unit: 'visits',
+              nodeId: node.id,
+              partialOutput: typeof state.lastOutput === 'string'
+                ? state.lastOutput.slice(0, 2000)
+                : undefined,
+              suggestedIncrease: effectiveLimit * 2,
+            },
+            pendingInput: {
+              prompt: `Node "${node.id}" has been visited ${currentVisits} times (limit: ${effectiveLimit}). This may indicate a loop. Would you like to increase the limit or stop?`,
+              nodeId: node.id,
+            },
+            nextNodeId: null,
+          }
+        }
+      }
+
+      // Phase 16: Budget guardrail — pause and ask user
       if (workflow.maxBudget && state.totalEstimatedCost > workflow.maxBudget) {
-        log.warn('Budget exceeded, auto-terminating', {
-          cost: state.totalEstimatedCost,
-          budget: workflow.maxBudget,
-        })
-        return {
-          currentNodeId: node.id,
-          visitedCount: { [node.id]: 1 },
-          status: 'completed' as const,
-          finalOutput: `Workflow auto-terminated: cost ($${state.totalEstimatedCost.toFixed(4)}) exceeded budget ($${workflow.maxBudget})`,
-          nextNodeId: null,
+        const effectiveBudget =
+          constraintOverride?.type === 'budget' && constraintOverride.newLimit
+            ? constraintOverride.newLimit
+            : workflow.maxBudget
+        if (state.totalEstimatedCost > effectiveBudget) {
+          log.info('Budget limit reached, pausing for user decision', {
+            cost: state.totalEstimatedCost,
+            budget: effectiveBudget,
+          })
+          return {
+            currentNodeId: node.id,
+            visitedCount: { [node.id]: 1 },
+            status: 'waiting_for_input' as const,
+            constraintPause: {
+              constraintType: 'budget',
+              currentValue: parseFloat(state.totalEstimatedCost.toFixed(4)),
+              limitValue: effectiveBudget,
+              unit: 'USD',
+              nodeId: node.id,
+              partialOutput: typeof state.lastOutput === 'string'
+                ? state.lastOutput.slice(0, 2000)
+                : undefined,
+              suggestedIncrease: effectiveBudget * 2,
+            },
+            pendingInput: {
+              prompt: `Budget limit reached: $${state.totalEstimatedCost.toFixed(4)} spent of $${effectiveBudget} budget. Would you like to increase the budget or stop with current results?`,
+              nodeId: node.id,
+            },
+            nextNodeId: null,
+          }
         }
       }
 
@@ -449,6 +550,22 @@ export function createGenericGraph(config: GenericGraphConfig) {
           }
         }
 
+        case 'fork': {
+          // Fork distributes the current output to all downstream branches.
+          // Each branch runs serially (LangGraph StateGraph doesn't support
+          // true parallel branching). Branches converge at a join node.
+          const forkOutput = typeof state.lastOutput === 'string'
+            ? state.lastOutput
+            : JSON.stringify(state.lastOutput ?? '')
+
+          return {
+            ...baseUpdate,
+            lastOutput: forkOutput,
+            namedOutputs: node.outputKey ? { [node.outputKey]: forkOutput } : {},
+            ...buildJoinBufferUpdate(node.id, node.agentId, node.label, forkOutput),
+          }
+        }
+
         case 'tool': {
           if (!toolRegistry) {
             throw new Error('Tool registry unavailable for tool node execution')
@@ -490,6 +607,7 @@ export function createGenericGraph(config: GenericGraphConfig) {
 
           return {
             ...baseUpdate,
+            ...buildJoinBufferUpdate(node.id, node.agentId, node.label, toolResult),
             lastOutput: toolResult,
             namedOutputs: { [node.outputKey ?? node.id]: toolResult },
           }
@@ -617,8 +735,21 @@ export function createGenericGraph(config: GenericGraphConfig) {
               }
             )
 
+            // Check for ask_user interrupt
+            const interrupt = handleAskUserInterrupt(step, node.id)
+            if (interrupt) {
+              return {
+                ...baseUpdate,
+                steps: [step],
+                totalTokensUsed: step.tokensUsed,
+                totalEstimatedCost: step.estimatedCost,
+                ...interrupt,
+              }
+            }
+
             return {
               ...baseUpdate,
+              ...buildJoinBufferUpdate(node.id, agent.agentId, agent.name, step.output),
               lastError: null, // Clear any previous error
               steps: [step],
               totalTokensUsed: step.tokensUsed,
@@ -637,6 +768,7 @@ export function createGenericGraph(config: GenericGraphConfig) {
               log.warn(`Agent node ${node.id} failed, following error edge`, { error: errorMsg })
               return {
                 ...baseUpdate,
+                ...buildJoinBufferUpdate(node.id, node.agentId, undefined, errorMsg),
                 lastError: errorMsg,
                 lastOutput: errorMsg,
                 namedOutputs: node.outputKey ? { [node.outputKey]: errorMsg } : {},
@@ -702,24 +834,8 @@ export function createGenericGraph(config: GenericGraphConfig) {
           // Check if target is a join node that needs more inputs
           const targetNode = nodeById.get(edge.to)
           if (targetNode?.type === 'join') {
-            // Add to join buffer
-            const agentName =
-              node.type === 'agent' && node.agentId
-                ? agentsById.get(node.agentId)?.name
-                : node.label
-            state.joinBuffers[edge.to] = [
-              ...(state.joinBuffers[edge.to] ?? []),
-              {
-                agentId: node.agentId,
-                agentName,
-                output:
-                  typeof state.lastOutput === 'string'
-                    ? state.lastOutput
-                    : JSON.stringify(state.lastOutput),
-              },
-            ]
-
-            // Check if join has all inputs
+            // Join buffer entries are populated by node handlers via buildJoinBufferUpdate.
+            // Here we only read the buffer to check readiness.
             const incomingEdges = graphDef.edges.filter((e) => e.to === edge.to)
             const buffer = state.joinBuffers[edge.to] ?? []
             if (buffer.length < incomingEdges.length) {
@@ -757,9 +873,10 @@ export function createGenericGraph(config: GenericGraphConfig) {
       } else if (
         edges.length === 1 &&
         edges[0].condition.type === 'always' &&
-        !requiresConditionalRouting
+        !requiresConditionalRouting &&
+        !graphDef.limits // Phase 16 fix: use conditional routing when limits are set so guardrails can halt
       ) {
-        // Simple edge
+        // Simple edge (only when no limits — limits need routeFromNode to check status)
         graph.addEdge(node.id as typeof START, edges[0].to as typeof START)
       } else {
         // Conditional edges - LangGraph SDK type mismatch requires cast
@@ -769,8 +886,12 @@ export function createGenericGraph(config: GenericGraphConfig) {
     }
   }
 
-  // Compile with optional checkpointing
-  if (config.enableCheckpointing) {
+  // Auto-enable checkpointing when constraints are configured (so paused state is recoverable)
+  const shouldCheckpoint =
+    config.enableCheckpointing ??
+    (workflow.maxBudget !== undefined || maxNodeVisits < Infinity)
+
+  if (shouldCheckpoint) {
     const checkpointer = createFirestoreCheckpointer(userId, workflow.workflowId, runId)
     return graph.compile({ checkpointer })
   }
@@ -793,6 +914,7 @@ export async function executeGenericGraphWorkflowLangGraph(
   totalSteps: number
   status: UnifiedWorkflowState['status']
   pendingInput?: { prompt: string; nodeId: string }
+  constraintPause?: Run['constraintPause']
   workflowState?: Record<string, unknown>
 }> {
   const { workflow, graphDef, userId, runId } = config
@@ -845,18 +967,62 @@ export async function executeGenericGraphWorkflowLangGraph(
     }
   }
 
+  // Phase 42: Auto-create todos from approved plans
+  const output =
+    finalState.finalOutput ??
+    (typeof finalState.lastOutput === 'string'
+      ? finalState.lastOutput
+      : JSON.stringify(finalState.lastOutput ?? ''))
+
+  if (
+    typeof output === 'string' &&
+    output.startsWith('APPROVED:') &&
+    finalState.namedOutputs
+  ) {
+    // Look for a structured plan in named outputs from planner/improvement nodes
+    const namedValues = Object.values(finalState.namedOutputs)
+    for (const val of namedValues) {
+      if (typeof val !== 'string') continue
+      const plan = parseStructuredPlan(val)
+      if (plan) {
+        try {
+          const db = getFirestore()
+          const todoResult = await createTodosFromPlan(plan, userId, db)
+          log.info('Created todos from approved plan', {
+            created: todoResult.created,
+            errors: todoResult.errors.length,
+          })
+          // Emit plan approved event
+          if (config.eventWriter) {
+            await config.eventWriter.writeEvent({
+              type: 'plan_approved',
+              workflowId: workflow.workflowId,
+              details: {
+                projectName: plan.projectName,
+                taskCount: plan.milestones.reduce(
+                  (sum, m) => sum + m.tasks.length,
+                  0
+                ),
+              },
+            })
+          }
+        } catch (err) {
+          log.warn('Failed to create todos from plan', { error: String(err) })
+        }
+        break
+      }
+    }
+  }
+
   return {
-    output:
-      finalState.finalOutput ??
-      (typeof finalState.lastOutput === 'string'
-        ? finalState.lastOutput
-        : JSON.stringify(finalState.lastOutput ?? '')),
+    output,
     steps: finalState.steps ?? [],
     totalTokensUsed: finalState.totalTokensUsed ?? 0,
     totalEstimatedCost: finalState.totalEstimatedCost ?? 0,
     totalSteps: finalState.steps?.length ?? 0,
     status: finalState.status ?? 'completed',
     pendingInput: finalState.pendingInput ?? undefined,
+    constraintPause: (finalState.constraintPause ?? undefined) as Run['constraintPause'],
     workflowState: {
       currentNodeId: finalState.currentNodeId,
       pendingNodes: finalState.nextNodeId ? [finalState.nextNodeId] : [],

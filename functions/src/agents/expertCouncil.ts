@@ -4,6 +4,7 @@ import {
   calculateAverageKendallTau,
   calculateConsensusScore,
   findControversialResponses,
+  MODEL_TIER_MAP,
 } from '@lifeos/agents'
 import type {
   AgentConfig,
@@ -34,11 +35,11 @@ type JudgeModel = NonNullable<ExpertCouncilConfig['judgeModels']>[number]
 
 const LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 const STAGE1_DEFAULT_PROMPT =
-  'You are an expert council member. Provide the best possible response to the user prompt.'
+  'You are a domain expert providing a thorough, well-reasoned response. Ground every claim in evidence or established reasoning. If you are uncertain about something, state your confidence level rather than guessing. Prioritize accuracy and depth over breadth.'
 const STAGE2_DEFAULT_PROMPT =
-  'You are an impartial judge. Critique each response objectively and provide a ranking.'
+  'You are an impartial judge evaluating anonymized responses. Critique each response on its merits using the provided rubric. Rank responses from best to worst based on evidence quality, reasoning, and completeness. Prioritize accuracy over validation — push back on flawed reasoning regardless of how confident the response sounds.'
 const STAGE3_DEFAULT_PROMPT =
-  'You are the chairman. Synthesize the best possible final response from all inputs.'
+  'You are the chairman synthesizing the best possible final response from expert opinions and peer reviews. Incorporate the strongest insights from all responses. Address gaps and weaknesses identified in reviews. When experts disagree, present both positions with the evidence for each. The final response must be more accurate and complete than any individual expert response.'
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -82,49 +83,47 @@ export function detectPromptDomain(prompt: string): JudgeRubricDomain {
  */
 export const JUDGE_RUBRICS: Record<JudgeRubricDomain, string> = {
   research:
-    'Evaluate on: (1) Evidence quality and citation of sources, (2) Methodological rigor, ' +
-    '(3) Completeness of literature coverage, (4) Objectivity and balance, (5) Actionable conclusions.',
+    'Evaluate each response on these five criteria (equal weight): ' +
+    '(1) Evidence quality — are claims supported by credible, cited sources? ' +
+    '(2) Methodological rigor — is the reasoning sound and the approach systematic? ' +
+    '(3) Coverage — are major perspectives and relevant literature addressed? ' +
+    '(4) Objectivity — are biases acknowledged and counterarguments considered? ' +
+    '(5) Actionability — are conclusions specific enough to act on?',
   creative:
-    'Evaluate on: (1) Originality and voice, (2) Engagement and readability, ' +
-    '(3) Structure and flow, (4) Audience appropriateness, (5) Emotional resonance.',
+    'Evaluate each response on these five criteria (equal weight): ' +
+    '(1) Originality — does it offer a fresh angle, voice, or perspective? ' +
+    '(2) Engagement — does the opening hook and does the piece sustain attention? ' +
+    '(3) Structure — does it flow logically with clear transitions? ' +
+    '(4) Audience fit — is the tone and complexity appropriate for the target reader? ' +
+    '(5) Emotional resonance — does it evoke the intended response?',
   analytical:
-    'Evaluate on: (1) Logical soundness, (2) Completeness of analysis, ' +
-    '(3) Consideration of alternatives, (4) Data-driven reasoning, (5) Actionable recommendations.',
+    'Evaluate each response on these five criteria (equal weight): ' +
+    '(1) Logical soundness — is the reasoning valid with no logical gaps? ' +
+    '(2) Completeness — are all relevant factors and edge cases considered? ' +
+    '(3) Alternative consideration — are competing interpretations addressed? ' +
+    '(4) Evidence use — are conclusions supported by data rather than assertion? ' +
+    '(5) Actionability — are recommendations specific and implementable?',
   code:
-    'Evaluate on: (1) Correctness and bug-free execution, (2) Code quality and readability, ' +
-    '(3) Performance considerations, (4) Edge case handling, (5) Best practices adherence.',
+    'Evaluate each response on these five criteria (equal weight): ' +
+    '(1) Correctness — does the code solve the stated problem without bugs? ' +
+    '(2) Quality — is it readable, well-structured, and maintainable? ' +
+    '(3) Performance — does it handle expected data volumes efficiently? ' +
+    '(4) Edge cases — are boundary conditions and error states handled? ' +
+    '(5) Best practices — does it follow language idioms and security practices?',
   factual:
-    'Evaluate on: (1) Accuracy of facts, (2) Completeness, (3) Clarity and conciseness, ' +
-    '(4) Recency of information, (5) Source reliability.',
+    'Evaluate each response on these five criteria (equal weight): ' +
+    '(1) Accuracy — are all stated facts verifiably correct? ' +
+    '(2) Completeness — are all important aspects of the topic covered? ' +
+    '(3) Clarity — is the information presented concisely without jargon? ' +
+    '(4) Recency — is the information current and not outdated? ' +
+    '(5) Source reliability — are claims traceable to credible sources?',
 }
 
 // ----- Phase 18: Provider Diversity Enforcement -----
 
 const ALL_PROVIDERS: ModelProvider[] = ['openai', 'anthropic', 'google', 'xai']
 
-/**
- * Model tier map — duplicated from modelSettings to avoid cross-package import issues at runtime.
- */
-const TIER_MAP: Record<ModelTier, Record<ModelProvider, string>> = {
-  thinking: {
-    openai: 'o1',
-    anthropic: 'claude-opus-4-6',
-    google: 'gemini-3-pro',
-    xai: 'grok-4',
-  },
-  balanced: {
-    openai: 'gpt-5.2',
-    anthropic: 'claude-sonnet-4-6',
-    google: 'gemini-2.5-pro',
-    xai: 'grok-4-1-fast-non-reasoning',
-  },
-  fast: {
-    openai: 'gpt-5-mini',
-    anthropic: 'claude-haiku-4-5',
-    google: 'gemini-3-flash',
-    xai: 'grok-3-mini',
-  },
-}
+const TIER_MAP: Record<ModelTier, Record<ModelProvider, string>> = MODEL_TIER_MAP
 
 function inferTier(modelName: string): ModelTier {
   for (const [tier, providers] of Object.entries(TIER_MAP)) {
@@ -596,23 +595,30 @@ export function createExpertCouncilPipeline(params: {
             }
 
             const reviewPrompt = [
-              'You are reviewing responses from multiple AI models. Evaluate each response objectively.',
+              '## Task',
+              'Evaluate the anonymized responses below against the user prompt. Provide a critique of each response and rank them from best to worst.',
               '',
-              `Apply the following evaluation criteria: ${rubric}`,
+              `## Evaluation Criteria`,
+              rubric,
               '',
-              'USER PROMPT:',
+              '## User Prompt',
               prompt,
               '',
-              'RESPONSES TO REVIEW:',
+              '## Responses to Review',
               formatAnonymizedResponses(includedResponses),
               '',
-              'Please provide:',
-              '1. A brief critique of each response (2-3 sentences)',
-              '2. Your final ranking from best to worst (list the response labels in order)',
+              '## Required Output',
+              '1. For each response label, write a 2-3 sentence critique identifying its specific strengths and weaknesses.',
+              '2. Rank all responses from best to worst based on the evaluation criteria above.',
               '',
-              'Format your ranking as:',
+              '## Output Format',
               'RANKING: [A, C, B]',
-              'Add an optional CONFIDENCE: 0-100 line.',
+              'CONFIDENCE: 0-100',
+              '',
+              '## Rules',
+              '- Evaluate each response independently against the criteria before comparing.',
+              '- Prioritize accuracy over eloquence — a less polished but more correct response ranks higher.',
+              '- If two responses are nearly equal, break the tie on whichever is more actionable.',
             ].join('\n')
 
             const startedAt = Date.now()
@@ -739,21 +745,26 @@ export function createExpertCouncilPipeline(params: {
             if (!originalResponse || originalResponse.status !== 'completed') return
 
             const deepDivePrompt = [
-              'The judges disagreed significantly on the quality of responses.',
+              '## Context',
+              'Judges disagreed significantly on response quality (low consensus). You must defend or revise your reasoning.',
               '',
-              'CRITIQUES:',
+              '## Judge Critiques',
               critiquesText,
               '',
-              'YOUR ORIGINAL RESPONSE:',
+              '## Your Original Response',
               originalResponse.answerText,
               '',
-              'Explain your reasoning and address the criticisms. Be concise.',
+              '## Task',
+              'Address each criticism directed at your response. For each:',
+              '1. If the criticism is valid, explain how you would revise your answer.',
+              '2. If the criticism is incorrect, explain why with specific evidence.',
+              'Be concise — focus on substance, not defense.',
             ].join('\n')
 
             try {
               const agent = buildAgentConfig({
                 userId,
-                model: { ...model, systemPrompt: 'You are defending your reasoning.' },
+                model: { ...model, systemPrompt: 'You are an expert responding to peer critique. Address each criticism with specific evidence. Concede where the criticism is valid, and defend with reasoning where it is not. Be concise and intellectually honest.' },
                 role: 'researcher',
                 systemPromptFallback: 'You are defending your reasoning.',
                 nameSuffix: 'DeepDive',
@@ -787,27 +798,30 @@ export function createExpertCouncilPipeline(params: {
       }
 
       const stage3Prompt = [
-        'You are the chairman synthesizing expert opinions. Review all responses and peer reviews to produce the best possible answer.',
+        '## Task',
+        'Synthesize the expert responses and peer reviews below into the best possible final answer to the user prompt.',
         '',
-        'USER PROMPT:',
+        '## User Prompt',
         prompt,
         '',
-        'EXPERT RESPONSES:',
+        '## Expert Responses',
         formatStage1Responses(stage1Results),
         '',
-        'PEER REVIEWS:',
+        '## Peer Reviews',
         stage2Reviews.length > 0
           ? formatStage2Reviews(stage2Reviews)
           : 'No peer reviews available.',
         '',
-        'AGGREGATE RANKING:',
+        '## Aggregate Ranking',
         formatRankingSummary(aggregateRanking, consensusMetrics.consensusScore),
-        '',
-        'Synthesize a final response that:',
-        '1. Incorporates the strongest insights from all responses',
-        '2. Addresses any gaps or weaknesses identified in reviews',
-        '3. Provides a comprehensive, accurate answer',
         deepDiveSection,
+        '',
+        '## Synthesis Rules',
+        '1. Start from the highest-ranked response and enhance it with insights from lower-ranked ones.',
+        '2. Address every gap and weakness identified in the peer reviews.',
+        '3. When experts disagree, present both positions with the evidence for each.',
+        '4. The final response must be more accurate and complete than any single expert response.',
+        '5. If any expert raised a valid concern that others missed, incorporate it.',
       ].join('\n')
 
       let retryCount = 0

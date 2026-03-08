@@ -56,7 +56,9 @@ export {
 export {
   createGenericGraph,
   executeGenericGraphWorkflowLangGraph,
+  GenericGraphStateAnnotation,
   type GenericGraphConfig,
+  type GenericGraphState,
 } from './genericGraph.js'
 export {
   createDialecticalGraph,
@@ -66,6 +68,9 @@ export {
 
 // Export checkpointer
 export { FirestoreCheckpointer, createFirestoreCheckpointer } from './firestoreCheckpointer.js'
+
+// Export Firestore sanitizer
+export { sanitizeForFirestore, sanitizeWithWarning } from './firestoreSanitizer.js'
 
 // Export shared utilities
 export {
@@ -95,12 +100,10 @@ export {
   ParallelStateAnnotation,
   SequentialStateAnnotation,
   SupervisorStateAnnotation,
-  GenericGraphStateAnnotation,
   DialecticalStateAnnotation,
   type ParallelState,
   type SequentialState,
   type SupervisorState,
-  type GenericGraphState,
   type DialecticalState,
   type FailedAgentRecord,
 } from './stateAnnotations.js'

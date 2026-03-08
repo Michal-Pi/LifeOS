@@ -6,7 +6,7 @@
  * Follows the same pattern as OpenAI/Anthropic services for consistency.
  */
 
-import type { Tool, Schema } from '@google/generative-ai'
+import type { Tool, Schema, Part } from '@google/generative-ai'
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai'
 import type { AgentConfig } from '@lifeos/agents'
 import { asId, MODEL_PRICING } from '@lifeos/agents'
@@ -178,7 +178,7 @@ export async function executeWithGoogle(
     const MAX_ITERATIONS = toolContext?.maxIterations ?? 5
     let iteration = 0
     let finalOutput = ''
-    let nextMessage = ''
+    let nextMessage: string | Part[] = ''
 
     // Send initial message
     totalInputChars += userPrompt.length
@@ -204,7 +204,7 @@ export async function executeWithGoogle(
       log.info('Iteration started', { iteration, maxIterations: MAX_ITERATIONS })
 
       // Send message (first iteration uses userPrompt, subsequent use nextMessage or empty)
-      const messageToSend = iteration === 1 ? userPrompt : nextMessage || ''
+      const messageToSend: string | Part[] = iteration === 1 ? userPrompt : nextMessage || ''
       nextMessage = '' // Reset for next iteration
       const result = await executeWithRetry(
         async () => {
@@ -230,7 +230,12 @@ export async function executeWithGoogle(
       )
       const response = result.response
 
-      totalOutputChars += response.text().length
+      // response.text() can throw when response contains only function call parts
+      try {
+        totalOutputChars += response.text().length
+      } catch {
+        // Tool-only response, no text content
+      }
 
       // Check if there are function calls
       const functionCalls = response.functionCalls()
@@ -259,31 +264,29 @@ export async function executeWithGoogle(
           parameters: call.parameters,
         }))
 
+        let responseText = ''
+        try { responseText = response.text() } catch { /* tool-only response */ }
+
         await recordMessage({
           userId: toolContext.userId,
           runId: toolContext.runId,
           agentId: toolContext.agentId,
           role: 'assistant',
-          content: response.text(),
+          content: responseText,
           toolCalls: toolCallRecords,
         })
 
-        // Send tool results back to model
-        const functionResponses = toolResults.map((toolResult) => ({
-          name: toolResult.toolName,
-          response: toolResult.error
-            ? { error: toolResult.error }
-            : (toolResult.result as Record<string, unknown>),
+        // Send ALL tool results back to model (not just the first)
+        const functionResponseParts: Part[] = toolResults.map((toolResult) => ({
+          functionResponse: {
+            name: toolResult.toolName,
+            response: toolResult.error
+              ? { error: toolResult.error }
+              : (toolResult.result as Record<string, unknown>),
+          },
         }))
 
-        const functionResponseMessage = {
-          functionResponse: {
-            name: functionResponses[0].name,
-            response: functionResponses[0].response,
-          },
-        }
-
-        totalInputChars += JSON.stringify(functionResponseMessage).length
+        totalInputChars += JSON.stringify(functionResponseParts).length
         log.info('Tools executed, continuing iteration', { toolCount: toolResults.length })
 
         for (const toolResult of toolResults) {
@@ -305,23 +308,33 @@ export async function executeWithGoogle(
           })
         }
 
-        // Budget warning: on penultimate iteration, tell agent to synthesize
-        if (iteration === MAX_ITERATIONS - 1) {
+        // Send function response parts as next message so the model sees all tool results
+        nextMessage = functionResponseParts
+
+        // Budget warning: fire with 2 iterations remaining, include JSON schema requirement
+        if (iteration >= MAX_ITERATIONS - 2) {
           log.info('Budget warning, injecting synthesis prompt', {
             iteration,
             maxIterations: MAX_ITERATIONS,
+            iterationsRemaining: MAX_ITERATIONS - iteration,
           })
-          nextMessage =
-            'IMPORTANT: You are at your tool-calling budget limit. ' +
-            'You MUST synthesize your findings into a complete response NOW. ' +
-            'Do NOT make additional tool calls. Provide your best output with what you have gathered.'
+          // Append budget warning as a text part alongside function responses
+          ;(nextMessage as Part[]).push({
+            text:
+              'IMPORTANT: You are approaching your tool-calling budget limit (' +
+              `${MAX_ITERATIONS - iteration} iteration(s) remaining). ` +
+              'You MUST synthesize your findings into a complete response NOW. ' +
+              'Do NOT make additional tool calls. ' +
+              'Output ONLY a valid JSON object matching the schema from the original prompt. ' +
+              'No markdown, no explanation — just the JSON.',
+          })
         }
 
         // Continue loop to get agent's response with tool results
-        // Next iteration will send nextMessage or empty to continue conversation
+        // Next iteration sends function response parts so the model sees all tool results
       } else {
         // No tool calls, agent provided final output
-        finalOutput = response.text()
+        try { finalOutput = response.text() } catch { finalOutput = '' }
         if (toolContext) {
           await recordMessage({
             userId: toolContext.userId,
@@ -337,11 +350,38 @@ export async function executeWithGoogle(
     }
 
     if (iteration >= MAX_ITERATIONS && !finalOutput) {
-      log.warn('Agent reached max iterations with tool calls', { maxIterations: MAX_ITERATIONS })
-      finalOutput =
-        `[PARTIAL RESULT - iteration budget exhausted after ${iteration} tool calls]\n\n` +
-        `The agent gathered research data but could not complete synthesis. ` +
-        `Consider increasing the iteration budget for tool-heavy agents.`
+      log.warn('Agent reached max iterations with tool calls, attempting final synthesis', {
+        maxIterations: MAX_ITERATIONS,
+      })
+
+      // One final attempt: ask the model to synthesize with an explicit JSON requirement
+      try {
+        const synthResult = await executeWithTimeout(
+          chat.sendMessage(
+            'You have exhausted your tool-calling budget. ' +
+            'Synthesize ALL findings from your research into a final response NOW. ' +
+            'Output ONLY a valid JSON object matching the schema from the original prompt. ' +
+            'No markdown fences, no explanation — just the JSON object.'
+          ),
+          TIMEOUTS.PROVIDER,
+          'google.chat.sendMessage.synthesis'
+        )
+        try { finalOutput = synthResult.response.text() } catch { /* empty */ }
+        if (finalOutput) {
+          totalOutputChars += finalOutput.length
+          log.info('Post-loop synthesis succeeded', { outputLength: finalOutput.length })
+        }
+      } catch (error) {
+        log.warn('Post-loop synthesis failed', { error: (error as Error).message })
+      }
+
+      if (!finalOutput) {
+        finalOutput =
+          `[PARTIAL RESULT - iteration budget exhausted after ${iteration} tool calls]\n\n` +
+          `The agent gathered research data but could not complete synthesis. ` +
+          `Consider increasing the iteration budget for tool-heavy agents.`
+      }
+
       if (toolContext) {
         await recordMessage({
           userId: toolContext.userId,

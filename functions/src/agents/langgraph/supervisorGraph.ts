@@ -26,7 +26,7 @@ import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
 import type { ToolRegistry } from '../toolExecutor.js'
 import { createFirestoreCheckpointer } from './firestoreCheckpointer.js'
-import { executeAgentWithEvents, type AgentExecutionContext } from './utils.js'
+import { executeAgentWithEvents, handleAskUserInterrupt, type AgentExecutionContext } from './utils.js'
 
 const log = createLogger('SupervisorGraph')
 
@@ -108,6 +108,9 @@ const SupervisorStateAnnotation = Annotation.Root({
   // Status
   status: Annotation<UnifiedWorkflowState['status']>,
   error: Annotation<string | null>,
+
+  // User input pause
+  pendingInput: Annotation<{ prompt: string; nodeId: string } | null>,
 })
 
 type SupervisorState = typeof SupervisorStateAnnotation.State
@@ -197,6 +200,12 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
       { stepNumber: 1, totalSteps: totalStepsCount }
     )
 
+    // Check for ask_user interrupt
+    const interrupt = handleAskUserInterrupt(step, 'supervisor_plan')
+    if (interrupt) {
+      return { steps: [step], totalTokensUsed: step.tokensUsed, totalEstimatedCost: step.estimatedCost, ...interrupt }
+    }
+
     // Override the agent name for planning step
     step.agentName = `${supervisorAgent.name} (Planning)`
 
@@ -255,6 +264,12 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
         totalSteps: totalStepsCount,
         maxTokens: config.maxTokensPerWorker,
       })
+
+      // Check for ask_user interrupt
+      const interrupt = handleAskUserInterrupt(step, nodeId)
+      if (interrupt) {
+        return { steps: [step], totalTokensUsed: step.tokensUsed, totalEstimatedCost: step.estimatedCost, ...interrupt }
+      }
 
       const updates: Partial<SupervisorState> = {
         currentWorkerIndex: i + 1,
@@ -335,6 +350,12 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
       { stepNumber: totalStepsCount, totalSteps: totalStepsCount }
     )
 
+    // Check for ask_user interrupt
+    const interrupt = handleAskUserInterrupt(step, 'supervisor_synthesize')
+    if (interrupt) {
+      return { steps: [step], totalTokensUsed: step.tokensUsed, totalEstimatedCost: step.estimatedCost, ...interrupt }
+    }
+
     // Override the agent name for synthesis step
     step.agentName = `${supervisorAgent.name} (Synthesis)`
 
@@ -351,20 +372,36 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
   // Note: Type assertions needed because LangGraph's strict typing requires compile-time node names
   graph.addEdge(START, 'supervisor_plan' as typeof START)
 
+  // Helper: route to END if waiting for user input, otherwise continue
+  const routeOrPause = (next: string) => (state: SupervisorState) =>
+    state.status === 'waiting_for_input' ? END : next
+
   if (workerAgents.length > 0) {
-    graph.addEdge('supervisor_plan' as typeof START, 'worker_0' as typeof START)
+    graph.addConditionalEdges('supervisor_plan' as typeof START, routeOrPause('worker_0'), {
+      worker_0: 'worker_0' as typeof START,
+      [END]: END,
+    })
 
     for (let i = 0; i < Math.min(workerAgents.length, iterationLimit - 1) - 1; i++) {
-      graph.addEdge(`worker_${i}` as typeof START, `worker_${i + 1}` as typeof START)
+      graph.addConditionalEdges(
+        `worker_${i}` as typeof START,
+        routeOrPause(`worker_${i + 1}`),
+        { [`worker_${i + 1}`]: `worker_${i + 1}` as typeof START, [END]: END }
+      )
     }
 
     const lastWorkerIndex = Math.min(workerAgents.length, iterationLimit - 1) - 1
-    graph.addEdge(
+    graph.addConditionalEdges(
       `worker_${lastWorkerIndex}` as typeof START,
-      'supervisor_synthesize' as typeof START
+      routeOrPause('supervisor_synthesize'),
+      { supervisor_synthesize: 'supervisor_synthesize' as typeof START, [END]: END }
     )
   } else {
-    graph.addEdge('supervisor_plan' as typeof START, 'supervisor_synthesize' as typeof START)
+    graph.addConditionalEdges(
+      'supervisor_plan' as typeof START,
+      routeOrPause('supervisor_synthesize'),
+      { supervisor_synthesize: 'supervisor_synthesize' as typeof START, [END]: END }
+    )
   }
 
   graph.addEdge('supervisor_synthesize' as typeof START, END)
@@ -392,6 +429,7 @@ export async function executeSupervisorWorkflowLangGraph(
   totalEstimatedCost: number
   totalSteps: number
   status: UnifiedWorkflowState['status']
+  pendingInput?: { prompt: string; nodeId: string }
 }> {
   const { workflow, userId, runId } = config
 
@@ -417,9 +455,9 @@ export async function executeSupervisorWorkflowLangGraph(
   }
 
   // Execute the graph
-  let finalState: typeof initialState
+  let finalState: SupervisorState
   try {
-    finalState = await compiledGraph.invoke(initialState)
+    finalState = await compiledGraph.invoke(initialState) as SupervisorState
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e)
     log.error('Supervisor graph execution failed', { error: errorMessage })
@@ -440,5 +478,6 @@ export async function executeSupervisorWorkflowLangGraph(
     totalEstimatedCost: finalState.totalEstimatedCost ?? 0,
     totalSteps: finalState.steps?.length ?? 0,
     status: finalState.status ?? 'completed',
+    pendingInput: finalState.pendingInput ?? undefined,
   }
 }

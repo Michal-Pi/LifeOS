@@ -138,6 +138,46 @@ function resetExpiredWindows(record: RateLimitRecord): RateLimitRecord {
 }
 
 /**
+ * Soft rate limit check — returns exceeded info instead of throwing.
+ * Used for pause-and-prompt flow in graph cycles.
+ */
+export type RateLimitExceeded = {
+  exceeded: true
+  limitType: 'rate_runs_per_hour' | 'rate_tokens_per_day' | 'rate_cost_per_day'
+  currentValue: number
+  limitValue: number
+  unit: string
+  resetInMs: number
+}
+
+export async function checkRunRateLimitSoft(userId: string): Promise<RateLimitExceeded | null> {
+  let record = await getRateLimitRecord(userId)
+  record = resetExpiredWindows(record)
+
+  if (record.runsInWindow >= record.maxRunsPerHour) {
+    return {
+      exceeded: true,
+      limitType: 'rate_runs_per_hour',
+      currentValue: record.runsInWindow,
+      limitValue: record.maxRunsPerHour,
+      unit: 'runs/hour',
+      resetInMs: record.windowEndMs - Date.now(),
+    }
+  }
+  if (record.costInWindow >= record.maxCostPerDay) {
+    return {
+      exceeded: true,
+      limitType: 'rate_cost_per_day',
+      currentValue: record.costInWindow,
+      limitValue: record.maxCostPerDay,
+      unit: 'USD',
+      resetInMs: record.windowStartMs + DAY_MS - Date.now(),
+    }
+  }
+  return null
+}
+
+/**
  * Check if user can start a new run (within rate limits)
  *
  * @param userId User ID
@@ -340,4 +380,34 @@ export async function updateDailyCostLimit(userId: string, newLimit: number): Pr
   await docRef.set(record)
 
   log.info('Updated daily cost limit', { userId, newLimit: `$${newLimit.toFixed(2)}` })
+}
+
+/**
+ * Update runs-per-hour limit for a user
+ */
+export async function updateRunsPerHourLimit(userId: string, newLimit: number): Promise<void> {
+  const db = getFirestore()
+  const docRef = db.collection('users').doc(userId).collection('agentUsage').doc('rateLimits')
+  const record = await getRateLimitRecord(userId)
+  record.maxRunsPerHour = newLimit
+  record.lastUpdatedMs = Date.now()
+
+  await docRef.set(record)
+
+  log.info('Updated runs per hour limit', { userId, newLimit })
+}
+
+/**
+ * Update daily token rate limit for a user
+ */
+export async function updateDailyTokenRateLimit(userId: string, newLimit: number): Promise<void> {
+  const db = getFirestore()
+  const docRef = db.collection('users').doc(userId).collection('agentUsage').doc('rateLimits')
+  const record = await getRateLimitRecord(userId)
+  record.maxTokensPerDay = newLimit
+  record.lastUpdatedMs = Date.now()
+
+  await docRef.set(record)
+
+  log.info('Updated daily token rate limit', { userId, newLimit: newLimit.toLocaleString() })
 }

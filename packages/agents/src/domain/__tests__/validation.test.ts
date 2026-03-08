@@ -142,6 +142,59 @@ describe('validation schemas', () => {
       const result = WorkflowSchema.safeParse(invalidWorkflow)
       expect(result.success).toBe(false)
     })
+
+    it('rejects workflowGraph when startNodeId is not in nodes', () => {
+      const invalidWorkflow = {
+        workflowId: 'workflow:123',
+        userId: 'user123',
+        name: 'Test Workflow',
+        agentIds: ['agent:123'],
+        workflowType: 'custom',
+        workflowGraph: {
+          version: 1 as const,
+          startNodeId: 'missing_node',
+          nodes: [{ id: 'node_a', type: 'agent' as const }],
+          edges: [{ from: 'node_a', to: 'node_a', condition: { type: 'always' as const } }],
+        },
+        archived: false,
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+        syncState: 'synced',
+        version: 1,
+      }
+
+      const result = WorkflowSchema.safeParse(invalidWorkflow)
+      expect(result.success).toBe(false)
+    })
+
+    it('validates workflowGraph when startNodeId and edges reference node ids', () => {
+      const validWorkflow = {
+        workflowId: 'workflow:123',
+        userId: 'user123',
+        name: 'Test Workflow',
+        agentIds: ['agent:123'],
+        workflowType: 'custom',
+        workflowGraph: {
+          version: 1 as const,
+          startNodeId: 'node_a',
+          nodes: [
+            { id: 'node_a', type: 'agent' as const },
+            { id: 'node_b', type: 'end' as const },
+          ],
+          edges: [
+            { from: 'node_a', to: 'node_b', condition: { type: 'always' as const } },
+          ],
+        },
+        archived: false,
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+        syncState: 'synced',
+        version: 1,
+      }
+
+      const result = WorkflowSchema.safeParse(validWorkflow)
+      expect(result.success).toBe(true)
+    })
   })
 
   describe('RunSchema', () => {

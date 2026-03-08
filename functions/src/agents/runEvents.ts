@@ -25,6 +25,14 @@ export type RunEventType =
   | 'dialectical_contradiction'
   | 'dialectical_synthesis'
   | 'dialectical_meta'
+  // Oracle workflow events
+  | 'oracle_phase'
+  | 'oracle_gate_result'
+  | 'oracle_council_complete'
+  | 'oracle_human_gate'
+  | 'oracle_consistency_check'
+  // Plan management events
+  | 'plan_approved'
 
 export type RunEvent = {
   type: RunEventType

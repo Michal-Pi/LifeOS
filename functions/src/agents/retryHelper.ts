@@ -106,14 +106,14 @@ export function calculateBackoffDelay(attempt: number, config: RetryConfig): num
  *
  * @param fn Function to execute
  * @param config Retry configuration (optional, uses defaults)
- * @param onRetry Optional callback invoked before each retry (for logging)
+ * @param onRetry Optional callback invoked before each retry (for logging); may be async
  * @returns Result from successful execution
  * @throws Last error if all retries fail
  */
 export async function executeWithRetry<T>(
   fn: () => Promise<T>,
   config: RetryConfig = DEFAULT_RETRY_CONFIG,
-  onRetry?: (attempt: number, error: unknown, delayMs: number) => void
+  onRetry?: (attempt: number, error: unknown, delayMs: number) => void | Promise<void>
 ): Promise<T> {
   let lastError: unknown
 
@@ -137,9 +137,9 @@ export async function executeWithRetry<T>(
       // Calculate backoff delay
       const delayMs = calculateBackoffDelay(attempt, config)
 
-      // Notify caller about retry
+      // Notify caller about retry (await so async callbacks complete before next attempt)
       if (onRetry) {
-        onRetry(attempt + 1, error, delayMs)
+        await Promise.resolve(onRetry(attempt + 1, error, delayMs))
       }
 
       // Wait before retrying

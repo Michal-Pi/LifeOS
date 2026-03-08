@@ -16,6 +16,7 @@ export type ErrorCategory =
   | 'timeout'
   | 'internal'
   | 'quota'
+  | 'config'
 
 /**
  * Structured error for agent operations
@@ -86,6 +87,39 @@ export class RateLimitError extends AgentError {
     )
     this.name = 'RateLimitError'
   }
+}
+
+/**
+ * Error for missing API key / integration not configured
+ */
+export class NoAPIKeyConfiguredError extends AgentError {
+  constructor(provider: string, envVarName: string, details?: Record<string, unknown>) {
+    super(
+      `${provider} API key not configured (${envVarName})`,
+      `${provider} is not configured. Please add the API key in Settings > Integrations.`,
+      'config',
+      false,
+      { provider, envVarName, ...details }
+    )
+    this.name = 'NoAPIKeyConfiguredError'
+  }
+}
+
+/**
+ * Throw a structured error for an HTTP API response failure
+ */
+export function throwApiError(
+  toolName: string,
+  status: number,
+  statusText: string
+): never {
+  throw new AgentError(
+    `${toolName} API error: ${status} ${statusText}`,
+    `External API returned an error (${status}). Please try again.`,
+    status === 429 ? 'rate_limit' : status >= 500 ? 'network' : 'internal',
+    status === 429 || status >= 500,
+    { tool: toolName, httpStatus: status }
+  )
 }
 
 /**
@@ -238,11 +272,26 @@ export const TIMEOUTS = {
     read_gmail_message: 15000,
   },
 
-  // Provider API call timeout
-  PROVIDER: 60000, // 60 seconds
+  // Provider API call timeout (base — use getProviderTimeout for dynamic scaling)
+  PROVIDER: 120000, // 120 seconds base
 
   // Overall run timeout (handled by Cloud Function config)
   RUN: 300000, // 5 minutes (for reference, actual limit set in runExecutor.ts)
+}
+
+/**
+ * Get a dynamic provider timeout based on estimated input size.
+ * Larger prompts need more time for the model to process.
+ *
+ * @param inputTokenEstimate Estimated input tokens (e.g. JSON.stringify(messages).length / 4)
+ * @returns Timeout in milliseconds, capped at 240s
+ */
+export function getProviderTimeout(inputTokenEstimate: number): number {
+  const base = TIMEOUTS.PROVIDER // 120s
+  if (inputTokenEstimate <= 8000) return base
+  if (inputTokenEstimate <= 16000) return base * 1.25 // 150s
+  if (inputTokenEstimate <= 32000) return base * 1.5 // 180s
+  return Math.min(base * 2, 240000) // 240s max
 }
 
 /**
