@@ -287,12 +287,17 @@ export function PlannerPage() {
     const statusMap: Record<string, CanonicalTask['status']> = {
       inbox: 'inbox',
       pending: 'inbox',
+      someday: 'someday',
       active: 'next_action',
+      next_action: 'next_action',
       todo: 'next_action',
+      waiting_for: 'waiting_for',
       in_progress: 'scheduled',
+      scheduled: 'scheduled',
       started: 'scheduled',
       completed: 'done',
       done: 'done',
+      cancelled: 'cancelled',
     }
     const mappedStatus = statusMap[newStatus] ?? task.status
     const completed = mappedStatus === 'done'

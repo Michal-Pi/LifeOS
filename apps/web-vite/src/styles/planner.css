@@ -1142,6 +1142,58 @@
   flex-direction: column;
 }
 
+.priority-band__tasks .task-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+
+.priority-band__tasks .task-card:last-child {
+  border-bottom: none;
+}
+
+.priority-band__tasks .task-card:hover {
+  background: var(--background-tertiary);
+}
+
+.priority-band__tasks .task-card.selected {
+  background: var(--accent-subtle);
+}
+
+.priority-band__tasks .task-card.completed {
+  opacity: 0.6;
+}
+
+.priority-band__tasks .task-card .task-card-color-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+.priority-band__tasks .task-card .task-card-main {
+  display: contents;
+}
+
+.priority-band__tasks .task-card .task-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.priority-band__tasks .task-card .meta-tag {
+  white-space: nowrap;
+  justify-self: end;
+}
+
 .priority-band__empty {
   padding: var(--space-3);
   font-size: var(--text-sm);
@@ -1498,7 +1550,8 @@
    ============================================ */
 
 .project-form-modal {
-  max-width: 40rem;
+  max-width: 56rem;
+  width: 90vw;
 }
 
 .project-form-modal .modal-header {

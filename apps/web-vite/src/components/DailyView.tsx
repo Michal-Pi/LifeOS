@@ -164,22 +164,12 @@ export function DailyView({
     position: { top: number; left: number }
   } | null>(null)
 
-  // Calculate responsive timeline height based on viewport
+  // Always render full 24-hour timeline so users can scroll through the entire day
   const timelineHeight = useMemo(() => {
     if (typeof window === 'undefined') return 2400 // SSR fallback
-
-    const viewportHeight = window.innerHeight
-    const headerHeight = 120 // Approximate header + all-day section height
-    const padding = 40
-    const calculatedHeight = Math.max(600, viewportHeight - headerHeight - padding)
-
-    // For mobile, use smaller hour height (40px), for desktop use 100px
     const isMobile = window.innerWidth < 768
-    const hourHeight = isMobile ? 40 : 100
-    const hoursInView = Math.ceil(calculatedHeight / hourHeight)
-
-    // Ensure we show at least 12 hours, but calculate based on viewport
-    return Math.max(12 * hourHeight, hoursInView * hourHeight)
+    const h = isMobile ? 40 : 100
+    return 24 * h
   }, [])
 
   // Calculate hour height dynamically
@@ -268,16 +258,17 @@ export function DailyView({
     return h
   }, [date])
 
-  // Scroll to current time on mount (if viewing today)
+  // Scroll to show 2 hours before current time (or start of day for non-today dates)
   useEffect(() => {
-    if (timelineRef.current && isSameDay(date, now)) {
-      const currentHour = now.getHours()
-      const scrollPosition = (currentHour / 24) * timelineRef.current.scrollHeight
-      timelineRef.current.scrollTo({
-        top: scrollPosition - 200, // Offset to show current time in view
-        behavior: 'smooth',
-      })
-    }
+    if (!timelineRef.current) return
+    const targetHour = isSameDay(date, now)
+      ? Math.max(0, now.getHours() - 2)
+      : Math.max(0, 8 - 2) // Default to 6 AM for non-today dates
+    const scrollPosition = (targetHour / 24) * timelineRef.current.scrollHeight
+    timelineRef.current.scrollTo({
+      top: scrollPosition,
+      behavior: 'smooth',
+    })
   }, [date, now])
 
   // Handle click on empty time slot to show quick-create popover

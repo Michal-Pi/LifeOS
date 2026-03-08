@@ -141,6 +141,19 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
 
   const isValidHex = (value: string) => /^#([0-9a-fA-F]{3}){1,2}$/.test(value)
 
+  // Derive current formatting state from editor (reactive on cursor/selection change)
+  const textStyleAttrs = editor.getAttributes('textStyle')
+  const rawFontSize = textStyleAttrs.fontSize as string | undefined
+  const currentFontSize = rawFontSize ? rawFontSize.replace('px', '') : '16'
+
+  const rawFontFamily = textStyleAttrs.fontFamily as string | undefined
+  const currentFontFamily = rawFontFamily
+    ? rawFontFamily.split(',')[0].trim()
+    : 'Aa'
+
+  const editorTextColor = textStyleAttrs.color as string | undefined
+  const editorHighlightColor = editor.getAttributes('highlight').color as string | undefined
+
   return (
     <div className="tiptap-menu-bar">
       {/* Text Formatting */}
@@ -255,18 +268,18 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
           <div className="menu-dropdown">
             <button
               type="button"
-              className="menu-button"
+              className={`menu-button ${rawFontFamily ? 'is-active' : ''}`}
               title="Font Family"
               onClick={() => setShowFontFamilyMenu(!showFontFamilyMenu)}
             >
-              <span className="menu-icon">Aa</span>
+              <span className="menu-icon">{currentFontFamily}</span>
               <span className="menu-arrow">▼</span>
             </button>
             {showFontFamilyMenu && (
               <div className="menu-dropdown-content">
                 <button
                   type="button"
-                  className="menu-dropdown-item"
+                  className={`menu-dropdown-item ${currentFontFamily === 'Inter' ? 'is-active' : ''}`}
                   onClick={() => {
                     editor.chain().focus().setFontFamily('Inter, sans-serif').run()
                     setShowFontFamilyMenu(false)
@@ -276,7 +289,7 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
                 </button>
                 <button
                   type="button"
-                  className="menu-dropdown-item"
+                  className={`menu-dropdown-item ${currentFontFamily === 'Georgia' ? 'is-active' : ''}`}
                   onClick={() => {
                     editor.chain().focus().setFontFamily('Georgia, serif').run()
                     setShowFontFamilyMenu(false)
@@ -286,7 +299,7 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
                 </button>
                 <button
                   type="button"
-                  className="menu-dropdown-item"
+                  className={`menu-dropdown-item ${currentFontFamily === 'Monaco' ? 'is-active' : ''}`}
                   onClick={() => {
                     editor.chain().focus().setFontFamily('Monaco, monospace').run()
                     setShowFontFamilyMenu(false)
@@ -296,7 +309,7 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
                 </button>
                 <button
                   type="button"
-                  className="menu-dropdown-item"
+                  className={`menu-dropdown-item ${!rawFontFamily ? 'is-active' : ''}`}
                   onClick={() => {
                     editor.chain().focus().unsetFontFamily().run()
                     setShowFontFamilyMenu(false)
@@ -316,78 +329,31 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
           <div className="menu-dropdown">
             <button
               type="button"
-              className="menu-button"
+              className={`menu-button ${rawFontSize ? 'is-active' : ''}`}
               title="Font Size"
               onClick={() => setShowFontSizeMenu(!showFontSizeMenu)}
             >
-              <span className="menu-icon">12</span>
+              <span className="menu-icon">{currentFontSize}</span>
               <span className="menu-arrow">▼</span>
             </button>
             {showFontSizeMenu && (
               <div className="menu-dropdown-content">
+                {['12', '14', '16', '18', '20', '24'].map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    className={`menu-dropdown-item ${currentFontSize === size ? 'is-active' : ''}`}
+                    onClick={() => {
+                      editor.chain().focus().setFontSize(`${size}px`).run()
+                      setShowFontSizeMenu(false)
+                    }}
+                  >
+                    <span className="menu-item-heading">{size}px</span>
+                  </button>
+                ))}
                 <button
                   type="button"
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    editor.chain().focus().setFontSize('12px').run()
-                    setShowFontSizeMenu(false)
-                  }}
-                >
-                  <span className="menu-item-heading">12px</span>
-                </button>
-                <button
-                  type="button"
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    editor.chain().focus().setFontSize('14px').run()
-                    setShowFontSizeMenu(false)
-                  }}
-                >
-                  <span className="menu-item-heading">14px</span>
-                </button>
-                <button
-                  type="button"
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    editor.chain().focus().setFontSize('16px').run()
-                    setShowFontSizeMenu(false)
-                  }}
-                >
-                  <span className="menu-item-heading">16px</span>
-                </button>
-                <button
-                  type="button"
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    editor.chain().focus().setFontSize('18px').run()
-                    setShowFontSizeMenu(false)
-                  }}
-                >
-                  <span className="menu-item-heading">18px</span>
-                </button>
-                <button
-                  type="button"
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    editor.chain().focus().setFontSize('20px').run()
-                    setShowFontSizeMenu(false)
-                  }}
-                >
-                  <span className="menu-item-heading">20px</span>
-                </button>
-                <button
-                  type="button"
-                  className="menu-dropdown-item"
-                  onClick={() => {
-                    editor.chain().focus().setFontSize('24px').run()
-                    setShowFontSizeMenu(false)
-                  }}
-                >
-                  <span className="menu-item-heading">24px</span>
-                </button>
-                <button
-                  type="button"
-                  className="menu-dropdown-item"
+                  className={`menu-dropdown-item ${!rawFontSize ? 'is-active' : ''}`}
                   onClick={() => {
                     editor.chain().focus().unsetFontSize().run()
                     setShowFontSizeMenu(false)
@@ -413,7 +379,7 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
             >
               <span
                 className="menu-color-dot"
-                style={{ backgroundColor: activeTextColor || 'transparent' }}
+                style={{ backgroundColor: editorTextColor || activeTextColor || 'transparent' }}
               />
               <span className="menu-arrow">▼</span>
             </button>
@@ -497,7 +463,7 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
           >
             <span
               className="menu-color-dot"
-              style={{ backgroundColor: activeHighlightColor || 'var(--warning)' }}
+              style={{ backgroundColor: editorHighlightColor || activeHighlightColor || 'var(--warning)' }}
             />
             <span className="menu-arrow">▼</span>
           </button>

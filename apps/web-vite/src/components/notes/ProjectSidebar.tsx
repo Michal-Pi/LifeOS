@@ -644,6 +644,7 @@ export function ProjectSidebar({
 
         .sidebar-search .search-input {
           width: 100%;
+          box-sizing: border-box;
           border-radius: 10px;
           border: 1px solid var(--border);
           background: var(--background-secondary);

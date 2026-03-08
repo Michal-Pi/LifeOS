@@ -10,7 +10,6 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { formatDistanceToNow } from 'date-fns'
 import { NoteEditor } from '@/components/editor'
 import { ProjectSidebar } from '@/components/notes/ProjectSidebar'
 import { NoteTitleEditor } from '@/components/notes/NoteTitleEditor'
@@ -328,21 +327,18 @@ export function NotesPage() {
                     onSave={handleTitleChange}
                     placeholder="Untitled"
                   />
-                  <div className="note-meta-bar">
-                    <span className="note-meta-bar__item">{wordCount} words</span>
-                    <span className="note-meta-bar__item">
-                      Edited{' '}
-                      {formatDistanceToNow(new Date(currentNote.updatedAtMs), { addSuffix: true })}
-                    </span>
-                    {currentTopicName && (
-                      <span className="note-meta-bar__project">{currentTopicName}</span>
-                    )}
-                    {currentNote.tags?.map((tag) => (
-                      <span key={tag} className="note-meta-bar__tag">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+                  {(currentTopicName || (currentNote.tags?.length ?? 0) > 0) && (
+                    <div className="note-meta-bar">
+                      {currentTopicName && (
+                        <span className="note-meta-bar__project">{currentTopicName}</span>
+                      )}
+                      {currentNote.tags?.map((tag) => (
+                        <span key={tag} className="note-meta-bar__tag">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="editor-actions">
                     <div className="editor-actions-row">
                       <AIToolsDropdown
@@ -415,6 +411,7 @@ export function NotesPage() {
                         )}
                       </div>
                     </div>
+                    <span className="editor-word-count">{wordCount} words</span>
                     <div className="editor-status" id="note-status-anchor" />
                   </div>
                 </div>

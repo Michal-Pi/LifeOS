@@ -98,6 +98,8 @@ export function NoteTitleEditor({
           outline: none;
           resize: none;
           font-family: inherit;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .title-input::placeholder {
