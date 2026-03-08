@@ -291,6 +291,73 @@ function requireParsedJson<T>(value: T | null, context: string): T {
   return value
 }
 
+/**
+ * 3-layer JSON parse with retry for Oracle graph nodes.
+ * 1. safeParseJson (with trailing comma stripping)
+ * 2. Same-provider retry with strict "JSON only" prompt
+ * 3. Haiku fallback with relevance gate
+ */
+async function parseJsonWithRetry<T>(
+  rawOutput: string,
+  context: string,
+  jsonSchema: string,
+  emptyFallback: string,
+  goal: string,
+  baseAgent: AgentConfig,
+  execContext: AgentExecutionContext,
+  nodeId: string,
+  stepNumber: number,
+  runId: string,
+): Promise<T> {
+  // Layer 1: direct parse
+  let parsed = safeParseJson<T>(rawOutput)
+  if (parsed) return parsed
+
+  // Layer 2: same provider, strict JSON-only re-prompt
+  log.warn(`${context} JSON parse failed, retrying with strict prompt`, { runId })
+  const retryAgent = {
+    ...baseAgent,
+    systemPrompt: `You are a JSON formatter. Convert the following analysis into ONLY a valid JSON object. Output nothing else — no markdown, no explanation, no commentary. Just the JSON.\n\nRequired schema:\n${jsonSchema}`,
+  }
+  const retryStep = await executeAgentWithEvents(
+    retryAgent,
+    `Convert this text to JSON:\n\n${rawOutput.slice(0, 8000)}`,
+    {},
+    execContext,
+    { nodeId, stepNumber }
+  )
+  parsed = safeParseJson<T>(retryStep.output)
+  if (parsed) return parsed
+
+  // Layer 3: Haiku with relevance gate
+  log.warn(`${context} retry 1 failed, falling back to Haiku with relevance gate`, { runId })
+  const haikuAgent: AgentConfig = {
+    ...baseAgent,
+    name: `${nodeId}-json-fixer`,
+    modelProvider: 'anthropic',
+    modelName: 'claude-haiku',
+    systemPrompt: `You are a strict JSON extraction assistant. You will receive text that was supposed to be a JSON analysis of a strategic question, but may instead be an error message, refusal, or irrelevant text.
+
+Step 1: Determine if the text contains substantive analysis relevant to the goal: "${goal}"
+- If the text is an error message, API failure, refusal, or completely unrelated to the goal, respond with EXACTLY: ${emptyFallback}
+- If the text contains relevant analysis (even partial), proceed to step 2.
+
+Step 2: Extract the analysis into this exact JSON schema. Output ONLY valid JSON, nothing else.
+${jsonSchema}`,
+    temperature: 0,
+  }
+  const haikuStep = await executeAgentWithEvents(
+    haikuAgent,
+    rawOutput.slice(0, 8000),
+    {},
+    execContext,
+    { nodeId, stepNumber }
+  )
+  parsed = safeParseJson<T>(haikuStep.output)
+
+  return requireParsedJson(parsed, context)
+}
+
 function hasSearchQueries(searchPlan: OracleSearchPlan): boolean {
   return Object.values(searchPlan).some((queries) => Array.isArray(queries) && queries.length > 0)
 }
@@ -1019,66 +1086,11 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'decomposer', stepNumber: 2 }
     )
 
-    let parsed = safeParseJson<{
+    const DECOMPOSER_SCHEMA = '{"claims":[{"id":"CLM-001","type":"descriptive|causal|forecast","text":"...","confidence":0.7,"confidenceBasis":"data|model_consensus|expert_judgment|speculative","assumptions":[],"evidenceIds":[],"dependencies":[],"axiomRefs":[],"subQuestionId":"SQ-001"}],"assumptions":[{"id":"ASM-001","type":"economic|technical|behavioral|regulatory|structural","statement":"...","sensitivity":"high|medium|low","observables":["..."],"confidence":0.6}]}'
+    const parsed = await parseJsonWithRetry<{
       claims: OracleClaim[]
       assumptions: OracleAssumption[]
-    }>(step.output)
-
-    // Retry 1: same provider, strict JSON-only re-prompt
-    if (!parsed) {
-      log.warn('Decomposer JSON parse failed, retrying with strict prompt', { runId: state.runId })
-      const retryAgent = {
-        ...config.decomposer,
-        systemPrompt:
-          'You are a JSON formatter. Convert the following analysis into ONLY a valid JSON object. Output nothing else — no markdown, no explanation, no commentary. Just the JSON.\n\nRequired schema:\n{"claims":[{"id":"CLM-001","type":"descriptive|causal|forecast","text":"...","confidence":0.7,"confidenceBasis":"data|model_consensus|expert_judgment|speculative","assumptions":[],"evidenceIds":[],"dependencies":[],"axiomRefs":[],"subQuestionId":"SQ-001"}],"assumptions":[{"id":"ASM-001","type":"economic|technical|behavioral|regulatory|structural","statement":"...","sensitivity":"high|medium|low","observables":["..."],"confidence":0.6}]}',
-      }
-      const retryStep = await executeAgentWithEvents(
-        retryAgent,
-        `Convert this text to JSON:\n\n${step.output.slice(0, 8000)}`,
-        {},
-        execContext,
-        { nodeId: 'decomposer', stepNumber: 2 }
-      )
-      parsed = safeParseJson<{
-        claims: OracleClaim[]
-        assumptions: OracleAssumption[]
-      }>(retryStep.output)
-    }
-
-    // Retry 2: cheap model (Haiku) with relevance check + JSON extraction
-    if (!parsed) {
-      log.warn('Decomposer retry 1 failed, falling back to Haiku with relevance gate', {
-        runId: state.runId,
-      })
-      const haikuAgent: AgentConfig = {
-        ...config.decomposer,
-        name: 'decomposer-json-fixer',
-        modelProvider: 'anthropic',
-        modelName: 'claude-haiku',
-        systemPrompt: `You are a strict JSON extraction assistant. You will receive text that was supposed to be a JSON analysis of a strategic question, but may instead be an error message, refusal, or irrelevant text.
-
-Step 1: Determine if the text contains substantive analysis relevant to the goal: "${state.goal}"
-- If the text is an error message, API failure, refusal, or completely unrelated to the goal, respond with EXACTLY: {"claims":[],"assumptions":[]}
-- If the text contains relevant analysis (even partial), proceed to step 2.
-
-Step 2: Extract the analysis into this exact JSON schema. Output ONLY valid JSON, nothing else.
-{"claims":[{"id":"CLM-001","type":"descriptive|causal|forecast","text":"<claim>","confidence":0.7,"confidenceBasis":"data|model_consensus|expert_judgment|speculative","assumptions":[],"evidenceIds":[],"dependencies":[],"axiomRefs":[],"subQuestionId":"SQ-001"}],"assumptions":[{"id":"ASM-001","type":"economic|technical|behavioral|regulatory|structural","statement":"<statement>","sensitivity":"high|medium|low","observables":["<observable>"],"confidence":0.6}]}`,
-        temperature: 0,
-      }
-      const haikuStep = await executeAgentWithEvents(
-        haikuAgent,
-        step.output.slice(0, 8000),
-        {},
-        execContext,
-        { nodeId: 'decomposer', stepNumber: 2 }
-      )
-      parsed = safeParseJson<{
-        claims: OracleClaim[]
-        assumptions: OracleAssumption[]
-      }>(haikuStep.output)
-    }
-
-    parsed = requireParsedJson(parsed, 'Decomposer')
+    }>(step.output, 'Decomposer', DECOMPOSER_SCHEMA, '{"claims":[],"assumptions":[]}', state.goal, config.decomposer, execContext, 'decomposer', 2, state.runId)
 
     // Enrich claims with metadata the LLM may not have provided
     const enrichedClaims = (parsed.claims ?? []).map((c) => ({
@@ -1141,14 +1153,12 @@ Step 2: Extract the analysis into this exact JSON schema. Output ONLY valid JSON
       { nodeId: 'systems_mapper', stepNumber: 3 }
     )
 
-    const parsed = requireParsedJson(
-      safeParseJson<{
-        nodes: OracleKnowledgeGraph['nodes']
-        edges: OracleKnowledgeGraph['edges']
-        loops: OracleKnowledgeGraph['loops']
-      }>(step.output),
-      'Systems mapper'
-    )
+    const SYSTEMS_MAPPER_SCHEMA = '{"nodes":[{"id":"N-001","type":"principle|constraint|trend|uncertainty|variable|scenario_state","label":"...","ledgerRef":"CLM-001","properties":{}}],"edges":[{"source":"N-001","target":"N-002","type":"causes|constrains|disrupts|reinforces","polarity":"+|-|conditional","strength":0.8,"lag":"immediate|short|medium|long"}],"loops":[{"id":"L-001","type":"reinforcing|balancing","nodes":["N-001","N-002"],"description":"..."}]}'
+    const parsed = await parseJsonWithRetry<{
+      nodes: OracleKnowledgeGraph['nodes']
+      edges: OracleKnowledgeGraph['edges']
+      loops: OracleKnowledgeGraph['loops']
+    }>(step.output, 'Systems mapper', SYSTEMS_MAPPER_SCHEMA, '{"nodes":[],"edges":[],"loops":[]}', state.goal, config.systemsMapper, execContext, 'systems_mapper', 3, state.runId)
 
     const kg: OracleKnowledgeGraph = {
       nodes: parsed.nodes ?? [],
