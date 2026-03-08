@@ -1681,6 +1681,13 @@
   font-weight: 600;
 }
 
+.badge-queued {
+  background: color-mix(in srgb, var(--color-info, #0ea5e9) 12%, transparent);
+  color: var(--color-info, #0ea5e9);
+  border-color: var(--color-info, #0ea5e9);
+  font-weight: 600;
+}
+
 .workflow-graph {
   height: 360px;
   border: 1px solid var(--border);

@@ -1849,6 +1849,19 @@ export const onRunUpdated = onDocumentUpdated(
   }
 )
 
+export const scheduleQueuedRuns = onSchedule(
+  {
+    schedule: 'every 1 minutes',
+    timeZone: 'UTC',
+    timeoutSeconds: 540,
+    memory: '256MiB' as const,
+  },
+  async (_event) => {
+    const m = await import('./agents/runExecutor.js')
+    await m.promoteQueuedRuns()
+  }
+)
+
 // ==================== Slack Integration & Mailbox (Phase 2.3) ====================
 
 /**

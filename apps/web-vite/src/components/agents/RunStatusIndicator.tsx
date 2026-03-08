@@ -30,6 +30,15 @@ export function RunStatusIndicator({
 
   // Determine current status message
   const statusMessage = useMemo(() => {
+    if (run.status === 'queued') {
+      const nextRetryAtMs = run.queueInfo?.nextRetryAtMs
+      const retryLabel =
+        typeof nextRetryAtMs === 'number' && nextRetryAtMs > Date.now()
+          ? `retrying in ${Math.max(1, Math.ceil((nextRetryAtMs - Date.now()) / 60000))}m`
+          : 'retry pending'
+      return `⏳ Waiting for capacity - ${retryLabel}`
+    }
+
     // Special handling for constraint pauses
     if (run.status === 'waiting_for_input' && run.constraintPause) {
       const labels: Record<string, string> = {
@@ -135,7 +144,7 @@ export function RunStatusIndicator({
     }
   }, [run.tokensUsed, run.estimatedCost])
 
-  if (run.status !== 'running' && run.status !== 'waiting_for_input') {
+  if (run.status !== 'running' && run.status !== 'waiting_for_input' && run.status !== 'queued') {
     return null
   }
 

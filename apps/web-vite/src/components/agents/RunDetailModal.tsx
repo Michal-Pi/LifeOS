@@ -29,7 +29,11 @@ interface RunDetailModalProps {
   isOpen: boolean
   onClose: () => void
   onProvideInput?: (runId: string, nodeId: string, response: string) => Promise<void>
-  onConstraintResponse?: (runId: string, action: 'increase' | 'stop', newLimit?: number) => Promise<void>
+  onConstraintResponse?: (
+    runId: string,
+    action: 'increase' | 'stop',
+    newLimit?: number
+  ) => Promise<void>
   onStop?: (runId: string) => Promise<void>
 }
 
@@ -66,7 +70,11 @@ export function RunDetailModal({
 
   // Memoize derived values from events to avoid recomputing on every render
   const streamingOutput = useMemo(
-    () => events.filter((event) => event.type === 'token').map((event) => event.delta ?? '').join(''),
+    () =>
+      events
+        .filter((event) => event.type === 'token')
+        .map((event) => event.delta ?? '')
+        .join(''),
     [events]
   )
   const displayOutput = useMemo(() => {
@@ -82,14 +90,12 @@ export function RunDetailModal({
     () => (stepEvents.length > 0 ? stepEvents[stepEvents.length - 1] : undefined),
     [stepEvents]
   )
-  const completedSteps = useMemo(
-    () => events.filter((e) => e.type === 'step_completed'),
-    [events]
-  )
+  const completedSteps = useMemo(() => events.filter((e) => e.type === 'step_completed'), [events])
   const cumulativeCost = useMemo(
-    () => completedSteps.length > 0
-      ? Math.max(0, ...completedSteps.map((e) => (e.details?.cumulativeCost as number) ?? 0))
-      : 0,
+    () =>
+      completedSteps.length > 0
+        ? Math.max(0, ...completedSteps.map((e) => (e.details?.cumulativeCost as number) ?? 0))
+        : 0,
     [completedSteps]
   )
 
@@ -209,9 +215,13 @@ export function RunDetailModal({
             </h3>
             <div className="run-detail-meta">
               <span
-                className={`badge ${run.status === 'completed' ? 'badge-success' : run.status === 'failed' ? 'badge-error' : run.status === 'running' ? 'badge-info' : run.status === 'waiting_for_input' ? 'badge-waiting' : 'badge-warning'}`}
+                className={`badge ${run.status === 'completed' ? 'badge-success' : run.status === 'failed' ? 'badge-error' : run.status === 'queued' ? 'badge-queued' : run.status === 'running' ? 'badge-info' : run.status === 'waiting_for_input' ? 'badge-waiting' : 'badge-warning'}`}
               >
-                {run.status === 'waiting_for_input' ? 'Waiting for Input' : run.status.charAt(0).toUpperCase() + run.status.slice(1)}
+                {run.status === 'waiting_for_input'
+                  ? 'Waiting for Input'
+                  : run.status === 'queued'
+                    ? 'Queued'
+                    : run.status.charAt(0).toUpperCase() + run.status.slice(1)}
               </span>
             </div>
           </div>
@@ -290,7 +300,9 @@ export function RunDetailModal({
           {isDeepResearch && kgState && (
             <Suspense
               fallback={
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                <div
+                  style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-tertiary)' }}
+                >
                   Loading knowledge graph...
                 </div>
               }
@@ -302,7 +314,9 @@ export function RunDetailModal({
           {isDialectical && dialecticalState && (
             <Suspense
               fallback={
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                <div
+                  style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-tertiary)' }}
+                >
                   Loading dialectical visualization...
                 </div>
               }

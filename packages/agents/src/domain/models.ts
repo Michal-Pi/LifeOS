@@ -78,6 +78,7 @@ export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'xai'
 
 export type RunStatus =
   | 'pending'
+  | 'queued'
   | 'running'
   | 'completed'
   | 'failed'
@@ -427,6 +428,19 @@ export interface Run {
     unit: string // 'USD', 'visits', 'cycles', 'iterations', 'tokens', 'runs', 'runs/hour'
     partialOutput?: string // Summary of progress so far
     suggestedIncrease?: number
+  }
+
+  queueInfo?: {
+    reason:
+      | 'quota_tokens'
+      | 'quota_cost'
+      | 'quota_runs'
+      | 'rate_runs_per_hour'
+      | 'rate_tokens_per_day'
+      | 'rate_cost_per_day'
+    queuedAtMs: number
+    nextRetryAtMs: number
+    retryCount: number
   }
 
   workflowState?: WorkflowState

@@ -178,11 +178,13 @@ export type QuotaExceeded = {
   currentValue: number
   limitValue: number
   unit: string
+  resetInMs: number
 }
 
 export async function checkQuotaSoft(userId: string): Promise<QuotaExceeded | null> {
   const dailyRecord = await getQuotaRecord(userId, 'daily')
   const reset = resetExpiredPeriod(dailyRecord)
+  const resetInMs = Math.max(0, reset.periodEndMs - Date.now())
 
   if (reset.totalRuns >= reset.maxRuns) {
     return {
@@ -191,6 +193,7 @@ export async function checkQuotaSoft(userId: string): Promise<QuotaExceeded | nu
       currentValue: reset.totalRuns,
       limitValue: reset.maxRuns,
       unit: 'runs',
+      resetInMs,
     }
   }
   if (reset.totalTokens >= reset.maxTokens) {
@@ -200,6 +203,7 @@ export async function checkQuotaSoft(userId: string): Promise<QuotaExceeded | nu
       currentValue: reset.totalTokens,
       limitValue: reset.maxTokens,
       unit: 'tokens',
+      resetInMs,
     }
   }
   if (reset.totalCost >= reset.maxCost) {
@@ -209,6 +213,7 @@ export async function checkQuotaSoft(userId: string): Promise<QuotaExceeded | nu
       currentValue: reset.totalCost,
       limitValue: reset.maxCost,
       unit: 'USD',
+      resetInMs,
     }
   }
   return null

@@ -65,6 +65,7 @@ export const ModelProviderSchema = z.enum(['openai', 'anthropic', 'google', 'xai
 
 export const RunStatusSchema = z.enum([
   'pending',
+  'queued',
   'running',
   'completed',
   'failed',
@@ -350,116 +351,118 @@ export const UpdateAgentInputSchema = CreateAgentInputSchema.partial()
 
 // ----- Workflow -----
 
-export const WorkflowSchema = z.object({
-  workflowId: z.string(),
-  userId: z.string(),
-  name: z.string().min(1).max(200),
-  description: z.string().max(1000).optional(),
-  agentIds: z.array(z.string()),
-  defaultAgentId: z.string().optional(),
-  expertCouncilConfig: ExpertCouncilConfigSchema.optional(),
-  projectManagerConfig: z
-    .object({
-      enabled: z.boolean(),
-      questioningDepth: z.enum(['minimal', 'standard', 'thorough']),
-      autoUseExpertCouncil: z.boolean(),
-      expertCouncilThreshold: z.number().int().min(0).max(100),
-      qualityGateThreshold: z.number().int().min(0).max(100),
-      requireAssumptionValidation: z.boolean(),
-      enableConflictDetection: z.boolean(),
-      enableUserProfiling: z.boolean(),
-    })
-    .optional(),
-  promptConfig: z
-    .object({
-      agentPrompts: z.record(z.string(), PromptReferenceSchema).optional(),
-      toneOfVoicePrompt: PromptReferenceSchema.optional(),
-      workflowPrompts: z.record(z.string(), PromptReferenceSchema).optional(),
-      toolPrompts: z.record(z.string(), PromptReferenceSchema).optional(),
-      synthesisPrompts: z.record(z.string(), PromptReferenceSchema).optional(),
-    })
-    .optional(),
-  workflowType: WorkflowTypeSchema,
-  parallelMergeStrategy: JoinAggregationModeSchema.optional(),
-  workflowGraph: z
-    .object({
-      version: z.literal(1),
-      startNodeId: z.string(),
-      nodes: z.array(
-        z.object({
-          id: z.string(),
-          type: WorkflowNodeTypeSchema,
-          agentId: z.string().optional(),
-          toolId: z.string().optional(),
-          label: z.string().optional(),
-          outputKey: z.string().optional(),
-          aggregationMode: JoinAggregationModeSchema.optional(),
-          requestConfig: z
-            .object({
-              topic: z.string().min(1),
-              questions: z.array(z.string().min(1)),
-              priority: z.enum(['low', 'medium', 'high', 'critical']),
-              waitForCompletion: z.boolean(),
-              estimatedTime: z.string().optional(),
-              context: z.record(z.string(), z.unknown()).optional(),
-            })
-            .optional(),
-        })
-      ),
-      edges: z.array(
-        z.object({
-          from: z.string(),
-          to: z.string(),
-          condition: z.object({
-            type: WorkflowEdgeConditionTypeSchema,
-            key: z.string().optional(),
-            value: z.string().optional(),
-            prompt: z.string().optional(),
-          }),
-        })
-      ),
-      limits: z
-        .object({
-          maxNodeVisits: z.number().int().positive().optional(),
-          maxEdgeRepeats: z.number().int().positive().optional(),
-        })
-        .optional(),
-    })
-    .optional(),
-  maxIterations: z.number().int().positive().max(200).optional(),
-  memoryMessageLimit: z.number().int().positive().max(200).optional(),
-  criticality: WorkflowCriticalitySchema.optional(),
-  enableContextCompression: z.boolean().optional(),
-  earlyExitPatterns: z.array(z.string().min(1)).optional(),
-  enableQualityGates: z.boolean().optional(),
-  qualityGateThreshold: z.number().int().min(1).max(5).optional(),
-  heterogeneousModels: z.boolean().optional(),
-  adaptiveFanOut: z.boolean().optional(),
-  maxBudget: z.number().nonnegative().optional(),
-  maxTokensPerWorker: z.number().int().positive().optional(),
-  enableCheckpointing: z.boolean().optional(),
-  archived: z.boolean(),
-  createdAtMs: z.number().int().positive(),
-  updatedAtMs: z.number().int().positive(),
-  syncState: SyncStateSchema,
-  version: z.number().int().nonnegative(),
-}).refine(
-  (data) => {
-    const graph = data.workflowGraph
-    if (!graph) return true
-    const nodeIds = new Set(graph.nodes.map((n) => n.id))
-    if (!nodeIds.has(graph.startNodeId)) return false
-    // Optionally: every edge from/to must reference a node
-    for (const edge of graph.edges) {
-      if (!nodeIds.has(edge.from) || !nodeIds.has(edge.to)) return false
+export const WorkflowSchema = z
+  .object({
+    workflowId: z.string(),
+    userId: z.string(),
+    name: z.string().min(1).max(200),
+    description: z.string().max(1000).optional(),
+    agentIds: z.array(z.string()),
+    defaultAgentId: z.string().optional(),
+    expertCouncilConfig: ExpertCouncilConfigSchema.optional(),
+    projectManagerConfig: z
+      .object({
+        enabled: z.boolean(),
+        questioningDepth: z.enum(['minimal', 'standard', 'thorough']),
+        autoUseExpertCouncil: z.boolean(),
+        expertCouncilThreshold: z.number().int().min(0).max(100),
+        qualityGateThreshold: z.number().int().min(0).max(100),
+        requireAssumptionValidation: z.boolean(),
+        enableConflictDetection: z.boolean(),
+        enableUserProfiling: z.boolean(),
+      })
+      .optional(),
+    promptConfig: z
+      .object({
+        agentPrompts: z.record(z.string(), PromptReferenceSchema).optional(),
+        toneOfVoicePrompt: PromptReferenceSchema.optional(),
+        workflowPrompts: z.record(z.string(), PromptReferenceSchema).optional(),
+        toolPrompts: z.record(z.string(), PromptReferenceSchema).optional(),
+        synthesisPrompts: z.record(z.string(), PromptReferenceSchema).optional(),
+      })
+      .optional(),
+    workflowType: WorkflowTypeSchema,
+    parallelMergeStrategy: JoinAggregationModeSchema.optional(),
+    workflowGraph: z
+      .object({
+        version: z.literal(1),
+        startNodeId: z.string(),
+        nodes: z.array(
+          z.object({
+            id: z.string(),
+            type: WorkflowNodeTypeSchema,
+            agentId: z.string().optional(),
+            toolId: z.string().optional(),
+            label: z.string().optional(),
+            outputKey: z.string().optional(),
+            aggregationMode: JoinAggregationModeSchema.optional(),
+            requestConfig: z
+              .object({
+                topic: z.string().min(1),
+                questions: z.array(z.string().min(1)),
+                priority: z.enum(['low', 'medium', 'high', 'critical']),
+                waitForCompletion: z.boolean(),
+                estimatedTime: z.string().optional(),
+                context: z.record(z.string(), z.unknown()).optional(),
+              })
+              .optional(),
+          })
+        ),
+        edges: z.array(
+          z.object({
+            from: z.string(),
+            to: z.string(),
+            condition: z.object({
+              type: WorkflowEdgeConditionTypeSchema,
+              key: z.string().optional(),
+              value: z.string().optional(),
+              prompt: z.string().optional(),
+            }),
+          })
+        ),
+        limits: z
+          .object({
+            maxNodeVisits: z.number().int().positive().optional(),
+            maxEdgeRepeats: z.number().int().positive().optional(),
+          })
+          .optional(),
+      })
+      .optional(),
+    maxIterations: z.number().int().positive().max(200).optional(),
+    memoryMessageLimit: z.number().int().positive().max(200).optional(),
+    criticality: WorkflowCriticalitySchema.optional(),
+    enableContextCompression: z.boolean().optional(),
+    earlyExitPatterns: z.array(z.string().min(1)).optional(),
+    enableQualityGates: z.boolean().optional(),
+    qualityGateThreshold: z.number().int().min(1).max(5).optional(),
+    heterogeneousModels: z.boolean().optional(),
+    adaptiveFanOut: z.boolean().optional(),
+    maxBudget: z.number().nonnegative().optional(),
+    maxTokensPerWorker: z.number().int().positive().optional(),
+    enableCheckpointing: z.boolean().optional(),
+    archived: z.boolean(),
+    createdAtMs: z.number().int().positive(),
+    updatedAtMs: z.number().int().positive(),
+    syncState: SyncStateSchema,
+    version: z.number().int().nonnegative(),
+  })
+  .refine(
+    (data) => {
+      const graph = data.workflowGraph
+      if (!graph) return true
+      const nodeIds = new Set(graph.nodes.map((n) => n.id))
+      if (!nodeIds.has(graph.startNodeId)) return false
+      // Optionally: every edge from/to must reference a node
+      for (const edge of graph.edges) {
+        if (!nodeIds.has(edge.from) || !nodeIds.has(edge.to)) return false
+      }
+      return true
+    },
+    {
+      message:
+        'workflowGraph.startNodeId must be one of the node ids, and every edge from/to must reference a node id',
     }
-    return true
-  },
-  {
-    message:
-      'workflowGraph.startNodeId must be one of the node ids, and every edge from/to must reference a node id',
-  }
-)
+  )
 
 export const AgentTemplateSchema = z.object({
   templateId: z.string(),
@@ -574,6 +577,21 @@ export const RunSchema = z.object({
       unit: z.string(),
       partialOutput: z.string().optional(),
       suggestedIncrease: z.number().optional(),
+    })
+    .optional(),
+  queueInfo: z
+    .object({
+      reason: z.enum([
+        'quota_tokens',
+        'quota_cost',
+        'quota_runs',
+        'rate_runs_per_hour',
+        'rate_tokens_per_day',
+        'rate_cost_per_day',
+      ]),
+      queuedAtMs: z.number().int().positive(),
+      nextRetryAtMs: z.number().int().positive(),
+      retryCount: z.number().int().nonnegative(),
     })
     .optional(),
   workflowState: z

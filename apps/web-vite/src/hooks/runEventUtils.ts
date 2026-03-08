@@ -13,6 +13,7 @@ type VisualizationStatus = 'running' | 'completed' | 'failed' | 'paused'
  */
 export function mapStatus(runStatus: RunStatus): VisualizationStatus {
   switch (runStatus) {
+    case 'queued':
     case 'running':
       return 'running'
     case 'completed':

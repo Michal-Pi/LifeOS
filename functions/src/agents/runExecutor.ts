@@ -16,7 +16,7 @@ import type {
   WorkflowId,
   WorkflowState,
 } from '@lifeos/agents'
-import { getFirestore } from 'firebase-admin/firestore'
+import { FieldValue, getFirestore } from 'firebase-admin/firestore'
 import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore'
 
 import { createLogger } from '../lib/logger.js'
@@ -55,7 +55,9 @@ type MemorySettings = {
   memoryMessageLimit?: number
 }
 
-function extractOracleResumeState(workflowState: Run['workflowState']): Record<string, unknown> | undefined {
+function extractOracleResumeState(
+  workflowState: Run['workflowState']
+): Record<string, unknown> | undefined {
   if (!workflowState || typeof workflowState !== 'object') return undefined
 
   const stateRecord = workflowState as Record<string, unknown>
@@ -80,6 +82,127 @@ function extractOracleResumeState(workflowState: Run['workflowState']): Record<s
 const FUNCTION_CONFIG = {
   timeoutSeconds: 1800,
   memory: '1GiB' as const,
+}
+
+const MIN_QUEUE_RETRY_MS = 60 * 1000
+const MAX_QUEUE_RETRY_MS = 15 * 60 * 1000
+const QUEUED_RUN_BATCH_SIZE = 25
+
+function computeQueueRetryDelayMs(resetInMs?: number): number {
+  if (typeof resetInMs !== 'number' || Number.isNaN(resetInMs)) {
+    return MIN_QUEUE_RETRY_MS
+  }
+
+  return Math.min(MAX_QUEUE_RETRY_MS, Math.max(MIN_QUEUE_RETRY_MS, resetInMs))
+}
+
+async function queueRunForCapacity(params: {
+  run: Run
+  runRef: FirebaseFirestore.DocumentReference
+  eventWriter: ReturnType<typeof createRunEventWriter>
+  workflowId: string
+  reason:
+    | 'quota_tokens'
+    | 'quota_cost'
+    | 'quota_runs'
+    | 'rate_runs_per_hour'
+    | 'rate_tokens_per_day'
+    | 'rate_cost_per_day'
+  currentValue: number
+  limitValue: number
+  unit: string
+  resetInMs?: number
+}): Promise<void> {
+  const {
+    run,
+    runRef,
+    eventWriter,
+    workflowId,
+    reason,
+    currentValue,
+    limitValue,
+    unit,
+    resetInMs,
+  } = params
+  const now = Date.now()
+  const retryCount = (run.queueInfo?.retryCount ?? 0) + 1
+  const nextRetryAtMs = now + computeQueueRetryDelayMs(resetInMs)
+
+  await runRef.update({
+    status: 'queued',
+    pendingInput: null,
+    queueInfo: {
+      reason,
+      queuedAtMs: now,
+      nextRetryAtMs,
+      retryCount,
+    },
+    constraintPause: {
+      constraintType: reason,
+      currentValue,
+      limitValue,
+      unit,
+    },
+    completedAtMs: FieldValue.delete(),
+    error: FieldValue.delete(),
+    errorCategory: FieldValue.delete(),
+    errorDetails: FieldValue.delete(),
+    quotaExceeded: FieldValue.delete(),
+  })
+
+  await eventWriter.writeEvent({
+    type: 'status',
+    workflowId,
+    status: 'queued',
+    details: {
+      reason,
+      currentValue,
+      limitValue,
+      unit,
+      retryCount,
+      nextRetryAtMs,
+    },
+  })
+}
+
+export async function promoteQueuedRuns(
+  limitCount: number = QUEUED_RUN_BATCH_SIZE
+): Promise<number> {
+  const db = getFirestore()
+  const now = Date.now()
+  const snapshot = await db
+    .collectionGroup('runs')
+    .where('status', '==', 'queued')
+    .where('queueInfo.nextRetryAtMs', '<=', now)
+    .limit(limitCount)
+    .get()
+
+  let promoted = 0
+
+  for (const doc of snapshot.docs) {
+    await db.runTransaction(async (txn) => {
+      const fresh = await txn.get(doc.ref)
+      if (!fresh.exists) return
+
+      const run = fresh.data() as Run
+      if (run.status !== 'queued') return
+      if (run.queueInfo?.nextRetryAtMs && run.queueInfo.nextRetryAtMs > Date.now()) return
+
+      txn.update(doc.ref, {
+        status: 'pending',
+        queueInfo: FieldValue.delete(),
+        constraintPause: FieldValue.delete(),
+        pendingInput: null,
+      })
+      promoted += 1
+    })
+  }
+
+  if (promoted > 0) {
+    log.info(`Promoted ${promoted} queued runs back to pending`)
+  }
+
+  return promoted
 }
 
 /**
@@ -150,7 +273,7 @@ export const onRunUpdated = onDocumentUpdated(
     const after = snapshot.after.data() as Run
     const { userId, workflowId, runId } = event.params
 
-    const resumableStatuses = new Set<Run['status']>(['waiting_for_input', 'paused'])
+    const resumableStatuses = new Set<Run['status']>(['waiting_for_input', 'paused', 'queued'])
     if (!resumableStatuses.has(before.status) || after.status !== 'pending') {
       return
     }
@@ -193,40 +316,36 @@ async function executeRun(params: {
     log.info(`Checking rate limits for user ${userId}`)
     const rateExceeded = await checkRunRateLimitSoft(userId)
     if (rateExceeded) {
-      log.info(`Rate limit exceeded for user ${userId}, pausing run ${runId}`, rateExceeded)
-      await runRef.update({
-        status: 'waiting_for_input',
-        constraintPause: {
-          constraintType: rateExceeded.limitType,
-          currentValue: rateExceeded.currentValue,
-          limitValue: rateExceeded.limitValue,
-          unit: rateExceeded.unit,
-          partialOutput: 'Run has not started yet — rate limit was reached before execution.',
-          suggestedIncrease: Math.ceil(rateExceeded.limitValue * 1.5),
-        },
+      log.info(`Rate limit exceeded for user ${userId}, queueing run ${runId}`, rateExceeded)
+      await queueRunForCapacity({
+        run,
+        runRef,
+        eventWriter,
+        workflowId,
+        reason: rateExceeded.limitType,
+        currentValue: rateExceeded.currentValue,
+        limitValue: rateExceeded.limitValue,
+        unit: rateExceeded.unit,
+        resetInMs: rateExceeded.resetInMs,
       })
-      await eventWriter.writeEvent({ type: 'status', workflowId, status: 'waiting_for_input' })
       return
     }
 
     log.info(`Checking quota for user ${userId}`)
     const quotaExceeded = await checkQuotaSoft(userId)
     if (quotaExceeded) {
-      log.info(`Quota exceeded for user ${userId}, pausing run ${runId}`, quotaExceeded)
-      await runRef.update({
-        status: 'waiting_for_input',
-        constraintPause: {
-          constraintType: quotaExceeded.quotaType,
-          currentValue: quotaExceeded.currentValue,
-          limitValue: quotaExceeded.limitValue,
-          unit: quotaExceeded.unit,
-          partialOutput: 'Run has not started yet — daily quota was reached before execution.',
-          suggestedIncrease: quotaExceeded.unit === 'USD'
-            ? quotaExceeded.limitValue * 2
-            : Math.ceil(quotaExceeded.limitValue * 1.5),
-        },
+      log.info(`Quota exceeded for user ${userId}, queueing run ${runId}`, quotaExceeded)
+      await queueRunForCapacity({
+        run,
+        runRef,
+        eventWriter,
+        workflowId,
+        reason: quotaExceeded.quotaType,
+        currentValue: quotaExceeded.currentValue,
+        limitValue: quotaExceeded.limitValue,
+        unit: quotaExceeded.unit,
+        resetInMs: quotaExceeded.resetInMs,
       })
-      await eventWriter.writeEvent({ type: 'status', workflowId, status: 'waiting_for_input' })
       return
     }
 
@@ -238,7 +357,9 @@ async function executeRun(params: {
       const currentStatus = snap.data()?.status
       if (currentStatus !== 'pending') {
         // Another instance already claimed this run — not an error, just a race.
-        log.info(`Run ${runId} already claimed by another instance (status: ${currentStatus}), yielding`)
+        log.info(
+          `Run ${runId} already claimed by another instance (status: ${currentStatus}), yielding`
+        )
         claimedByUs = false
         return
       }
@@ -308,9 +429,8 @@ async function executeRun(params: {
           })
         : ''
 
-    const oracleResumeState = workflow.workflowType === 'oracle'
-      ? extractOracleResumeState(run.workflowState)
-      : undefined
+    const oracleResumeState =
+      workflow.workflowType === 'oracle' ? extractOracleResumeState(run.workflowState) : undefined
 
     const runContext =
       run.context && typeof run.context === 'object'

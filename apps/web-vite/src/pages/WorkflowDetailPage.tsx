@@ -275,6 +275,7 @@ export function WorkflowDetailPage() {
     () => [
       { value: 'all', label: 'All' },
       { value: 'pending', label: 'Pending' },
+      { value: 'queued', label: 'Queued' },
       { value: 'running', label: 'Running' },
       { value: 'completed', label: 'Completed' },
       { value: 'failed', label: 'Failed' },

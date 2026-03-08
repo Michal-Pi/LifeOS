@@ -46,7 +46,11 @@ interface RunCardProps {
   onDelete: (runId: string) => void
   onResume?: (runId: string) => void
   onProvideInput?: (runId: string, nodeId: string, response: string) => Promise<void>
-  onConstraintResponse?: (runId: string, action: 'increase' | 'stop', newLimit?: number) => Promise<void>
+  onConstraintResponse?: (
+    runId: string,
+    action: 'increase' | 'stop',
+    newLimit?: number
+  ) => Promise<void>
   onRunAgain?: (runId: string) => void
   onContinue?: (runId: string) => void
   onStop?: (runId: string) => Promise<void>
@@ -95,14 +99,15 @@ export function RunCard({
   // Load events when: running (for live state), expanded, or workflowState.dialectical is missing (event-based fallback)
   const hasPersistedDialectical = isDialectical && !!run.workflowState?.dialectical
   const shouldLoadDialecticalEvents =
-    isDialectical && (run.status === 'running' || run.status === 'waiting_for_input' || dialecticalExpanded || !hasPersistedDialectical)
+    isDialectical &&
+    (run.status === 'running' ||
+      run.status === 'waiting_for_input' ||
+      dialecticalExpanded ||
+      !hasPersistedDialectical)
   const { events: dialecticalEvents } = useRunEvents(
     shouldLoadDialecticalEvents ? (run.runId as import('@lifeos/agents').RunId) : null
   )
-  const dialecticalState = useDialecticalState(
-    isDialectical ? run : null,
-    dialecticalEvents
-  )
+  const dialecticalState = useDialecticalState(isDialectical ? run : null, dialecticalEvents)
 
   // Only fetch when running or when explicitly expanded
   const shouldLoadToolCalls = run.status === 'running' || workflowExpanded
@@ -215,6 +220,8 @@ export function RunCard({
         return 'badge badge-success'
       case 'failed':
         return 'badge badge-error'
+      case 'queued':
+        return 'badge badge-queued'
       case 'running':
         return 'badge badge-info'
       case 'paused':
@@ -232,6 +239,8 @@ export function RunCard({
         return 'Completed'
       case 'failed':
         return 'Failed'
+      case 'queued':
+        return 'Queued'
       case 'running':
         return 'Running'
       case 'paused':
@@ -286,6 +295,16 @@ export function RunCard({
         <strong>Progress:</strong> Step {run.currentStep}
         {run.totalSteps && ` of ${run.totalSteps}`}
       </div>
+
+      {run.status === 'queued' && run.queueInfo && (
+        <div className="run-output">
+          <strong>Queue Status:</strong>
+          <p>
+            Waiting for shared capacity. Retry #{run.queueInfo.retryCount} at{' '}
+            {new Date(run.queueInfo.nextRetryAtMs).toLocaleTimeString()}.
+          </p>
+        </div>
+      )}
 
       {deepResearch && (
         <div className="run-output">
@@ -538,7 +557,11 @@ export function RunCard({
         <Button variant="ghost" size="sm" onClick={() => setShowDetailModal(true)}>
           {run.status === 'waiting_for_input' && run.pendingInput ? (
             <>
-              <span className="live-dot" style={{ backgroundColor: 'var(--color-warning, #f59e0b)' }} /> Respond to Agent
+              <span
+                className="live-dot"
+                style={{ backgroundColor: 'var(--color-warning, #f59e0b)' }}
+              />{' '}
+              Respond to Agent
             </>
           ) : isRunning ? (
             <>
