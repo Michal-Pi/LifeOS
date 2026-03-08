@@ -68,6 +68,7 @@
   flex-shrink: 0;
 }
 
+
 @media (max-width: 768px) {
   .mailbox-stats-bar {
     margin: var(--space-2) var(--space-3);

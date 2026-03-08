@@ -31,6 +31,8 @@ import { MailboxOutboxDetail } from '@/components/mailbox/MailboxOutboxDetail'
 import { MailboxStatsBar } from '@/components/mailbox/MailboxStatsBar'
 import type { MailboxFilter, MailboxFolder } from '@/components/mailbox/MailboxStatsBar'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { useGmailLabels } from '@/hooks/useGmailLabels'
+import { useGmailLabelMessages } from '@/hooks/useGmailLabelMessages'
 import type { PrioritizedMessage, DraftMessage, ContactId } from '@lifeos/agents'
 import type { MailboxSendOp } from '@/outbox/mailboxOutbox'
 import '@/styles/pages/MailboxPage.css'
@@ -61,11 +63,27 @@ export function MailboxPage() {
     markAsRead,
     dismissMessage,
     overrideTriageCategory,
+    labelMessage,
+    archiveMessage,
   } = useMessageMailbox({ maxMessages: 100, autoSync: true })
+
+  const { labels: gmailLabels } = useGmailLabels()
+  const {
+    messages: labelMessages,
+    loading: labelMessagesLoading,
+    fetchByLabel,
+  } = useGmailLabelMessages()
 
   const { drafts, loading: draftsLoading, deleteDraft } = useMailboxDrafts()
   useMailboxOutbox() // Start outbox worker so replies sent from this page are drained
   const { items: outboxItems, loading: outboxLoading, retry: retryOutbox } = useMailboxOutboxList()
+
+  // ---- Fetch label messages when label filter is active ----
+  useEffect(() => {
+    if (activeFilter.type === 'label') {
+      void fetchByLabel(activeFilter.labelName)
+    }
+  }, [activeFilter, fetchByLabel])
 
   // ---- Inbox filtering ----
   const filteredMessages = useMemo(() => {
@@ -84,11 +102,39 @@ export function MailboxPage() {
         return messages.filter((m) => !m.isRead)
       case 'channel':
         return messages.filter((m) => m.source === activeFilter.source)
+      case 'label':
+        // When browsing by label, adapt label messages to PrioritizedMessage shape.
+        // These defaults are intentional: label-browsed messages haven't been
+        // through AI triage, so we use neutral values until analysis runs.
+        return labelMessages.map((m) => {
+          const receivedAtMs = new Date(m.date).getTime()
+          return {
+            messageId: m.messageId as PrioritizedMessage['messageId'],
+            userId,
+            source: 'gmail' as const,
+            accountId: '', // Label messages don't carry accountId
+            originalMessageId: m.messageId,
+            sender: m.from,
+            senderEmail: m.from,
+            subject: m.subject,
+            snippet: m.snippet,
+            receivedAtMs,
+            priority: 'medium' as const, // Neutral — not yet triaged
+            aiSummary: m.snippet,
+            requiresFollowUp: false,
+            isRead: true,
+            isDismissed: false,
+            gmailLabelIds: m.labelIds,
+            createdAtMs: receivedAtMs,
+            updatedAtMs: receivedAtMs,
+            importanceScore: 50, // Neutral — not yet scored
+          } satisfies PrioritizedMessage
+        })
       case 'all':
       default:
         return messages
     }
-  }, [messages, activeFilter])
+  }, [messages, activeFilter, labelMessages, userId])
 
   // Keep selected message in sync with the latest data, auto-selecting
   // the first conversation when none is explicitly selected (inbox only).
@@ -257,7 +303,7 @@ export function MailboxPage() {
         return (
           <MailboxMessageList
             messages={filteredMessages}
-            loading={loading}
+            loading={activeFilter.type === 'label' ? labelMessagesLoading : loading}
             error={error}
             selectedMessageId={selectedMessage?.messageId}
             onSelectMessage={handleSelectMessage}
@@ -366,6 +412,9 @@ export function MailboxPage() {
               onEditContact={(contactId) => {
                 navigate(`/contacts/${contactId}`)
               }}
+              gmailLabels={gmailLabels}
+              onLabelMessage={labelMessage}
+              onArchiveMessage={archiveMessage}
             />
           )
         }
@@ -390,6 +439,7 @@ export function MailboxPage() {
         onCompose={handleCompose}
         onSync={() => void syncMailbox()}
         isSyncing={syncStatus.isSyncing}
+        gmailLabels={gmailLabels}
       />
 
       <div className="mailbox-page__content">

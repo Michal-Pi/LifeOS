@@ -670,7 +670,7 @@ export const mailboxDismiss = onRequest(
     secrets: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT_URI'],
   },
   async (request, response) => {
-    const { uid, messageId, labelName } = request.body ?? {}
+    const { uid, messageId } = request.body ?? {}
 
     if (!uid || !messageId) {
       response.status(400).json({ error: 'Missing uid or messageId' })
@@ -694,15 +694,10 @@ export const mailboxDismiss = onRequest(
         return
       }
 
-      // Always archive Gmail messages (remove INBOX label, optionally add custom label)
+      // Always archive Gmail messages (remove INBOX label only — labeling is a separate action)
       if (msgData?.source === 'gmail' && msgData.accountId && msgData.originalMessageId) {
         const { archiveGmailMessage } = await import('../channels/gmailAdapter.js')
-        await archiveGmailMessage(
-          uid,
-          msgData.accountId,
-          msgData.originalMessageId,
-          labelName || undefined
-        )
+        await archiveGmailMessage(uid, msgData.accountId, msgData.originalMessageId)
       }
 
       await msgRef.update({
@@ -719,6 +714,177 @@ export const mailboxDismiss = onRequest(
 
       response.json({ success: true })
     } catch (err) {
+      response.status(500).json({ error: (err as Error).message })
+    }
+  }
+)
+
+/**
+ * Fetch Gmail labels for the user's connected account.
+ * GET /mailboxGetLabels?uid=<uid>
+ * Returns: { labels: Array<{ id: string; name: string }> }
+ */
+export const mailboxGetLabels = onRequest(
+  {
+    ...FUNCTION_CONFIG.http,
+    cors: true,
+    secrets: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT_URI'],
+  },
+  async (request, response) => {
+    const uid = ((request.query.uid ?? request.body?.uid) as string) || ''
+
+    if (!uid) {
+      response.status(400).json({ error: 'Missing uid' })
+      return
+    }
+
+    if (!(await verifyAuth(request, response, uid))) return
+
+    try {
+      const { getGmailConnections, getGmailLabelsForUser } = await import(
+        '../channels/gmailAdapter.js'
+      )
+      const connections = await getGmailConnections(uid)
+      if (connections.length === 0) {
+        response.json({ labels: [] })
+        return
+      }
+      const labels = await getGmailLabelsForUser(uid, connections[0].accountId)
+      response.json({ labels })
+    } catch (err) {
+      log.error('mailboxGetLabels error', err)
+      response.status(500).json({ error: (err as Error).message })
+    }
+  }
+)
+
+/**
+ * Apply or remove Gmail labels on a message (without archiving).
+ * POST /mailboxLabelMessage
+ * Body: { uid, messageId, addLabels?: string[], removeLabels?: string[] }
+ *   - addLabels/removeLabels are label NAMES (not IDs), resolved server-side
+ */
+export const mailboxLabelMessage = onRequest(
+  {
+    ...FUNCTION_CONFIG.http,
+    cors: true,
+    secrets: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT_URI'],
+  },
+  async (request, response) => {
+    const { uid, messageId, addLabels, removeLabels } = request.body ?? {}
+
+    if (!uid || !messageId) {
+      response.status(400).json({ error: 'Missing uid or messageId' })
+      return
+    }
+
+    if (!(await verifyAuth(request, response, uid))) return
+
+    try {
+      const msgRef = prioritizedMessageRef(uid, messageId)
+      const msgDoc = await msgRef.get()
+      const msgData = msgDoc.data() as
+        | { source?: string; accountId?: string; originalMessageId?: string }
+        | undefined
+
+      if (!msgDoc.exists || msgData?.source !== 'gmail') {
+        response.status(400).json({ error: 'Message not found or not a Gmail message' })
+        return
+      }
+
+      const { getOrCreateGmailLabel, modifyGmailMessage, listGmailLabels } = await import(
+        '../google/gmailApi.js'
+      )
+      const accountId = msgData.accountId!
+      const rawMessageId = msgData.originalMessageId!.startsWith('gmail_')
+        ? msgData.originalMessageId!.slice(6)
+        : msgData.originalMessageId!
+
+      const addLabelIds: string[] = []
+      if (addLabels && Array.isArray(addLabels)) {
+        for (const name of addLabels as string[]) {
+          const labelId = await getOrCreateGmailLabel(uid, accountId, name)
+          addLabelIds.push(labelId)
+        }
+      }
+
+      const removeLabelIds: string[] = []
+      if (removeLabels && Array.isArray(removeLabels)) {
+        const allLabels = await listGmailLabels(uid, accountId)
+        for (const name of removeLabels as string[]) {
+          const label = allLabels.find((l) => l.name === name)
+          if (label) removeLabelIds.push(label.id)
+        }
+      }
+
+      if (addLabelIds.length > 0 || removeLabelIds.length > 0) {
+        await modifyGmailMessage(uid, accountId, rawMessageId, addLabelIds, removeLabelIds)
+      }
+
+      // Build the updated gmailLabelIds from what we know
+      const currentMsg = await msgRef.get()
+      const currentData = currentMsg.data() as { gmailLabelIds?: string[] } | undefined
+      const currentIds = new Set(currentData?.gmailLabelIds ?? [])
+      for (const id of addLabelIds) currentIds.add(id)
+      for (const id of removeLabelIds) currentIds.delete(id)
+      const updatedLabelIds = Array.from(currentIds)
+
+      await msgRef.update({
+        gmailLabelIds: updatedLabelIds,
+        updatedAtMs: Date.now(),
+      })
+
+      response.json({ success: true, labelIds: updatedLabelIds })
+    } catch (err) {
+      log.error('mailboxLabelMessage error', err)
+      response.status(500).json({ error: (err as Error).message })
+    }
+  }
+)
+
+/**
+ * Fetch Gmail messages by label.
+ * POST /mailboxFetchByLabel
+ * Body: { uid, labelName: string, maxResults?: number }
+ * Returns: { messages: GmailMessageMeta[] }
+ */
+export const mailboxFetchByLabel = onRequest(
+  {
+    ...FUNCTION_CONFIG.http,
+    cors: true,
+    secrets: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REDIRECT_URI'],
+  },
+  async (request, response) => {
+    const { uid, labelName, maxResults } = request.body ?? {}
+
+    if (!uid || !labelName) {
+      response.status(400).json({ error: 'Missing uid or labelName' })
+      return
+    }
+
+    if (!(await verifyAuth(request, response, uid))) return
+
+    try {
+      const { getGmailConnections } = await import('../channels/gmailAdapter.js')
+      const { listGmailMessages } = await import('../google/gmailApi.js')
+
+      const connections = await getGmailConnections(uid)
+      if (connections.length === 0) {
+        response.json({ messages: [] })
+        return
+      }
+
+      const gmailQuery = `label:${(labelName as string).replace(/ /g, '-')}`
+      const messages = await listGmailMessages(
+        uid,
+        connections[0].accountId,
+        gmailQuery,
+        (maxResults as number) ?? 30
+      )
+
+      response.json({ messages })
+    } catch (err) {
+      log.error('mailboxFetchByLabel error', err)
       response.status(500).json({ error: (err as Error).message })
     }
   }

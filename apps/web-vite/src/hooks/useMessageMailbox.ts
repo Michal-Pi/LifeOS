@@ -77,6 +77,10 @@ interface UseMessageMailboxResult {
   ) => Promise<void>
   refreshMessages: () => Promise<void>
   overrideTriageCategory: (messageId: string, category: TriageCategory) => Promise<void>
+  /** Apply labels to a Gmail message (without archiving) */
+  labelMessage: (messageId: string, addLabels?: string[], removeLabels?: string[]) => Promise<void>
+  /** Archive a message (remove from inbox, no label change) */
+  archiveMessage: (messageId: string) => Promise<void>
 }
 
 export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMessageMailboxResult {
@@ -403,6 +407,44 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
     [messages]
   )
 
+  // Apply labels to a Gmail message (without archiving)
+  const labelMessage = useCallback(
+    async (messageId: string, addLabels?: string[], removeLabels?: string[]) => {
+      if (!user?.uid) {
+        throw new Error('User not authenticated')
+      }
+
+      try {
+        const idToken = await user.getIdToken()
+        const response = await fetch(`${import.meta.env.VITE_FUNCTIONS_URL}/mailboxLabelMessage`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ uid: user.uid, messageId, addLabels, removeLabels }),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to label message')
+        }
+      } catch (err) {
+        console.error('Error labeling message:', err)
+        throw err
+      }
+    },
+    [user]
+  )
+
+  // Archive a message (remove from inbox, no label change)
+  const archiveMessage = useCallback(
+    async (messageId: string) => {
+      await dismissMessage(messageId, { archive: true })
+    },
+    [dismissMessage]
+  )
+
   // Override triage category for a message
   const overrideTriageCategory = useCallback(
     async (messageId: string, category: TriageCategory) => {
@@ -436,5 +478,7 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
     dismissMessage,
     refreshMessages,
     overrideTriageCategory,
+    labelMessage,
+    archiveMessage,
   }
 }

@@ -150,6 +150,7 @@ export const gmailAdapter = {
           originalUrl: `https://mail.google.com/mail/u/0/#inbox/${meta.messageId}`,
           toRecipients: meta.to ? parseEmailList(meta.to) : undefined,
           ccRecipients: meta.cc ? parseEmailList(meta.cc) : undefined,
+          gmailLabelIds: meta.labelIds,
         })
       }
     } catch (err) {

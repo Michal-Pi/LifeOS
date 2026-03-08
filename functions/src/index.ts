@@ -1868,6 +1868,9 @@ export {
   mailboxMessages,
   mailboxMarkRead,
   mailboxDismiss,
+  mailboxGetLabels,
+  mailboxLabelMessage,
+  mailboxFetchByLabel,
   fetchMessageBody,
 } from './slack/slackEndpoints.js'
 

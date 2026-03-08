@@ -14,6 +14,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { toast } from 'sonner'
 import { formatDistanceToNow, format } from 'date-fns'
 import { EditorContent } from '@tiptap/react'
 import type { JSONContent } from '@tiptap/core'
@@ -49,6 +50,9 @@ interface MailboxMessageDetailProps {
   onCreateEvent?: (data: { title: string; description?: string }) => void
   onSetFollowUp?: (contactId: string, dueDate?: string) => void
   onEditContact?: (contactId: string, details?: string) => void
+  gmailLabels?: Array<{ id: string; name: string }>
+  onLabelMessage?: (messageId: string, addLabels?: string[], removeLabels?: string[]) => Promise<void>
+  onArchiveMessage?: (messageId: string) => Promise<void>
 }
 
 const SOURCE_LABELS: Record<MessageSource, string> = {
@@ -91,6 +95,9 @@ export function MailboxMessageDetail({
   onCreateEvent,
   onSetFollowUp,
   onEditContact,
+  gmailLabels,
+  onLabelMessage,
+  onArchiveMessage,
 }: MailboxMessageDetailProps) {
   const timeAgo = formatDistanceToNow(new Date(message.receivedAtMs), { addSuffix: true })
   const fullDate = format(new Date(message.receivedAtMs), 'PPpp')
@@ -257,6 +264,50 @@ export function MailboxMessageDetail({
       onReplySent?.(message.messageId)
     }
   }, [composer, clearContent, onReplySent, message.messageId])
+
+  // ---- Label picker ----
+  const [labelPickerOpen, setLabelPickerOpen] = useState(false)
+  const [appliedLabels, setAppliedLabels] = useState<Set<string>>(
+    () => new Set(message.gmailLabelIds ?? [])
+  )
+  const [labelBusy, setLabelBusy] = useState(false)
+
+  // Reset label state when the selected message changes
+  useEffect(() => {
+    setAppliedLabels(new Set(message.gmailLabelIds ?? []))
+    setLabelPickerOpen(false)
+  }, [message.messageId, message.gmailLabelIds])
+
+  const handleToggleLabel = useCallback(
+    async (label: { id: string; name: string }) => {
+      if (!onLabelMessage || labelBusy) return
+      if (!message.accountId) {
+        toast.error('Sync this message to your inbox before modifying labels')
+        return
+      }
+      const isApplied = appliedLabels.has(label.id)
+
+      setLabelBusy(true)
+      try {
+        if (isApplied) {
+          await onLabelMessage(message.messageId, undefined, [label.name])
+          setAppliedLabels((prev) => {
+            const next = new Set(prev)
+            next.delete(label.id)
+            return next
+          })
+        } else {
+          await onLabelMessage(message.messageId, [label.name], undefined)
+          setAppliedLabels((prev) => new Set(prev).add(label.id))
+        }
+      } catch (err) {
+        console.error('Failed to toggle label:', err)
+      } finally {
+        setLabelBusy(false)
+      }
+    },
+    [onLabelMessage, appliedLabels, message.messageId, message.accountId, labelBusy]
+  )
 
   const triageCategory = message.triageCategoryOverride || message.triageCategory
 
@@ -596,10 +647,53 @@ export function MailboxMessageDetail({
         >
           {extracting ? 'Extracting...' : 'Extract Actions'}
         </button>
+        {/* Label picker dropdown (Gmail only) */}
+        {message.source === 'gmail' && gmailLabels && onLabelMessage && (
+          <div className="mailbox-detail__label-picker-wrapper">
+            <button
+              type="button"
+              className="ghost-button small"
+              onClick={() => setLabelPickerOpen(!labelPickerOpen)}
+            >
+              Label
+            </button>
+            {labelPickerOpen && (
+              <div className="mailbox-detail__label-dropdown">
+                {gmailLabels.map((label) => (
+                  <button
+                    key={label.id}
+                    type="button"
+                    className={`mailbox-detail__label-option ${appliedLabels.has(label.id) ? 'mailbox-detail__label-option--active' : ''}`}
+                    onClick={() => void handleToggleLabel(label)}
+                    disabled={labelBusy}
+                  >
+                    <span className="mailbox-detail__label-check">
+                      {appliedLabels.has(label.id) ? '\u2713' : ''}
+                    </span>
+                    {label.name}
+                  </button>
+                ))}
+                {gmailLabels.length === 0 && (
+                  <span className="mailbox-detail__label-empty">No labels</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         <button
           type="button"
           className="ghost-button small"
-          onClick={() => void onDismiss(message.messageId)}
+          onClick={() => {
+            if (!message.accountId) {
+              toast.error('Sync this message to your inbox before archiving')
+              return
+            }
+            if (onArchiveMessage) {
+              void onArchiveMessage(message.messageId)
+            } else {
+              void onDismiss(message.messageId)
+            }
+          }}
         >
           Archive
         </button>

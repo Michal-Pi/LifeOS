@@ -103,6 +103,8 @@ export interface PrioritizedMessage {
   toRecipients?: string[]
   /** Original CC recipients (for Reply All) */
   ccRecipients?: string[]
+  /** Gmail label IDs currently applied to this message */
+  gmailLabelIds?: string[]
   createdAtMs: number
   updatedAtMs: number
 }

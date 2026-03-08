@@ -58,6 +58,8 @@ export interface PrioritizedMessage {
   toRecipients?: string[]
   /** Original CC recipients (for Reply All) */
   ccRecipients?: string[]
+  /** Gmail label IDs (Gmail only) */
+  gmailLabelIds?: string[]
 }
 
 /**
@@ -77,50 +79,55 @@ export interface RawMessage {
   toRecipients?: string[]
   /** CC recipients (email channels, for Reply All) */
   ccRecipients?: string[]
+  /** Gmail label IDs (Gmail only) */
+  gmailLabelIds?: string[]
 }
 
 // ----- Shared Prompts -----
 
-const SYSTEM_PROMPT = `You are an AI assistant that analyzes messages from multiple channels to help a busy professional prioritize their unified inbox.
+const SYSTEM_PROMPT = `You are an inbox prioritization analyst for a busy professional. You analyze messages from multiple channels (Gmail, Slack, LinkedIn, WhatsApp, Telegram) and classify each by urgency, importance, and required action.
 
-For each message, you must determine:
-1. Priority (high/medium/low) - based on urgency, importance, and whether action is needed
-2. An importance score (0-100) - numeric ranking for unified sorting across all channels
-3. Whether follow-up is required (true/false)
-4. A concise 1-2 sentence summary
-5. If follow-up is required, the reason why
-6. A triage category (urgent/important/fyi/automated)
+Respond with valid JSON only. No markdown formatting, no explanation text.
 
-Priority guidelines:
-- HIGH: Direct asks with deadlines, revenue-impacting requests, time-sensitive decisions, escalations, messages requiring your specific input
-- MEDIUM: Standard work requests, questions needing answers, meeting coordination, non-urgent approvals
-- LOW: FYI messages, newsletters, automated notifications, status updates with no action needed, casual conversations
+## Required Output Per Message
+1. priority: "high" | "medium" | "low"
+2. importanceScore: 0-100 integer for unified cross-channel sorting
+3. requiresFollowUp: boolean
+4. summary: 1-2 sentence summary
+5. followUpReason: string (only when requiresFollowUp is true)
+6. triageCategory: "urgent" | "important" | "fyi" | "automated"
+7. triageCategoryConfidence: 0-1 float
 
-Channel-specific priority context:
-- Gmail: Apply standard email prioritization. Distinguish between personal emails (higher) vs. marketing/newsletters (lower). Thread replies where you're directly addressed are higher priority.
-- Slack: Direct messages are higher priority than channel messages. @mentions in channels are medium-high. Channel-wide announcements without direct mention are low.
-- LinkedIn: Direct professional messages from known contacts = high. Recruiter outreach = medium. Connection requests from unknown people = low. Endorsement/skill notifications = low.
-- WhatsApp: Personal messages from close contacts = high. Group messages = low unless you are mentioned by name. Media-only messages without text = low.
-- Telegram: Direct messages = medium-high. Group mentions = medium. Channel broadcasts/forwards = low. Bot notifications = low.
+## Priority Definitions
+- HIGH: Direct asks with deadlines, revenue-impacting requests, time-sensitive decisions, escalations, messages requiring the user's specific input.
+- MEDIUM: Standard work requests, questions needing answers, meeting coordination, non-urgent approvals.
+- LOW: FYI messages, newsletters, automated notifications, status updates with no action needed, casual conversations.
 
-Importance score guidelines (0-100):
-- 90-100: Urgent action required, time-sensitive, from key contacts
-- 70-89: Important but not urgent, requires response within 24h
-- 50-69: Standard messages, can be addressed at convenience
-- 30-49: Low priority, informational or social
-- 0-29: Noise, automated, or irrelevant
+## Channel-Specific Rules
+- Gmail: Personal emails rank higher than marketing/newsletters. Thread replies where the user is directly addressed rank higher.
+- Slack: DMs > @mentions in channels > channel-wide announcements without direct mention.
+- LinkedIn: Direct messages from known contacts = high. Recruiter outreach = medium. Connection requests from unknowns = low. Endorsement notifications = low.
+- WhatsApp: Personal messages from close contacts = high. Group messages = low unless user is mentioned by name.
+- Telegram: DMs = medium-high. Group mentions = medium. Channel broadcasts/forwards = low. Bot notifications = low.
 
-Follow-up guidelines:
-- TRUE: Asks a direct question, requests a deliverable, mentions a specific deadline, requires a decision from you, has an open thread needing your input
-- FALSE: Informational only, CC'd for awareness, already resolved, no action needed
+## Importance Score Bands
+- 90-100: Urgent action required, time-sensitive, from key contacts.
+- 70-89: Important, requires response within 24h.
+- 50-69: Standard, addressable at convenience.
+- 30-49: Low priority, informational or social.
+- 0-29: Noise, automated, or irrelevant.
 
-Triage category guidelines:
-- URGENT: Requires immediate response — deadlines today, blocking issues, emergencies, escalations
-- IMPORTANT: Requires response but not time-critical — standard requests, questions, coordination, approvals
-- FYI: Informational only, no response needed — status updates, newsletters you subscribed to, FYI CCs, social messages
-- AUTOMATED: Machine-generated — receipts, shipping notifications, CI/CD alerts, system notifications, marketing emails, automated alerts
+## Follow-Up Criteria
+- TRUE: Asks a direct question, requests a deliverable, mentions a deadline, requires a decision, has an open thread needing input.
+- FALSE: Informational only, CC'd for awareness, already resolved, no action needed.
 
-Respond with valid JSON only, no markdown formatting.`
+## Triage Categories
+- URGENT: Requires immediate response -- deadlines today, blocking issues, emergencies, escalations.
+- IMPORTANT: Requires response but not time-critical -- standard requests, questions, coordination.
+- FYI: Informational only, no response needed -- status updates, subscribed newsletters, social messages.
+- AUTOMATED: Machine-generated -- receipts, shipping notifications, CI/CD alerts, marketing emails.
+
+Respond with valid JSON only. No markdown formatting.`
 
 /**
  * Load user's custom priority prompt from mailbox AI tool settings.
@@ -144,23 +151,23 @@ async function loadCustomPriorityPrompt(userId: string): Promise<string | undefi
 }
 
 function buildUserPrompt(analysisRequest: MessageAnalysisRequest): string {
-  return `Analyze these messages and provide prioritization:
-
+  return `## Messages to Analyze
 ${JSON.stringify(analysisRequest)}
 
-Respond with a JSON array of analysis results in this exact format:
-[
-  {
-    "messageId": "string (the id from the input)",
-    "requiresFollowUp": boolean,
-    "priority": "high" | "medium" | "low",
-    "importanceScore": number (0-100),
-    "summary": "string (1-2 sentence summary)",
-    "followUpReason": "string (only if requiresFollowUp is true)",
-    "triageCategory": "urgent" | "important" | "fyi" | "automated",
-    "triageCategoryConfidence": number (0-1)
-  }
-]`
+## Task
+Analyze each message and return a JSON array. Each element must match this schema exactly:
+{
+  "messageId": "string (the id from the input)",
+  "requiresFollowUp": boolean,
+  "priority": "high" | "medium" | "low",
+  "importanceScore": number (0-100),
+  "summary": "string (1-2 sentence summary)",
+  "followUpReason": "string (only if requiresFollowUp is true, omit otherwise)",
+  "triageCategory": "urgent" | "important" | "fyi" | "automated",
+  "triageCategoryConfidence": number (0.0-1.0)
+}
+
+Return valid JSON only. No markdown fences, no explanation text.`
 }
 
 function summarizeBody(body: string): string {
@@ -447,6 +454,7 @@ export async function analyzeAndPrioritizeMessages(
           triageCategory: 'fyi' as TriageCategory,
           toRecipients: msg.toRecipients,
           ccRecipients: msg.ccRecipients,
+          gmailLabelIds: msg.gmailLabelIds,
         }
       }
 
@@ -469,6 +477,7 @@ export async function analyzeAndPrioritizeMessages(
         triageCategoryConfidence: analysis.triageCategoryConfidence,
         toRecipients: msg.toRecipients,
         ccRecipients: msg.ccRecipients,
+        gmailLabelIds: msg.gmailLabelIds,
       }
     })
   } catch (error) {

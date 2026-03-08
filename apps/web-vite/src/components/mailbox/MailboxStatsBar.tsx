@@ -8,8 +8,9 @@
  * - Folder buttons: Drafts, Outbox (next to filters)
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { PrioritizedMessage, MessageSource } from '@lifeos/agents'
+import { LabelPickerModal } from './LabelPickerModal'
 import '@/styles/components/MailboxStatsBar.css'
 
 export type MailboxFolder = 'inbox' | 'drafts' | 'outbox'
@@ -21,6 +22,7 @@ export type MailboxFilter =
   | { type: 'needs-reply' }
   | { type: 'unread' }
   | { type: 'channel'; source: MessageSource }
+  | { type: 'label'; labelName: string; labelId: string }
 
 interface MailboxStatsBarProps {
   messages: PrioritizedMessage[]
@@ -33,6 +35,8 @@ interface MailboxStatsBarProps {
   onCompose: () => void
   onSync: () => void
   isSyncing: boolean
+  gmailLabels?: Array<{ id: string; name: string }>
+  labelsLoading?: boolean
 }
 
 const IMPORTANCE_THRESHOLD = 70
@@ -50,6 +54,9 @@ function isFilterActive(active: MailboxFilter, target: MailboxFilter): boolean {
   if (active.type === 'channel' && target.type === 'channel') {
     return active.source === target.source
   }
+  if (active.type === 'label' && target.type === 'label') {
+    return active.labelId === target.labelId
+  }
   return true
 }
 
@@ -64,7 +71,9 @@ export function MailboxStatsBar({
   onCompose,
   onSync,
   isSyncing,
+  gmailLabels,
 }: MailboxStatsBarProps) {
+  const [labelsModalOpen, setLabelsModalOpen] = useState(false)
   const stats = useMemo(() => {
     const startOfToday = new Date()
     startOfToday.setHours(0, 0, 0, 0)
@@ -168,6 +177,32 @@ export function MailboxStatsBar({
                   </button>
                 ))}
               </div>
+            </>
+          )}
+
+          {/* Gmail Labels — modal picker */}
+          {gmailLabels && gmailLabels.length > 0 && (
+            <>
+              <div className="mailbox-stats-bar__separator" />
+              <div className="mailbox-stats-bar__section">
+                <button
+                  type="button"
+                  className={`mailbox-stats-bar__pill ${activeFilter.type === 'label' ? 'mailbox-stats-bar__pill--active' : ''}`}
+                  onClick={() => setLabelsModalOpen(true)}
+                >
+                  {activeFilter.type === 'label'
+                    ? (activeFilter as { labelName: string }).labelName
+                    : 'Labels'}{' '}
+                  <span className="mailbox-stats-bar__count">{gmailLabels.length}</span>
+                </button>
+              </div>
+              <LabelPickerModal
+                open={labelsModalOpen}
+                onClose={() => setLabelsModalOpen(false)}
+                labels={gmailLabels}
+                activeFilter={activeFilter}
+                onFilterChange={onFilterChange}
+              />
             </>
           )}
         </>
