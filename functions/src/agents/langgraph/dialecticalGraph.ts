@@ -1124,8 +1124,22 @@ function createThesisGenerationNode(
           { stepNumber: state.steps.length + idx + 1, maxIterations: budget.perThesisAgent }
         )
 
-        // Parse the thesis output (in production, use structured output)
-        const thesis = parseThesisOutput(step.output, agent.agentId, step.model, lens)
+        // Parse with 3-layer retry: direct → same-provider → Haiku
+        const thesis = await withJsonParseRetry(
+          step.output,
+          (text) => parseThesisOutput(text, agent.agentId, step.model, lens),
+          {
+            context: `Thesis (${lens})`,
+            jsonSchema: '{"nodes":[{"id":"string","label":"string","type":"claim|evidence|assumption|prediction","confidence":0.0}],"edges":[{"source":"string","target":"string","label":"string","type":"supports|contradicts|causes|requires"}],"summary":"string","confidence":0.0,"temporalGrain":"string"}',
+            emptyFallback: '{"nodes":[],"edges":[],"summary":"Parse failure","confidence":0,"temporalGrain":"unknown"}',
+            goal: state.goal,
+            baseAgent: agent,
+            execContext,
+            nodeId: 'thesis_generation',
+            stepNumber: state.steps.length + idx + 1,
+            runId: state.runId,
+          }
+        )
 
         // Emit thesis event with all structured fields (null/empty defaults for frontend)
         await emitAgentOutput(execContext, 'dialectical_thesis', agent, step.output, {
@@ -1333,7 +1347,21 @@ function createCrossNegationNode(
               }
             )
 
-            const negation = parseNegationOutput(step.output, agent.agentId, targetThesis.agentId)
+            const negation = await withJsonParseRetry(
+              step.output,
+              (text) => parseNegationOutput(text, agent.agentId, targetThesis.agentId),
+              {
+                context: 'Negation',
+                jsonSchema: '{"internalTensions":["string"],"categoryAttacks":["string"],"preservedValid":["string"],"rivalFraming":"string","rewriteOperator":"SPLIT|MERGE|REVERSE_EDGE|ADD_MEDIATOR|SCOPE_TO_REGIME|TEMPORALIZE","operatorArgs":{}}',
+                emptyFallback: '{"internalTensions":[],"categoryAttacks":[],"preservedValid":[],"rivalFraming":"","rewriteOperator":"SPLIT","operatorArgs":{}}',
+                goal: state.goal,
+                baseAgent: agent,
+                execContext,
+                nodeId: 'cross_negation',
+                stepNumber: state.steps.length + pairIdx + 1,
+                runId: state.runId,
+              }
+            )
 
             // Emit negation event and record message
             await emitAgentOutput(execContext, 'dialectical_negation', agent, step.output, {
@@ -1694,7 +1722,21 @@ function createSublationNode(
       return { steps: [step], ...sublationInterrupt }
     }
 
-    const { synthesis, mergedGraph: newMergedGraph, graphDiff } = parseSublationOutput(step.output)
+    const { synthesis, mergedGraph: newMergedGraph, graphDiff } = await withJsonParseRetry(
+      step.output,
+      (text) => parseSublationOutput(text),
+      {
+        context: 'Sublation',
+        jsonSchema: '{"mergedGraph":{"nodes":[{"id":"string","label":"string","type":"claim|evidence|assumption|prediction","confidence":0.0}],"edges":[{"source":"string","target":"string","label":"string","type":"supports|contradicts|causes|requires"}],"summary":"string","confidence":0.0,"temporalGrain":"string"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[]},"resolvedContradictions":[]}',
+        emptyFallback: '{"mergedGraph":{"nodes":[],"edges":[],"summary":"Parse failure","confidence":0,"temporalGrain":"unknown"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[]},"resolvedContradictions":[]}',
+        goal: state.goal,
+        baseAgent: synthesisAgent,
+        execContext,
+        nodeId: 'sublation',
+        stepNumber: state.steps.length + 1,
+        runId: state.runId,
+      }
+    )
 
     // Emit synthesis event and record message
     await emitAgentOutput(execContext, 'dialectical_synthesis', synthesisAgent, step.output, {
@@ -2661,6 +2703,84 @@ export async function executeDialecticalWorkflowLangGraph(
 }
 
 // ----- Helper Functions -----
+
+/**
+ * Wrap a parse function with 3-layer JSON retry:
+ * 1. Direct parse (parseFn)
+ * 2. Same-provider retry with strict JSON-only prompt
+ * 3. Haiku fallback with relevance gate
+ */
+async function withJsonParseRetry<T>(
+  rawOutput: string,
+  parseFn: (output: string) => T,
+  opts: {
+    context: string
+    jsonSchema: string
+    emptyFallback: string
+    goal: string
+    baseAgent: AgentConfig
+    execContext: AgentExecutionContext
+    nodeId: string
+    stepNumber: number
+    runId: string
+  }
+): Promise<T> {
+  // Layer 1: direct parse
+  try {
+    return parseFn(rawOutput)
+  } catch (firstError) {
+    log.warn(`${opts.context} parse failed, retrying with strict JSON prompt`, {
+      runId: opts.runId,
+      error: firstError instanceof Error ? firstError.message : String(firstError),
+    })
+
+    // Layer 2: same provider, strict JSON-only re-prompt
+    const retryAgent: AgentConfig = {
+      ...opts.baseAgent,
+      systemPrompt: `You are a JSON formatter. Convert the following analysis into ONLY a valid JSON object. Output nothing else — no markdown, no explanation, no commentary. Just the JSON.\n\nRequired schema:\n${opts.jsonSchema}`,
+    }
+    const retryStep = await executeAgentWithEvents(
+      retryAgent,
+      `Convert this text to JSON:\n\n${rawOutput.slice(0, 8000)}`,
+      {},
+      opts.execContext,
+      { nodeId: opts.nodeId, stepNumber: opts.stepNumber }
+    )
+    try {
+      return parseFn(retryStep.output)
+    } catch (retryError) {
+      log.warn(`${opts.context} retry failed, falling back to Haiku`, {
+        runId: opts.runId,
+        error: retryError instanceof Error ? retryError.message : String(retryError),
+      })
+
+      // Layer 3: Haiku fallback with relevance gate
+      const haikuAgent: AgentConfig = {
+        ...opts.baseAgent,
+        name: `${opts.nodeId}-json-fixer`,
+        modelProvider: 'anthropic',
+        modelName: 'claude-haiku',
+        systemPrompt: `You are a strict JSON extraction assistant. You will receive text that was supposed to be a JSON analysis, but may instead be an error message, refusal, or irrelevant text.
+
+Step 1: Determine if the text contains substantive analysis relevant to the goal: "${opts.goal}"
+- If the text is an error message, API failure, refusal, or completely unrelated to the goal, respond with EXACTLY: ${opts.emptyFallback}
+- If the text contains relevant analysis (even partial), proceed to step 2.
+
+Step 2: Extract the analysis into this exact JSON schema. Output ONLY valid JSON, nothing else.
+${opts.jsonSchema}`,
+        temperature: 0,
+      }
+      const haikuStep = await executeAgentWithEvents(
+        haikuAgent,
+        rawOutput.slice(0, 8000),
+        {},
+        opts.execContext,
+        { nodeId: opts.nodeId, stepNumber: opts.stepNumber }
+      )
+      return parseFn(haikuStep.output) // throws if still fails — intentional
+    }
+  }
+}
 
 /**
  * Extract JSON from LLM output
