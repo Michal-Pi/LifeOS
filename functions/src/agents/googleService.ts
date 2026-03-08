@@ -179,6 +179,7 @@ export async function executeWithGoogle(
     let iteration = 0
     let finalOutput = ''
     let nextMessage: string | Part[] = ''
+    let pendingBudgetWarning: string | null = null
 
     // Send initial message
     totalInputChars += userPrompt.length
@@ -212,11 +213,26 @@ export async function executeWithGoogle(
             await checkProviderRateLimit(toolContext.userId, 'google')
           }
 
-          return executeWithTimeout(
+          const response = await executeWithTimeout(
             chat.sendMessage(messageToSend),
             TIMEOUTS.PROVIDER,
             'google.chat.sendMessage'
           )
+
+          // If a budget warning was deferred from the previous iteration,
+          // send it now as a separate text-only message so Gemini sees it
+          // before generating its next response.
+          if (pendingBudgetWarning) {
+            const warning = pendingBudgetWarning
+            pendingBudgetWarning = null
+            return executeWithTimeout(
+              chat.sendMessage(warning),
+              TIMEOUTS.PROVIDER,
+              'google.chat.sendMessage(budgetWarning)'
+            )
+          }
+
+          return response
         },
         PROVIDER_RETRY_CONFIG,
         (attempt, error, delayMs) => {
@@ -312,22 +328,21 @@ export async function executeWithGoogle(
         nextMessage = functionResponseParts
 
         // Budget warning: fire with 2 iterations remaining, include JSON schema requirement
+        // Stored as a pending warning and sent as a separate message after the
+        // function responses, since Gemini rejects mixed FunctionResponse + text parts.
         if (iteration >= MAX_ITERATIONS - 2) {
           log.info('Budget warning, injecting synthesis prompt', {
             iteration,
             maxIterations: MAX_ITERATIONS,
             iterationsRemaining: MAX_ITERATIONS - iteration,
           })
-          // Append budget warning as a text part alongside function responses
-          ;(nextMessage as Part[]).push({
-            text:
-              'IMPORTANT: You are approaching your tool-calling budget limit (' +
-              `${MAX_ITERATIONS - iteration} iteration(s) remaining). ` +
-              'You MUST synthesize your findings into a complete response NOW. ' +
-              'Do NOT make additional tool calls. ' +
-              'Output ONLY a valid JSON object matching the schema from the original prompt. ' +
-              'No markdown, no explanation — just the JSON.',
-          })
+          pendingBudgetWarning =
+            'IMPORTANT: You are approaching your tool-calling budget limit (' +
+            `${MAX_ITERATIONS - iteration} iteration(s) remaining). ` +
+            'You MUST synthesize your findings into a complete response NOW. ' +
+            'Do NOT make additional tool calls. ' +
+            'Output ONLY a valid JSON object matching the schema from the original prompt. ' +
+            'No markdown, no explanation — just the JSON.'
         }
 
         // Continue loop to get agent's response with tool results
