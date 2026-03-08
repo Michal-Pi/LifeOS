@@ -101,9 +101,7 @@ function checkAxiomViolations(claims: OracleClaim[], nextFlagId: () => string): 
         // Flag if the claim text contains a significant portion of boundary keywords
         if (boundaryKeywords.length === 0) continue
 
-        const matchCount = boundaryKeywords.filter((kw) =>
-          claimLower.includes(kw)
-        ).length
+        const matchCount = boundaryKeywords.filter((kw) => claimLower.includes(kw)).length
         const matchRatio = matchCount / boundaryKeywords.length
 
         if (matchRatio >= 0.5 && matchCount >= 2) {
@@ -133,7 +131,7 @@ function checkAxiomViolations(claims: OracleClaim[], nextFlagId: () => string): 
  */
 function checkGraphContradictions(
   graph: OracleKnowledgeGraph,
-  nextFlagId: () => string,
+  nextFlagId: () => string
 ): ConsistencyFlag[] {
   const flags: ConsistencyFlag[] = []
 
@@ -190,7 +188,7 @@ function checkInvalidReferences(
   claims: OracleClaim[],
   assumptions: OracleAssumption[],
   evidence: OracleEvidence[],
-  nextFlagId: () => string,
+  nextFlagId: () => string
 ): ConsistencyFlag[] {
   const flags: ConsistencyFlag[] = []
 
@@ -262,7 +260,10 @@ function checkInvalidReferences(
  * Uses DFS-based cycle detection on claim dependencies.
  * Reports each cycle found as a separate flag.
  */
-function checkCircularDependencies(claims: OracleClaim[], nextFlagId: () => string): ConsistencyFlag[] {
+function checkCircularDependencies(
+  claims: OracleClaim[],
+  nextFlagId: () => string
+): ConsistencyFlag[] {
   const flags: ConsistencyFlag[] = []
   const reportedCycles = new Set<string>()
 
@@ -370,13 +371,7 @@ function checkOrphanClaims(claims: OracleClaim[], nextFlagId: () => string): Con
     const hasAxiomRefs = claim.axiomRefs.length > 0
     const hasAssumptions = claim.assumptions.length > 0
 
-    if (
-      !hasDependencies &&
-      !isReferenced &&
-      !hasEvidence &&
-      !hasAxiomRefs &&
-      !hasAssumptions
-    ) {
+    if (!hasDependencies && !isReferenced && !hasEvidence && !hasAxiomRefs && !hasAssumptions) {
       flags.push({
         id: nextFlagId(),
         type: 'orphan_claim',
@@ -403,7 +398,7 @@ export function runTier1Checks(
   claims: OracleClaim[],
   assumptions: OracleAssumption[],
   knowledgeGraph: OracleKnowledgeGraph,
-  evidence: OracleEvidence[] = [],
+  evidence: OracleEvidence[] = []
 ): ConsistencyFlag[] {
   const nextFlagId = createFlagIdGenerator()
 
@@ -428,9 +423,7 @@ export function runTier1Checks(
     warning: 1,
     info: 2,
   }
-  allFlags.sort(
-    (a, b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.severity] ?? 9)
-  )
+  allFlags.sort((a, b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.severity] ?? 9))
 
   // Re-assign sequential IDs after sorting
   for (let i = 0; i < allFlags.length; i++) {
@@ -453,10 +446,7 @@ export function runTier1Checks(
  * Build a concise prompt asking a cheap LLM to confirm or deny a Tier 1 flag.
  * Includes relevant claim text for context.
  */
-export function buildTier2ConfirmationPrompt(
-  flag: ConsistencyFlag,
-  claims: OracleClaim[],
-): string {
+export function buildTier2ConfirmationPrompt(flag: ConsistencyFlag, claims: OracleClaim[]): string {
   const claimMap = new Map(claims.map((c) => [c.id, c]))
 
   // Gather context: the actual text of affected claims
@@ -464,13 +454,14 @@ export function buildTier2ConfirmationPrompt(
   for (const id of flag.affectedIds) {
     const claim = claimMap.get(id)
     if (claim) {
-      contextLines.push(`- ${claim.id} (${claim.type}, confidence ${claim.confidence}): "${claim.text}"`)
+      contextLines.push(
+        `- ${claim.id} (${claim.type}, confidence ${claim.confidence}): "${claim.text}"`
+      )
     }
   }
 
-  const contextBlock = contextLines.length > 0
-    ? `\nRelevant claims:\n${contextLines.join('\n')}\n`
-    : ''
+  const contextBlock =
+    contextLines.length > 0 ? `\nRelevant claims:\n${contextLines.join('\n')}\n` : ''
 
   return `You are a consistency checker for a scenario planning system.
 
@@ -494,25 +485,26 @@ Respond with JSON ONLY:
  * Build a batched prompt to confirm/deny multiple Tier 1 flags in a single LLM call.
  * Groups up to `batchSize` flags per prompt to reduce LLM call count.
  */
-export function buildBatchedTier2Prompt(
-  flags: ConsistencyFlag[],
-  claims: OracleClaim[],
-): string {
+export function buildBatchedTier2Prompt(flags: ConsistencyFlag[], claims: OracleClaim[]): string {
   const claimMap = new Map(claims.map((c) => [c.id, c]))
 
-  const flagDescriptions = flags.map((flag, i) => {
-    const contextLines: string[] = []
-    for (const id of flag.affectedIds) {
-      const claim = claimMap.get(id)
-      if (claim) {
-        contextLines.push(`  - ${claim.id} (${claim.type}, conf ${claim.confidence}): "${claim.text.slice(0, 150)}"`)
+  const flagDescriptions = flags
+    .map((flag, i) => {
+      const contextLines: string[] = []
+      for (const id of flag.affectedIds) {
+        const claim = claimMap.get(id)
+        if (claim) {
+          contextLines.push(
+            `  - ${claim.id} (${claim.type}, conf ${claim.confidence}): "${claim.text.slice(0, 150)}"`
+          )
+        }
       }
-    }
-    const ctx = contextLines.length > 0 ? `\n  Context:\n${contextLines.join('\n')}` : ''
-    return `Flag ${i + 1} (${flag.id}):
+      const ctx = contextLines.length > 0 ? `\n  Context:\n${contextLines.join('\n')}` : ''
+      return `Flag ${i + 1} (${flag.id}):
   Type: ${flag.type} | Severity: ${flag.severity}
   Issue: ${flag.message}${ctx}`
-  }).join('\n\n')
+    })
+    .join('\n\n')
 
   return `You are a consistency checker for a scenario planning system.
 Multiple rule-based checks flagged the following issues. For EACH flag, determine whether it represents a REAL consistency problem or a false positive.
@@ -530,7 +522,7 @@ Respond with a JSON array ONLY, one entry per flag in order:
  * Parse the batched LLM confirmation response.
  */
 export function parseBatchedTier2Confirmation(
-  llmOutput: string,
+  llmOutput: string
 ): Array<{ flagId: string; confirmed: boolean; explanation: string }> | null {
   try {
     const arrMatch = llmOutput.match(/\[[\s\S]*\]/)
@@ -540,12 +532,15 @@ export function parseBatchedTier2Confirmation(
     if (!Array.isArray(parsed)) return null
 
     return parsed
-      .filter((item: { flagId?: string; confirmed?: boolean }) =>
-        typeof item.flagId === 'string' && typeof item.confirmed === 'boolean')
+      .filter(
+        (item: { flagId?: string; confirmed?: boolean }) =>
+          typeof item.flagId === 'string' && typeof item.confirmed === 'boolean'
+      )
       .map((item: { flagId: string; confirmed: boolean; explanation?: string }) => ({
         flagId: item.flagId,
         confirmed: item.confirmed,
-        explanation: typeof item.explanation === 'string' ? item.explanation : 'No explanation provided.',
+        explanation:
+          typeof item.explanation === 'string' ? item.explanation : 'No explanation provided.',
       }))
   } catch {
     log.warn('Failed to parse batched Tier 2 LLM confirmation', {
@@ -560,7 +555,7 @@ export function parseBatchedTier2Confirmation(
  * Returns null if the response cannot be parsed.
  */
 export function parseTier2Confirmation(
-  llmOutput: string,
+  llmOutput: string
 ): { confirmed: boolean; explanation: string } | null {
   try {
     const jsonMatch = llmOutput.match(/\{[\s\S]*\}/)
@@ -572,9 +567,8 @@ export function parseTier2Confirmation(
 
     return {
       confirmed: parsed.confirmed,
-      explanation: typeof parsed.explanation === 'string'
-        ? parsed.explanation
-        : 'No explanation provided.',
+      explanation:
+        typeof parsed.explanation === 'string' ? parsed.explanation : 'No explanation provided.',
     }
   } catch {
     log.warn('Failed to parse Tier 2 LLM confirmation', {
@@ -604,9 +598,7 @@ export function computeHealthScore(flags: ConsistencyFlag[], totalItems?: number
   let score = 1.0
 
   // Normalize penalties by graph size — larger graphs tolerate more flags
-  const normFactor = totalItems && totalItems > 0
-    ? Math.max(1, Math.log2(totalItems + 1) / 3)
-    : 1
+  const normFactor = totalItems && totalItems > 0 ? Math.max(1, Math.log2(totalItems + 1) / 3) : 1
 
   for (const flag of flags) {
     // If Tier 2 ran and the LLM said "not confirmed", skip this flag
@@ -637,7 +629,7 @@ export function computeHealthScore(flags: ConsistencyFlag[], totalItems?: number
  */
 export function buildConsistencyReport(
   flags: ConsistencyFlag[],
-  totalItems?: number,
+  totalItems?: number
 ): ConsistencyReport {
   const tier2Confirmed = flags.filter((f) => f.llmConfirmed === true).length
 

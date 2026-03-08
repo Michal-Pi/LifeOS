@@ -15,7 +15,10 @@ import { safeParseJson } from '../shared/jsonParser.js'
 const log = createLogger('SourceQuality')
 
 function sanitizeForPrompt(input: string, maxLength = 500): string {
-  return input.replace(/[{}\\"<>]/g, ' ').substring(0, maxLength).trim()
+  return input
+    .replace(/[{}\\"<>]/g, ' ')
+    .substring(0, maxLength)
+    .trim()
 }
 
 // High-authority domains score higher.
@@ -151,7 +154,7 @@ export async function generateCounterclaims(
   claims: ExtractedClaim[],
   query: string,
   executeProvider: ProviderExecuteFn,
-  adversarialSearch?: AdversarialSearchFn,
+  adversarialSearch?: AdversarialSearchFn
 ): Promise<CounterclaimResult[]> {
   // Take top claims by confidence — spread to avoid mutating the input array
   const topClaims = [...claims].sort((a, b) => b.confidence - a.confidence).slice(0, 10)
@@ -191,9 +194,10 @@ Output valid JSON only. No markdown fences.`
       rationale?: string
     } | null
 
-    const adversarialQueries = queryParsed?.adversarialQueries?.filter(
-      (q): q is string => typeof q === 'string' && q.length > 0
-    ) ?? []
+    const adversarialQueries =
+      queryParsed?.adversarialQueries?.filter(
+        (q): q is string => typeof q === 'string' && q.length > 0
+      ) ?? []
 
     // Phase 2: Execute adversarial search (if search function provided and queries generated)
     let adversarialContext = ''

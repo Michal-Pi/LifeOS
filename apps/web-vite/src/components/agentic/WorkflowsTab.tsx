@@ -36,9 +36,7 @@ export function WorkflowsTab({
   const presetDescriptionMap = useMemo(
     () =>
       new Map(
-        workflowTemplatePresets
-          .filter((p) => p.description)
-          .map((p) => [p.name, p.description!])
+        workflowTemplatePresets.filter((p) => p.description).map((p) => [p.name, p.description!])
       ),
     []
   )
@@ -86,7 +84,11 @@ export function WorkflowsTab({
   return (
     <div className="workflows-grid">
       {workflows.map((workflow) => (
-        <div key={workflow.workflowId} className="workflow-card" title={presetDescriptionMap.get(workflow.name)}>
+        <div
+          key={workflow.workflowId}
+          className="workflow-card"
+          title={presetDescriptionMap.get(workflow.name)}
+        >
           <div className="card-header">
             <h3>{workflow.name}</h3>
             <span className="badge">{workflow.workflowType}</span>

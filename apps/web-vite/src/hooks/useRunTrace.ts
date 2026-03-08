@@ -6,7 +6,15 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { collection, collectionGroup, getDocs, query, where, orderBy, limit } from 'firebase/firestore'
+import {
+  collection,
+  collectionGroup,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+} from 'firebase/firestore'
 import { getFirestoreClient } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { useRunEvents } from '@/hooks/useRunEvents'

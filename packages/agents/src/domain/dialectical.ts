@@ -767,16 +767,25 @@ export const THESIS_AGENT_PRESETS = {
 /**
  * Best model per lens for provider diversity (Phase 26)
  */
-export const LENS_MODEL_PRESETS: Record<ThesisLens, { provider: ModelProvider; modelName: string }> = {
+export const LENS_MODEL_PRESETS: Record<
+  ThesisLens,
+  { provider: ModelProvider; modelName: string }
+> = {
   adversarial: { provider: 'anthropic', modelName: 'claude-sonnet-4-6' },
-  systems:     { provider: 'anthropic', modelName: 'claude-sonnet-4-6' },
-  economic:    { provider: 'openai',    modelName: 'o1' },
-  technical:   { provider: 'openai',    modelName: 'o1' },
-  behavioral:  { provider: 'google',    modelName: 'gemini-2.5-pro' },
-  historical:  { provider: 'google',    modelName: 'gemini-2.5-pro' },
-  political:   { provider: 'xai',       modelName: 'grok-4' },
-  ecological:  { provider: 'xai',       modelName: 'grok-4' },
-  custom:      { provider: 'openai',    modelName: 'gpt-5.2' },
+  systems: { provider: 'anthropic', modelName: 'claude-sonnet-4-6' },
+  economic: { provider: 'openai', modelName: 'o1' },
+  technical: { provider: 'openai', modelName: 'o1' },
+  behavioral: { provider: 'google', modelName: 'gemini-2.5-pro' },
+  historical: { provider: 'google', modelName: 'gemini-2.5-pro' },
+  political: { provider: 'xai', modelName: 'grok-4' },
+  ecological: { provider: 'xai', modelName: 'grok-4' },
+  custom: { provider: 'openai', modelName: 'gpt-5.2' },
+}
+
+export function getDefaultLensModelPreset(
+  lens: ThesisLens
+): { provider: ModelProvider; modelName: string } {
+  return LENS_MODEL_PRESETS[lens] ?? LENS_MODEL_PRESETS.custom
 }
 
 export type ThesisAgentPreset = keyof typeof THESIS_AGENT_PRESETS
@@ -785,7 +794,13 @@ export type ThesisAgentPreset = keyof typeof THESIS_AGENT_PRESETS
 
 // Note: RewriteOperatorType and RewriteOperator are already defined in workflowState.ts
 // Re-export them here for convenience
-export type { RewriteOperatorType, RewriteOperator, KGDiff, CompactGraph, GraphDiff } from './workflowState'
+export type {
+  RewriteOperatorType,
+  RewriteOperator,
+  KGDiff,
+  CompactGraph,
+  GraphDiff,
+} from './workflowState'
 
 // ----- Input Types -----
 
@@ -828,9 +843,14 @@ export type CreateDialecticalSessionInput = Omit<
  * Default configuration for dialectical workflows
  */
 export function createDefaultDialecticalConfig(): DialecticalWorkflowConfig {
+  const economicPreset = getDefaultLensModelPreset('economic')
   return {
     thesisAgents: [
-      { lens: 'economic', modelProvider: 'anthropic', modelName: 'claude-sonnet-4-6' },
+      {
+        lens: 'economic',
+        modelProvider: economicPreset.provider,
+        modelName: economicPreset.modelName,
+      },
       { lens: 'systems', modelProvider: 'openai', modelName: 'gpt-5.2' },
       { lens: 'adversarial', modelProvider: 'google', modelName: 'gemini-2.5-pro' },
     ],

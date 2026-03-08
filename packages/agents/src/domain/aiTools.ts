@@ -347,7 +347,8 @@ Respond with a JSON array of tag strings:
 export const updateTodoToolConfig = {
   toolId: 'tool:update_todo',
   name: 'update_todo',
-  description: 'Update an existing todo item — change its title, status, urgency, importance, or due date',
+  description:
+    'Update an existing todo item — change its title, status, urgency, importance, or due date',
   parameters: {
     type: 'object' as const,
     properties: {
@@ -396,7 +397,10 @@ export const memoryRecallToolConfig = {
   parameters: {
     type: 'object' as const,
     properties: {
-      query: { type: 'string', description: 'Search query to find relevant past runs (max 500 chars)' },
+      query: {
+        type: 'string',
+        description: 'Search query to find relevant past runs (max 500 chars)',
+      },
       timeRange: {
         type: 'object',
         properties: {
@@ -405,7 +409,10 @@ export const memoryRecallToolConfig = {
         },
         description: 'Optional time range filter',
       },
-      runType: { type: 'string', description: 'Filter by workflow type (e.g., "sequential", "parallel")' },
+      runType: {
+        type: 'string',
+        description: 'Filter by workflow type (e.g., "sequential", "parallel")',
+      },
     },
     required: ['query'],
   },
@@ -419,7 +426,11 @@ export const generateChartToolConfig = {
   parameters: {
     type: 'object' as const,
     properties: {
-      chartType: { type: 'string', enum: ['bar', 'line', 'pie', 'scatter'], description: 'Type of chart' },
+      chartType: {
+        type: 'string',
+        enum: ['bar', 'line', 'pie', 'scatter'],
+        description: 'Type of chart',
+      },
       data: {
         type: 'array',
         items: {
@@ -462,11 +473,16 @@ export const generateChartToolConfig = {
 export const codeInterpreterToolConfig = {
   toolId: 'tool:code_interpreter',
   name: 'code_interpreter',
-  description: 'Execute JavaScript code in a sandboxed environment for data analysis and calculations',
+  description:
+    'Execute JavaScript code in a sandboxed environment for data analysis and calculations',
   parameters: {
     type: 'object' as const,
     properties: {
-      language: { type: 'string', enum: ['javascript'], description: 'Programming language (only JavaScript supported)' },
+      language: {
+        type: 'string',
+        enum: ['javascript'],
+        description: 'Programming language (only JavaScript supported)',
+      },
       code: { type: 'string', description: 'Code to execute (max 10,000 characters)' },
     },
     required: ['language', 'code'],
@@ -491,10 +507,23 @@ export const webhookCallToolConfig = {
   parameters: {
     type: 'object' as const,
     properties: {
-      url: { type: 'string', description: 'HTTPS URL to call (must be in user-configured allowed domains list)' },
-      method: { type: 'string', enum: ['GET', 'POST', 'PUT', 'DELETE'], description: 'HTTP method' },
-      headers: { type: 'object', description: 'Request headers (Authorization and Cookie headers are stripped)' },
-      body: { type: 'string', description: 'Request body (for POST/PUT only; ignored for GET/DELETE)' },
+      url: {
+        type: 'string',
+        description: 'HTTPS URL to call (must be in user-configured allowed domains list)',
+      },
+      method: {
+        type: 'string',
+        enum: ['GET', 'POST', 'PUT', 'DELETE'],
+        description: 'HTTP method',
+      },
+      headers: {
+        type: 'object',
+        description: 'Request headers (Authorization and Cookie headers are stripped)',
+      },
+      body: {
+        type: 'string',
+        description: 'Request body (for POST/PUT only; ignored for GET/DELETE)',
+      },
     },
     required: ['url', 'method'],
   },

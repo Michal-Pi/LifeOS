@@ -405,7 +405,8 @@ export async function executeWithAnthropic(
               content:
                 'IMPORTANT: You are at your tool-calling budget limit. ' +
                 'You MUST synthesize your findings into a complete response NOW. ' +
-                'Do NOT make additional tool calls. Provide your best output with what you have gathered.',
+                'Do NOT make additional tool calls. ' +
+                'Your response MUST follow the exact output format specified in your system instructions — if you were asked to output JSON, output ONLY valid JSON with no preamble or markdown.',
             })
           }
 
@@ -434,23 +435,67 @@ export async function executeWithAnthropic(
       }
     }
 
-    if (iteration >= MAX_ITERATIONS && !finalOutput) {
-      log.warn('Agent reached max iterations with tool calls', { maxIterations: MAX_ITERATIONS })
-      const lastMessage = messages[messages.length - 1]
-      let lastText = ''
-      if (lastMessage && lastMessage.role === 'assistant') {
-        const lastContent = Array.isArray(lastMessage.content)
-          ? lastMessage.content
-          : [{ type: 'text' as const, text: lastMessage.content }]
-        lastText = lastContent.find((block) => block.type === 'text')?.text ?? ''
-      }
-      if (!lastText || lastText.startsWith('{') || lastText.startsWith('[')) {
-        finalOutput =
-          `[PARTIAL RESULT - iteration budget exhausted after ${iteration} tool calls]\n\n` +
-          `The agent gathered research data but could not complete synthesis. ` +
-          `Consider increasing the iteration budget for tool-heavy agents.`
+    // Detect empty output: either budget exhausted or agent returned empty within budget
+    const hadToolCalls =
+      iteration > 1 || messages.some((m) => m.role === 'user' && Array.isArray(m.content) && m.content.some((b) => 'type' in b && b.type === 'tool_result'))
+    if (!finalOutput && hadToolCalls) {
+      if (iteration >= MAX_ITERATIONS) {
+        log.warn('Agent reached max iterations with tool calls', { maxIterations: MAX_ITERATIONS })
       } else {
-        finalOutput = lastText
+        log.warn('Agent returned empty output after tool calls within budget', {
+          iteration,
+          maxIterations: MAX_ITERATIONS,
+        })
+      }
+
+      // One final attempt: ask the model to synthesize from gathered data
+      try {
+        messages.push({
+          role: 'user',
+          content:
+            'You have exhausted your tool-calling budget. ' +
+            'Synthesize ALL findings from your research into a final response NOW. ' +
+            'Do NOT make additional tool calls. ' +
+            'Your response MUST follow the exact output format specified in your system instructions — if you were asked to output JSON, output ONLY valid JSON with no preamble or markdown.',
+        })
+        const synthResponse = await executeWithTimeout(
+          client.messages.create({
+            model: modelName,
+            max_tokens: agent.maxTokens ?? 2048,
+            temperature: agent.temperature ?? 0.7,
+            system: systemParam,
+            messages,
+          }),
+          getProviderTimeout(JSON.stringify(messages).length / 4),
+          'anthropic.messages.create.synthesis'
+        )
+        finalOutput = synthResponse.content.find((block) => block.type === 'text')?.text ?? ''
+        if (finalOutput) {
+          totalInputTokens += synthResponse.usage.input_tokens
+          totalOutputTokens += synthResponse.usage.output_tokens
+          log.info('Post-loop synthesis succeeded', { outputLength: finalOutput.length })
+        }
+      } catch (error) {
+        log.warn('Post-loop synthesis failed', { error: (error as Error).message })
+      }
+
+      if (!finalOutput) {
+        const lastMessage = messages[messages.length - 2]
+        let lastText = ''
+        if (lastMessage && lastMessage.role === 'assistant') {
+          const lastContent = Array.isArray(lastMessage.content)
+            ? lastMessage.content
+            : [{ type: 'text' as const, text: lastMessage.content }]
+          lastText = lastContent.find((block) => block.type === 'text')?.text ?? ''
+        }
+        if (!lastText || lastText.startsWith('{') || lastText.startsWith('[')) {
+          finalOutput =
+            `[PARTIAL RESULT - iteration budget exhausted after ${iteration} tool calls]\n\n` +
+            `The agent gathered research data but could not complete synthesis. ` +
+            `Consider increasing the iteration budget for tool-heavy agents.`
+        } else {
+          finalOutput = lastText
+        }
       }
       if (toolContext) {
         await recordMessage({

@@ -25,15 +25,15 @@ const mockSerpSearchTool = {
   execute: vi.fn(async (params: Record<string, unknown>) => {
     const query = String(params.query ?? '')
     return {
-    results: [
-      {
-        title: `Evidence for ${query}`,
-        snippet: `Top result snippet for ${query}`,
-        url: `https://example.com/${encodeURIComponent(query)}`,
-        source: 'Example Source',
-        date: '2026-01-01',
-      },
-    ],
+      results: [
+        {
+          title: `Evidence for ${query}`,
+          snippet: `Top result snippet for ${query}`,
+          url: `https://example.com/${encodeURIComponent(query)}`,
+          source: 'Example Source',
+          date: '2026-01-01',
+        },
+      ],
     }
   }),
 }
@@ -42,7 +42,7 @@ const baseConfig = {
   toolRegistry: new Map([['serp_search', mockSerpSearchTool]]),
   searchToolKeys: { serper: 'test-serper-key' },
   userId: 'user-test',
-  workflow: ({
+  workflow: {
     workflowId: 'wf-oracle-test',
     name: 'Oracle Evidence Test',
     workflowType: 'oracle',
@@ -54,7 +54,7 @@ const baseConfig = {
     createdAtMs: 0,
     updatedAtMs: 0,
     userId: 'user-test',
-  } as unknown) as Workflow,
+  } as unknown as Workflow,
   runId: 'run-test',
 } as const
 
@@ -80,7 +80,7 @@ describe('Oracle evidence gathering', () => {
   it('populates evidence records from the context-gathering search plan', async () => {
     const { evidence, failedQueries } = await collectEvidenceFromSearchPlan(
       { technology: ['AI trends 2026', 'quantum computing'] },
-      baseConfig,
+      baseConfig
     )
 
     expect(evidence).toHaveLength(2)
@@ -101,7 +101,7 @@ describe('Oracle evidence gathering', () => {
       {
         technology: Array.from({ length: 250 }, (_, i) => `query-${i}`),
       },
-      baseConfig,
+      baseConfig
     )
 
     expect(evidence).toHaveLength(200)
@@ -117,7 +117,7 @@ describe('Oracle evidence gathering', () => {
 
     const { evidence, failedQueries } = await collectEvidenceFromSearchPlan(
       { technology: ['weak signal query', 'strong signal query'] },
-      baseConfig,
+      baseConfig
     )
 
     expect(evidence).toHaveLength(1)

@@ -80,7 +80,9 @@ export const ParallelStateAnnotation = Annotation.Root({
       if (process.env.NODE_ENV !== 'production') {
         for (const key of Object.keys(update)) {
           if (current[key] !== undefined) {
-            console.warn(`[ParallelState] agentOutputs key collision for '${key}' — last write wins`)
+            console.warn(
+              `[ParallelState] agentOutputs key collision for '${key}' — last write wins`
+            )
           }
         }
       }
@@ -117,6 +119,12 @@ export const ParallelStateAnnotation = Annotation.Root({
 
   // User input pause
   pendingInput: Annotation<{ prompt: string; nodeId: string } | null>,
+
+  // Resume hint — which node to skip to on workflow resume after pause
+  resumeNodeHint: Annotation<string | null>({
+    reducer: (_cur, upd) => upd,
+    default: () => null,
+  }),
 })
 
 export type ParallelState = typeof ParallelStateAnnotation.State
@@ -165,6 +173,12 @@ export const SequentialStateAnnotation = Annotation.Root({
 
   // User input pause
   pendingInput: Annotation<{ prompt: string; nodeId: string } | null>,
+
+  // Resume hint — which node to skip to on workflow resume after pause
+  resumeNodeHint: Annotation<string | null>({
+    reducer: (_cur, upd) => upd,
+    default: () => null,
+  }),
 })
 
 export type SequentialState = typeof SequentialStateAnnotation.State
@@ -221,6 +235,12 @@ export const SupervisorStateAnnotation = Annotation.Root({
 
   // User input pause
   pendingInput: Annotation<{ prompt: string; nodeId: string } | null>,
+
+  // Resume hint — which node to skip to on workflow resume after pause
+  resumeNodeHint: Annotation<string | null>({
+    reducer: (_cur, upd) => upd,
+    default: () => null,
+  }),
 })
 
 export type SupervisorState = typeof SupervisorStateAnnotation.State
@@ -256,15 +276,15 @@ export const DialecticalStateAnnotation = Annotation.Root({
   // Dialectical outputs (replace semantics — only current cycle's outputs)
   // Prior knowledge lives in mergedGraph, not in accumulated arrays
   theses: Annotation<ThesisOutput[]>({
-    reducer: (current, update) => update.length > 0 ? update : current,
+    reducer: (current, update) => (update.length > 0 ? update : current),
     default: () => [],
   }),
   negations: Annotation<NegationOutput[]>({
-    reducer: (current, update) => update.length > 0 ? update : current,
+    reducer: (current, update) => (update.length > 0 ? update : current),
     default: () => [],
   }),
   contradictions: Annotation<ContradictionOutput[]>({
-    reducer: (current, update) => update.length > 0 ? update : current,
+    reducer: (current, update) => (update.length > 0 ? update : current),
     default: () => [],
   }),
   synthesis: Annotation<SublationOutput | null>,
@@ -320,6 +340,12 @@ export const DialecticalStateAnnotation = Annotation.Root({
   // User input pause
   pendingInput: Annotation<{ prompt: string; nodeId: string } | null>,
 
+  // Resume hint — which node to skip to on workflow resume after pause
+  resumeNodeHint: Annotation<string | null>({
+    reducer: (_cur, upd) => upd,
+    default: () => null,
+  }),
+
   // Degraded tracking
   degradedPhases: Annotation<string[]>({
     reducer: (current, update) => [...current, ...update],
@@ -339,7 +365,9 @@ export const DialecticalStateAnnotation = Annotation.Root({
     reducer: (current, update) => {
       const merged = [...current, ...update]
       if (merged.length > 50) {
-        return merged.sort((a, b) => (b.sourceQualityScore ?? 0) - (a.sourceQualityScore ?? 0)).slice(0, 50)
+        return merged
+          .sort((a, b) => (b.sourceQualityScore ?? 0) - (a.sourceQualityScore ?? 0))
+          .slice(0, 50)
       }
       return merged
     },
@@ -490,15 +518,15 @@ export const DeepResearchStateAnnotation = Annotation.Root({
   // Prior knowledge lives in mergedGraph, not in accumulated arrays
   dialecticalCycleCount: Annotation<number>,
   theses: Annotation<ThesisOutput[]>({
-    reducer: (cur, upd) => upd.length > 0 ? upd : cur,
+    reducer: (cur, upd) => (upd.length > 0 ? upd : cur),
     default: () => [],
   }),
   negations: Annotation<NegationOutput[]>({
-    reducer: (cur, upd) => upd.length > 0 ? upd : cur,
+    reducer: (cur, upd) => (upd.length > 0 ? upd : cur),
     default: () => [],
   }),
   contradictions: Annotation<ContradictionOutput[]>({
-    reducer: (cur, upd) => upd.length > 0 ? upd : cur,
+    reducer: (cur, upd) => (upd.length > 0 ? upd : cur),
     default: () => [],
   }),
   synthesis: Annotation<SublationOutput | null>,
@@ -554,6 +582,12 @@ export const DeepResearchStateAnnotation = Annotation.Root({
 
   // User input pause
   pendingInput: Annotation<{ prompt: string; nodeId: string } | null>,
+
+  // Resume hint — which node to skip to on workflow resume after pause
+  resumeNodeHint: Annotation<string | null>({
+    reducer: (_cur, upd) => upd,
+    default: () => null,
+  }),
 
   // Degraded tracking
   degradedPhases: Annotation<string[]>({

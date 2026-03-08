@@ -1600,7 +1600,8 @@ export const extractStructuredDataTool: ToolDefinition = {
           ...(schema ? { schema } : {}),
         }),
       })
-      if (!response.ok) throwApiError('extract_structured_data', response.status, response.statusText)
+      if (!response.ok)
+        throwApiError('extract_structured_data', response.status, response.statusText)
       const data = (await response.json()) as {
         success: boolean
         data?: Record<string, unknown>
@@ -1663,7 +1664,8 @@ export const crawlWebsiteTool: ToolDefinition = {
           ...(excludePaths?.length ? { excludePaths } : {}),
         }),
       })
-      if (!startResponse.ok) throwApiError('crawl_website', startResponse.status, startResponse.statusText)
+      if (!startResponse.ok)
+        throwApiError('crawl_website', startResponse.status, startResponse.statusText)
       const startData = (await startResponse.json()) as {
         success: boolean
         id?: string
@@ -2449,9 +2451,8 @@ export const labelGmailMessageTool: ToolDefinition = {
     const removeLabels = (params.removeLabels as string[]) ?? []
 
     const accountId = await resolveGoogleAccountId(context.userId)
-    const { getOrCreateGmailLabel, modifyGmailMessage, listGmailLabels } = await import(
-      '../google/gmailApi.js'
-    )
+    const { getOrCreateGmailLabel, modifyGmailMessage, listGmailLabels } =
+      await import('../google/gmailApi.js')
 
     const addLabelIds: string[] = []
     for (const name of addLabels) {

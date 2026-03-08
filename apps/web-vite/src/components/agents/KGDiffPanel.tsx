@@ -134,11 +134,11 @@ export function KGDiffPanel({ graphHistory, onHighlightDiff }: KGDiffPanelProps)
       ? selectedCycleA
       : cycles.length > 1
         ? cycles[0]
-        : cycles[0] ?? 0
+        : (cycles[0] ?? 0)
   const cycleB =
     selectedCycleB !== null && cycles.includes(selectedCycleB)
       ? selectedCycleB
-      : cycles[cycles.length - 1] ?? 0
+      : (cycles[cycles.length - 1] ?? 0)
 
   const mergedDiff = useMemo(() => {
     if (cycles.length === 0) return null
@@ -229,11 +229,7 @@ export function KGDiffPanel({ graphHistory, onHighlightDiff }: KGDiffPanelProps)
 
           <div className="kg-diff-columns">
             <div className="kg-diff-column">
-              <DiffSection
-                title="Added Nodes"
-                items={mergedDiff.addedNodes}
-                variant="added"
-              />
+              <DiffSection title="Added Nodes" items={mergedDiff.addedNodes} variant="added" />
               <DiffSection
                 title="Removed Nodes"
                 items={mergedDiff.removedNodes}
@@ -241,25 +237,19 @@ export function KGDiffPanel({ graphHistory, onHighlightDiff }: KGDiffPanelProps)
               />
               <DiffSection
                 title="Modified Nodes"
-                items={mergedDiff.modifiedNodes.map(
-                  (m) => `${m.oldLabel} → ${m.newLabel}`
-                )}
+                items={mergedDiff.modifiedNodes.map((m) => `${m.oldLabel} → ${m.newLabel}`)}
                 variant="modified"
               />
             </div>
             <div className="kg-diff-column">
               <DiffSection
                 title="Added Edges"
-                items={mergedDiff.addedEdges.map(
-                  (e) => `${e.from} →[${e.rel}]→ ${e.to}`
-                )}
+                items={mergedDiff.addedEdges.map((e) => `${e.from} →[${e.rel}]→ ${e.to}`)}
                 variant="added"
               />
               <DiffSection
                 title="Removed Edges"
-                items={mergedDiff.removedEdges.map(
-                  (e) => `${e.from} →[${e.rel}]→ ${e.to}`
-                )}
+                items={mergedDiff.removedEdges.map((e) => `${e.from} →[${e.rel}]→ ${e.to}`)}
                 variant="removed"
               />
             </div>

@@ -713,9 +713,7 @@ export function RunWorkflowModal({
                       <Select
                         id="drSearchDepth"
                         value={drSearchDepth}
-                        onChange={(val) =>
-                          setDrSearchDepth(val as 'shallow' | 'standard' | 'deep')
-                        }
+                        onChange={(val) => setDrSearchDepth(val as 'shallow' | 'standard' | 'deep')}
                         options={[
                           { value: 'shallow', label: 'Shallow (fewer sources)' },
                           { value: 'standard', label: 'Standard' },

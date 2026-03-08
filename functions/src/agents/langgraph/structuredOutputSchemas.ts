@@ -7,6 +7,106 @@
 
 import { z } from 'zod'
 
+const COMPACT_GRAPH_NODE_TYPES = new Set(['claim', 'concept', 'mechanism', 'prediction'])
+const COMPACT_GRAPH_EDGE_RELS = new Set(['causes', 'contradicts', 'supports', 'mediates', 'scopes'])
+
+function clampUnitInterval(value: unknown): number | undefined {
+  if (typeof value !== 'number' || Number.isNaN(value)) return undefined
+  return Math.max(0, Math.min(1, value))
+}
+
+function truncateString(value: unknown, maxLength: number): string | undefined {
+  if (typeof value !== 'string') return undefined
+  return value.length <= maxLength ? value : value.slice(0, maxLength)
+}
+
+function normalizeCompactGraphNode(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  const id = typeof record.id === 'string' ? record.id : undefined
+  const label = truncateString(record.label, 80)
+
+  if (!id || !label) return null
+
+  const type =
+    typeof record.type === 'string' && COMPACT_GRAPH_NODE_TYPES.has(record.type)
+      ? record.type
+      : 'claim'
+
+  const normalized: Record<string, unknown> = {
+    id,
+    label,
+    type,
+  }
+
+  const note = truncateString(record.note, 150)
+  if (note !== undefined) normalized.note = note
+
+  if (typeof record.sourceId === 'string') normalized.sourceId = record.sourceId
+  if (typeof record.sourceUrl === 'string') normalized.sourceUrl = record.sourceUrl
+
+  const sourceConfidence = clampUnitInterval(record.sourceConfidence)
+  if (sourceConfidence !== undefined) normalized.sourceConfidence = sourceConfidence
+
+  return normalized
+}
+
+function normalizeCompactGraphEdge(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  const from = typeof record.from === 'string' ? record.from : undefined
+  const to = typeof record.to === 'string' ? record.to : undefined
+
+  if (!from || !to) return null
+
+  const rel =
+    typeof record.rel === 'string' && COMPACT_GRAPH_EDGE_RELS.has(record.rel)
+      ? record.rel
+      : 'supports'
+
+  const normalized: Record<string, unknown> = {
+    from,
+    to,
+    rel,
+  }
+
+  const weight = clampUnitInterval(record.weight)
+  if (weight !== undefined) normalized.weight = weight
+
+  return normalized
+}
+
+export function normalizeCompactGraphCandidate(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value
+  const record = value as Record<string, unknown>
+
+  const nodes = Array.isArray(record.nodes)
+    ? record.nodes.map(normalizeCompactGraphNode).filter((node): node is Record<string, unknown> => node !== null)
+    : undefined
+  const validNodeIds = new Set((nodes ?? []).map((node) => String(node.id)))
+  const edges = Array.isArray(record.edges)
+    ? record.edges
+        .map(normalizeCompactGraphEdge)
+        .filter((edge): edge is Record<string, unknown> => edge !== null)
+        .filter((edge) => validNodeIds.has(String(edge.from)) && validNodeIds.has(String(edge.to)))
+    : undefined
+
+  const normalized: Record<string, unknown> = { ...record }
+  if (nodes !== undefined) normalized.nodes = nodes.slice(0, 10)
+  if (edges !== undefined) normalized.edges = edges
+
+  const summary = truncateString(record.summary, 200)
+  if (summary !== undefined) normalized.summary = summary
+
+  const reasoning = truncateString(record.reasoning, 500)
+  if (reasoning !== undefined) normalized.reasoning = reasoning
+
+  const confidence = clampUnitInterval(record.confidence)
+  if (confidence !== undefined) normalized.confidence = confidence
+
+  return normalized
+}
+
 // ----- Rewrite Operators -----
 
 export const RewriteOperatorTypeSchema = z.enum([
@@ -36,7 +136,10 @@ export const ThesisOutputSchema = z.object({
     .record(z.string(), z.array(z.string()))
     .describe('Map of concept names to related concepts'),
   causalModel: z.array(z.string()).describe('List of cause-effect relationships as strings'),
-  falsificationCriteria: z.array(z.string()).min(1).describe('Conditions that would disprove this thesis (at least one required)'),
+  falsificationCriteria: z
+    .array(z.string())
+    .min(1)
+    .describe('Conditions that would disprove this thesis (at least one required)'),
   decisionImplications: z.array(z.string()).describe('Actions that follow from this thesis'),
   unitOfAnalysis: z
     .string()
@@ -338,7 +441,12 @@ const CompactGraphNodeSchema = z.object({
   note: z.string().max(150).optional().describe('Qualifications or caveats, ≤150 chars'),
   sourceId: z.string().optional().describe('Source record ID for research-backed nodes'),
   sourceUrl: z.string().optional().describe('Source URL for research-backed nodes'),
-  sourceConfidence: z.number().min(0).max(1).optional().describe('Quality-weighted source confidence'),
+  sourceConfidence: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe('Quality-weighted source confidence'),
 })
 
 const CompactGraphEdgeSchema = z.object({
@@ -352,7 +460,10 @@ export const CompactGraphSchema = z.object({
   nodes: z.array(CompactGraphNodeSchema).max(10).describe('Graph nodes, max 10'),
   edges: z.array(CompactGraphEdgeSchema).describe('Typed edges between nodes'),
   summary: z.string().max(200).describe('Human-readable headline, ≤200 chars'),
-  reasoning: z.string().max(500).describe('Qualitative texture: hedging, nuance, emergent insights, ≤500 chars'),
+  reasoning: z
+    .string()
+    .max(500)
+    .describe('Qualitative texture: hedging, nuance, emergent insights, ≤500 chars'),
   confidence: z.number().min(0).max(1),
   regime: z.string().describe('Conditions under which this holds'),
   temporalGrain: z.string().describe('Time scale of analysis'),
@@ -365,21 +476,33 @@ export type CompactGraphParsed = z.infer<typeof CompactGraphSchema>
 export const GraphDiffSchema = z.object({
   addedNodes: z.array(z.string()).describe('IDs of nodes added this cycle'),
   removedNodes: z.array(z.string()).describe('IDs of nodes removed this cycle'),
-  addedEdges: z.array(z.object({
-    from: z.string(),
-    to: z.string(),
-    rel: z.string(),
-  })).describe('Edges added this cycle'),
-  removedEdges: z.array(z.object({
-    from: z.string(),
-    to: z.string(),
-    rel: z.string(),
-  })).describe('Edges removed this cycle'),
-  modifiedNodes: z.array(z.object({
-    id: z.string(),
-    oldLabel: z.string(),
-    newLabel: z.string(),
-  })).describe('Nodes whose labels were updated'),
+  addedEdges: z
+    .array(
+      z.object({
+        from: z.string(),
+        to: z.string(),
+        rel: z.string(),
+      })
+    )
+    .describe('Edges added this cycle'),
+  removedEdges: z
+    .array(
+      z.object({
+        from: z.string(),
+        to: z.string(),
+        rel: z.string(),
+      })
+    )
+    .describe('Edges removed this cycle'),
+  modifiedNodes: z
+    .array(
+      z.object({
+        id: z.string(),
+        oldLabel: z.string(),
+        newLabel: z.string(),
+      })
+    )
+    .describe('Nodes whose labels were updated'),
   resolvedContradictions: z.array(z.string()).describe('IDs of contradicts edges removed'),
   newContradictions: z.array(z.string()).describe('IDs of new contradicts edges added'),
 })

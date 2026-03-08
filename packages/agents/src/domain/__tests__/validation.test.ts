@@ -181,9 +181,7 @@ describe('validation schemas', () => {
             { id: 'node_a', type: 'agent' as const },
             { id: 'node_b', type: 'end' as const },
           ],
-          edges: [
-            { from: 'node_a', to: 'node_b', condition: { type: 'always' as const } },
-          ],
+          edges: [{ from: 'node_a', to: 'node_b', condition: { type: 'always' as const } }],
         },
         archived: false,
         createdAtMs: Date.now(),

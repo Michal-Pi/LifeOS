@@ -101,6 +101,7 @@ vi.mock('../../contradictionTrackers.js', () => ({
 vi.mock('../iterationBudget.js', () => ({
   calculateIterationBudget: vi.fn().mockReturnValue({
     perThesisAgent: 3,
+    perThesisAgentByLens: { economic: 4, systems: 3, adversarial: 3, historical: 3 },
     perNegationAgent: 2,
     perSynthesisAgent: 3,
     perMetaAgent: 2,
@@ -163,10 +164,34 @@ function makeConfig(): DialecticalGraphConfig {
     minTheses: 2,
     maxTheses: 4,
     thesisAgents: [
-      { agentId: thesisAgents[0]!.agentId, lens: 'economic', modelProvider: 'openai', modelName: 'gpt-4o', temperature: 0.7 },
-      { agentId: thesisAgents[1]!.agentId, lens: 'systems', modelProvider: 'openai', modelName: 'gpt-4o', temperature: 0.7 },
-      { agentId: thesisAgents[2]!.agentId, lens: 'adversarial', modelProvider: 'openai', modelName: 'gpt-4o', temperature: 0.7 },
-      { agentId: thesisAgents[3]!.agentId, lens: 'historical', modelProvider: 'openai', modelName: 'gpt-4o', temperature: 0.7 },
+      {
+        agentId: thesisAgents[0]!.agentId,
+        lens: 'economic',
+        modelProvider: 'openai',
+        modelName: 'gpt-4o',
+        temperature: 0.7,
+      },
+      {
+        agentId: thesisAgents[1]!.agentId,
+        lens: 'systems',
+        modelProvider: 'openai',
+        modelName: 'gpt-4o',
+        temperature: 0.7,
+      },
+      {
+        agentId: thesisAgents[2]!.agentId,
+        lens: 'adversarial',
+        modelProvider: 'openai',
+        modelName: 'gpt-4o',
+        temperature: 0.7,
+      },
+      {
+        agentId: thesisAgents[3]!.agentId,
+        lens: 'historical',
+        modelProvider: 'openai',
+        modelName: 'gpt-4o',
+        temperature: 0.7,
+      },
     ],
     mode: 'quick',
   }
@@ -225,9 +250,7 @@ describe('createDialecticalGraph quick mode config cloning', () => {
   it('rejects blank goals at the execution entry point', async () => {
     const config = makeConfig()
 
-    await expect(
-      executeDialecticalWorkflowLangGraph(config, '   ')
-    ).resolves.toMatchObject({
+    await expect(executeDialecticalWorkflowLangGraph(config, '   ')).resolves.toMatchObject({
       output: 'Dialectical reasoning failed: Goal is required',
       status: 'failed',
       dialecticalState: {

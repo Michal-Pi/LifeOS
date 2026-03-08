@@ -28,10 +28,7 @@ import { AskUserInterrupt, type ToolRegistry } from '../toolExecutor.js'
 import type { StreamContext } from '../streamingTypes.js'
 import { injectBrandVoice } from '../brandVoiceInjection.js'
 import { injectCoachingContext } from '../coachingContextInjection.js'
-import {
-  injectHistoricalCalibration,
-  type HistoricalEstimate,
-} from '../historicalCalibration.js'
+import { injectHistoricalCalibration, type HistoricalEstimate } from '../historicalCalibration.js'
 
 // ----- Status Constants -----
 

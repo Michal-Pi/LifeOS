@@ -51,6 +51,7 @@ export function WorkflowDetailPage() {
   const [showProjectManager, setShowProjectManager] = useState(true)
   const [showFullGraphPreview, setShowFullGraphPreview] = useState(false)
   const [showGraphEditor, setShowGraphEditor] = useState(false)
+  const [configOpen, setConfigOpen] = useState(false)
   const [runs, setRuns] = useState<Run[]>([])
   const [pageLoading, setPageLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -345,7 +346,11 @@ export function WorkflowDetailPage() {
       </header>
 
       {/* Configuration section */}
-      <details className="workflow-section">
+      <details
+        className="workflow-section"
+        open={configOpen}
+        onToggle={(e) => setConfigOpen((e.target as HTMLDetailsElement).open)}
+      >
         <summary className="workflow-section__header">
           <h3>Configuration</h3>
           <span className="workflow-section__summary">
@@ -379,7 +384,7 @@ export function WorkflowDetailPage() {
                 <div className="info-row">
                   <strong>Start Node:</strong> {workflow.workflowGraph.startNodeId}
                 </div>
-                <WorkflowGraphView graph={workflow.workflowGraph} />
+                {configOpen && <WorkflowGraphView graph={workflow.workflowGraph} />}
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
                   <Button variant="secondary" onClick={() => setShowFullGraphPreview(true)}>
                     View Full Workflow

@@ -257,11 +257,14 @@ export async function checkRunRateLimit(
 }
 
 /**
- * Check if user can make a provider API call (within rate limits)
+ * Check if user can make a provider API call (within rate limits).
+ * If the per-minute limit is reached, waits for the current window to
+ * reset (up to 65 s) instead of throwing immediately, providing natural
+ * back-pressure for bursty workflows like Deep Research + Dialectical.
  *
  * @param userId User ID
  * @param provider AI provider
- * @throws RateLimitError if limit is exceeded
+ * @throws RateLimitError only if still exceeded after waiting
  */
 export async function checkProviderRateLimit(
   userId: string,
@@ -274,20 +277,42 @@ export async function checkProviderRateLimit(
   record = resetExpiredWindows(record)
 
   // Check provider calls per minute
-  const providerCalls = record.providerCalls[provider] || 0
+  let providerCalls = record.providerCalls[provider] || 0
 
   if (providerCalls >= record.maxProviderCallsPerMinute) {
-    throw new RateLimitError(
-      'provider',
-      `${provider} calls per minute limit`,
-      'Too many requests. Please wait a moment.',
-      {
-        userId,
+    // Wait for the per-minute window to reset instead of failing immediately.
+    const waitMs = Math.max(0, record.lastUpdatedMs + MINUTE_MS - Date.now()) + 1000 // +1 s buffer
+    const MAX_WAIT_MS = 65_000
+
+    if (waitMs > 0 && waitMs <= MAX_WAIT_MS) {
+      log.info('Provider rate limit reached, waiting for window reset', {
         provider,
-        limit: record.maxProviderCallsPerMinute,
+        waitMs,
         used: providerCalls,
-      }
-    )
+        limit: record.maxProviderCallsPerMinute,
+      })
+      await new Promise((resolve) => setTimeout(resolve, waitMs))
+
+      // Re-read after waiting — window should have reset
+      record = await getRateLimitRecord(userId)
+      record = resetExpiredWindows(record)
+      providerCalls = record.providerCalls[provider] || 0
+    }
+
+    // If still over the limit after waiting, throw
+    if (providerCalls >= record.maxProviderCallsPerMinute) {
+      throw new RateLimitError(
+        'provider',
+        `${provider} calls per minute limit`,
+        'Too many requests. Please wait a moment.',
+        {
+          userId,
+          provider,
+          limit: record.maxProviderCallsPerMinute,
+          used: providerCalls,
+        }
+      )
+    }
   }
 
   // Increment provider call count

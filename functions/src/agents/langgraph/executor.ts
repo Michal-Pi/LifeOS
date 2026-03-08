@@ -30,10 +30,37 @@ import { executeOracleWorkflowLangGraph } from './oracleGraph.js'
 import { FirestoreCheckpointer } from './firestoreCheckpointer.js'
 import { WorkflowStatus, wrapWorkflowError, getErrorMessage } from './utils.js'
 import { sanitizeForFirestore } from './firestoreSanitizer.js'
-import { createDefaultDialecticalConfig, createDefaultDeepResearchConfig, createDefaultOracleConfig } from '@lifeos/agents'
+import {
+  createDefaultDialecticalConfig,
+  createDefaultDeepResearchConfig,
+  createDefaultOracleConfig,
+  LENS_MODEL_PRESETS,
+} from '@lifeos/agents'
 import type { DeepResearchRunConfig, OracleRunConfig } from '@lifeos/agents'
+import { resolveThesisLens } from './dialecticalPrompts.js'
 
 const log = createLogger('LangGraphExecutor')
+
+function alignTrackedEconomicThesisAgent(agent: AgentConfig): AgentConfig {
+  if (agent.role !== 'thesis_generator') return agent
+  if (resolveThesisLens(agent, 'custom') !== 'economic') return agent
+
+  const isLegacyDefaultEconomicAgent =
+    agent.modelProvider === 'anthropic' &&
+    agent.modelName === 'claude-sonnet-4-6' &&
+    (agent.name === 'Dialectical Economic Thesis Agent (Anthropic)' ||
+      agent.name === 'Dialectical Economic Thesis Agent')
+
+  if (!isLegacyDefaultEconomicAgent) return agent
+
+  const preset = LENS_MODEL_PRESETS.economic
+  return {
+    ...agent,
+    name: 'Dialectical Economic Thesis Agent (OpenAI)',
+    modelProvider: preset.provider,
+    modelName: preset.modelName,
+  }
+}
 
 /**
  * Configuration for LangGraph workflow execution
@@ -123,7 +150,8 @@ export async function executeLangGraphWorkflow(
             workflowCriticality,
           },
           goal,
-          context
+          context,
+          (context?.resumeState as Record<string, unknown>) ?? undefined
         )
         return {
           output: result.output,
@@ -133,6 +161,7 @@ export async function executeLangGraphWorkflow(
           totalSteps: result.totalSteps,
           status: result.status,
           pendingInput: result.pendingInput,
+          workflowState: { sequentialResumeState: result.sequentialResumeState },
         }
       }
 
@@ -154,7 +183,8 @@ export async function executeLangGraphWorkflow(
             workflowCriticality,
           },
           goal,
-          context
+          context,
+          (context?.resumeState as Record<string, unknown>) ?? undefined
         )
         return {
           output: result.output,
@@ -164,6 +194,7 @@ export async function executeLangGraphWorkflow(
           totalSteps: result.totalSteps,
           status: result.status,
           pendingInput: result.pendingInput,
+          workflowState: { parallelResumeState: result.parallelResumeState },
         }
       }
 
@@ -194,7 +225,8 @@ export async function executeLangGraphWorkflow(
             maxTokensPerWorker: workflow.maxTokensPerWorker,
           },
           goal,
-          context
+          context,
+          (context?.resumeState as Record<string, unknown>) ?? undefined
         )
         return {
           output: result.output,
@@ -204,6 +236,7 @@ export async function executeLangGraphWorkflow(
           totalSteps: result.totalSteps,
           status: result.status,
           pendingInput: result.pendingInput,
+          workflowState: { supervisorResumeState: result.supervisorResumeState },
         }
       }
 
@@ -234,7 +267,8 @@ export async function executeLangGraphWorkflow(
             workflowCriticality,
           },
           goal,
-          context
+          context,
+          (context?.resumeState as Record<string, unknown>) ?? undefined
         )
         return {
           output: result.output,
@@ -255,8 +289,9 @@ export async function executeLangGraphWorkflow(
 
         // Find thesis agents (thesis_generator role or first N agents)
         const thesisAgents = agents.filter((a) => a.role === 'thesis_generator')
-        const thesisAgentsToUse =
+        const thesisAgentsToUse = (
           thesisAgents.length >= 2 ? thesisAgents : agents.slice(0, Math.min(3, agents.length))
+        ).map(alignTrackedEconomicThesisAgent)
 
         if (thesisAgents.length < 2) {
           log.warn(
@@ -315,7 +350,8 @@ export async function executeLangGraphWorkflow(
             workflowCriticality,
           },
           goal,
-          context
+          context,
+          (context?.resumeState as Record<string, unknown>) ?? undefined
         )
         return {
           output: result.output,
@@ -324,6 +360,7 @@ export async function executeLangGraphWorkflow(
           totalEstimatedCost: result.totalEstimatedCost,
           totalSteps: result.steps.length,
           status: result.status,
+          error: result.error,
           pendingInput: result.pendingInput,
           constraintPause: result.constraintPause,
           workflowState: sanitizeForFirestore({
@@ -331,8 +368,8 @@ export async function executeLangGraphWorkflow(
             conceptualVelocity: result.conceptualVelocity,
             contradictionsFound: result.contradictionsFound,
             startup: result.startup,
-            // Full dialectical state for visualization
             dialectical: result.dialecticalState,
+            dialecticalResumeState: result.dialecticalResumeState,
           }) as Record<string, unknown>,
         }
       }
@@ -356,7 +393,11 @@ export async function executeLangGraphWorkflow(
 
         // Fallbacks for thesis agents (need at least 2)
         const thesisAgentsToUseDR =
-          thesisAgentsDR.length >= 2 ? thesisAgentsDR : agents.slice(0, Math.min(3, agents.length))
+          (
+            thesisAgentsDR.length >= 2
+              ? thesisAgentsDR
+              : agents.slice(0, Math.min(3, agents.length))
+          ).map(alignTrackedEconomicThesisAgent)
 
         const synthesisAgentsToUseDR =
           synthesisAgentsDR.length > 0
@@ -386,7 +427,8 @@ export async function executeLangGraphWorkflow(
             workflowCriticality,
           },
           goal,
-          context
+          context,
+          (context?.resumeState as Record<string, unknown>) ?? undefined
         )
 
         return {
@@ -396,6 +438,7 @@ export async function executeLangGraphWorkflow(
           totalEstimatedCost: result.totalEstimatedCost,
           totalSteps: result.steps.length,
           status: result.status,
+          error: result.error,
           pendingInput: result.pendingInput,
           constraintPause: result.constraintPause,
           workflowState: {
@@ -406,6 +449,9 @@ export async function executeLangGraphWorkflow(
             gapIterationsUsed: result.gapIterationsUsed,
             answer: result.answer,
             startup: result.startup,
+            mergedGraph: result.mergedGraph ?? null,
+            graphHistory: result.graphHistory ?? [],
+            deepResearchResumeState: result.deepResearchResumeState,
           },
         }
       }
@@ -413,8 +459,7 @@ export async function executeLangGraphWorkflow(
       case 'oracle': {
         // Oracle scenario planning — 4-phase pipeline with axiom-guided reasoning
         const oracleConfig: OracleRunConfig =
-          (context?.oracleConfig as OracleRunConfig) ??
-          createDefaultOracleConfig()
+          (context?.oracleConfig as OracleRunConfig) ?? createDefaultOracleConfig()
 
         // Find agents by Oracle role
         const contextGatherer = agents.find((a) => a.role === 'context_gatherer') ?? agents[0]
@@ -458,7 +503,7 @@ export async function executeLangGraphWorkflow(
           },
           goal,
           context,
-          (context?.resumeState as Record<string, unknown>) ?? undefined,
+          (context?.resumeState as Record<string, unknown>) ?? undefined
         )
 
         return {
@@ -468,9 +513,13 @@ export async function executeLangGraphWorkflow(
           totalEstimatedCost: result.totalEstimatedCost,
           totalSteps: result.steps.length,
           status: result.status,
+          error: result.error,
           pendingInput: result.pendingInput,
           constraintPause: result.constraintPause,
-          workflowState: sanitizeForFirestore(result.workflowState ?? {}) as Record<string, unknown>,
+          workflowState: sanitizeForFirestore(result.workflowState ?? {}) as Record<
+            string,
+            unknown
+          >,
         }
       }
 

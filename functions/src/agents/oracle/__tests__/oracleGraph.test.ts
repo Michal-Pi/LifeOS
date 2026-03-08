@@ -47,6 +47,8 @@ vi.mock('../../expertCouncil.js', () => ({
 import { executeAgentWithEvents } from '../../langgraph/utils.js'
 import { createExpertCouncilPipeline } from '../../expertCouncil.js'
 import {
+  collectEvidenceFromSearchPlan,
+  selectUrlsForCrawl,
   executeOracleWorkflowLangGraph,
   type OracleGraphConfig,
 } from '../../langgraph/oracleGraph.js'
@@ -103,15 +105,15 @@ const mockSerpSearchTool = {
   execute: vi.fn(async (params: Record<string, unknown>) => {
     const query = String(params.query ?? '')
     return {
-    results: [
-      {
-        title: `Result for ${query}`,
-        snippet: `Evidence snippet for ${query}`,
-        url: `https://example.com/${encodeURIComponent(query)}`,
-        source: 'Example Source',
-        date: '2026-01-01',
-      },
-    ],
+      results: [
+        {
+          title: `Result for ${query}`,
+          snippet: `Evidence snippet for ${query}`,
+          url: `https://example.com/${encodeURIComponent(query)}`,
+          source: 'Example Source',
+          date: '2026-01-01',
+        },
+      ],
     }
   }),
 }
@@ -282,6 +284,23 @@ describe('Gate Evaluator', () => {
       expect(result).not.toBeNull()
     })
 
+    it('extracts the first valid rubric object when other JSON appears nearby', () => {
+      const input = `Context:
+{"claims":[],"evidence":[{"id":"EVD-001"}]}
+
+Evaluation:
+{"mechanisticClarity": 3, "completeness": 3, "causalDiscipline": 3, "decisionUsefulness": 4, "uncertaintyHygiene": 4, "evidenceQuality": 4, "feedback":"Sparse but parseable."}
+
+Trailing:
+{"verifiedClaims":[],"axiomGroundingPercent":0}`
+
+      const result = parseRubricScores(input)
+      expect(result).not.toBeNull()
+      expect(result!.scores.mechanisticClarity).toBe(3)
+      expect(result!.scores.decisionUsefulness).toBe(4)
+      expect(result!.llmFeedback).toBe('Sparse but parseable.')
+    })
+
     it('returns null for invalid input', () => {
       expect(parseRubricScores('not json at all')).toBeNull()
     })
@@ -350,7 +369,7 @@ describe('Gate Evaluator', () => {
           refinementAttempt: 0,
           maxRefinements: 3,
         },
-        passingScores,
+        passingScores
       )
 
       expect(result.gateResult.passed).toBe(true)
@@ -367,7 +386,7 @@ describe('Gate Evaluator', () => {
           refinementAttempt: 0,
           maxRefinements: 3,
         },
-        scores,
+        scores
       )
 
       expect(result.gateResult.passed).toBe(false)
@@ -391,7 +410,7 @@ describe('Gate Evaluator', () => {
           refinementAttempt: 0,
           maxRefinements: 3,
         },
-        scores,
+        scores
       )
 
       expect(result.gateResult.passed).toBe(false)
@@ -407,7 +426,7 @@ describe('Gate Evaluator', () => {
           refinementAttempt: 0,
           maxRefinements: 3,
         },
-        passingScores,
+        passingScores
       )
 
       expect(result.gateResult.passed).toBe(false)
@@ -424,7 +443,7 @@ describe('Gate Evaluator', () => {
           refinementAttempt: 0,
           maxRefinements: 3,
         },
-        passingScores,
+        passingScores
       )
 
       expect(result.gateResult.passed).toBe(true)
@@ -439,7 +458,7 @@ describe('Gate Evaluator', () => {
           refinementAttempt: 0,
           maxRefinements: 3,
         },
-        scores,
+        scores
       )
 
       expect(result.gateResult.passed).toBe(false)
@@ -455,7 +474,7 @@ describe('Gate Evaluator', () => {
           refinementAttempt: 3,
           maxRefinements: 3,
         },
-        scores,
+        scores
       )
 
       expect(result.gateResult.passed).toBe(false)
@@ -511,7 +530,12 @@ describe('Phase Summarizer', () => {
 
     it('limits executive bullets to 10', () => {
       const bullets = Array.from({ length: 15 }, (_, i) => `Bullet ${i + 1}`)
-      const output = JSON.stringify({ executive: bullets, keyClaims: [], keyAssumptions: [], unresolvedTensions: [] })
+      const output = JSON.stringify({
+        executive: bullets,
+        keyClaims: [],
+        keyAssumptions: [],
+        unresolvedTensions: [],
+      })
 
       const summary = parsePhaseSummary('trend_scanning', output)
       expect(summary!.executive).toHaveLength(10)
@@ -523,7 +547,12 @@ describe('Phase Summarizer', () => {
         summary: `Claim ${i}`,
         confidence: 0.5,
       }))
-      const output = JSON.stringify({ executive: [], keyClaims: claims, keyAssumptions: [], unresolvedTensions: [] })
+      const output = JSON.stringify({
+        executive: [],
+        keyClaims: claims,
+        keyAssumptions: [],
+        unresolvedTensions: [],
+      })
 
       const summary = parsePhaseSummary('decomposition', output)
       expect(summary!.keyClaims).toHaveLength(15)
@@ -537,11 +566,46 @@ describe('Phase Summarizer', () => {
   describe('buildFallbackSummary', () => {
     it('creates summary from raw claims and assumptions', () => {
       const claims = [
-        { id: 'CLM-001', text: 'High confidence claim', type: 'causal' as const, confidence: 0.9, confidenceBasis: 'data' as const, assumptions: [], dependencies: [], axiomRefs: [], evidenceIds: [], sourceIds: [], createdBy: 'test', phase: 1, createdAtMs: Date.now() },
-        { id: 'CLM-002', text: 'Low confidence claim', type: 'descriptive' as const, confidence: 0.3, confidenceBasis: 'speculative' as const, assumptions: [], dependencies: [], axiomRefs: [], evidenceIds: [], sourceIds: [], createdBy: 'test', phase: 1, createdAtMs: Date.now() },
+        {
+          id: 'CLM-001',
+          text: 'High confidence claim',
+          type: 'causal' as const,
+          confidence: 0.9,
+          confidenceBasis: 'data' as const,
+          assumptions: [],
+          dependencies: [],
+          axiomRefs: [],
+          evidenceIds: [],
+          sourceIds: [],
+          createdBy: 'test',
+          phase: 1,
+          createdAtMs: Date.now(),
+        },
+        {
+          id: 'CLM-002',
+          text: 'Low confidence claim',
+          type: 'descriptive' as const,
+          confidence: 0.3,
+          confidenceBasis: 'speculative' as const,
+          assumptions: [],
+          dependencies: [],
+          axiomRefs: [],
+          evidenceIds: [],
+          sourceIds: [],
+          createdBy: 'test',
+          phase: 1,
+          createdAtMs: Date.now(),
+        },
       ]
       const assumptions = [
-        { id: 'ASM-001', statement: 'Test assumption', type: 'regulatory' as const, sensitivity: 'high' as const, observables: ['FDA announcements'], confidence: 0.6 },
+        {
+          id: 'ASM-001',
+          statement: 'Test assumption',
+          type: 'regulatory' as const,
+          sensitivity: 'high' as const,
+          observables: ['FDA announcements'],
+          confidence: 0.6,
+        },
       ]
 
       const summary = buildFallbackSummary('decomposition', claims, assumptions)
@@ -559,14 +623,16 @@ describe('Phase Summarizer', () => {
     })
 
     it('formats summaries as markdown', () => {
-      const summaries = [{
-        phase: 'decomposition' as const,
-        executive: ['Found 10 claims'],
-        keyClaims: [{ id: 'CLM-001', summary: 'Test', confidence: 0.8 }],
-        keyAssumptions: [],
-        unresolvedTensions: ['Open question 1'],
-        tokenCount: 200,
-      }]
+      const summaries = [
+        {
+          phase: 'decomposition' as const,
+          executive: ['Found 10 claims'],
+          keyClaims: [{ id: 'CLM-001', summary: 'Test', confidence: 0.8 }],
+          keyAssumptions: [],
+          unresolvedTensions: ['Open question 1'],
+          tokenCount: 200,
+        },
+      ]
 
       const output = formatPhaseSummariesForContext(summaries)
       expect(output).toContain('## Prior Phase Context')
@@ -614,168 +680,329 @@ describe('Oracle Graph Integration', () => {
   function setupFullPipelineNodeResponse(nodeId: string) {
     switch (nodeId) {
       case 'context_gathering':
-        return mockStep(JSON.stringify({
-          scope: {
-            topic: 'AI impact on healthcare',
-            domain: 'technology',
-            timeHorizon: '5 years',
-            geography: 'global',
-            decisionContext: 'Strategic planning for a hospital network',
-            boundaries: { inScope: ['AI diagnostics', 'telemedicine'], outOfScope: ['administrative AI'] },
-          },
-          searchPlan: {
-            technological: ['AI diagnostics trends 2026', 'healthcare AI regulation'],
-            social: ['patient trust in AI diagnostics'],
-          },
-        }))
+        return mockStep(
+          JSON.stringify({
+            scope: {
+              topic: 'AI impact on healthcare',
+              domain: 'technology',
+              timeHorizon: '5 years',
+              geography: 'global',
+              decisionContext: 'Strategic planning for a hospital network',
+              boundaries: {
+                inScope: ['AI diagnostics', 'telemedicine'],
+                outOfScope: ['administrative AI'],
+              },
+            },
+            searchPlan: {
+              technological: ['AI diagnostics trends 2026', 'healthcare AI regulation'],
+              social: ['patient trust in AI diagnostics'],
+            },
+          })
+        )
 
       case 'decomposer':
-        return mockStep(JSON.stringify({
-          claims: [
-            { id: 'CLM-001', text: 'AI will reduce diagnostic errors by 30% in radiology', type: 'causal', confidence: 0.75, axiomRefs: ['AXM-045'], evidenceIds: ['E1'], sourceIds: ['S1'], createdAtMs: Date.now() },
-            { id: 'CLM-002', text: 'Regulatory approval timelines will slow AI adoption', type: 'constraint', confidence: 0.8, axiomRefs: ['AXM-036'], evidenceIds: ['E2'], sourceIds: ['S2'], createdAtMs: Date.now() },
-            { id: 'CLM-003', text: 'Patient trust remains a barrier', type: 'descriptive', confidence: 0.6, axiomRefs: ['AXM-022'], evidenceIds: [], sourceIds: [], createdAtMs: Date.now() },
-          ],
-          assumptions: [
-            { id: 'ASM-001', statement: 'Regulatory framework will be updated within 2 years', sensitivity: 'high', justification: 'Current proposals', impactIfWrong: 'Timeline shifts', monitoringSignals: ['FDA announcements'] },
-          ],
-        }))
+        return mockStep(
+          JSON.stringify({
+            claims: [
+              {
+                id: 'CLM-001',
+                text: 'AI will reduce diagnostic errors by 30% in radiology',
+                type: 'causal',
+                confidence: 0.75,
+                axiomRefs: ['AXM-045'],
+                evidenceIds: ['E1'],
+                sourceIds: ['S1'],
+                createdAtMs: Date.now(),
+              },
+              {
+                id: 'CLM-002',
+                text: 'Regulatory approval timelines will slow AI adoption',
+                type: 'constraint',
+                confidence: 0.8,
+                axiomRefs: ['AXM-036'],
+                evidenceIds: ['E2'],
+                sourceIds: ['S2'],
+                createdAtMs: Date.now(),
+              },
+              {
+                id: 'CLM-003',
+                text: 'Patient trust remains a barrier',
+                type: 'descriptive',
+                confidence: 0.6,
+                axiomRefs: ['AXM-022'],
+                evidenceIds: [],
+                sourceIds: [],
+                createdAtMs: Date.now(),
+              },
+            ],
+            assumptions: [
+              {
+                id: 'ASM-001',
+                statement: 'Regulatory framework will be updated within 2 years',
+                sensitivity: 'high',
+                justification: 'Current proposals',
+                impactIfWrong: 'Timeline shifts',
+                monitoringSignals: ['FDA announcements'],
+              },
+            ],
+          })
+        )
 
       case 'systems_mapper':
-        return mockStep(JSON.stringify({
-          nodes: [
-            { id: 'N1', type: 'principle', label: 'AI Diagnostic Accuracy', metadata: {} },
-            { id: 'N2', type: 'constraint', label: 'Regulatory Approval', metadata: {} },
-            { id: 'N3', type: 'trend', label: 'Patient Trust', metadata: {} },
-          ],
-          edges: [
-            { id: 'E1', source: 'N1', target: 'N2', type: 'constrained_by', weight: 0.8 },
-            { id: 'E2', source: 'N3', target: 'N1', type: 'influences', weight: 0.6 },
-          ],
-          loops: [
-            { id: 'L1', nodeIds: ['N1', 'N3'], type: 'reinforcing', label: 'Trust-adoption loop' },
-          ],
-        }))
+        return mockStep(
+          JSON.stringify({
+            nodes: [
+              { id: 'N1', type: 'principle', label: 'AI Diagnostic Accuracy', metadata: {} },
+              { id: 'N2', type: 'constraint', label: 'Regulatory Approval', metadata: {} },
+              { id: 'N3', type: 'trend', label: 'Patient Trust', metadata: {} },
+            ],
+            edges: [
+              { id: 'E1', source: 'N1', target: 'N2', type: 'constrained_by', weight: 0.8 },
+              { id: 'E2', source: 'N3', target: 'N1', type: 'influences', weight: 0.6 },
+            ],
+            loops: [
+              {
+                id: 'L1',
+                nodeIds: ['N1', 'N3'],
+                type: 'reinforcing',
+                label: 'Trust-adoption loop',
+              },
+            ],
+          })
+        )
 
       case 'verifier':
-        return mockStep(JSON.stringify({
-          verifiedClaims: [
-            { claimId: 'CLM-001', adjustedConfidence: 0.7 },
-            { claimId: 'CLM-002', adjustedConfidence: 0.85 },
-          ],
-          axiomGroundingPercent: 0.67,
-        }))
+        return mockStep(
+          JSON.stringify({
+            verifiedClaims: [
+              { claimId: 'CLM-001', adjustedConfidence: 0.7 },
+              { claimId: 'CLM-002', adjustedConfidence: 0.85 },
+            ],
+            axiomGroundingPercent: 0.67,
+          })
+        )
 
       case 'gate_a':
       case 'gate_b':
       case 'gate_c':
-        return mockStep(JSON.stringify({
-          mechanisticClarity: 4,
-          completeness: 4,
-          causalDiscipline: 4,
-          decisionUsefulness: 4.5,
-          uncertaintyHygiene: 4,
-          evidenceQuality: 4,
-        }))
+        return mockStep(
+          JSON.stringify({
+            mechanisticClarity: 4,
+            completeness: 4,
+            causalDiscipline: 4,
+            decisionUsefulness: 4.5,
+            uncertaintyHygiene: 4,
+            evidenceQuality: 4,
+          })
+        )
 
       case 'phase_1_summary':
       case 'phase_2_summary':
-        return mockStep(JSON.stringify({
-          executive: ['Phase completed successfully', 'Key findings identified'],
-          keyClaims: [{ id: 'CLM-001', summary: 'AI diagnostics', confidence: 0.7 }],
-          keyAssumptions: [{ id: 'ASM-001', statement: 'Regulatory update', sensitivity: 'high' }],
-          unresolvedTensions: ['Regulatory timeline uncertainty'],
-        }))
+        return mockStep(
+          JSON.stringify({
+            executive: ['Phase completed successfully', 'Key findings identified'],
+            keyClaims: [{ id: 'CLM-001', summary: 'AI diagnostics', confidence: 0.7 }],
+            keyAssumptions: [
+              { id: 'ASM-001', statement: 'Regulatory update', sensitivity: 'high' },
+            ],
+            unresolvedTensions: ['Regulatory timeline uncertainty'],
+          })
+        )
 
       case 'scanner':
-        return mockStep(JSON.stringify({
-          trends: [
-            { id: 'TRD-001', statement: 'Generative AI in medical imaging', steepCategory: 'technological', direction: 'rising', momentum: 'accelerating', impactScore: 0.9, uncertaintyScore: 0.4, evidenceIds: [], causalLinks: [], secondOrderEffects: [] },
-            { id: 'TRD-002', statement: 'Remote patient monitoring adoption', steepCategory: 'social', direction: 'rising', momentum: 'steady', impactScore: 0.7, uncertaintyScore: 0.3, evidenceIds: [], causalLinks: [], secondOrderEffects: [] },
-          ],
-        }))
+        return mockStep(
+          JSON.stringify({
+            trends: [
+              {
+                id: 'TRD-001',
+                statement: 'Generative AI in medical imaging',
+                steepCategory: 'technological',
+                direction: 'rising',
+                momentum: 'accelerating',
+                impactScore: 0.9,
+                uncertaintyScore: 0.4,
+                evidenceIds: [],
+                causalLinks: [],
+                secondOrderEffects: [],
+              },
+              {
+                id: 'TRD-002',
+                statement: 'Remote patient monitoring adoption',
+                steepCategory: 'social',
+                direction: 'rising',
+                momentum: 'steady',
+                impactScore: 0.7,
+                uncertaintyScore: 0.3,
+                evidenceIds: [],
+                causalLinks: [],
+                secondOrderEffects: [],
+              },
+            ],
+          })
+        )
 
       case 'impact_assessor':
-        return mockStep(JSON.stringify({
-          crossImpactMatrix: [
-            { sourceId: 'TRD-001', targetId: 'TRD-002', effect: 'increases', strength: 0.7 },
-          ],
-          criticalUncertainties: [
-            { id: 'UNC-001', variable: 'Regulatory approval speed', states: ['fast', 'slow', 'blocked'], currentAssessment: 'slow', impactScore: 0.9 },
-            { id: 'UNC-002', variable: 'AI reliability maturity', states: ['mature', 'improving', 'stagnant'], currentAssessment: 'improving', impactScore: 0.8 },
-          ],
-        }))
+        return mockStep(
+          JSON.stringify({
+            crossImpactMatrix: [
+              { sourceId: 'TRD-001', targetId: 'TRD-002', effect: 'increases', strength: 0.7 },
+            ],
+            criticalUncertainties: [
+              {
+                id: 'UNC-001',
+                variable: 'Regulatory approval speed',
+                states: ['fast', 'slow', 'blocked'],
+                currentAssessment: 'slow',
+                impactScore: 0.9,
+              },
+              {
+                id: 'UNC-002',
+                variable: 'AI reliability maturity',
+                states: ['mature', 'improving', 'stagnant'],
+                currentAssessment: 'improving',
+                impactScore: 0.8,
+              },
+            ],
+          })
+        )
 
       case 'weak_signal_hunter':
-        return mockStep(JSON.stringify({
-          weakSignals: [
-            { id: 'WS-001', statement: 'Patient-led AI diagnostics via consumer devices', category: 'technological', potentialImpact: 0.6, confidence: 0.3 },
-          ],
-        }))
+        return mockStep(
+          JSON.stringify({
+            weakSignals: [
+              {
+                id: 'WS-001',
+                statement: 'Patient-led AI diagnostics via consumer devices',
+                category: 'technological',
+                potentialImpact: 0.6,
+                confidence: 0.3,
+              },
+            ],
+          })
+        )
 
       case 'equilibrium_analyst':
-        return mockStep(JSON.stringify({
-          selectedSkeletons: ['SK-1', 'SK-2', 'SK-3'],
-          candidateSkeletons: [
-            { id: 'SK-1', premise: { regulation: 'fast', reliability: 'mature' }, consistency: 0.8, plausibility: 0.7, divergence: 0.6 },
-            { id: 'SK-2', premise: { regulation: 'slow', reliability: 'improving' }, consistency: 0.9, plausibility: 0.8, divergence: 0.5 },
-            { id: 'SK-3', premise: { regulation: 'blocked', reliability: 'stagnant' }, consistency: 0.7, plausibility: 0.4, divergence: 0.9 },
-          ],
-        }))
+        return mockStep(
+          JSON.stringify({
+            selectedSkeletons: ['SK-1', 'SK-2', 'SK-3'],
+            candidateSkeletons: [
+              {
+                id: 'SK-1',
+                premise: { regulation: 'fast', reliability: 'mature' },
+                consistency: 0.8,
+                plausibility: 0.7,
+                divergence: 0.6,
+              },
+              {
+                id: 'SK-2',
+                premise: { regulation: 'slow', reliability: 'improving' },
+                consistency: 0.9,
+                plausibility: 0.8,
+                divergence: 0.5,
+              },
+              {
+                id: 'SK-3',
+                premise: { regulation: 'blocked', reliability: 'stagnant' },
+                consistency: 0.7,
+                plausibility: 0.4,
+                divergence: 0.9,
+              },
+            ],
+          })
+        )
 
       case 'scenario_developer':
-        return mockStep(JSON.stringify({
-          scenarios: [
-            {
-              id: 'SCN-001',
-              name: 'AI Healthcare Revolution',
-              narrative: 'Fast regulatory approval enables rapid AI adoption in hospitals...',
-              signposts: ['FDA fast-track announcement', 'Major hospital AI pilot'],
-              tailRisks: ['AI misdiagnosis scandal'],
-              plausibilityScore: 0.7,
-              divergenceScore: 0.6,
-            },
-            {
-              id: 'SCN-002',
-              name: 'Cautious Integration',
-              narrative: 'Slow but steady adoption with regulatory caution...',
-              signposts: ['Incremental FDA guidelines', 'Academic validation studies'],
-              tailRisks: ['Competitor nations leapfrog'],
-              plausibilityScore: 0.8,
-              divergenceScore: 0.5,
-            },
-            {
-              id: 'SCN-003',
-              name: 'AI Winter in Healthcare',
-              narrative: 'Regulatory blockage and a high-profile failure freeze AI adoption...',
-              signposts: ['Major AI diagnostic failure', 'Congressional hearings'],
-              tailRisks: ['Brain drain to less regulated markets'],
-              plausibilityScore: 0.4,
-              divergenceScore: 0.9,
-            },
-          ],
-        }))
+        return mockStep(
+          JSON.stringify({
+            scenarios: [
+              {
+                id: 'SCN-001',
+                name: 'AI Healthcare Revolution',
+                narrative: 'Fast regulatory approval enables rapid AI adoption in hospitals...',
+                signposts: ['FDA fast-track announcement', 'Major hospital AI pilot'],
+                tailRisks: ['AI misdiagnosis scandal'],
+                plausibilityScore: 0.7,
+                divergenceScore: 0.6,
+              },
+              {
+                id: 'SCN-002',
+                name: 'Cautious Integration',
+                narrative: 'Slow but steady adoption with regulatory caution...',
+                signposts: ['Incremental FDA guidelines', 'Academic validation studies'],
+                tailRisks: ['Competitor nations leapfrog'],
+                plausibilityScore: 0.8,
+                divergenceScore: 0.5,
+              },
+              {
+                id: 'SCN-003',
+                name: 'AI Winter in Healthcare',
+                narrative: 'Regulatory blockage and a high-profile failure freeze AI adoption...',
+                signposts: ['Major AI diagnostic failure', 'Congressional hearings'],
+                tailRisks: ['Brain drain to less regulated markets'],
+                plausibilityScore: 0.4,
+                divergenceScore: 0.9,
+              },
+            ],
+          })
+        )
 
       case 'red_team':
-        return mockStep(JSON.stringify({
-          assessments: [
-            { scenarioId: 'SCN-001', tailRisks: ['Overreliance risk', 'Equity gaps in AI access'], overallRobustness: 'moderate' },
-            { scenarioId: 'SCN-002', tailRisks: ['Innovation stagnation'], overallRobustness: 'high' },
-            { scenarioId: 'SCN-003', tailRisks: ['Self-fulfilling pessimism'], overallRobustness: 'low' },
-          ],
-        }))
+        return mockStep(
+          JSON.stringify({
+            assessments: [
+              {
+                scenarioId: 'SCN-001',
+                tailRisks: ['Overreliance risk', 'Equity gaps in AI access'],
+                overallRobustness: 'moderate',
+              },
+              {
+                scenarioId: 'SCN-002',
+                tailRisks: ['Innovation stagnation'],
+                overallRobustness: 'high',
+              },
+              {
+                scenarioId: 'SCN-003',
+                tailRisks: ['Self-fulfilling pessimism'],
+                overallRobustness: 'low',
+              },
+            ],
+          })
+        )
 
       case 'backcasting':
-        return mockStep(JSON.stringify({
-          backcastTimelines: [
-            { scenarioId: 'SCN-001', milestones: [{ year: 2027, event: 'FDA fast-track program' }] },
-          ],
-          strategicMoves: [
-            { id: 'SM-001', type: 'no_regret', description: 'Invest in AI training for radiologists', timing: 'immediate', scenarioIds: ['SCN-001', 'SCN-002'] },
-            { id: 'SM-002', type: 'option_to_buy', description: 'Partner with AI diagnostics startups', timing: '6-12 months', scenarioIds: ['SCN-001'] },
-            { id: 'SM-003', type: 'hedge', description: 'Maintain manual diagnostic capacity', timing: 'ongoing', scenarioIds: ['SCN-003'] },
-          ],
-        }))
+        return mockStep(
+          JSON.stringify({
+            backcastTimelines: [
+              {
+                scenarioId: 'SCN-001',
+                milestones: [{ year: 2027, event: 'FDA fast-track program' }],
+              },
+            ],
+            strategicMoves: [
+              {
+                id: 'SM-001',
+                type: 'no_regret',
+                description: 'Invest in AI training for radiologists',
+                timing: 'immediate',
+                scenarioIds: ['SCN-001', 'SCN-002'],
+              },
+              {
+                id: 'SM-002',
+                type: 'option_to_buy',
+                description: 'Partner with AI diagnostics startups',
+                timing: '6-12 months',
+                scenarioIds: ['SCN-001'],
+              },
+              {
+                id: 'SM-003',
+                type: 'hedge',
+                description: 'Maintain manual diagnostic capacity',
+                timing: 'ongoing',
+                scenarioIds: ['SCN-003'],
+              },
+            ],
+          })
+        )
 
       default:
         return mockStep(`Default output for ${nodeId}`)
@@ -800,7 +1027,7 @@ describe('Oracle Graph Integration', () => {
     const result = await executeOracleWorkflowLangGraph(
       config,
       'How will AI transform healthcare diagnostics in the next 5 years?',
-      {},
+      {}
     )
 
     expect(result.status).toBe('completed')
@@ -820,11 +1047,7 @@ describe('Oracle Graph Integration', () => {
     setupFullPipelineMocks()
 
     const config = makeGraphConfig()
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     const gateTypes = result.gateResults.map((g) => g.gateType)
     expect(gateTypes).toContain('gate_a')
@@ -840,11 +1063,7 @@ describe('Oracle Graph Integration', () => {
     setupFullPipelineMocks()
 
     const config = makeGraphConfig()
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     expect(result.knowledgeGraph.nodes.length).toBe(3)
     expect(result.knowledgeGraph.edges.length).toBe(2)
@@ -855,11 +1074,7 @@ describe('Oracle Graph Integration', () => {
     setupFullPipelineMocks()
 
     const config = makeGraphConfig()
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     expect(result.costTracker.total).toBeGreaterThan(0)
     expect(Object.keys(result.costTracker.byPhase).length).toBeGreaterThan(0)
@@ -871,11 +1086,7 @@ describe('Oracle Graph Integration', () => {
     setupFullPipelineMocks()
 
     const config = makeGraphConfig()
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     // Red team adds tail risks to existing scenarios
     const firstScenario = result.scenarioPortfolio[0]
@@ -886,11 +1097,7 @@ describe('Oracle Graph Integration', () => {
     setupFullPipelineMocks()
 
     const config = makeGraphConfig()
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     expect(result.output).toContain('Scope')
     expect(result.output).toContain('Key Statistics')
@@ -965,11 +1172,7 @@ describe('Oracle Graph Integration', () => {
       return setupFullPipelineNodeResponse(nodeId)
     })
 
-    const result = await executeOracleWorkflowLangGraph(
-      makeGraphConfig(),
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(makeGraphConfig(), 'Test goal', {})
 
     expect(result.status).toBe('completed')
     expect(result.evidence.length).toBeGreaterThan(0)
@@ -1000,15 +1203,140 @@ describe('Oracle Graph Integration', () => {
         }
       })
 
-    const result = await executeOracleWorkflowLangGraph(
-      makeGraphConfig(),
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(makeGraphConfig(), 'Test goal', {})
 
     expect(result.status).toBe('completed')
     expect(result.degradedPhases).toContain('evidence_gathering')
     expect(result.evidence.length).toBeGreaterThan(0)
+  })
+
+  it('recovers complete decomposer claims from truncated JSON instead of falling back to empty output', async () => {
+    const verifierContexts: unknown[] = []
+    let decomposerCallCount = 0
+
+    mockExecuteAgent.mockImplementation(async (_agent, _goal, ctx, _execCtx, opts) => {
+      const nodeId = opts?.nodeId ?? 'unknown'
+
+      if (nodeId === 'decomposer') {
+        decomposerCallCount++
+        if (decomposerCallCount === 1) {
+          return mockStep(`{
+  "claims": [
+    {
+      "id": "CLM-REC-001",
+      "type": "causal",
+      "text": "AI agents reduce implementation time for horizontal SaaS vendors.",
+      "confidence": 0.76,
+      "confidenceBasis": "expert_judgment",
+      "assumptions": ["ASM-REC-001"],
+      "evidenceIds": ["EVD-001"],
+      "dependencies": [],
+      "axiomRefs": ["AXM-011"],
+      "createdBy": "decomposer:test",
+      "phase": 1
+    },
+    {
+      "id": "CLM-REC-002",
+      "type": "forecast",
+      "text": "Incumbents with weak switching-cost moats will face pricing pressure.",
+      "confidence": 0.71,
+      "confidenceBasis": "expert_judgment",
+      "assumptions": ["ASM-REC-001"],
+      "evidenceIds": ["EVD-002"],
+      "dependencies": ["CLM-REC-001"],
+      "axiomRefs": ["AXM-012"],
+      "createdBy": "decomposer:test",
+      "phase": 1
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "ASM-REC-001",
+      "type": "technical",
+      "statement": "Coding-agent quality continues improving over the horizon.",
+      "sensitivity": "high",
+      "observables": ["Benchmark improvements"],
+      "confidence": 0.66
+    }
+  ]
+`)
+        }
+
+        if (decomposerCallCount === 2) {
+          return mockStep('not json')
+        }
+
+        return mockStep('{"claims":[],"assumptions":[]}')
+      }
+
+      if (nodeId === 'json_repair') {
+        return mockStep('not json')
+      }
+
+      if (nodeId === 'verifier') {
+        verifierContexts.push(ctx)
+      }
+
+      return setupFullPipelineNodeResponse(nodeId)
+    })
+
+    const result = await executeOracleWorkflowLangGraph(makeGraphConfig(), 'Test goal', {})
+
+    expect(result.status).toBe('completed')
+    expect(result.degradedPhases).toContain('decomposer_partial_recovery')
+    expect(result.claims.find((claim) => claim.id === 'CLM-REC-001')).toBeDefined()
+    expect(result.claims.find((claim) => claim.id === 'CLM-REC-002')).toBeDefined()
+    expect(verifierContexts).toHaveLength(1)
+    expect(verifierContexts[0]).toMatchObject({
+      claims: expect.arrayContaining([
+        expect.objectContaining({ id: 'CLM-REC-001' }),
+        expect.objectContaining({ id: 'CLM-REC-002' }),
+      ]),
+    })
+  })
+
+  it('selects a later unique search result when top hits duplicate prior evidence', async () => {
+    mockSerpSearchTool.execute.mockImplementation(async (params: Record<string, unknown>) => {
+      const query = String(params.query ?? '')
+      return {
+        results: [
+          {
+            title: 'Repeated top result',
+            snippet: `Duplicate snippet for ${query}`,
+            url: 'https://duplicate.example.com/shared',
+            source: 'Duplicate Source',
+            date: '2026-01-01',
+          },
+          {
+            title: `Unique result for ${query}`,
+            snippet: `Unique snippet for ${query}`,
+            url: `https://unique-${encodeURIComponent(query)}.example.com/article`,
+            source: `Unique Source ${query}`,
+            date: '2026-01-02',
+          },
+        ],
+      }
+    })
+
+    const { evidence, failedQueries } = await collectEvidenceFromSearchPlan(
+      {
+        technological: ['coding agents moat shift'],
+        economic: ['software margin compression AI'],
+      },
+      {
+        toolRegistry: new Map([['serp_search', mockSerpSearchTool]]),
+        searchToolKeys: { serper: 'test-serper-key' },
+        userId: 'user-test',
+        workflow: makeGraphConfig().workflow,
+        runId: 'run-test',
+      }
+    )
+
+    expect(failedQueries).toEqual([])
+    expect(evidence).toHaveLength(2)
+    expect(evidence[0]?.url).toBe('https://duplicate.example.com/shared')
+    expect(evidence[1]?.url).not.toBe('https://duplicate.example.com/shared')
+    expect(evidence[1]?.url).toContain('https://unique-')
   })
 
   it('handles graph initialization failure gracefully', async () => {
@@ -1016,14 +1344,12 @@ describe('Oracle Graph Integration', () => {
     const config = makeGraphConfig()
     // Sabotage the workflow to trigger init error
     Object.defineProperty(config, 'oracleConfig', {
-      get() { throw new Error('Config explosion') },
+      get() {
+        throw new Error('Config explosion')
+      },
     })
 
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     expect(result.status).toBe('failed')
     expect(result.output).toContain('initialization failed')
@@ -1034,11 +1360,7 @@ describe('Oracle Graph Integration', () => {
     mockExecuteAgent.mockRejectedValueOnce(new Error('Provider timeout'))
 
     const config = makeGraphConfig()
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     expect(result.status).toBe('failed')
     expect(result.output).toContain('execution failed')
@@ -1048,11 +1370,7 @@ describe('Oracle Graph Integration', () => {
     setupFullPipelineMocks()
 
     const config = makeGraphConfig()
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     // Scanner produces 2 trends, weak signal hunter adds 1 more
     expect(result.trends.length).toBe(3)
@@ -1065,21 +1383,31 @@ describe('Oracle Graph Integration', () => {
     mockExecuteAgent.mockImplementation(async (_agent, _goal, _ctx, _execCtx, opts) => {
       const nodeId = opts?.nodeId ?? 'unknown'
       if (nodeId === 'weak_signal_hunter') {
-        return mockStep(JSON.stringify({
-          weakSignals: [
-            { id: 'WS-ALT-1', statement: 'Ecology pressure signal', category: 'ecological', potentialImpact: 0.6, confidence: 0.4 },
-            { id: 'WS-ALT-2', statement: 'Cross-domain governance signal', category: 'socio-political', potentialImpact: 0.5, confidence: 0.5 },
-          ],
-        }))
+        return mockStep(
+          JSON.stringify({
+            weakSignals: [
+              {
+                id: 'WS-ALT-1',
+                statement: 'Ecology pressure signal',
+                category: 'ecological',
+                potentialImpact: 0.6,
+                confidence: 0.4,
+              },
+              {
+                id: 'WS-ALT-2',
+                statement: 'Cross-domain governance signal',
+                category: 'socio-political',
+                potentialImpact: 0.5,
+                confidence: 0.5,
+              },
+            ],
+          })
+        )
       }
       return setupFullPipelineNodeResponse(nodeId)
     })
 
-    const result = await executeOracleWorkflowLangGraph(
-      makeGraphConfig(),
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(makeGraphConfig(), 'Test goal', {})
 
     expect(result.trends.find((t) => t.id === 'WS-ALT-1')?.steepCategory).toBe('environmental')
     expect(result.trends.find((t) => t.id === 'WS-ALT-2')?.steepCategory).toBe('political')
@@ -1089,11 +1417,7 @@ describe('Oracle Graph Integration', () => {
     setupFullPipelineMocks()
 
     const config = makeGraphConfig()
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     // CLM-001 was 0.75, verifier adjusts to 0.7
     const claim1 = result.claims.find((c) => c.id === 'CLM-001')
@@ -1110,11 +1434,7 @@ describe('Oracle Graph Integration', () => {
     setupFullPipelineMocks()
 
     const config = makeGraphConfig({ enableHumanGate: true })
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     // Pipeline should pause at human_gate, not reach Phase 3
     expect(result.status).toBe('waiting_for_input')
@@ -1130,11 +1450,7 @@ describe('Oracle Graph Integration', () => {
     setupFullPipelineMocks()
 
     const config = makeGraphConfig({ enableHumanGate: true })
-    const paused = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const paused = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     expect(paused.status).toBe('waiting_for_input')
     const workflowState = paused.workflowState as Record<string, unknown>
@@ -1142,9 +1458,13 @@ describe('Oracle Graph Integration', () => {
     expect(resumeState).toBeDefined()
     expect((resumeState?.claims as unknown[] | undefined)?.length).toBe(paused.claims.length)
     expect((resumeState?.trends as unknown[] | undefined)?.length).toBe(paused.trends.length)
-    expect((resumeState?.crossImpactMatrix as unknown[] | undefined)?.length).toBe(paused.crossImpactMatrix.length)
+    expect((resumeState?.crossImpactMatrix as unknown[] | undefined)?.length).toBe(
+      paused.crossImpactMatrix.length
+    )
     expect(resumeState?.status).toBe('waiting_for_input')
-    expect((resumeState?.costTracker as { total?: number } | undefined)?.total).toBe(paused.costTracker.total)
+    expect((resumeState?.costTracker as { total?: number } | undefined)?.total).toBe(
+      paused.costTracker.total
+    )
 
     const resumedNodeIds: string[] = []
     mockExecuteAgent.mockImplementation(async (_agent, _goal, _ctx, _execCtx, opts) => {
@@ -1153,76 +1473,92 @@ describe('Oracle Graph Integration', () => {
 
       switch (nodeId) {
         case 'equilibrium_analyst':
-          return mockStep(JSON.stringify({
-            selectedSkeletons: ['SK-1'],
-            candidateSkeletons: [
-              { id: 'SK-1', premise: { regulation: 'slow' }, consistency: 0.9, plausibility: 0.8, divergence: 0.5 },
-            ],
-          }))
+          return mockStep(
+            JSON.stringify({
+              selectedSkeletons: ['SK-1'],
+              candidateSkeletons: [
+                {
+                  id: 'SK-1',
+                  premise: { regulation: 'slow' },
+                  consistency: 0.9,
+                  plausibility: 0.8,
+                  divergence: 0.5,
+                },
+              ],
+            })
+          )
 
         case 'scenario_developer':
-          return mockStep(JSON.stringify({
-            scenarios: [
-              {
-                id: 'SCN-001',
-                name: 'Resumed Scenario',
-                premise: { regulation: 'slow' },
-                narrative: 'Scenario development resumed from the human gate.',
-                reinforcedPrinciples: [],
-                disruptedPrinciples: [],
-                feedbackLoops: [],
-                implications: 'Resumed implications',
-                signposts: ['Resumed signpost'],
-                tailRisks: ['Resumed tail risk'],
-                assumptionRegister: [],
-                councilAssessment: { agreementRate: 0, persistentDissent: [] },
-                plausibilityScore: 0.8,
-                divergenceScore: 0.5,
-              },
-            ],
-          }))
+          return mockStep(
+            JSON.stringify({
+              scenarios: [
+                {
+                  id: 'SCN-001',
+                  name: 'Resumed Scenario',
+                  premise: { regulation: 'slow' },
+                  narrative: 'Scenario development resumed from the human gate.',
+                  reinforcedPrinciples: [],
+                  disruptedPrinciples: [],
+                  feedbackLoops: [],
+                  implications: 'Resumed implications',
+                  signposts: ['Resumed signpost'],
+                  tailRisks: ['Resumed tail risk'],
+                  assumptionRegister: [],
+                  councilAssessment: { agreementRate: 0, persistentDissent: [] },
+                  plausibilityScore: 0.8,
+                  divergenceScore: 0.5,
+                },
+              ],
+            })
+          )
 
         case 'red_team':
-          return mockStep(JSON.stringify({
-            assessments: [
-              {
-                scenarioId: 'SCN-001',
-                tailRisks: ['Red-team risk'],
-                overallRobustness: 'medium',
-              },
-            ],
-          }))
+          return mockStep(
+            JSON.stringify({
+              assessments: [
+                {
+                  scenarioId: 'SCN-001',
+                  tailRisks: ['Red-team risk'],
+                  overallRobustness: 'medium',
+                },
+              ],
+            })
+          )
 
         case 'gate_c':
-          return mockStep(JSON.stringify({
-            mechanisticClarity: 4,
-            completeness: 4,
-            causalDiscipline: 4,
-            decisionUsefulness: 4.5,
-            uncertaintyHygiene: 4,
-            evidenceQuality: 4,
-          }))
+          return mockStep(
+            JSON.stringify({
+              mechanisticClarity: 4,
+              completeness: 4,
+              causalDiscipline: 4,
+              decisionUsefulness: 4.5,
+              uncertaintyHygiene: 4,
+              evidenceQuality: 4,
+            })
+          )
 
         case 'backcasting':
-          return mockStep(JSON.stringify({
-            backcastTimelines: [
-              {
-                scenarioId: 'SCN-001',
-                targetYear: '2030',
-                milestones: [{ year: '2028', event: 'Pilot launch', prerequisites: [] }],
-                strategicMoves: [],
-              },
-            ],
-            strategicMoves: [
-              {
-                type: 'no_regret',
-                description: 'Start pilot program',
-                worksAcross: ['SCN-001'],
-                timing: 'now',
-                ledgerRefs: [],
-              },
-            ],
-          }))
+          return mockStep(
+            JSON.stringify({
+              backcastTimelines: [
+                {
+                  scenarioId: 'SCN-001',
+                  targetYear: '2030',
+                  milestones: [{ year: '2028', event: 'Pilot launch', prerequisites: [] }],
+                  strategicMoves: [],
+                },
+              ],
+              strategicMoves: [
+                {
+                  type: 'no_regret',
+                  description: 'Start pilot program',
+                  worksAcross: ['SCN-001'],
+                  timing: 'now',
+                  ledgerRefs: [],
+                },
+              ],
+            })
+          )
 
         default:
           throw new Error(`Unexpected node during resume: ${nodeId}`)
@@ -1233,7 +1569,7 @@ describe('Oracle Graph Integration', () => {
       config,
       'Test goal',
       {},
-      resumeState as never,
+      resumeState as never
     )
 
     expect(resumed.status).toBe('completed')
@@ -1262,109 +1598,111 @@ describe('Oracle Graph Integration', () => {
         throw new Error(`Unexpected node during late resume test: ${nodeId}`)
       }
 
-      return mockStep(JSON.stringify({
-        backcastTimelines: [
-          {
-            scenarioId: 'SCN-001',
-            targetYear: '2030',
-            milestones: [{ year: '2028', event: 'Pilot launch', prerequisites: [] }],
-            strategicMoves: [],
-          },
-        ],
-        strategicMoves: [
-          {
-            type: 'no_regret',
-            description: 'Launch the pilot program',
-            worksAcross: ['SCN-001'],
-            timing: 'now',
-            ledgerRefs: [],
-          },
-        ],
-      }))
+      return mockStep(
+        JSON.stringify({
+          backcastTimelines: [
+            {
+              scenarioId: 'SCN-001',
+              targetYear: '2030',
+              milestones: [{ year: '2028', event: 'Pilot launch', prerequisites: [] }],
+              strategicMoves: [],
+            },
+          ],
+          strategicMoves: [
+            {
+              type: 'no_regret',
+              description: 'Launch the pilot program',
+              worksAcross: ['SCN-001'],
+              timing: 'now',
+              ledgerRefs: [],
+            },
+          ],
+        })
+      )
     })
 
-    const resumed = await executeOracleWorkflowLangGraph(
-      makeGraphConfig(),
-      'Test goal',
-      {},
-      {
-        currentPhase: 'scenario_simulation',
-        status: 'paused',
-        constraintPause: {
-          constraintType: 'budget',
-          currentValue: 1,
-          limitValue: 1,
-          unit: 'USD',
-          partialOutput: 'Paused before backcasting',
+    const resumed = await executeOracleWorkflowLangGraph(makeGraphConfig(), 'Test goal', {}, {
+      currentPhase: 'scenario_simulation',
+      status: 'paused',
+      constraintPause: {
+        constraintType: 'budget',
+        currentValue: 1,
+        limitValue: 1,
+        unit: 'USD',
+        partialOutput: 'Paused before backcasting',
+      },
+      degradedPhases: ['backcasting'],
+      resumeNodeHint: 'backcasting',
+      scope: {
+        topic: 'AI impact on healthcare',
+        domain: 'technology',
+        timeHorizon: '5 years',
+        geography: 'global',
+        decisionContext: 'Strategic planning',
+        boundaries: { inScope: ['AI diagnostics'], outOfScope: [] },
+      },
+      scenarioPortfolio: [
+        {
+          id: 'SCN-001',
+          name: 'Paused Scenario',
+          premise: { regulation: 'slow' },
+          narrative: 'Scenario already developed before pause.',
+          reinforcedPrinciples: [],
+          disruptedPrinciples: [],
+          feedbackLoops: [],
+          implications: 'Prior implications',
+          signposts: ['Pilot signal'],
+          tailRisks: ['Execution risk'],
+          assumptionRegister: [],
+          councilAssessment: { agreementRate: 0, persistentDissent: [] },
+          plausibilityScore: 0.8,
+          divergenceScore: 0.5,
         },
-        degradedPhases: ['backcasting'],
-        resumeNodeHint: 'backcasting',
-        scope: {
-          topic: 'AI impact on healthcare',
-          domain: 'technology',
-          timeHorizon: '5 years',
-          geography: 'global',
-          decisionContext: 'Strategic planning',
-          boundaries: { inScope: ['AI diagnostics'], outOfScope: [] },
+      ],
+      phaseSummaries: [
+        {
+          phase: 'decomposition',
+          executive: ['Decomposition done'],
+          keyClaims: [],
+          keyAssumptions: [],
+          unresolvedTensions: [],
+          tokenCount: 100,
         },
-        scenarioPortfolio: [
-          {
-            id: 'SCN-001',
-            name: 'Paused Scenario',
-            premise: { regulation: 'slow' },
-            narrative: 'Scenario already developed before pause.',
-            reinforcedPrinciples: [],
-            disruptedPrinciples: [],
-            feedbackLoops: [],
-            implications: 'Prior implications',
-            signposts: ['Pilot signal'],
-            tailRisks: ['Execution risk'],
-            assumptionRegister: [],
-            councilAssessment: { agreementRate: 0, persistentDissent: [] },
-            plausibilityScore: 0.8,
-            divergenceScore: 0.5,
-          },
-        ],
-        phaseSummaries: [
-          {
-            phase: 'decomposition',
-            executive: ['Decomposition done'],
-            keyClaims: [],
-            keyAssumptions: [],
-            unresolvedTensions: [],
-            tokenCount: 100,
-          },
-          {
-            phase: 'trend_scanning',
-            executive: ['Trend scan done'],
-            keyClaims: [],
-            keyAssumptions: [],
-            unresolvedTensions: [],
-            tokenCount: 100,
-          },
-        ],
-        gateResults: [],
-        claims: [],
-        assumptions: [],
-        evidence: [],
-        knowledgeGraph: { nodes: [], edges: [], loops: [] },
-        trends: [],
-        uncertainties: [],
-        crossImpactMatrix: [],
-        backcastTimelines: [],
-        strategicMoves: [],
-        councilRecords: [],
-        costTracker: { total: 0.01, byPhase: {}, byModel: {}, byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 } },
-        steps: [],
-        totalTokensUsed: 0,
-        totalEstimatedCost: 0,
-        currentGateRefinements: 0,
-        gateEscalated: false,
-        gateEscalationFeedback: null,
-        humanGateApproved: false,
-        humanGateFeedback: null,
-      } as never,
-    )
+        {
+          phase: 'trend_scanning',
+          executive: ['Trend scan done'],
+          keyClaims: [],
+          keyAssumptions: [],
+          unresolvedTensions: [],
+          tokenCount: 100,
+        },
+      ],
+      gateResults: [],
+      claims: [],
+      assumptions: [],
+      evidence: [],
+      knowledgeGraph: { nodes: [], edges: [], loops: [] },
+      trends: [],
+      uncertainties: [],
+      crossImpactMatrix: [],
+      backcastTimelines: [],
+      strategicMoves: [],
+      councilRecords: [],
+      costTracker: {
+        total: 0.01,
+        byPhase: {},
+        byModel: {},
+        byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 },
+      },
+      steps: [],
+      totalTokensUsed: 0,
+      totalEstimatedCost: 0,
+      currentGateRefinements: 0,
+      gateEscalated: false,
+      gateEscalationFeedback: null,
+      humanGateApproved: false,
+      humanGateFeedback: null,
+    } as never)
 
     expect(resumed.status).toBe('completed')
     expect(resumedNodeIds).toEqual(['backcasting'])
@@ -1390,51 +1728,73 @@ describe('Oracle Graph Integration', () => {
 
       switch (nodeId) {
         case 'equilibrium_analyst':
-          return mockStep(JSON.stringify({
-            selectedSkeletons: ['SK-1'],
-            candidateSkeletons: [
-              { id: 'SK-1', premise: { disruption: 'high' }, consistency: 0.9, plausibility: 0.7, divergence: 0.8 },
-            ],
-          }))
+          return mockStep(
+            JSON.stringify({
+              selectedSkeletons: ['SK-1'],
+              candidateSkeletons: [
+                {
+                  id: 'SK-1',
+                  premise: { disruption: 'high' },
+                  consistency: 0.9,
+                  plausibility: 0.7,
+                  divergence: 0.8,
+                },
+              ],
+            })
+          )
         case 'scenario_developer':
-          return mockStep(JSON.stringify({
-            scenarios: [
-              {
-                id: 'SCN-001',
-                name: 'AI Disruption Scenario',
-                premise: { disruption: 'high' },
-                narrative: 'A disruption-focused scenario.',
-                reinforcedPrinciples: [],
-                disruptedPrinciples: [],
-                feedbackLoops: [],
-                implications: 'Disruption implications',
-                signposts: ['Disruption signpost'],
-                tailRisks: ['Disruption risk'],
-                assumptionRegister: [],
-                councilAssessment: { agreementRate: 0, persistentDissent: [] },
-                plausibilityScore: 0.7,
-                divergenceScore: 0.8,
-              },
-            ],
-          }))
+          return mockStep(
+            JSON.stringify({
+              scenarios: [
+                {
+                  id: 'SCN-001',
+                  name: 'AI Disruption Scenario',
+                  premise: { disruption: 'high' },
+                  narrative: 'A disruption-focused scenario.',
+                  reinforcedPrinciples: [],
+                  disruptedPrinciples: [],
+                  feedbackLoops: [],
+                  implications: 'Disruption implications',
+                  signposts: ['Disruption signpost'],
+                  tailRisks: ['Disruption risk'],
+                  assumptionRegister: [],
+                  councilAssessment: { agreementRate: 0, persistentDissent: [] },
+                  plausibilityScore: 0.7,
+                  divergenceScore: 0.8,
+                },
+              ],
+            })
+          )
         case 'red_team':
-          return mockStep(JSON.stringify({
-            assessments: [{ scenarioId: 'SCN-001', tailRisks: ['Follow-up risk'], overallRobustness: 'moderate' }],
-          }))
+          return mockStep(
+            JSON.stringify({
+              assessments: [
+                {
+                  scenarioId: 'SCN-001',
+                  tailRisks: ['Follow-up risk'],
+                  overallRobustness: 'moderate',
+                },
+              ],
+            })
+          )
         case 'gate_c':
-          return mockStep(JSON.stringify({
-            mechanisticClarity: 4,
-            completeness: 4,
-            causalDiscipline: 4,
-            decisionUsefulness: 4,
-            uncertaintyHygiene: 4,
-            evidenceQuality: 4,
-          }))
+          return mockStep(
+            JSON.stringify({
+              mechanisticClarity: 4,
+              completeness: 4,
+              causalDiscipline: 4,
+              decisionUsefulness: 4,
+              uncertaintyHygiene: 4,
+              evidenceQuality: 4,
+            })
+          )
         case 'backcasting':
-          return mockStep(JSON.stringify({
-            backcastTimelines: [],
-            strategicMoves: [],
-          }))
+          return mockStep(
+            JSON.stringify({
+              backcastTimelines: [],
+              strategicMoves: [],
+            })
+          )
         default:
           throw new Error(`Unexpected node during feedback resume test: ${nodeId}`)
       }
@@ -1450,7 +1810,7 @@ describe('Oracle Graph Integration', () => {
           response: 'Focus more on AI disruption scenarios',
         },
       },
-      resumeState as never,
+      resumeState as never
     )
 
     expect(resumed.status).toBe('completed')
@@ -1461,7 +1821,9 @@ describe('Oracle Graph Integration', () => {
     expect(capturedPrompts.backcasting).toContain('Focus more on AI disruption scenarios')
 
     const resumedWorkflowState = resumed.workflowState as Record<string, unknown>
-    const resumedState = resumedWorkflowState.oracleResumeState as Record<string, unknown> | undefined
+    const resumedState = resumedWorkflowState.oracleResumeState as
+      | Record<string, unknown>
+      | undefined
     expect(resumedState?.humanGateFeedback).toBe('Focus more on AI disruption scenarios')
   })
 
@@ -1479,7 +1841,7 @@ describe('Oracle Graph Integration', () => {
 
     const workflowState = result.workflowState as Record<string, unknown> | undefined
     const resumeState = workflowState?.oracleResumeState as Record<string, unknown> | undefined
-    expect(resumeState?.degradedPhases).toEqual(['decomposer'])
+    expect(resumeState?.degradedPhases).toEqual(['evidence_enrichment'])
   })
 
   it('pauses at mid-phase LLM nodes once cumulative spend crosses budget', async () => {
@@ -1507,106 +1869,110 @@ describe('Oracle Graph Integration', () => {
 
       switch (nodeId) {
         case 'equilibrium_analyst':
-          return mockStep(JSON.stringify({
-            selectedSkeletons: ['SK-1'],
-            candidateSkeletons: [
-              { id: 'SK-1', premise: { regulation: 'slow' }, consistency: 0.9, plausibility: 0.8, divergence: 0.5 },
-            ],
-          }))
+          return mockStep(
+            JSON.stringify({
+              selectedSkeletons: ['SK-1'],
+              candidateSkeletons: [
+                {
+                  id: 'SK-1',
+                  premise: { regulation: 'slow' },
+                  consistency: 0.9,
+                  plausibility: 0.8,
+                  divergence: 0.5,
+                },
+              ],
+            })
+          )
         case 'scenario_developer':
-          return mockStep(JSON.stringify({
-            scenarios: [
-              {
-                id: 'SCN-001',
-                name: 'Escalated Scenario',
-                premise: { regulation: 'slow' },
-                narrative: 'Scenario development after exhausted refinements.',
-                reinforcedPrinciples: [],
-                disruptedPrinciples: [],
-                feedbackLoops: [],
-                implications: 'Implications',
-                signposts: ['Signpost'],
-                tailRisks: ['Tail risk'],
-                assumptionRegister: [],
-                councilAssessment: { agreementRate: 0, persistentDissent: [] },
-                plausibilityScore: 0.8,
-                divergenceScore: 0.5,
-              },
-            ],
-          }))
+          return mockStep(
+            JSON.stringify({
+              scenarios: [
+                {
+                  id: 'SCN-001',
+                  name: 'Escalated Scenario',
+                  premise: { regulation: 'slow' },
+                  narrative: 'Scenario development after exhausted refinements.',
+                  reinforcedPrinciples: [],
+                  disruptedPrinciples: [],
+                  feedbackLoops: [],
+                  implications: 'Implications',
+                  signposts: ['Signpost'],
+                  tailRisks: ['Tail risk'],
+                  assumptionRegister: [],
+                  councilAssessment: { agreementRate: 0, persistentDissent: [] },
+                  plausibilityScore: 0.8,
+                  divergenceScore: 0.5,
+                },
+              ],
+            })
+          )
         case 'red_team':
-          return mockStep(JSON.stringify({
-            assessments: [{ scenarioId: 'SCN-001', tailRisks: ['Red-team risk'], overallRobustness: 'low' }],
-          }))
+          return mockStep(
+            JSON.stringify({
+              assessments: [
+                { scenarioId: 'SCN-001', tailRisks: ['Red-team risk'], overallRobustness: 'low' },
+              ],
+            })
+          )
         case 'gate_c':
-          return mockStep(JSON.stringify({
-            mechanisticClarity: 3,
-            completeness: 3,
-            causalDiscipline: 3,
-            decisionUsefulness: 3,
-            uncertaintyHygiene: 3,
-            evidenceQuality: 3,
-          }))
+          return mockStep(
+            JSON.stringify({
+              mechanisticClarity: 3,
+              completeness: 3,
+              causalDiscipline: 3,
+              decisionUsefulness: 3,
+              uncertaintyHygiene: 3,
+              evidenceQuality: 3,
+            })
+          )
         case 'backcasting':
-          return mockStep(JSON.stringify({
-            backcastTimelines: [],
-            strategicMoves: [],
-          }))
+          return mockStep(
+            JSON.stringify({
+              backcastTimelines: [],
+              strategicMoves: [],
+            })
+          )
         default:
           throw new Error(`Unexpected node during exhausted refinement test: ${nodeId}`)
       }
     })
 
-    const result = await executeOracleWorkflowLangGraph(
-      makeGraphConfig(),
-      'Test goal',
-      {},
-      {
-        currentPhase: 'scenario_simulation',
-        scope: {
-          topic: 'AI impact on healthcare',
-          domain: 'technology',
-          timeHorizon: '5 years',
-          geography: 'global',
-          decisionContext: 'Strategic planning',
-          boundaries: { inScope: [], outOfScope: [] },
-        },
-        phaseSummaries: [],
-        scenarioPortfolio: [],
-        currentGateRefinements: 1,
-        gateResults: [],
-        costTracker: {
-          total: 0,
-          byPhase: {},
-          byModel: {},
-          byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 },
-        },
-        status: 'running',
-      } as never,
-    )
+    const result = await executeOracleWorkflowLangGraph(makeGraphConfig(), 'Test goal', {}, {
+      currentPhase: 'scenario_simulation',
+      scope: {
+        topic: 'AI impact on healthcare',
+        domain: 'technology',
+        timeHorizon: '5 years',
+        geography: 'global',
+        decisionContext: 'Strategic planning',
+        boundaries: { inScope: [], outOfScope: [] },
+      },
+      phaseSummaries: [],
+      scenarioPortfolio: [],
+      currentGateRefinements: 1,
+      gateResults: [],
+      costTracker: {
+        total: 0,
+        byPhase: {},
+        byModel: {},
+        byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 },
+      },
+      status: 'running',
+    } as never)
 
     expect(result.status).toBe('waiting_for_input')
     expect(result.pendingInput?.nodeId).toBe('gate_escalation')
     expect(nodeIds.filter((id) => id === 'scenario_developer')).toHaveLength(1)
     expect(result.gateEscalated).toBe(true)
     expect(result.gateEscalationFeedback).toContain('Average score')
-    expect(nodeIds).toEqual([
-      'equilibrium_analyst',
-      'scenario_developer',
-      'red_team',
-      'gate_c',
-    ])
+    expect(nodeIds).toEqual(['equilibrium_analyst', 'scenario_developer', 'red_team', 'gate_c'])
   })
 
   it('skips human gate when not enabled', async () => {
     setupFullPipelineMocks()
 
     const config = makeGraphConfig() // no enableHumanGate
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     expect(result.status).toBe('completed')
     expect(result.pendingInput).toBeUndefined()
@@ -1617,11 +1983,7 @@ describe('Oracle Graph Integration', () => {
     setupFullPipelineMocks()
 
     const config = makeGraphConfig() // no councilConfig
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     expect(result.status).toBe('completed')
     expect(result.councilRecords.length).toBe(0)
@@ -1639,7 +2001,11 @@ describe('Oracle Graph Integration', () => {
           { modelId: 'c1', provider: 'anthropic', modelName: 'claude-sonnet-4-20250514' },
           { modelId: 'c2', provider: 'openai', modelName: 'gpt-4o' },
         ],
-        chairmanModel: { modelId: 'chair', provider: 'anthropic', modelName: 'claude-sonnet-4-20250514' },
+        chairmanModel: {
+          modelId: 'chair',
+          provider: 'anthropic',
+          modelName: 'claude-sonnet-4-20250514',
+        },
         selfExclusionEnabled: true,
         minCouncilSize: 2,
         maxCouncilSize: 2,
@@ -1658,15 +2024,82 @@ describe('Oracle Graph Integration', () => {
     setupFullPipelineMocks()
 
     const config = makeGraphConfig() // no enableConsistencyChecker
-    const result = await executeOracleWorkflowLangGraph(
-      config,
-      'Test goal',
-      {},
-    )
+    const result = await executeOracleWorkflowLangGraph(config, 'Test goal', {})
 
     expect(result.status).toBe('completed')
     // No consistency check step in the output
     const ccStep = result.steps.find((s) => s.agentId === 'consistency_checker')
     expect(ccStep).toBeUndefined()
+  })
+})
+
+// ===== selectUrlsForCrawl =====
+
+describe('selectUrlsForCrawl', () => {
+  function makeEvidence(overrides: Partial<import('@lifeos/agents').OracleEvidence> = {}): import('@lifeos/agents').OracleEvidence {
+    return {
+      id: 'EVD-001',
+      source: 'Test Source',
+      url: 'https://example.com/article',
+      date: '2026-01-01',
+      excerpt: 'Test excerpt about software investment.',
+      reliability: 0.7,
+      searchTool: 'serper',
+      ...overrides,
+    }
+  }
+
+  it('prioritizes domain diversity', () => {
+    const evidence = [
+      makeEvidence({ id: 'EVD-001', url: 'https://a.com/1', category: 'economic' }),
+      makeEvidence({ id: 'EVD-002', url: 'https://a.com/2', category: 'economic' }),
+      makeEvidence({ id: 'EVD-003', url: 'https://b.com/1', category: 'technological' }),
+    ]
+    const selected = selectUrlsForCrawl(evidence, 2)
+    const domains = selected.map((e) => new URL(e.url).hostname)
+    expect(new Set(domains).size).toBe(2)
+  })
+
+  it('caps at maxUrls', () => {
+    const evidence = Array.from({ length: 20 }, (_, i) =>
+      makeEvidence({ id: `EVD-${i}`, url: `https://domain${i}.com/page` })
+    )
+    expect(selectUrlsForCrawl(evidence, 6)).toHaveLength(6)
+  })
+
+  it('skips PDF URLs', () => {
+    const evidence = [
+      makeEvidence({ id: 'EVD-001', url: 'https://arxiv.org/paper.pdf' }),
+      makeEvidence({ id: 'EVD-002', url: 'https://example.com/article' }),
+    ]
+    const selected = selectUrlsForCrawl(evidence, 5)
+    expect(selected).toHaveLength(1)
+    expect(selected[0].id).toBe('EVD-002')
+  })
+
+  it('returns empty for empty evidence', () => {
+    expect(selectUrlsForCrawl([], 6)).toHaveLength(0)
+  })
+
+  it('prioritizes category diversity', () => {
+    const evidence = [
+      makeEvidence({ id: 'EVD-001', url: 'https://a.com/1', category: 'economic', reliability: 0.9 }),
+      makeEvidence({ id: 'EVD-002', url: 'https://b.com/1', category: 'economic', reliability: 0.9 }),
+      makeEvidence({ id: 'EVD-003', url: 'https://c.com/1', category: 'technological', reliability: 0.5 }),
+    ]
+    const selected = selectUrlsForCrawl(evidence, 2)
+    const categories = selected.map((e) => e.category)
+    // Should pick from different categories even if reliability differs
+    expect(new Set(categories).size).toBe(2)
+  })
+
+  it('prefers higher reliability within same domain/category', () => {
+    const evidence = [
+      makeEvidence({ id: 'EVD-001', url: 'https://a.com/1', category: 'economic', reliability: 0.3 }),
+      makeEvidence({ id: 'EVD-002', url: 'https://a.com/2', category: 'economic', reliability: 0.9 }),
+    ]
+    const selected = selectUrlsForCrawl(evidence, 1)
+    // Both have same domain+category so diversity bonus is equal; reliability breaks the tie
+    expect(selected[0].id).toBe('EVD-002')
   })
 })

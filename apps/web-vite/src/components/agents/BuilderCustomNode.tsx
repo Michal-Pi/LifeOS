@@ -34,6 +34,7 @@ export interface BuilderNodeData {
   onToggleBypass?: (nodeId: string) => void
   onToggleMute?: (nodeId: string) => void
   onUpdatePrompt?: (nodeId: string, prompt: string) => void
+  onOpenPromptModal?: (nodeId: string) => void
   canDelete: boolean
   [key: string]: unknown
 }
@@ -80,8 +81,6 @@ export function BuilderCustomNode({ data }: { data: BuilderNodeData }) {
   const isMuted = data.muted ?? false
   const isEnd = data.nodeType === 'end'
   const [showAddMenu, setShowAddMenu] = useState(false)
-  const [showInlinePrompt, setShowInlinePrompt] = useState(false)
-  const [inlinePromptValue, setInlinePromptValue] = useState('')
   const addMenuRef = useRef<HTMLDivElement>(null)
 
   // Close add menu on outside click
@@ -192,45 +191,19 @@ export function BuilderCustomNode({ data }: { data: BuilderNodeData }) {
           <div className="builder-node__prompt-preview">{data.promptPreview}</div>
         )}
 
-        {/* Inline prompt editor for agent nodes */}
+        {/* Prompt editor trigger for agent nodes */}
         {data.nodeType === 'agent' && data.agentName && (
           <button
             type="button"
             className="builder-node__inline-prompt-toggle"
             onClick={(e) => {
               e.stopPropagation()
-              setShowInlinePrompt(!showInlinePrompt)
-              if (!showInlinePrompt && data.promptPreview) {
-                setInlinePromptValue(data.promptPreview)
-              }
+              data.onOpenPromptModal?.(data.nodeId)
             }}
-            title="Quick prompt edit"
+            title="Edit prompt"
           >
-            {showInlinePrompt ? '▾ Close' : '▸ Prompt'}
+            &#9656; Prompt
           </button>
-        )}
-        {showInlinePrompt && (
-          <div className="builder-node__inline-prompt" onClick={(e) => e.stopPropagation()}>
-            <textarea
-              className="builder-node__inline-prompt-textarea"
-              value={inlinePromptValue}
-              onChange={(e) => setInlinePromptValue(e.target.value)}
-              placeholder="Quick prompt notes..."
-              rows={3}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <button
-              type="button"
-              className="builder-node__inline-prompt-save"
-              onClick={(e) => {
-                e.stopPropagation()
-                data.onUpdatePrompt?.(data.nodeId, inlinePromptValue)
-                setShowInlinePrompt(false)
-              }}
-            >
-              Save
-            </button>
-          </div>
         )}
 
         {/* Cost estimate badge */}

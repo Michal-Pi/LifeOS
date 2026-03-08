@@ -199,8 +199,7 @@ export const DialecticalPaths = {
 
   /** Claims collection: users/{userId}/dialecticalClaims */
   claims: (userId: string) => `users/${userId}/dialecticalClaims`,
-  claim: (userId: string, claimId: string) =>
-    `users/${userId}/dialecticalClaims/${claimId}`,
+  claim: (userId: string, claimId: string) => `users/${userId}/dialecticalClaims/${claimId}`,
 
   /** Concepts collection: users/{userId}/dialecticalConcepts */
   concepts: (userId: string) => `users/${userId}/dialecticalConcepts`,

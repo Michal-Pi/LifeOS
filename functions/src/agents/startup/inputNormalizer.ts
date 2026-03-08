@@ -1,14 +1,6 @@
-import type {
-  OracleScope,
-  OracleSearchPlan,
-  SearchPlan,
-  SourceRecord,
-} from '@lifeos/agents'
+import type { OracleScope, OracleSearchPlan, SearchPlan, SourceRecord } from '@lifeos/agents'
 import { z } from 'zod'
-import {
-  extractUserContext,
-  buildContextSourceRecords,
-} from '../deepResearch/contextProcessor.js'
+import { extractUserContext, buildContextSourceRecords } from '../deepResearch/contextProcessor.js'
 import { safeParseJsonWithSchema } from '../shared/jsonParser.js'
 
 export interface NormalizedStartupInput {
@@ -171,11 +163,7 @@ function getRawFileWarnings(context: Record<string, unknown>): string[] {
   let malformed = 0
   let tooShort = 0
   for (const raw of context.uploadedFiles as RawUploadedFile[]) {
-    if (
-      !isObject(raw) ||
-      typeof raw.name !== 'string' ||
-      typeof raw.content !== 'string'
-    ) {
+    if (!isObject(raw) || typeof raw.name !== 'string' || typeof raw.content !== 'string') {
       malformed++
       continue
     }
@@ -191,7 +179,7 @@ function getRawFileWarnings(context: Record<string, unknown>): string[] {
 
 export function normalizeStartupInput(
   goal: string,
-  context: Record<string, unknown> = {},
+  context: Record<string, unknown> = {}
 ): NormalizedStartupInput {
   const normalizedGoal = goal.trim()
   if (normalizedGoal.length === 0) {
@@ -200,10 +188,7 @@ export function normalizeStartupInput(
 
   const processedContext = extractUserContext(context)
   const { sources, contentMap } = buildContextSourceRecords(context)
-  const warnings = [
-    ...getRawNoteWarnings(context),
-    ...getRawFileWarnings(context),
-  ]
+  const warnings = [...getRawNoteWarnings(context), ...getRawFileWarnings(context)]
 
   if (processedContext.hasContext && sources.length === 0) {
     warnings.push('User context was provided but no seedable context items were retained')
@@ -222,7 +207,9 @@ export function normalizeStartupInput(
   }
 }
 
-export function summarizeNormalizedStartupInput(input: NormalizedStartupInput): Omit<NormalizedStartupInput, 'sources' | 'contentMap'> {
+export function summarizeNormalizedStartupInput(
+  input: NormalizedStartupInput
+): Omit<NormalizedStartupInput, 'sources' | 'contentMap'> {
   return {
     normalizedGoal: input.normalizedGoal,
     contextSummary: input.contextSummary,
@@ -239,15 +226,24 @@ function defaultBaseGoalFrame(goal: string, rationale: string): GoalFrame {
     canonicalGoal: goal,
     coreQuestion: goal,
     subquestions: [goal],
-    keyConcepts: goal.split(/\W+/).filter((token) => token.length > 3).slice(0, 6),
+    keyConcepts: goal
+      .split(/\W+/)
+      .filter((token) => token.length > 3)
+      .slice(0, 6),
     verificationTargets: [goal],
     plannerRationale: rationale,
   }
 }
 
-export function createFallbackDeepResearchGoalFrame(goal: string, searchPlan: SearchPlan): DeepResearchGoalFrame {
+export function createFallbackDeepResearchGoalFrame(
+  goal: string,
+  searchPlan: SearchPlan
+): DeepResearchGoalFrame {
   return {
-    ...defaultBaseGoalFrame(goal, 'Fallback planner frame created after planner validation failure'),
+    ...defaultBaseGoalFrame(
+      goal,
+      'Fallback planner frame created after planner validation failure'
+    ),
     searchPlan,
   }
 }
@@ -255,10 +251,13 @@ export function createFallbackDeepResearchGoalFrame(goal: string, searchPlan: Se
 export function createFallbackDialecticalGoalFrame(
   goal: string,
   useKnowledgeGraph: boolean,
-  useExternalResearch: boolean,
+  useExternalResearch: boolean
 ): DialecticalGoalFrame {
   return {
-    ...defaultBaseGoalFrame(goal, 'Fallback dialectical frame created after planner validation failure'),
+    ...defaultBaseGoalFrame(
+      goal,
+      'Fallback dialectical frame created after planner validation failure'
+    ),
     focusAreas: [],
     candidateTensions: [],
     retrievalIntent: {
@@ -271,7 +270,7 @@ export function createFallbackDialecticalGoalFrame(
 export function createFallbackOracleGoalFrame(
   goal: string,
   scope: OracleScope,
-  searchPlan: OracleSearchPlan,
+  searchPlan: OracleSearchPlan
 ): OracleGoalFrame {
   return {
     ...defaultBaseGoalFrame(goal, 'Fallback Oracle frame created after planner validation failure'),
@@ -280,31 +279,32 @@ export function createFallbackOracleGoalFrame(
   }
 }
 
-export function parseDeepResearchGoalFrame(output: string, fallback: DeepResearchGoalFrame): DeepResearchGoalFrame {
+export function parseDeepResearchGoalFrame(
+  output: string,
+  fallback: DeepResearchGoalFrame
+): DeepResearchGoalFrame {
   return safeParseJsonWithSchema(
     output,
     DeepResearchGoalFrameSchema,
     fallback,
-    'DeepResearchGoalFrame',
+    'DeepResearchGoalFrame'
   ).data
 }
 
-export function parseDialecticalGoalFrame(output: string, fallback: DialecticalGoalFrame): DialecticalGoalFrame {
+export function parseDialecticalGoalFrame(
+  output: string,
+  fallback: DialecticalGoalFrame
+): DialecticalGoalFrame {
   return safeParseJsonWithSchema(
     output,
     DialecticalGoalFrameSchema,
     fallback,
-    'DialecticalGoalFrame',
+    'DialecticalGoalFrame'
   ).data
 }
 
 export function parseOracleGoalFrame(output: string, fallback: OracleGoalFrame): OracleGoalFrame {
-  return safeParseJsonWithSchema(
-    output,
-    OracleGoalFrameSchema,
-    fallback,
-    'OracleGoalFrame',
-  ).data
+  return safeParseJsonWithSchema(output, OracleGoalFrameSchema, fallback, 'OracleGoalFrame').data
 }
 
 export function buildEmptyStartupSeedSummary(sourceCount = 0): StartupSeedSummary {

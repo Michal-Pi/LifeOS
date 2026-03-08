@@ -77,12 +77,12 @@ export function analyzeGraphGaps(
   const semanticQueries: string[] = []
 
   // 1. Unresolved contradictions → need evidence to resolve
-  const contradictEdges = graph.edges.filter(e => e.rel === 'contradicts')
+  const contradictEdges = graph.edges.filter((e) => e.rel === 'contradicts')
   if (contradictEdges.length > 0) {
     gaps.push('unresolved_contradiction')
     for (const edge of contradictEdges.slice(0, 3)) {
-      const fromNode = graph.nodes.find(n => n.id === edge.from)
-      const toNode = graph.nodes.find(n => n.id === edge.to)
+      const fromNode = graph.nodes.find((n) => n.id === edge.from)
+      const toNode = graph.nodes.find((n) => n.id === edge.to)
       if (fromNode && toNode) {
         serpQueries.push(`evidence "${fromNode.label}" vs "${toNode.label}"`)
       }
@@ -92,14 +92,14 @@ export function analyzeGraphGaps(
   // 2. Low-confidence graph → need corroboration
   if (graph.confidence < 0.6) {
     gaps.push('low_confidence')
-    const claimNodes = graph.nodes.filter(n => n.type === 'claim').slice(0, 2)
+    const claimNodes = graph.nodes.filter((n) => n.type === 'claim').slice(0, 2)
     for (const node of claimNodes) {
       scholarQueries.push(`evidence "${node.label}"`)
     }
   }
 
   // 3. Prediction nodes → check if evidence exists for/against
-  const predictions = graph.nodes.filter(n => n.type === 'prediction')
+  const predictions = graph.nodes.filter((n) => n.type === 'prediction')
   if (predictions.length > 0) {
     gaps.push('unsupported_prediction')
     for (const pred of predictions.slice(0, 2)) {
@@ -116,7 +116,7 @@ export function analyzeGraphGaps(
     nodeEdgeCounts.set(edge.from, (nodeEdgeCounts.get(edge.from) ?? 0) + 1)
     nodeEdgeCounts.set(edge.to, (nodeEdgeCounts.get(edge.to) ?? 0) + 1)
   }
-  const thinNodes = graph.nodes.filter(n => (nodeEdgeCounts.get(n.id) ?? 0) <= 1)
+  const thinNodes = graph.nodes.filter((n) => (nodeEdgeCounts.get(n.id) ?? 0) <= 1)
   if (thinNodes.length > graph.nodes.length * 0.3) {
     gaps.push('thin_area')
     for (const node of thinNodes.slice(0, 2)) {
@@ -134,7 +134,7 @@ export function analyzeGraphGaps(
 
   // 6. High-severity contradictions from crystallization → need resolution evidence
   if (directives.contradictions && directives.contradictions.length > 0) {
-    const highSeverity = directives.contradictions.filter(c => c.severity === 'HIGH')
+    const highSeverity = directives.contradictions.filter((c) => c.severity === 'HIGH')
     for (const c of highSeverity.slice(0, 2)) {
       serpQueries.push(`resolving: ${c.description.slice(0, 100)}`)
     }
@@ -173,8 +173,12 @@ export function analyzeGraphGaps(
     needsResearch: true,
     searchPlan: {
       serpQueries: strategy.useSERP ? deduplicateQueries(serpQueries).slice(0, serpLimit) : [],
-      scholarQueries: strategy.useScholar ? deduplicateQueries(scholarQueries).slice(0, scholarLimit) : [],
-      semanticQueries: strategy.useSemantic ? deduplicateQueries(semanticQueries).slice(0, semanticLimit) : [],
+      scholarQueries: strategy.useScholar
+        ? deduplicateQueries(scholarQueries).slice(0, scholarLimit)
+        : [],
+      semanticQueries: strategy.useSemantic
+        ? deduplicateQueries(semanticQueries).slice(0, semanticLimit)
+        : [],
       rationale: `Filling ${gaps.length} gap types: ${gaps.join(', ')}`,
       targetSourceCount: intensity === 'full' ? 5 : intensity === 'targeted' ? 3 : 1,
     },
@@ -184,7 +188,11 @@ export function analyzeGraphGaps(
   }
 }
 
-function buildInitialSearchPlan(goal: string, focusAreas?: string[], contextSummary?: string): GraphGapResult {
+function buildInitialSearchPlan(
+  goal: string,
+  focusAreas?: string[],
+  contextSummary?: string
+): GraphGapResult {
   const strategy = getSearchStrategy(classifyQueryType(goal))
   const serpQueries = [goal]
   const scholarQueries: string[] = []
@@ -242,8 +250,8 @@ function extractContextSearchTerms(contextSummary: string, goal: string): string
   if (quotedPhrases) {
     queries.push(
       ...quotedPhrases
-        .map(q => q.replace(/"/g, ''))
-        .filter(q => !goalWords.includes(q.toLowerCase()))
+        .map((q) => q.replace(/"/g, ''))
+        .filter((q) => !goalWords.includes(q.toLowerCase()))
         .slice(0, 2)
     )
   }
@@ -251,8 +259,8 @@ function extractContextSearchTerms(contextSummary: string, goal: string): string
   // Find substantive sentences and use them as search seeds
   const sentences = contextSummary
     .split(/[.!?\n]/)
-    .map(s => s.trim())
-    .filter(s => s.length > 30 && s.length < 200)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 30 && s.length < 200)
     .slice(0, 3)
 
   const goalPrefix = goal.split(' ').slice(0, 3).join(' ')
@@ -281,7 +289,7 @@ function determineIntensity(
 
 function deduplicateQueries(queries: string[]): string[] {
   const seen = new Set<string>()
-  return queries.filter(q => {
+  return queries.filter((q) => {
     const normalized = q.toLowerCase().trim()
     if (seen.has(normalized)) return false
     seen.add(normalized)
@@ -319,7 +327,7 @@ export function evaluateResearchNeed(
   graph: CompactGraph | null,
   goal: string,
   directives: GraphGapDirectives,
-  phase: 'pre_cycle' | 'post_synthesis',
+  phase: 'pre_cycle' | 'post_synthesis'
 ): GraphGapResult {
   // Budget exhaustion gate
   const budgetPhase = getBudgetPhase(directives.budget)
@@ -355,7 +363,7 @@ export function evaluateResearchNeed(
 
   // Scan for HIGH severity contradictions
   if (directives.contradictions && directives.contradictions.length > 0) {
-    const highSeverity = directives.contradictions.filter(c => c.severity === 'HIGH')
+    const highSeverity = directives.contradictions.filter((c) => c.severity === 'HIGH')
     if (highSeverity.length > 0 && !gapTypes.includes('unresolved_contradiction')) {
       gapTypes.push('unresolved_contradiction')
     }

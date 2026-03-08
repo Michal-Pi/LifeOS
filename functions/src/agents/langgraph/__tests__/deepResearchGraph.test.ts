@@ -17,23 +17,57 @@ vi.mock('../../deepResearch/sourceIngestion.js', () => ({
       { url: 'https://example.com/article1', title: 'Article 1', snippet: 'test' },
       { url: 'https://example.com/article2', title: 'Article 2', snippet: 'test' },
     ],
-    updatedBudget: { spentUsd: 0.01, spentTokens: 100, phase: 'full', maxBudgetUsd: 1.0, searchCallsUsed: 1, maxSearchCalls: 20, llmCallsUsed: 0, maxRecursiveDepth: 3, gapIterationsUsed: 0 },
+    updatedBudget: {
+      spentUsd: 0.01,
+      spentTokens: 100,
+      phase: 'full',
+      maxBudgetUsd: 1.0,
+      searchCallsUsed: 1,
+      maxSearchCalls: 20,
+      llmCallsUsed: 0,
+      maxRecursiveDepth: 3,
+      gapIterationsUsed: 0,
+    },
   }),
   ingestSources: vi.fn().mockResolvedValue({
-    sources: [
-      { url: 'https://example.com/article1', title: 'Article 1', sourceQualityScore: 0.8 },
-    ],
+    sources: [{ url: 'https://example.com/article1', title: 'Article 1', sourceQualityScore: 0.8 }],
     contentMap: { 'src-1': 'content' },
-    updatedBudget: { spentUsd: 0.02, spentTokens: 200, phase: 'full', maxBudgetUsd: 1.0, searchCallsUsed: 1, maxSearchCalls: 20, llmCallsUsed: 1, maxRecursiveDepth: 3, gapIterationsUsed: 0 },
+    updatedBudget: {
+      spentUsd: 0.02,
+      spentTokens: 200,
+      phase: 'full',
+      maxBudgetUsd: 1.0,
+      searchCallsUsed: 1,
+      maxSearchCalls: 20,
+      llmCallsUsed: 1,
+      maxRecursiveDepth: 3,
+      gapIterationsUsed: 0,
+    },
   }),
 }))
 
 vi.mock('../../deepResearch/claimExtraction.js', () => ({
   extractClaimsFromSourceBatch: vi.fn().mockResolvedValue({
     claims: [
-      { claimId: 'c1', claimText: 'Test claim', confidence: 0.8, evidenceType: 'EMPIRICAL', sourceId: 'src-1' },
+      {
+        claimId: 'c1',
+        claimText: 'Test claim',
+        confidence: 0.8,
+        evidenceType: 'EMPIRICAL',
+        sourceId: 'src-1',
+      },
     ],
-    updatedBudget: { spentUsd: 0.03, spentTokens: 300, phase: 'full', maxBudgetUsd: 1.0, searchCallsUsed: 1, maxSearchCalls: 20, llmCallsUsed: 2, maxRecursiveDepth: 3, gapIterationsUsed: 0 },
+    updatedBudget: {
+      spentUsd: 0.03,
+      spentTokens: 300,
+      phase: 'full',
+      maxBudgetUsd: 1.0,
+      searchCallsUsed: 1,
+      maxSearchCalls: 20,
+      llmCallsUsed: 2,
+      maxRecursiveDepth: 3,
+      gapIterationsUsed: 0,
+    },
   }),
   mapClaimsToKG: vi.fn().mockResolvedValue({
     addedClaimIds: ['claim-1'],
@@ -50,14 +84,34 @@ vi.mock('../../deepResearch/sourceQuality.js', () => ({
 vi.mock('../../deepResearch/gapAnalysis.js', () => ({
   analyzeKnowledgeGaps: vi.fn().mockResolvedValue({
     result: { gaps: [], overallCoverageScore: 0.9, shouldContinue: false },
-    updatedBudget: { spentUsd: 0.04, spentTokens: 400, phase: 'full', maxBudgetUsd: 1.0, searchCallsUsed: 1, maxSearchCalls: 20, llmCallsUsed: 3, maxRecursiveDepth: 3, gapIterationsUsed: 1 },
+    updatedBudget: {
+      spentUsd: 0.04,
+      spentTokens: 400,
+      phase: 'full',
+      maxBudgetUsd: 1.0,
+      searchCallsUsed: 1,
+      maxSearchCalls: 20,
+      llmCallsUsed: 3,
+      maxRecursiveDepth: 3,
+      gapIterationsUsed: 1,
+    },
   }),
 }))
 
 vi.mock('../../deepResearch/answerGeneration.js', () => ({
   generateAnswer: vi.fn().mockResolvedValue({
     answer: { directAnswer: 'Test answer' },
-    updatedBudget: { spentUsd: 0.05, spentTokens: 500, phase: 'full', maxBudgetUsd: 1.0, searchCallsUsed: 1, maxSearchCalls: 20, llmCallsUsed: 4, maxRecursiveDepth: 3, gapIterationsUsed: 1 },
+    updatedBudget: {
+      spentUsd: 0.05,
+      spentTokens: 500,
+      phase: 'full',
+      maxBudgetUsd: 1.0,
+      searchCallsUsed: 1,
+      maxSearchCalls: 20,
+      llmCallsUsed: 4,
+      maxRecursiveDepth: 3,
+      gapIterationsUsed: 1,
+    },
   }),
 }))
 
@@ -82,7 +136,9 @@ vi.mock('../../deepResearch/budgetController.js', () => ({
   canAffordOperation: vi.fn().mockReturnValue(true),
   estimateLLMCost: vi.fn().mockReturnValue(0.001),
   shouldContinueGapLoop: vi.fn().mockReturnValue(false),
-  recordGapIteration: vi.fn().mockImplementation((b) => ({ ...b, gapIterationsUsed: b.gapIterationsUsed + 1 })),
+  recordGapIteration: vi
+    .fn()
+    .mockImplementation((b) => ({ ...b, gapIterationsUsed: b.gapIterationsUsed + 1 })),
 }))
 
 vi.mock('../../contradictionTrackers.js', () => ({
@@ -120,7 +176,16 @@ vi.mock('../../metaReflection.js', () => ({
   runMetaReflection: vi.fn().mockResolvedValue({
     decision: 'TERMINATE',
     metrics: { velocity: 0.05, convergenceScore: 0.9, learningRate: 0.02 },
-    step: { agentId: 'meta', agentName: 'Meta', output: 'TERMINATE', tokensUsed: 100, estimatedCost: 0.002, provider: 'openai', model: 'gpt-4o', executedAtMs: Date.now() },
+    step: {
+      agentId: 'meta',
+      agentName: 'Meta',
+      output: 'TERMINATE',
+      tokensUsed: 100,
+      estimatedCost: 0.002,
+      provider: 'openai',
+      model: 'gpt-4o',
+      executedAtMs: Date.now(),
+    },
     warnings: [],
   }),
 }))
@@ -175,9 +240,24 @@ vi.mock('../../deepResearch/kgSerializer.js', () => ({
 
 vi.mock('../../kgTools.js', () => ({
   createKGTools: vi.fn().mockReturnValue([
-    { name: 'kg_summary', description: 'Get KG summary', parameters: { type: 'object', properties: {} }, execute: vi.fn() },
-    { name: 'kg_get_claims', description: 'Get claims', parameters: { type: 'object', properties: {} }, execute: vi.fn() },
-    { name: 'kg_get_contradictions', description: 'Get contradictions', parameters: { type: 'object', properties: {} }, execute: vi.fn() },
+    {
+      name: 'kg_summary',
+      description: 'Get KG summary',
+      parameters: { type: 'object', properties: {} },
+      execute: vi.fn(),
+    },
+    {
+      name: 'kg_get_claims',
+      description: 'Get claims',
+      parameters: { type: 'object', properties: {} },
+      execute: vi.fn(),
+    },
+    {
+      name: 'kg_get_contradictions',
+      description: 'Get contradictions',
+      parameters: { type: 'object', properties: {} },
+      execute: vi.fn(),
+    },
   ]),
 }))
 
@@ -301,20 +381,34 @@ describe('cross-iteration source dedup', () => {
         { url: 'https://example.com/new-article', title: 'New', snippet: 'test' },
       ] as never,
       updatedBudget: {
-        spentUsd: 0.01, spentTokens: 100, phase: 'full',
-        maxBudgetUsd: 1.0, searchCallsUsed: 1, maxSearchCalls: 20,
-        llmCallsUsed: 0, maxRecursiveDepth: 3, gapIterationsUsed: 0,
+        spentUsd: 0.01,
+        spentTokens: 100,
+        phase: 'full',
+        maxBudgetUsd: 1.0,
+        searchCallsUsed: 1,
+        maxSearchCalls: 20,
+        llmCallsUsed: 0,
+        maxRecursiveDepth: 3,
+        gapIterationsUsed: 0,
       },
     })
 
     // ingestSources should receive only the new URL
     mockIngest.mockResolvedValueOnce({
-      sources: [{ url: 'https://example.com/new-article', title: 'New', sourceQualityScore: 0.8 }] as never,
+      sources: [
+        { url: 'https://example.com/new-article', title: 'New', sourceQualityScore: 0.8 },
+      ] as never,
       contentMap: { 'src-new': 'content' },
       updatedBudget: {
-        spentUsd: 0.02, spentTokens: 200, phase: 'full' as const,
-        maxBudgetUsd: 1.0, searchCallsUsed: 1, maxSearchCalls: 20,
-        llmCallsUsed: 1, maxRecursiveDepth: 3, gapIterationsUsed: 0,
+        spentUsd: 0.02,
+        spentTokens: 200,
+        phase: 'full' as const,
+        maxBudgetUsd: 1.0,
+        searchCallsUsed: 1,
+        maxSearchCalls: 20,
+        llmCallsUsed: 1,
+        maxRecursiveDepth: 3,
+        gapIterationsUsed: 0,
       },
     })
 
@@ -337,7 +431,7 @@ describe('cross-iteration source dedup', () => {
       }
     }
 
-    const filtered = rawResults.filter(r => !previousUrls.has(normalizeUrl(r.url)))
+    const filtered = rawResults.filter((r) => !previousUrls.has(normalizeUrl(r.url)))
     expect(filtered).toHaveLength(1)
     expect(filtered[0].url).toBe('https://example.com/new-article')
   })
@@ -347,9 +441,15 @@ describe('budget tracking through dialectical phase', () => {
   it('recordSpend updates budget correctly', () => {
     const mockRecordSpend = vi.mocked(recordSpend)
     const budget = {
-      maxBudgetUsd: 1.0, spentUsd: 0, spentTokens: 0,
-      searchCallsUsed: 0, maxSearchCalls: 20, llmCallsUsed: 0,
-      phase: 'full' as const, maxRecursiveDepth: 3, gapIterationsUsed: 0,
+      maxBudgetUsd: 1.0,
+      spentUsd: 0,
+      spentTokens: 0,
+      searchCallsUsed: 0,
+      maxSearchCalls: 20,
+      llmCallsUsed: 0,
+      phase: 'full' as const,
+      maxRecursiveDepth: 3,
+      gapIterationsUsed: 0,
     }
 
     // Thesis phase
@@ -441,7 +541,7 @@ describe('deep research degraded startup behavior', () => {
             content: '<p>This is a long enough context seed note for extraction.</p>',
           },
         ],
-      },
+      }
     )
 
     expect(result.status).toBe('completed')

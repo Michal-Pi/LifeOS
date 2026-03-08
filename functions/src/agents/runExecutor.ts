@@ -78,6 +78,43 @@ function extractOracleResumeState(
   return undefined
 }
 
+function extractNestedResumeState(
+  workflowState: Run['workflowState'],
+  key: string
+): Record<string, unknown> | undefined {
+  if (!workflowState || typeof workflowState !== 'object') return undefined
+
+  const stateRecord = workflowState as Record<string, unknown>
+  const nestedResumeState = stateRecord[key]
+  if (nestedResumeState && typeof nestedResumeState === 'object') {
+    return nestedResumeState as Record<string, unknown>
+  }
+
+  return undefined
+}
+
+function extractGenericResumeState(
+  workflowState: Run['workflowState'],
+  pendingInput?: Run['pendingInput'],
+  constraintPause?: Run['constraintPause']
+): Record<string, unknown> | undefined {
+  if (!workflowState || typeof workflowState !== 'object') return undefined
+
+  const stateRecord = workflowState as Record<string, unknown>
+  const pendingNodes = Array.isArray(stateRecord.pendingNodes)
+    ? (stateRecord.pendingNodes as unknown[])
+    : []
+  const nextNodeId =
+    typeof pendingNodes[0] === 'string' ? (pendingNodes[0] as string) : (null as string | null)
+
+  return {
+    ...stateRecord,
+    nextNodeId,
+    pendingInput: pendingInput ?? null,
+    constraintPause: constraintPause ?? null,
+  }
+}
+
 // Function configuration — dialectical workflows can run 20+ minutes across multiple cycles
 const FUNCTION_CONFIG = {
   timeoutSeconds: 1800,
@@ -108,6 +145,7 @@ async function queueRunForCapacity(params: {
     | 'rate_runs_per_hour'
     | 'rate_tokens_per_day'
     | 'rate_cost_per_day'
+    | 'rate_provider'
   currentValue: number
   limitValue: number
   unit: string
@@ -274,7 +312,11 @@ export const onRunUpdated = onDocumentUpdated(
     const { userId, workflowId, runId } = event.params
 
     const resumableStatuses = new Set<Run['status']>(['waiting_for_input', 'paused', 'queued'])
-    if (!resumableStatuses.has(before.status) || after.status !== 'pending') {
+    const resumableFailure =
+      before.status === 'failed' &&
+      (before.quotaExceeded === true || before.errorCategory === 'rate_limit')
+
+    if ((!resumableStatuses.has(before.status) && !resumableFailure) || after.status !== 'pending') {
       return
     }
 
@@ -431,6 +473,32 @@ async function executeRun(params: {
 
     const oracleResumeState =
       workflow.workflowType === 'oracle' ? extractOracleResumeState(run.workflowState) : undefined
+    const sequentialResumeState =
+      workflow.workflowType === 'sequential'
+        ? extractNestedResumeState(run.workflowState, 'sequentialResumeState')
+        : undefined
+    const parallelResumeState =
+      workflow.workflowType === 'parallel'
+        ? extractNestedResumeState(run.workflowState, 'parallelResumeState')
+        : undefined
+    const supervisorResumeState =
+      workflow.workflowType === 'supervisor'
+        ? extractNestedResumeState(run.workflowState, 'supervisorResumeState')
+        : undefined
+    const dialecticalResumeState =
+      workflow.workflowType === 'dialectical'
+        ? extractNestedResumeState(run.workflowState, 'dialecticalResumeState')
+        : undefined
+    const deepResearchResumeState =
+      workflow.workflowType === 'deep_research'
+        ? extractNestedResumeState(run.workflowState, 'deepResearchResumeState')
+        : undefined
+    const genericResumeState =
+      (workflow.workflowType === 'graph' || workflow.workflowType === 'custom') &&
+      run.workflowState &&
+      typeof run.workflowState === 'object'
+        ? extractGenericResumeState(run.workflowState, run.pendingInput, run.constraintPause)
+        : undefined
 
     const runContext =
       run.context && typeof run.context === 'object'
@@ -442,6 +510,24 @@ async function executeRun(params: {
     }
     if (oracleResumeState) {
       runContext.resumeState = oracleResumeState
+    }
+    if (sequentialResumeState) {
+      runContext.resumeState = sequentialResumeState
+    }
+    if (parallelResumeState) {
+      runContext.resumeState = parallelResumeState
+    }
+    if (supervisorResumeState) {
+      runContext.resumeState = supervisorResumeState
+    }
+    if (dialecticalResumeState) {
+      runContext.resumeState = dialecticalResumeState
+    }
+    if (deepResearchResumeState) {
+      runContext.resumeState = deepResearchResumeState
+    }
+    if (genericResumeState) {
+      runContext.resumeState = genericResumeState
     }
 
     const runWithContext: Run = {
@@ -821,6 +907,54 @@ async function executeRun(params: {
     const agentError = wrapError(error, 'run_execution')
     log.error(`Error category: ${agentError.category}, User message: ${agentError.userMessage}`)
 
+    const eventWriter = createRunEventWriter({ userId, runId, workflowId })
+
+    if (agentError.category === 'rate_limit' && agentError.retryable) {
+      const now = Date.now()
+      const retryCount = (run.queueInfo?.retryCount ?? 0) + 1
+      const nextRetryAtMs = now + computeQueueRetryDelayMs()
+
+      log.info(`Queueing run ${runId} after provider rate limit`)
+      await runRef.update({
+        status: 'queued',
+        error: agentError.userMessage,
+        errorCategory: agentError.category,
+        errorDetails: agentError.details,
+        quotaExceeded: true,
+        pendingInput: null,
+        constraintPause: {
+          constraintType: 'rate_provider',
+          currentValue: 1,
+          limitValue: 1,
+          unit: 'provider window',
+          partialOutput:
+            typeof run.output === 'string' && run.output.trim().length > 0 ? run.output : undefined,
+        },
+        queueInfo: {
+          reason: 'rate_provider',
+          queuedAtMs: now,
+          nextRetryAtMs,
+          retryCount,
+        },
+        completedAtMs: FieldValue.delete(),
+      })
+
+      await eventWriter.writeEvent({
+        type: 'status',
+        workflowId,
+        status: 'queued',
+        details: {
+          reason: 'rate_provider',
+          retryCount,
+          nextRetryAtMs,
+          message: agentError.userMessage,
+        },
+      })
+
+      log.warn(`Run ${runId} queued for automatic retry after provider rate limit`)
+      return
+    }
+
     // Update run with error (including category and quota flag)
     log.info(`Updating run ${runId} status to 'failed'`)
     await runRef.update({
@@ -833,7 +967,6 @@ async function executeRun(params: {
     })
 
     log.info(`Writing 'error' event for run ${runId}`)
-    const eventWriter = createRunEventWriter({ userId, runId, workflowId })
     await eventWriter.writeEvent({
       type: 'error',
       workflowId,

@@ -69,23 +69,23 @@ For each of these decisions, provide 2–3 options with trade-offs and a recomme
 
 Map every Oracle architectural component from the v3 spec to a concrete implementation unit. At minimum, cover:
 
-| Oracle Concept | Implementation Unit |
-|---|---|
-| Phase 0: Context Gathering | ? |
-| Phase 1: Decomposition (STEEP+V) | ? |
-| Phase 2: Trend Scanning | ? |
-| Phase 3: Scenario Development + Backcasting | ? |
-| Expert Council (4-model) | ? |
-| Model Router | ? |
-| Axiom Library (142 entries) | ? |
-| Axiom Cookbook (21 recipes, 15 techniques) | ? |
-| Reasoning Ledger | ? |
-| Gate System (A, B, C) | ? |
-| Confidence Scoring (Bayesian) | ? |
-| Consistency Checker | ? |
-| Red Team Agent | ? |
-| Rubric Evaluator | ? |
-| Output Generator (scenario portfolios) | ? |
+| Oracle Concept                              | Implementation Unit |
+| ------------------------------------------- | ------------------- |
+| Phase 0: Context Gathering                  | ?                   |
+| Phase 1: Decomposition (STEEP+V)            | ?                   |
+| Phase 2: Trend Scanning                     | ?                   |
+| Phase 3: Scenario Development + Backcasting | ?                   |
+| Expert Council (4-model)                    | ?                   |
+| Model Router                                | ?                   |
+| Axiom Library (142 entries)                 | ?                   |
+| Axiom Cookbook (21 recipes, 15 techniques)  | ?                   |
+| Reasoning Ledger                            | ?                   |
+| Gate System (A, B, C)                       | ?                   |
+| Confidence Scoring (Bayesian)               | ?                   |
+| Consistency Checker                         | ?                   |
+| Red Team Agent                              | ?                   |
+| Rubric Evaluator                            | ?                   |
+| Output Generator (scenario portfolios)      | ?                   |
 
 ### Requirement 6: Implementation Phases
 
@@ -104,6 +104,7 @@ Each phase should end with a demo-able capability: Phase 1 produces a basic scen
 For Phase 0 and Phase 1, decompose into individual implementation tasks at the granularity an AI coding agent can execute in a single session. For Phases 2–4, decompose into epics (3–7 tasks each) with enough detail to write task-level specs later.
 
 Each task needs:
+
 - Task ID and name
 - Description (2–3 sentences)
 - Input: what the agent reads before starting

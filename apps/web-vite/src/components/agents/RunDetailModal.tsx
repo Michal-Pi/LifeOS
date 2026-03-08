@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useNoteOperations } from '@/hooks/useNoteOperations'
 import { useDeepResearchKGState } from '@/hooks/useDeepResearchKGState'
 import { useDialecticalState } from '@/hooks/useDialecticalState'
+import { useOracleKGState } from '@/hooks/useOracleKGState'
 import { useRunEvents } from '@/hooks/useRunEvents'
 import { useRunMessages } from '@/hooks/useRunMessages'
 import { markdownToJsonContent } from '@/lib/noteImport'
@@ -67,6 +68,10 @@ export function RunDetailModal({
   // Dialectical state
   const isDialectical = workflow.workflowType === 'dialectical'
   const dialecticalState = useDialecticalState(isDialectical ? run : null, events)
+
+  // Oracle KG state
+  const isOracle = workflow.workflowType === 'oracle'
+  const oracleKGState = useOracleKGState(isOracle ? run : null, events)
 
   // Memoize derived values from events to avoid recomputing on every render
   const streamingOutput = useMemo(
@@ -123,13 +128,7 @@ export function RunDetailModal({
         title,
         content: markdownToJsonContent(content),
         contentHtml: content,
-        context: {
-          source: 'workflow-run',
-          workflowId: workflow.workflowId,
-          workflowName: workflow.name,
-          runId: run.runId,
-          goal: run.goal,
-        },
+        tags: [`workflow:${workflow.name}`],
       })
 
       toast.success('Note created!', {
@@ -159,14 +158,7 @@ export function RunDetailModal({
         title,
         content: markdownToJsonContent(content),
         contentHtml: content,
-        context: {
-          source: 'workflow-run',
-          workflowId: workflow.workflowId,
-          workflowName: workflow.name,
-          runId: run.runId,
-          goal: run.goal,
-          isAllMessages: true,
-        },
+        tags: [`workflow:${workflow.name}`],
       })
 
       toast.success('All messages saved as note!', {
@@ -326,6 +318,20 @@ export function RunDetailModal({
                 velocityThreshold={0.2}
                 onTerminate={onStop ? () => onStop(run.runId) : undefined}
               />
+            </Suspense>
+          )}
+
+          {isOracle && oracleKGState && (
+            <Suspense
+              fallback={
+                <div
+                  style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-tertiary)' }}
+                >
+                  Loading Oracle knowledge graph...
+                </div>
+              }
+            >
+              <KnowledgeGraphVisualization state={oracleKGState} run={run} />
             </Suspense>
           )}
         </div>

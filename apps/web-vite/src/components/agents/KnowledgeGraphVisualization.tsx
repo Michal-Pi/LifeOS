@@ -72,15 +72,9 @@ function KGStatsBar({
       <MetricCard icon="⊕" value={sources} label="Sources" />
       <MetricCard icon="⚡" value={contradictionCount} label="Contradictions" />
       {gapCoverage !== null && (
-        <MetricCard
-          icon="◎"
-          value={`${Math.round(gapCoverage * 100)}%`}
-          label="Coverage"
-        />
+        <MetricCard icon="◎" value={`${Math.round(gapCoverage * 100)}%`} label="Coverage" />
       )}
-      {communityCount > 0 && (
-        <MetricCard icon="⬡" value={communityCount} label="Communities" />
-      )}
+      {communityCount > 0 && <MetricCard icon="⬡" value={communityCount} label="Communities" />}
     </div>
   )
 }
@@ -131,23 +125,20 @@ export default function KnowledgeGraphVisualization({
   const currentSnapshot = state.snapshots[timeSliderIndex] ?? null
 
   // Focus neighborhood: filter graph to 2-hop neighbors
-  const handleFocusNeighborhood = useCallback(
-    (nodeId: string) => {
-      const cy = cyRef.current
-      if (!cy) return
+  const handleFocusNeighborhood = useCallback((nodeId: string) => {
+    const cy = cyRef.current
+    if (!cy) return
 
-      const node = cy.getElementById(nodeId)
-      if (node.length === 0) return
+    const node = cy.getElementById(nodeId)
+    if (node.length === 0) return
 
-      const neighborhood = node.closedNeighborhood().closedNeighborhood()
-      cy.elements().addClass('dimmed')
-      neighborhood.removeClass('dimmed')
+    const neighborhood = node.closedNeighborhood().closedNeighborhood()
+    cy.elements().addClass('dimmed')
+    neighborhood.removeClass('dimmed')
 
-      // Fit to neighborhood
-      cy.fit(neighborhood, 40)
-    },
-    []
-  )
+    // Fit to neighborhood
+    cy.fit(neighborhood, 40)
+  }, [])
 
   const handleClearFocus = useCallback(() => {
     const cy = cyRef.current
@@ -285,10 +276,7 @@ export default function KnowledgeGraphVisualization({
 
       {/* Timeline / Diff Panel */}
       {showDiffPanel && viewMode === 'diff' ? (
-        <KGDiffPanel
-          graphHistory={state.graphHistory}
-          onHighlightDiff={setDiffHighlight}
-        />
+        <KGDiffPanel graphHistory={state.graphHistory} onHighlightDiff={setDiffHighlight} />
       ) : (
         <KGTimelineBar
           snapshots={state.snapshots}
@@ -303,9 +291,7 @@ export default function KnowledgeGraphVisualization({
           {state.mergedGraph.nodes.length} nodes, {state.mergedGraph.edges.length} edges
         </span>
         {state.tokensUsed > 0 && (
-          <span className="kg-footer-item">
-            {state.tokensUsed.toLocaleString()} tokens
-          </span>
+          <span className="kg-footer-item">{state.tokensUsed.toLocaleString()} tokens</span>
         )}
         {state.estimatedCost > 0 && (
           <span className="kg-footer-item">${state.estimatedCost.toFixed(4)}</span>

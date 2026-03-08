@@ -12,18 +12,10 @@ const mockDb = { doc: mockDoc, collection: mockCollection }
 
 import { mapClaimsToKG } from '../claimExtraction.js'
 import { KnowledgeHypergraph } from '../../knowledgeHypergraph.js'
-import type {
-  DialecticalSessionId,
-  ExtractedClaim,
-  SourceRecord,
-} from '@lifeos/agents'
+import type { DialecticalSessionId, ExtractedClaim, SourceRecord } from '@lifeos/agents'
 
 function makeKg(): KnowledgeHypergraph {
-  return new KnowledgeHypergraph(
-    'session-1' as DialecticalSessionId,
-    'user-1',
-    mockDb as never
-  )
+  return new KnowledgeHypergraph('session-1' as DialecticalSessionId, 'user-1', mockDb as never)
 }
 
 function makeClaim(overrides?: Partial<ExtractedClaim>): ExtractedClaim {
@@ -69,19 +61,19 @@ describe('Duplicate causal edge guard', () => {
     // Grab the concepts that were created
     const concepts = kg.getNodesByType('concept')
     expect(concepts.length).toBeGreaterThanOrEqual(2)
-    const conceptA = concepts.find(c => c.label === 'ConceptA')!
-    const conceptB = concepts.find(c => c.label === 'ConceptB')!
+    const conceptA = concepts.find((c) => c.label === 'ConceptA')!
+    const conceptB = concepts.find((c) => c.label === 'ConceptB')!
 
     // Count causal_link edges between conceptA and conceptB
     const edgesBefore = kg.getEdges(conceptA.id, conceptB.id)
-    const causalBefore = edgesBefore.filter(e => e.type === 'causal_link')
+    const causalBefore = edgesBefore.filter((e) => e.type === 'causal_link')
     expect(causalBefore.length).toBe(1)
 
     // Second pass with the same claim — should NOT add another causal_link
     await mapClaimsToKG(claims, sources, kg, 'session-1' as DialecticalSessionId, 'user-1')
 
     const edgesAfter = kg.getEdges(conceptA.id, conceptB.id)
-    const causalAfter = edgesAfter.filter(e => e.type === 'causal_link')
+    const causalAfter = edgesAfter.filter((e) => e.type === 'causal_link')
     expect(causalAfter.length).toBe(1)
   })
 
@@ -98,15 +90,15 @@ describe('Duplicate causal edge guard', () => {
     )
 
     const concepts = kg.getNodesByType('concept')
-    const conceptA = concepts.find(c => c.label === 'ConceptA')!
-    const conceptB = concepts.find(c => c.label === 'ConceptB')!
+    const conceptA = concepts.find((c) => c.label === 'ConceptA')!
+    const conceptB = concepts.find((c) => c.label === 'ConceptB')!
 
     const edgesBefore = kg.getEdges(conceptA.id, conceptB.id)
-    const causalBefore = edgesBefore.filter(e => e.type === 'causal_link')
+    const causalBefore = edgesBefore.filter((e) => e.type === 'causal_link')
     expect(causalBefore.length).toBe(1)
 
     // Small delay to avoid Date.now() collision in multigraph edge names
-    await new Promise(resolve => setTimeout(resolve, 2))
+    await new Promise((resolve) => setTimeout(resolve, 2))
 
     // Second claim with different text — different claimId
     await mapClaimsToKG(
@@ -118,7 +110,7 @@ describe('Duplicate causal edge guard', () => {
     )
 
     const edges = kg.getEdges(conceptA.id, conceptB.id)
-    const causalEdges = edges.filter(e => e.type === 'causal_link')
+    const causalEdges = edges.filter((e) => e.type === 'causal_link')
     expect(causalEdges.length).toBe(2)
   })
 })

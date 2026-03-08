@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { DialecticalWorkflowConfig } from '@lifeos/agents'
-import { createDefaultDialecticalConfig } from '@lifeos/agents'
+import { createDefaultDialecticalConfig, LENS_MODEL_PRESETS } from '@lifeos/agents'
 
 describe('Quick Dialectic Mode (Phase 28)', () => {
   it('default config has no mode set', () => {
@@ -17,6 +17,16 @@ describe('Quick Dialectic Mode (Phase 28)', () => {
     const config = createDefaultDialecticalConfig()
     expect(config.enableKGPersistence).toBe(true)
     expect(config.enableCommunityDetection).toBe(true)
+  })
+
+  it('default config aligns the economic lens to the tracked preset mapping', () => {
+    const config = createDefaultDialecticalConfig()
+    const economic = config.thesisAgents.find((agent) => agent.lens === 'economic')
+    const preset = LENS_MODEL_PRESETS.economic
+    expect(economic).toMatchObject({
+      modelProvider: preset.provider,
+      modelName: preset.modelName,
+    })
   })
 
   it('quick mode overrides disable KG and limit cycles', () => {

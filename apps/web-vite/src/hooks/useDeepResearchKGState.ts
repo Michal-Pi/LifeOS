@@ -55,6 +55,14 @@ function buildStateFromEvents(run: Run, events: RunEvent[]): DeepResearchKGState
       case 'deep_research_phase': {
         const phase = details.phase as string | undefined
         if (phase) currentPhase = phase
+        // Extract mergedGraph from kg_snapshot or sublation events
+        if (details.mergedGraph) {
+          mergedGraph = details.mergedGraph as CompactGraph
+        }
+        if (details.graphDiff) {
+          const cycleNum = (details.cycleNumber as number) ?? graphHistory.length + 1
+          graphHistory.push({ cycle: cycleNum, diff: details.graphDiff as GraphDiff })
+        }
         break
       }
 
@@ -142,21 +150,25 @@ export function useDeepResearchKGState(
     }
 
     // Completed/failed runs: use persisted state
-    const deepResearch = run.workflowState?.deepResearch
-    if (deepResearch) {
+    // Executor stores deep research state flat on workflowState (not nested under .deepResearch)
+    const ws = run.workflowState as Record<string, unknown> | undefined
+    if (ws && (ws.mergedGraph || ws.kgSnapshots || ws.sources)) {
+      const answer = ws.answer as
+        | { confidenceAssessment?: { overall?: number } }
+        | null
+        | undefined
       return {
-        snapshots: deepResearch.kgSnapshots ?? [],
-        mergedGraph: deepResearch.mergedGraph ?? null,
-        graphHistory: deepResearch.graphHistory ?? [],
-        sources: deepResearch.sources ?? [],
-        gapAnalysis: deepResearch.answer
+        snapshots: (ws.kgSnapshots as KGSnapshot[]) ?? [],
+        mergedGraph: (ws.mergedGraph as CompactGraph) ?? null,
+        graphHistory: (ws.graphHistory as Array<{ cycle: number; diff: GraphDiff }>) ?? [],
+        sources: (ws.sources as SourceRecord[]) ?? [],
+        gapAnalysis: answer
           ? {
-              overallCoverageScore:
-                deepResearch.answer.confidenceAssessment?.overall ?? 0,
+              overallCoverageScore: answer.confidenceAssessment?.overall ?? 0,
               gaps: [],
             }
           : null,
-        budget: deepResearch.budget ?? null,
+        budget: (ws.budget as RunBudget) ?? null,
         status: mapStatus(run.status),
         currentPhase: 'completed',
         tokensUsed: run.tokensUsed ?? 0,

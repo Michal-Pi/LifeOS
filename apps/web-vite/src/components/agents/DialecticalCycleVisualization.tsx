@@ -133,14 +133,11 @@ export function DialecticalCycleVisualization({
     setGraphSource({ type: 'merged' })
   }, [])
 
-  const handleOpenThesisGraph = useCallback(
-    (index: number, thesis: ThesisOutput) => {
-      if (thesis.graph && thesis.graph.nodes.length > 0) {
-        setGraphSource({ type: 'thesis', index, thesis })
-      }
-    },
-    []
-  )
+  const handleOpenThesisGraph = useCallback((index: number, thesis: ThesisOutput) => {
+    if (thesis.graph && thesis.graph.nodes.length > 0) {
+      setGraphSource({ type: 'thesis', index, thesis })
+    }
+  }, [])
 
   const handleCloseGraph = useCallback(() => {
     setGraphSource(null)
@@ -286,9 +283,10 @@ export function DialecticalCycleVisualization({
       )}
 
       {/* Contradiction List (when no per-cycle history or single cycle) */}
-      {(!state.cycleHistory || state.cycleHistory.length <= 1) && state.contradictions.length > 0 && (
-        <ContradictionList contradictions={state.contradictions} />
-      )}
+      {(!state.cycleHistory || state.cycleHistory.length <= 1) &&
+        state.contradictions.length > 0 && (
+          <ContradictionList contradictions={state.contradictions} />
+        )}
 
       {/* Synthesis Preview */}
       {state.synthesis && <SynthesisPreview synthesis={state.synthesis} />}
@@ -715,7 +713,11 @@ function CycleSelector({
 
   const viewData = useMemo(() => {
     if (selectedCycle === 'all') {
-      return { theses: currentTheses, negations: currentNegations, contradictions: currentContradictions }
+      return {
+        theses: currentTheses,
+        negations: currentNegations,
+        contradictions: currentContradictions,
+      }
     }
     const entry = cycleHistory.find((h) => h.cycle === selectedCycle)
     return entry ?? { theses: [], negations: [], contradictions: [] }

@@ -165,18 +165,14 @@ describe('Phase 49 — Refinement loop edge conditions', () => {
   ]
 
   it('quality_review loops back to improvement on NEEDS_REVISION', () => {
-    const loopEdge = graphEdges.find(
-      (e) => e.from === 'quality_review' && e.to === 'improvement'
-    )
+    const loopEdge = graphEdges.find((e) => e.from === 'quality_review' && e.to === 'improvement')
     expect(loopEdge).toBeDefined()
     expect(loopEdge!.condition.type).toBe('contains')
     expect(loopEdge!.condition.value).toBe('NEEDS_REVISION')
   })
 
   it('quality_review goes to end_node on APPROVED', () => {
-    const endEdge = graphEdges.find(
-      (e) => e.from === 'quality_review' && e.to === 'end_node'
-    )
+    const endEdge = graphEdges.find((e) => e.from === 'quality_review' && e.to === 'end_node')
     expect(endEdge).toBeDefined()
     expect(endEdge!.condition.type).toBe('contains')
     expect(endEdge!.condition.value).toBe('APPROVED')

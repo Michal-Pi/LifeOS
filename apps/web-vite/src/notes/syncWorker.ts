@@ -111,6 +111,7 @@ async function processNoteOp(userId: string, op: NoteOutboxOp): Promise<void> {
         const created = await noteRepository.create(userId, {
           title: baseNote.title?.trim() || 'Untitled',
           content: sanitizedContent ?? { type: 'doc', content: [] },
+          contentHtml: baseNote.contentHtml,
           topicId: baseNote.topicId,
           sectionId: baseNote.sectionId,
           projectIds: baseNote.projectIds,

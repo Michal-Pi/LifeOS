@@ -147,9 +147,7 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
   const currentFontSize = rawFontSize ? rawFontSize.replace('px', '') : '16'
 
   const rawFontFamily = textStyleAttrs.fontFamily as string | undefined
-  const currentFontFamily = rawFontFamily
-    ? rawFontFamily.split(',')[0].trim()
-    : 'Aa'
+  const currentFontFamily = rawFontFamily ? rawFontFamily.split(',')[0].trim() : 'Aa'
 
   const editorTextColor = textStyleAttrs.color as string | undefined
   const editorHighlightColor = editor.getAttributes('highlight').color as string | undefined
@@ -463,7 +461,9 @@ export function TipTapMenuBar({ editor, onOpenMathPanel }: TipTapMenuBarProps) {
           >
             <span
               className="menu-color-dot"
-              style={{ backgroundColor: editorHighlightColor || activeHighlightColor || 'var(--warning)' }}
+              style={{
+                backgroundColor: editorHighlightColor || activeHighlightColor || 'var(--warning)',
+              }}
             />
             <span className="menu-arrow">▼</span>
           </button>

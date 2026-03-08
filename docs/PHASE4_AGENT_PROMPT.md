@@ -36,6 +36,7 @@ START → decide_research_pre ──[research needed]──→ execute_research 
 ```
 
 When `enableReactiveResearch` is `false`, keep the existing topology unchanged:
+
 ```
 START → retrieve_context → generate_theses → cross_negation → crystallize → sublate → meta_reflect → [loop or END]
 ```
@@ -55,7 +56,7 @@ export function evaluateResearchNeed(
   graph: CompactGraph | null,
   goal: string,
   directives: GraphGapDirectives,
-  phase: 'pre_cycle' | 'post_synthesis',
+  phase: 'pre_cycle' | 'post_synthesis'
 ): GraphGapResult
 ```
 
@@ -64,6 +65,7 @@ export function evaluateResearchNeed(
 The existing `analyzeGraphGaps` already handles general gap analysis. `evaluateResearchNeed` adds phase-aware triggers and intensity caps.
 
 **Phase = `pre_cycle`** (before thesis generation):
+
 - Triggers: `directives.focusAreas` from last meta-reflection, stale data (nodes with low confidence), overall low confidence
 - Query type: Targeted, 1–3 queries
 - Use existing `analyzeGraphGaps(graph, goal, directives)` as the base
@@ -71,6 +73,7 @@ The existing `analyzeGraphGaps` already handles general gap analysis. `evaluateR
 - Cap the search plan: max 3 SERP queries, max 1 Scholar query, max 1 Semantic query, `targetSourceCount ≤ 3`
 
 **Phase = `post_synthesis`** (after sublation, before meta-reflection):
+
 - Triggers: New `contradicts` edges in the merged graph, thin areas (nodes with ≤1 edge), unsourced claims (nodes without `sourceId`), low source quality
 - Query type: Verification, 1–3 queries
 - Start from `analyzeGraphGaps(graph, goal, directives)` as the base
@@ -79,6 +82,7 @@ The existing `analyzeGraphGaps` already handles general gap analysis. `evaluateR
 - Cap the search plan same as pre_cycle
 
 **Both phases:**
+
 - If budget is exhausted (`directives.budget.phase === 'exhausted'`), return `{ needsResearch: false, searchPlan: null, rationale: 'Budget exhausted', gapTypes: [], researchIntensity: 'none' }`
 - Non-Phase-1 research is always `targeted` or `verification` intensity — never `full`
 
@@ -152,13 +156,14 @@ Also add this field to the `DialecticalState` type if it's separately defined (c
 function createDecideResearchNode(
   execContext: AgentExecutionContext,
   config: DialecticalWorkflowConfig,
-  position: 'pre_cycle' | 'post_synthesis',
+  position: 'pre_cycle' | 'post_synthesis'
 ): (state: DialecticalState) => Promise<Partial<DialecticalState>>
 ```
 
 ### Implementation:
 
 1. When `config.enableReactiveResearch` is `false`, always return no research:
+
    ```ts
    if (!config.enableReactiveResearch) {
      return {
@@ -175,13 +180,17 @@ function createDecideResearchNode(
    ```
 
 2. Build directives from current state:
+
    ```ts
    const directives: GraphGapDirectives = {
      cycleNumber: state.cycleNumber,
-     budget: state.researchBudget ?? createRunBudget(config.researchBudgetUsd ?? 5, config.researchSearchDepth ?? 'standard'),
-     focusAreas: position === 'pre_cycle'
-       ? (state.metaDecision as { focusAreas?: string[] } | null)?.focusAreas
-       : undefined,
+     budget:
+       state.researchBudget ??
+       createRunBudget(config.researchBudgetUsd ?? 5, config.researchSearchDepth ?? 'standard'),
+     focusAreas:
+       position === 'pre_cycle'
+         ? (state.metaDecision as { focusAreas?: string[] } | null)?.focusAreas
+         : undefined,
      contradictions: position === 'post_synthesis' ? state.contradictions : undefined,
    }
    ```
@@ -189,18 +198,15 @@ function createDecideResearchNode(
    Note: `metaDecision` may be a `MetaDecision` type (string like 'CONTINUE' | 'TERMINATE' | 'RESPECIFY'). Check the actual type. The `focusAreas` would come from the meta-reflection result stored elsewhere in the state — look at how `runMetaReflection` returns data. If `focusAreas` is not directly on `metaDecision`, look at `state.context` or `state.cycleMetricsHistory` for a suitable source.
 
 3. Call `evaluateResearchNeed`:
+
    ```ts
    import { evaluateResearchNeed } from '../deepResearch/graphGapAnalysis.js'
 
-   const result = evaluateResearchNeed(
-     state.mergedGraph,
-     state.goal,
-     directives,
-     position,
-   )
+   const result = evaluateResearchNeed(state.mergedGraph, state.goal, directives, position)
    ```
 
 4. Emit a phase event:
+
    ```ts
    const decision = result.needsResearch ? 'Research needed' : 'No research needed'
    if (execContext.eventWriter) {
@@ -237,7 +243,7 @@ function createDecideResearchNode(
 function createExecuteResearchNode(
   execContext: AgentExecutionContext,
   config: DialecticalWorkflowConfig,
-  kg: KnowledgeHypergraph | null,
+  kg: KnowledgeHypergraph | null
 ): (state: DialecticalState) => Promise<Partial<DialecticalState>>
 ```
 
@@ -250,50 +256,77 @@ Extract the existing research logic from `createRetrieveContextNode` Phase B (li
 2. Get the search plan from `state.researchDecision.searchPlan`.
 
 3. Initialize/continue budget:
+
    ```ts
-   let currentBudget = state.researchBudget ?? createRunBudget(
-     config.researchBudgetUsd ?? 5,
-     config.researchSearchDepth ?? 'standard',
-   )
+   let currentBudget =
+     state.researchBudget ??
+     createRunBudget(config.researchBudgetUsd ?? 5, config.researchSearchDepth ?? 'standard')
    ```
 
 4. Execute the search plan — reuse the same pattern from `createRetrieveContextNode`:
+
    ```ts
    const { results, updatedBudget } = await executeSearchPlan(
-     searchPlan, toolRegistry, toolContext, currentBudget
+     searchPlan,
+     toolRegistry,
+     toolContext,
+     currentBudget
    )
    currentBudget = updatedBudget
    ```
 
 5. Ingest sources:
+
    ```ts
-   const { sources: newSources, contentMap, updatedBudget: postIngestBudget } = await ingestSources(
-     results, state.goal, toolRegistry, toolContext, currentBudget, scoreRelevanceFn
+   const {
+     sources: newSources,
+     contentMap,
+     updatedBudget: postIngestBudget,
+   } = await ingestSources(
+     results,
+     state.goal,
+     toolRegistry,
+     toolContext,
+     currentBudget,
+     scoreRelevanceFn
    )
    currentBudget = postIngestBudget
    ```
 
 6. Extract claims:
+
    ```ts
    const { claims: newClaims, updatedBudget: postClaimBudget } = await extractClaimsFromSourceBatch(
-     newSources, contentMap, state.goal, providerFn, currentBudget
+     newSources,
+     contentMap,
+     state.goal,
+     providerFn,
+     currentBudget
    )
    currentBudget = postClaimBudget
    ```
 
 7. Apply quality scores:
+
    ```ts
-   const scoredSources = newSources.map(s => ({ ...s, sourceQualityScore: computeSourceQualityScore(s) }))
+   const scoredSources = newSources.map((s) => ({
+     ...s,
+     sourceQualityScore: computeSourceQualityScore(s),
+   }))
    const scoredClaims = applyQualityScoresToClaims(newClaims, scoredSources)
    ```
 
 8. Build `ResearchEvidence` and add to context:
+
    ```ts
    const researchEvidence: ResearchEvidence = {
      claims: scoredClaims.slice(0, 15),
-     sources: scoredSources.map(s => ({
-       sourceId: s.sourceId, title: s.title, url: s.url,
-       domain: s.domain, qualityScore: s.sourceQualityScore ?? 0.5,
+     sources: scoredSources.map((s) => ({
+       sourceId: s.sourceId,
+       title: s.title,
+       url: s.url,
+       domain: s.domain,
+       qualityScore: s.sourceQualityScore ?? 0.5,
      })),
      gapTypes: state.researchDecision?.gapTypes ?? [],
      searchRationale: state.researchDecision?.rationale ?? '',
@@ -311,6 +344,7 @@ Extract the existing research logic from `createRetrieveContextNode` Phase B (li
    ```
 
 For building the `toolRegistry`, `toolContext`, `providerFn`, and `scoreRelevanceFn`, copy the patterns from the existing `createRetrieveContextNode`. These involve:
+
 - Creating a `ToolExecutionContext` from `execContext`
 - Building a `ProviderExecuteFn` using `executeWithProvider`
 - Creating a relevance scoring function using the LLM
@@ -349,17 +383,24 @@ if (config.enableReactiveResearch) {
   // --- Reactive research topology ---
   graph.addNode('decide_research_pre', createDecideResearchNode(execContext, config, 'pre_cycle'))
   graph.addNode('execute_research', createExecuteResearchNode(execContext, config, kg))
-  graph.addNode('decide_research_post', createDecideResearchNode(execContext, config, 'post_synthesis'))
+  graph.addNode(
+    'decide_research_post',
+    createDecideResearchNode(execContext, config, 'post_synthesis')
+  )
   graph.addNode('execute_research_post', createExecuteResearchNode(execContext, config, kg))
 
   graph.addEdge(START, 'decide_research_pre')
 
-  graph.addConditionalEdges('decide_research_pre', (state) => {
-    return state.researchDecision?.needsResearch ? 'execute_research' : 'retrieve_context'
-  }, {
-    execute_research: 'execute_research',
-    retrieve_context: 'retrieve_context',
-  })
+  graph.addConditionalEdges(
+    'decide_research_pre',
+    (state) => {
+      return state.researchDecision?.needsResearch ? 'execute_research' : 'retrieve_context'
+    },
+    {
+      execute_research: 'execute_research',
+      retrieve_context: 'retrieve_context',
+    }
+  )
 
   graph.addEdge('execute_research', 'retrieve_context')
   graph.addEdge('retrieve_context', 'generate_theses')
@@ -368,23 +409,31 @@ if (config.enableReactiveResearch) {
   graph.addEdge('crystallize', 'sublate')
   graph.addEdge('sublate', 'decide_research_post')
 
-  graph.addConditionalEdges('decide_research_post', (state) => {
-    return state.researchDecision?.needsResearch ? 'execute_research_post' : 'meta_reflect'
-  }, {
-    execute_research_post: 'execute_research_post',
-    meta_reflect: 'meta_reflect',
-  })
+  graph.addConditionalEdges(
+    'decide_research_post',
+    (state) => {
+      return state.researchDecision?.needsResearch ? 'execute_research_post' : 'meta_reflect'
+    },
+    {
+      execute_research_post: 'execute_research_post',
+      meta_reflect: 'meta_reflect',
+    }
+  )
 
   graph.addEdge('execute_research_post', 'meta_reflect')
 
-  graph.addConditionalEdges('meta_reflect', (state) => {
-    if (state.status === 'waiting_for_input') return END
-    if (state.metaDecision === 'TERMINATE' || state.status === 'completed') return END
-    return 'decide_research_pre' // CONTINUE or RESPECIFY loop back to research decision
-  }, {
-    decide_research_pre: 'decide_research_pre',
-    [END]: END,
-  })
+  graph.addConditionalEdges(
+    'meta_reflect',
+    (state) => {
+      if (state.status === 'waiting_for_input') return END
+      if (state.metaDecision === 'TERMINATE' || state.status === 'completed') return END
+      return 'decide_research_pre' // CONTINUE or RESPECIFY loop back to research decision
+    },
+    {
+      decide_research_pre: 'decide_research_pre',
+      [END]: END,
+    }
+  )
 } else {
   // --- Legacy topology (unchanged) ---
   graph.addEdge(START, 'retrieve_context')
@@ -427,54 +476,89 @@ if (config.enableReactiveResearch) {
 describe('evaluateResearchNeed', () => {
   describe('pre_cycle phase', () => {
     it('returns targeted research when focusAreas present', () => {
-      const result = evaluateResearchNeed(graph, 'test goal', {
-        cycleNumber: 2,
-        budget: healthyBudget,
-        focusAreas: ['economic impact'],
-      }, 'pre_cycle')
+      const result = evaluateResearchNeed(
+        graph,
+        'test goal',
+        {
+          cycleNumber: 2,
+          budget: healthyBudget,
+          focusAreas: ['economic impact'],
+        },
+        'pre_cycle'
+      )
       expect(result.needsResearch).toBe(true)
       expect(result.researchIntensity).toBe('targeted')
     })
 
     it('caps search plan to 3 SERP, 1 Scholar, 1 Semantic', () => {
-      const result = evaluateResearchNeed(lowConfGraph, 'test', {
-        cycleNumber: 2, budget: healthyBudget,
-      }, 'pre_cycle')
+      const result = evaluateResearchNeed(
+        lowConfGraph,
+        'test',
+        {
+          cycleNumber: 2,
+          budget: healthyBudget,
+        },
+        'pre_cycle'
+      )
       expect(result.searchPlan?.serpQueries.length).toBeLessThanOrEqual(3)
       expect(result.searchPlan?.scholarQueries.length).toBeLessThanOrEqual(1)
       expect(result.searchPlan?.semanticQueries.length).toBeLessThanOrEqual(1)
     })
 
     it('returns no research when budget exhausted', () => {
-      const result = evaluateResearchNeed(graph, 'test', {
-        cycleNumber: 2, budget: exhaustedBudget,
-      }, 'pre_cycle')
+      const result = evaluateResearchNeed(
+        graph,
+        'test',
+        {
+          cycleNumber: 2,
+          budget: exhaustedBudget,
+        },
+        'pre_cycle'
+      )
       expect(result.needsResearch).toBe(false)
     })
   })
 
   describe('post_synthesis phase', () => {
     it('returns verification research for unresolved contradictions', () => {
-      const result = evaluateResearchNeed(graphWithContradictions, 'test', {
-        cycleNumber: 2, budget: healthyBudget,
-        contradictions: [highSeverityContradiction],
-      }, 'post_synthesis')
+      const result = evaluateResearchNeed(
+        graphWithContradictions,
+        'test',
+        {
+          cycleNumber: 2,
+          budget: healthyBudget,
+          contradictions: [highSeverityContradiction],
+        },
+        'post_synthesis'
+      )
       expect(result.needsResearch).toBe(true)
       expect(result.researchIntensity).toBe('verification')
     })
 
     it('returns no research when graph has no gaps', () => {
-      const result = evaluateResearchNeed(wellCoveredGraph, 'test', {
-        cycleNumber: 2, budget: healthyBudget,
-      }, 'post_synthesis')
+      const result = evaluateResearchNeed(
+        wellCoveredGraph,
+        'test',
+        {
+          cycleNumber: 2,
+          budget: healthyBudget,
+        },
+        'post_synthesis'
+      )
       expect(result.needsResearch).toBe(false)
     })
   })
 
   it('never returns full intensity from non-Phase-1 research', () => {
-    const result = evaluateResearchNeed(null, 'test', {
-      cycleNumber: 1, budget: healthyBudget,
-    }, 'pre_cycle')
+    const result = evaluateResearchNeed(
+      null,
+      'test',
+      {
+        cycleNumber: 1,
+        budget: healthyBudget,
+      },
+      'pre_cycle'
+    )
     expect(result.researchIntensity).not.toBe('full')
   })
 })
@@ -515,10 +599,12 @@ For these tests, mock the external dependencies (`executeSearchPlan`, `ingestSou
 ### Verify existing WF1 tests
 
 After all changes:
+
 ```bash
 cd functions && npx vitest run src/agents/langgraph/__tests__/dialecticalPrompts.test.ts
 cd functions && npx vitest run src/agents/__tests__/graphGuardrails.test.ts
 ```
+
 These must still pass since `enableReactiveResearch` defaults to `false`.
 
 ---
@@ -538,13 +624,13 @@ Fix any lint errors, type errors, or test failures before committing. Note: `pac
 
 ## Files Summary
 
-| File | Action | What |
-|---|---|---|
-| `functions/src/agents/deepResearch/graphGapAnalysis.ts` | **MODIFY** | Add `evaluateResearchNeed(graph, goal, directives, phase)` with phase-aware triggers, intensity caps, search plan capping |
-| `functions/src/agents/langgraph/stateAnnotations.ts` | **MODIFY** | Add `researchDecision` field to `DialecticalStateAnnotation` |
-| `functions/src/agents/langgraph/dialecticalGraph.ts` | **MODIFY** | Add `createDecideResearchNode`, `createExecuteResearchNode`; simplify `createRetrieveContextNode` when reactive enabled; conditional graph topology based on `enableReactiveResearch` |
-| `functions/src/agents/deepResearch/__tests__/graphGapAnalysis.phase.test.ts` | **CREATE** | Tests for `evaluateResearchNeed` per phase |
-| `functions/src/agents/langgraph/__tests__/dialecticalGraph.reactive.test.ts` | **CREATE** | Tests for reactive research topology and backward compatibility |
+| File                                                                         | Action     | What                                                                                                                                                                                  |
+| ---------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `functions/src/agents/deepResearch/graphGapAnalysis.ts`                      | **MODIFY** | Add `evaluateResearchNeed(graph, goal, directives, phase)` with phase-aware triggers, intensity caps, search plan capping                                                             |
+| `functions/src/agents/langgraph/stateAnnotations.ts`                         | **MODIFY** | Add `researchDecision` field to `DialecticalStateAnnotation`                                                                                                                          |
+| `functions/src/agents/langgraph/dialecticalGraph.ts`                         | **MODIFY** | Add `createDecideResearchNode`, `createExecuteResearchNode`; simplify `createRetrieveContextNode` when reactive enabled; conditional graph topology based on `enableReactiveResearch` |
+| `functions/src/agents/deepResearch/__tests__/graphGapAnalysis.phase.test.ts` | **CREATE** | Tests for `evaluateResearchNeed` per phase                                                                                                                                            |
+| `functions/src/agents/langgraph/__tests__/dialecticalGraph.reactive.test.ts` | **CREATE** | Tests for reactive research topology and backward compatibility                                                                                                                       |
 
 ## Commit
 

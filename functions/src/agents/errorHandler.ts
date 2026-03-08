@@ -108,11 +108,7 @@ export class NoAPIKeyConfiguredError extends AgentError {
 /**
  * Throw a structured error for an HTTP API response failure
  */
-export function throwApiError(
-  toolName: string,
-  status: number,
-  statusText: string
-): never {
+export function throwApiError(toolName: string, status: number, statusText: string): never {
   throw new AgentError(
     `${toolName} API error: ${status} ${statusText}`,
     `External API returned an error (${status}). Please try again.`,

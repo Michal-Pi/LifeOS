@@ -175,10 +175,14 @@ describe('KG Enrichment', () => {
       await mapClaimsToKG(duplicateClaims, sources, kg, SESSION_ID, USER_ID)
 
       const claimNode = kg.getNodesByType('claim')[0]
-      const sourcedEdges = kg.getOutEdges(claimNode!.id).filter((edge) => edge.data.type === 'sourced_from')
+      const sourcedEdges = kg
+        .getOutEdges(claimNode!.id)
+        .filter((edge) => edge.data.type === 'sourced_from')
 
       expect(sourcedEdges).toHaveLength(2)
-      expect(sourcedEdges.map((edge) => edge.target)).toEqual(expect.arrayContaining(['src-1', 'src-2']))
+      expect(sourcedEdges.map((edge) => edge.target)).toEqual(
+        expect.arrayContaining(['src-1', 'src-2'])
+      )
       expect(sourcedEdges.some((edge) => edge.target.startsWith('episode:source:'))).toBe(false)
     })
   })
@@ -228,9 +232,7 @@ describe('KG Enrichment', () => {
 
     it('respects maxComparisons cap', async () => {
       const sharedConcept = 'concept-shared' as ConceptId
-      await kg.addClaim(
-        makeClaimInput('A increases B', { conceptIds: [sharedConcept] })
-      )
+      await kg.addClaim(makeClaimInput('A increases B', { conceptIds: [sharedConcept] }))
       const c2 = await kg.addClaim(
         makeClaimInput('A decreases B', {
           sourceEpisodeId: 'episode:source:src-2' as EpisodeId,
@@ -255,10 +257,14 @@ describe('KG Enrichment', () => {
       )
 
       scanForResearchContradictions([c2.claimId], kg)
-      const first = kg.getEdges(c2.claimId, c1.claimId).filter((e) => e.type === 'contradicts').length
+      const first = kg
+        .getEdges(c2.claimId, c1.claimId)
+        .filter((e) => e.type === 'contradicts').length
 
       scanForResearchContradictions([c2.claimId], kg)
-      const second = kg.getEdges(c2.claimId, c1.claimId).filter((e) => e.type === 'contradicts').length
+      const second = kg
+        .getEdges(c2.claimId, c1.claimId)
+        .filter((e) => e.type === 'contradicts').length
 
       expect(second).toBe(first)
     })
@@ -515,9 +521,7 @@ describe('KG Enrichment', () => {
 
     it('creates new claims from KGDiff', async () => {
       const diff = emptyKGDiff()
-      diff.newClaims = [
-        { id: 'new-1', text: 'Synthesis produced new insight about economics' },
-      ]
+      diff.newClaims = [{ id: 'new-1', text: 'Synthesis produced new insight about economics' }]
 
       const before = kg.getNodesByType('claim').length
       const { applied } = await applyKGDiffToGraph(diff, kg, SESSION_ID, USER_ID)
@@ -529,9 +533,7 @@ describe('KG Enrichment', () => {
 
     it('creates predictions from KGDiff', async () => {
       const diff = emptyKGDiff()
-      diff.newPredictions = [
-        { id: 'pred-1', text: 'Economic growth will slow in Q3' },
-      ]
+      diff.newPredictions = [{ id: 'pred-1', text: 'Economic growth will slow in Q3' }]
 
       const { applied } = await applyKGDiffToGraph(diff, kg, SESSION_ID, USER_ID)
       expect(applied.newPredictions).toBe(1)
@@ -605,9 +607,7 @@ describe('KG Enrichment', () => {
         { id: 'nc-1', text: 'New claim from synthesis A' },
         { id: 'nc-2', text: 'New claim from synthesis B' },
       ]
-      diff.newPredictions = [
-        { id: 'pred-1', text: 'Prediction about future trends' },
-      ]
+      diff.newPredictions = [{ id: 'pred-1', text: 'Prediction about future trends' }]
 
       const { applied } = await applyKGDiffToGraph(diff, kg, SESSION_ID, USER_ID)
       expect(applied.newClaims).toBe(2)

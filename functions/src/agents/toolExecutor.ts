@@ -849,7 +849,8 @@ registerTool({
 registerTool({
   toolId: 'tool:webhook_call' as ToolId,
   name: 'webhook_call',
-  description: 'Call an external webhook URL with a JSON payload (limited to user-whitelisted URLs)',
+  description:
+    'Call an external webhook URL with a JSON payload (limited to user-whitelisted URLs)',
   parameters: {
     type: 'object',
     properties: {
@@ -883,9 +884,7 @@ registerTool({
     // Check user whitelist
     const { getFirestore } = await import('firebase-admin/firestore')
     const firestore = getFirestore()
-    const whitelistDoc = await firestore
-      .doc(`users/${context.userId}/preferences/webhooks`)
-      .get()
+    const whitelistDoc = await firestore.doc(`users/${context.userId}/preferences/webhooks`).get()
     const whitelist: string[] = whitelistDoc.exists
       ? (whitelistDoc.data()?.allowedDomains ?? [])
       : []

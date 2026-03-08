@@ -124,13 +124,7 @@ describe('Phase 46 — planMultiHopSearch', () => {
 
   it('marks budget exhausted when applicable', () => {
     const gaps = makeGaps([{ priority: 'high', queries: ['Q1'] }])
-    const result = planMultiHopSearch(
-      'original',
-      gaps,
-      makeBudget({ phase: 'exhausted' }),
-      2,
-      0
-    )
+    const result = planMultiHopSearch('original', gaps, makeBudget({ phase: 'exhausted' }), 2, 0)
     expect(result.budgetExhausted).toBe(true)
     expect(result.subQuestions).toHaveLength(0)
   })

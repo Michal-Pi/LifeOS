@@ -28,6 +28,7 @@ import type {
   GraphDiff,
 } from '@lifeos/agents'
 import { createLogger } from '../lib/logger.js'
+import { META_REFLECTION_EXAMPLE } from './shared/fewShotExamples.js'
 import { executeAgentWithEvents, type AgentExecutionContext } from './langgraph/utils.js'
 
 const log = createLogger('MetaReflection')
@@ -150,7 +151,12 @@ export interface MetaReflectionInput {
   mergedGraph?: CompactGraph | null
   latestGraphDiff?: GraphDiff | null
   previousMetrics: CycleMetrics[]
-  previousDecisions?: Array<{ cycle: number; decision: MetaDecision; reasoning: string; focusAreas?: string[] }>
+  previousDecisions?: Array<{
+    cycle: number
+    decision: MetaDecision
+    reasoning: string
+    focusAreas?: string[]
+  }>
   tokensUsedThisCycle: number
   costThisCycle: number
 }
@@ -255,14 +261,18 @@ function calculateCycleMetrics(
       if (t.graph) return sum + t.graph.nodes.filter((n) => n.type === 'claim').length
       return sum + t.falsificationCriteria.length + t.decisionImplications.length
     }, 0) +
-    negations.reduce(
-      (sum, n) => sum + n.internalTensions.length + n.categoryAttacks.length,
+    negations.reduce((sum, n) => sum + n.internalTensions.length + n.categoryAttacks.length, 0)
+  const contradictionDensity = contradictions.length / Math.max(totalClaims, 1)
+  const totalClaimsForCoverage =
+    input.mergedGraph?.nodes.filter((node) => node.type === 'claim').length ??
+    theses.reduce(
+      (sum, thesis) =>
+        sum + (thesis.graph?.nodes.filter((node) => node.type === 'claim').length ?? 0),
       0
     )
-  const contradictionDensity = contradictions.length / Math.max(totalClaims, 1)
-  const totalClaimsForCoverage = input.mergedGraph?.nodes.filter((node) => node.type === 'claim').length
-    ?? theses.reduce((sum, thesis) => sum + (thesis.graph?.nodes.filter((node) => node.type === 'claim').length ?? 0), 0)
-  const claimsAddressed = new Set(contradictions.flatMap((contradiction) => contradiction.participatingClaims)).size
+  const claimsAddressed = new Set(
+    contradictions.flatMap((contradiction) => contradiction.participatingClaims)
+  ).size
   const coverage = totalClaimsForCoverage > 0 ? claimsAddressed / totalClaimsForCoverage : 0
 
   // Thesis metrics
@@ -385,9 +395,8 @@ function calculateConceptualVelocity(
   // If there were no contradictions to resolve, keep the raw velocity unchanged.
   const contradictionsDetected = kgDiff?.newContradictions?.length ?? 0
   const contradictionsResolved = kgDiff?.resolvedContradictions?.length ?? 0
-  const resolutionDepth = contradictionsDetected > 0
-    ? contradictionsResolved / contradictionsDetected
-    : 0
+  const resolutionDepth =
+    contradictionsDetected > 0 ? contradictionsResolved / contradictionsDetected : 0
   if (contradictionsDetected === 0) {
     return velocity
   }
@@ -397,9 +406,11 @@ function calculateConceptualVelocity(
 
 function countUnresolvedContradictions(
   contradictions: ContradictionOutput[],
-  kgDiff: KGDiff | null,
+  kgDiff: KGDiff | null
 ): number {
-  const resolved = new Set((kgDiff?.resolvedContradictions ?? []).map((entry) => entry.toLowerCase()))
+  const resolved = new Set(
+    (kgDiff?.resolvedContradictions ?? []).map((entry) => entry.toLowerCase())
+  )
 
   return contradictions.filter((contradiction) => {
     const id = contradiction.id.toLowerCase()
@@ -517,7 +528,7 @@ function checkAutoTermination(
   // (empty negations poison metrics — don't auto-terminate based on low velocity/learning rate)
   const totalNegations = input.negations.length
   const emptyNegations = input.negations.filter(
-    n => n.internalTensions.length === 0 && n.categoryAttacks.length === 0
+    (n) => n.internalTensions.length === 0 && n.categoryAttacks.length === 0
   ).length
   const negationQualityDegraded = totalNegations > 0 && emptyNegations / totalNegations > 0.5
 
@@ -671,23 +682,35 @@ ${input.goal}
 
 ### Cost
 - Tokens: ${metrics.tokensUsed}, Estimated cost: $${metrics.estimatedCost.toFixed(4)}
-${input.mergedGraph ? `
+${
+  input.mergedGraph
+    ? `
 ### Knowledge Graph State
 - Nodes: ${input.mergedGraph.nodes.length}
 - Edges: ${input.mergedGraph.edges.length}
-- Unresolved 'contradicts' edges: ${input.mergedGraph.edges.filter(e => e.rel === 'contradicts').length}
+- Unresolved 'contradicts' edges: ${input.mergedGraph.edges.filter((e) => e.rel === 'contradicts').length}
 - Summary: ${input.mergedGraph.summary}
-- Reasoning: ${input.mergedGraph.reasoning}` : ''}${input.latestGraphDiff ? `
+- Reasoning: ${input.mergedGraph.reasoning}`
+    : ''
+}${
+    input.latestGraphDiff
+      ? `
 ### Graph Evolution (this cycle)
 - Added nodes: ${input.latestGraphDiff.addedNodes.length}
 - Removed nodes: ${input.latestGraphDiff.removedNodes.length}
 - Resolved contradictions: ${input.latestGraphDiff.resolvedContradictions.length}
-- New contradictions: ${input.latestGraphDiff.newContradictions.length}` : ''}${input.previousDecisions && input.previousDecisions.length > 0 ? `
+- New contradictions: ${input.latestGraphDiff.newContradictions.length}`
+      : ''
+  }${
+    input.previousDecisions && input.previousDecisions.length > 0
+      ? `
 
 ### Prior Meta Decisions
-${input.previousDecisions.map(d => `- Cycle ${d.cycle}: **${d.decision}** — ${d.reasoning}${d.focusAreas?.length ? ` (focus: ${d.focusAreas.join(', ')})` : ''}`).join('\n')}
+${input.previousDecisions.map((d) => `- Cycle ${d.cycle}: **${d.decision}** — ${d.reasoning}${d.focusAreas?.length ? ` (focus: ${d.focusAreas.join(', ')})` : ''}`).join('\n')}
 
-Consider whether previous focus areas were addressed and whether the reasoning from prior decisions still holds.` : ''}
+Consider whether previous focus areas were addressed and whether the reasoning from prior decisions still holds.`
+      : ''
+  }
 
 ## Decision Options
 - **CONTINUE**: More cycles needed. Specify focusAreas for the next cycle.
@@ -701,6 +724,9 @@ Consider whether previous focus areas were addressed and whether the reasoning f
   "refinedGoal": "New goal text (required if RESPECIFY, omit otherwise)",
   "focusAreas": ["Specific areas to prioritize next cycle (required if CONTINUE, omit otherwise)"]
 }
+
+## Example Output
+${META_REFLECTION_EXAMPLE}
 
 ## Decision Criteria (evaluate each)
 1. Are HIGH-severity contradictions being resolved cycle over cycle?
@@ -738,7 +764,9 @@ function parseMetaReflectionOutput(output: string): ParsedMetaReflection {
       }
     }
   } catch (error) {
-    throw new Error(`Failed to parse meta-reflection JSON: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(
+      `Failed to parse meta-reflection JSON: ${error instanceof Error ? error.message : String(error)}`
+    )
   }
 
   throw new Error('Meta-reflection output did not contain JSON')

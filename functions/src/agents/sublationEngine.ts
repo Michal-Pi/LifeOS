@@ -22,6 +22,7 @@ import type {
 } from '@lifeos/agents'
 import { executeAgentWithEvents, type AgentExecutionContext } from './langgraph/utils.js'
 import { createLogger } from '../lib/logger.js'
+import { SUBLATION_OUTPUT_EXAMPLE, SYNTHESIS_NEGATION_EXAMPLE } from './shared/fewShotExamples.js'
 
 const log = createLogger('SublationEngine')
 
@@ -161,7 +162,9 @@ export async function runCompetitiveSynthesis(
 
       return candidate
     } catch (error) {
-      throw new Error(`Synthesis agent ${agent.name} failed: ${error instanceof Error ? error.message : String(error)}`)
+      throw new Error(
+        `Synthesis agent ${agent.name} failed: ${error instanceof Error ? error.message : String(error)}`
+      )
     }
   })
 
@@ -256,7 +259,9 @@ export async function runSynthesisCrossNegation(
 
       return { negation, step }
     } catch (error) {
-      throw new Error(`Synthesis negation by ${agent.name} failed: ${error instanceof Error ? error.message : String(error)}`)
+      throw new Error(
+        `Synthesis negation by ${agent.name} failed: ${error instanceof Error ? error.message : String(error)}`
+      )
     }
   })
 
@@ -312,9 +317,14 @@ function scoreSynthesisCandidate(
       return sum + t.graph.nodes.length + t.graph.edges.length
     }
     // Legacy: concept graph keys + falsification criteria + decision implications
-    return sum + Math.max(
-      Object.keys(t.conceptGraph).length + t.falsificationCriteria.length + t.decisionImplications.length,
-      1, // Ensure at least 1 per thesis
+    return (
+      sum +
+      Math.max(
+        Object.keys(t.conceptGraph).length +
+          t.falsificationCriteria.length +
+          t.decisionImplications.length,
+        1 // Ensure at least 1 per thesis
+      )
     )
   }, 0)
 
@@ -375,7 +385,12 @@ function findResolvedContradictions(
     // 1. A resolution-appropriate operator targets one of the participating claims
     //    (SPLIT/TEMPORALIZE don't resolve contradictions — they restructure)
     // 2. The contradiction is explicitly mentioned as resolved in schemaDiff
-    const RESOLUTION_OPERATORS = new Set(['MERGE', 'ADD_MEDIATOR', 'REVERSE_EDGE', 'SCOPE_TO_REGIME'])
+    const RESOLUTION_OPERATORS = new Set([
+      'MERGE',
+      'ADD_MEDIATOR',
+      'REVERSE_EDGE',
+      'SCOPE_TO_REGIME',
+    ])
     const isTargeted = operators.some(
       (op) => participatingClaims.includes(op.target) && RESOLUTION_OPERATORS.has(op.type)
     )
@@ -474,14 +489,19 @@ function buildCompetitiveSynthesisPrompt(
   const strategy = agentIndex < totalAgents / 2 ? 'PARSIMONY' : 'SCOPE'
 
   // Use compact graphs if available, fall back to truncated rawText
-  const thesesRepr = theses.map((t, i) => {
-    if (t.graph) return `[${i + 1}] (${t.lens}): ${JSON.stringify(t.graph)}`
-    return `[${i + 1}] (${t.lens}): ${t.rawText.length > 3000 ? t.rawText.slice(0, 3000) + '\n[...truncated]' : t.rawText}`
-  }).join('\n\n')
+  const thesesRepr = theses
+    .map((t, i) => {
+      if (t.graph) return `[${i + 1}] (${t.lens}): ${JSON.stringify(t.graph)}`
+      return `[${i + 1}] (${t.lens}): ${t.rawText.length > 3000 ? t.rawText.slice(0, 3000) + '\n[...truncated]' : t.rawText}`
+    })
+    .join('\n\n')
 
-  const negationsRepr = negations.map((n, i) =>
-    `[${i + 1}]: tensions=${JSON.stringify(n.internalTensions)}, attacks=${JSON.stringify(n.categoryAttacks)}, operator=${n.rewriteOperator}`
-  ).join('\n')
+  const negationsRepr = negations
+    .map(
+      (n, i) =>
+        `[${i + 1}]: tensions=${JSON.stringify(n.internalTensions)}, attacks=${JSON.stringify(n.categoryAttacks)}, operator=${n.rewriteOperator}`
+    )
+    .join('\n')
 
   return `CRITICAL: Output ONLY a valid JSON object. No markdown fences, no explanation, no preamble.
 
@@ -527,6 +547,9 @@ ${contradictions.map((c) => `- [${c.id}] ${c.severity} ${c.type}: ${c.descriptio
   "resolvedContradictions": ["Which input contradictions were resolved and how"]
 }
 
+## Example Output
+${SUBLATION_OUTPUT_EXAMPLE}
+
 ## Rules
 1. Merge all thesis graphs into one coherent graph.
 2. Resolve contradictions by replacing 'contradicts' edges with 'mediates' or 'supports' edges where evidence permits.
@@ -543,10 +566,12 @@ function buildSynthesisNegationPrompt(
   theses: ThesisOutput[]
 ): string {
   // Use graph nodes as key concepts when available
-  const thesesRepr = theses.map((t, i) => {
-    if (t.graph) return `[${i + 1}] ${t.lens}: ${t.graph.summary} (${t.graph.nodes.length} nodes)`
-    return `[${i + 1}] ${t.lens}: Key concepts: ${Object.keys(t.conceptGraph).slice(0, 5).join(', ')}`
-  }).join('\n')
+  const thesesRepr = theses
+    .map((t, i) => {
+      if (t.graph) return `[${i + 1}] ${t.lens}: ${t.graph.summary} (${t.graph.nodes.length} nodes)`
+      return `[${i + 1}] ${t.lens}: Key concepts: ${Object.keys(t.conceptGraph).slice(0, 5).join(', ')}`
+    })
+    .join('\n')
 
   return `CRITICAL: Output ONLY a valid JSON object. No markdown fences, no explanation.
 
@@ -586,6 +611,9 @@ Critique the target synthesis. Identify what it missed, what it overclaimed, and
 4. Unsupported claims: New claims in the synthesis not grounded in the original theses.
 5. Prioritize accuracy over validation — flag genuine weaknesses.
 
+## Example Output
+${SYNTHESIS_NEGATION_EXAMPLE}
+
 CRITICAL (restated): Output ONLY the JSON object. No other text.`
 }
 
@@ -593,9 +621,7 @@ CRITICAL (restated): Output ONLY the JSON object. No other text.`
 
 function parseSynthesisOutput(output: string): SublationOutput {
   const codeBlockMatch = output.match(/```(?:json)?\s*([\s\S]*?)```/)
-  const jsonMatch = codeBlockMatch
-    ? codeBlockMatch[1].trim()
-    : output.match(/\{[\s\S]*\}/)?.[0]
+  const jsonMatch = codeBlockMatch ? codeBlockMatch[1].trim() : output.match(/\{[\s\S]*\}/)?.[0]
   if (!jsonMatch) {
     throw new Error('Synthesis output did not contain JSON')
   }
@@ -612,7 +638,11 @@ function parseSynthesisOutput(output: string): SublationOutput {
       newConceptGraph: {},
       newClaims: (graph.nodes ?? [])
         .filter((n: { type: string }) => n.type === 'claim')
-        .map((n: { id: string; label: string }) => ({ id: n.id, text: n.label, confidence: graph.confidence ?? 0.7 })),
+        .map((n: { id: string; label: string }) => ({
+          id: n.id,
+          text: n.label,
+          confidence: graph.confidence ?? 0.7,
+        })),
       newPredictions: (graph.nodes ?? [])
         .filter((n: { type: string }) => n.type === 'prediction')
         .map((n: { id: string; label: string }) => ({ id: n.id, text: n.label, threshold: 'TBD' })),

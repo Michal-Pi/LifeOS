@@ -21,6 +21,7 @@
  */
 
 import { StateGraph, END, START } from '@langchain/langgraph'
+import { z } from 'zod'
 import type {
   AgentConfig,
   Workflow,
@@ -54,6 +55,7 @@ import type { ProviderKeys } from '../providerService.js'
 import { executeWithProvider } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
+import { DEFAULT_MODELS } from '../providerKeys.js'
 import type { ToolRegistry } from '../toolExecutor.js'
 import { executeAgentWithEvents, type AgentExecutionContext } from './utils.js'
 import { OracleStateAnnotation, type OracleState } from './oracleStateAnnotation.js'
@@ -91,6 +93,7 @@ import {
 } from '../oracle/consistencyChecker.js'
 import { createLogger } from '../../lib/logger.js'
 import { safeParseJson } from '../shared/jsonParser.js'
+import { repairJsonOutput } from './dialecticalPrompts.js'
 import {
   buildEmptyStartupSeedSummary,
   createFallbackOracleGoalFrame,
@@ -109,6 +112,425 @@ import {
 } from '../deepResearch/claimExtraction.js'
 
 const log = createLogger('OracleGraph')
+
+const RatioSchema = z.coerce.number().min(0).max(1)
+const StringArraySchema = z.array(z.string())
+const OracleLoopSchema = z.object({
+  id: z.string(),
+  type: z.enum(['reinforcing', 'balancing']),
+  nodes: StringArraySchema,
+  description: z.string(),
+})
+const _StrategicMoveSchema = z.object({
+  type: z.enum(['no_regret', 'option_to_buy', 'hedge', 'kill_criterion']),
+  description: z.string(),
+  worksAcross: StringArraySchema,
+  timing: z.string(),
+  ledgerRefs: StringArraySchema.default([]),
+})
+const DecomposerClaimSchema = z
+  .object({
+    id: z.string(),
+    type: z.string().optional(),
+    text: z.string(),
+    confidence: RatioSchema,
+    confidenceBasis: z
+      .enum(['data', 'model_consensus', 'expert_judgment', 'speculative'])
+      .optional(),
+    assumptions: StringArraySchema.optional(),
+    evidenceIds: StringArraySchema.optional(),
+    dependencies: StringArraySchema.optional(),
+    axiomRefs: StringArraySchema.optional(),
+    createdBy: z.string().optional(),
+    phase: z.coerce.number().int().optional(),
+  })
+  .transform((claim) => ({
+    ...claim,
+    type:
+      claim.type === 'causal' || claim.type === 'forecast' || claim.type === 'descriptive'
+        ? claim.type
+        : 'descriptive',
+    confidenceBasis: claim.confidenceBasis ?? 'model_consensus',
+    assumptions: claim.assumptions ?? [],
+    evidenceIds: claim.evidenceIds ?? [],
+    dependencies: claim.dependencies ?? [],
+    axiomRefs: claim.axiomRefs ?? [],
+    createdBy: claim.createdBy ?? '',
+    phase: claim.phase ?? 1,
+  }))
+
+const DecomposerAssumptionSchema = z
+  .object({
+    id: z.string(),
+    type: z.enum(['economic', 'technical', 'behavioral', 'regulatory', 'structural']).optional(),
+    statement: z.string(),
+    sensitivity: z.enum(['high', 'medium', 'low']),
+    observables: StringArraySchema.optional(),
+    monitoringSignals: StringArraySchema.optional(),
+    confidence: RatioSchema.optional(),
+  })
+  .transform((assumption) => ({
+    id: assumption.id,
+    type: assumption.type ?? 'structural',
+    statement: assumption.statement,
+    sensitivity: assumption.sensitivity,
+    observables: assumption.observables ?? assumption.monitoringSignals ?? [],
+    confidence: assumption.confidence ?? 0.5,
+  }))
+
+const DecomposerOutputSchema = z.object({
+  claims: z
+    .array(DecomposerClaimSchema)
+    .default([]),
+  assumptions: z.array(DecomposerAssumptionSchema).default([]),
+})
+const SystemsMapperOutputSchema = z.object({
+  nodes: z
+    .array(
+      z
+        .object({
+          id: z.string(),
+          type: z.enum(['principle', 'constraint', 'trend', 'uncertainty', 'variable', 'scenario_state']),
+          label: z.string(),
+          ledgerRef: z.string().optional(),
+          properties: z.record(z.string(), z.unknown()).optional(),
+          metadata: z.record(z.string(), z.unknown()).optional(),
+        })
+        .transform((node) => ({
+          id: node.id,
+          type: node.type,
+          label: node.label,
+          ledgerRef: node.ledgerRef,
+          properties: node.properties ?? node.metadata ?? {},
+        }))
+    )
+    .default([]),
+  edges: z
+    .array(
+      z
+        .object({
+          source: z.string(),
+          target: z.string(),
+          type: z.string(),
+          polarity: z.enum(['+', '-', 'conditional']).optional(),
+          strength: RatioSchema.optional(),
+          weight: RatioSchema.optional(),
+          lag: z.enum(['immediate', 'short', 'medium', 'long']).optional(),
+        })
+        .transform((edge) => ({
+          source: edge.source,
+          target: edge.target,
+          type:
+            edge.type === 'causes' ||
+            edge.type === 'constrains' ||
+            edge.type === 'disrupts' ||
+            edge.type === 'reinforces' ||
+            edge.type === 'resolves_as' ||
+            edge.type === 'supports' ||
+            edge.type === 'contradicts' ||
+            edge.type === 'depends_on'
+              ? edge.type
+              : edge.type === 'constrained_by'
+                ? 'constrains'
+                : 'supports',
+          polarity: edge.polarity,
+          strength: edge.strength ?? edge.weight ?? 0.5,
+          lag: edge.lag,
+        }))
+    )
+    .default([]),
+  loops: z
+    .array(
+      z
+        .object({
+          id: z.string(),
+          type: z.enum(['reinforcing', 'balancing']),
+          nodes: StringArraySchema.optional(),
+          nodeIds: StringArraySchema.optional(),
+          description: z.string().optional(),
+          label: z.string().optional(),
+        })
+        .transform((loop) => ({
+          id: loop.id,
+          type: loop.type,
+          nodes: loop.nodes ?? loop.nodeIds ?? [],
+          description: loop.description ?? loop.label ?? '',
+        }))
+    )
+    .default([]),
+})
+const VerifierOutputSchema = z.object({
+  verifiedClaims: z
+    .array(
+      z.object({
+        claimId: z.string(),
+        adjustedConfidence: RatioSchema,
+      })
+    )
+    .default([]),
+  axiomGroundingPercent: RatioSchema,
+})
+const GateRubricOutputSchema = z
+  .object({
+    mechanisticClarity: z.coerce.number(),
+    mechanistic_clarity: z.coerce.number().optional(),
+    completeness: z.coerce.number(),
+    causalDiscipline: z.coerce.number().optional(),
+    causal_discipline: z.coerce.number().optional(),
+    decisionUsefulness: z.coerce.number().optional(),
+    decision_usefulness: z.coerce.number().optional(),
+    uncertaintyHygiene: z.coerce.number().optional(),
+    uncertainty_hygiene: z.coerce.number().optional(),
+    evidenceQuality: z.coerce.number().optional(),
+    evidence_quality: z.coerce.number().optional(),
+    feedback: z.string().optional(),
+  })
+  .transform((result) => ({
+    mechanisticClarity: result.mechanisticClarity ?? result.mechanistic_clarity ?? 0,
+    completeness: result.completeness ?? 0,
+    causalDiscipline: result.causalDiscipline ?? result.causal_discipline ?? 0,
+    decisionUsefulness: result.decisionUsefulness ?? result.decision_usefulness ?? 0,
+    uncertaintyHygiene: result.uncertaintyHygiene ?? result.uncertainty_hygiene ?? 0,
+    evidenceQuality: result.evidenceQuality ?? result.evidence_quality ?? 0,
+    feedback: result.feedback,
+  }))
+const ScannerOutputSchema = z.object({
+  trends: z
+    .array(
+      z.object({
+        id: z.string(),
+        statement: z.string(),
+        steepCategory: z.enum([
+          'social',
+          'technological',
+          'economic',
+          'environmental',
+          'political',
+          'values',
+        ]),
+        direction: z.string(),
+        momentum: z.enum(['accelerating', 'steady', 'decelerating']),
+        impactScore: RatioSchema,
+        uncertaintyScore: RatioSchema,
+        evidenceIds: StringArraySchema.default([]),
+        causalLinks: StringArraySchema.default([]),
+        secondOrderEffects: StringArraySchema.default([]),
+      })
+    )
+    .default([]),
+})
+const ImpactAssessorOutputSchema = z.object({
+  crossImpactMatrix: z
+    .array(
+      z
+        .object({
+          sourceId: z.string(),
+          targetId: z.string(),
+          effect: z.enum(['increases', 'decreases', 'enables', 'blocks', 'neutral']),
+          strength: RatioSchema,
+          mechanism: z.string().optional(),
+        })
+        .transform((entry) => ({
+          ...entry,
+          mechanism: entry.mechanism ?? '',
+        }))
+    )
+    .default([]),
+  criticalUncertainties: z
+    .array(
+      z
+        .object({
+          id: z.string(),
+          variable: z.string(),
+          states: StringArraySchema,
+          drivers: StringArraySchema.optional(),
+          impacts: StringArraySchema.optional(),
+          observables: StringArraySchema.optional(),
+          controllability: z.enum(['none', 'low', 'medium', 'high']).optional(),
+          timeToResolution: z.string().optional(),
+        })
+        .transform((uncertainty) => ({
+          id: uncertainty.id,
+          variable: uncertainty.variable,
+          states: uncertainty.states,
+          drivers: uncertainty.drivers ?? [],
+          impacts: uncertainty.impacts ?? [],
+          observables: uncertainty.observables ?? [],
+          controllability: uncertainty.controllability ?? 'low',
+          timeToResolution: uncertainty.timeToResolution ?? 'unknown',
+        }))
+    )
+    .default([]),
+})
+const WeakSignalHunterOutputSchema = z.object({
+  weakSignals: z
+    .array(
+      z.object({
+        id: z.string(),
+        statement: z.string(),
+        category: z.string(),
+        potentialImpact: RatioSchema,
+        confidence: RatioSchema,
+      })
+    )
+    .default([]),
+})
+const EquilibriumAnalystOutputSchema = z.object({
+  selectedSkeletons: StringArraySchema.default([]),
+  candidateSkeletons: z
+    .array(
+      z.object({
+        id: z.string(),
+        premise: z.record(z.string(), z.string()),
+        consistency: RatioSchema,
+        plausibility: RatioSchema,
+        divergence: RatioSchema,
+      })
+    )
+    .default([]),
+})
+const ScenarioDeveloperOutputSchema = z.object({
+  scenarios: z
+    .array(
+      z
+        .object({
+          id: z.string(),
+          name: z.string(),
+          premise: z.record(z.string(), z.string()).optional(),
+          narrative: z.string(),
+          reinforcedPrinciples: StringArraySchema.optional(),
+          disruptedPrinciples: StringArraySchema.optional(),
+          feedbackLoops: z.array(OracleLoopSchema).optional(),
+          implications: z.string().optional(),
+          signposts: StringArraySchema.optional(),
+          tailRisks: StringArraySchema.optional(),
+          assumptionRegister: StringArraySchema.optional(),
+          councilAssessment: z
+            .object({
+              agreementRate: RatioSchema,
+              persistentDissent: StringArraySchema.optional(),
+            })
+            .optional(),
+          plausibilityScore: RatioSchema,
+          divergenceScore: RatioSchema,
+        })
+        .transform((scenario) => ({
+          id: scenario.id,
+          name: scenario.name,
+          premise: scenario.premise ?? {},
+          narrative: scenario.narrative,
+          reinforcedPrinciples: scenario.reinforcedPrinciples ?? [],
+          disruptedPrinciples: scenario.disruptedPrinciples ?? [],
+          feedbackLoops: scenario.feedbackLoops ?? [],
+          implications: scenario.implications ?? '',
+          signposts: scenario.signposts ?? [],
+          tailRisks: scenario.tailRisks ?? [],
+          assumptionRegister: scenario.assumptionRegister ?? [],
+          councilAssessment: {
+            agreementRate: scenario.councilAssessment?.agreementRate ?? 0,
+            persistentDissent: scenario.councilAssessment?.persistentDissent ?? [],
+          },
+          plausibilityScore: scenario.plausibilityScore,
+          divergenceScore: scenario.divergenceScore,
+        }))
+    )
+    .default([]),
+})
+const RedTeamOutputSchema = z.object({
+  assessments: z
+    .array(
+      z
+        .object({
+          scenarioId: z.string(),
+          failureConditions: z
+            .array(
+              z.object({
+                condition: z.string(),
+                probability: RatioSchema,
+                earlyIndicator: z.string(),
+              })
+            )
+            .optional(),
+          tailRisks: StringArraySchema.optional(),
+          overallRobustness: z.string(),
+        })
+        .transform((assessment) => ({
+          scenarioId: assessment.scenarioId,
+          failureConditions: assessment.failureConditions,
+          tailRisks: assessment.tailRisks ?? [],
+          overallRobustness: assessment.overallRobustness,
+        }))
+    )
+    .default([]),
+})
+const BackcastingOutputSchema = z.object({
+  backcastTimelines: z
+    .array(
+      z
+        .object({
+          scenarioId: z.string(),
+          targetYear: z.string().optional(),
+          milestones: z
+            .array(
+              z.object({
+                year: z.union([z.string(), z.number()]),
+                event: z.string(),
+                prerequisites: StringArraySchema.optional(),
+              })
+            )
+            .default([]),
+          strategicMoves: z
+            .array(
+              z.object({
+                type: z.enum(['no_regret', 'option_to_buy', 'hedge', 'kill_criterion']),
+                description: z.string(),
+                worksAcross: StringArraySchema.optional(),
+                scenarioIds: StringArraySchema.optional(),
+                timing: z.string(),
+                ledgerRefs: StringArraySchema.optional(),
+              })
+            )
+            .default([]),
+        })
+        .transform((timeline) => ({
+          scenarioId: timeline.scenarioId,
+          targetYear: timeline.targetYear ?? '',
+          milestones: timeline.milestones.map((milestone) => ({
+            year: String(milestone.year),
+            event: milestone.event,
+            prerequisites: milestone.prerequisites ?? [],
+          })),
+          strategicMoves: timeline.strategicMoves.map((move) => ({
+            type: move.type,
+            description: move.description,
+            worksAcross: move.worksAcross ?? move.scenarioIds ?? [],
+            timing: move.timing,
+            ledgerRefs: move.ledgerRefs ?? [],
+          })),
+        }))
+    )
+    .default([]),
+  strategicMoves: z
+    .array(
+      z
+        .object({
+          type: z.enum(['no_regret', 'option_to_buy', 'hedge', 'kill_criterion']),
+          description: z.string(),
+          worksAcross: StringArraySchema.optional(),
+          scenarioIds: StringArraySchema.optional(),
+          timing: z.string(),
+          ledgerRefs: StringArraySchema.optional(),
+        })
+        .transform((move) => ({
+          type: move.type,
+          description: move.description,
+          worksAcross: move.worksAcross ?? move.scenarioIds ?? [],
+          timing: move.timing,
+          ledgerRefs: move.ledgerRefs ?? [],
+        }))
+    )
+    .default([]),
+})
 
 // ----- Config -----
 
@@ -214,6 +636,26 @@ function claimsSummary(claims: OracleClaim[]): string {
     .join('\n')
 }
 
+function assumptionsSummary(assumptions: OracleAssumption[]): string {
+  return assumptions
+    .slice(0, 20)
+    .map(
+      (a) =>
+        `${a.id} [${a.type}] (sensitivity: ${a.sensitivity}, conf: ${a.confidence ?? 0.5}): ${a.statement.slice(0, 220)}`
+    )
+    .join('\n')
+}
+
+function evidenceSummary(evidence: OracleEvidence[]): string {
+  return evidence
+    .slice(0, 12)
+    .map(
+      (item) =>
+        `${item.id} [${item.category}] ${item.source} (${item.date}, rel=${item.reliability.toFixed(2)}): ${item.excerpt.slice(0, 180)}`
+    )
+    .join('\n')
+}
+
 function knowledgeGraphSummary(graph: OracleKnowledgeGraph): string {
   const nodeLines = graph.nodes
     .slice(0, 12)
@@ -225,6 +667,55 @@ function knowledgeGraphSummary(graph: OracleKnowledgeGraph): string {
     .join('\n')
 
   return `Nodes (${graph.nodes.length}):\n${nodeLines || '(none)'}\n\nEdges (${graph.edges.length}):\n${edgeLines || '(none)'}`
+}
+
+function buildPhaseOneArtifact(
+  state: Pick<OracleState, 'claims' | 'assumptions' | 'knowledgeGraph' | 'evidence'>
+): string {
+  return [
+    `Counts: Claims=${state.claims.length}, Assumptions=${state.assumptions.length}, Evidence=${state.evidence.length}, KG nodes=${state.knowledgeGraph.nodes.length}, KG edges=${state.knowledgeGraph.edges.length}, KG loops=${state.knowledgeGraph.loops.length}`,
+    '',
+    'Claims:',
+    claimsSummary(state.claims) || '(none)',
+    '',
+    'Assumptions:',
+    assumptionsSummary(state.assumptions) || '(none)',
+    '',
+    'Evidence:',
+    evidenceSummary(state.evidence) || '(none)',
+    '',
+    'Knowledge Graph:',
+    knowledgeGraphSummary(state.knowledgeGraph),
+  ].join('\n')
+}
+
+const GATE_RUBRIC_SCHEMA =
+  '{"mechanisticClarity":4,"completeness":4,"causalDiscipline":4,"decisionUsefulness":4,"uncertaintyHygiene":4,"evidenceQuality":4,"feedback":"Specific improvement guidance"}'
+
+function clampRubricScore(value: number): number {
+  return Math.max(1, Math.min(5, Math.round(value * 10) / 10))
+}
+
+function normalizeGateRubricResult(parsed: {
+  mechanisticClarity: number
+  completeness: number
+  causalDiscipline: number
+  decisionUsefulness: number
+  uncertaintyHygiene: number
+  evidenceQuality: number
+  feedback?: string
+}): NonNullable<ReturnType<typeof parseRubricScores>> {
+  return {
+    scores: {
+      mechanisticClarity: clampRubricScore(parsed.mechanisticClarity),
+      completeness: clampRubricScore(parsed.completeness),
+      causalDiscipline: clampRubricScore(parsed.causalDiscipline),
+      decisionUsefulness: clampRubricScore(parsed.decisionUsefulness),
+      uncertaintyHygiene: clampRubricScore(parsed.uncertaintyHygiene),
+      evidenceQuality: clampRubricScore(parsed.evidenceQuality),
+    },
+    llmFeedback: parsed.feedback,
+  }
 }
 
 function createInputNormalizerNode() {
@@ -284,23 +775,123 @@ function normalizeEvidenceCategory(category: string): string {
   return category.trim().toLowerCase()
 }
 
-function requireParsedJson<T>(value: T | null, context: string): T {
-  if (!value) {
-    throw new Error(`${context} output did not contain valid JSON`)
+function stripTrailingCommas(value: string): string {
+  return value.replace(/,\s*([}\]])/g, '$1')
+}
+
+function parsePartialJsonObject(candidate: string): Record<string, unknown> | null {
+  try {
+    return JSON.parse(candidate) as Record<string, unknown>
+  } catch {
+    try {
+      return JSON.parse(stripTrailingCommas(candidate)) as Record<string, unknown>
+    } catch {
+      return null
+    }
   }
-  return value
+}
+
+function extractBalancedObjectsFromNamedArray(
+  rawText: string,
+  key: string,
+  maxObjects = 50
+): Record<string, unknown>[] {
+  const keyIndex = rawText.indexOf(`"${key}"`)
+  if (keyIndex < 0) return []
+
+  const arrayStart = rawText.indexOf('[', keyIndex)
+  if (arrayStart < 0) return []
+
+  const objects: Record<string, unknown>[] = []
+  let inString = false
+  let escaping = false
+  let depth = 0
+  let objectStart = -1
+
+  for (let index = arrayStart + 1; index < rawText.length; index++) {
+    const char = rawText[index]
+
+    if (escaping) {
+      escaping = false
+      continue
+    }
+    if (char === '\\' && inString) {
+      escaping = true
+      continue
+    }
+    if (char === '"') {
+      inString = !inString
+      continue
+    }
+    if (inString) continue
+
+    if (char === '{') {
+      if (depth === 0) objectStart = index
+      depth++
+      continue
+    }
+
+    if (char === '}') {
+      depth--
+      if (depth === 0 && objectStart >= 0) {
+        const parsed = parsePartialJsonObject(rawText.slice(objectStart, index + 1))
+        if (parsed) {
+          objects.push(parsed)
+          if (objects.length >= maxObjects) break
+        }
+        objectStart = -1
+      }
+      continue
+    }
+
+    if (char === ']' && depth === 0) break
+  }
+
+  return objects
+}
+
+function recoverPartialDecomposerOutput(
+  rawText: string
+): { claims: OracleClaim[]; assumptions: OracleAssumption[] } | null {
+  const claims = extractBalancedObjectsFromNamedArray(rawText, 'claims', 50)
+    .map((candidate) => DecomposerClaimSchema.safeParse(candidate))
+    .filter((result): result is z.SafeParseSuccess<OracleClaim> => result.success)
+    .map((result) => result.data)
+
+  const assumptions = extractBalancedObjectsFromNamedArray(rawText, 'assumptions', 25)
+    .map((candidate) => DecomposerAssumptionSchema.safeParse(candidate))
+    .filter((result): result is z.SafeParseSuccess<OracleAssumption> => result.success)
+    .map((result) => result.data)
+
+  if (claims.length === 0 && assumptions.length === 0) return null
+  return { claims, assumptions }
+}
+
+function parseJsonCandidate<T>(
+  output: string,
+  schema: z.ZodTypeAny
+): { data: T | null; validationError: z.ZodError | null } {
+  const parsed = safeParseJson<unknown>(output)
+  if (!parsed) return { data: null, validationError: null }
+  const validated = schema.safeParse(parsed)
+  if (validated.success) {
+    return { data: validated.data as T, validationError: null }
+  }
+  return { data: null, validationError: validated.error }
 }
 
 /**
- * 3-layer JSON parse with retry for Oracle graph nodes.
- * 1. safeParseJson (with trailing comma stripping)
+ * 4-layer JSON parse with retry for Oracle graph nodes.
+ * 1. Parse + schema validation
  * 2. Same-provider retry with strict "JSON only" prompt
- * 3. Haiku fallback with relevance gate
+ * 3. Dedicated GPT repair with validation-aware schema fixing
+ * 4. Anthropic fast fallback with relevance gate
  */
 async function parseJsonWithRetry<T>(
   rawOutput: string,
   context: string,
   jsonSchema: string,
+  schema: z.ZodTypeAny,
   emptyFallback: string,
   goal: string,
   baseAgent: AgentConfig,
@@ -308,34 +899,80 @@ async function parseJsonWithRetry<T>(
   nodeId: string,
   stepNumber: number,
   runId: string,
+  originalTaskPrompt?: string,
 ): Promise<T> {
-  // Layer 1: direct parse
-  let parsed = safeParseJson<T>(rawOutput)
-  if (parsed) return parsed
+  // Layer 1: direct parse + validation
+  const initial = parseJsonCandidate<T>(rawOutput, schema)
+  if (initial.data) return initial.data
 
   // Layer 2: same provider, strict JSON-only re-prompt
-  log.warn(`${context} JSON parse failed, retrying with strict prompt`, { runId })
+  log.warn(`${context} JSON parse failed, retrying with strict prompt`, {
+    runId,
+    error: initial.validationError?.message,
+  })
   const retryAgent = {
     ...baseAgent,
-    systemPrompt: `You are a JSON formatter. Convert the following analysis into ONLY a valid JSON object. Output nothing else — no markdown, no explanation, no commentary. Just the JSON.\n\nRequired schema:\n${jsonSchema}`,
+    toolIds: [],
+    temperature: 0,
+    systemPrompt: `You are a JSON formatter repairing a prior response for the same task. Return ONLY a valid JSON object matching the required schema. No markdown, no explanation, no commentary.
+
+Original system prompt:
+${baseAgent.systemPrompt.slice(0, 3000)}
+
+Required schema:
+${jsonSchema}`,
   }
   const retryStep = await executeAgentWithEvents(
     retryAgent,
-    `Convert this text to JSON:\n\n${rawOutput.slice(0, 8000)}`,
+    `${originalTaskPrompt ? `Original task:\n${originalTaskPrompt.slice(0, 4000)}\n\n` : ''}Convert this prior response to JSON:\n\n${rawOutput.slice(0, 8000)}`,
     {},
     execContext,
     { nodeId, stepNumber }
   )
-  parsed = safeParseJson<T>(retryStep.output)
-  if (parsed) return parsed
+  const retried = parseJsonCandidate<T>(retryStep.output, schema)
+  if (retried.data) return retried.data
 
-  // Layer 3: Haiku with relevance gate
-  log.warn(`${context} retry 1 failed, falling back to Haiku with relevance gate`, { runId })
+  // Layer 3: dedicated GPT repair
+  log.warn(`${context} retry 1 failed, attempting GPT repair`, {
+    runId,
+    error: retried.validationError?.message ?? initial.validationError?.message,
+  })
+  const repairInput =
+    retryStep.output.trim().length >= rawOutput.trim().length * 0.5 ? retryStep.output : rawOutput
+  const repairedOutput = await repairJsonOutput(
+    repairInput,
+    retried.validationError ?? initial.validationError,
+    schema,
+    execContext,
+    {
+      context,
+      goal,
+      originalTaskPrompt,
+      originalSystemPrompt: baseAgent.systemPrompt,
+      schemaHint: jsonSchema,
+    }
+  )
+  if (repairedOutput) {
+    const repaired = parseJsonCandidate<T>(repairedOutput, schema)
+    if (repaired.data) return repaired.data
+    log.warn(`${context} GPT repair still failed validation, falling back to Anthropic fast`, {
+      runId,
+      error: repaired.validationError?.message,
+    })
+  }
+
+  // Layer 4: Anthropic fast fallback with relevance gate
+  log.warn(`${context} retry 2 failed, falling back to Anthropic fast with relevance gate`, {
+    runId,
+  })
   const haikuAgent: AgentConfig = {
     ...baseAgent,
     name: `${nodeId}-json-fixer`,
+    toolIds: [],
     modelProvider: 'anthropic',
-    modelName: 'claude-haiku',
+    modelName: DEFAULT_MODELS.anthropic,
+    modelTier: 'fast',
+    temperature: 0,
     systemPrompt: `You are a strict JSON extraction assistant. You will receive text that was supposed to be a JSON analysis of a strategic question, but may instead be an error message, refusal, or irrelevant text.
 
 Step 1: Determine if the text contains substantive analysis relevant to the goal: "${goal}"
@@ -344,18 +981,26 @@ Step 1: Determine if the text contains substantive analysis relevant to the goal
 
 Step 2: Extract the analysis into this exact JSON schema. Output ONLY valid JSON, nothing else.
 ${jsonSchema}`,
-    temperature: 0,
   }
   const haikuStep = await executeAgentWithEvents(
     haikuAgent,
-    rawOutput.slice(0, 8000),
+    `${originalTaskPrompt ? `Original task:\n${originalTaskPrompt.slice(0, 4000)}\n\n` : ''}${rawOutput.slice(0, 8000)}`,
     {},
     execContext,
     { nodeId, stepNumber }
   )
-  parsed = safeParseJson<T>(haikuStep.output)
+  const fallbackAttempt = parseJsonCandidate<T>(haikuStep.output, schema)
+  if (fallbackAttempt.data) return fallbackAttempt.data
 
-  return requireParsedJson(parsed, context)
+  // Layer 5: hard fallback — use the empty fallback directly instead of crashing
+  log.error(`${context} all JSON repair layers failed, using empty fallback`, {
+    runId,
+    error: fallbackAttempt.validationError?.message,
+  })
+  const fallback = parseJsonCandidate<T>(emptyFallback, schema)
+  if (fallback.data) return fallback.data
+
+  throw new Error(`${context} output did not contain valid schema-compliant JSON and empty fallback also failed`)
 }
 
 function hasSearchQueries(searchPlan: OracleSearchPlan): boolean {
@@ -393,29 +1038,127 @@ function normalizeWeakSignalCategory(category: string | undefined): TrendObject[
   return 'values'
 }
 
-function extractTopSearchResult(raw: unknown): {
+function extractSearchResults(raw: unknown): Array<{
+  title?: string
+  snippet?: string
+  url?: string
+  date?: string
+  source?: string
+}> {
+  if (!raw || typeof raw !== 'object') return []
+
+  const results = (raw as { results?: unknown[] }).results
+  if (!Array.isArray(results) || results.length === 0) return []
+
+  return results
+    .filter((result): result is Record<string, unknown> => !!result && typeof result === 'object')
+    .map((result) => ({
+      title: typeof result.title === 'string' ? result.title : undefined,
+      snippet: typeof result.snippet === 'string' ? result.snippet : undefined,
+      url: typeof result.url === 'string' ? result.url : undefined,
+      date: typeof result.date === 'string' ? result.date : undefined,
+      source: typeof result.source === 'string' ? result.source : undefined,
+    }))
+}
+
+function normalizeEvidenceUrl(url: string | undefined): string {
+  return (url ?? '').trim().toLowerCase().replace(/\/+$/, '')
+}
+
+function extractEvidenceDomain(url: string | undefined): string {
+  if (!url) return ''
+  try {
+    return new URL(url).hostname.replace(/^www\./, '').toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
+function selectEvidenceCandidate(
+  candidates: Array<{
+    title?: string
+    snippet?: string
+    url?: string
+    date?: string
+    source?: string
+  }>,
+  usedUrls: Set<string>,
+  usedDomains: Set<string>
+): {
   title?: string
   snippet?: string
   url?: string
   date?: string
   source?: string
 } | null {
-  if (!raw || typeof raw !== 'object') return null
+  if (candidates.length === 0) return null
 
-  const results = (raw as { results?: unknown[] }).results
-  if (!Array.isArray(results) || results.length === 0) return null
+  const scored = candidates.map((candidate, index) => {
+    const normalizedUrl = normalizeEvidenceUrl(candidate.url)
+    const domain = extractEvidenceDomain(candidate.url)
+    const hasFreshUrl = normalizedUrl.length > 0 && !usedUrls.has(normalizedUrl)
+    const hasFreshDomain = domain.length > 0 && !usedDomains.has(domain)
 
-  const first = results[0]
-  if (!first || typeof first !== 'object') return null
+    return {
+      candidate,
+      score: (hasFreshUrl ? 4 : 0) + (hasFreshDomain ? 2 : 0) - index * 0.1,
+    }
+  })
 
-  const result = first as Record<string, unknown>
-  return {
-    title: typeof result.title === 'string' ? result.title : undefined,
-    snippet: typeof result.snippet === 'string' ? result.snippet : undefined,
-    url: typeof result.url === 'string' ? result.url : undefined,
-    date: typeof result.date === 'string' ? result.date : undefined,
-    source: typeof result.source === 'string' ? result.source : undefined,
+  scored.sort((left, right) => right.score - left.score)
+  return scored[0]?.candidate ?? null
+}
+
+/**
+ * Select the best URLs from evidence for full-page crawl enrichment.
+ * Scores by domain diversity, STEEP+V category diversity, snippet richness, and reliability.
+ */
+export function selectUrlsForCrawl(
+  evidence: OracleEvidence[],
+  maxUrls: number
+): OracleEvidence[] {
+  if (evidence.length === 0) return []
+
+  const withUrls = evidence.filter(
+    (e) => e.url && e.url.startsWith('http') && !e.url.toLowerCase().endsWith('.pdf')
+  )
+
+  // Greedy selection: pick the best remaining candidate each round,
+  // re-scoring with diversity bonuses based on already-selected items.
+  const seenDomains = new Set<string>()
+  const seenCategories = new Set<string>()
+  const selected: OracleEvidence[] = []
+  const remaining = withUrls.map((item) => ({
+    item,
+    domain: extractEvidenceDomain(item.url),
+    category: item.category ?? 'unknown',
+  }))
+
+  while (selected.length < maxUrls && remaining.length > 0) {
+    let bestIdx = 0
+    let bestScore = -1
+
+    for (let i = 0; i < remaining.length; i++) {
+      const { item, domain, category } = remaining[i]
+      let score = 0
+      if (!seenDomains.has(domain)) score += 3
+      if (!seenCategories.has(category)) score += 2
+      score += Math.min(1, (item.excerpt?.length ?? 0) / 200)
+      score += item.reliability
+
+      if (score > bestScore) {
+        bestScore = score
+        bestIdx = i
+      }
+    }
+
+    const picked = remaining.splice(bestIdx, 1)[0]
+    selected.push(picked.item)
+    seenDomains.add(picked.domain)
+    seenCategories.add(picked.category)
   }
+
+  return selected
 }
 
 export async function collectEvidenceFromSearchPlan(
@@ -442,7 +1185,7 @@ export async function collectEvidenceFromSearchPlan(
     plannedQueries.map(async ({ category, query }, index) => {
       const timestamp = Date.now()
       const raw = await searchTool.execute(
-        { query, maxResults: 3, searchType: 'search' },
+        { query, maxResults: 5, searchType: 'search' },
         {
           userId: config.userId,
           agentId: 'oracle_context_gatherer',
@@ -456,35 +1199,54 @@ export async function collectEvidenceFromSearchPlan(
         }
       )
 
-      const top = extractTopSearchResult(raw)
-      if (!top) {
+      const candidates = extractSearchResults(raw)
+      if (candidates.length === 0) {
         throw new Error(`Evidence search for query "${query}" returned no usable results`)
       }
 
       return {
-        id: buildEvidenceId(index),
         category,
         query,
-        source: top.source ?? top.title ?? query,
-        url: top.url ?? '',
-        date: top.date ?? new Date(timestamp).toISOString().slice(0, 10),
         timestamp,
-        excerpt: top.snippet?.slice(0, 200) ?? '',
-        reliability: 0.7,
-        searchTool: 'serper',
-      } satisfies OracleEvidence
+        index,
+        candidates,
+      }
     })
   )
 
   const evidence: OracleEvidence[] = []
   const failedQueries: string[] = []
+  const usedUrls = new Set<string>()
+  const usedDomains = new Set<string>()
 
   settled.forEach((result, index) => {
     const plannedQuery = plannedQueries[index]
     if (!plannedQuery) return
 
     if (result.status === 'fulfilled') {
-      evidence.push(result.value)
+      const selected = selectEvidenceCandidate(result.value.candidates, usedUrls, usedDomains)
+      if (!selected) {
+        failedQueries.push(plannedQuery.query)
+        return
+      }
+
+      const normalizedUrl = normalizeEvidenceUrl(selected.url)
+      const domain = extractEvidenceDomain(selected.url)
+      if (normalizedUrl) usedUrls.add(normalizedUrl)
+      if (domain) usedDomains.add(domain)
+
+      evidence.push({
+        id: buildEvidenceId(result.value.index),
+        category: result.value.category,
+        query: result.value.query,
+        source: selected.source ?? selected.title ?? result.value.query,
+        url: selected.url ?? '',
+        date: selected.date ?? new Date(result.value.timestamp).toISOString().slice(0, 10),
+        timestamp: result.value.timestamp,
+        excerpt: selected.snippet?.slice(0, 200) ?? '',
+        reliability: 0.7,
+        searchTool: 'serper',
+      })
       return
     }
 
@@ -761,6 +1523,7 @@ function determineOracleStartNode(state: OracleState): string {
       'input_normalizer',
       'context_gathering',
       'evidence_gathering',
+      'evidence_enrichment',
       'context_seeding',
       'decomposer',
       'systems_mapper',
@@ -951,6 +1714,220 @@ function createOracleGraph(config: OracleGraphConfig) {
     }
   })
 
+  // ===== EVIDENCE ENRICHMENT (Crawl) =====
+
+  graph.addNode('evidence_enrichment', async (state: OracleState) => {
+    const crawlConfig = oracleConfig.crawlEnrichment ?? {
+      enabled: true,
+      maxUrlsToCrawl: 6,
+      maxContentChars: 8000,
+      summarizeToChars: 500,
+    }
+
+    // Skip crawling in quick depth mode or if explicitly disabled
+    if (!crawlConfig.enabled || oracleConfig.depthMode === 'quick') {
+      log.info('Evidence enrichment skipped', {
+        runId: state.runId,
+        reason: !crawlConfig.enabled ? 'disabled' : 'quick_mode',
+      })
+      return {}
+    }
+
+    const budgetPause = getBudgetPauseUpdate(state, 'evidence_enrichment', oracleConfig.maxBudgetUsd)
+    if (budgetPause) return budgetPause
+
+    // Check remaining budget headroom (~$0.008/URL)
+    const estimatedCrawlCost = crawlConfig.maxUrlsToCrawl * 0.008
+    const budgetRemaining = oracleConfig.maxBudgetUsd - state.costTracker.total
+    if (budgetRemaining < estimatedCrawlCost * 0.5) {
+      log.info('Evidence enrichment skipped: insufficient budget headroom', {
+        runId: state.runId,
+        remaining: budgetRemaining,
+        estimatedCost: estimatedCrawlCost,
+      })
+      return {}
+    }
+
+    log.info('Phase 0: Evidence Enrichment (crawl)', {
+      runId: state.runId,
+      evidenceCount: state.evidence.length,
+      maxUrls: crawlConfig.maxUrlsToCrawl,
+    })
+
+    // Select best URLs for crawling
+    const urlsToCrawl = selectUrlsForCrawl(state.evidence, crawlConfig.maxUrlsToCrawl)
+    if (urlsToCrawl.length === 0) {
+      log.info('Evidence enrichment: no crawlable URLs found', { runId: state.runId })
+      return {}
+    }
+
+    const crawlTargetIds = new Set(urlsToCrawl.map((e) => e.id))
+
+    log.info('Selected URLs for crawl enrichment', {
+      runId: state.runId,
+      selected: urlsToCrawl.map((e) => ({ id: e.id, url: e.url, category: e.category })),
+    })
+
+    // Crawl in parallel with timeout
+    const CRAWL_TIMEOUT_MS = 15_000
+    const crawledContentMap: Record<string, string> = {}
+
+    const crawlResults = await Promise.allSettled(
+      urlsToCrawl.map(async (evidenceItem) => {
+        const readUrl = config.toolRegistry?.get('read_url')
+        const scrapeUrl = config.toolRegistry?.get('scrape_url')
+
+        if (!readUrl && !scrapeUrl) {
+          return { id: evidenceItem.id, content: null as string | null, error: 'no_tool' }
+        }
+
+        try {
+          const timeoutPromise = new Promise<null>((resolve) =>
+            setTimeout(() => resolve(null), CRAWL_TIMEOUT_MS)
+          )
+
+          const fetchPromise = (async (): Promise<string | null> => {
+            if (readUrl) {
+              const result = await readUrl.execute(
+                { url: evidenceItem.url },
+                {
+                  userId: config.userId,
+                  agentId: 'oracle_evidence_enrichment',
+                  workflowId: config.workflow.workflowId,
+                  runId: config.runId,
+                  provider: 'openai',
+                  modelName: 'oracle-crawl',
+                  iteration: 0,
+                  searchToolKeys: config.searchToolKeys,
+                  toolRegistry: config.toolRegistry,
+                }
+              )
+              const content = typeof result === 'string' ? result : JSON.stringify(result ?? '')
+              if (content.length > 200) {
+                return content.slice(0, crawlConfig.maxContentChars)
+              }
+            }
+            if (scrapeUrl) {
+              const result = await scrapeUrl.execute(
+                { url: evidenceItem.url, formats: ['markdown'] },
+                {
+                  userId: config.userId,
+                  agentId: 'oracle_evidence_enrichment',
+                  workflowId: config.workflow.workflowId,
+                  runId: config.runId,
+                  provider: 'openai',
+                  modelName: 'oracle-crawl',
+                  iteration: 0,
+                  searchToolKeys: config.searchToolKeys,
+                  toolRegistry: config.toolRegistry,
+                }
+              )
+              const content = typeof result === 'string' ? result : JSON.stringify(result ?? '')
+              return content.slice(0, crawlConfig.maxContentChars)
+            }
+            return null
+          })()
+
+          const content = await Promise.race([fetchPromise, timeoutPromise])
+          return { id: evidenceItem.id, content, error: null as string | null }
+        } catch (err) {
+          log.warn('Crawl failed for evidence item', {
+            id: evidenceItem.id,
+            url: evidenceItem.url,
+            error: err instanceof Error ? err.message : String(err),
+          })
+          return { id: evidenceItem.id, content: null as string | null, error: String(err) }
+        }
+      })
+    )
+
+    // Summarize crawled content
+    let totalCrawlCost = 0
+    let totalCrawlTokens = 0
+    const enrichedMap = new Map<string, { enrichedExcerpt: string; crawlStatus: 'success' | 'failed' }>()
+
+    for (const result of crawlResults) {
+      if (result.status !== 'fulfilled' || !result.value.content) {
+        const id = result.status === 'fulfilled' ? result.value.id : 'unknown'
+        enrichedMap.set(id, { enrichedExcerpt: '', crawlStatus: 'failed' })
+        continue
+      }
+
+      const { id, content } = result.value
+      crawledContentMap[id] = content
+
+      try {
+        const evidenceItem = state.evidence.find((e) => e.id === id)!
+        const summaryStep = await executeAgentWithEvents(
+          {
+            ...config.verifier,
+            systemPrompt: `You are a research summarizer. Given an article and a research context, produce a dense factual summary focused on information relevant to the research question. Output ONLY the summary text — no labels, no JSON, no preamble.`,
+            maxTokens: 600,
+            temperature: 0.2,
+            toolIds: [],
+          },
+          `Research question: "${state.goal.slice(0, 300)}"\nEvidence category: ${evidenceItem.category ?? 'general'}\nOriginal query: "${(evidenceItem.query ?? '').slice(0, 200)}"\n\nArticle content:\n"""\n${content.slice(0, 6000)}\n"""\n\nProduce a ${crawlConfig.summarizeToChars}-character summary focusing on facts, claims, data points, and causal mechanisms relevant to the research question. Prioritize quantitative data, named entities, dates, causal relationships, and contrarian viewpoints.`,
+          {},
+          execContext,
+          { nodeId: 'evidence_enrichment', stepNumber: 0 }
+        )
+        totalCrawlCost += summaryStep.estimatedCost
+        totalCrawlTokens += summaryStep.tokensUsed
+        enrichedMap.set(id, {
+          enrichedExcerpt: (summaryStep.output ?? '').slice(0, crawlConfig.summarizeToChars),
+          crawlStatus: 'success',
+        })
+      } catch (err) {
+        log.warn('Summarization failed for crawled content', {
+          id,
+          error: err instanceof Error ? err.message : String(err),
+        })
+        enrichedMap.set(id, { enrichedExcerpt: '', crawlStatus: 'failed' })
+      }
+    }
+
+    // Merge enriched excerpts back into evidence
+    const enrichedEvidence = state.evidence.map((e) => {
+      if (!crawlTargetIds.has(e.id)) return { ...e, crawlStatus: 'skipped' as const }
+      const enrichment = enrichedMap.get(e.id)
+      if (!enrichment || enrichment.crawlStatus === 'failed') {
+        return { ...e, crawlStatus: 'failed' as const }
+      }
+      return {
+        ...e,
+        enrichedExcerpt: enrichment.enrichedExcerpt,
+        crawlStatus: 'success' as const,
+      }
+    })
+
+    const successCount = Array.from(enrichedMap.values()).filter(
+      (v) => v.crawlStatus === 'success'
+    ).length
+
+    log.info('Evidence enrichment complete', {
+      runId: state.runId,
+      crawled: urlsToCrawl.length,
+      succeeded: successCount,
+      failed: urlsToCrawl.length - successCount,
+      totalCost: totalCrawlCost,
+    })
+
+    return {
+      evidence: enrichedEvidence,
+      crawledContentMap,
+      totalTokensUsed: totalCrawlTokens,
+      totalEstimatedCost: totalCrawlCost,
+      ...trackCost(
+        state,
+        { model: config.verifier.modelName, tokensUsed: totalCrawlTokens, estimatedCost: totalCrawlCost },
+        0,
+        'search'
+      ),
+    }
+  })
+
+  // ===== CONTEXT SEEDING =====
+
   graph.addNode('context_seeding', async (state: OracleState) => {
     const normalizedInput =
       state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
@@ -1086,14 +2063,48 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'decomposer', stepNumber: 2 }
     )
 
-    const DECOMPOSER_SCHEMA = '{"claims":[{"id":"CLM-001","type":"descriptive|causal|forecast","text":"...","confidence":0.7,"confidenceBasis":"data|model_consensus|expert_judgment|speculative","assumptions":[],"evidenceIds":[],"dependencies":[],"axiomRefs":[],"subQuestionId":"SQ-001"}],"assumptions":[{"id":"ASM-001","type":"economic|technical|behavioral|regulatory|structural","statement":"...","sensitivity":"high|medium|low","observables":["..."],"confidence":0.6}]}'
+    const DECOMPOSER_SCHEMA = '{"claims":[{"id":"CLM-001","type":"descriptive|causal|forecast","text":"...","confidence":0.7,"confidenceBasis":"data|model_consensus|expert_judgment|speculative","assumptions":[],"evidenceIds":[],"dependencies":[],"axiomRefs":[],"createdBy":"agent:model","phase":1}],"assumptions":[{"id":"ASM-001","type":"economic|technical|behavioral|regulatory|structural","statement":"...","sensitivity":"high|medium|low","observables":["..."],"confidence":0.6}]}'
     const parsed = await parseJsonWithRetry<{
       claims: OracleClaim[]
       assumptions: OracleAssumption[]
-    }>(step.output, 'Decomposer', DECOMPOSER_SCHEMA, '{"claims":[],"assumptions":[]}', state.goal, config.decomposer, execContext, 'decomposer', 2, state.runId)
+    }>(
+      step.output,
+      'Decomposer',
+      DECOMPOSER_SCHEMA,
+      DecomposerOutputSchema,
+      '{"claims":[],"assumptions":[]}',
+      state.goal,
+      config.decomposer,
+      execContext,
+      'decomposer',
+      2,
+      state.runId,
+      prompt
+    )
+
+    const recovered = recoverPartialDecomposerOutput(step.output)
+    const effectiveClaims =
+      recovered && recovered.claims.length > (parsed.claims?.length ?? 0)
+        ? recovered.claims
+        : (parsed.claims ?? [])
+    const effectiveAssumptions =
+      recovered && recovered.assumptions.length > (parsed.assumptions?.length ?? 0)
+        ? recovered.assumptions
+        : (parsed.assumptions ?? [])
+    const usedPartialRecovery =
+      effectiveClaims.length !== (parsed.claims?.length ?? 0) ||
+      effectiveAssumptions.length !== (parsed.assumptions?.length ?? 0)
+
+    if (usedPartialRecovery) {
+      log.warn('Decomposer used partial JSON recovery to preserve phase output', {
+        runId: state.runId,
+        recoveredClaims: effectiveClaims.length,
+        recoveredAssumptions: effectiveAssumptions.length,
+      })
+    }
 
     // Enrich claims with metadata the LLM may not have provided
-    const enrichedClaims = (parsed.claims ?? []).map((c) => ({
+    const enrichedClaims = effectiveClaims.map((c) => ({
       ...c,
       createdBy: c.createdBy ?? `${config.decomposer.name}/${config.decomposer.modelName}`,
       phase: c.phase ?? 1,
@@ -1104,7 +2115,7 @@ function createOracleGraph(config: OracleGraphConfig) {
       evidenceIds: c.evidenceIds ?? [],
     }))
 
-    const enrichedAssumptions = (parsed.assumptions ?? []).map((a) => ({
+    const enrichedAssumptions = effectiveAssumptions.map((a) => ({
       ...a,
       type: a.type ?? 'structural',
       observables: a.observables ?? [],
@@ -1119,6 +2130,7 @@ function createOracleGraph(config: OracleGraphConfig) {
       steps: [step],
       totalTokensUsed: step.tokensUsed,
       totalEstimatedCost: step.estimatedCost,
+      degradedPhases: usedPartialRecovery ? ['decomposer_partial_recovery'] : [],
       ...trackCost(state, step, 1, 'llm'),
     }
   })
@@ -1153,18 +2165,39 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'systems_mapper', stepNumber: 3 }
     )
 
-    const SYSTEMS_MAPPER_SCHEMA = '{"nodes":[{"id":"N-001","type":"principle|constraint|trend|uncertainty|variable|scenario_state","label":"...","ledgerRef":"CLM-001","properties":{}}],"edges":[{"source":"N-001","target":"N-002","type":"causes|constrains|disrupts|reinforces","polarity":"+|-|conditional","strength":0.8,"lag":"immediate|short|medium|long"}],"loops":[{"id":"L-001","type":"reinforcing|balancing","nodes":["N-001","N-002"],"description":"..."}]}'
+    const SYSTEMS_MAPPER_SCHEMA = '{"nodes":[{"id":"N-001","type":"principle|constraint|trend|uncertainty|variable|scenario_state","label":"...","ledgerRef":"CLM-001","properties":{}}],"edges":[{"source":"N-001","target":"N-002","type":"causes|constrains|disrupts|reinforces|resolves_as|supports|contradicts|depends_on","polarity":"+|-|conditional","strength":0.8,"lag":"immediate|short|medium|long"}],"loops":[{"id":"L-001","type":"reinforcing|balancing","nodes":["N-001","N-002"],"description":"..."}]}'
     const parsed = await parseJsonWithRetry<{
       nodes: OracleKnowledgeGraph['nodes']
       edges: OracleKnowledgeGraph['edges']
       loops: OracleKnowledgeGraph['loops']
-    }>(step.output, 'Systems mapper', SYSTEMS_MAPPER_SCHEMA, '{"nodes":[],"edges":[],"loops":[]}', state.goal, config.systemsMapper, execContext, 'systems_mapper', 3, state.runId)
+    }>(
+      step.output,
+      'Systems mapper',
+      SYSTEMS_MAPPER_SCHEMA,
+      SystemsMapperOutputSchema,
+      '{"nodes":[],"edges":[],"loops":[]}',
+      state.goal,
+      config.systemsMapper,
+      execContext,
+      'systems_mapper',
+      3,
+      state.runId,
+      prompt
+    )
 
     const kg: OracleKnowledgeGraph = {
       nodes: parsed.nodes ?? [],
       edges: parsed.edges ?? [],
       loops: parsed.loops ?? [],
     }
+
+    // Emit KG for live visualization
+    await emitOracleEvent(config, 'oracle_phase', {
+      phase: 1,
+      phaseName: 'systems_mapper',
+      status: 'completed',
+      knowledgeGraph: kg,
+    })
 
     return {
       knowledgeGraph: kg,
@@ -1208,7 +2241,20 @@ function createOracleGraph(config: OracleGraphConfig) {
     const parsed = await parseJsonWithRetry<{
       verifiedClaims: Array<{ claimId: string; adjustedConfidence: number }>
       axiomGroundingPercent: number
-    }>(step.output, 'Verifier', VERIFIER_SCHEMA, '{"verifiedClaims":[],"axiomGroundingPercent":0}', state.goal, config.verifier, execContext, 'verifier', 4, state.runId)
+    }>(
+      step.output,
+      'Verifier',
+      VERIFIER_SCHEMA,
+      VerifierOutputSchema,
+      '{"verifiedClaims":[],"axiomGroundingPercent":0}',
+      state.goal,
+      config.verifier,
+      execContext,
+      'verifier',
+      4,
+      state.runId,
+      prompt
+    )
 
     // Update claims with adjusted confidence
     const updatedClaims = state.claims.map((c) => {
@@ -1239,7 +2285,7 @@ function createOracleGraph(config: OracleGraphConfig) {
     const prompt = buildGateEvaluatorPrompt('gate_a')
     const agent = { ...config.verifier, systemPrompt: prompt }
 
-    const phaseOutput = `Claims: ${state.claims.length}, KG nodes: ${state.knowledgeGraph.nodes.length}, Assumptions: ${state.assumptions.length}\n\n${claimsSummary(state.claims)}`
+    const phaseOutput = buildPhaseOneArtifact(state)
 
     const step = await executeAgentWithEvents(
       agent,
@@ -1249,10 +2295,30 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'gate_a', stepNumber: 5 }
     )
 
-    const rubricResult = parseRubricScores(step.output)
-    if (!rubricResult) {
-      throw new Error('Gate A evaluation output could not be parsed')
-    }
+    const parsed = await parseJsonWithRetry<{
+      mechanisticClarity: number
+      completeness: number
+      causalDiscipline: number
+      decisionUsefulness: number
+      uncertaintyHygiene: number
+      evidenceQuality: number
+      feedback?: string
+    }>(
+      step.output,
+      'Gate A evaluator',
+      GATE_RUBRIC_SCHEMA,
+      GateRubricOutputSchema,
+      '{"mechanisticClarity":1,"completeness":1,"causalDiscipline":1,"decisionUsefulness":1,"uncertaintyHygiene":1,"evidenceQuality":1,"feedback":"Gate A evaluator output could not be recovered; treating as failed evaluation."}',
+      state.goal,
+      config.verifier,
+      execContext,
+      'gate_a',
+      5,
+      state.runId,
+      prompt
+    )
+    const rubricResult =
+      parseRubricScores(JSON.stringify(parsed)) ?? normalizeGateRubricResult(parsed)
 
     // Compute axiom grounding from claims
     const claimsWithAxioms = state.claims.filter((c) => c.axiomRefs && c.axiomRefs.length > 0)
@@ -1304,7 +2370,7 @@ function createOracleGraph(config: OracleGraphConfig) {
     const prompt = buildPhaseSummarizerPrompt('decomposition', lastGateA)
     const agent = { ...config.verifier, systemPrompt: prompt, maxTokens: 1500 }
 
-    const phaseContent = `Claims: ${state.claims.length}\nKG: ${state.knowledgeGraph.nodes.length} nodes, ${state.knowledgeGraph.edges.length} edges, ${state.knowledgeGraph.loops.length} loops\nAssumptions: ${state.assumptions.length}\n\n${claimsSummary(state.claims)}`
+    const phaseContent = buildPhaseOneArtifact(state)
     let step: AgentExecutionStep | null = null
 
     try {
@@ -1375,7 +2441,7 @@ function createOracleGraph(config: OracleGraphConfig) {
 
     log.info('Council Gate A: Expert Council review', { runId: state.runId })
 
-    const prompt = `Evaluate the decomposition phase output for a scenario planning analysis on: "${state.goal}"\n\nClaims: ${state.claims.length}, KG nodes: ${state.knowledgeGraph.nodes.length}, Assumptions: ${state.assumptions.length}\n\nTop claims:\n${claimsSummary(state.claims)}\n\nAssess: Are the causal claims specific and testable? Is the axiom grounding adequate? Are there major blind spots?`
+    const prompt = `Evaluate the decomposition phase artifact for a scenario planning analysis on: "${state.goal}"\n\n${buildPhaseOneArtifact(state)}\n\nAssess: Are the claims explicit, evidence-linked, and mechanistically grounded? Is the axiom grounding adequate? Are there major blind spots, missing STEEP+V dimensions, or decision-usefulness gaps?`
 
     const result = await runCouncilAtGate(config, 'gate_a', prompt)
     if (!result) return {}
@@ -1423,8 +2489,21 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'scanner' }
     )
 
-    const SCANNER_SCHEMA = '{"trends":[{"id":"T-001","steepCategory":"social|technological|economic|environmental|political|values","statement":"...","impactScore":0.8,"uncertaintyScore":0.5}]}'
-    const parsed = await parseJsonWithRetry<{ trends: TrendObject[] }>(step.output, 'Scanner', SCANNER_SCHEMA, '{"trends":[]}', state.goal, config.scanner, execContext, 'scanner', 5, state.runId)
+    const SCANNER_SCHEMA = '{"trends":[{"id":"T-001","statement":"...","steepCategory":"social|technological|economic|environmental|political|values","direction":"...","momentum":"accelerating|steady|decelerating","impactScore":0.8,"uncertaintyScore":0.5,"evidenceIds":[],"causalLinks":[],"secondOrderEffects":[]}]}'
+    const parsed = await parseJsonWithRetry<{ trends: TrendObject[] }>(
+      step.output,
+      'Scanner',
+      SCANNER_SCHEMA,
+      ScannerOutputSchema,
+      '{"trends":[]}',
+      state.goal,
+      config.scanner,
+      execContext,
+      'scanner',
+      5,
+      state.runId,
+      prompt
+    )
 
     return {
       currentPhase: 'trend_scanning' as const,
@@ -1464,11 +2543,24 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'impact_assessor' }
     )
 
-    const IMPACT_SCHEMA = '{"crossImpactMatrix":[{"trendA":"T-001","trendB":"T-002","interaction":"+|-|neutral","strength":0.8}],"criticalUncertainties":[{"id":"U-001","statement":"...","importance":0.9,"uncertainty":0.7}]}'
+    const IMPACT_SCHEMA = '{"crossImpactMatrix":[{"sourceId":"T-001","targetId":"T-002","effect":"increases|decreases|enables|blocks|neutral","strength":0.8,"mechanism":"..."}],"criticalUncertainties":[{"id":"U-001","variable":"...","states":["..."],"drivers":["..."],"impacts":["..."],"observables":["..."],"controllability":"none|low|medium|high","timeToResolution":"..."}]}'
     const parsed = await parseJsonWithRetry<{
       crossImpactMatrix: CrossImpactEntry[]
       criticalUncertainties: UncertaintyObject[]
-    }>(step.output, 'Impact assessor', IMPACT_SCHEMA, '{"crossImpactMatrix":[],"criticalUncertainties":[]}', state.goal, config.impactAssessor, execContext, 'impact_assessor', 6, state.runId)
+    }>(
+      step.output,
+      'Impact assessor',
+      IMPACT_SCHEMA,
+      ImpactAssessorOutputSchema,
+      '{"crossImpactMatrix":[],"criticalUncertainties":[]}',
+      state.goal,
+      config.impactAssessor,
+      execContext,
+      'impact_assessor',
+      6,
+      state.runId,
+      prompt
+    )
 
     return {
       crossImpactMatrix: parsed.crossImpactMatrix ?? [],
@@ -1521,7 +2613,20 @@ function createOracleGraph(config: OracleGraphConfig) {
         potentialImpact: number
         confidence: number
       }>
-    }>(step.output, 'Weak signal hunter', WEAK_SIGNAL_SCHEMA, '{"weakSignals":[]}', state.goal, config.weakSignalHunter, execContext, 'weak_signal_hunter', 7, state.runId)
+    }>(
+      step.output,
+      'Weak signal hunter',
+      WEAK_SIGNAL_SCHEMA,
+      WeakSignalHunterOutputSchema,
+      '{"weakSignals":[]}',
+      state.goal,
+      config.weakSignalHunter,
+      execContext,
+      'weak_signal_hunter',
+      7,
+      state.runId,
+      prompt
+    )
 
     // Map weak signal categories to STEEP+V
     const weakSignalTrends: TrendObject[] = (parsed.weakSignals ?? []).map((ws) => ({
@@ -1568,10 +2673,30 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'gate_b' }
     )
 
-    const rubricResult = parseRubricScores(step.output)
-    if (!rubricResult) {
-      throw new Error('Gate B evaluation output could not be parsed')
-    }
+    const parsed = await parseJsonWithRetry<{
+      mechanisticClarity: number
+      completeness: number
+      causalDiscipline: number
+      decisionUsefulness: number
+      uncertaintyHygiene: number
+      evidenceQuality: number
+      feedback?: string
+    }>(
+      step.output,
+      'Gate B evaluator',
+      GATE_RUBRIC_SCHEMA,
+      GateRubricOutputSchema,
+      '{"mechanisticClarity":1,"completeness":1,"causalDiscipline":1,"decisionUsefulness":1,"uncertaintyHygiene":1,"evidenceQuality":1,"feedback":"Gate B evaluator output could not be recovered; treating as failed evaluation."}',
+      state.goal,
+      config.verifier,
+      execContext,
+      'gate_b',
+      9,
+      state.runId,
+      prompt
+    )
+    const rubricResult =
+      parseRubricScores(JSON.stringify(parsed)) ?? normalizeGateRubricResult(parsed)
 
     const { gateResult } = evaluateGate(
       {
@@ -1943,7 +3068,20 @@ function createOracleGraph(config: OracleGraphConfig) {
         plausibility: number
         divergence: number
       }>
-    }>(step.output, 'Equilibrium analyst', EQ_SCHEMA, '{"selectedSkeletons":[],"candidateSkeletons":[]}', state.goal, config.equilibriumAnalyst, execContext, 'equilibrium_analyst', 8, state.runId)
+    }>(
+      step.output,
+      'Equilibrium analyst',
+      EQ_SCHEMA,
+      EquilibriumAnalystOutputSchema,
+      '{"selectedSkeletons":[],"candidateSkeletons":[]}',
+      state.goal,
+      config.equilibriumAnalyst,
+      execContext,
+      'equilibrium_analyst',
+      8,
+      state.runId,
+      prompt
+    )
 
     const selected = (
       parsed?.candidateSkeletons?.filter((s) => parsed.selectedSkeletons?.includes(s.id)) ?? []
@@ -2015,8 +3153,21 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'scenario_developer' }
     )
 
-    const SCENARIO_SCHEMA = '{"scenarios":[{"id":"SCN-001","name":"...","narrative":"...","premise":{},"reinforcedPrinciples":[],"disruptedPrinciples":[],"feedbackLoops":[],"implications":"...","signposts":[],"tailRisks":[],"assumptionRegister":[]}]}'
-    const parsed = await parseJsonWithRetry<{ scenarios: OracleScenario[] }>(step.output, 'Scenario developer', SCENARIO_SCHEMA, '{"scenarios":[]}', state.goal, config.scenarioDeveloper, execContext, 'scenario_developer', 9, state.runId)
+    const SCENARIO_SCHEMA = '{"scenarios":[{"id":"SCN-001","name":"...","premise":{},"narrative":"...","reinforcedPrinciples":[],"disruptedPrinciples":[],"feedbackLoops":[{"id":"L-001","type":"reinforcing|balancing","nodes":[],"description":"..."}],"implications":"...","signposts":[],"tailRisks":[],"assumptionRegister":[],"councilAssessment":{"agreementRate":0.8,"persistentDissent":[]},"plausibilityScore":0.7,"divergenceScore":0.6}]}'
+    const parsed = await parseJsonWithRetry<{ scenarios: OracleScenario[] }>(
+      step.output,
+      'Scenario developer',
+      SCENARIO_SCHEMA,
+      ScenarioDeveloperOutputSchema,
+      '{"scenarios":[]}',
+      state.goal,
+      config.scenarioDeveloper,
+      execContext,
+      'scenario_developer',
+      9,
+      state.runId,
+      prompt
+    )
     if (!Array.isArray(parsed.scenarios) || parsed.scenarios.length === 0) {
       throw new Error('Scenario developer did not return any scenarios')
     }
@@ -2084,7 +3235,20 @@ function createOracleGraph(config: OracleGraphConfig) {
         tailRisks: string[]
         overallRobustness: string
       }>
-    }>(step.output, 'Red team', RED_TEAM_SCHEMA, '{"assessments":[]}', state.goal, config.redTeam, execContext, 'red_team', 10, state.runId)
+    }>(
+      step.output,
+      'Red team',
+      RED_TEAM_SCHEMA,
+      RedTeamOutputSchema,
+      '{"assessments":[]}',
+      state.goal,
+      config.redTeam,
+      execContext,
+      'red_team',
+      10,
+      state.runId,
+      prompt
+    )
     if (!Array.isArray(parsed.assessments) || parsed.assessments.length === 0) {
       throw new Error('Red team did not return any scenario assessments')
     }
@@ -2135,10 +3299,30 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'gate_c' }
     )
 
-    const rubricResult = parseRubricScores(step.output)
-    if (!rubricResult) {
-      throw new Error('Gate C evaluation output could not be parsed')
-    }
+    const parsed = await parseJsonWithRetry<{
+      mechanisticClarity: number
+      completeness: number
+      causalDiscipline: number
+      decisionUsefulness: number
+      uncertaintyHygiene: number
+      evidenceQuality: number
+      feedback?: string
+    }>(
+      step.output,
+      'Gate C evaluator',
+      GATE_RUBRIC_SCHEMA,
+      GateRubricOutputSchema,
+      '{"mechanisticClarity":1,"completeness":1,"causalDiscipline":1,"decisionUsefulness":1,"uncertaintyHygiene":1,"evidenceQuality":1,"feedback":"Gate C evaluator output could not be recovered; treating as failed evaluation."}',
+      state.goal,
+      config.verifier,
+      execContext,
+      'gate_c',
+      15,
+      state.runId,
+      prompt
+    )
+    const rubricResult =
+      parseRubricScores(JSON.stringify(parsed)) ?? normalizeGateRubricResult(parsed)
 
     const { gateResult } = evaluateGate(
       {
@@ -2255,11 +3439,24 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'backcasting' }
     )
 
-    const BACKCAST_SCHEMA = '{"backcastTimelines":[{"scenarioId":"SCN-001","milestones":[{"year":2027,"event":"...","probability":0.7}]}],"strategicMoves":[{"id":"SM-001","action":"...","timing":"...","scenarioIds":["SCN-001"]}]}'
+    const BACKCAST_SCHEMA = '{"backcastTimelines":[{"scenarioId":"SCN-001","targetYear":"2030","milestones":[{"year":"2027","event":"...","prerequisites":["..."]}],"strategicMoves":[{"type":"no_regret|option_to_buy|hedge|kill_criterion","description":"...","worksAcross":["SCN-001"],"timing":"...","ledgerRefs":[]}]}],"strategicMoves":[{"type":"no_regret|option_to_buy|hedge|kill_criterion","description":"...","worksAcross":["SCN-001"],"timing":"...","ledgerRefs":[]}]}'
     const parsed = await parseJsonWithRetry<{
       backcastTimelines: BackcastTimeline[]
       strategicMoves: StrategicMove[]
-    }>(step.output, 'Backcasting', BACKCAST_SCHEMA, '{"backcastTimelines":[],"strategicMoves":[]}', state.goal, config.scenarioDeveloper, execContext, 'backcasting', 11, state.runId)
+    }>(
+      step.output,
+      'Backcasting',
+      BACKCAST_SCHEMA,
+      BackcastingOutputSchema,
+      '{"backcastTimelines":[],"strategicMoves":[]}',
+      state.goal,
+      config.scenarioDeveloper,
+      execContext,
+      'backcasting',
+      11,
+      state.runId,
+      prompt
+    )
     if (!Array.isArray(parsed.backcastTimelines) || !Array.isArray(parsed.strategicMoves)) {
       throw new Error('Backcasting output did not include timelines and strategic moves')
     }
@@ -2418,6 +3615,11 @@ Total: $${state.costTracker.total.toFixed(4)}
   )
   graph.addConditionalEdges(
     'evidence_gathering' as typeof START,
+    (state: OracleState) => nextNodeOrEnd(state, 'evidence_enrichment'),
+    { evidence_enrichment: 'evidence_enrichment' as typeof START, [END]: END }
+  )
+  graph.addConditionalEdges(
+    'evidence_enrichment' as typeof START,
     (state: OracleState) => nextNodeOrEnd(state, 'context_seeding'),
     { context_seeding: 'context_seeding' as typeof START, [END]: END }
   )
@@ -2578,6 +3780,7 @@ export async function executeOracleWorkflowLangGraph(
   totalTokensUsed: number
   totalEstimatedCost: number
   status: 'running' | 'completed' | 'failed' | 'paused' | 'waiting_for_input'
+  error?: string
   constraintPause?: Run['constraintPause']
   pendingInput?: { prompt: string; nodeId: string }
   scenarioPortfolio: OracleScenario[]
@@ -2610,6 +3813,7 @@ export async function executeOracleWorkflowLangGraph(
       totalTokensUsed: 0,
       totalEstimatedCost: 0,
       status: 'failed',
+      error: 'Goal is required',
       scenarioPortfolio: [],
       gateResults: [],
       phaseSummaries: [],
@@ -2645,6 +3849,7 @@ export async function executeOracleWorkflowLangGraph(
       totalTokensUsed: 0,
       totalEstimatedCost: 0,
       status: 'failed',
+      error: msg,
       scenarioPortfolio: [],
       gateResults: [],
       phaseSummaries: [],
@@ -2755,6 +3960,7 @@ export async function executeOracleWorkflowLangGraph(
       totalTokensUsed: 0,
       totalEstimatedCost: 0,
       status: 'failed',
+      error: errorMessage,
       scenarioPortfolio: [],
       gateResults: [],
       phaseSummaries: [],

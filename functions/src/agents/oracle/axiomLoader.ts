@@ -24,12 +24,14 @@ const RawCookbookRecipeSchema = z.object({
   when_to_use: z.string(),
   oracle_phases: z.array(z.string()),
   oracle_agents: z.array(z.string()),
-  axiom_sequence: z.array(z.object({
-    step: z.number(),
-    action: z.string(),
-    axioms: z.array(z.string()),
-    instruction: z.string(),
-  })),
+  axiom_sequence: z.array(
+    z.object({
+      step: z.number(),
+      action: z.string(),
+      axioms: z.array(z.string()),
+      instruction: z.string(),
+    })
+  ),
   techniques: z.array(z.string()),
   traps: z.array(z.object({ trap: z.string(), antidote: z.string() })),
   output_template: z.string(),
@@ -52,12 +54,14 @@ const RawCookbookSchema = z.object({
     total_recipes: z.number(),
     total_techniques: z.number(),
     total_axioms: z.number(),
-    recipe_categories: z.array(z.object({
-      id: z.string(),
-      name: z.string(),
-      subtitle: z.string(),
-      primary_phase: z.string(),
-    })),
+    recipe_categories: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        subtitle: z.string(),
+        primary_phase: z.string(),
+      })
+    ),
   }),
   recipes: z.array(RawCookbookRecipeSchema),
   techniques: z.array(RawCookbookTechniqueSchema),
@@ -70,19 +74,23 @@ const RawAxiomLibrarySchema = z.object({
     totalAxioms: z.number(),
     domains: z.array(z.string()),
   }),
-  axioms: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    domain: z.string(),
-    formalDefinition: z.string(),
-    mathematicalFormulation: z.string().optional(),
-    boundaryConditions: z.array(z.string()),
-    canonicalCitations: z.array(z.string()),
-    systemElevation: z.object({
-      role: z.string(),
-      behavior: z.string(),
-    }).optional(),
-  })),
+  axioms: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      domain: z.string(),
+      formalDefinition: z.string(),
+      mathematicalFormulation: z.string().optional(),
+      boundaryConditions: z.array(z.string()),
+      canonicalCitations: z.array(z.string()),
+      systemElevation: z
+        .object({
+          role: z.string(),
+          behavior: z.string(),
+        })
+        .optional(),
+    })
+  ),
 })
 
 // ----- Loaded types (camelCase for TS consumption) -----
@@ -160,9 +168,8 @@ let loaded = false
 // ----- Loader -----
 
 function resolveDataPath(filename: string): string {
-  const currentDir = typeof __dirname !== 'undefined'
-    ? __dirname
-    : dirname(fileURLToPath(import.meta.url))
+  const currentDir =
+    typeof __dirname !== 'undefined' ? __dirname : dirname(fileURLToPath(import.meta.url))
 
   const searchRoots = [currentDir, process.cwd()]
   for (const root of searchRoots) {
@@ -179,8 +186,8 @@ function resolveDataPath(filename: string): string {
     }
   }
 
-  const basePath = process.env.AXIOM_BASE_PATH
-    ?? resolve(currentDir, '..', '..', '..', '..', 'docs', 'Oracle')
+  const basePath =
+    process.env.AXIOM_BASE_PATH ?? resolve(currentDir, '..', '..', '..', '..', 'docs', 'Oracle')
   return resolve(basePath, filename)
 }
 
@@ -191,7 +198,7 @@ function loadCookbook(): void {
     const result = RawCookbookSchema.safeParse(parsed)
     if (!result.success) {
       log.warn('Cookbook schema validation failed', {
-        errors: result.error.issues.slice(0, 5).map(i => `${i.path.join('.')}: ${i.message}`),
+        errors: result.error.issues.slice(0, 5).map((i) => `${i.path.join('.')}: ${i.message}`),
       })
       return
     }
@@ -277,7 +284,7 @@ function loadAxiomLibrary(): void {
     const result = RawAxiomLibrarySchema.safeParse(parsed)
     if (!result.success) {
       log.warn('Axiom library schema validation failed', {
-        errors: result.error.issues.slice(0, 5).map(i => `${i.path.join('.')}: ${i.message}`),
+        errors: result.error.issues.slice(0, 5).map((i) => `${i.path.join('.')}: ${i.message}`),
       })
       return
     }
@@ -364,17 +371,15 @@ export function getRecipesByPhase(phase: string): LoadedRecipe[] {
  * - gate_evaluator → "Gate Evaluator"
  * - consistency_checker → "Consistency Checker"
  */
-export function getRecipesForAgent(
-  agentRole: string,
-  phase?: string
-): LoadedRecipe[] {
+export function getRecipesForAgent(agentRole: string, phase?: string): LoadedRecipe[] {
   ensureLoaded()
 
   const agentName = ROLE_TO_COOKBOOK_NAME[agentRole]
   if (!agentName) return []
 
-  const agentRecipes = (recipesByAgent.get(agentName) ?? [])
-    .sort((a, b) => a.id.localeCompare(b.id))
+  const agentRecipes = (recipesByAgent.get(agentName) ?? []).sort((a, b) =>
+    a.id.localeCompare(b.id)
+  )
 
   if (!phase) return agentRecipes
 
@@ -421,9 +426,7 @@ export function getAxiomById(id: string): LoadedAxiom | undefined {
 /** Get multiple axioms by their IDs */
 export function getAxiomsByIds(ids: string[]): LoadedAxiom[] {
   ensureLoaded()
-  return ids
-    .map((id) => axiomById.get(id))
-    .filter((a): a is LoadedAxiom => a !== undefined)
+  return ids.map((id) => axiomById.get(id)).filter((a): a is LoadedAxiom => a !== undefined)
 }
 
 /** Get all axioms with system elevations */

@@ -25,7 +25,7 @@ export function createKGTools(kg: KnowledgeHypergraph): ToolDefinition[] {
           .sort(
             (a, b) =>
               ((b.data as { confidence?: number }).confidence ?? 0) -
-              ((a.data as { confidence?: number }).confidence ?? 0),
+              ((a.data as { confidence?: number }).confidence ?? 0)
           )
           .slice(0, 10)
         const contradictions = kg.getActiveContradictions()
@@ -73,7 +73,7 @@ export function createKGTools(kg: KnowledgeHypergraph): ToolDefinition[] {
 
         if (minConfidence !== undefined) {
           claims = claims.filter(
-            (n) => ((n.data as { confidence?: number }).confidence ?? 0) >= minConfidence,
+            (n) => ((n.data as { confidence?: number }).confidence ?? 0) >= minConfidence
           )
         }
 
@@ -85,7 +85,7 @@ export function createKGTools(kg: KnowledgeHypergraph): ToolDefinition[] {
         claims.sort(
           (a, b) =>
             ((b.data as { confidence?: number }).confidence ?? 0) -
-            ((a.data as { confidence?: number }).confidence ?? 0),
+            ((a.data as { confidence?: number }).confidence ?? 0)
         )
 
         return claims.slice(0, limit).map((n) => ({
@@ -192,7 +192,9 @@ export function createKGTools(kg: KnowledgeHypergraph): ToolDefinition[] {
         if (!path) return { path: null, message: 'No path found' }
         const resolvedNodes = path.map((id) => {
           const node = kg.getNode(id)
-          return node ? { id: node.id, label: node.label, type: node.type } : { id, label: '?', type: '?' }
+          return node
+            ? { id: node.id, label: node.label, type: node.type }
+            : { id, label: '?', type: '?' }
         })
         return { path: resolvedNodes }
       },

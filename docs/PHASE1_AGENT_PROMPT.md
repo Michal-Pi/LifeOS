@@ -19,11 +19,14 @@ You are implementing Phase 1 of the Dialectical Workflow Improvement Plan. Read 
 Find the contradiction density calculation. It currently divides by agent count (number of thesis agents). This is wrong — it should divide by actual claim count from thesis graphs.
 
 Replace the denominator with:
+
 ```ts
-const totalClaims = theses.reduce((sum, t) => {
-  if (t.graph) return sum + t.graph.nodes.filter(n => n.type === 'claim').length
-  return sum + t.falsificationCriteria.length + t.decisionImplications.length
-}, 0) + negations.reduce((sum, n) => sum + n.internalTensions.length + n.categoryAttacks.length, 0)
+const totalClaims =
+  theses.reduce((sum, t) => {
+    if (t.graph) return sum + t.graph.nodes.filter((n) => n.type === 'claim').length
+    return sum + t.falsificationCriteria.length + t.decisionImplications.length
+  }, 0) +
+  negations.reduce((sum, n) => sum + n.internalTensions.length + n.categoryAttacks.length, 0)
 ```
 
 Use `Math.max(totalClaims, 1)` as denominator to avoid division by zero.
@@ -68,6 +71,7 @@ Then update two files to use it:
 **File:** `functions/src/agents/knowledgeHypergraph.ts`
 
 1. Add a new method to the `KnowledgeHypergraph` class:
+
 ```ts
 findClaimByNormalizedText(text: string): Claim | null {
   const normalized = text.toLowerCase().trim().replace(/\s+/g, ' ')
@@ -111,6 +115,7 @@ Note: Check what method exists on KnowledgeHypergraph to get edges between two n
 **File:** `functions/src/agents/langgraph/deepResearchGraph.ts`
 
 1. Find `createSearchAndIngestNode` function definition. Its current signature is approximately:
+
 ```ts
 function createSearchAndIngestNode(
   extractionAgent: AgentConfig,

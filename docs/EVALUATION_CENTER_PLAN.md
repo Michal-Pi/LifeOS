@@ -17,12 +17,14 @@ The system already has a rich evaluation domain model (`evaluation.ts`, 1380 lin
 ## 2. Scope
 
 ### In Scope
+
 - New "Evals" tab with 5 sub-views (Dashboard, Process Monitor, Trace Inspector, Eval Suites, Benchmarks)
 - 23 new files (components, hooks, CSS)
 - 2 modified files (AgenticWorkflowsPage.tsx, packages/agents/src/index.ts)
 - Frontend only (React components + Firestore hooks) — no new backend Cloud Functions in this plan
 
 ### Out of Scope (deferred)
+
 - Backend eval runner Cloud Function (`evalRunner.ts`)
 - A/B experiment management UI (ExperimentViewer.tsx)
 - Human labeling queue UI
@@ -49,17 +51,17 @@ AgenticWorkflowsPage (existing, 5 tabs → 6 tabs)
 
 ### Key Existing Files to Reuse
 
-| File | Reuse |
-|---|---|
-| `packages/agents/src/domain/evaluation.ts` | All domain types: EvalRubric, EvalResult, DriftAlert, DerivedTestCase, TrajectoryEval, ConsistencyResult, Experiment, etc. |
-| `packages/agents/src/domain/models.ts` | Run, WorkflowState, evaluationScores, RunStatus, AgentExecutionStep |
-| `apps/web-vite/src/hooks/useRunEvents.ts` | Pattern: real-time Firestore event subscription via `onSnapshot()` |
-| `apps/web-vite/src/hooks/runEventUtils.ts` | `extractLiveCosts()`, `mapStatus()` — reuse directly |
-| `apps/web-vite/src/hooks/useDialecticalState.ts` | Pattern: reconstructing workflow-specific state from event stream |
-| `apps/web-vite/src/hooks/useDeepResearchKGState.ts` | Pattern: reconstructing KG state from events |
-| `apps/web-vite/src/components/agents/KGGraphCanvas.tsx` | Cytoscape.js wrapper — reuse for workflow process graph |
-| `apps/web-vite/src/styles/common.css` | CSS classes: `.badge`, `.card`, `.modal-*`, `.filters`, `.empty-state`, `.section-tabs` |
-| `apps/web-vite/src/styles/components/KnowledgeGraphVisualization.css` | Metric card styling pattern (`.kg-stats-bar`) |
+| File                                                                  | Reuse                                                                                                                      |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `packages/agents/src/domain/evaluation.ts`                            | All domain types: EvalRubric, EvalResult, DriftAlert, DerivedTestCase, TrajectoryEval, ConsistencyResult, Experiment, etc. |
+| `packages/agents/src/domain/models.ts`                                | Run, WorkflowState, evaluationScores, RunStatus, AgentExecutionStep                                                        |
+| `apps/web-vite/src/hooks/useRunEvents.ts`                             | Pattern: real-time Firestore event subscription via `onSnapshot()`                                                         |
+| `apps/web-vite/src/hooks/runEventUtils.ts`                            | `extractLiveCosts()`, `mapStatus()` — reuse directly                                                                       |
+| `apps/web-vite/src/hooks/useDialecticalState.ts`                      | Pattern: reconstructing workflow-specific state from event stream                                                          |
+| `apps/web-vite/src/hooks/useDeepResearchKGState.ts`                   | Pattern: reconstructing KG state from events                                                                               |
+| `apps/web-vite/src/components/agents/KGGraphCanvas.tsx`               | Cytoscape.js wrapper — reuse for workflow process graph                                                                    |
+| `apps/web-vite/src/styles/common.css`                                 | CSS classes: `.badge`, `.card`, `.modal-*`, `.filters`, `.empty-state`, `.section-tabs`                                    |
+| `apps/web-vite/src/styles/components/KnowledgeGraphVisualization.css` | Metric card styling pattern (`.kg-stats-bar`)                                                                              |
 
 ---
 
@@ -74,12 +76,14 @@ AgenticWorkflowsPage (existing, 5 tabs → 6 tabs)
 #### Step 1.1: Wire EvalsTab into AgenticWorkflowsPage
 
 **Modify:** `apps/web-vite/src/pages/AgenticWorkflowsPage.tsx`
+
 - Extend `AgenticTab` union: `'workflows' | 'templates' | 'agents' | 'tools' | 'evals'`
 - Import `EvalsTab` from `@/components/agentic/EvalsTab`
 - Add tab button with label "Evals" in the tab bar (after "Tools")
 - Add conditional render block: `{activeTab === 'evals' && <EvalsTab ... />}`
 
 **Create:** `apps/web-vite/src/components/agentic/EvalsTab.tsx`
+
 - Internal sub-navigation: `type EvalSubView = 'dashboard' | 'process' | 'trace' | 'suites' | 'benchmarks'`
 - Pill-style buttons using existing `.section-tabs` / `.section-tab` CSS classes
 - Each sub-view rendered conditionally (same pattern as existing tabs)
@@ -88,6 +92,7 @@ AgenticWorkflowsPage (existing, 5 tabs → 6 tabs)
 #### Step 1.2: Eval Data Hooks
 
 **Create:** `apps/web-vite/src/hooks/useEvalDashboard.ts`
+
 - Subscribes to `users/{uid}/evalResults` (ordered by `createdAtMs desc`, limit 100)
 - Subscribes to `users/{uid}/driftAlerts` (where `status == 'active'`)
 - Subscribes to `users/{uid}/experiments` (where `status == 'running'`)
@@ -95,11 +100,13 @@ AgenticWorkflowsPage (existing, 5 tabs → 6 tabs)
 - Returns: `{ evalResults, driftAlerts, activeExperiments, aggregateMetrics, isLoading }`
 
 **Create:** `apps/web-vite/src/hooks/useEvalRubrics.ts`
+
 - CRUD operations for `users/{uid}/evalRubrics` collection
 - Uses Firestore `addDoc`, `updateDoc`, `deleteDoc` pattern
 - Returns: `{ rubrics, createRubric, updateRubric, deleteRubric, isLoading }`
 
 **Create:** `apps/web-vite/src/hooks/useEvalTestCases.ts`
+
 - CRUD for `users/{uid}/evalTestCases` collection (maps to `DerivedTestCase` domain type)
 - Filter by workflowType, isGolden, isActive
 - `deriveFromRun(runId)` — fetches run data and pre-populates a test case
@@ -110,6 +117,7 @@ AgenticWorkflowsPage (existing, 5 tabs → 6 tabs)
 **Create:** `apps/web-vite/src/components/evals/EvalDashboard.tsx`
 
 Layout (top to bottom):
+
 1. **Health Overview** — 4 metric cards in a row: Avg Score, Success Rate, Avg Cost, Active Alerts
 2. **Workflow Health Grid** — One card per workflow type showing score + trend + run count + success rate + avg cost
 3. **Drift Alerts** — List of active drift alerts with severity badge + acknowledge/resolve actions
@@ -117,15 +125,18 @@ Layout (top to bottom):
 5. **Recent Eval Results** — Sortable table: Run goal | Workflow type | Score | Pass/Fail | Cost | Date
 
 **Create:** `apps/web-vite/src/components/evals/EvalMetricCard.tsx`
+
 - Reusable stat card: value, label, trend arrow (up/down/flat), optional delta, optional severity color
 - CSS class: `.eval-metric-card`
 
 **Create:** `apps/web-vite/src/components/evals/WorkflowHealthGrid.tsx`
+
 - Grid of per-workflow-type cards
 - Each card: workflow type name + badge, avg score with trend, run count, success rate %, avg cost
 - CSS grid: responsive 3 cols -> 2 -> 1
 
 **Create:** `apps/web-vite/src/components/evals/DriftAlertList.tsx`
+
 - Renders list of `DriftAlert` objects from `useEvalDashboard`
 - Each alert: severity badge (info/warning/critical), metric name, baseline -> current values, age
 - Actions: Acknowledge, Resolve (with optional resolution note), Ignore
@@ -133,6 +144,7 @@ Layout (top to bottom):
 #### Step 1.4: Dashboard CSS
 
 **Create:** `apps/web-vite/src/styles/components/EvalCenter.css`
+
 - Import in EvalsTab.tsx
 - Sections: metric card grid, workflow health grid, drift alert cards, eval results table, sub-nav pills
 - Uses existing CSS custom properties (`--accent`, `--success`, `--warning`, `--destructive`, etc.)
@@ -170,6 +182,7 @@ Layout (top to bottom):
 #### Step 2.1: Process Monitor Hook
 
 **Create:** `apps/web-vite/src/hooks/useProcessMonitor.ts`
+
 - Subscribes to active runs: `users/{uid}/runs` where `status in ['running', 'waiting_for_input', 'paused']`
 - For each active run, subscribes to its event stream (reuse `useRunEvents` pattern)
 - Reconstructs live `ProcessRunState` per workflow type:
@@ -182,25 +195,26 @@ Layout (top to bottom):
 - Returns: `{ activeRuns: ProcessRunState[], completedRuns: Run[], isLoading }`
 
 Key interfaces:
+
 ```typescript
 interface ProcessRunState {
   run: Run
   workflowName: string
   workflowType: string
-  currentPhase: string           // Human-readable label
-  phaseProgress: number          // 0-1
-  overallProgress: number        // 0-1
+  currentPhase: string // Human-readable label
+  phaseProgress: number // 0-1
+  overallProgress: number // 0-1
   currentAgent: string
-  currentAction: string          // "thinking", "tool call: web_search", etc.
+  currentAction: string // "thinking", "tool call: web_search", etc.
   phaseOutputs: PhaseOutput[]
   gateResults: GateEvaluation[]
   elapsedMs: number
   tokensUsed: number
   estimatedCost: number
   // Workflow-specific extensions
-  dialectical?: { cycleNumber, phase, theses, velocity, density }
-  deepResearch?: { budget, sourceCount, claimCount, coverage }
-  oracle?: { phase, gatesPassed, councilRecords, scenarioCount }
+  dialectical?: { cycleNumber; phase; theses; velocity; density }
+  deepResearch?: { budget; sourceCount; claimCount; coverage }
+  oracle?: { phase; gatesPassed; councilRecords; scenarioCount }
 }
 
 interface PhaseOutput {
@@ -227,11 +241,13 @@ interface GateEvaluation {
 #### Step 2.2: Process Monitor Components
 
 **Create:** `apps/web-vite/src/components/evals/ProcessMonitor.tsx`
+
 - Main component: lists active runs as ProcessCards, shows completed runs below
 - Empty state: "No workflows currently running. Start a workflow to see live progress here."
 - Auto-refresh indicator (green dot)
 
 **Create:** `apps/web-vite/src/components/evals/ProcessCard.tsx`
+
 - Full-width card for a single running workflow
 - Sections:
   1. **Header**: workflow name, type badge, elapsed time, cost so far
@@ -242,6 +258,7 @@ interface GateEvaluation {
   6. **Live Metrics Row**: 4 metric cards (workflow-specific: cycle/velocity for dialectical, budget/coverage for DR, etc.)
 
 **Create:** `apps/web-vite/src/components/evals/WorkflowProcessGraph.tsx`
+
 - Renders the workflow's node-edge graph with live status colors
 - Uses Cytoscape.js (reuse KGGraphCanvas pattern) or React Flow (`@xyflow/react` already installed)
 - Node states: completed (green, checkmark), running (blue, pulse animation), pending (gray), failed (red)
@@ -249,6 +266,7 @@ interface GateEvaluation {
 - Compact layout (not full-screen)
 
 **Create:** `apps/web-vite/src/components/evals/PhaseProgressBar.tsx`
+
 - Horizontal segmented progress bar
 - Each segment = one phase with icon above and status below
 - Segment states: completed (filled green), running (filled blue, animated), pending (empty gray)
@@ -258,6 +276,7 @@ interface GateEvaluation {
   - Oracle: Frame, Investigate, Synthesize, Validate
 
 **Create:** `apps/web-vite/src/components/evals/GateEvalPanel.tsx`
+
 - Renders list of `GateEvaluation` objects
 - Each gate: name, type badge, pass/fail icon, score (if available), reason (expandable)
 - Empty state: "No gates evaluated yet"
@@ -265,6 +284,7 @@ interface GateEvaluation {
 #### Step 2.3: Process Monitor CSS
 
 Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
+
 - `.process-card` — full-width stacked card with sections
 - `.process-graph` — compact graph container with node status colors
 - `.phase-progress-bar` — horizontal segmented bar with icons
@@ -313,6 +333,7 @@ Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
 #### Step 3.1: Trace Data Hook
 
 **Create:** `apps/web-vite/src/hooks/useRunTrace.ts`
+
 - Takes `runId: string` parameter
 - Subscribes to `users/{uid}/runs/{runId}/events` (ordered by `timestampMs asc`)
 - Fetches the `Run` document for `workflowState`
@@ -333,7 +354,7 @@ Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
     outputSnapshot?: string
     events: RunEvent[]
     status: 'completed' | 'failed' | 'running' | 'skipped'
-    children?: TraceNode[]        // Nested tool calls within agent nodes
+    children?: TraceNode[] // Nested tool calls within agent nodes
     // Workflow-specific annotations
     phaseIcon?: string
     gateResult?: { passed: boolean; score?: number }
@@ -349,6 +370,7 @@ Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
 #### Step 3.2: Trace Inspector Components
 
 **Create:** `apps/web-vite/src/components/evals/RunTraceInspector.tsx`
+
 - Main component with 3 sections:
   1. **Run Selector** (top): Filterable list of runs (workflow type filter, status filter, goal search)
   2. **Trace Header** (below selector): Selected run's goal, type, status, duration, tokens, cost, eval score
@@ -357,6 +379,7 @@ Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
      - Right (60%): NodeDetailPanel
 
 **Create:** `apps/web-vite/src/components/evals/TraceTimeline.tsx`
+
 - Vertical timeline of `TraceNode` objects
 - Each node rendered as: circle -> name -> duration + tokens -> connecting line to next
 - Duration bars proportional to each node's time relative to total
@@ -372,6 +395,7 @@ Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
   - **Generic**: Agent routing decisions, parallel branch splits, supervisor delegation labels
 
 **Create:** `apps/web-vite/src/components/evals/NodeDetailPanel.tsx`
+
 - Right panel showing selected `TraceNode` details:
   1. **Header**: Node name, type badge, agent/tool name
   2. **Metrics row**: Duration, tokens, cost, model/provider
@@ -383,6 +407,7 @@ Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
   8. **Council Details** (if council node): Per-expert responses, consensus metrics
 
 **Create:** `apps/web-vite/src/components/evals/StateViewer.tsx`
+
 - Collapsible JSON viewer for state objects
 - Monospace font, indented, syntax-highlighted (keys in one color, values in another)
 - Truncates very long strings with expand button
@@ -392,6 +417,7 @@ Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
 #### Step 3.3: Trace Inspector CSS
 
 Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
+
 - `.trace-inspector` — two-panel layout (40/60 split)
 - `.trace-timeline` — vertical timeline with connecting lines
 - `.trace-node` — node circle + label + metrics
@@ -442,12 +468,14 @@ Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
 #### Step 4.1: Rubric Management
 
 **Create:** `apps/web-vite/src/components/evals/EvalSuiteManager.tsx`
+
 - Two tabbed sections: "Rubrics" and "Test Cases"
 - Rubrics section: grid of rubric cards, each showing name, workflow type, criteria summary, judge model, default badge
 - Actions per rubric: Edit, Duplicate, Archive
 - "+ New Rubric" button opens RubricEditorModal
 
 **Create:** `apps/web-vite/src/components/evals/RubricEditorModal.tsx`
+
 - Modal form to create/edit an `EvalRubric` (from `evaluation.ts`)
 - Fields:
   - Name (text input)
@@ -471,6 +499,7 @@ Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
 - Actions: Run, Edit, View History, Derive from Run
 
 **Create:** `apps/web-vite/src/components/evals/TestCaseEditorModal.tsx`
+
 - Modal form to create/edit a `DerivedTestCase` (from `evaluation.ts`)
 - Two modes:
   1. **Create from scratch**: input (goal text), context (JSON), workflowType, expectedOutput, minQualityScore, maxSteps, maxCost, tags, isGolden
@@ -522,6 +551,7 @@ Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
 #### Step 5.1: Run Comparison
 
 **Create:** `apps/web-vite/src/components/evals/BenchmarkComparison.tsx`
+
 - Two modes: "Compare Runs" and "Cross-Workflow Benchmarks" (tab toggle)
 - **Compare Runs mode**:
   1. Two run selectors (dropdowns with search)
@@ -572,39 +602,39 @@ Add to `apps/web-vite/src/styles/components/EvalCenter.css`:
 
 ### New Files (24)
 
-| # | File | Phase | Purpose |
-|---|---|---|---|
-| 1 | `apps/web-vite/src/components/agentic/EvalsTab.tsx` | 1 | Main eval center tab with 5 sub-view pill navigation |
-| 2 | `apps/web-vite/src/components/evals/EvalDashboard.tsx` | 1 | Dashboard overview |
-| 3 | `apps/web-vite/src/components/evals/EvalMetricCard.tsx` | 1 | Reusable stat card |
-| 4 | `apps/web-vite/src/components/evals/WorkflowHealthGrid.tsx` | 1 | Per-workflow health cards |
-| 5 | `apps/web-vite/src/components/evals/DriftAlertList.tsx` | 1 | Drift alerts list |
-| 6 | `apps/web-vite/src/components/evals/ProcessMonitor.tsx` | 2 | Live workflow progress dashboard |
-| 7 | `apps/web-vite/src/components/evals/ProcessCard.tsx` | 2 | Single running workflow card |
-| 8 | `apps/web-vite/src/components/evals/WorkflowProcessGraph.tsx` | 2 | Visual graph with live node status |
-| 9 | `apps/web-vite/src/components/evals/PhaseProgressBar.tsx` | 2 | Horizontal phase progress |
-| 10 | `apps/web-vite/src/components/evals/GateEvalPanel.tsx` | 2 | Gate evaluation results display |
-| 11 | `apps/web-vite/src/components/evals/RunTraceInspector.tsx` | 3 | Deep post-run trace viewer |
-| 12 | `apps/web-vite/src/components/evals/TraceTimeline.tsx` | 3 | Vertical timeline of trace nodes |
-| 13 | `apps/web-vite/src/components/evals/NodeDetailPanel.tsx` | 3 | Node detail: state, events, metrics |
-| 14 | `apps/web-vite/src/components/evals/StateViewer.tsx` | 3 | Collapsible JSON state viewer |
-| 15 | `apps/web-vite/src/components/evals/EvalSuiteManager.tsx` | 4 | Rubric + test case management |
-| 16 | `apps/web-vite/src/components/evals/RubricEditorModal.tsx` | 4 | Create/edit eval rubric |
-| 17 | `apps/web-vite/src/components/evals/TestCaseEditorModal.tsx` | 4 | Create/edit golden test case |
-| 18 | `apps/web-vite/src/components/evals/BenchmarkComparison.tsx` | 5 | Run comparison + cross-workflow benchmarks |
-| 19 | `apps/web-vite/src/hooks/useEvalDashboard.ts` | 1 | Dashboard data hook |
-| 20 | `apps/web-vite/src/hooks/useEvalRubrics.ts` | 1 | Rubric CRUD hook |
-| 21 | `apps/web-vite/src/hooks/useEvalTestCases.ts` | 1 | Test case CRUD hook |
-| 22 | `apps/web-vite/src/hooks/useProcessMonitor.ts` | 2 | Live process state hook |
-| 23 | `apps/web-vite/src/hooks/useRunTrace.ts` | 3 | Trace data processing hook |
-| 24 | `apps/web-vite/src/styles/components/EvalCenter.css` | 1-5 | All eval center styling |
+| #   | File                                                          | Phase | Purpose                                              |
+| --- | ------------------------------------------------------------- | ----- | ---------------------------------------------------- |
+| 1   | `apps/web-vite/src/components/agentic/EvalsTab.tsx`           | 1     | Main eval center tab with 5 sub-view pill navigation |
+| 2   | `apps/web-vite/src/components/evals/EvalDashboard.tsx`        | 1     | Dashboard overview                                   |
+| 3   | `apps/web-vite/src/components/evals/EvalMetricCard.tsx`       | 1     | Reusable stat card                                   |
+| 4   | `apps/web-vite/src/components/evals/WorkflowHealthGrid.tsx`   | 1     | Per-workflow health cards                            |
+| 5   | `apps/web-vite/src/components/evals/DriftAlertList.tsx`       | 1     | Drift alerts list                                    |
+| 6   | `apps/web-vite/src/components/evals/ProcessMonitor.tsx`       | 2     | Live workflow progress dashboard                     |
+| 7   | `apps/web-vite/src/components/evals/ProcessCard.tsx`          | 2     | Single running workflow card                         |
+| 8   | `apps/web-vite/src/components/evals/WorkflowProcessGraph.tsx` | 2     | Visual graph with live node status                   |
+| 9   | `apps/web-vite/src/components/evals/PhaseProgressBar.tsx`     | 2     | Horizontal phase progress                            |
+| 10  | `apps/web-vite/src/components/evals/GateEvalPanel.tsx`        | 2     | Gate evaluation results display                      |
+| 11  | `apps/web-vite/src/components/evals/RunTraceInspector.tsx`    | 3     | Deep post-run trace viewer                           |
+| 12  | `apps/web-vite/src/components/evals/TraceTimeline.tsx`        | 3     | Vertical timeline of trace nodes                     |
+| 13  | `apps/web-vite/src/components/evals/NodeDetailPanel.tsx`      | 3     | Node detail: state, events, metrics                  |
+| 14  | `apps/web-vite/src/components/evals/StateViewer.tsx`          | 3     | Collapsible JSON state viewer                        |
+| 15  | `apps/web-vite/src/components/evals/EvalSuiteManager.tsx`     | 4     | Rubric + test case management                        |
+| 16  | `apps/web-vite/src/components/evals/RubricEditorModal.tsx`    | 4     | Create/edit eval rubric                              |
+| 17  | `apps/web-vite/src/components/evals/TestCaseEditorModal.tsx`  | 4     | Create/edit golden test case                         |
+| 18  | `apps/web-vite/src/components/evals/BenchmarkComparison.tsx`  | 5     | Run comparison + cross-workflow benchmarks           |
+| 19  | `apps/web-vite/src/hooks/useEvalDashboard.ts`                 | 1     | Dashboard data hook                                  |
+| 20  | `apps/web-vite/src/hooks/useEvalRubrics.ts`                   | 1     | Rubric CRUD hook                                     |
+| 21  | `apps/web-vite/src/hooks/useEvalTestCases.ts`                 | 1     | Test case CRUD hook                                  |
+| 22  | `apps/web-vite/src/hooks/useProcessMonitor.ts`                | 2     | Live process state hook                              |
+| 23  | `apps/web-vite/src/hooks/useRunTrace.ts`                      | 3     | Trace data processing hook                           |
+| 24  | `apps/web-vite/src/styles/components/EvalCenter.css`          | 1-5   | All eval center styling                              |
 
 ### Modified Files (2)
 
-| File | Change |
-|---|---|
+| File                                               | Change                                                                      |
+| -------------------------------------------------- | --------------------------------------------------------------------------- |
 | `apps/web-vite/src/pages/AgenticWorkflowsPage.tsx` | Add `'evals'` to `AgenticTab` union, import+render EvalsTab, add tab button |
-| `packages/agents/src/index.ts` | Verify evaluation.ts types are exported (add export if missing) |
+| `packages/agents/src/index.ts`                     | Verify evaluation.ts types are exported (add export if missing)             |
 
 ---
 

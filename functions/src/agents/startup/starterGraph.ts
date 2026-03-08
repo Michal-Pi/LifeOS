@@ -40,8 +40,10 @@ function overlapScore(left: string, right: string): number {
 function hasOpposingTerms(left: string, right: string): boolean {
   const leftText = left.toLowerCase()
   const rightText = right.toLowerCase()
-  return OPPOSING_TERM_PAIRS.some(([a, b]) =>
-    (leftText.includes(a) && rightText.includes(b)) || (leftText.includes(b) && rightText.includes(a))
+  return OPPOSING_TERM_PAIRS.some(
+    ([a, b]) =>
+      (leftText.includes(a) && rightText.includes(b)) ||
+      (leftText.includes(b) && rightText.includes(a))
   )
 }
 
@@ -79,7 +81,7 @@ function inferOracleNodeType(text: string): OracleKnowledgeGraph['nodes'][number
 
 export function buildStarterCompactGraphFromClaims(
   claims: ExtractedClaim[],
-  maxNodes = 10,
+  maxNodes = 10
 ): CompactGraph {
   const selectedClaims = [...claims]
     .sort((left, right) => right.confidence - left.confidence)
@@ -127,7 +129,8 @@ export function buildStarterCompactGraphFromClaims(
 
   const averageConfidence =
     selectedClaims.length > 0
-      ? selectedClaims.reduce((sum, claim) => sum + clamp(claim.confidence), 0) / selectedClaims.length
+      ? selectedClaims.reduce((sum, claim) => sum + clamp(claim.confidence), 0) /
+        selectedClaims.length
       : 0
 
   const sourceCount = new Set(selectedClaims.map((claim) => claim.sourceId)).size
@@ -152,13 +155,13 @@ export function buildStarterCompactGraphFromClaims(
 export function linkEvidenceIdsForClaim(
   claimText: string,
   evidence: OracleEvidence[],
-  maxIds = 3,
+  maxIds = 3
 ): string[] {
   return [...evidence]
     .map((item) => {
       const score = overlapScore(
         claimText,
-        [item.source, item.excerpt, item.query ?? ''].filter(Boolean).join(' '),
+        [item.source, item.excerpt, item.query ?? ''].filter(Boolean).join(' ')
       )
       return { id: item.id, score }
     })
@@ -168,9 +171,7 @@ export function linkEvidenceIdsForClaim(
     .map((entry) => entry.id)
 }
 
-export function buildStarterOracleGraphFromClaims(
-  claims: OracleClaim[],
-): OracleKnowledgeGraph {
+export function buildStarterOracleGraphFromClaims(claims: OracleClaim[]): OracleKnowledgeGraph {
   const selectedClaims = [...claims].slice(0, 10)
   const nodes: OracleKnowledgeGraph['nodes'] = selectedClaims.map((claim, index) => ({
     id: `seed-oracle-node-${String(index + 1).padStart(2, '0')}`,
@@ -229,7 +230,10 @@ export function buildStarterOracleGraphFromClaims(
           source: leftNode.id,
           target: rightNode.id,
           type: 'supports',
-          strength: clamp(score + (leftClaim.evidenceIds.some((id) => rightClaim.evidenceIds.includes(id)) ? 0.2 : 0)),
+          strength: clamp(
+            score +
+              (leftClaim.evidenceIds.some((id) => rightClaim.evidenceIds.includes(id)) ? 0.2 : 0)
+          ),
         })
       }
     }
@@ -247,7 +251,7 @@ export function buildStartupSeedSummary(
   claimCount: number,
   graphNodeCount: number,
   graphEdgeCount: number,
-  evidenceLinkedCount: number,
+  evidenceLinkedCount: number
 ): StartupSeedSummary {
   return {
     sourceCount,

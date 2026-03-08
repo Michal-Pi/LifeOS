@@ -16,11 +16,7 @@
  * - Below thresholds → REFINE (return feedback for re-run)
  */
 
-import type {
-  OracleGateType,
-  OracleRubricScores,
-  OracleGateResult,
-} from '@lifeos/agents'
+import type { OracleGateType, OracleRubricScores, OracleGateResult } from '@lifeos/agents'
 import { createLogger } from '../../lib/logger.js'
 
 const log = createLogger('OracleGateEvaluator')
@@ -50,19 +46,24 @@ export interface ParsedRubricResult {
  */
 export function parseRubricScores(evaluationJson: string): ParsedRubricResult | null {
   try {
-    // Try to extract JSON from the text
-    const jsonMatch = evaluationJson.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) return null
-
-    const parsed = JSON.parse(jsonMatch[0])
+    const parsed = extractRubricCandidate(evaluationJson)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
 
     const scores: OracleRubricScores = {
-      mechanisticClarity: clampScore(parsed.mechanisticClarity ?? parsed.mechanistic_clarity ?? 0),
-      completeness: clampScore(parsed.completeness ?? 0),
-      causalDiscipline: clampScore(parsed.causalDiscipline ?? parsed.causal_discipline ?? 0),
-      decisionUsefulness: clampScore(parsed.decisionUsefulness ?? parsed.decision_usefulness ?? 0),
-      uncertaintyHygiene: clampScore(parsed.uncertaintyHygiene ?? parsed.uncertainty_hygiene ?? 0),
-      evidenceQuality: clampScore(parsed.evidenceQuality ?? parsed.evidence_quality ?? 0),
+      mechanisticClarity: clampScore(
+        Number(parsed.mechanisticClarity ?? parsed.mechanistic_clarity ?? 0)
+      ),
+      completeness: clampScore(Number(parsed.completeness ?? 0)),
+      causalDiscipline: clampScore(
+        Number(parsed.causalDiscipline ?? parsed.causal_discipline ?? 0)
+      ),
+      decisionUsefulness: clampScore(
+        Number(parsed.decisionUsefulness ?? parsed.decision_usefulness ?? 0)
+      ),
+      uncertaintyHygiene: clampScore(
+        Number(parsed.uncertaintyHygiene ?? parsed.uncertainty_hygiene ?? 0)
+      ),
+      evidenceQuality: clampScore(Number(parsed.evidenceQuality ?? parsed.evidence_quality ?? 0)),
     }
 
     const llmFeedback = typeof parsed.feedback === 'string' ? parsed.feedback : undefined
@@ -74,6 +75,48 @@ export function parseRubricScores(evaluationJson: string): ParsedRubricResult | 
     })
     return null
   }
+}
+
+function extractRubricCandidate(text: string): Record<string, unknown> | null {
+  const cleaned = text.replace(/```(?:json)?\s*([\s\S]*?)```/g, '$1')
+  const candidates: Record<string, unknown>[] = []
+
+  for (let start = cleaned.indexOf('{'); start >= 0; start = cleaned.indexOf('{', start + 1)) {
+    let depth = 0
+    for (let i = start; i < cleaned.length; i++) {
+      if (cleaned[i] === '{') depth++
+      else if (cleaned[i] === '}') depth--
+      if (depth !== 0) continue
+
+      try {
+        const parsed = JSON.parse(cleaned.slice(start, i + 1)) as unknown
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          candidates.push(parsed as Record<string, unknown>)
+        }
+      } catch {
+        // Ignore non-JSON spans and keep scanning.
+      }
+      break
+    }
+  }
+
+  return (
+    candidates.find((candidate) =>
+      [
+        'mechanisticClarity',
+        'mechanistic_clarity',
+        'completeness',
+        'causalDiscipline',
+        'causal_discipline',
+        'decisionUsefulness',
+        'decision_usefulness',
+        'uncertaintyHygiene',
+        'uncertainty_hygiene',
+        'evidenceQuality',
+        'evidence_quality',
+      ].some((key) => key in candidate)
+    ) ?? null
+  )
 }
 
 function clampScore(value: number): number {
@@ -127,7 +170,7 @@ function allAboveMinimum(scores: OracleRubricScores, minimum: number): boolean {
 export function evaluateGate(
   input: GateEvaluationInput,
   scores: OracleRubricScores,
-  llmFeedback?: string,
+  llmFeedback?: string
 ): GateEvaluationResult {
   const avg = averageScore(scores)
   const qualityBreakdown = computeQualityBreakdown(scores)
@@ -142,7 +185,7 @@ export function evaluateGate(
       passed = false
       feedbackParts.push(
         `Axiom grounding is ${(input.axiomGroundingPercent * 100).toFixed(0)}% — requires >= 80%. ` +
-        'Ensure more claims reference specific axioms from the library.'
+          'Ensure more claims reference specific axioms from the library.'
       )
     }
   }
@@ -151,7 +194,7 @@ export function evaluateGate(
     passed = false
     feedbackParts.push(
       `Decision usefulness is ${scores.decisionUsefulness} — Gate C requires >= 4. ` +
-      'Scenarios must include actionable signposts and strategic moves.'
+        'Scenarios must include actionable signposts and strategic moves.'
     )
   }
 
@@ -217,11 +260,30 @@ export function evaluateGate(
  * Build the system prompt for the gate evaluator LLM call.
  */
 export function buildGateEvaluatorPrompt(gateType: OracleGateType): string {
-  const gateSpecific = gateType === 'gate_a'
-    ? '\n\nGATE A NOTE: Axiom grounding (% of claims referencing axioms) is computed separately. Focus your evaluation on the 6 rubric dimensions above.'
-    : gateType === 'gate_c'
-    ? '\n\nGATE C ADDITIONAL REQUIREMENT: Decision usefulness must be >= 4 for this gate to pass. Scenarios must include actionable signposts, strategic moves, and clear timing.'
-    : ''
+  const gateSpecific =
+    gateType === 'gate_a'
+      ? '\n\nGATE A NOTE: Axiom grounding (% of claims referencing axioms) is computed separately. Focus your evaluation on the 6 rubric dimensions above.'
+      : gateType === 'gate_c'
+        ? '\n\nGATE C ADDITIONAL REQUIREMENT: Decision usefulness must be >= 4 for this gate to pass. Scenarios must include actionable signposts, strategic moves, and clear timing.'
+        : ''
+  const example = `{
+  "mechanisticClarity": 3,
+  "completeness": 3,
+  "causalDiscipline": 3,
+  "decisionUsefulness": 4,
+  "uncertaintyHygiene": 4,
+  "evidenceQuality": 4,
+  "feedback": "Counts are clear but substantive claims and assumptions are missing."
+}`
+  const emptyFallback = `{
+  "mechanisticClarity": 1,
+  "completeness": 1,
+  "causalDiscipline": 1,
+  "decisionUsefulness": 1,
+  "uncertaintyHygiene": 1,
+  "evidenceQuality": 1,
+  "feedback": "The phase output was too sparse or malformed to evaluate confidently."
+}`
 
   return `You are an Oracle Gate Evaluator. Score the following phase output on 6 dimensions (1-5 each):
 
@@ -243,5 +305,18 @@ Respond with JSON ONLY:
   "uncertaintyHygiene": <number>,
   "evidenceQuality": <number>,
   "feedback": "<specific feedback on what to improve if any dimension is weak>"
-}`
+}
+
+Example output:
+${example}
+
+Empty-but-valid fallback:
+${emptyFallback}
+
+Rules:
+1. Output exactly one JSON object.
+2. Do not include markdown fences, preamble text, or any explanation outside JSON.
+3. Include all 7 keys every time.
+4. Use numeric scores only, not strings.
+5. If the phase output is sparse or weak, lower the scores and explain why in "feedback" instead of outputting prose outside JSON.`
 }

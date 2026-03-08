@@ -105,10 +105,10 @@ describe('advancedTools', () => {
         }),
       })
 
-      const result = await serpSearchTool.execute(
-        { query: 'test' },
-        { userId: 'u1', searchToolKeys: { serper: 'fake-key' } } as any
-      )
+      const result = await serpSearchTool.execute({ query: 'test' }, {
+        userId: 'u1',
+        searchToolKeys: { serper: 'fake-key' },
+      } as any)
 
       expect(result).toHaveProperty('results')
       expect((result as { results: unknown[] }).results).toHaveLength(1)
@@ -122,10 +122,10 @@ describe('advancedTools', () => {
         json: async () => ({ organic: [] }),
       })
 
-      await serpSearchTool.execute(
-        { query: 'vitest testing' },
-        { userId: 'u1', searchToolKeys: { serper: 'my-serper-key' } } as any
-      )
+      await serpSearchTool.execute({ query: 'vitest testing' }, {
+        userId: 'u1',
+        searchToolKeys: { serper: 'my-serper-key' },
+      } as any)
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://google.serper.dev/search',
@@ -160,15 +160,12 @@ describe('advancedTools', () => {
         }),
       })
 
-      const result = await serpSearchTool.execute(
-        { query: 'test news', searchType: 'news' },
-        { userId: 'u1', searchToolKeys: { serper: 'fake-key' } } as any
-      )
+      const result = await serpSearchTool.execute({ query: 'test news', searchType: 'news' }, {
+        userId: 'u1',
+        searchToolKeys: { serper: 'fake-key' },
+      } as any)
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://google.serper.dev/news',
-        expect.anything()
-      )
+      expect(mockFetch).toHaveBeenCalledWith('https://google.serper.dev/news', expect.anything())
 
       const typedResult = result as { searchType: string; results: Array<{ source?: string }> }
       expect(typedResult.searchType).toBe('news')
@@ -185,10 +182,10 @@ describe('advancedTools', () => {
       })
 
       await expect(
-        serpSearchTool.execute(
-          { query: 'test' },
-          { userId: 'u1', searchToolKeys: { serper: 'fake-key' } } as any
-        )
+        serpSearchTool.execute({ query: 'test' }, {
+          userId: 'u1',
+          searchToolKeys: { serper: 'fake-key' },
+        } as any)
       ).rejects.toThrow()
     })
 
@@ -198,10 +195,10 @@ describe('advancedTools', () => {
       mockFetch.mockRejectedValueOnce(new Error('Network failure'))
 
       await expect(
-        serpSearchTool.execute(
-          { query: 'test' },
-          { userId: 'u1', searchToolKeys: { serper: 'fake-key' } } as any
-        )
+        serpSearchTool.execute({ query: 'test' }, {
+          userId: 'u1',
+          searchToolKeys: { serper: 'fake-key' },
+        } as any)
       ).rejects.toThrow()
     })
   })
@@ -217,10 +214,10 @@ describe('advancedTools', () => {
         json: async () => ({ organic: [] }),
       })
 
-      const result = await serpSearchTool.execute(
-        { query: '  padded query  ' },
-        { userId: 'u1', searchToolKeys: { serper: 'fake-key' } } as any
-      )
+      const result = await serpSearchTool.execute({ query: '  padded query  ' }, {
+        userId: 'u1',
+        searchToolKeys: { serper: 'fake-key' },
+      } as any)
 
       const callBody = JSON.parse(mockFetch.mock.calls[0][1].body as string)
       expect(callBody.q).toBe('padded query')
@@ -238,10 +235,10 @@ describe('advancedTools', () => {
         json: async () => ({ organic: [] }),
       })
 
-      const result = await serpSearchTool.execute(
-        { query: longQuery },
-        { userId: 'u1', searchToolKeys: { serper: 'fake-key' } } as any
-      )
+      const result = await serpSearchTool.execute({ query: longQuery }, {
+        userId: 'u1',
+        searchToolKeys: { serper: 'fake-key' },
+      } as any)
 
       const callBody = JSON.parse(mockFetch.mock.calls[0][1].body as string)
       expect(callBody.q.length).toBeLessThanOrEqual(500)
@@ -279,10 +276,10 @@ describe('advancedTools', () => {
         }),
       })
 
-      const result = await semanticSearchTool.execute(
-        { query: 'conceptual search' },
-        { userId: 'u1', searchToolKeys: { exa: 'fake-exa-key' } } as any
-      )
+      const result = await semanticSearchTool.execute({ query: 'conceptual search' }, {
+        userId: 'u1',
+        searchToolKeys: { exa: 'fake-exa-key' },
+      } as any)
 
       const typedResult = result as { count: number; results: unknown[]; optimizedQuery?: string }
       expect(typedResult.count).toBe(1)
@@ -300,10 +297,10 @@ describe('advancedTools', () => {
       })
 
       await expect(
-        semanticSearchTool.execute(
-          { query: 'test' },
-          { userId: 'u1', searchToolKeys: { exa: 'fake-exa-key' } } as any
-        )
+        semanticSearchTool.execute({ query: 'test' }, {
+          userId: 'u1',
+          searchToolKeys: { exa: 'fake-exa-key' },
+        } as any)
       ).rejects.toThrow()
     })
   })
@@ -337,10 +334,10 @@ describe('advancedTools', () => {
         }),
       })
 
-      const result = await scrapeUrlTool.execute(
-        { url: 'https://example.com' },
-        { userId: 'u1', searchToolKeys: { firecrawl: 'fake-fc-key' } } as any
-      )
+      const result = await scrapeUrlTool.execute({ url: 'https://example.com' }, {
+        userId: 'u1',
+        searchToolKeys: { firecrawl: 'fake-fc-key' },
+      } as any)
 
       const typedResult = result as { url: string; title: string; content: string }
       expect(typedResult.url).toBe('https://example.com')
@@ -358,10 +355,10 @@ describe('advancedTools', () => {
       })
 
       await expect(
-        scrapeUrlTool.execute(
-          { url: 'https://example.com' },
-          { userId: 'u1', searchToolKeys: { firecrawl: 'fake-fc-key' } } as any
-        )
+        scrapeUrlTool.execute({ url: 'https://example.com' }, {
+          userId: 'u1',
+          searchToolKeys: { firecrawl: 'fake-fc-key' },
+        } as any)
       ).rejects.toThrow()
     })
 
@@ -377,10 +374,10 @@ describe('advancedTools', () => {
       })
 
       await expect(
-        scrapeUrlTool.execute(
-          { url: 'https://example.com' },
-          { userId: 'u1', searchToolKeys: { firecrawl: 'fake-fc-key' } } as any
-        )
+        scrapeUrlTool.execute({ url: 'https://example.com' }, {
+          userId: 'u1',
+          searchToolKeys: { firecrawl: 'fake-fc-key' },
+        } as any)
       ).rejects.toThrow('Firecrawl scraping failed')
     })
   })
@@ -396,10 +393,10 @@ describe('advancedTools', () => {
       mockFetch.mockRejectedValueOnce(networkError)
 
       try {
-        await serpSearchTool.execute(
-          { query: 'test' },
-          { userId: 'u1', searchToolKeys: { serper: 'fake-key' } } as any
-        )
+        await serpSearchTool.execute({ query: 'test' }, {
+          userId: 'u1',
+          searchToolKeys: { serper: 'fake-key' },
+        } as any)
         expect.fail('Expected error to be thrown')
       } catch (error: any) {
         expect(error.name).toBe('AgentError')
@@ -416,10 +413,10 @@ describe('advancedTools', () => {
       mockFetch.mockRejectedValueOnce(networkError)
 
       try {
-        await semanticSearchTool.execute(
-          { query: 'test' },
-          { userId: 'u1', searchToolKeys: { exa: 'fake-exa-key' } } as any
-        )
+        await semanticSearchTool.execute({ query: 'test' }, {
+          userId: 'u1',
+          searchToolKeys: { exa: 'fake-exa-key' },
+        } as any)
         expect.fail('Expected error to be thrown')
       } catch (error: any) {
         expect(error.name).toBe('AgentError')
@@ -436,10 +433,10 @@ describe('advancedTools', () => {
       mockFetch.mockRejectedValueOnce(networkError)
 
       try {
-        await scrapeUrlTool.execute(
-          { url: 'https://example.com' },
-          { userId: 'u1', searchToolKeys: { firecrawl: 'fake-fc-key' } } as any
-        )
+        await scrapeUrlTool.execute({ url: 'https://example.com' }, {
+          userId: 'u1',
+          searchToolKeys: { firecrawl: 'fake-fc-key' },
+        } as any)
         expect.fail('Expected error to be thrown')
       } catch (error: any) {
         expect(error.name).toBe('AgentError')
@@ -459,10 +456,10 @@ describe('advancedTools', () => {
       })
 
       try {
-        await serpSearchTool.execute(
-          { query: 'test' },
-          { userId: 'u1', searchToolKeys: { serper: 'fake-key' } } as any
-        )
+        await serpSearchTool.execute({ query: 'test' }, {
+          userId: 'u1',
+          searchToolKeys: { serper: 'fake-key' },
+        } as any)
         expect.fail('Expected error to be thrown')
       } catch (error: any) {
         // throwApiError creates an AgentError; wrapError passes it through unchanged

@@ -32,9 +32,7 @@ export function sanitizeForFirestore(obj: unknown, depth = 0): unknown {
   if (obj === null || obj === undefined) return null
   if (typeof obj === 'boolean') return obj
   if (typeof obj === 'string') {
-    return obj.length > MAX_STRING_LENGTH
-      ? obj.slice(0, MAX_STRING_LENGTH) + '...[truncated]'
-      : obj
+    return obj.length > MAX_STRING_LENGTH ? obj.slice(0, MAX_STRING_LENGTH) + '...[truncated]' : obj
   }
   if (typeof obj === 'number') {
     return Number.isFinite(obj) ? obj : null

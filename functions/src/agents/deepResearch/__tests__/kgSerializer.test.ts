@@ -84,7 +84,7 @@ describe('capGraphForPrompt', () => {
     // The lowest-weight non-contradicts edge (weight=0.3, rel=causes) should be pruned first
     expect(parsed.edges.length).toBeLessThan(3)
     // The contradicts edge should still be present
-    expect(parsed.edges.some(e => e.rel === 'contradicts')).toBe(true)
+    expect(parsed.edges.some((e) => e.rel === 'contradicts')).toBe(true)
   })
 
   it('never prunes contradicts edges', () => {
@@ -114,7 +114,7 @@ describe('capGraphForPrompt', () => {
     })
     const result = capGraphForPrompt(graph, 150)
     const parsed = JSON.parse(result) as CompactGraph
-    expect(parsed.nodes.some(n => n.type === 'prediction')).toBe(true)
+    expect(parsed.nodes.some((n) => n.type === 'prediction')).toBe(true)
   })
 
   it('prunes lowest-confidence nodes after edges exhausted', () => {
@@ -131,7 +131,7 @@ describe('capGraphForPrompt', () => {
     const parsed = JSON.parse(result) as CompactGraph
     // Prediction nodes are preserved. If any claim survives orphan cleanup, it should be the high-confidence one.
     if (parsed.nodes.length < 3) {
-      expect(parsed.nodes.some(n => n.id === 'n3')).toBe(true)
+      expect(parsed.nodes.some((n) => n.id === 'n3')).toBe(true)
       const remainingClaims = parsed.nodes.filter((n) => n.type === 'claim')
       if (remainingClaims.length > 0) {
         expect(remainingClaims.some((n) => n.id === 'n2')).toBe(true)
@@ -163,11 +163,7 @@ describe('serializeKGToCompactGraph', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    kg = new KnowledgeHypergraph(
-      'session-1' as DialecticalSessionId,
-      'user-1',
-      mockDb as never,
-    )
+    kg = new KnowledgeHypergraph('session-1' as DialecticalSessionId, 'user-1', mockDb as never)
   })
 
   it('selects top-N nodes by score (edgeCount * 0.4 + confidence * 0.6)', () => {
@@ -229,7 +225,7 @@ describe('serializeKGToCompactGraph', () => {
   it('defaults maxNodes to 50', () => {
     // Add 55 claim nodes
     for (let i = 0; i < 55; i++) {
-      kg.addNode(makeClaimNode(`c${i}`, `Claim ${i}`, 0.5 + (i / 200)))
+      kg.addNode(makeClaimNode(`c${i}`, `Claim ${i}`, 0.5 + i / 200))
     }
 
     const result = serializeKGToCompactGraph(kg)
@@ -242,7 +238,7 @@ describe('serializeKGToCompactGraph', () => {
     kg.addEdge('c1', 'k1', makeEdge('supports'))
 
     const result = serializeKGToCompactGraph(kg)
-    expect(result.nodes.some(n => n.type === 'concept')).toBe(true)
+    expect(result.nodes.some((n) => n.type === 'concept')).toBe(true)
   })
 
   it('computes average confidence from claim nodes', () => {

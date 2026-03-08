@@ -261,9 +261,7 @@ export function DailyView({
   // Scroll to show 2 hours before current time (or start of day for non-today dates)
   useEffect(() => {
     if (!timelineRef.current) return
-    const targetHour = isSameDay(date, now)
-      ? Math.max(0, now.getHours() - 2)
-      : Math.max(0, 8 - 2) // Default to 6 AM for non-today dates
+    const targetHour = isSameDay(date, now) ? Math.max(0, now.getHours() - 2) : Math.max(0, 8 - 2) // Default to 6 AM for non-today dates
     const scrollPosition = (targetHour / 24) * timelineRef.current.scrollHeight
     timelineRef.current.scrollTo({
       top: scrollPosition,

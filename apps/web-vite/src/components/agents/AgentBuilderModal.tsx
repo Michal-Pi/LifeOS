@@ -129,10 +129,22 @@ export function AgentBuilderModal({
       temperature,
       modelTier: 'balanced',
     })
-    return existingAgents.find(
-      (existing) => !existing.archived && existing.configHash === currentHash
-    ) ?? null
-  }, [agent, step, systemPrompt, role, selectedToolIds, modelProvider, modelName, temperature, existingAgents])
+    return (
+      existingAgents.find(
+        (existing) => !existing.archived && existing.configHash === currentHash
+      ) ?? null
+    )
+  }, [
+    agent,
+    step,
+    systemPrompt,
+    role,
+    selectedToolIds,
+    modelProvider,
+    modelName,
+    temperature,
+    existingAgents,
+  ])
 
   // Clean up any orphaned Radix portal elements on unmount
   useEffect(() => {
@@ -447,8 +459,8 @@ export function AgentBuilderModal({
               {duplicateAgent && (
                 <div className="wizard-review__duplicate-warning">
                   <strong>Duplicate detected:</strong> An agent with an identical configuration
-                  already exists: &ldquo;{duplicateAgent.name}&rdquo;. Consider reusing the
-                  existing agent instead of creating a duplicate.
+                  already exists: &ldquo;{duplicateAgent.name}&rdquo;. Consider reusing the existing
+                  agent instead of creating a duplicate.
                 </div>
               )}
               <div className="wizard-review__section">

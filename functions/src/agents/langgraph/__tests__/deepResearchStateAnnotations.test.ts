@@ -12,7 +12,7 @@ import { cappedReducer } from '../../shared/reducerUtils.js'
 describe('DeepResearchStateAnnotation reducer semantics', () => {
   describe('REPLACE semantics for dialectical outputs', () => {
     // These reducers match what's used in stateAnnotations.ts
-    const replaceReducer = <T>(cur: T[], upd: T[]) => upd.length > 0 ? upd : cur
+    const replaceReducer = <T>(cur: T[], upd: T[]) => (upd.length > 0 ? upd : cur)
 
     it('replaces theses when update is non-empty', () => {
       const current = [{ agentId: 'old', lens: 'economic' }]
@@ -59,7 +59,7 @@ describe('DeepResearchStateAnnotation reducer semantics', () => {
       // Cycle 2 update
       state = replaceReducer(state, [{ id: 'cycle2a' }, { id: 'cycle2b' }])
       expect(state).toHaveLength(2)
-      expect(state.map(s => s.id)).toEqual(['cycle2a', 'cycle2b'])
+      expect(state.map((s) => s.id)).toEqual(['cycle2a', 'cycle2b'])
 
       // Cycle 3 update
       state = replaceReducer(state, [{ id: 'cycle3' }])
@@ -107,10 +107,7 @@ describe('DeepResearchStateAnnotation reducer semantics', () => {
     const graphHistoryReducer = (cur: unknown[], upd: unknown[]) => [...cur, ...upd].slice(-20)
 
     it('accumulates entries', () => {
-      const result = graphHistoryReducer(
-        [{ cycle: 0, diff: {} }],
-        [{ cycle: 1, diff: {} }]
-      )
+      const result = graphHistoryReducer([{ cycle: 0, diff: {} }], [{ cycle: 1, diff: {} }])
       expect(result).toHaveLength(2)
     })
 

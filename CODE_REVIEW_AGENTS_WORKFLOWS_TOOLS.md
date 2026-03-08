@@ -23,7 +23,7 @@ This document summarizes potential bugs, code smells, and improvement opportunit
 **Issue:** Inside the retry callback, `toolCallDocRef.update({ retryAttempt: attempt })` is not awaited. Retry attempt counts may not be persisted before the next attempt or before the final status update.
 
 ```typescript
-(attempt, error, delayMs) => {
+;(attempt, error, delayMs) => {
   retryAttempt = attempt
   // ...
   toolCallDocRef.update({
@@ -48,8 +48,9 @@ This document summarizes potential bugs, code smells, and improvement opportunit
 
 ### 2.1 Workflow graph: startNodeId not validated against nodes
 
-**Locations:**  
-- `packages/agents/src/domain/validation.ts` – `WorkflowSchema` has `workflowGraph` with `startNodeId` and `nodes` but no refinement that `startNodeId` is in `nodes`.  
+**Locations:**
+
+- `packages/agents/src/domain/validation.ts` – `WorkflowSchema` has `workflowGraph` with `startNodeId` and `nodes` but no refinement that `startNodeId` is in `nodes`.
 - Runtime: `functions/src/agents/workflowExecutor.ts` and `functions/src/agents/langgraph/genericGraph.ts` use `graphDef.startNodeId` as the initial node; if it’s missing from the graph, execution fails with “Workflow node X not found”.
 
 **Recommendation:** Add a Zod `.refine()` (or equivalent) so that when `workflowGraph` is present, `graphDef.nodes.some(n => n.id === graphDef.startNodeId)`. Optionally validate that every edge `from`/`to` references a node id.
@@ -65,6 +66,7 @@ This document summarizes potential bugs, code smells, and improvement opportunit
 **Issue:** User-defined JavaScript is run with `vm.runInNewContext()`. The sandbox exposes `fetch`, `console`, `Date`, `Math`, and a limited `context`. Node’s `vm` is not a full security boundary; escape or misuse could still risk the process (e.g. prototype tricks, async timing). No explicit timeout or CPU limit is shown for the tool execution.
 
 **Recommendations:**
+
 - Document that custom tools are “trusted but limited” and not a full multi-tenant sandbox.
 - Consider a timeout (and if possible resource limits) around the tool execution.
 - Consider restricting or auditing which globals are exposed.
@@ -105,9 +107,10 @@ This document summarizes potential bugs, code smells, and improvement opportunit
 
 ### 4.3 Large monolithic files
 
-**Locations:**  
-- `functions/src/agents/workflowExecutor.ts` (~1,040 lines)  
-- `functions/src/agents/toolExecutor.ts` (~550 lines)  
+**Locations:**
+
+- `functions/src/agents/workflowExecutor.ts` (~1,040 lines)
+- `functions/src/agents/toolExecutor.ts` (~550 lines)
 - `functions/src/agents/langgraph/genericGraph.ts` (large)
 
 **Recommendation:** Split by responsibility (e.g. sequential/parallel/supervisor/graph executors, tool registration vs execution, graph build vs run). Improves readability and testing.
@@ -148,16 +151,16 @@ This document summarizes potential bugs, code smells, and improvement opportunit
 
 ## 6. Summary table
 
-| Category   | Severity   | Item                                              | Location (primary)                    |
-|-----------|------------|----------------------------------------------------|---------------------------------------|
-| Bug       | Medium     | defaultAgentId not validated when agentIds omitted | workflowUsecases.ts                   |
-| Bug       | Medium     | Retry attempt update not awaited                   | toolExecutor.ts                        |
-| Validation| Medium     | workflowGraph startNodeId not in nodes             | validation.ts / workflowExecutor      |
-| Security  | Medium     | Custom tool vm sandbox / code_interpreter          | customTools.ts, toolExecutor.ts       |
-| Smell     | Low        | Duplicate LangGraph vs legacy paths                | workflowExecutor.ts                    |
-| Smell     | Low        | ToolRepository update userId contract              | toolRepository port + adapter        |
-| Smell     | Low        | Large monolithic executor files                    | workflowExecutor, toolExecutor, genericGraph |
-| Smell     | Low        | Magic strings for research tool IDs               | workflowExecutor.ts                   |
+| Category   | Severity | Item                                               | Location (primary)                           |
+| ---------- | -------- | -------------------------------------------------- | -------------------------------------------- |
+| Bug        | Medium   | defaultAgentId not validated when agentIds omitted | workflowUsecases.ts                          |
+| Bug        | Medium   | Retry attempt update not awaited                   | toolExecutor.ts                              |
+| Validation | Medium   | workflowGraph startNodeId not in nodes             | validation.ts / workflowExecutor             |
+| Security   | Medium   | Custom tool vm sandbox / code_interpreter          | customTools.ts, toolExecutor.ts              |
+| Smell      | Low      | Duplicate LangGraph vs legacy paths                | workflowExecutor.ts                          |
+| Smell      | Low      | ToolRepository update userId contract              | toolRepository port + adapter                |
+| Smell      | Low      | Large monolithic executor files                    | workflowExecutor, toolExecutor, genericGraph |
+| Smell      | Low      | Magic strings for research tool IDs                | workflowExecutor.ts                          |
 
 ---
 

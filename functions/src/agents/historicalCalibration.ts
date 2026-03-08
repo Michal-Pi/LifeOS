@@ -52,11 +52,10 @@ export async function getHistoricalCalibration(
     }
   }
 
-  const averageHoursPerTask = measurableCount > 0 ? Math.round((totalHours / measurableCount) * 10) / 10 : 0
+  const averageHoursPerTask =
+    measurableCount > 0 ? Math.round((totalHours / measurableCount) * 10) / 10 : 0
   const completionRatePercent =
-    totalSnap.docs.length > 0
-      ? Math.round((completedDocs.length / totalSnap.docs.length) * 100)
-      : 0
+    totalSnap.docs.length > 0 ? Math.round((completedDocs.length / totalSnap.docs.length) * 100) : 0
 
   // Derive common delay reasons from overdue tasks (estimated vs actual)
   const delayReasons: Record<string, number> = {}

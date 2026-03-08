@@ -11,14 +11,14 @@
  */
 
 import { createLogger } from '../../lib/logger.js'
-import type { AgentConfig } from '@lifeos/agents'
-import type { DialecticalWorkflowConfig } from '@lifeos/agents'
+import type { AgentConfig, DialecticalWorkflowConfig, ThesisLens } from '@lifeos/agents'
 import type { HistoricalIterationData } from './iterationHistory.js'
 
 const log = createLogger('IterationBudget')
 
 export interface IterationBudget {
   perThesisAgent: number
+  perThesisAgentByLens: Partial<Record<ThesisLens, number>>
   perNegationAgent: number
   perSynthesisAgent: number
   perMetaAgent: number
@@ -79,12 +79,25 @@ export function calculateIterationBudget(input: BudgetInput): IterationBudget {
   } = input
 
   const thesisAgentCount = thesisAgents.length
+  const thesisBudgetsByLens: Partial<Record<ThesisLens, number>> = {}
+  const thesisHeuristics = thesisAgents.map((agent, index) => {
+    const lens = dialecticalConfig.thesisAgents[index]?.lens ?? 'custom'
+    const toolCount = agent.toolIds?.length ?? 0
+    const hasReadUrl = agent.toolIds?.includes('tool:read_url' as never) ?? false
+    let heuristic = Math.max(5, Math.ceil(toolCount) + 3)
+    if (lens === 'economic' && hasReadUrl) heuristic += 1
+    thesisBudgetsByLens[lens] = heuristic
+    return heuristic
+  })
   const avgToolCount =
     thesisAgents.reduce((sum, a) => sum + (a.toolIds?.length ?? 0), 0) /
     Math.max(1, thesisAgentCount)
 
   // Per-agent iteration limits based on tool count (heuristic)
-  let perThesisAgent = Math.max(5, Math.ceil(avgToolCount) + 3)
+  let perThesisAgent =
+    thesisHeuristics.length > 0
+      ? Math.max(...thesisHeuristics)
+      : Math.max(5, Math.ceil(avgToolCount) + 3)
   let perNegationAgent = dialecticalConfig.enableCrossNegation
     ? Math.max(3, Math.ceil(avgToolCount) + 2)
     : 3
@@ -97,6 +110,12 @@ export function calculateIterationBudget(input: BudgetInput): IterationBudget {
 
     if (aggregated.thesis.p75 > 0) {
       perThesisAgent = blendWithHistory(perThesisAgent, aggregated.thesis.p75, sampleCount, 3)
+      for (const lens of Object.keys(thesisBudgetsByLens) as ThesisLens[]) {
+        const current = thesisBudgetsByLens[lens]
+        if (current) {
+          thesisBudgetsByLens[lens] = blendWithHistory(current, aggregated.thesis.p75, sampleCount, 3)
+        }
+      }
     }
     if (aggregated.negation.p75 > 0) {
       perNegationAgent = blendWithHistory(perNegationAgent, aggregated.negation.p75, sampleCount, 2)
@@ -138,6 +157,12 @@ export function calculateIterationBudget(input: BudgetInput): IterationBudget {
     const scale = workflowMaxIterations / suggestedTotal
     return {
       perThesisAgent: Math.max(3, Math.round(perThesisAgent * scale)),
+      perThesisAgentByLens: Object.fromEntries(
+        Object.entries(thesisBudgetsByLens).map(([lens, budget]) => [
+          lens,
+          Math.max(3, Math.round((budget ?? perThesisAgent) * scale)),
+        ])
+      ) as Partial<Record<ThesisLens, number>>,
       perNegationAgent: Math.max(2, Math.round(perNegationAgent * scale)),
       perSynthesisAgent: Math.max(2, Math.round(perSynthesisAgent * scale)),
       perMetaAgent: Math.max(2, Math.round(perMetaAgent * scale)),
@@ -147,6 +172,7 @@ export function calculateIterationBudget(input: BudgetInput): IterationBudget {
 
   return {
     perThesisAgent,
+    perThesisAgentByLens: thesisBudgetsByLens,
     perNegationAgent,
     perSynthesisAgent,
     perMetaAgent,

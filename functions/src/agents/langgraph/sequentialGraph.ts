@@ -26,7 +26,11 @@ import { executeWithProvider } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
 import type { ToolRegistry } from '../toolExecutor.js'
-import { executeAgentWithEvents, handleAskUserInterrupt, type AgentExecutionContext } from './utils.js'
+import {
+  executeAgentWithEvents,
+  handleAskUserInterrupt,
+  type AgentExecutionContext,
+} from './utils.js'
 import { SequentialStateAnnotation, type SequentialState } from './stateAnnotations.js'
 import { estimateTokenCount } from '../anthropicService.js'
 
@@ -217,6 +221,7 @@ export function createSequentialGraph(config: SequentialGraphConfig) {
       if (interrupt) {
         return {
           currentAgentIndex: i,
+          resumeNodeHint: `agent_${i}`,
           steps: [step],
           totalTokensUsed: step.tokensUsed,
           totalEstimatedCost: step.estimatedCost,
@@ -227,6 +232,16 @@ export function createSequentialGraph(config: SequentialGraphConfig) {
       // Track extra tokens/cost from quality gate retry
       let extraTokens = 0
       let extraCost = 0
+
+      // Warn if agent returned empty output
+      if (!step.output || step.output.trim() === '') {
+        log.warn('Sequential agent returned empty output', {
+          agentName: agent.name,
+          step: i + 1,
+          totalSteps: agents.length,
+          iterationsUsed: step.iterationsUsed,
+        })
+      }
 
       // Compress output before passing to next agent (skip for last agent)
       let outputForNext = step.output
@@ -334,7 +349,14 @@ export function createSequentialGraph(config: SequentialGraphConfig) {
 
   // Add edges: START -> agent_0 -> (conditional) -> agent_1 -> ... -> agent_n -> END
   // Note: Type assertions needed because LangGraph's strict typing requires compile-time node names
-  graph.addEdge(START, 'agent_0' as typeof START)
+  // On resume after pause, skip to the paused agent via resumeNodeHint
+  graph.addConditionalEdges(START, (state: SequentialState) => {
+    const hint = state.resumeNodeHint
+    if (hint && agents.some((_, idx) => `agent_${idx}` === hint)) {
+      return hint
+    }
+    return 'agent_0'
+  })
 
   // Use conditional edges for non-last agents to support early exit
   for (let i = 0; i < agents.length - 1; i++) {
@@ -376,7 +398,8 @@ export function createSequentialGraph(config: SequentialGraphConfig) {
 export async function executeSequentialWorkflowLangGraph(
   config: SequentialGraphConfig,
   goal: string,
-  context?: Record<string, unknown>
+  context?: Record<string, unknown>,
+  resumeState?: Partial<SequentialState>
 ): Promise<{
   output: string
   steps: AgentExecutionStep[]
@@ -385,13 +408,13 @@ export async function executeSequentialWorkflowLangGraph(
   totalSteps: number
   status: UnifiedWorkflowState['status']
   pendingInput?: { prompt: string; nodeId: string }
+  sequentialResumeState?: Partial<SequentialState>
 }> {
   const { workflow, userId, runId } = config
 
   const compiledGraph = createSequentialGraph(config)
 
-  // Initial state
-  const initialState: Partial<SequentialState> = {
+  const freshState: Partial<SequentialState> = {
     workflowId: workflow.workflowId,
     runId,
     userId,
@@ -406,7 +429,14 @@ export async function executeSequentialWorkflowLangGraph(
     finalOutput: null,
     status: 'running',
     error: null,
+    pendingInput: null,
+    resumeNodeHint: null,
   }
+
+  // If resuming, merge previous state
+  const initialState: Partial<SequentialState> = resumeState
+    ? { ...freshState, ...resumeState, status: 'running', pendingInput: null }
+    : freshState
 
   // Execute the graph
   const finalState = await compiledGraph.invoke(initialState)
@@ -419,5 +449,18 @@ export async function executeSequentialWorkflowLangGraph(
     totalSteps: finalState.steps?.length ?? 0,
     status: finalState.status ?? 'completed',
     pendingInput: finalState.pendingInput ?? undefined,
+    sequentialResumeState: {
+      currentAgentIndex: finalState.currentAgentIndex,
+      currentGoal: finalState.currentGoal,
+      lastOutput: finalState.lastOutput,
+      steps: finalState.steps,
+      totalTokensUsed: finalState.totalTokensUsed,
+      totalEstimatedCost: finalState.totalEstimatedCost,
+      pendingInput: finalState.pendingInput,
+      resumeNodeHint: finalState.resumeNodeHint,
+      finalOutput: finalState.finalOutput,
+      status: finalState.status,
+      error: finalState.error,
+    },
   }
 }

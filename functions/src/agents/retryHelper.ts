@@ -90,14 +90,40 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Calculate delay for retry attempt with exponential backoff
+ * Check if an error is specifically a rate-limit (429) error
+ */
+function isRateLimitError(error: unknown): boolean {
+  if (!error) return false
+  const err = error as Record<string, unknown>
+  if (err.status === 429 || err.statusCode === 429) return true
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase()
+  return message.includes('rate limit') || message.includes('too many requests')
+}
+
+/**
+ * Calculate delay for retry attempt with exponential backoff.
+ * Rate-limit errors use a longer floor delay (15s) so retries span
+ * at least one provider rate-limit window (~60s).
  *
  * @param attempt Retry attempt number (0-indexed)
  * @param config Retry configuration
+ * @param error  Optional triggering error — used to detect rate-limit 429s
  * @returns Delay in milliseconds
  */
-export function calculateBackoffDelay(attempt: number, config: RetryConfig): number {
-  const delay = config.initialDelayMs * Math.pow(config.backoffMultiplier, attempt)
+export function calculateBackoffDelay(
+  attempt: number,
+  config: RetryConfig,
+  error?: unknown
+): number {
+  const baseDelay = config.initialDelayMs * Math.pow(config.backoffMultiplier, attempt)
+
+  // For rate-limit errors, enforce a minimum 15 s delay so we don't burn
+  // retries before the provider's per-minute window resets.
+  const RATE_LIMIT_FLOOR_MS = 15_000
+  const delay = isRateLimitError(error)
+    ? Math.max(baseDelay, RATE_LIMIT_FLOOR_MS)
+    : baseDelay
+
   return Math.min(delay, config.maxDelayMs)
 }
 
@@ -134,8 +160,8 @@ export async function executeWithRetry<T>(
         throw error
       }
 
-      // Calculate backoff delay
-      const delayMs = calculateBackoffDelay(attempt, config)
+      // Calculate backoff delay (rate-limit errors get a longer floor)
+      const delayMs = calculateBackoffDelay(attempt, config, error)
 
       // Notify caller about retry (await so async callbacks complete before next attempt)
       if (onRetry) {
@@ -162,11 +188,13 @@ export const TOOL_RETRY_CONFIG: RetryConfig = {
 }
 
 /**
- * Retry configuration for provider API calls
+ * Retry configuration for provider API calls.
+ * Rate-limit (429) errors get a 15 s floor per attempt (see calculateBackoffDelay),
+ * so 4 retries × 15 s ≈ 60 s — enough to span one provider rate-limit window.
  */
 export const PROVIDER_RETRY_CONFIG: RetryConfig = {
-  maxRetries: 2, // Fewer retries for provider calls (they're more expensive)
-  initialDelayMs: 2000, // Longer initial delay
-  maxDelayMs: 10000,
+  maxRetries: 4,
+  initialDelayMs: 2000,
+  maxDelayMs: 30000, // cap at 30 s per attempt
   backoffMultiplier: 2,
 }

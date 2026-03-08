@@ -281,7 +281,11 @@ export async function executeWithGoogle(
         }))
 
         let responseText = ''
-        try { responseText = response.text() } catch { /* tool-only response */ }
+        try {
+          responseText = response.text()
+        } catch {
+          /* tool-only response */
+        }
 
         await recordMessage({
           userId: toolContext.userId,
@@ -349,7 +353,11 @@ export async function executeWithGoogle(
         // Next iteration sends function response parts so the model sees all tool results
       } else {
         // No tool calls, agent provided final output
-        try { finalOutput = response.text() } catch { finalOutput = '' }
+        try {
+          finalOutput = response.text()
+        } catch {
+          finalOutput = ''
+        }
         if (toolContext) {
           await recordMessage({
             userId: toolContext.userId,
@@ -364,24 +372,37 @@ export async function executeWithGoogle(
       }
     }
 
-    if (iteration >= MAX_ITERATIONS && !finalOutput) {
-      log.warn('Agent reached max iterations with tool calls, attempting final synthesis', {
-        maxIterations: MAX_ITERATIONS,
-      })
+    // Detect empty output: either budget exhausted or agent returned empty within budget
+    const hadToolCalls = iteration > 1
+    if (!finalOutput && hadToolCalls) {
+      if (iteration >= MAX_ITERATIONS) {
+        log.warn('Agent reached max iterations with tool calls, attempting final synthesis', {
+          maxIterations: MAX_ITERATIONS,
+        })
+      } else {
+        log.warn('Agent returned empty output after tool calls within budget, attempting synthesis', {
+          iteration,
+          maxIterations: MAX_ITERATIONS,
+        })
+      }
 
       // One final attempt: ask the model to synthesize with an explicit JSON requirement
       try {
         const synthResult = await executeWithTimeout(
           chat.sendMessage(
             'You have exhausted your tool-calling budget. ' +
-            'Synthesize ALL findings from your research into a final response NOW. ' +
-            'Output ONLY a valid JSON object matching the schema from the original prompt. ' +
-            'No markdown fences, no explanation — just the JSON object.'
+              'Synthesize ALL findings from your research into a final response NOW. ' +
+              'Output ONLY a valid JSON object matching the schema from the original prompt. ' +
+              'No markdown fences, no explanation — just the JSON object.'
           ),
           TIMEOUTS.PROVIDER,
           'google.chat.sendMessage.synthesis'
         )
-        try { finalOutput = synthResult.response.text() } catch { /* empty */ }
+        try {
+          finalOutput = synthResult.response.text()
+        } catch {
+          /* empty */
+        }
         if (finalOutput) {
           totalOutputChars += finalOutput.length
           log.info('Post-loop synthesis succeeded', { outputLength: finalOutput.length })

@@ -98,7 +98,10 @@ export function DialecticalGraphPanel({
   const handleExportJSON = useCallback(() => {
     if (!activeGraph) return
     exportAsJSON(activeGraph, undefined, {
-      source: source.type === 'merged' ? 'dialectical-merged' : `thesis-${source.type === 'thesis' ? source.thesis.lens : ''}`,
+      source:
+        source.type === 'merged'
+          ? 'dialectical-merged'
+          : `thesis-${source.type === 'thesis' ? source.thesis.lens : ''}`,
     })
   }, [activeGraph, source])
 
@@ -128,10 +131,7 @@ export function DialecticalGraphPanel({
         <div className="dgp-empty">
           <p>No graph data available for this view.</p>
           {source.type === 'thesis' && (
-            <button
-              className="ghost-button"
-              onClick={() => handleSwitchSource({ type: 'merged' })}
-            >
+            <button className="ghost-button" onClick={() => handleSwitchSource({ type: 'merged' })}>
               View merged graph instead
             </button>
           )}
@@ -161,9 +161,7 @@ export function DialecticalGraphPanel({
               onClick={() => handleSwitchSource({ type: 'thesis', index, thesis })}
             >
               {thesis.lens}
-              <span className="dgp-tab-count">
-                {thesis.graph!.nodes.length}n
-              </span>
+              <span className="dgp-tab-count">{thesis.graph!.nodes.length}n</span>
             </button>
           ))}
         </div>

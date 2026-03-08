@@ -15,11 +15,13 @@ You are implementing Phase 5 of the Dialectical Workflow Improvement Plan. Read 
 Phases 1–4 are all completed. Key items from prior phases:
 
 ### Phase 1 (Bug Fixes)
+
 - `functions/src/agents/langgraph/dialecticalPrompts.ts` — `resolveThesisLens()` deterministic lens resolution
 - `functions/src/agents/knowledgeHypergraph.ts` — `findClaimByNormalizedText()`, dedup guard in `addClaim()`
 - `functions/src/agents/deepResearch/claimExtraction.ts` — Duplicate causal edge guard
 
 ### Phase 2 (Shared Infrastructure)
+
 - `functions/src/agents/deepResearch/kgSerializer.ts` — `serializeKGToCompactGraph()`, `capGraphForPrompt()`
 - `functions/src/agents/kgTools.ts` — 6 semantic KG tools wrapping KnowledgeHypergraph
 - `functions/src/agents/langgraph/dialecticalPrompts.ts` — `buildThesisPrompt`, `buildNegationPrompt`, `buildSublationPrompt`, `repairJsonOutput`, `ResearchEvidence`
@@ -28,15 +30,18 @@ Phases 1–4 are all completed. Key items from prior phases:
 - `packages/agents/src/domain/workflowState.ts` — `KGCompactSnapshot` type
 
 ### Phase 3 (Deep Research WF2 — Research-First)
+
 - `functions/src/agents/langgraph/stateAnnotations.ts` — `DeepResearchStateAnnotation` has REPLACE reducers for theses/negations/contradictions, plus `kgSnapshot`, `mergedGraph`, `graphHistory`, `processedSourceUrls` fields
 - `functions/src/agents/langgraph/deepResearchGraph.ts` — Research-first topology with `kg_snapshot` node, tool-based thesis/negation, source dedup, parse policy, budget tracking
 
 ### Phase 4 (Dialectical WF1 — Reactive Research)
+
 - `functions/src/agents/deepResearch/graphGapAnalysis.ts` — `evaluateResearchNeed(graph, goal, directives, phase)` with phase-aware triggers
 - `functions/src/agents/langgraph/stateAnnotations.ts` — `researchDecision` field on `DialecticalStateAnnotation`
 - `functions/src/agents/langgraph/dialecticalGraph.ts` — `createDecideResearchNode`, `createExecuteResearchNode`, simplified `createRetrieveContextNode` (skips Phase B when reactive enabled), conditional graph topology based on `enableReactiveResearch`
 
 ### Current Test Baseline (pre-existing failures — NOT from Phases 1–4)
+
 - `functions/src/agents/__tests__/graphGuardrails.test.ts` — Fails with firebase mock issue (`firestore.settings is not a function`)
 - `functions/src/agents/__tests__/humanApproval.test.ts` — Same firebase mock issue
 - `packages/agents/src/usecases/__tests__/agentUsecases.test.ts` — Fails with `configHash` mismatch
@@ -44,6 +49,7 @@ Phases 1–4 are all completed. Key items from prior phases:
 These 3 failures are NOT from your changes. Do not attempt to fix them.
 
 ### Current Lint Baseline
+
 - `functions`: 0 errors, 78 warnings (all `@typescript-eslint/no-explicit-any`)
 - `packages/agents`: 0 errors, 52 warnings
 
@@ -162,7 +168,10 @@ For the integration tests, you need to mock at the **service boundary**, not at 
 vi.mock('../../providerService.js', () => ({ executeWithProvider: vi.fn() }))
 vi.mock('../utils.js', () => ({ executeAgentWithEvents: vi.fn(), handleAskUserInterrupt: vi.fn() }))
 vi.mock('../../messageStore.js', () => ({ recordMessage: vi.fn() }))
-vi.mock('../../deepResearch/sourceIngestion.js', () => ({ executeSearchPlan: vi.fn(), ingestSources: vi.fn() }))
+vi.mock('../../deepResearch/sourceIngestion.js', () => ({
+  executeSearchPlan: vi.fn(),
+  ingestSources: vi.fn(),
+}))
 vi.mock('../../deepResearch/claimExtraction.js', () => ({ extractClaimsFromSourceBatch: vi.fn() }))
 
 // Modules to let run (they contain the logic under test):
@@ -204,6 +213,7 @@ Add a checklist comment block at the top of the integration test file:
 ### 5C-2: Verify no unused imports in changed files
 
 Run `pnpm lint` and verify 0 errors. The files changed in Phases 1–4 are:
+
 - `functions/src/agents/deepResearch/graphGapAnalysis.ts`
 - `functions/src/agents/langgraph/stateAnnotations.ts`
 - `functions/src/agents/langgraph/dialecticalGraph.ts`
@@ -227,6 +237,7 @@ cd ../packages/agents && pnpm lint && pnpm typecheck && pnpm test -- --run
 ```
 
 ### Expected results:
+
 - **Lint:** 0 errors in both packages (warnings are acceptable)
 - **Typecheck:** Clean in both packages
 - **Tests (functions):** 2 pre-existing suite failures (`graphGuardrails.test.ts`, `humanApproval.test.ts` — firebase mock), all other tests pass including your new integration tests
@@ -238,10 +249,10 @@ Fix any NEW lint errors, type errors, or test failures before committing. Do not
 
 ## Files Summary
 
-| File | Action | What |
-|---|---|---|
-| `functions/src/agents/langgraph/__tests__/dialecticalIntegration.test.ts` | **CREATE** | Cross-workflow integration tests for WF1 reactive research, WF2 research-first, legacy backward compatibility |
-| Various Phase 1–4 files | **MODIFY** (if needed) | Remove unused imports, fix stale comments |
+| File                                                                      | Action                 | What                                                                                                          |
+| ------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `functions/src/agents/langgraph/__tests__/dialecticalIntegration.test.ts` | **CREATE**             | Cross-workflow integration tests for WF1 reactive research, WF2 research-first, legacy backward compatibility |
+| Various Phase 1–4 files                                                   | **MODIFY** (if needed) | Remove unused imports, fix stale comments                                                                     |
 
 ## Commit
 

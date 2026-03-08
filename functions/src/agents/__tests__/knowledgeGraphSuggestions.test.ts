@@ -1,16 +1,29 @@
 import { describe, it, expect } from 'vitest'
-import {
-  computeKeywordOverlap,
-  suggestNoteConnections,
-} from '../knowledgeGraphSuggestions.js'
+import { computeKeywordOverlap, suggestNoteConnections } from '../knowledgeGraphSuggestions.js'
 import { analyzeCalendarPatterns, type CalendarEvent } from '../calendarIntelligence.js'
 
 describe('Phase 47 — suggestNoteConnections', () => {
   const allNotes = [
-    { noteId: 'note-1', title: 'React Performance', contentPreview: 'React rendering optimization virtual DOM reconciliation memoization' },
-    { noteId: 'note-2', title: 'Vue Composition API', contentPreview: 'Vue composition reactive refs computed watchers' },
-    { noteId: 'note-3', title: 'React Hooks Guide', contentPreview: 'React hooks useState useEffect memoization performance rendering' },
-    { noteId: 'note-4', title: 'Cooking Recipes', contentPreview: 'pasta sauce ingredients preparation cooking time temperature' },
+    {
+      noteId: 'note-1',
+      title: 'React Performance',
+      contentPreview: 'React rendering optimization virtual DOM reconciliation memoization',
+    },
+    {
+      noteId: 'note-2',
+      title: 'Vue Composition API',
+      contentPreview: 'Vue composition reactive refs computed watchers',
+    },
+    {
+      noteId: 'note-3',
+      title: 'React Hooks Guide',
+      contentPreview: 'React hooks useState useEffect memoization performance rendering',
+    },
+    {
+      noteId: 'note-4',
+      title: 'Cooking Recipes',
+      contentPreview: 'pasta sauce ingredients preparation cooking time temperature',
+    },
   ]
 
   it('returns suggestions excluding already-connected notes', () => {
@@ -78,7 +91,12 @@ describe('Phase 47 — suggestNoteConnections', () => {
 })
 
 describe('Phase 47 — analyzeCalendarPatterns', () => {
-  const makeEvent = (title: string, startHour: number, durationHours: number, dayOffset = 0): CalendarEvent => {
+  const makeEvent = (
+    title: string,
+    startHour: number,
+    durationHours: number,
+    dayOffset = 0
+  ): CalendarEvent => {
     const base = new Date('2026-03-02T00:00:00Z')
     base.setDate(base.getDate() + dayOffset)
     base.setHours(startHour)
@@ -116,10 +134,7 @@ describe('Phase 47 — analyzeCalendarPatterns', () => {
   })
 
   it('identifies meeting-free focus blocks', () => {
-    const events = [
-      makeEvent('Morning Meeting', 9, 1, 0),
-      makeEvent('Afternoon Meeting', 14, 1, 0),
-    ]
+    const events = [makeEvent('Morning Meeting', 9, 1, 0), makeEvent('Afternoon Meeting', 14, 1, 0)]
     const analysis = analyzeCalendarPatterns(events)
     // Gap from 10:00 to 14:00 = 4 hours = 240 minutes
     expect(analysis.meetingFreeBlocks.length).toBeGreaterThanOrEqual(1)

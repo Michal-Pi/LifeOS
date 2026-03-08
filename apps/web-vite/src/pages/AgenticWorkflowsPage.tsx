@@ -231,10 +231,7 @@ export function AgenticWorkflowsPage() {
       )}
 
       {activeTab === 'templates' && (
-        <TemplatesTab
-          createWorkflow={createWorkflow}
-          loadWorkflows={loadWorkflows}
-        />
+        <TemplatesTab createWorkflow={createWorkflow} loadWorkflows={loadWorkflows} />
       )}
 
       {activeTab === 'agents' && (

@@ -80,17 +80,13 @@ describe('createKGTools', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    kg = new KnowledgeHypergraph(
-      'session-1' as DialecticalSessionId,
-      'user-1',
-      mockDb as never,
-    )
+    kg = new KnowledgeHypergraph('session-1' as DialecticalSessionId, 'user-1', mockDb as never)
   })
 
   it('returns 6 tools with correct names', () => {
     const tools = createKGTools(kg)
     expect(tools).toHaveLength(6)
-    const names = tools.map(t => t.name)
+    const names = tools.map((t) => t.name)
     expect(names).toContain('kg_summary')
     expect(names).toContain('kg_get_claims')
     expect(names).toContain('kg_get_neighborhood')
@@ -106,8 +102,8 @@ describe('createKGTools', () => {
       kg.addNode(makeContradictionNode('x1', 'Contradiction 1'))
 
       const tools = createKGTools(kg)
-      const summaryTool = tools.find(t => t.name === 'kg_summary')!
-      const result = await summaryTool.execute({}, dummyContext) as {
+      const summaryTool = tools.find((t) => t.name === 'kg_summary')!
+      const result = (await summaryTool.execute({}, dummyContext)) as {
         stats: { nodeCount: number }
         topClaims: Array<{ id: string; confidence: number }>
         activeContradictions: Array<{ id: string }>
@@ -126,8 +122,8 @@ describe('createKGTools', () => {
       kg.addNode(makeClaimNode('c2', 'Claim 2', 0.5))
 
       const tools = createKGTools(kg)
-      const tool = tools.find(t => t.name === 'kg_get_claims')!
-      const result = await tool.execute({}, dummyContext) as Array<{ id: string }>
+      const tool = tools.find((t) => t.name === 'kg_get_claims')!
+      const result = (await tool.execute({}, dummyContext)) as Array<{ id: string }>
 
       expect(result).toHaveLength(2)
     })
@@ -137,8 +133,10 @@ describe('createKGTools', () => {
       kg.addNode(makeClaimNode('c2', 'Claim 2', 0.3))
 
       const tools = createKGTools(kg)
-      const tool = tools.find(t => t.name === 'kg_get_claims')!
-      const result = await tool.execute({ minConfidence: 0.5 }, dummyContext) as Array<{ id: string }>
+      const tool = tools.find((t) => t.name === 'kg_get_claims')!
+      const result = (await tool.execute({ minConfidence: 0.5 }, dummyContext)) as Array<{
+        id: string
+      }>
 
       expect(result).toHaveLength(1)
       expect(result[0].id).toBe('c1')
@@ -152,8 +150,10 @@ describe('createKGTools', () => {
       // c2 is NOT connected to k1
 
       const tools = createKGTools(kg)
-      const tool = tools.find(t => t.name === 'kg_get_claims')!
-      const result = await tool.execute({ conceptFilter: 'k1' }, dummyContext) as Array<{ id: string }>
+      const tool = tools.find((t) => t.name === 'kg_get_claims')!
+      const result = (await tool.execute({ conceptFilter: 'k1' }, dummyContext)) as Array<{
+        id: string
+      }>
 
       expect(result).toHaveLength(1)
       expect(result[0].id).toBe('c1')
@@ -161,12 +161,12 @@ describe('createKGTools', () => {
 
     it('respects limit parameter', async () => {
       for (let i = 0; i < 10; i++) {
-        kg.addNode(makeClaimNode(`c${i}`, `Claim ${i}`, 0.5 + (i / 20)))
+        kg.addNode(makeClaimNode(`c${i}`, `Claim ${i}`, 0.5 + i / 20))
       }
 
       const tools = createKGTools(kg)
-      const tool = tools.find(t => t.name === 'kg_get_claims')!
-      const result = await tool.execute({ limit: 3 }, dummyContext) as Array<{ id: string }>
+      const tool = tools.find((t) => t.name === 'kg_get_claims')!
+      const result = (await tool.execute({ limit: 3 }, dummyContext)) as Array<{ id: string }>
 
       expect(result).toHaveLength(3)
     })
@@ -181,8 +181,8 @@ describe('createKGTools', () => {
       kg.addEdge('k1', 'c2', makeEdge('causal_link'))
 
       const tools = createKGTools(kg)
-      const tool = tools.find(t => t.name === 'kg_get_neighborhood')!
-      const result = await tool.execute({ nodeId: 'c1', maxDepth: 2 }, dummyContext) as {
+      const tool = tools.find((t) => t.name === 'kg_get_neighborhood')!
+      const result = (await tool.execute({ nodeId: 'c1', maxDepth: 2 }, dummyContext)) as {
         nodes: Array<{ id: string }>
         edges: Array<{ source: string; target: string }>
       }
@@ -199,8 +199,11 @@ describe('createKGTools', () => {
       kg.addEdge('c1', 's1', makeEdge('sourced_from'))
 
       const tools = createKGTools(kg)
-      const tool = tools.find(t => t.name === 'kg_get_sources_for_claim')!
-      const result = await tool.execute({ claimId: 'c1' }, dummyContext) as Array<{ sourceId: string; url: string }>
+      const tool = tools.find((t) => t.name === 'kg_get_sources_for_claim')!
+      const result = (await tool.execute({ claimId: 'c1' }, dummyContext)) as Array<{
+        sourceId: string
+        url: string
+      }>
 
       expect(result).toHaveLength(1)
       expect(result[0].sourceId).toBe('s1')
@@ -214,8 +217,8 @@ describe('createKGTools', () => {
       kg.addNode(makeContradictionNode('x2', 'Contradiction 2'))
 
       const tools = createKGTools(kg)
-      const tool = tools.find(t => t.name === 'kg_get_contradictions')!
-      const result = await tool.execute({}, dummyContext) as Array<{ id: string }>
+      const tool = tools.find((t) => t.name === 'kg_get_contradictions')!
+      const result = (await tool.execute({}, dummyContext)) as Array<{ id: string }>
 
       expect(result).toHaveLength(2)
     })
@@ -230,11 +233,10 @@ describe('createKGTools', () => {
       kg.addEdge('k1', 'c2', makeEdge('causal_link'))
 
       const tools = createKGTools(kg)
-      const tool = tools.find(t => t.name === 'kg_shortest_path')!
-      const result = await tool.execute(
-        { fromNodeId: 'c1', toNodeId: 'c2' },
-        dummyContext,
-      ) as { path: Array<{ id: string; label: string; type: string }> }
+      const tool = tools.find((t) => t.name === 'kg_shortest_path')!
+      const result = (await tool.execute({ fromNodeId: 'c1', toNodeId: 'c2' }, dummyContext)) as {
+        path: Array<{ id: string; label: string; type: string }>
+      }
 
       expect(result.path).toBeDefined()
       expect(result.path.length).toBeGreaterThanOrEqual(2)
@@ -248,11 +250,11 @@ describe('createKGTools', () => {
       // No edges between c1 and c2
 
       const tools = createKGTools(kg)
-      const tool = tools.find(t => t.name === 'kg_shortest_path')!
-      const result = await tool.execute(
-        { fromNodeId: 'c1', toNodeId: 'c2' },
-        dummyContext,
-      ) as { path: null; message: string }
+      const tool = tools.find((t) => t.name === 'kg_shortest_path')!
+      const result = (await tool.execute({ fromNodeId: 'c1', toNodeId: 'c2' }, dummyContext)) as {
+        path: null
+        message: string
+      }
 
       expect(result.path).toBeNull()
       expect(result.message).toBe('No path found')

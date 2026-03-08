@@ -453,7 +453,10 @@ function normalizeUrlForDedup(url: string): string {
     const parsed = new URL(url)
     return (parsed.origin + parsed.pathname).replace(/\/+$/, '').toLowerCase()
   } catch {
-    return url.replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase()
+    return url
+      .replace(/[?#].*$/, '')
+      .replace(/\/+$/, '')
+      .toLowerCase()
   }
 }
 

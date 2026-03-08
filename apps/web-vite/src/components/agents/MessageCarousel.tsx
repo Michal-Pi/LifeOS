@@ -356,10 +356,12 @@ export function MessageCarousel({
     })
 
     // Add pending question if exists (but not if it's a constraint pause)
+    // Use MAX_SAFE_INTEGER so the question+input always sorts to the end of the carousel,
+    // right after the agent message that contains the actual questions.
     if (pendingInput && run.status === 'waiting_for_input' && !constraintPause) {
       msgs.push({
         id: 'question-pending',
-        timestamp: fallbackTimestamp,
+        timestamp: Number.MAX_SAFE_INTEGER,
         type: 'question',
         content: pendingInput.prompt,
         author: agentName ?? 'Agent',
@@ -458,7 +460,10 @@ export function MessageCarousel({
   const [frozenIndex, setFrozenIndex] = useState(computedIndex)
   const [prevFrozenDeps, setPrevFrozenDeps] = useState({ computedIndex, hasSelection })
 
-  if (computedIndex !== prevFrozenDeps.computedIndex || hasSelection !== prevFrozenDeps.hasSelection) {
+  if (
+    computedIndex !== prevFrozenDeps.computedIndex ||
+    hasSelection !== prevFrozenDeps.hasSelection
+  ) {
     setPrevFrozenDeps({ computedIndex, hasSelection })
     if (!hasSelection) {
       setFrozenIndex(computedIndex)
@@ -651,7 +656,10 @@ export function MessageCarousel({
                 </div>
               </div>
 
-              <div ref={contentRef} className={`message-body ${isFinalOutput ? 'final-output-slide' : ''}`}>
+              <div
+                ref={contentRef}
+                className={`message-body ${isFinalOutput ? 'final-output-slide' : ''}`}
+              >
                 {isConstraintPause && constraintPause ? (
                   <ConstraintPausePanel
                     constraintPause={constraintPause}

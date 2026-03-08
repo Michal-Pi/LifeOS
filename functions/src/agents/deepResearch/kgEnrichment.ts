@@ -33,17 +33,102 @@ const log = createLogger('KGEnrichment')
 // ----- Stop-word tokenizer (reused for concept guard) -----
 
 const STOP_WORDS = new Set([
-  'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-  'should', 'may', 'might', 'shall', 'can', 'to', 'of', 'in', 'for',
-  'on', 'with', 'at', 'by', 'from', 'as', 'into', 'about', 'like',
-  'through', 'after', 'over', 'between', 'out', 'against', 'during',
-  'without', 'before', 'under', 'around', 'among', 'and', 'but', 'or',
-  'nor', 'not', 'so', 'yet', 'both', 'either', 'neither', 'each',
-  'every', 'all', 'any', 'few', 'more', 'most', 'other', 'some', 'such',
-  'no', 'only', 'own', 'same', 'than', 'too', 'very', 'just', 'because',
-  'this', 'that', 'these', 'those', 'it', 'its', 'i', 'me', 'my', 'we',
-  'our', 'you', 'your', 'he', 'she', 'they', 'them', 'their',
+  'the',
+  'a',
+  'an',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'been',
+  'being',
+  'have',
+  'has',
+  'had',
+  'do',
+  'does',
+  'did',
+  'will',
+  'would',
+  'could',
+  'should',
+  'may',
+  'might',
+  'shall',
+  'can',
+  'to',
+  'of',
+  'in',
+  'for',
+  'on',
+  'with',
+  'at',
+  'by',
+  'from',
+  'as',
+  'into',
+  'about',
+  'like',
+  'through',
+  'after',
+  'over',
+  'between',
+  'out',
+  'against',
+  'during',
+  'without',
+  'before',
+  'under',
+  'around',
+  'among',
+  'and',
+  'but',
+  'or',
+  'nor',
+  'not',
+  'so',
+  'yet',
+  'both',
+  'either',
+  'neither',
+  'each',
+  'every',
+  'all',
+  'any',
+  'few',
+  'more',
+  'most',
+  'other',
+  'some',
+  'such',
+  'no',
+  'only',
+  'own',
+  'same',
+  'than',
+  'too',
+  'very',
+  'just',
+  'because',
+  'this',
+  'that',
+  'these',
+  'those',
+  'it',
+  'its',
+  'i',
+  'me',
+  'my',
+  'we',
+  'our',
+  'you',
+  'your',
+  'he',
+  'she',
+  'they',
+  'them',
+  'their',
 ])
 
 function significantTokenCount(text: string): number {
@@ -238,7 +323,11 @@ export async function mergeNearDuplicateConcepts(
       const existingConcept = existingNode.data as Concept
 
       // Skip expired concepts
-      if (existingConcept.temporal?.tExpired !== null && existingConcept.temporal?.tExpired !== undefined) continue
+      if (
+        existingConcept.temporal?.tExpired !== null &&
+        existingConcept.temporal?.tExpired !== undefined
+      )
+        continue
 
       const existingName = existingConcept.name
       const existingAltNames = existingConcept.alternateNames ?? []
@@ -251,13 +340,10 @@ export async function mergeNearDuplicateConcepts(
 
       if (overlap >= mergeThreshold) {
         try {
-          await kg.applyMerge(
-            [newId as ConceptId, existingNode.id as ConceptId],
-            {
-              name: existingName,
-              definition: existingConcept.definition,
-            }
-          )
+          await kg.applyMerge([newId as ConceptId, existingNode.id as ConceptId], {
+            name: existingName,
+            definition: existingConcept.definition,
+          })
           mergedAway.add(newId)
           mergesPerformed++
           break
@@ -401,10 +487,10 @@ export async function applyKGDiffToGraph(
         return node && node.type === 'concept'
       })
       if (ids.length < 2) continue
-      await kg.applyMerge(
-        ids as ConceptId[],
-        { name: merge.to, definition: `Merged from ${ids.join(', ')}` }
-      )
+      await kg.applyMerge(ids as ConceptId[], {
+        name: merge.to,
+        definition: `Merged from ${ids.join(', ')}`,
+      })
       applied.conceptMerges++
     } catch (err) {
       log.warn('applyKGDiff: merge failed', { from: merge.from, error: String(err) })

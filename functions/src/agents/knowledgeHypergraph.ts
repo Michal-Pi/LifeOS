@@ -499,9 +499,7 @@ export class KnowledgeHypergraph {
       if (input.sourceEpisodeId) {
         const existingSourceEdges = this.getOutEdges(existing.claimId)
         const alreadyLinked = existingSourceEdges.some(
-          (e) =>
-            e.data.type === 'sourced_from' &&
-            e.target === input.sourceEpisodeId
+          (e) => e.data.type === 'sourced_from' && e.target === input.sourceEpisodeId
         )
         if (!alreadyLinked) {
           this.addEdge(existing.claimId, input.sourceEpisodeId, {

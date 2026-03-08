@@ -51,7 +51,11 @@ interface MailboxMessageDetailProps {
   onSetFollowUp?: (contactId: string, dueDate?: string) => void
   onEditContact?: (contactId: string, details?: string) => void
   gmailLabels?: Array<{ id: string; name: string }>
-  onLabelMessage?: (messageId: string, addLabels?: string[], removeLabels?: string[]) => Promise<void>
+  onLabelMessage?: (
+    messageId: string,
+    addLabels?: string[],
+    removeLabels?: string[]
+  ) => Promise<void>
   onArchiveMessage?: (messageId: string) => Promise<void>
 }
 

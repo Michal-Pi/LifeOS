@@ -15,6 +15,7 @@
  */
 
 import { StateGraph, END, START } from '@langchain/langgraph'
+import type { ZodError, ZodTypeAny } from 'zod'
 import type {
   AgentConfig,
   Workflow,
@@ -44,6 +45,7 @@ import { createFirestoreCheckpointer } from './firestoreCheckpointer.js'
 import type { ProviderKeys } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
+import { DEFAULT_MODELS } from '../providerKeys.js'
 import type { ToolRegistry } from '../toolExecutor.js'
 import {
   executeAgentWithEvents,
@@ -65,6 +67,7 @@ import {
   SublationOutputSchema,
   CompactGraphSchema,
   GraphSublationOutputSchema,
+  normalizeCompactGraphCandidate,
 } from './structuredOutputSchemas.js'
 import {
   runContradictionTrackers,
@@ -109,6 +112,7 @@ import {
   buildThesisPrompt,
   buildNegationPrompt,
   buildSublationPrompt,
+  repairJsonOutput,
   type ResearchEvidence,
 } from './dialecticalPrompts.js'
 import {
@@ -703,6 +707,7 @@ function createResearchEnrichmentNode(
         return {
           cycleNumber,
           status: 'waiting_for_input',
+          resumeNodeHint: 'research_enrichment',
           constraintPause: {
             constraintType: quotaHit.quotaType,
             currentValue: quotaHit.currentValue,
@@ -727,6 +732,7 @@ function createResearchEnrichmentNode(
         return {
           cycleNumber,
           status: 'waiting_for_input',
+          resumeNodeHint: 'research_enrichment',
           constraintPause: {
             constraintType: rateHit.limitType,
             currentValue: rateHit.currentValue,
@@ -1111,6 +1117,7 @@ function createThesisGenerationNode(
       )
 
       try {
+        const thesisBudget = budget.perThesisAgentByLens[lens as ThesisLens] ?? budget.perThesisAgent
         const step = await executeAgentWithEvents(
           agent,
           thesisPrompt,
@@ -1121,7 +1128,7 @@ function createThesisGenerationNode(
             goal: state.goal,
           },
           execContext,
-          { stepNumber: state.steps.length + idx + 1, maxIterations: budget.perThesisAgent }
+          { stepNumber: state.steps.length + idx + 1, maxIterations: thesisBudget }
         )
 
         // Parse with 3-layer retry: direct → same-provider → Haiku
@@ -1130,14 +1137,16 @@ function createThesisGenerationNode(
           (text) => parseThesisOutput(text, agent.agentId, step.model, lens),
           {
             context: `Thesis (${lens})`,
-            jsonSchema: '{"nodes":[{"id":"string","label":"string","type":"claim|evidence|assumption|prediction","confidence":0.0}],"edges":[{"source":"string","target":"string","label":"string","type":"supports|contradicts|causes|requires"}],"summary":"string","confidence":0.0,"temporalGrain":"string"}',
-            emptyFallback: '{"nodes":[],"edges":[],"summary":"Parse failure","confidence":0,"temporalGrain":"unknown"}',
+            jsonSchema: '{"nodes":[{"id":"string","label":"string (max 80)","type":"claim|concept|mechanism|prediction","note":"string (optional)","sourceId":"string (optional)","sourceUrl":"string (optional)","sourceConfidence":0.0}],"edges":[{"from":"string","to":"string","rel":"causes|contradicts|supports|mediates|scopes","weight":0.0}],"summary":"string (max 200)","reasoning":"string (max 500)","confidence":0.0,"regime":"string","temporalGrain":"string"}',
+            emptyFallback: '{"nodes":[],"edges":[],"summary":"Parse failure","reasoning":"","confidence":0,"regime":"unknown","temporalGrain":"unknown"}',
             goal: state.goal,
             baseAgent: agent,
             execContext,
             nodeId: 'thesis_generation',
             stepNumber: state.steps.length + idx + 1,
             runId: state.runId,
+            repairSchema: CompactGraphSchema,
+            originalTaskPrompt: thesisPrompt,
           }
         )
 
@@ -1168,25 +1177,41 @@ function createThesisGenerationNode(
 
     const newSteps = results.map((r) => r.step)
     const newTheses = results.map((r) => r.thesis)
+    const substantiveTheses = newTheses.filter(isSubstantiveThesis)
+    const droppedLenses: string[] = []
+    for (const thesis of newTheses) {
+      const lens = thesis.lens
+      if (!isSubstantiveThesis(thesis)) droppedLenses.push(lens)
+    }
 
     // Check if any agent requested user input
     const interruptedStep = newSteps.find((s) => s.askUserInterrupt)
     if (interruptedStep) {
       const interrupt = handleAskUserInterrupt(interruptedStep, 'thesis_generation')
       if (interrupt) {
-        return { steps: newSteps, ...interrupt }
+        return { steps: newSteps, resumeNodeHint: 'generate_theses', ...interrupt }
       }
     }
 
-    if (newTheses.length < 2) {
-      throw new Error(`Thesis generation requires at least 2 theses, got ${newTheses.length}`)
+    if (droppedLenses.length > 0) {
+      log.warn('Dropping non-substantive theses before cross-negation', {
+        cycleNumber: state.cycleNumber,
+        droppedLenses,
+        keptLenses: substantiveTheses.map((thesis) => thesis.lens),
+      })
+    }
+
+    if (substantiveTheses.length < 2) {
+      throw new Error(
+        `Thesis generation requires at least 2 substantive theses, got ${substantiveTheses.length}. Non-substantive lenses: ${droppedLenses.join(', ') || 'unknown'}`
+      )
     }
 
     // Build agent-to-KG-claim mapping from thesis graph nodes
     const agentToClaimIds: Record<string, string[]> = {}
     if (kg) {
       const sessionId = `dialectical:${state.runId}` as DialecticalSessionId
-      for (const thesis of newTheses) {
+      for (const thesis of substantiveTheses) {
         const claimNodes = thesis.graph?.nodes.filter((n) => n.type === 'claim') ?? []
         if (claimNodes.length === 0) continue
         const claimIds: string[] = []
@@ -1228,11 +1253,12 @@ function createThesisGenerationNode(
 
     return {
       phase: 'cross_negation',
-      theses: newTheses,
+      theses: substantiveTheses,
       steps: newSteps,
       totalTokensUsed: totalTokens,
       totalEstimatedCost: totalCost,
       agentClaimMapping: agentToClaimIds,
+      ...(droppedLenses.length > 0 ? { degradedPhases: ['thesis_generation'] } : {}),
     }
   }
 }
@@ -1315,17 +1341,24 @@ function createCrossNegationNode(
       const agent = thesisAgents[agentIdx % thesisAgents.length]
       const thesis = state.theses[agentIdx]
       const targetThesis = state.theses[targetIdx]
+      if (!agent || !thesis || !targetThesis) continue
+      const sourceLens = thesis.lens
+      const targetLens = targetThesis.lens
+      if (!isSubstantiveThesis(thesis)) {
+        log.warn('Skipping negation pair due to non-substantive source thesis', {
+          cycleNumber: state.cycleNumber,
+          sourceLens,
+        })
+        continue
+      }
 
-      // Skip negation if target thesis has no substantive content
-      const hasGraph = targetThesis.graph && targetThesis.graph.nodes.length > 0
-      const hasRawText =
-        targetThesis.rawText &&
-        targetThesis.rawText.trim().length >= 20 &&
-        !targetThesis.rawText.startsWith('[PARTIAL RESULT')
-      if (!hasGraph && !hasRawText) {
-        throw new Error(
-          `Target thesis from ${targetThesis.lens} lens has insufficient content for negation`
-        )
+      if (!isSubstantiveThesis(targetThesis)) {
+        log.warn('Skipping negation pair due to non-substantive target thesis', {
+          cycleNumber: state.cycleNumber,
+          sourceLens,
+          targetLens,
+        })
+        continue
       }
 
       const negationPrompt = buildNegationPrompt(thesis, targetThesis)
@@ -1360,6 +1393,8 @@ function createCrossNegationNode(
                 nodeId: 'cross_negation',
                 stepNumber: state.steps.length + pairIdx + 1,
                 runId: state.runId,
+                repairSchema: NegationOutputSchema,
+                originalTaskPrompt: negationPrompt,
               }
             )
 
@@ -1400,7 +1435,7 @@ function createCrossNegationNode(
     if (interruptedNegStep) {
       const interrupt = handleAskUserInterrupt(interruptedNegStep, 'cross_negation')
       if (interrupt) {
-        return { steps: newSteps, ...interrupt }
+        return { steps: newSteps, resumeNodeHint: 'cross_negation', ...interrupt }
       }
     }
 
@@ -1719,7 +1754,7 @@ function createSublationNode(
     // Check if sublation agent requested user input
     const sublationInterrupt = handleAskUserInterrupt(step, 'sublation')
     if (sublationInterrupt) {
-      return { steps: [step], ...sublationInterrupt }
+      return { steps: [step], resumeNodeHint: 'sublate', ...sublationInterrupt }
     }
 
     const { synthesis, mergedGraph: newMergedGraph, graphDiff } = await withJsonParseRetry(
@@ -1727,14 +1762,16 @@ function createSublationNode(
       (text) => parseSublationOutput(text),
       {
         context: 'Sublation',
-        jsonSchema: '{"mergedGraph":{"nodes":[{"id":"string","label":"string","type":"claim|evidence|assumption|prediction","confidence":0.0}],"edges":[{"source":"string","target":"string","label":"string","type":"supports|contradicts|causes|requires"}],"summary":"string","confidence":0.0,"temporalGrain":"string"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[]},"resolvedContradictions":[]}',
-        emptyFallback: '{"mergedGraph":{"nodes":[],"edges":[],"summary":"Parse failure","confidence":0,"temporalGrain":"unknown"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[]},"resolvedContradictions":[]}',
+        jsonSchema: '{"mergedGraph":{"nodes":[{"id":"string","label":"string (max 80)","type":"claim|concept|mechanism|prediction","note":"string (optional)"}],"edges":[{"from":"string","to":"string","rel":"causes|contradicts|supports|mediates|scopes","weight":0.0}],"summary":"string (max 200)","reasoning":"string (max 500)","confidence":0.0,"regime":"string","temporalGrain":"string"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[],"resolvedContradictions":[],"newContradictions":[]},"resolvedContradictions":[]}',
+        emptyFallback: '{"mergedGraph":{"nodes":[],"edges":[],"summary":"Parse failure","reasoning":"","confidence":0,"regime":"unknown","temporalGrain":"unknown"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[],"resolvedContradictions":[],"newContradictions":[]},"resolvedContradictions":[]}',
         goal: state.goal,
         baseAgent: synthesisAgent,
         execContext,
         nodeId: 'sublation',
         stepNumber: state.steps.length + 1,
         runId: state.runId,
+        repairSchema: GraphSublationOutputSchema,
+        originalTaskPrompt: sublationPrompt,
       }
     )
 
@@ -1847,10 +1884,18 @@ async function runCompetitiveSublation(
   let competitiveMergedGraph: CompactGraph | null = state.mergedGraph
   let competitiveGraphDiff: GraphDiff | null = null
   if (winner.rawText) {
-    const parsed = parseSublationOutput(winner.rawText)
-    if (parsed.mergedGraph) {
-      competitiveMergedGraph = parsed.mergedGraph
-      competitiveGraphDiff = parsed.graphDiff
+    try {
+      const parsed = parseSublationOutput(winner.rawText)
+      if (parsed.mergedGraph) {
+        competitiveMergedGraph = parsed.mergedGraph
+        competitiveGraphDiff = parsed.graphDiff
+      }
+    } catch (error) {
+      log.warn('Competitive synthesis winner graph parse failed, preserving prior merged graph', {
+        runId: state.runId,
+        cycleNumber: state.cycleNumber,
+        error: error instanceof Error ? error.message : String(error),
+      })
     }
   }
 
@@ -1872,6 +1917,16 @@ async function runCompetitiveSublation(
 
   // Calculate velocity from winning synthesis using unified function
   const velocity = calculateConceptualVelocity(synthesis, kgDiff, state.theses)
+
+  // Emit synthesis event for live visualization (matches single-agent path)
+  const winnerAgent =
+    synthesisAgents.find((a) => a.agentId === winner.agentId) ?? synthesisAgents[0]
+  await emitAgentOutput(execContext, 'dialectical_synthesis', winnerAgent, winner.rawText ?? '', {
+    cycleNumber: state.cycleNumber,
+    hasGraph: !!competitiveMergedGraph,
+    mergedGraph: competitiveMergedGraph ?? undefined,
+    graphDiff: competitiveGraphDiff ?? undefined,
+  })
 
   const graphHistoryEntry = competitiveGraphDiff
     ? [{ cycle: state.cycleNumber, diff: competitiveGraphDiff }]
@@ -2029,6 +2084,7 @@ function createMetaReflectionNode(
             metaDecision: metaResult.decision,
             cycleMetricsHistory: [metaResult.metrics],
             status: 'waiting_for_input',
+            resumeNodeHint: 'meta_reflect',
             constraintPause: {
               constraintType: 'max_cycles',
               currentValue: state.cycleNumber,
@@ -2188,6 +2244,77 @@ function routeMetaDecision(
   return 'research_enrichment'
 }
 
+/**
+ * Determine which node to start at on graph entry.
+ * On fresh runs, starts at input_normalizer.
+ * On resume after pause, skips to the paused node via resumeNodeHint.
+ */
+function determineDialecticalStartNode(state: DialecticalState): string {
+  const hint = state.resumeNodeHint
+  if (
+    hint &&
+    [
+      'input_normalizer',
+      'goal_framing',
+      'context_seeding',
+      'decide_research_pre',
+      'execute_research',
+      'research_enrichment',
+      'generate_theses',
+      'cross_negation',
+      'crystallize',
+      'sublate',
+      'decide_research_post',
+      'execute_research_post',
+      'meta_reflect',
+    ].includes(hint)
+  ) {
+    return hint
+  }
+  return 'input_normalizer'
+}
+
+/**
+ * Serialize full graph state for persistence across pause/resume cycles.
+ */
+function buildDialecticalResumeState(state: DialecticalState): Partial<DialecticalState> {
+  return {
+    cycleNumber: state.cycleNumber,
+    phase: state.phase,
+    normalizedInput: state.normalizedInput,
+    goalFrame: state.goalFrame,
+    startupSeedSummary: state.startupSeedSummary,
+    theses: state.theses,
+    negations: state.negations,
+    contradictions: state.contradictions,
+    synthesis: state.synthesis,
+    mergedGraph: state.mergedGraph,
+    graphHistory: state.graphHistory,
+    kgDiff: state.kgDiff,
+    conceptualVelocity: state.conceptualVelocity,
+    velocityHistory: state.velocityHistory,
+    contradictionDensity: state.contradictionDensity,
+    densityHistory: state.densityHistory,
+    cycleMetricsHistory: state.cycleMetricsHistory,
+    metaDecision: state.metaDecision,
+    agentClaimMapping: state.agentClaimMapping,
+    researchBudget: state.researchBudget,
+    researchSources: state.researchSources,
+    researchClaims: state.researchClaims,
+    researchDecision: state.researchDecision,
+    steps: state.steps,
+    totalTokensUsed: state.totalTokensUsed,
+    totalEstimatedCost: state.totalEstimatedCost,
+    constraintPause: state.constraintPause,
+    pendingInput: state.pendingInput,
+    resumeNodeHint: state.resumeNodeHint,
+    finalOutput: state.finalOutput,
+    status: state.status,
+    error: state.error,
+    degradedPhases: state.degradedPhases,
+  }
+}
+
 // ----- Graph Creation -----
 
 /**
@@ -2342,7 +2469,9 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
     )
     graph.addNode('execute_research_post', createExecuteResearchNode(execContext, cfg, kg))
 
-    graph.addEdge(START, 'input_normalizer' as typeof START)
+    graph.addConditionalEdges(START, (state: DialecticalState) =>
+      determineDialecticalStartNode(state)
+    )
     graph.addEdge('input_normalizer' as typeof START, 'goal_framing' as typeof START)
     graph.addEdge('goal_framing' as typeof START, 'context_seeding' as typeof START)
     graph.addEdge('context_seeding' as typeof START, 'decide_research_pre' as typeof START)
@@ -2395,8 +2524,10 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
       }
     )
   } else {
-    // --- Legacy topology (unchanged) ---
-    graph.addEdge(START, 'input_normalizer' as typeof START)
+    // --- Legacy topology ---
+    graph.addConditionalEdges(START, (state: DialecticalState) =>
+      determineDialecticalStartNode(state)
+    )
     graph.addEdge('input_normalizer' as typeof START, 'goal_framing' as typeof START)
     graph.addEdge('goal_framing' as typeof START, 'context_seeding' as typeof START)
     graph.addEdge('context_seeding' as typeof START, 'research_enrichment' as typeof START)
@@ -2438,7 +2569,8 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
 export async function executeDialecticalWorkflowLangGraph(
   config: DialecticalGraphConfig,
   goal: string,
-  context?: Record<string, unknown>
+  context?: Record<string, unknown>,
+  resumeState?: Partial<DialecticalState>
 ): Promise<{
   output: string
   steps: AgentExecutionStep[]
@@ -2448,6 +2580,7 @@ export async function executeDialecticalWorkflowLangGraph(
   conceptualVelocity: number
   contradictionsFound: number
   status: 'running' | 'completed' | 'failed' | 'paused' | 'waiting_for_input'
+  error?: string
   // Full dialectical state for visualization
   dialecticalState: {
     cycleNumber: number
@@ -2479,6 +2612,7 @@ export async function executeDialecticalWorkflowLangGraph(
   }
   constraintPause?: Run['constraintPause']
   pendingInput?: { prompt: string; nodeId: string }
+  dialecticalResumeState?: Partial<DialecticalState>
 }> {
   const { workflow, userId, runId } = config
   const startedAtMs = Date.now()
@@ -2494,6 +2628,7 @@ export async function executeDialecticalWorkflowLangGraph(
       conceptualVelocity: 0,
       contradictionsFound: 0,
       status: 'failed',
+      error: 'Goal is required',
       dialecticalState: {
         cycleNumber: 0,
         maxCycles: config.dialecticalConfig.maxCycles,
@@ -2530,8 +2665,8 @@ export async function executeDialecticalWorkflowLangGraph(
 
   const compiledGraph = createDialecticalGraph({ ...config, historicalData })
 
-  // Initial state
-  const initialState: Partial<DialecticalState> = {
+  // Build fresh state
+  const freshState: Partial<DialecticalState> = {
     workflowId: workflow.workflowId,
     runId,
     userId,
@@ -2557,6 +2692,9 @@ export async function executeDialecticalWorkflowLangGraph(
     finalOutput: null,
     status: 'running',
     error: null,
+    constraintPause: null,
+    pendingInput: null,
+    resumeNodeHint: null,
     // Research state
     researchBudget: config.dialecticalConfig.enableExternalResearch
       ? createRunBudget(
@@ -2608,6 +2746,7 @@ export async function executeDialecticalWorkflowLangGraph(
       conceptualVelocity: 0,
       contradictionsFound: 0,
       status: 'failed' as const,
+      error: errorMessage,
       dialecticalState: {
         cycleNumber: 0,
         maxCycles: config.dialecticalConfig.maxCycles,
@@ -2715,16 +2854,58 @@ export async function executeDialecticalWorkflowLangGraph(
       goalFrame: (finalState.goalFrame as Record<string, unknown> | null) ?? null,
       startupSeedSummary: (finalState.startupSeedSummary as Record<string, unknown> | null) ?? null,
     },
+    dialecticalResumeState: buildDialecticalResumeState(finalState),
   }
 }
 
 // ----- Helper Functions -----
 
+function isSubstantiveThesis(thesis: ThesisOutput | null | undefined): thesis is ThesisOutput {
+  if (!thesis) return false
+  if (thesis.graph && thesis.graph.nodes.length > 0) return true
+  if (Object.keys(thesis.conceptGraph ?? {}).length > 0) return true
+  if ((thesis.causalModel?.length ?? 0) > 0) return true
+  if ((thesis.falsificationCriteria?.length ?? 0) > 0) return true
+  if ((thesis.decisionImplications?.length ?? 0) > 0) return true
+
+  const rawText = thesis.rawText?.trim() ?? ''
+  if (rawText.length < 20) return false
+  if (rawText.startsWith('[PARTIAL RESULT')) return false
+  if (rawText.toLowerCase() === 'parse failure') return false
+
+  return true
+}
+
+function getValidationErrorForRepair(output: string, schema?: ZodTypeAny): ZodError | null {
+  if (!schema) return null
+  const parsed = safeParseJson(output)
+  if (!parsed) return null
+  const validated = schema.safeParse(parsed)
+  return validated.success ? null : validated.error
+}
+
+function classifyParseFailure(error: unknown): 'no_json' | 'schema_mismatch' | 'post_repair_invalid' {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+  if (message.includes('did not contain valid json') || message.includes('did not contain json')) {
+    return 'no_json'
+  }
+  if (message.includes('did not match supported schemas') || message.includes('invalid') || message.includes('schema')) {
+    return 'schema_mismatch'
+  }
+  return 'post_repair_invalid'
+}
+
+function truncateLogSample(text: string, maxLength = 700): string {
+  if (text.length <= maxLength) return text
+  return `${text.slice(0, maxLength)}...[truncated]`
+}
+
 /**
- * Wrap a parse function with 3-layer JSON retry:
+ * Wrap a parse function with 4-layer JSON retry:
  * 1. Direct parse (parseFn)
  * 2. Same-provider retry with strict JSON-only prompt
- * 3. Haiku fallback with relevance gate
+ * 3. Dedicated GPT repair with schema-aware validation feedback
+ * 4. Anthropic fast fallback with relevance gate
  */
 async function withJsonParseRetry<T>(
   rawOutput: string,
@@ -2739,12 +2920,16 @@ async function withJsonParseRetry<T>(
     nodeId: string
     stepNumber: number
     runId: string
+    repairSchema?: ZodTypeAny
+    originalTaskPrompt?: string
   }
 ): Promise<T> {
   // Layer 1: direct parse
+  let finalFailureCategory: 'no_json' | 'schema_mismatch' | 'post_repair_invalid' = 'post_repair_invalid'
   try {
     return parseFn(rawOutput)
   } catch (firstError) {
+    finalFailureCategory = classifyParseFailure(firstError)
     log.warn(`${opts.context} parse failed, retrying with strict JSON prompt`, {
       runId: opts.runId,
       error: firstError instanceof Error ? firstError.message : String(firstError),
@@ -2753,11 +2938,19 @@ async function withJsonParseRetry<T>(
     // Layer 2: same provider, strict JSON-only re-prompt
     const retryAgent: AgentConfig = {
       ...opts.baseAgent,
-      systemPrompt: `You are a JSON formatter. Convert the following analysis into ONLY a valid JSON object. Output nothing else — no markdown, no explanation, no commentary. Just the JSON.\n\nRequired schema:\n${opts.jsonSchema}`,
+      toolIds: [],
+      temperature: 0,
+      systemPrompt: `You are a JSON formatter repairing a prior response for the same task. Return ONLY a valid JSON object matching the required schema. No markdown, no explanation, no commentary.
+
+Original system prompt:
+${opts.baseAgent.systemPrompt.slice(0, 3000)}
+
+Required schema:
+${opts.jsonSchema}`,
     }
     const retryStep = await executeAgentWithEvents(
       retryAgent,
-      `Convert this text to JSON:\n\n${rawOutput.slice(0, 8000)}`,
+      `${opts.originalTaskPrompt ? `Original task:\n${opts.originalTaskPrompt.slice(0, 4000)}\n\n` : ''}Convert this prior response to JSON:\n\n${rawOutput.slice(0, 8000)}`,
       {},
       opts.execContext,
       { nodeId: opts.nodeId, stepNumber: opts.stepNumber }
@@ -2765,17 +2958,55 @@ async function withJsonParseRetry<T>(
     try {
       return parseFn(retryStep.output)
     } catch (retryError) {
-      log.warn(`${opts.context} retry failed, falling back to Haiku`, {
+      finalFailureCategory = classifyParseFailure(retryError)
+      log.warn(`${opts.context} retry failed, attempting GPT repair`, {
         runId: opts.runId,
         error: retryError instanceof Error ? retryError.message : String(retryError),
       })
 
-      // Layer 3: Haiku fallback with relevance gate
+      if (opts.repairSchema) {
+        const repairInput =
+          retryStep.output.trim().length >= rawOutput.trim().length * 0.5 ? retryStep.output : rawOutput
+        const repairedOutput = await repairJsonOutput(
+          repairInput,
+          getValidationErrorForRepair(repairInput, opts.repairSchema),
+          opts.repairSchema,
+          opts.execContext,
+          {
+            context: opts.context,
+            goal: opts.goal,
+            originalTaskPrompt: opts.originalTaskPrompt,
+            originalSystemPrompt: opts.baseAgent.systemPrompt,
+            schemaHint: opts.jsonSchema,
+          }
+        )
+
+        if (repairedOutput) {
+          try {
+            return parseFn(repairedOutput)
+          } catch (repairError) {
+            finalFailureCategory = classifyParseFailure(repairError)
+            log.warn(`${opts.context} GPT repair failed, falling back to Anthropic fast`, {
+              runId: opts.runId,
+              error: repairError instanceof Error ? repairError.message : String(repairError),
+            })
+          }
+        } else {
+          log.warn(`${opts.context} GPT repair returned no valid JSON, falling back to Anthropic fast`, {
+            runId: opts.runId,
+          })
+        }
+      }
+
+      // Layer 4: Anthropic fast fallback with relevance gate
       const haikuAgent: AgentConfig = {
         ...opts.baseAgent,
         name: `${opts.nodeId}-json-fixer`,
+        toolIds: [],
         modelProvider: 'anthropic',
-        modelName: 'claude-haiku',
+        modelName: DEFAULT_MODELS.anthropic,
+        modelTier: 'fast',
+        temperature: 0,
         systemPrompt: `You are a strict JSON extraction assistant. You will receive text that was supposed to be a JSON analysis, but may instead be an error message, refusal, or irrelevant text.
 
 Step 1: Determine if the text contains substantive analysis relevant to the goal: "${opts.goal}"
@@ -2784,16 +3015,34 @@ Step 1: Determine if the text contains substantive analysis relevant to the goal
 
 Step 2: Extract the analysis into this exact JSON schema. Output ONLY valid JSON, nothing else.
 ${opts.jsonSchema}`,
-        temperature: 0,
       }
       const haikuStep = await executeAgentWithEvents(
         haikuAgent,
-        rawOutput.slice(0, 8000),
+        `${opts.originalTaskPrompt ? `Original task:\n${opts.originalTaskPrompt.slice(0, 4000)}\n\n` : ''}${rawOutput.slice(0, 8000)}`,
         {},
         opts.execContext,
         { nodeId: opts.nodeId, stepNumber: opts.stepNumber }
       )
-      return parseFn(haikuStep.output) // throws if still fails — intentional
+      try {
+        return parseFn(haikuStep.output)
+      } catch (haikuError) {
+        finalFailureCategory = classifyParseFailure(haikuError)
+        // Layer 5: hard fallback — use the empty fallback directly instead of crashing
+        log.error(`${opts.context} all JSON repair layers failed, using empty fallback`, {
+          runId: opts.runId,
+          error: haikuError instanceof Error ? haikuError.message : String(haikuError),
+          ...(opts.context === 'Thesis (economic)'
+            ? {
+                provider: opts.baseAgent.modelProvider,
+                model: opts.baseAgent.modelName,
+                toolCount: opts.baseAgent.toolIds?.length ?? 0,
+                failureCategory: finalFailureCategory,
+                rawOutputSample: truncateLogSample(rawOutput),
+              }
+            : {}),
+        })
+        return parseFn(opts.emptyFallback)
+      }
     }
   }
 }
@@ -2817,7 +3066,8 @@ function parseThesisOutput(
     throw new Error(`Thesis output from ${agentId} did not contain valid JSON`)
   }
 
-  const graphValidated = CompactGraphSchema.safeParse(parsed)
+  const normalizedParsed = normalizeCompactGraphCandidate(parsed)
+  const graphValidated = CompactGraphSchema.safeParse(normalizedParsed)
   if (graphValidated.success) {
     const graph = graphValidated.data as CompactGraph
     return {
@@ -2867,7 +3117,7 @@ function parseThesisOutput(
     ]
     for (const key of candidateKeys) {
       if (obj[key] && typeof obj[key] === 'object') {
-        const nested = CompactGraphSchema.safeParse(obj[key])
+        const nested = CompactGraphSchema.safeParse(normalizeCompactGraphCandidate(obj[key]))
         if (nested.success) {
           const graph = nested.data as CompactGraph
           log.info('Extracted CompactGraph from nested key', { key, lens })

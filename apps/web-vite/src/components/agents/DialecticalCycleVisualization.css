@@ -8,6 +8,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  flex-shrink: 0;
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
 /* Header */
@@ -686,7 +689,8 @@
 /* Thesis card clickable state */
 .thesis-card.has-graph {
   cursor: pointer;
-  transition: border-color var(--motion-standard) var(--motion-ease),
+  transition:
+    border-color var(--motion-standard) var(--motion-ease),
     box-shadow var(--motion-standard) var(--motion-ease);
 }
 
@@ -889,10 +893,18 @@
   font-size: var(--text-xs);
 }
 
-.dgp-scrubber-stats .diff-added { color: #22c55e; }
-.dgp-scrubber-stats .diff-removed { color: #ef4444; }
-.dgp-scrubber-stats .diff-modified { color: #eab308; }
-.dgp-scrubber-stats .diff-resolved { color: #3b82f6; }
+.dgp-scrubber-stats .diff-added {
+  color: #22c55e;
+}
+.dgp-scrubber-stats .diff-removed {
+  color: #ef4444;
+}
+.dgp-scrubber-stats .diff-modified {
+  color: #eab308;
+}
+.dgp-scrubber-stats .diff-resolved {
+  color: #3b82f6;
+}
 
 /* ===== Cycle Selector Tabs ===== */
 
@@ -920,7 +932,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .cycle-tab:hover {

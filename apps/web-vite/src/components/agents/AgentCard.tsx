@@ -28,9 +28,7 @@ export interface AgentCardProps {
 }
 
 const presetDescriptionMap = new Map(
-  agentTemplatePresets
-    .filter((p) => p.description)
-    .map((p) => [p.name, p.description!])
+  agentTemplatePresets.filter((p) => p.description).map((p) => [p.name, p.description!])
 )
 
 const ROLE_ICON_MAP: Record<AgentRole, { light: string; dark: string }> = {
@@ -91,15 +89,9 @@ export function AgentCard({
 }: AgentCardProps) {
   const icon = ROLE_ICON_MAP[agent.role] ?? ROLE_ICON_MAP.custom
 
-  const presetTooltip = useMemo(
-    () => presetDescriptionMap.get(agent.name),
-    [agent.name]
-  )
+  const presetTooltip = useMemo(() => presetDescriptionMap.get(agent.name), [agent.name])
 
-  const cardClassName = [
-    'agent-card',
-    selectable && selected ? 'agent-card--selected' : '',
-  ]
+  const cardClassName = ['agent-card', selectable && selected ? 'agent-card--selected' : '']
     .filter(Boolean)
     .join(' ')
 

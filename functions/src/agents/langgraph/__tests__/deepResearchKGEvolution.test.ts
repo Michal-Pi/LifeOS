@@ -95,11 +95,13 @@ describe('deep research KG evolution', () => {
           phase: 'full',
           maxRecursiveDepth: 3,
           gapIterationsUsed: 0,
-        },
+        }
       )
     ).rejects.toThrow('stop after prompt capture')
 
-    expect(capturedPrompt).toContain('New claim about reimbursement incentives accelerating adoption')
+    expect(capturedPrompt).toContain(
+      'New claim about reimbursement incentives accelerating adoption'
+    )
     expect(capturedPrompt).toContain('New claim about clinician trust remaining the bottleneck')
   })
 })

@@ -193,7 +193,9 @@ export function runLogicTracker(
           actionDistance: 3,
           participatingClaims: [
             ...(agentClaimMapping?.[negation.agentId] ?? [negation.agentId]),
-            ...(agentClaimMapping?.[negation.targetThesisAgentId] ?? [negation.targetThesisAgentId]),
+            ...(agentClaimMapping?.[negation.targetThesisAgentId] ?? [
+              negation.targetThesisAgentId,
+            ]),
           ],
           trackerAgent: 'logic_tracker',
           description: `Logical tension: ${tension}`,
@@ -218,9 +220,13 @@ export function runLogicTracker(
  * if the same object has opposing verbs.
  */
 function extractActionObject(decision: string): { verb: string; object: string } | null {
-  const verbs = 'increase|decrease|expand|contract|invest|divest|build|demolish|hire|fire|buy|sell|start|stop|accelerate|decelerate|centralize|decentralize'
+  const verbs =
+    'increase|decrease|expand|contract|invest|divest|build|demolish|hire|fire|buy|sell|start|stop|accelerate|decelerate|centralize|decentralize'
   const match = decision.match(
-    new RegExp(`^(${verbs})\\s+(?:the\\s+|a\\s+|an\\s+)?(.+?)(?:\\s+(?:by|to|from|in)\\b|[,.]|$)`, 'i')
+    new RegExp(
+      `^(${verbs})\\s+(?:the\\s+|a\\s+|an\\s+)?(.+?)(?:\\s+(?:by|to|from|in)\\b|[,.]|$)`,
+      'i'
+    )
   )
   return match ? { verb: match[1].toLowerCase(), object: match[2].toLowerCase().trim() } : null
 }
@@ -374,7 +380,9 @@ export function runSemanticTracker(
           actionDistance: 3,
           participatingClaims: [
             ...(agentClaimMapping?.[negation.agentId] ?? [negation.agentId]),
-            ...(agentClaimMapping?.[negation.targetThesisAgentId] ?? [negation.targetThesisAgentId]),
+            ...(agentClaimMapping?.[negation.targetThesisAgentId] ?? [
+              negation.targetThesisAgentId,
+            ]),
           ],
           trackerAgent: 'semantic_tracker',
           description: `Semantic issue identified: ${attack}`,
@@ -434,11 +442,25 @@ export function runSemanticTracker(
 
 /** Normalize free-form LLM temporal grains to the canonical vocabulary */
 const TEMPORAL_GRAIN_MAP: Record<string, string> = {
-  days: 'immediate', hours: 'immediate', now: 'immediate', today: 'immediate',
-  weeks: 'short_term', months: 'short_term', weekly: 'short_term', monthly: 'short_term',
-  quarters: 'medium_term', 'quarter': 'medium_term', year: 'medium_term', annual: 'medium_term',
-  years: 'long_term', decades: 'long_term', decade: 'long_term', '5+ years': 'long_term',
-  centuries: 'historical', past: 'historical', historical: 'historical',
+  days: 'immediate',
+  hours: 'immediate',
+  now: 'immediate',
+  today: 'immediate',
+  weeks: 'short_term',
+  months: 'short_term',
+  weekly: 'short_term',
+  monthly: 'short_term',
+  quarters: 'medium_term',
+  quarter: 'medium_term',
+  year: 'medium_term',
+  annual: 'medium_term',
+  years: 'long_term',
+  decades: 'long_term',
+  decade: 'long_term',
+  '5+ years': 'long_term',
+  centuries: 'historical',
+  past: 'historical',
+  historical: 'historical',
 }
 
 function normalizeTemporalGrain(grain: string): string {
@@ -486,8 +508,12 @@ export function runBoundaryTracker(
 
       // More than TEMPORAL_BOUNDARY_THRESHOLD levels apart = significant temporal boundary issue
       if (maxIdx - minIdx > TEMPORAL_BOUNDARY_THRESHOLD) {
-        const shortTermTheses = theses.filter((t) => temporalOrder.indexOf(normalizeTemporalGrain(t.temporalGrain)) <= 1)
-        const longTermTheses = theses.filter((t) => temporalOrder.indexOf(normalizeTemporalGrain(t.temporalGrain)) >= 3)
+        const shortTermTheses = theses.filter(
+          (t) => temporalOrder.indexOf(normalizeTemporalGrain(t.temporalGrain)) <= 1
+        )
+        const longTermTheses = theses.filter(
+          (t) => temporalOrder.indexOf(normalizeTemporalGrain(t.temporalGrain)) >= 3
+        )
 
         for (const st of shortTermTheses) {
           for (const lt of longTermTheses) {

@@ -3,7 +3,14 @@
     "name": "Oracle Axiom Library",
     "version": "1.0",
     "totalAxioms": 142,
-    "domains": ["Economics", "Cognitive Science", "Systems Dynamics", "Organizational Theory", "Game Theory", "Information Theory"]
+    "domains": [
+      "Economics",
+      "Cognitive Science",
+      "Systems Dynamics",
+      "Organizational Theory",
+      "Game Theory",
+      "Information Theory"
+    ]
   },
   "axioms": [
     {
@@ -12,7 +19,10 @@
       "domain": "Organizational Theory",
       "formalDefinition": "Adding human resources to a late software project makes it later, due to increased communication overhead that grows as n(n-1)/2.",
       "mathematicalFormulation": "Communication channels = n(n-1)/2",
-      "boundaryConditions": ["Does not apply to perfectly partitionable tasks", "Less relevant for asynchronous work"],
+      "boundaryConditions": [
+        "Does not apply to perfectly partitionable tasks",
+        "Less relevant for asynchronous work"
+      ],
       "canonicalCitations": ["Brooks, F. (1975). The Mythical Man-Month."],
       "systemElevation": null
     },
@@ -22,8 +32,14 @@
       "domain": "Economics",
       "formalDefinition": "When two forms of commodity money are in circulation and accepted by law as having equivalent face value, the more valuable commodity (good money) will be hoarded and the less valuable (bad money) will circulate, driving good money out of circulation.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Requires legal tender laws enforcing parity", "Does not apply when exchange rates float freely"],
-      "canonicalCitations": ["Gresham, T. (1558). Letter to Queen Elizabeth I.", "Mundell, R. (1998). Uses and Abuses of Gresham's Law."],
+      "boundaryConditions": [
+        "Requires legal tender laws enforcing parity",
+        "Does not apply when exchange rates float freely"
+      ],
+      "canonicalCitations": [
+        "Gresham, T. (1558). Letter to Queen Elizabeth I.",
+        "Mundell, R. (1998). Uses and Abuses of Gresham's Law."
+      ],
       "systemElevation": null
     },
     {
@@ -32,7 +48,10 @@
       "domain": "Economics",
       "formalDefinition": "Firms exist because they reduce transaction costs that would otherwise be incurred through market-based exchanges. The boundary of the firm is determined by the point at which internal coordination costs equal external transaction costs.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Assumes transaction costs are the primary determinant of firm boundaries", "Less explanatory for firms driven by regulatory capture or network effects"],
+      "boundaryConditions": [
+        "Assumes transaction costs are the primary determinant of firm boundaries",
+        "Less explanatory for firms driven by regulatory capture or network effects"
+      ],
       "canonicalCitations": ["Coase, R. (1937). The Nature of the Firm. Economica."],
       "systemElevation": null
     },
@@ -42,8 +61,14 @@
       "domain": "Organizational Theory",
       "formalDefinition": "The overhead cost of ensuring that multiple agents or teams work toward a coherent shared objective rather than optimizing locally. As organizational complexity increases, the fraction of total effort consumed by coordination grows nonlinearly.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Negligible for very small teams with shared context", "Can be mitigated by clear interfaces and modular architecture"],
-      "canonicalCitations": ["Komoroske, A. (2020). Alignment Tax Concept.", "Galbraith, J. (1973). Designing Complex Organizations."],
+      "boundaryConditions": [
+        "Negligible for very small teams with shared context",
+        "Can be mitigated by clear interfaces and modular architecture"
+      ],
+      "canonicalCitations": [
+        "Komoroske, A. (2020). Alignment Tax Concept.",
+        "Galbraith, J. (1973). Designing Complex Organizations."
+      ],
       "systemElevation": null
     },
     {
@@ -52,8 +77,15 @@
       "domain": "Economics",
       "formalDefinition": "The value of a telecommunications network is proportional to the square of the number of connected users, because each new user creates potential connections with all existing users.",
       "mathematicalFormulation": "V = k * n^2",
-      "boundaryConditions": ["Assumes all connections are equally valuable", "Overestimates value for large networks where most connections are unused", "Reed's Law may apply for group-forming networks"],
-      "canonicalCitations": ["Metcalfe, R. (1980). Ethernet concept.", "Gilder, G. (1993). Metcalfe's Law and Legacy. Forbes."],
+      "boundaryConditions": [
+        "Assumes all connections are equally valuable",
+        "Overestimates value for large networks where most connections are unused",
+        "Reed's Law may apply for group-forming networks"
+      ],
+      "canonicalCitations": [
+        "Metcalfe, R. (1980). Ethernet concept.",
+        "Gilder, G. (1993). Metcalfe's Law and Legacy. Forbes."
+      ],
       "systemElevation": null
     },
     {
@@ -62,8 +94,14 @@
       "domain": "Economics",
       "formalDefinition": "In many systems, roughly 80% of effects come from 20% of causes. This power-law distribution appears across economics, software engineering, quality management, and natural phenomena.",
       "mathematicalFormulation": "P(X > x) ~ x^(-alpha), alpha ~ 1.16 for 80/20",
-      "boundaryConditions": ["The exact ratio varies; 80/20 is an approximation", "Does not apply to normally distributed phenomena"],
-      "canonicalCitations": ["Pareto, V. (1896). Cours d'economie politique.", "Juran, J. (1951). Quality Control Handbook."],
+      "boundaryConditions": [
+        "The exact ratio varies; 80/20 is an approximation",
+        "Does not apply to normally distributed phenomena"
+      ],
+      "canonicalCitations": [
+        "Pareto, V. (1896). Cours d'economie politique.",
+        "Juran, J. (1951). Quality Control Handbook."
+      ],
       "systemElevation": null
     },
     {
@@ -72,7 +110,10 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "The maximum speedup of a system achievable through parallelization is limited by the fraction of the workload that must remain sequential. Even infinite parallel resources cannot overcome the serial bottleneck.",
       "mathematicalFormulation": "Speedup = 1 / (s + (1-s)/p), where s = serial fraction, p = parallel processors",
-      "boundaryConditions": ["Assumes the serial fraction is fixed", "Gustafson's Law provides an alternative when problem size scales with resources"],
+      "boundaryConditions": [
+        "Assumes the serial fraction is fixed",
+        "Gustafson's Law provides an alternative when problem size scales with resources"
+      ],
       "canonicalCitations": ["Amdahl, G. (1967). Validity of the Single Processor Approach."],
       "systemElevation": null
     },
@@ -82,7 +123,11 @@
       "domain": "Economics",
       "formalDefinition": "The percentage change in quantity demanded of a good in response to a one percent change in its price. Elastic goods (|E|>1) see proportionally larger demand changes; inelastic goods (|E|<1) see proportionally smaller demand changes.",
       "mathematicalFormulation": "E_d = (dQ/Q) / (dP/P) = (dQ/dP) * (P/Q)",
-      "boundaryConditions": ["Elasticity varies along the demand curve", "Short-run and long-run elasticities differ significantly", "Assumes ceteris paribus"],
+      "boundaryConditions": [
+        "Elasticity varies along the demand curve",
+        "Short-run and long-run elasticities differ significantly",
+        "Assumes ceteris paribus"
+      ],
       "canonicalCitations": ["Marshall, A. (1890). Principles of Economics."],
       "systemElevation": null
     },
@@ -92,8 +137,15 @@
       "domain": "Economics",
       "formalDefinition": "Optimal decisions are made at the margin: an activity should continue as long as marginal benefit exceeds marginal cost. The relevant comparison is always the next unit, not the average or total.",
       "mathematicalFormulation": "Optimize where MB = MC (marginal benefit equals marginal cost)",
-      "boundaryConditions": ["Requires continuous decision variables", "Fails when decisions are lumpy or indivisible", "Requires accurate measurement of marginal quantities"],
-      "canonicalCitations": ["Jevons, W.S. (1871). The Theory of Political Economy.", "Marshall, A. (1890). Principles of Economics."],
+      "boundaryConditions": [
+        "Requires continuous decision variables",
+        "Fails when decisions are lumpy or indivisible",
+        "Requires accurate measurement of marginal quantities"
+      ],
+      "canonicalCitations": [
+        "Jevons, W.S. (1871). The Theory of Political Economy.",
+        "Marshall, A. (1890). Principles of Economics."
+      ],
       "systemElevation": null
     },
     {
@@ -102,8 +154,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "When a measure becomes a target, it ceases to be a good measure. Agents will optimize the metric itself rather than the underlying phenomenon it was intended to track, causing the correlation between metric and goal to break down.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Less problematic when the measure directly captures the goal", "Mitigated by using multiple orthogonal metrics"],
-      "canonicalCitations": ["Goodhart, C. (1975). Monetary Relationships.", "Strathern, M. (1997). Improving Ratings: Audit in the British University System."],
+      "boundaryConditions": [
+        "Less problematic when the measure directly captures the goal",
+        "Mitigated by using multiple orthogonal metrics"
+      ],
+      "canonicalCitations": [
+        "Goodhart, C. (1975). Monetary Relationships.",
+        "Strathern, M. (1997). Improving Ratings: Audit in the British University System."
+      ],
       "systemElevation": null
     },
     {
@@ -112,7 +170,10 @@
       "domain": "Organizational Theory",
       "formalDefinition": "Organizations that design systems are constrained to produce designs that mirror the communication structures of those organizations. System architecture reflects organizational architecture.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Can be deliberately leveraged via 'inverse Conway maneuver'", "Less deterministic in small organizations with fluid communication"],
+      "boundaryConditions": [
+        "Can be deliberately leveraged via 'inverse Conway maneuver'",
+        "Less deterministic in small organizations with fluid communication"
+      ],
       "canonicalCitations": ["Conway, M. (1968). How Do Committees Invent? Datamation."],
       "systemElevation": null
     },
@@ -122,7 +183,10 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "System throughput is determined by the single tightest constraint (bottleneck). Improvements to non-constraint resources do not improve overall system performance. The five focusing steps: identify, exploit, subordinate, elevate, and repeat.",
       "mathematicalFormulation": "System throughput <= min(throughput of each stage)",
-      "boundaryConditions": ["Assumes a single dominant constraint at any time", "Less applicable to highly parallel systems without serial dependencies"],
+      "boundaryConditions": [
+        "Assumes a single dominant constraint at any time",
+        "Less applicable to highly parallel systems without serial dependencies"
+      ],
       "canonicalCitations": ["Goldratt, E. (1984). The Goal."],
       "systemElevation": null
     },
@@ -132,8 +196,15 @@
       "domain": "Economics",
       "formalDefinition": "As one input factor is increased while others are held constant, the marginal output of that factor eventually decreases. Each additional unit of input produces less additional output than the previous unit.",
       "mathematicalFormulation": "d^2Y/dX^2 < 0 (concave production function)",
-      "boundaryConditions": ["Applies only when other inputs are held fixed", "May not apply in early stages where increasing returns dominate", "Network effects can reverse diminishing returns"],
-      "canonicalCitations": ["Turgot, A.R.J. (1767). Observations on Taxation.", "Ricardo, D. (1817). Principles of Political Economy."],
+      "boundaryConditions": [
+        "Applies only when other inputs are held fixed",
+        "May not apply in early stages where increasing returns dominate",
+        "Network effects can reverse diminishing returns"
+      ],
+      "canonicalCitations": [
+        "Turgot, A.R.J. (1767). Observations on Taxation.",
+        "Ricardo, D. (1817). Principles of Political Economy."
+      ],
       "systemElevation": null
     },
     {
@@ -142,8 +213,14 @@
       "domain": "Economics",
       "formalDefinition": "Average cost per unit decreases as the quantity produced increases, due to fixed cost spreading, specialization, and bulk purchasing advantages. Larger producers enjoy structural cost advantages.",
       "mathematicalFormulation": "AC(Q) = FC/Q + VC(Q)/Q, where dAC/dQ < 0",
-      "boundaryConditions": ["Eventually reversed by diseconomies of scale", "Less relevant for purely digital goods with near-zero marginal cost"],
-      "canonicalCitations": ["Marshall, A. (1890). Principles of Economics.", "Chandler, A. (1990). Scale and Scope."],
+      "boundaryConditions": [
+        "Eventually reversed by diseconomies of scale",
+        "Less relevant for purely digital goods with near-zero marginal cost"
+      ],
+      "canonicalCitations": [
+        "Marshall, A. (1890). Principles of Economics.",
+        "Chandler, A. (1990). Scale and Scope."
+      ],
       "systemElevation": null
     },
     {
@@ -152,8 +229,14 @@
       "domain": "Economics",
       "formalDefinition": "Beyond a certain size, average costs increase with additional output due to coordination complexity, bureaucratic overhead, communication breakdowns, and loss of organizational agility.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Threshold varies dramatically by industry and organizational design", "Can be mitigated by modular organizational structures"],
-      "canonicalCitations": ["Williamson, O. (1967). Hierarchical Control and Optimum Firm Size.", "Coase, R. (1937). The Nature of the Firm."],
+      "boundaryConditions": [
+        "Threshold varies dramatically by industry and organizational design",
+        "Can be mitigated by modular organizational structures"
+      ],
+      "canonicalCitations": [
+        "Williamson, O. (1967). Hierarchical Control and Optimum Firm Size.",
+        "Coase, R. (1937). The Nature of the Firm."
+      ],
       "systemElevation": null
     },
     {
@@ -162,8 +245,14 @@
       "domain": "Economics",
       "formalDefinition": "When one party (the agent) makes decisions on behalf of another (the principal), incentive misalignment and information asymmetry lead the agent to act in their own interest rather than the principal's. The core challenge is designing contracts that align agent behavior with principal interests.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Mitigated when agent's interests naturally align with principal's", "Less relevant when monitoring costs are very low"],
-      "canonicalCitations": ["Jensen, M. & Meckling, W. (1976). Theory of the Firm.", "Ross, S. (1973). The Economic Theory of Agency."],
+      "boundaryConditions": [
+        "Mitigated when agent's interests naturally align with principal's",
+        "Less relevant when monitoring costs are very low"
+      ],
+      "canonicalCitations": [
+        "Jensen, M. & Meckling, W. (1976). Theory of the Firm.",
+        "Ross, S. (1973). The Economic Theory of Agency."
+      ],
       "systemElevation": null
     },
     {
@@ -172,8 +261,14 @@
       "domain": "Economics",
       "formalDefinition": "An entity benefits from specializing in and trading goods or services for which it has the lowest opportunity cost, even if it holds absolute advantage in all areas. Trade based on comparative advantage increases total output.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Assumes free and low-cost trade", "May not hold with significant externalities or strategic industries", "Dynamic comparative advantage can shift over time"],
-      "canonicalCitations": ["Ricardo, D. (1817). On the Principles of Political Economy and Taxation."],
+      "boundaryConditions": [
+        "Assumes free and low-cost trade",
+        "May not hold with significant externalities or strategic industries",
+        "Dynamic comparative advantage can shift over time"
+      ],
+      "canonicalCitations": [
+        "Ricardo, D. (1817). On the Principles of Political Economy and Taxation."
+      ],
       "systemElevation": null
     },
     {
@@ -182,8 +277,14 @@
       "domain": "Economics",
       "formalDefinition": "The true cost of any choice is the value of the best alternative foregone. Every resource allocation implies a trade-off, and rational decision-making requires comparing options against their next-best alternatives, not against zero.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Difficult to calculate when alternatives are uncertain or numerous", "Cognitive limitations prevent full enumeration of alternatives"],
-      "canonicalCitations": ["Bastiat, F. (1850). That Which Is Seen and That Which Is Not Seen.", "Buchanan, J. (1969). Cost and Choice."],
+      "boundaryConditions": [
+        "Difficult to calculate when alternatives are uncertain or numerous",
+        "Cognitive limitations prevent full enumeration of alternatives"
+      ],
+      "canonicalCitations": [
+        "Bastiat, F. (1850). That Which Is Seen and That Which Is Not Seen.",
+        "Buchanan, J. (1969). Cost and Choice."
+      ],
       "systemElevation": null
     },
     {
@@ -192,8 +293,13 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Decisions are influenced by how information is presented (framed) rather than by the information itself. Equivalent options described as gains vs. losses, or with different reference points, produce systematically different choices.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Effect is weaker for experts with deep domain knowledge", "Diminishes when stakes are very high and deliberation time is long"],
-      "canonicalCitations": ["Tversky, A. & Kahneman, D. (1981). The Framing of Decisions and the Psychology of Choice. Science."],
+      "boundaryConditions": [
+        "Effect is weaker for experts with deep domain knowledge",
+        "Diminishes when stakes are very high and deliberation time is long"
+      ],
+      "canonicalCitations": [
+        "Tversky, A. & Kahneman, D. (1981). The Framing of Decisions and the Psychology of Choice. Science."
+      ],
       "systemElevation": null
     },
     {
@@ -202,8 +308,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Working memory has severe capacity limits (approximately 7 plus or minus 2 items). When the intrinsic complexity of material plus the extraneous load from poor design exceeds working memory capacity, learning and performance degrade sharply.",
       "mathematicalFormulation": "Total load = Intrinsic load + Extraneous load + Germane load <= Working memory capacity",
-      "boundaryConditions": ["Experts have chunked knowledge that reduces intrinsic load", "Does not apply to highly automated/proceduralized tasks"],
-      "canonicalCitations": ["Sweller, J. (1988). Cognitive Load During Problem Solving. Cognitive Science.", "Miller, G.A. (1956). The Magical Number Seven, Plus or Minus Two."],
+      "boundaryConditions": [
+        "Experts have chunked knowledge that reduces intrinsic load",
+        "Does not apply to highly automated/proceduralized tasks"
+      ],
+      "canonicalCitations": [
+        "Sweller, J. (1988). Cognitive Load During Problem Solving. Cognitive Science.",
+        "Miller, G.A. (1956). The Magical Number Seven, Plus or Minus Two."
+      ],
       "systemElevation": null
     },
     {
@@ -212,8 +324,14 @@
       "domain": "Economics",
       "formalDefinition": "In an information-rich world, the wealth of information creates a poverty of attention. Attention becomes the scarce resource that constrains information processing, making the ability to filter and prioritize more valuable than the ability to produce information.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Less relevant in information-scarce environments", "Assumes attention cannot be significantly expanded through tools or delegation"],
-      "canonicalCitations": ["Simon, H. (1971). Designing Organizations for an Information-Rich World.", "Davenport, T. & Beck, J. (2001). The Attention Economy."],
+      "boundaryConditions": [
+        "Less relevant in information-scarce environments",
+        "Assumes attention cannot be significantly expanded through tools or delegation"
+      ],
+      "canonicalCitations": [
+        "Simon, H. (1971). Designing Organizations for an Information-Rich World.",
+        "Davenport, T. & Beck, J. (2001). The Attention Economy."
+      ],
       "systemElevation": null
     },
     {
@@ -222,8 +340,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Human decision-makers lack the information, cognitive capacity, and time to optimize. Instead, they satisfice: searching for solutions that meet an acceptable threshold rather than the global optimum. Organizations amplify and constrain individual bounded rationality through routines and structures.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["In simple, well-defined domains with few options, humans can approach full rationality", "Computational aids can extend the bounds"],
-      "canonicalCitations": ["Simon, H. (1955). A Behavioral Model of Rational Choice. Quarterly Journal of Economics.", "Simon, H. (1972). Theories of Bounded Rationality."],
+      "boundaryConditions": [
+        "In simple, well-defined domains with few options, humans can approach full rationality",
+        "Computational aids can extend the bounds"
+      ],
+      "canonicalCitations": [
+        "Simon, H. (1955). A Behavioral Model of Rational Choice. Quarterly Journal of Economics.",
+        "Simon, H. (1972). Theories of Bounded Rationality."
+      ],
       "systemElevation": null
     },
     {
@@ -232,8 +356,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The tendency to search for, interpret, favor, and recall information in a way that confirms or supports one's prior beliefs or hypotheses. Disconfirming evidence is unconsciously discounted or ignored, creating a self-reinforcing belief loop.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Can be partially mitigated by structured adversarial review processes", "Effect is stronger for emotionally charged beliefs"],
-      "canonicalCitations": ["Wason, P. (1960). On the failure to eliminate hypotheses in a conceptual task.", "Nickerson, R. (1998). Confirmation Bias: A Ubiquitous Phenomenon in Many Guises."],
+      "boundaryConditions": [
+        "Can be partially mitigated by structured adversarial review processes",
+        "Effect is stronger for emotionally charged beliefs"
+      ],
+      "canonicalCitations": [
+        "Wason, P. (1960). On the failure to eliminate hypotheses in a conceptual task.",
+        "Nickerson, R. (1998). Confirmation Bias: A Ubiquitous Phenomenon in Many Guises."
+      ],
       "systemElevation": null
     },
     {
@@ -242,8 +372,13 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Initial exposure to a number or value (the anchor) disproportionately influences subsequent judgments, even when the anchor is arbitrary or irrelevant. Adjustment from the anchor is typically insufficient, biasing estimates toward the anchor.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Expertise reduces but does not eliminate anchoring", "Multiple competing anchors can partially offset the effect"],
-      "canonicalCitations": ["Tversky, A. & Kahneman, D. (1974). Judgment Under Uncertainty: Heuristics and Biases. Science."],
+      "boundaryConditions": [
+        "Expertise reduces but does not eliminate anchoring",
+        "Multiple competing anchors can partially offset the effect"
+      ],
+      "canonicalCitations": [
+        "Tversky, A. & Kahneman, D. (1974). Judgment Under Uncertainty: Heuristics and Biases. Science."
+      ],
       "systemElevation": null
     },
     {
@@ -252,8 +387,13 @@
       "domain": "Cognitive Science",
       "formalDefinition": "People exhibit a disproportionate preference for the current state of affairs. The potential losses from changing are psychologically weighted more heavily than the potential gains, creating inertia even when alternatives are objectively superior.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Overcome when the current state becomes clearly untenable", "Weaker for those with less investment in the current state"],
-      "canonicalCitations": ["Samuelson, W. & Zeckhauser, R. (1988). Status Quo Bias in Decision Making. Journal of Risk and Uncertainty."],
+      "boundaryConditions": [
+        "Overcome when the current state becomes clearly untenable",
+        "Weaker for those with less investment in the current state"
+      ],
+      "canonicalCitations": [
+        "Samuelson, W. & Zeckhauser, R. (1988). Status Quo Bias in Decision Making. Journal of Risk and Uncertainty."
+      ],
       "systemElevation": null
     },
     {
@@ -262,8 +402,15 @@
       "domain": "Game Theory",
       "formalDefinition": "A state in which no player can improve their payoff by unilaterally changing their strategy, given the strategies of all other players. A Nash equilibrium may be suboptimal for the group while being individually rational for each player.",
       "mathematicalFormulation": "For all players i: u_i(s_i*, s_{-i}*) >= u_i(s_i, s_{-i}*) for all s_i",
-      "boundaryConditions": ["Multiple Nash equilibria may exist", "Assumes players know others' strategies", "Does not guarantee Pareto optimality"],
-      "canonicalCitations": ["Nash, J. (1950). Equilibrium Points in N-Person Games. Proceedings of the NAS.", "Nash, J. (1951). Non-Cooperative Games. Annals of Mathematics."],
+      "boundaryConditions": [
+        "Multiple Nash equilibria may exist",
+        "Assumes players know others' strategies",
+        "Does not guarantee Pareto optimality"
+      ],
+      "canonicalCitations": [
+        "Nash, J. (1950). Equilibrium Points in N-Person Games. Proceedings of the NAS.",
+        "Nash, J. (1951). Non-Cooperative Games. Annals of Mathematics."
+      ],
       "systemElevation": null
     },
     {
@@ -272,8 +419,14 @@
       "domain": "Game Theory",
       "formalDefinition": "A game where two rational agents acting in their individual self-interest produce an outcome that is worse for both than if they had cooperated. The dominant strategy (defect) leads to a Pareto-inferior equilibrium, illustrating the tension between individual and collective rationality.",
       "mathematicalFormulation": "T > R > P > S and 2R > T + S (temptation > reward > punishment > sucker)",
-      "boundaryConditions": ["Cooperation can emerge in iterated games (Axelrod's tournaments)", "Enforceable contracts or third-party enforcement can resolve the dilemma"],
-      "canonicalCitations": ["Tucker, A. (1950). The Prisoner's Dilemma.", "Axelrod, R. (1984). The Evolution of Cooperation."],
+      "boundaryConditions": [
+        "Cooperation can emerge in iterated games (Axelrod's tournaments)",
+        "Enforceable contracts or third-party enforcement can resolve the dilemma"
+      ],
+      "canonicalCitations": [
+        "Tucker, A. (1950). The Prisoner's Dilemma.",
+        "Axelrod, R. (1984). The Evolution of Cooperation."
+      ],
       "systemElevation": null
     },
     {
@@ -282,7 +435,10 @@
       "domain": "Game Theory",
       "formalDefinition": "In coordination games with multiple equilibria, players tend to converge on solutions that are culturally, psychologically, or contextually salient, even without communication. The focal point serves as a natural coordination mechanism arising from shared context.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Requires shared cultural or contextual knowledge", "Less effective when players come from very different backgrounds"],
+      "boundaryConditions": [
+        "Requires shared cultural or contextual knowledge",
+        "Less effective when players come from very different backgrounds"
+      ],
       "canonicalCitations": ["Schelling, T. (1960). The Strategy of Conflict."],
       "systemElevation": null
     },
@@ -292,8 +448,14 @@
       "domain": "Game Theory",
       "formalDefinition": "A game where two players drive toward each other; the first to swerve loses face but survives, while if neither swerves both suffer the worst outcome. Unlike the Prisoner's Dilemma, mutual defection is the worst outcome for both players, creating incentives for brinkmanship and commitment devices.",
       "mathematicalFormulation": "T > R > S > P (temptation > reward > sucker > punishment, where punishment is mutual destruction)",
-      "boundaryConditions": ["Requires credible threat of mutual destruction", "Communication and commitment devices can shift outcomes"],
-      "canonicalCitations": ["Russell, B. (1959). Common Sense and Nuclear Warfare.", "Rapoport, A. (1966). Two-Person Game Theory."],
+      "boundaryConditions": [
+        "Requires credible threat of mutual destruction",
+        "Communication and commitment devices can shift outcomes"
+      ],
+      "canonicalCitations": [
+        "Russell, B. (1959). Common Sense and Nuclear Warfare.",
+        "Rapoport, A. (1966). Two-Person Game Theory."
+      ],
       "systemElevation": null
     },
     {
@@ -302,8 +464,14 @@
       "domain": "Economics",
       "formalDefinition": "When a shared resource is non-excludable but rivalrous, individual rational exploitation leads to collective overuse and depletion. Each user captures the full benefit of consumption but bears only a fraction of the cost of depletion.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Can be resolved through privatization, regulation, or community governance (Ostrom)", "Does not apply to non-rivalrous goods"],
-      "canonicalCitations": ["Hardin, G. (1968). The Tragedy of the Commons. Science.", "Ostrom, E. (1990). Governing the Commons."],
+      "boundaryConditions": [
+        "Can be resolved through privatization, regulation, or community governance (Ostrom)",
+        "Does not apply to non-rivalrous goods"
+      ],
+      "canonicalCitations": [
+        "Hardin, G. (1968). The Tragedy of the Commons. Science.",
+        "Ostrom, E. (1990). Governing the Commons."
+      ],
       "systemElevation": null
     },
     {
@@ -312,8 +480,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "Circular causal chains where the output of a system feeds back as input. Reinforcing (positive) loops amplify change and drive exponential growth or collapse. Balancing (negative) loops counteract change and drive the system toward equilibrium or a goal.",
       "mathematicalFormulation": "Reinforcing: dx/dt = kx (exponential). Balancing: dx/dt = k(goal - x)",
-      "boundaryConditions": ["Reinforcing loops always eventually encounter a balancing constraint", "Delays in feedback can cause oscillation and overshoot"],
-      "canonicalCitations": ["Forrester, J. (1961). Industrial Dynamics.", "Meadows, D. (2008). Thinking in Systems."],
+      "boundaryConditions": [
+        "Reinforcing loops always eventually encounter a balancing constraint",
+        "Delays in feedback can cause oscillation and overshoot"
+      ],
+      "canonicalCitations": [
+        "Forrester, J. (1961). Industrial Dynamics.",
+        "Meadows, D. (2008). Thinking in Systems."
+      ],
       "systemElevation": null
     },
     {
@@ -322,8 +496,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "A systems archetype where a reinforcing growth process encounters a balancing constraint that slows and eventually halts growth. The constraint may be resource depletion, market saturation, or organizational capacity. Early growth misleadingly suggests unlimited potential.",
       "mathematicalFormulation": "Logistic growth: dN/dt = rN(1 - N/K), where K = carrying capacity",
-      "boundaryConditions": ["The limiting factor can sometimes be removed or expanded", "Multiple sequential limits may exist"],
-      "canonicalCitations": ["Senge, P. (1990). The Fifth Discipline.", "Meadows, D. et al. (1972). The Limits to Growth."],
+      "boundaryConditions": [
+        "The limiting factor can sometimes be removed or expanded",
+        "Multiple sequential limits may exist"
+      ],
+      "canonicalCitations": [
+        "Senge, P. (1990). The Fifth Discipline.",
+        "Meadows, D. et al. (1972). The Limits to Growth."
+      ],
       "systemElevation": null
     },
     {
@@ -332,8 +512,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "A systems archetype where a symptomatic solution reduces immediate problem visibility, undermining motivation to pursue the fundamental solution. Over time, the fundamental solution atrophies while dependence on the symptomatic fix increases.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Requires that the symptomatic fix actually reduces problem visibility", "Does not apply when the symptomatic and fundamental solutions are the same"],
-      "canonicalCitations": ["Senge, P. (1990). The Fifth Discipline.", "Braun, W. (2002). The System Archetypes."],
+      "boundaryConditions": [
+        "Requires that the symptomatic fix actually reduces problem visibility",
+        "Does not apply when the symptomatic and fundamental solutions are the same"
+      ],
+      "canonicalCitations": [
+        "Senge, P. (1990). The Fifth Discipline.",
+        "Braun, W. (2002). The System Archetypes."
+      ],
       "systemElevation": null
     },
     {
@@ -342,8 +528,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "Points within a complex system where a small shift can produce large changes in system behavior. Meadows identified a hierarchy of leverage points, from parameters and buffers (low leverage) through feedback loops and rules to paradigms and transcendence (high leverage).",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["High-leverage interventions are often counterintuitive", "Identification requires deep understanding of system structure"],
-      "canonicalCitations": ["Meadows, D. (1999). Leverage Points: Places to Intervene in a System.", "Meadows, D. (2008). Thinking in Systems."],
+      "boundaryConditions": [
+        "High-leverage interventions are often counterintuitive",
+        "Identification requires deep understanding of system structure"
+      ],
+      "canonicalCitations": [
+        "Meadows, D. (1999). Leverage Points: Places to Intervene in a System.",
+        "Meadows, D. (2008). Thinking in Systems."
+      ],
       "systemElevation": null
     },
     {
@@ -352,8 +544,15 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "A visual mapping technique that represents variables and their causal relationships as directed graphs with polarity indicators. Same-direction links (+) and opposite-direction links (-) combine to form reinforcing loops (even number of negative links) and balancing loops (odd number of negative links).",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Cannot capture nonlinear relationships accurately", "Omit time delays unless explicitly annotated", "Qualitative only; do not represent magnitudes"],
-      "canonicalCitations": ["Sterman, J. (2000). Business Dynamics: Systems Thinking and Modeling for a Complex World.", "Richardson, G. (1986). Problems with Causal-Loop Diagrams."],
+      "boundaryConditions": [
+        "Cannot capture nonlinear relationships accurately",
+        "Omit time delays unless explicitly annotated",
+        "Qualitative only; do not represent magnitudes"
+      ],
+      "canonicalCitations": [
+        "Sterman, J. (2000). Business Dynamics: Systems Thinking and Modeling for a Complex World.",
+        "Richardson, G. (1986). Problems with Causal-Loop Diagrams."
+      ],
       "systemElevation": null
     },
     {
@@ -362,8 +561,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "Outcomes are significantly shaped by historical sequence and prior decisions, even when those initial conditions are no longer optimal. Early choices constrain future possibilities, creating lock-in that may persist long after the original reasons have become irrelevant.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["External shocks can break path dependence", "Applies most strongly when increasing returns reinforce early choices"],
-      "canonicalCitations": ["Arthur, W.B. (1989). Competing Technologies, Increasing Returns, and Lock-In.", "David, P. (1985). Clio and the Economics of QWERTY."],
+      "boundaryConditions": [
+        "External shocks can break path dependence",
+        "Applies most strongly when increasing returns reinforce early choices"
+      ],
+      "canonicalCitations": [
+        "Arthur, W.B. (1989). Competing Technologies, Increasing Returns, and Lock-In.",
+        "David, P. (1985). Clio and the Economics of QWERTY."
+      ],
       "systemElevation": null
     },
     {
@@ -372,8 +577,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "Critical thresholds at which a system transitions from one qualitative state to another. Small perturbations near the tipping point can trigger large, often irreversible shifts in system behavior. The system exhibits nonlinear dynamics with discontinuous jumps.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Not all systems have sharp tipping points; some transition gradually", "Identifying tipping points in advance is extremely difficult"],
-      "canonicalCitations": ["Gladwell, M. (2000). The Tipping Point.", "Scheffer, M. (2009). Critical Transitions in Nature and Society."],
+      "boundaryConditions": [
+        "Not all systems have sharp tipping points; some transition gradually",
+        "Identifying tipping points in advance is extremely difficult"
+      ],
+      "canonicalCitations": [
+        "Gladwell, M. (2000). The Tipping Point.",
+        "Scheffer, M. (2009). Critical Transitions in Nature and Society."
+      ],
       "systemElevation": null
     },
     {
@@ -382,8 +593,14 @@
       "domain": "Economics",
       "formalDefinition": "The value of a product or service to a user increases as more users adopt it. Direct network effects arise when users directly benefit from other users (e.g., phone network). Indirect network effects arise through complementary goods (e.g., more users attract more developers).",
       "mathematicalFormulation": "V_user ~ f(n), where f is increasing and often convex initially",
-      "boundaryConditions": ["Network effects can turn negative at extreme scale (congestion, spam)", "Require a minimum viable network to activate"],
-      "canonicalCitations": ["Katz, M. & Shapiro, C. (1985). Network Externalities, Competition, and Compatibility. AER.", "Liebowitz, S. & Margolis, S. (1994). Network Externality: An Uncommon Tragedy."],
+      "boundaryConditions": [
+        "Network effects can turn negative at extreme scale (congestion, spam)",
+        "Require a minimum viable network to activate"
+      ],
+      "canonicalCitations": [
+        "Katz, M. & Shapiro, C. (1985). Network Externalities, Competition, and Compatibility. AER.",
+        "Liebowitz, S. & Margolis, S. (1994). Network Externality: An Uncommon Tragedy."
+      ],
       "systemElevation": null
     },
     {
@@ -392,7 +609,10 @@
       "domain": "Economics",
       "formalDefinition": "Established firms fail when new entrants introduce simpler, cheaper products that initially serve low-end or non-consumers, then improve over time to capture mainstream markets. Incumbents rationally ignore the low-end threat because their most profitable customers demand continued investment in sustaining innovation.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Does not apply when the incumbent can adopt the disruptive technology", "Less relevant in regulated markets with high barriers to entry"],
+      "boundaryConditions": [
+        "Does not apply when the incumbent can adopt the disruptive technology",
+        "Less relevant in regulated markets with high barriers to entry"
+      ],
       "canonicalCitations": ["Christensen, C. (1997). The Innovator's Dilemma."],
       "systemElevation": null
     },
@@ -402,8 +622,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "Complex systems can be decomposed into semi-independent modules with well-defined interfaces. Modular architectures enable independent innovation within components, while integral architectures optimize cross-component interactions at the cost of flexibility.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Defining clean interfaces has a real cost", "Some systems have inherently integral architectures that resist modularization"],
-      "canonicalCitations": ["Baldwin, C. & Clark, K. (2000). Design Rules: The Power of Modularity.", "Christensen, C. et al. (2004). Seeing What's Next."],
+      "boundaryConditions": [
+        "Defining clean interfaces has a real cost",
+        "Some systems have inherently integral architectures that resist modularization"
+      ],
+      "canonicalCitations": [
+        "Baldwin, C. & Clark, K. (2000). Design Rules: The Power of Modularity.",
+        "Christensen, C. et al. (2004). Seeing What's Next."
+      ],
       "systemElevation": null
     },
     {
@@ -412,8 +638,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "Systems with delays in their feedback loops tend to overshoot and undershoot targets, creating oscillatory behavior. The delay between action and perceived effect causes decision-makers to over-correct, amplifying the oscillation rather than dampening it.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Oscillation dampens when feedback delays are short", "External stabilizers or buffers can reduce oscillation amplitude"],
-      "canonicalCitations": ["Sterman, J. (1989). Modeling Managerial Behavior: Misperceptions of Feedback.", "Forrester, J. (1961). Industrial Dynamics."],
+      "boundaryConditions": [
+        "Oscillation dampens when feedback delays are short",
+        "External stabilizers or buffers can reduce oscillation amplitude"
+      ],
+      "canonicalCitations": [
+        "Sterman, J. (1989). Modeling Managerial Behavior: Misperceptions of Feedback.",
+        "Forrester, J. (1961). Industrial Dynamics."
+      ],
       "systemElevation": null
     },
     {
@@ -422,8 +654,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "System behavior is driven by stocks (accumulations) that change only through inflows and outflows. Stocks create delays, provide buffers, and decouple rates of flow. Most people underestimate the time required for stocks to change, leading to poor dynamic reasoning.",
       "mathematicalFormulation": "Stock(t) = Stock(t0) + integral(inflow - outflow, t0, t)",
-      "boundaryConditions": ["Applies only to conserved quantities", "Non-physical stocks (reputation, trust) may not follow strict conservation"],
-      "canonicalCitations": ["Forrester, J. (1961). Industrial Dynamics.", "Sterman, J. (2000). Business Dynamics."],
+      "boundaryConditions": [
+        "Applies only to conserved quantities",
+        "Non-physical stocks (reputation, trust) may not follow strict conservation"
+      ],
+      "canonicalCitations": [
+        "Forrester, J. (1961). Industrial Dynamics.",
+        "Sterman, J. (2000). Business Dynamics."
+      ],
       "systemElevation": null
     },
     {
@@ -432,8 +670,13 @@
       "domain": "Organizational Theory",
       "formalDefinition": "The cognitive limit on the number of stable social relationships an individual can maintain, estimated at approximately 150. Beyond this threshold, groups require formal hierarchies, rules, and norms to maintain cohesion, as informal trust-based coordination breaks down.",
       "mathematicalFormulation": "Approximate limit ~ 150 (with nested layers at ~5, ~15, ~50)",
-      "boundaryConditions": ["Digital tools may extend but not eliminate the limit", "The number varies by individual and type of relationship"],
-      "canonicalCitations": ["Dunbar, R. (1992). Neocortex Size as a Constraint on Group Size in Primates. Journal of Human Evolution."],
+      "boundaryConditions": [
+        "Digital tools may extend but not eliminate the limit",
+        "The number varies by individual and type of relationship"
+      ],
+      "canonicalCitations": [
+        "Dunbar, R. (1992). Neocortex Size as a Constraint on Group Size in Primates. Journal of Human Evolution."
+      ],
       "systemElevation": null
     },
     {
@@ -442,8 +685,14 @@
       "domain": "Organizational Theory",
       "formalDefinition": "Work expands to fill the time available for its completion. Bureaucracies grow at a predictable rate (5-7% per year) regardless of the amount of work to be done, driven by subordinate multiplication and make-work dynamics.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Does not apply under severe resource constraints", "Tight deadlines with accountability can counteract the effect"],
-      "canonicalCitations": ["Parkinson, C.N. (1955). Parkinson's Law. The Economist.", "Parkinson, C.N. (1958). Parkinson's Law: The Pursuit of Progress."],
+      "boundaryConditions": [
+        "Does not apply under severe resource constraints",
+        "Tight deadlines with accountability can counteract the effect"
+      ],
+      "canonicalCitations": [
+        "Parkinson, C.N. (1955). Parkinson's Law. The Economist.",
+        "Parkinson, C.N. (1958). Parkinson's Law: The Pursuit of Progress."
+      ],
       "systemElevation": null
     },
     {
@@ -452,8 +701,14 @@
       "domain": "Economics",
       "formalDefinition": "Technologies follow a characteristic S-shaped adoption and performance trajectory: slow initial progress during exploration, rapid improvement during growth, and eventual plateau as fundamental limits are approached. New S-curves often begin before the current one plateaus.",
       "mathematicalFormulation": "Performance(t) = L / (1 + e^(-k(t-t0))), logistic curve",
-      "boundaryConditions": ["Not all technologies reach the rapid improvement phase", "The plateau level is often underestimated during the early phase"],
-      "canonicalCitations": ["Foster, R. (1986). Innovation: The Attacker's Advantage.", "Rogers, E. (1962). Diffusion of Innovations."],
+      "boundaryConditions": [
+        "Not all technologies reach the rapid improvement phase",
+        "The plateau level is often underestimated during the early phase"
+      ],
+      "canonicalCitations": [
+        "Foster, R. (1986). Innovation: The Attacker's Advantage.",
+        "Rogers, E. (1962). Diffusion of Innovations."
+      ],
       "systemElevation": null
     },
     {
@@ -462,7 +717,10 @@
       "domain": "Economics",
       "formalDefinition": "Technology adoption follows a bell curve of adopter categories (innovators, early adopters, early majority, late majority, laggards), with a critical gap ('chasm') between early adopters and the early majority. Early adopters are visionaries who tolerate imperfection; the early majority are pragmatists who require proven, complete solutions.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Less relevant for technologies with network effects that create natural pull", "The chasm varies in width by market segment"],
+      "boundaryConditions": [
+        "Less relevant for technologies with network effects that create natural pull",
+        "The chasm varies in width by market segment"
+      ],
       "canonicalCitations": ["Moore, G. (1991). Crossing the Chasm."],
       "systemElevation": null
     },
@@ -472,8 +730,14 @@
       "domain": "Economics",
       "formalDefinition": "When technological progress increases the efficiency of resource use, total resource consumption may increase rather than decrease, because the lower effective cost stimulates increased demand that more than offsets the efficiency gain.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Only occurs when demand elasticity exceeds unity", "Does not apply when total demand is fixed or capped"],
-      "canonicalCitations": ["Jevons, W.S. (1865). The Coal Question.", "Alcott, B. (2005). Jevons' Paradox. Ecological Economics."],
+      "boundaryConditions": [
+        "Only occurs when demand elasticity exceeds unity",
+        "Does not apply when total demand is fixed or capped"
+      ],
+      "canonicalCitations": [
+        "Jevons, W.S. (1865). The Coal Question.",
+        "Alcott, B. (2005). Jevons' Paradox. Ecological Economics."
+      ],
       "systemElevation": null
     },
     {
@@ -482,8 +746,14 @@
       "domain": "Economics",
       "formalDefinition": "When the effective cost of a resource or service decreases (through capacity expansion, price reduction, or efficiency improvement), new demand materializes that was previously latent. The new use cases were not merely suppressed but genuinely did not exist at the higher cost.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Requires latent demand to exist at lower price points", "Does not apply when the resource has no alternative uses"],
-      "canonicalCitations": ["Downs, A. (1962). The Law of Peak-Hour Expressway Congestion. Traffic Quarterly.", "Goodwin, P. (1996). Empirical Evidence on Induced Traffic."],
+      "boundaryConditions": [
+        "Requires latent demand to exist at lower price points",
+        "Does not apply when the resource has no alternative uses"
+      ],
+      "canonicalCitations": [
+        "Downs, A. (1962). The Law of Peak-Hour Expressway Congestion. Traffic Quarterly.",
+        "Goodwin, P. (1996). Empirical Evidence on Induced Traffic."
+      ],
       "systemElevation": null
     },
     {
@@ -492,8 +762,14 @@
       "domain": "Economics",
       "formalDefinition": "Markets where small differences in quality, luck, or timing lead to enormous differences in reward. Network effects, economies of scale, and switching costs create positive feedback loops that concentrate market share, often resulting in one dominant player capturing disproportionate value.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Requires strong increasing returns or network effects", "Regulation or interoperability mandates can prevent full concentration"],
-      "canonicalCitations": ["Frank, R. & Cook, P. (1995). The Winner-Take-All Society.", "Arthur, W.B. (1996). Increasing Returns and the New World of Business. HBR."],
+      "boundaryConditions": [
+        "Requires strong increasing returns or network effects",
+        "Regulation or interoperability mandates can prevent full concentration"
+      ],
+      "canonicalCitations": [
+        "Frank, R. & Cook, P. (1995). The Winner-Take-All Society.",
+        "Arthur, W.B. (1996). Increasing Returns and the New World of Business. HBR."
+      ],
       "systemElevation": null
     },
     {
@@ -502,8 +778,14 @@
       "domain": "Economics",
       "formalDefinition": "A good for which demand increases as the price increases, because the high price itself confers status or signals quality. This violates the standard law of demand and creates an upward-sloping demand curve in the prestige segment.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Only applies when conspicuous consumption or status signaling is the primary motivation", "The Veblen effect breaks down if the good becomes widely accessible"],
-      "canonicalCitations": ["Veblen, T. (1899). The Theory of the Leisure Class.", "Leibenstein, H. (1950). Bandwagon, Snob, and Veblen Effects."],
+      "boundaryConditions": [
+        "Only applies when conspicuous consumption or status signaling is the primary motivation",
+        "The Veblen effect breaks down if the good becomes widely accessible"
+      ],
+      "canonicalCitations": [
+        "Veblen, T. (1899). The Theory of the Leisure Class.",
+        "Leibenstein, H. (1950). Bandwagon, Snob, and Veblen Effects."
+      ],
       "systemElevation": null
     },
     {
@@ -512,8 +794,14 @@
       "domain": "Economics",
       "formalDefinition": "When one party in a transaction has materially more or better information than the other, markets fail to achieve efficient outcomes. Adverse selection (hidden information before the transaction) and moral hazard (hidden action after the transaction) are the primary consequences.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Mitigated by signaling, screening, and reputation mechanisms", "Less relevant when information can be cheaply verified"],
-      "canonicalCitations": ["Akerlof, G. (1970). The Market for Lemons. QJE.", "Spence, M. (1973). Job Market Signaling. QJE."],
+      "boundaryConditions": [
+        "Mitigated by signaling, screening, and reputation mechanisms",
+        "Less relevant when information can be cheaply verified"
+      ],
+      "canonicalCitations": [
+        "Akerlof, G. (1970). The Market for Lemons. QJE.",
+        "Spence, M. (1973). Job Market Signaling. QJE."
+      ],
       "systemElevation": null
     },
     {
@@ -522,8 +810,14 @@
       "domain": "Economics",
       "formalDefinition": "When an entity is insulated from the consequences of their decisions (by insurance, bailouts, or delegation), they take greater risks than they would if fully exposed to the downside. The separation of risk-bearing from decision-making systematically distorts behavior.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Mitigated by monitoring, co-insurance, and skin-in-the-game requirements", "Less relevant when the agent's reputation is at stake"],
-      "canonicalCitations": ["Arrow, K. (1963). Uncertainty and the Welfare Economics of Medical Care. AER.", "Pauly, M. (1968). The Economics of Moral Hazard."],
+      "boundaryConditions": [
+        "Mitigated by monitoring, co-insurance, and skin-in-the-game requirements",
+        "Less relevant when the agent's reputation is at stake"
+      ],
+      "canonicalCitations": [
+        "Arrow, K. (1963). Uncertainty and the Welfare Economics of Medical Care. AER.",
+        "Pauly, M. (1968). The Economics of Moral Hazard."
+      ],
       "systemElevation": null
     },
     {
@@ -532,8 +826,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Extreme observations on any variable tend to be followed by observations closer to the population mean, purely as a statistical phenomenon. This is not a causal force but a mathematical consequence of imperfect correlation, yet it is routinely misinterpreted as a causal effect.",
       "mathematicalFormulation": "E[Y|X=x] = mu_Y + rho * sigma_Y/sigma_X * (x - mu_X), where |rho| < 1",
-      "boundaryConditions": ["Does not apply when the variable is deterministic", "The phenomenon disappears when correlation approaches 1"],
-      "canonicalCitations": ["Galton, F. (1886). Regression Towards Mediocrity in Hereditary Stature.", "Kahneman, D. (2011). Thinking, Fast and Slow."],
+      "boundaryConditions": [
+        "Does not apply when the variable is deterministic",
+        "The phenomenon disappears when correlation approaches 1"
+      ],
+      "canonicalCitations": [
+        "Galton, F. (1886). Regression Towards Mediocrity in Hereditary Stature.",
+        "Kahneman, D. (2011). Thinking, Fast and Slow."
+      ],
       "systemElevation": null
     },
     {
@@ -542,8 +842,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The logical error of concentrating on entities that survived a selection process and overlooking those that did not, leading to false conclusions about what caused success. The visible survivors are a non-representative sample of the original population.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Less problematic when the selection process is well-understood", "Can be corrected by deliberately studying failures"],
-      "canonicalCitations": ["Wald, A. (1943). Statistical Research Group memorandum on aircraft armor.", "Brown, S.J. et al. (1992). Survivorship Bias in Performance Studies. Review of Financial Studies."],
+      "boundaryConditions": [
+        "Less problematic when the selection process is well-understood",
+        "Can be corrected by deliberately studying failures"
+      ],
+      "canonicalCitations": [
+        "Wald, A. (1943). Statistical Research Group memorandum on aircraft armor.",
+        "Brown, S.J. et al. (1992). Survivorship Bias in Performance Studies. Review of Financial Studies."
+      ],
       "systemElevation": null
     },
     {
@@ -552,8 +858,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The systematic tendency to underestimate the time, cost, and risk of planned actions while overestimating their benefits. People plan based on best-case scenarios (inside view) rather than base rates from similar past projects (outside view).",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Can be mitigated by reference class forecasting", "Experienced planners in repetitive domains show less bias"],
-      "canonicalCitations": ["Kahneman, D. & Tversky, A. (1979). Intuitive Prediction: Biases and Corrective Procedures.", "Buehler, R. et al. (1994). Exploring the Planning Fallacy."],
+      "boundaryConditions": [
+        "Can be mitigated by reference class forecasting",
+        "Experienced planners in repetitive domains show less bias"
+      ],
+      "canonicalCitations": [
+        "Kahneman, D. & Tversky, A. (1979). Intuitive Prediction: Biases and Corrective Procedures.",
+        "Buehler, R. et al. (1994). Exploring the Planning Fallacy."
+      ],
       "systemElevation": null
     },
     {
@@ -562,8 +874,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Once a person knows something, they find it extremely difficult to think about problems from the perspective of someone who lacks that knowledge. Experts systematically overestimate how obvious or accessible their knowledge is to non-experts.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Partially mitigated by structured perspective-taking exercises", "Stronger for tacit knowledge than explicit knowledge"],
-      "canonicalCitations": ["Camerer, C. et al. (1989). The Curse of Knowledge in Economic Settings.", "Heath, C. & Heath, D. (2007). Made to Stick."],
+      "boundaryConditions": [
+        "Partially mitigated by structured perspective-taking exercises",
+        "Stronger for tacit knowledge than explicit knowledge"
+      ],
+      "canonicalCitations": [
+        "Camerer, C. et al. (1989). The Curse of Knowledge in Economic Settings.",
+        "Heath, C. & Heath, D. (2007). Made to Stick."
+      ],
       "systemElevation": null
     },
     {
@@ -572,8 +890,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The tendency to continue investing in a course of action because of previously invested resources (time, money, effort) that cannot be recovered, rather than making decisions based solely on prospective costs and benefits.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Sunk costs can be rationally relevant when they signal commitment to others", "Less prevalent in organizations with strong kill-criteria for projects"],
-      "canonicalCitations": ["Arkes, H. & Blumer, C. (1985). The Psychology of Sunk Cost.", "Thaler, R. (1980). Toward a Positive Theory of Consumer Choice."],
+      "boundaryConditions": [
+        "Sunk costs can be rationally relevant when they signal commitment to others",
+        "Less prevalent in organizations with strong kill-criteria for projects"
+      ],
+      "canonicalCitations": [
+        "Arkes, H. & Blumer, C. (1985). The Psychology of Sunk Cost.",
+        "Thaler, R. (1980). Toward a Positive Theory of Consumer Choice."
+      ],
       "systemElevation": null
     },
     {
@@ -582,8 +906,14 @@
       "domain": "Economics",
       "formalDefinition": "Market prices adjust to balance the quantity supplied with the quantity demanded. At the equilibrium price, there is no tendency for change. Shifts in supply or demand curves produce predictable changes in equilibrium price and quantity.",
       "mathematicalFormulation": "Q_d(P*) = Q_s(P*), where P* is the equilibrium price",
-      "boundaryConditions": ["Assumes competitive markets with flexible prices", "Does not apply to markets with price controls, rationing, or monopoly power"],
-      "canonicalCitations": ["Marshall, A. (1890). Principles of Economics.", "Walras, L. (1874). Elements of Pure Economics."],
+      "boundaryConditions": [
+        "Assumes competitive markets with flexible prices",
+        "Does not apply to markets with price controls, rationing, or monopoly power"
+      ],
+      "canonicalCitations": [
+        "Marshall, A. (1890). Principles of Economics.",
+        "Walras, L. (1874). Elements of Pure Economics."
+      ],
       "systemElevation": null
     },
     {
@@ -592,7 +922,10 @@
       "domain": "Economics",
       "formalDefinition": "The process by which new innovations render existing products, services, and business models obsolete. Economic progress requires the continuous destruction of old structures, and attempts to prevent this destruction reduce dynamism and long-term growth.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["The transition period creates real displacement costs that merit attention", "Some destruction is not creative but merely destructive"],
+      "boundaryConditions": [
+        "The transition period creates real displacement costs that merit attention",
+        "Some destruction is not creative but merely destructive"
+      ],
       "canonicalCitations": ["Schumpeter, J. (1942). Capitalism, Socialism and Democracy."],
       "systemElevation": null
     },
@@ -602,8 +935,14 @@
       "domain": "Economics",
       "formalDefinition": "Goods where increased consumption of one increases demand for the other. Strategic firms commoditize their complements to capture more value: when one layer of a value stack becomes cheap, the adjacent layer becomes more valuable.",
       "mathematicalFormulation": "Cross-elasticity E_xy < 0 (negative cross-price elasticity)",
-      "boundaryConditions": ["Complement relationships can shift as technology evolves", "Does not apply when goods are substitutes"],
-      "canonicalCitations": ["Brandenburger, A. & Nalebuff, B. (1996). Co-opetition.", "Shapiro, C. & Varian, H. (1998). Information Rules."],
+      "boundaryConditions": [
+        "Complement relationships can shift as technology evolves",
+        "Does not apply when goods are substitutes"
+      ],
+      "canonicalCitations": [
+        "Brandenburger, A. & Nalebuff, B. (1996). Co-opetition.",
+        "Shapiro, C. & Varian, H. (1998). Information Rules."
+      ],
       "systemElevation": null
     },
     {
@@ -612,8 +951,14 @@
       "domain": "Economics",
       "formalDefinition": "A platform that serves two distinct user groups who provide each other with network benefits. The platform must solve the chicken-and-egg problem of attracting both sides simultaneously, and pricing must account for cross-side externalities.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Requires genuine cross-side externalities, not just multi-product bundling", "May tip to monopoly or sustain competition depending on multi-homing costs"],
-      "canonicalCitations": ["Rochet, J.-C. & Tirole, J. (2003). Platform Competition in Two-Sided Markets.", "Evans, D. & Schmalensee, R. (2007). Catalyst Code."],
+      "boundaryConditions": [
+        "Requires genuine cross-side externalities, not just multi-product bundling",
+        "May tip to monopoly or sustain competition depending on multi-homing costs"
+      ],
+      "canonicalCitations": [
+        "Rochet, J.-C. & Tirole, J. (2003). Platform Competition in Two-Sided Markets.",
+        "Evans, D. & Schmalensee, R. (2007). Catalyst Code."
+      ],
       "systemElevation": null
     },
     {
@@ -622,8 +967,14 @@
       "domain": "Economics",
       "formalDefinition": "The costs a consumer incurs when changing from one product or supplier to another. These include financial costs, learning costs, data migration costs, relationship costs, and psychological costs. High switching costs create lock-in and reduce competitive pressure.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Switching costs can be reduced by standardization and interoperability", "Regulatory action can mandate portability to reduce switching costs"],
-      "canonicalCitations": ["Klemperer, P. (1987). Markets with Consumer Switching Costs. QJE.", "Shapiro, C. & Varian, H. (1998). Information Rules."],
+      "boundaryConditions": [
+        "Switching costs can be reduced by standardization and interoperability",
+        "Regulatory action can mandate portability to reduce switching costs"
+      ],
+      "canonicalCitations": [
+        "Klemperer, P. (1987). Markets with Consumer Switching Costs. QJE.",
+        "Shapiro, C. & Varian, H. (1998). Information Rules."
+      ],
       "systemElevation": null
     },
     {
@@ -632,8 +983,14 @@
       "domain": "Economics",
       "formalDefinition": "A theoretical inferior good for which the income effect of a price increase outweighs the substitution effect, causing quantity demanded to rise as price rises. Unlike Veblen goods, the mechanism is not status signaling but the squeezing of the consumer's budget toward the cheapest essential option.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Extremely rare in practice; requires the good to constitute a large share of the consumer's budget", "Only applies to inferior goods with few substitutes"],
-      "canonicalCitations": ["Marshall, A. (1890). Principles of Economics (attributed to Giffen).", "Jensen, R. & Miller, N. (2008). Giffen Behavior and Subsistence Consumption. AER."],
+      "boundaryConditions": [
+        "Extremely rare in practice; requires the good to constitute a large share of the consumer's budget",
+        "Only applies to inferior goods with few substitutes"
+      ],
+      "canonicalCitations": [
+        "Marshall, A. (1890). Principles of Economics (attributed to Giffen).",
+        "Jensen, R. & Miller, N. (2008). Giffen Behavior and Subsistence Consumption. AER."
+      ],
       "systemElevation": null
     },
     {
@@ -642,8 +999,13 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "A strategic visualization technique that maps components of a value chain on two axes: visibility to the user (vertical) and evolutionary stage (horizontal, from genesis through custom-built and product to commodity). Components at different stages require different management approaches.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Placement on the evolution axis is subjective and debatable", "The map is a simplification that may omit important interdependencies"],
-      "canonicalCitations": ["Wardley, S. (2016). Wardley Maps: Topographical Intelligence in Business."],
+      "boundaryConditions": [
+        "Placement on the evolution axis is subjective and debatable",
+        "The map is a simplification that may omit important interdependencies"
+      ],
+      "canonicalCitations": [
+        "Wardley, S. (2016). Wardley Maps: Topographical Intelligence in Business."
+      ],
       "systemElevation": null
     },
     {
@@ -652,8 +1014,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Decision time increases logarithmically with the number of equally probable alternatives. More choices increase cognitive load and decision latency, eventually leading to decision paralysis when options exceed processing capacity.",
       "mathematicalFormulation": "RT = a + b * log2(n), where n = number of alternatives",
-      "boundaryConditions": ["Does not apply when options are not equally probable", "Expertise and familiarity reduce the effect through chunking"],
-      "canonicalCitations": ["Hick, W.E. (1952). On the Rate of Gain of Information. QJE Psychology.", "Hyman, R. (1953). Stimulus Information as a Determinant of Reaction Time."],
+      "boundaryConditions": [
+        "Does not apply when options are not equally probable",
+        "Expertise and familiarity reduce the effect through chunking"
+      ],
+      "canonicalCitations": [
+        "Hick, W.E. (1952). On the Rate of Gain of Information. QJE Psychology.",
+        "Hyman, R. (1953). Stimulus Information as a Determinant of Reaction Time."
+      ],
       "systemElevation": null
     },
     {
@@ -662,8 +1030,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "People judge an experience primarily based on how they felt at its most intense point (peak) and at its end, rather than on the sum or average of every moment. Duration of the experience has surprisingly little impact on the remembered evaluation.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Less applicable to experiences with multiple distinct phases", "Does not apply when duration is explicitly tracked"],
-      "canonicalCitations": ["Kahneman, D. et al. (1993). When More Pain Is Preferred to Less.", "Fredrickson, B. & Kahneman, D. (2000). Duration Neglect in Retrospective Evaluations."],
+      "boundaryConditions": [
+        "Less applicable to experiences with multiple distinct phases",
+        "Does not apply when duration is explicitly tracked"
+      ],
+      "canonicalCitations": [
+        "Kahneman, D. et al. (1993). When More Pain Is Preferred to Less.",
+        "Fredrickson, B. & Kahneman, D. (2000). Duration Neglect in Retrospective Evaluations."
+      ],
       "systemElevation": null
     },
     {
@@ -672,8 +1046,13 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Individuals with limited competence in a domain tend to overestimate their own ability, while highly competent individuals tend to underestimate theirs. The unskilled lack the metacognitive ability to recognize their incompetence.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Effect varies by domain and culture", "Feedback and calibration training can reduce the miscalibration"],
-      "canonicalCitations": ["Kruger, J. & Dunning, D. (1999). Unskilled and Unaware of It. Journal of Personality and Social Psychology."],
+      "boundaryConditions": [
+        "Effect varies by domain and culture",
+        "Feedback and calibration training can reduce the miscalibration"
+      ],
+      "canonicalCitations": [
+        "Kruger, J. & Dunning, D. (1999). Unskilled and Unaware of It. Journal of Personality and Social Psychology."
+      ],
       "systemElevation": null
     },
     {
@@ -682,8 +1061,14 @@
       "domain": "Economics",
       "formalDefinition": "The cost of producing a unit decreases by a constant percentage each time cumulative production doubles. This experience curve effect arises from learning-by-doing, process improvements, and specialization that compound with cumulative output.",
       "mathematicalFormulation": "C(q) = C(1) * q^(-b), where b = log2(learning rate)",
-      "boundaryConditions": ["The learning rate varies by industry and technology", "Disruptions or workforce turnover can reset the curve"],
-      "canonicalCitations": ["Wright, T.P. (1936). Factors Affecting the Cost of Airplanes. Journal of the Aeronautical Sciences.", "Argote, L. & Epple, D. (1990). Learning Curves in Manufacturing."],
+      "boundaryConditions": [
+        "The learning rate varies by industry and technology",
+        "Disruptions or workforce turnover can reset the curve"
+      ],
+      "canonicalCitations": [
+        "Wright, T.P. (1936). Factors Affecting the Cost of Airplanes. Journal of the Aeronautical Sciences.",
+        "Argote, L. & Epple, D. (1990). Learning Curves in Manufacturing."
+      ],
       "systemElevation": null
     },
     {
@@ -692,8 +1077,14 @@
       "domain": "Information Theory",
       "formalDefinition": "A functional relationship where one quantity varies as a power of another. Power law distributions are characterized by heavy tails, meaning extreme events are far more common than a normal distribution would predict. They appear in city sizes, wealth distribution, word frequencies, and many natural and social phenomena.",
       "mathematicalFormulation": "P(X > x) ~ x^(-alpha), where alpha > 0",
-      "boundaryConditions": ["Many claimed power laws are actually log-normal or other heavy-tailed distributions", "The power law typically holds only above a minimum value x_min"],
-      "canonicalCitations": ["Clauset, A. et al. (2009). Power-law Distributions in Empirical Data. SIAM Review.", "Barabasi, A.-L. & Albert, R. (1999). Emergence of Scaling in Random Networks. Science."],
+      "boundaryConditions": [
+        "Many claimed power laws are actually log-normal or other heavy-tailed distributions",
+        "The power law typically holds only above a minimum value x_min"
+      ],
+      "canonicalCitations": [
+        "Clauset, A. et al. (2009). Power-law Distributions in Empirical Data. SIAM Review.",
+        "Barabasi, A.-L. & Albert, R. (1999). Emergence of Scaling in Random Networks. Science."
+      ],
       "systemElevation": null
     },
     {
@@ -702,8 +1093,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Repeated exposure to a stimulus increases positive affect toward it, even without conscious recognition of the prior exposure. Familiarity breeds preference, not contempt, for neutral or mildly positive stimuli.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Reverses for stimuli that are initially aversive", "Effect plateaus and can reverse with excessive exposure"],
-      "canonicalCitations": ["Zajonc, R. (1968). Attitudinal Effects of Mere Exposure. Journal of Personality and Social Psychology.", "Bornstein, R. (1989). Exposure and Affect: Overview and Meta-Analysis of Research."],
+      "boundaryConditions": [
+        "Reverses for stimuli that are initially aversive",
+        "Effect plateaus and can reverse with excessive exposure"
+      ],
+      "canonicalCitations": [
+        "Zajonc, R. (1968). Attitudinal Effects of Mere Exposure. Journal of Personality and Social Psychology.",
+        "Bornstein, R. (1989). Exposure and Affect: Overview and Meta-Analysis of Research."
+      ],
       "systemElevation": null
     },
     {
@@ -712,8 +1109,14 @@
       "domain": "Information Theory",
       "formalDefinition": "For non-perishable things (technologies, ideas, cultural artifacts), life expectancy is proportional to current age. The longer something has survived, the longer its expected remaining lifespan. This applies to information and cultural products, not to biological organisms.",
       "mathematicalFormulation": "E[remaining life | survived t] ~ t",
-      "boundaryConditions": ["Does not apply to perishable or biological entities", "External shocks can invalidate the prediction"],
-      "canonicalCitations": ["Mandelbrot, B. (1982). The Fractal Geometry of Nature.", "Taleb, N.N. (2012). Antifragile."],
+      "boundaryConditions": [
+        "Does not apply to perishable or biological entities",
+        "External shocks can invalidate the prediction"
+      ],
+      "canonicalCitations": [
+        "Mandelbrot, B. (1982). The Fractal Geometry of Nature.",
+        "Taleb, N.N. (2012). Antifragile."
+      ],
       "systemElevation": null
     },
     {
@@ -722,8 +1125,13 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "In a stable system, the long-term average number of items in the system equals the long-term average arrival rate multiplied by the average time each item spends in the system. This relationship holds regardless of the arrival process, service distribution, or order of service.",
       "mathematicalFormulation": "L = lambda * W (items in system = arrival rate * wait time)",
-      "boundaryConditions": ["Requires the system to be in steady state", "Does not hold during transient periods or regime changes"],
-      "canonicalCitations": ["Little, J.D.C. (1961). A Proof for the Queuing Formula: L = lambda * W. Operations Research."],
+      "boundaryConditions": [
+        "Requires the system to be in steady state",
+        "Does not hold during transient periods or regime changes"
+      ],
+      "canonicalCitations": [
+        "Little, J.D.C. (1961). A Proof for the Queuing Formula: L = lambda * W. Operations Research."
+      ],
       "systemElevation": null
     },
     {
@@ -732,8 +1140,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "A controller must have at least as much variety (number of distinguishable states) as the system it controls. If the environment can present more states than the controller can respond to, control will fail. Effective regulation requires matching the complexity of the regulator to the complexity of the regulated.",
       "mathematicalFormulation": "V(controller) >= V(environment) for effective control",
-      "boundaryConditions": ["Variety can be reduced by filtering or amplified by delegation", "Perfect control is not needed in all applications"],
-      "canonicalCitations": ["Ashby, W.R. (1956). An Introduction to Cybernetics.", "Beer, S. (1972). Brain of the Firm."],
+      "boundaryConditions": [
+        "Variety can be reduced by filtering or amplified by delegation",
+        "Perfect control is not needed in all applications"
+      ],
+      "canonicalCitations": [
+        "Ashby, W.R. (1956). An Introduction to Cybernetics.",
+        "Beer, S. (1972). Brain of the Firm."
+      ],
       "systemElevation": null
     },
     {
@@ -742,8 +1156,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "People systematically fail to understand that stocks accumulate and deplete based on the difference between inflows and outflows. Even when inflows are declining, the stock continues to rise as long as inflows exceed outflows. This stock-flow failure leads to delayed responses and policy errors.",
       "mathematicalFormulation": "dStock/dt = Inflow(t) - Outflow(t)",
-      "boundaryConditions": ["Intuition improves with training in dynamic systems", "Physical bathtubs are better understood than abstract stocks"],
-      "canonicalCitations": ["Booth Sweeney, L. & Sterman, J. (2000). Bathtub Dynamics.", "Sterman, J. (2008). Risk Communication on Climate."],
+      "boundaryConditions": [
+        "Intuition improves with training in dynamic systems",
+        "Physical bathtubs are better understood than abstract stocks"
+      ],
+      "canonicalCitations": [
+        "Booth Sweeney, L. & Sterman, J. (2000). Bathtub Dynamics.",
+        "Sterman, J. (2008). Risk Communication on Climate."
+      ],
       "systemElevation": null
     },
     {
@@ -752,8 +1172,14 @@
       "domain": "Organizational Theory",
       "formalDefinition": "In a hierarchical organization, employees tend to be promoted based on success in their current role, rather than aptitude for the next role. Consequently, employees rise to their level of incompetence, where they remain, reducing overall organizational effectiveness.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Mitigated by promoting based on demonstrated aptitude for the next role", "Does not apply in organizations with strong feedback and demotion mechanisms"],
-      "canonicalCitations": ["Peter, L. & Hull, R. (1969). The Peter Principle.", "Benson, A. et al. (2019). Promotions and the Peter Principle. QJE."],
+      "boundaryConditions": [
+        "Mitigated by promoting based on demonstrated aptitude for the next role",
+        "Does not apply in organizations with strong feedback and demotion mechanisms"
+      ],
+      "canonicalCitations": [
+        "Peter, L. & Hull, R. (1969). The Peter Principle.",
+        "Benson, A. et al. (2019). Promotions and the Peter Principle. QJE."
+      ],
       "systemElevation": null
     },
     {
@@ -762,8 +1188,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "We tend to overestimate the effect of a technology in the short run and underestimate the effect in the long run. Initial hype exceeds near-term reality, leading to disillusionment, while the long-term transformative impact exceeds even the original hype.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Not all technologies deliver long-term impact; some are genuinely overhyped", "The timeframes for 'short run' and 'long run' are context-dependent"],
-      "canonicalCitations": ["Amara, R. (attributed, 1960s-1970s). Institute for the Future.", "Gartner Hype Cycle (related framework)."],
+      "boundaryConditions": [
+        "Not all technologies deliver long-term impact; some are genuinely overhyped",
+        "The timeframes for 'short run' and 'long run' are context-dependent"
+      ],
+      "canonicalCitations": [
+        "Amara, R. (attributed, 1960s-1970s). Institute for the Future.",
+        "Gartner Hype Cycle (related framework)."
+      ],
       "systemElevation": null
     },
     {
@@ -772,7 +1204,10 @@
       "domain": "Organizational Theory",
       "formalDefinition": "The tendency for the second version of a system to be over-engineered, as designers channel all the features and corrections they wished they had included in the first version, resulting in bloated, complex, and often delayed delivery.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Experienced teams aware of the effect can mitigate it", "Does not apply when the second system has strict constraints or different designers"],
+      "boundaryConditions": [
+        "Experienced teams aware of the effect can mitigate it",
+        "Does not apply when the second system has strict constraints or different designers"
+      ],
       "canonicalCitations": ["Brooks, F. (1975). The Mythical Man-Month."],
       "systemElevation": null
     },
@@ -782,7 +1217,10 @@
       "domain": "Game Theory",
       "formalDefinition": "No ranked voting system can satisfy all of the following simultaneously: unrestricted domain, non-dictatorship, Pareto efficiency, and independence of irrelevant alternatives. Any collective decision-making process that aggregates individual preferences into a social ordering must violate at least one desirable property.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Only applies to ordinal (ranked) voting systems", "Does not apply to cardinal utility aggregation methods"],
+      "boundaryConditions": [
+        "Only applies to ordinal (ranked) voting systems",
+        "Does not apply to cardinal utility aggregation methods"
+      ],
       "canonicalCitations": ["Arrow, K. (1951). Social Choice and Individual Values."],
       "systemElevation": null
     },
@@ -792,8 +1230,14 @@
       "domain": "Game Theory",
       "formalDefinition": "A game where players benefit from making the same choice as other players, but have no inherent preference for which choice is made. Multiple equilibria exist, and the key challenge is coordinating on one. Communication, precedent, or focal points resolve the coordination problem.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Assumes players prefer to coordinate", "Does not apply when players have conflicting preferences about which equilibrium"],
-      "canonicalCitations": ["Schelling, T. (1960). The Strategy of Conflict.", "Cooper, R. (1999). Coordination Games."],
+      "boundaryConditions": [
+        "Assumes players prefer to coordinate",
+        "Does not apply when players have conflicting preferences about which equilibrium"
+      ],
+      "canonicalCitations": [
+        "Schelling, T. (1960). The Strategy of Conflict.",
+        "Cooper, R. (1999). Coordination Games."
+      ],
       "systemElevation": null
     },
     {
@@ -802,8 +1246,14 @@
       "domain": "Organizational Theory",
       "formalDefinition": "The accumulation of deferred organizational improvements -- suboptimal structures, processes, policies, and cultural norms that were expedient at the time but create compounding drag on effectiveness. Like technical debt, organizational debt accrues interest through reduced agility and increased coordination costs.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Some organizational debt is rational if the cost of perfect structure exceeds its benefit", "Debt becomes critical only when it exceeds the organization's capacity to service it"],
-      "canonicalCitations": ["Komoroske, A. (2020). Organizational Debt Concept.", "Lencioni, P. (2002). The Five Dysfunctions of a Team (related)."],
+      "boundaryConditions": [
+        "Some organizational debt is rational if the cost of perfect structure exceeds its benefit",
+        "Debt becomes critical only when it exceeds the organization's capacity to service it"
+      ],
+      "canonicalCitations": [
+        "Komoroske, A. (2020). Organizational Debt Concept.",
+        "Lencioni, P. (2002). The Five Dysfunctions of a Team (related)."
+      ],
       "systemElevation": null
     },
     {
@@ -812,8 +1262,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "People discount future rewards hyperbolically rather than exponentially, leading to time-inconsistent preferences. A reward available now is disproportionately preferred over a larger reward available later, even when the same person would prefer the larger reward when both are in the distant future.",
       "mathematicalFormulation": "V = A / (1 + kD), where A = reward amount, D = delay, k = discount rate",
-      "boundaryConditions": ["Commitment devices can overcome hyperbolic discounting", "The effect is weaker for very large stakes"],
-      "canonicalCitations": ["Ainslie, G. (1975). Specious Reward. Psychological Bulletin.", "Laibson, D. (1997). Golden Eggs and Hyperbolic Discounting. QJE."],
+      "boundaryConditions": [
+        "Commitment devices can overcome hyperbolic discounting",
+        "The effect is weaker for very large stakes"
+      ],
+      "canonicalCitations": [
+        "Ainslie, G. (1975). Specious Reward. Psychological Bulletin.",
+        "Laibson, D. (1997). Golden Eggs and Hyperbolic Discounting. QJE."
+      ],
       "systemElevation": null
     },
     {
@@ -822,8 +1278,14 @@
       "domain": "Information Theory",
       "formalDefinition": "As the number of independent observations increases, the sample mean converges to the expected value (population mean). Small samples are unreliable predictors; large samples are reliable. The rate of convergence is proportional to 1/sqrt(n).",
       "mathematicalFormulation": "P(|X_bar - mu| > epsilon) -> 0 as n -> infinity",
-      "boundaryConditions": ["Requires finite variance", "Does not apply to heavy-tailed distributions without finite mean"],
-      "canonicalCitations": ["Bernoulli, J. (1713). Ars Conjectandi.", "Kolmogorov, A. (1933). Foundations of the Theory of Probability."],
+      "boundaryConditions": [
+        "Requires finite variance",
+        "Does not apply to heavy-tailed distributions without finite mean"
+      ],
+      "canonicalCitations": [
+        "Bernoulli, J. (1713). Ars Conjectandi.",
+        "Kolmogorov, A. (1933). Foundations of the Theory of Probability."
+      ],
       "systemElevation": null
     },
     {
@@ -832,8 +1294,14 @@
       "domain": "Information Theory",
       "formalDefinition": "A mathematical framework for updating the probability of a hypothesis given new evidence. The posterior probability is proportional to the prior probability multiplied by the likelihood of the evidence given the hypothesis. Rational belief revision requires both prior knowledge and new data.",
       "mathematicalFormulation": "P(H|E) = P(E|H) * P(H) / P(E)",
-      "boundaryConditions": ["Requires a well-defined prior, which may be subjective", "Computationally intractable for very complex hypothesis spaces"],
-      "canonicalCitations": ["Bayes, T. (1763). An Essay towards Solving a Problem in the Doctrine of Chances.", "McGrayne, S. (2011). The Theory That Would Not Die."],
+      "boundaryConditions": [
+        "Requires a well-defined prior, which may be subjective",
+        "Computationally intractable for very complex hypothesis spaces"
+      ],
+      "canonicalCitations": [
+        "Bayes, T. (1763). An Essay towards Solving a Problem in the Doctrine of Chances.",
+        "McGrayne, S. (2011). The Theory That Would Not Die."
+      ],
       "systemElevation": null
     },
     {
@@ -842,8 +1310,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "Below a critical threshold, a system exhibits one behavior; above it, qualitatively different dynamics emerge. Small changes near the threshold produce disproportionately large effects, while changes far from the threshold may have no visible impact.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Threshold location is often unknown until crossed", "Some transitions are reversible, others are not"],
-      "canonicalCitations": ["Granovetter, M. (1978). Threshold Models of Collective Behavior. AJS.", "Scheffer, M. (2009). Critical Transitions in Nature and Society."],
+      "boundaryConditions": [
+        "Threshold location is often unknown until crossed",
+        "Some transitions are reversible, others are not"
+      ],
+      "canonicalCitations": [
+        "Granovetter, M. (1978). Threshold Models of Collective Behavior. AJS.",
+        "Scheffer, M. (2009). Critical Transitions in Nature and Society."
+      ],
       "systemElevation": null
     },
     {
@@ -852,8 +1326,13 @@
       "domain": "Organizational Theory",
       "formalDefinition": "Organizations give disproportionate weight to trivial issues because they are accessible to all participants, while genuinely important but complex issues receive insufficient attention because few members feel qualified to contribute.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Can be mitigated by structured agendas and time-boxing", "Less problematic in expert committees with narrow scope"],
-      "canonicalCitations": ["Parkinson, C.N. (1957). Parkinson's Law, or The Pursuit of Progress."],
+      "boundaryConditions": [
+        "Can be mitigated by structured agendas and time-boxing",
+        "Less problematic in expert committees with narrow scope"
+      ],
+      "canonicalCitations": [
+        "Parkinson, C.N. (1957). Parkinson's Law, or The Pursuit of Progress."
+      ],
       "systemElevation": null
     },
     {
@@ -862,8 +1341,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The tendency to weight recent events and observations more heavily than earlier ones when making judgments and predictions. Recent experience dominates memory and shapes expectations, causing people to overfit to the latest data points at the expense of longer-term patterns.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Can be countered by systematic base-rate analysis", "In genuinely non-stationary environments, recency weighting may be appropriate"],
-      "canonicalCitations": ["Tversky, A. & Kahneman, D. (1973). Availability: A Heuristic for Judging Frequency and Probability.", "Murdock, B. (1962). The Serial Position Effect of Free Recall."],
+      "boundaryConditions": [
+        "Can be countered by systematic base-rate analysis",
+        "In genuinely non-stationary environments, recency weighting may be appropriate"
+      ],
+      "canonicalCitations": [
+        "Tversky, A. & Kahneman, D. (1973). Availability: A Heuristic for Judging Frequency and Probability.",
+        "Murdock, B. (1962). The Serial Position Effect of Free Recall."
+      ],
       "systemElevation": null
     },
     {
@@ -872,8 +1357,14 @@
       "domain": "Information Theory",
       "formalDefinition": "A system is ergodic when the time average of a variable for a single entity equals the ensemble average across many entities at a single point in time. Most real-world economic and financial processes are non-ergodic: the path-dependent experience of an individual differs from the population average, making expected value calculations misleading for individual decision-makers.",
       "mathematicalFormulation": "Ergodic: lim(T->inf) 1/T * integral(f(x(t)), 0, T) = E[f(X)]",
-      "boundaryConditions": ["Many common statistical assumptions implicitly assume ergodicity", "Absorbing states (ruin, death) break ergodicity"],
-      "canonicalCitations": ["Peters, O. (2019). The Ergodicity Problem in Economics. Nature Physics.", "Peters, O. & Gell-Mann, M. (2016). Evaluating Gambles Using Dynamics."],
+      "boundaryConditions": [
+        "Many common statistical assumptions implicitly assume ergodicity",
+        "Absorbing states (ruin, death) break ergodicity"
+      ],
+      "canonicalCitations": [
+        "Peters, O. (2019). The Ergodicity Problem in Economics. Nature Physics.",
+        "Peters, O. & Gell-Mann, M. (2016). Evaluating Gambles Using Dynamics."
+      ],
       "systemElevation": null
     },
     {
@@ -882,8 +1373,14 @@
       "domain": "Information Theory",
       "formalDefinition": "When low-quality content and high-quality content are treated as interchangeable in a channel or market, the low-quality content will drive out the high-quality content. Producers of quality exit as the channel fills with cheaper substitutes, degrading the overall signal-to-noise ratio.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Does not apply when quality filtering mechanisms are effective", "Mitigated by curation, reputation systems, and credentialing"],
-      "canonicalCitations": ["Akerlof, G. (1970). The Market for Lemons (quality uncertainty parallel).", "Postman, N. (1985). Amusing Ourselves to Death (discourse degradation)."],
+      "boundaryConditions": [
+        "Does not apply when quality filtering mechanisms are effective",
+        "Mitigated by curation, reputation systems, and credentialing"
+      ],
+      "canonicalCitations": [
+        "Akerlof, G. (1970). The Market for Lemons (quality uncertainty parallel).",
+        "Postman, N. (1985). Amusing Ourselves to Death (discourse degradation)."
+      ],
       "systemElevation": null
     },
     {
@@ -892,8 +1389,13 @@
       "domain": "Game Theory",
       "formalDefinition": "Agents do not optimize for fundamental value but for what they believe other agents will value. This recursive process of predicting others' predictions creates a game of higher-order beliefs, where actual fundamentals may become irrelevant as participants optimize for perceived consensus rather than underlying reality.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Anchoring on fundamentals can break the recursion in some markets", "More prevalent in speculative markets than in markets for consumable goods"],
-      "canonicalCitations": ["Keynes, J.M. (1936). The General Theory of Employment, Interest and Money."],
+      "boundaryConditions": [
+        "Anchoring on fundamentals can break the recursion in some markets",
+        "More prevalent in speculative markets than in markets for consumable goods"
+      ],
+      "canonicalCitations": [
+        "Keynes, J.M. (1936). The General Theory of Employment, Interest and Money."
+      ],
       "systemElevation": null
     },
     {
@@ -902,8 +1404,14 @@
       "domain": "Economics",
       "formalDefinition": "Entities with abundant natural resources or windfall gains often underperform those without, due to Dutch Disease (currency appreciation harming other sectors), institutional decay from rent-seeking, and reduced pressure to innovate. Abundance paradoxically creates complacency and misallocation.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Strong institutions can prevent the curse", "Does not apply to all resource types equally"],
-      "canonicalCitations": ["Auty, R. (1993). Sustaining Development in Mineral Economies.", "Sachs, J. & Warner, A. (1995). Natural Resource Abundance and Economic Growth."],
+      "boundaryConditions": [
+        "Strong institutions can prevent the curse",
+        "Does not apply to all resource types equally"
+      ],
+      "canonicalCitations": [
+        "Auty, R. (1993). Sustaining Development in Mineral Economies.",
+        "Sachs, J. & Warner, A. (1995). Natural Resource Abundance and Economic Growth."
+      ],
       "systemElevation": null
     },
     {
@@ -912,8 +1420,14 @@
       "domain": "Economics",
       "formalDefinition": "In social systems, participants' biased perceptions influence the fundamentals they are trying to understand, which in turn influence their perceptions, creating a circular feedback loop. Expectations become self-fulfilling or self-defeating: the act of believing something changes the thing being observed.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Applies most strongly in financial markets and social dynamics", "Less relevant for physical systems where observation does not change the phenomenon"],
-      "canonicalCitations": ["Soros, G. (1987). The Alchemy of Finance.", "Merton, R. (1948). The Self-Fulfilling Prophecy."],
+      "boundaryConditions": [
+        "Applies most strongly in financial markets and social dynamics",
+        "Less relevant for physical systems where observation does not change the phenomenon"
+      ],
+      "canonicalCitations": [
+        "Soros, G. (1987). The Alchemy of Finance.",
+        "Merton, R. (1948). The Self-Fulfilling Prophecy."
+      ],
       "systemElevation": null
     },
     {
@@ -922,7 +1436,10 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "A property of systems that gain from disorder, volatility, and stressors, in contrast to fragile systems (harmed by volatility), robust systems (indifferent to volatility), and resilient systems (recover from shocks). Antifragile systems require exposure to bounded stressors to improve, and are harmed by overprotection.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Stressors must be bounded; unbounded shocks can still destroy antifragile systems", "Antifragility at one level may require fragility at a sub-level"],
+      "boundaryConditions": [
+        "Stressors must be bounded; unbounded shocks can still destroy antifragile systems",
+        "Antifragility at one level may require fragility at a sub-level"
+      ],
       "canonicalCitations": ["Taleb, N.N. (2012). Antifragile: Things That Gain from Disorder."],
       "systemElevation": null
     },
@@ -932,8 +1449,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "A problem-solving approach that addresses challenges by considering the opposite of the desired outcome. Instead of asking 'how do I succeed?', ask 'what would guarantee failure?' and then avoid those conditions. Inversion reveals hidden risks and assumptions that forward reasoning misses.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Most valuable as a complement to forward reasoning, not a replacement", "Can produce overly conservative strategies if used in isolation"],
-      "canonicalCitations": ["Jacobi, C.G.J. (attributed). 'Invert, always invert.'", "Munger, C. (1994). A Lesson on Elementary, Worldly Wisdom."],
+      "boundaryConditions": [
+        "Most valuable as a complement to forward reasoning, not a replacement",
+        "Can produce overly conservative strategies if used in isolation"
+      ],
+      "canonicalCitations": [
+        "Jacobi, C.G.J. (attributed). 'Invert, always invert.'",
+        "Munger, C. (1994). A Lesson on Elementary, Worldly Wisdom."
+      ],
       "systemElevation": {
         "role": "Red Team",
         "behavior": "For every claim, invert: what would make this wrong?"
@@ -945,8 +1468,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "All models, theories, and representations are simplifications of reality. The map is not the territory; the model is not the system. Confusing the model for reality leads to overconfidence in predictions and blindness to phenomena outside the model's scope.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Some maps are more accurate than others; the critique is not that models are useless but that they are incomplete", "Domain experts develop increasingly detailed maps that approach territory in specific areas"],
-      "canonicalCitations": ["Korzybski, A. (1933). Science and Sanity.", "Borges, J.L. (1946). On Exactitude in Science (parable)."],
+      "boundaryConditions": [
+        "Some maps are more accurate than others; the critique is not that models are useless but that they are incomplete",
+        "Domain experts develop increasingly detailed maps that approach territory in specific areas"
+      ],
+      "canonicalCitations": [
+        "Korzybski, A. (1933). Science and Sanity.",
+        "Borges, J.L. (1946). On Exactitude in Science (parable)."
+      ],
       "systemElevation": {
         "role": "All agents",
         "behavior": "Flag when model simplifications may diverge from reality"
@@ -958,8 +1487,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The discipline of thinking beyond immediate consequences to trace chains of cause and effect through multiple steps. First-order thinkers consider only the direct effect of an action. Second-order (and higher) thinkers trace cascading consequences, feedback effects, and adaptive responses that often reverse or amplify the first-order effect.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Diminishing returns beyond 3-4 orders of consequences in most practical situations", "Uncertainty compounds with each step, limiting predictive utility"],
-      "canonicalCitations": ["Marks, H. (2011). The Most Important Thing.", "Bastiat, F. (1850). That Which Is Seen and That Which Is Not Seen."],
+      "boundaryConditions": [
+        "Diminishing returns beyond 3-4 orders of consequences in most practical situations",
+        "Uncertainty compounds with each step, limiting predictive utility"
+      ],
+      "canonicalCitations": [
+        "Marks, H. (2011). The Most Important Thing.",
+        "Bastiat, F. (1850). That Which Is Seen and That Which Is Not Seen."
+      ],
       "systemElevation": {
         "role": "Gate C evaluator",
         "behavior": "Require tracing 3+ steps of consequences"
@@ -971,8 +1506,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Each individual has a domain of genuine expertise where their judgments are calibrated and reliable, surrounded by a larger domain where they are uninformed but unaware of their ignorance. The key skill is knowing the boundary of one's circle and not opining outside it.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["The boundary is fuzzy and context-dependent", "Expertise in one domain can create overconfidence in adjacent domains"],
-      "canonicalCitations": ["Buffett, W. (1996). Chairman's Letter, Berkshire Hathaway Annual Report.", "Munger, C. (1994). A Lesson on Elementary, Worldly Wisdom."],
+      "boundaryConditions": [
+        "The boundary is fuzzy and context-dependent",
+        "Expertise in one domain can create overconfidence in adjacent domains"
+      ],
+      "canonicalCitations": [
+        "Buffett, W. (1996). Chairman's Letter, Berkshire Hathaway Annual Report.",
+        "Munger, C. (1994). A Lesson on Elementary, Worldly Wisdom."
+      ],
       "systemElevation": {
         "role": "Expert Council",
         "behavior": "Self-assess domain expertise before opining"
@@ -984,8 +1525,13 @@
       "domain": "Cognitive Science",
       "formalDefinition": "When multiple psychological tendencies or structural forces act in the same direction simultaneously, the combined effect is not merely additive but can produce extreme, often irrational outcomes. The confluence of reinforcing forces without balancing forces creates runaway dynamics.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Requires three or more reinforcing forces acting in concert", "A single strong counterforce can prevent the lollapalooza from materializing"],
-      "canonicalCitations": ["Munger, C. (1995). The Psychology of Human Misjudgment. Harvard Law School."],
+      "boundaryConditions": [
+        "Requires three or more reinforcing forces acting in concert",
+        "A single strong counterforce can prevent the lollapalooza from materializing"
+      ],
+      "canonicalCitations": [
+        "Munger, C. (1995). The Psychology of Human Misjudgment. Harvard Law School."
+      ],
       "systemElevation": {
         "role": "Consistency Checker",
         "behavior": "Flag >= 3 reinforcing forces with no balancing force"
@@ -997,8 +1543,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The tendency to judge the quality of a decision by its outcome rather than by the quality of the decision-making process at the time it was made. Good processes can produce bad outcomes (bad luck), and bad processes can produce good outcomes (good luck). Equating outcome quality with decision quality leads to incorrect lessons.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Over very large samples, process quality and outcome quality converge", "In deterministic systems, outcome fully reflects process quality"],
-      "canonicalCitations": ["Duke, A. (2018). Thinking in Bets.", "Kahneman, D. & Tversky, A. (1979). Prospect Theory."],
+      "boundaryConditions": [
+        "Over very large samples, process quality and outcome quality converge",
+        "In deterministic systems, outcome fully reflects process quality"
+      ],
+      "canonicalCitations": [
+        "Duke, A. (2018). Thinking in Bets.",
+        "Kahneman, D. & Tversky, A. (1979). Prospect Theory."
+      ],
       "systemElevation": {
         "role": "Gate evaluator",
         "behavior": "Judge process quality, not just outcome plausibility"
@@ -1010,8 +1562,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Dual-process theory distinguishes between System 1 (fast, automatic, intuitive, effortless, error-prone) and System 2 (slow, deliberate, analytical, effortful, more accurate). Most decisions are made by System 1, with System 2 engaged only when System 1 fails or the situation demands deliberate analysis.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["The two-system framework is a useful metaphor, not a precise neurological description", "Expert intuition (System 1) can be highly accurate in domains with valid cues and feedback"],
-      "canonicalCitations": ["Kahneman, D. (2011). Thinking, Fast and Slow.", "Stanovich, K. & West, R. (2000). Individual Differences in Reasoning."],
+      "boundaryConditions": [
+        "The two-system framework is a useful metaphor, not a precise neurological description",
+        "Expert intuition (System 1) can be highly accurate in domains with valid cues and feedback"
+      ],
+      "canonicalCitations": [
+        "Kahneman, D. (2011). Thinking, Fast and Slow.",
+        "Stanovich, K. & West, R. (2000). Individual Differences in Reasoning."
+      ],
       "systemElevation": null
     },
     {
@@ -1020,7 +1578,10 @@
       "domain": "Cognitive Science",
       "formalDefinition": "System 1 constructs the most coherent story possible from available information without considering what information might be missing. The quality of a narrative is determined by the coherence of the available data, not by its completeness. This leads to overconfidence in judgments based on limited information.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Mitigated by systematically asking 'what don't we know?'", "Less problematic in domains with established checklists and protocols"],
+      "boundaryConditions": [
+        "Mitigated by systematically asking 'what don't we know?'",
+        "Less problematic in domains with established checklists and protocols"
+      ],
       "canonicalCitations": ["Kahneman, D. (2011). Thinking, Fast and Slow."],
       "systemElevation": null
     },
@@ -1030,8 +1591,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The tendency to ignore or underweight the prior probability (base rate) of an event when evaluating new evidence, relying instead on the representativeness of the evidence. This leads to dramatic overestimation of the probability of rare events when the evidence is vivid or story-like.",
       "mathematicalFormulation": "P(H|E) = P(E|H)*P(H) / P(E) -- base rate neglect occurs when P(H) is ignored",
-      "boundaryConditions": ["Training in Bayesian reasoning can reduce the bias", "Base rates are less neglected when they are causally relevant to the judgment"],
-      "canonicalCitations": ["Kahneman, D. & Tversky, A. (1973). On the Psychology of Prediction.", "Bar-Hillel, M. (1980). The Base-Rate Fallacy in Probability Judgments."],
+      "boundaryConditions": [
+        "Training in Bayesian reasoning can reduce the bias",
+        "Base rates are less neglected when they are causally relevant to the judgment"
+      ],
+      "canonicalCitations": [
+        "Kahneman, D. & Tversky, A. (1973). On the Psychology of Prediction.",
+        "Bar-Hillel, M. (1980). The Base-Rate Fallacy in Probability Judgments."
+      ],
       "systemElevation": null
     },
     {
@@ -1040,8 +1607,13 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Judgments of frequency or probability are influenced by how easily examples come to mind. Events that are vivid, recent, or emotionally charged are more 'available' in memory and are therefore judged as more probable, regardless of their actual statistical frequency.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Expertise in a domain can create either more or less availability bias depending on the distribution of experience", "Can be corrected by consulting base rate data"],
-      "canonicalCitations": ["Tversky, A. & Kahneman, D. (1973). Availability: A Heuristic for Judging Frequency and Probability. Cognitive Psychology."],
+      "boundaryConditions": [
+        "Expertise in a domain can create either more or less availability bias depending on the distribution of experience",
+        "Can be corrected by consulting base rate data"
+      ],
+      "canonicalCitations": [
+        "Tversky, A. & Kahneman, D. (1973). Availability: A Heuristic for Judging Frequency and Probability. Cognitive Psychology."
+      ],
       "systemElevation": null
     },
     {
@@ -1050,8 +1622,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The human tendency to construct post-hoc explanatory stories around events that were actually driven by randomness or complexity. Narratives create an illusion of understanding by imposing causality on coincidence, making the past seem more predictable and the future more foreseeable than they actually are.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Not all narratives are fallacious; some reflect genuine causal mechanisms", "The critique applies most strongly to post-hoc explanations of complex or random events"],
-      "canonicalCitations": ["Taleb, N.N. (2007). The Black Swan.", "Kahneman, D. (2011). Thinking, Fast and Slow."],
+      "boundaryConditions": [
+        "Not all narratives are fallacious; some reflect genuine causal mechanisms",
+        "The critique applies most strongly to post-hoc explanations of complex or random events"
+      ],
+      "canonicalCitations": [
+        "Taleb, N.N. (2007). The Black Swan.",
+        "Kahneman, D. (2011). Thinking, Fast and Slow."
+      ],
       "systemElevation": null
     },
     {
@@ -1060,8 +1638,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Among competing hypotheses that explain the data equally well, prefer the one that makes the fewest assumptions. Simpler explanations are more likely to be correct because each additional assumption introduces an additional chance of error.",
       "mathematicalFormulation": "P(H_simple) > P(H_complex) when both explain E equally well (Bayesian interpretation)",
-      "boundaryConditions": ["Simplicity is relative to the domain and available vocabulary", "Reality is sometimes genuinely complex; the razor should not force oversimplification"],
-      "canonicalCitations": ["William of Ockham (c. 1287-1347). Summa Logicae.", "Sober, E. (2015). Ockham's Razors: A User's Manual."],
+      "boundaryConditions": [
+        "Simplicity is relative to the domain and available vocabulary",
+        "Reality is sometimes genuinely complex; the razor should not force oversimplification"
+      ],
+      "canonicalCitations": [
+        "William of Ockham (c. 1287-1347). Summa Logicae.",
+        "Sober, E. (2015). Ockham's Razors: A User's Manual."
+      ],
       "systemElevation": null
     },
     {
@@ -1070,8 +1654,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Never attribute to malice that which is adequately explained by neglect, incompetence, or structural incentives. In complex systems, most dysfunction arises from misaligned incentives, cognitive limitations, and coordination failures, not from deliberate sabotage.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Does not preclude the possibility of genuine malice when evidence supports it", "In adversarial contexts (security, competition), some malice assumption is warranted"],
-      "canonicalCitations": ["Hanlon, R. (1980). Murphy's Law Book Two.", "Heinlein, R. (1941). Logic of Empire (earlier formulation)."],
+      "boundaryConditions": [
+        "Does not preclude the possibility of genuine malice when evidence supports it",
+        "In adversarial contexts (security, competition), some malice assumption is warranted"
+      ],
+      "canonicalCitations": [
+        "Hanlon, R. (1980). Murphy's Law Book Two.",
+        "Heinlein, R. (1941). Logic of Empire (earlier formulation)."
+      ],
       "systemElevation": null
     },
     {
@@ -1080,8 +1670,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The ability to hold two opposing models or ideas in mind simultaneously and, rather than choosing one at the expense of the other, generate a creative synthesis that contains elements of both but is superior to each. This requires resisting the cognitive pressure to simplify through premature elimination of complexity.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Not all opposing ideas can be integrated; some are genuinely contradictory", "Requires sufficient cognitive capacity and domain knowledge to manipulate both models"],
-      "canonicalCitations": ["Martin, R. (2007). The Opposable Mind.", "Fitzgerald, F.S. (1936). The Crack-Up (original articulation of the concept)."],
+      "boundaryConditions": [
+        "Not all opposing ideas can be integrated; some are genuinely contradictory",
+        "Requires sufficient cognitive capacity and domain knowledge to manipulate both models"
+      ],
+      "canonicalCitations": [
+        "Martin, R. (2007). The Opposable Mind.",
+        "Fitzgerald, F.S. (1936). The Crack-Up (original articulation of the concept)."
+      ],
       "systemElevation": {
         "role": "Synthesis agents",
         "behavior": "Hold opposing models simultaneously"
@@ -1093,8 +1689,14 @@
       "domain": "Information Theory",
       "formalDefinition": "The ratio of meaningful information (signal) to irrelevant or random variation (noise) in any data stream or communication channel. As signal-to-noise ratio decreases, the effort and sophistication required to extract useful information increases exponentially.",
       "mathematicalFormulation": "SNR = P_signal / P_noise (in dB: 10 * log10(P_signal / P_noise))",
-      "boundaryConditions": ["What constitutes signal vs. noise depends on the question being asked", "Noise at one level of analysis may be signal at another"],
-      "canonicalCitations": ["Shannon, C. (1948). A Mathematical Theory of Communication.", "Silver, N. (2012). The Signal and the Noise."],
+      "boundaryConditions": [
+        "What constitutes signal vs. noise depends on the question being asked",
+        "Noise at one level of analysis may be signal at another"
+      ],
+      "canonicalCitations": [
+        "Shannon, C. (1948). A Mathematical Theory of Communication.",
+        "Silver, N. (2012). The Signal and the Noise."
+      ],
       "systemElevation": null
     },
     {
@@ -1103,8 +1705,14 @@
       "domain": "Economics",
       "formalDefinition": "Building a buffer between estimated value and the price paid, or between system capacity and expected load, to account for errors in estimation, unforeseen events, and model uncertainty. The margin of safety acknowledges that our models are imperfect and provides protection against being wrong.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Excessive margins of safety can lead to paralysis and missed opportunities", "The required margin varies with the confidence in the estimate and the cost of being wrong"],
-      "canonicalCitations": ["Graham, B. (1949). The Intelligent Investor.", "Taleb, N.N. (2012). Antifragile."],
+      "boundaryConditions": [
+        "Excessive margins of safety can lead to paralysis and missed opportunities",
+        "The required margin varies with the confidence in the estimate and the cost of being wrong"
+      ],
+      "canonicalCitations": [
+        "Graham, B. (1949). The Intelligent Investor.",
+        "Taleb, N.N. (2012). Antifragile."
+      ],
       "systemElevation": null
     },
     {
@@ -1113,8 +1721,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Building a latticework of mental models from multiple disciplines (physics, biology, psychology, economics, engineering) provides more robust analytical capability than deep expertise in a single domain. The intersections between disciplines often reveal the most powerful insights.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Breadth without sufficient depth in any area produces superficial analysis", "Not a substitute for deep domain expertise when technical precision is required"],
-      "canonicalCitations": ["Munger, C. (1994). A Lesson on Elementary, Worldly Wisdom.", "Munger, C. (2005). Poor Charlie's Almanack."],
+      "boundaryConditions": [
+        "Breadth without sufficient depth in any area produces superficial analysis",
+        "Not a substitute for deep domain expertise when technical precision is required"
+      ],
+      "canonicalCitations": [
+        "Munger, C. (1994). A Lesson on Elementary, Worldly Wisdom.",
+        "Munger, C. (2005). Poor Charlie's Almanack."
+      ],
       "systemElevation": null
     },
     {
@@ -1123,8 +1737,14 @@
       "domain": "Economics",
       "formalDefinition": "Incentives are the most powerful force in shaping human behavior, surpassing appeals to reason, morality, or loyalty. If you want to understand why people behave a certain way, look first at their incentive structure. Never expect people to act against their incentives for long.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Intrinsic motivation can override extrinsic incentives in some domains", "Poorly designed incentives can backfire (Cobra Effect)"],
-      "canonicalCitations": ["Munger, C. (1995). The Psychology of Human Misjudgment.", "Kerr, S. (1975). On the Folly of Rewarding A While Hoping for B."],
+      "boundaryConditions": [
+        "Intrinsic motivation can override extrinsic incentives in some domains",
+        "Poorly designed incentives can backfire (Cobra Effect)"
+      ],
+      "canonicalCitations": [
+        "Munger, C. (1995). The Psychology of Human Misjudgment.",
+        "Kerr, S. (1975). On the Folly of Rewarding A While Hoping for B."
+      ],
       "systemElevation": null
     },
     {
@@ -1133,8 +1753,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The discipline of expressing uncertainty in degrees of probability rather than binary predictions. Effective probabilistic thinkers assign confidence levels to their beliefs, update them in response to new evidence, and distinguish between the probability of an event and its magnitude of impact.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Meaningful probability assignments require sufficient reference classes or calibration", "Some events are genuinely unprecedented, making probability assignment unreliable"],
-      "canonicalCitations": ["Tetlock, P. (2015). Superforecasting.", "de Finetti, B. (1974). Theory of Probability."],
+      "boundaryConditions": [
+        "Meaningful probability assignments require sufficient reference classes or calibration",
+        "Some events are genuinely unprecedented, making probability assignment unreliable"
+      ],
+      "canonicalCitations": [
+        "Tetlock, P. (2015). Superforecasting.",
+        "de Finetti, B. (1974). Theory of Probability."
+      ],
       "systemElevation": null
     },
     {
@@ -1143,8 +1769,13 @@
       "domain": "Information Theory",
       "formalDefinition": "A measure of the uncertainty or information content in a random variable. Higher entropy indicates greater unpredictability and thus more information content per observation. Shannon entropy quantifies the minimum number of bits needed to encode messages from a source.",
       "mathematicalFormulation": "H(X) = -sum(p(x_i) * log2(p(x_i))) for all i",
-      "boundaryConditions": ["Assumes a known probability distribution", "Does not capture semantic meaning of information"],
-      "canonicalCitations": ["Shannon, C. (1948). A Mathematical Theory of Communication. Bell System Technical Journal."],
+      "boundaryConditions": [
+        "Assumes a known probability distribution",
+        "Does not capture semantic meaning of information"
+      ],
+      "canonicalCitations": [
+        "Shannon, C. (1948). A Mathematical Theory of Communication. Bell System Technical Journal."
+      ],
       "systemElevation": null
     },
     {
@@ -1153,8 +1784,14 @@
       "domain": "Information Theory",
       "formalDefinition": "The maximum rate at which information can be reliably transmitted over a communication channel, given its bandwidth and noise characteristics. Shannon's channel coding theorem proves that reliable communication is possible at any rate below channel capacity and impossible above it.",
       "mathematicalFormulation": "C = B * log2(1 + SNR), Shannon-Hartley theorem",
-      "boundaryConditions": ["Achieving capacity requires optimal coding, which may be computationally expensive", "Applies to point-to-point channels; networks introduce additional complexity"],
-      "canonicalCitations": ["Shannon, C. (1948). A Mathematical Theory of Communication.", "Shannon, C. (1949). Communication in the Presence of Noise."],
+      "boundaryConditions": [
+        "Achieving capacity requires optimal coding, which may be computationally expensive",
+        "Applies to point-to-point channels; networks introduce additional complexity"
+      ],
+      "canonicalCitations": [
+        "Shannon, C. (1948). A Mathematical Theory of Communication.",
+        "Shannon, C. (1949). Communication in the Presence of Noise."
+      ],
       "systemElevation": null
     },
     {
@@ -1163,8 +1800,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "When presented with a set of options, people disproportionately choose the default option, regardless of its merits. Defaults are powerful because they require no action, imply endorsement, and serve as a reference point against which alternatives are evaluated as potential losses.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Less powerful when the decision is consequential and the decision-maker is motivated", "The effect is strongest when options are complex or the decision-maker is fatigued"],
-      "canonicalCitations": ["Johnson, E. & Goldstein, D. (2003). Do Defaults Save Lives? Science.", "Thaler, R. & Sunstein, C. (2008). Nudge."],
+      "boundaryConditions": [
+        "Less powerful when the decision is consequential and the decision-maker is motivated",
+        "The effect is strongest when options are complex or the decision-maker is fatigued"
+      ],
+      "canonicalCitations": [
+        "Johnson, E. & Goldstein, D. (2003). Do Defaults Save Lives? Science.",
+        "Thaler, R. & Sunstein, C. (2008). Nudge."
+      ],
       "systemElevation": null
     },
     {
@@ -1173,8 +1816,14 @@
       "domain": "Information Theory",
       "formalDefinition": "The inclusion of extra information or components beyond the minimum necessary for function. In information theory, redundancy enables error detection and correction. In engineering, redundancy provides fault tolerance. The optimal level of redundancy balances reliability gains against the cost of duplication.",
       "mathematicalFormulation": "Redundancy = 1 - (H(X) / H_max), where H(X) is actual entropy and H_max is maximum possible",
-      "boundaryConditions": ["Excessive redundancy is wasteful in stable, predictable environments", "Tightly coupled redundant systems can fail in correlated ways"],
-      "canonicalCitations": ["Shannon, C. (1948). A Mathematical Theory of Communication.", "Perrow, C. (1984). Normal Accidents."],
+      "boundaryConditions": [
+        "Excessive redundancy is wasteful in stable, predictable environments",
+        "Tightly coupled redundant systems can fail in correlated ways"
+      ],
+      "canonicalCitations": [
+        "Shannon, C. (1948). A Mathematical Theory of Communication.",
+        "Perrow, C. (1984). Normal Accidents."
+      ],
       "systemElevation": null
     },
     {
@@ -1183,8 +1832,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "A framework for understanding system behavior at four levels of increasing depth: events (what happened), patterns (trends over time), structures (what produces the patterns), and mental models (the beliefs and assumptions that sustain the structures). Most attention focuses on events; most leverage exists at the structural and mental model levels.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["The deepest levels are hardest to observe and change", "Not all events reflect deeper structural patterns; some are genuinely random"],
-      "canonicalCitations": ["Senge, P. (1990). The Fifth Discipline.", "Kim, D.H. (1999). Introduction to Systems Thinking."],
+      "boundaryConditions": [
+        "The deepest levels are hardest to observe and change",
+        "Not all events reflect deeper structural patterns; some are genuinely random"
+      ],
+      "canonicalCitations": [
+        "Senge, P. (1990). The Fifth Discipline.",
+        "Kim, D.H. (1999). Introduction to Systems Thinking."
+      ],
       "systemElevation": null
     },
     {
@@ -1193,8 +1848,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "A systems archetype where initial success generates resources, attention, or preferential treatment that further increases the probability of continued success, while initial failure starves alternatives of resources. This positive feedback loop creates self-fulfilling prophecies and path-dependent concentration.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["External shocks can reset the advantage", "Conscious resource allocation policies can counteract the dynamic"],
-      "canonicalCitations": ["Senge, P. (1990). The Fifth Discipline.", "Merton, R. (1968). The Matthew Effect in Science."],
+      "boundaryConditions": [
+        "External shocks can reset the advantage",
+        "Conscious resource allocation policies can counteract the dynamic"
+      ],
+      "canonicalCitations": [
+        "Senge, P. (1990). The Fifth Discipline.",
+        "Merton, R. (1968). The Matthew Effect in Science."
+      ],
       "systemElevation": null
     },
     {
@@ -1203,8 +1864,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "A systems archetype where a quick fix alleviates a problem symptom in the short term but creates unintended consequences that worsen the problem or create new problems in the long term. The delay between the fix and its negative consequences obscures the causal connection.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Not all quick fixes fail; some are genuinely effective", "The archetype is most relevant when there is a significant delay between action and consequence"],
-      "canonicalCitations": ["Senge, P. (1990). The Fifth Discipline.", "Braun, W. (2002). The System Archetypes."],
+      "boundaryConditions": [
+        "Not all quick fixes fail; some are genuinely effective",
+        "The archetype is most relevant when there is a significant delay between action and consequence"
+      ],
+      "canonicalCitations": [
+        "Senge, P. (1990). The Fifth Discipline.",
+        "Braun, W. (2002). The System Archetypes."
+      ],
       "systemElevation": null
     },
     {
@@ -1213,8 +1880,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "A systems archetype where a gap between desired performance and actual performance leads to lowering the goal rather than improving performance. Each downward adjustment makes the next decline more acceptable, creating a vicious cycle of declining standards.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["External benchmarks or competition can prevent goal erosion", "Not all goal adjustments are pathological; some reflect genuinely changed circumstances"],
-      "canonicalCitations": ["Senge, P. (1990). The Fifth Discipline.", "Braun, W. (2002). The System Archetypes."],
+      "boundaryConditions": [
+        "External benchmarks or competition can prevent goal erosion",
+        "Not all goal adjustments are pathological; some reflect genuinely changed circumstances"
+      ],
+      "canonicalCitations": [
+        "Senge, P. (1990). The Fifth Discipline.",
+        "Braun, W. (2002). The System Archetypes."
+      ],
       "systemElevation": null
     },
     {
@@ -1223,8 +1896,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "A systems archetype where growth creates demand for capacity investment, but the investment is delayed or insufficient, causing growth to stall. The stalled growth is then used to justify the original decision not to invest, creating a self-fulfilling underinvestment cycle.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Not all growth justifies investment; the archetype does not apply when growth is unsustainable", "External capital can break the cycle by providing investment ahead of growth"],
-      "canonicalCitations": ["Senge, P. (1990). The Fifth Discipline.", "Braun, W. (2002). The System Archetypes."],
+      "boundaryConditions": [
+        "Not all growth justifies investment; the archetype does not apply when growth is unsustainable",
+        "External capital can break the cycle by providing investment ahead of growth"
+      ],
+      "canonicalCitations": [
+        "Senge, P. (1990). The Fifth Discipline.",
+        "Braun, W. (2002). The System Archetypes."
+      ],
       "systemElevation": null
     },
     {
@@ -1233,8 +1912,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "After an event occurs, people believe they would have predicted it in advance ('I knew it all along'). This bias distorts learning from experience by making past events seem more predictable than they were, leading to overconfidence in future predictions and unfair evaluation of decision-makers.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Reduced by requiring documented predictions before outcomes are known", "Stronger for events that are easily narrativized"],
-      "canonicalCitations": ["Fischhoff, B. (1975). Hindsight Is Not Equal to Foresight.", "Roese, N. & Vohs, K. (2012). Hindsight Bias. Perspectives on Psychological Science."],
+      "boundaryConditions": [
+        "Reduced by requiring documented predictions before outcomes are known",
+        "Stronger for events that are easily narrativized"
+      ],
+      "canonicalCitations": [
+        "Fischhoff, B. (1975). Hindsight Is Not Equal to Foresight.",
+        "Roese, N. & Vohs, K. (2012). Hindsight Bias. Perspectives on Psychological Science."
+      ],
       "systemElevation": null
     },
     {
@@ -1243,8 +1928,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The act of optimizing a component or process before understanding which component is the actual bottleneck. Resources spent optimizing non-critical elements are wasted because the system bottleneck remains unchanged.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Does not apply when the optimization target is clearly the bottleneck", "In time-critical situations, parallel optimization of multiple components may be justified"],
-      "canonicalCitations": ["Knuth, D. (1974). Structured Programming with go to Statements. Computing Surveys.", "Hoare, C.A.R. (attributed). 'Premature optimization is the root of all evil.'"],
+      "boundaryConditions": [
+        "Does not apply when the optimization target is clearly the bottleneck",
+        "In time-critical situations, parallel optimization of multiple components may be justified"
+      ],
+      "canonicalCitations": [
+        "Knuth, D. (1974). Structured Programming with go to Statements. Computing Surveys.",
+        "Hoare, C.A.R. (attributed). 'Premature optimization is the root of all evil.'"
+      ],
       "systemElevation": null
     },
     {
@@ -1253,8 +1944,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The tendency to accept the first satisfactory explanation or solution that comes to mind without adequately considering alternatives. The first conclusion serves as an anchor, and subsequent reasoning becomes a justification exercise rather than a genuine exploration of the hypothesis space.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Time pressure exacerbates the bias", "Structured adversarial processes (red teaming) can counteract it"],
-      "canonicalCitations": ["Heuer, R. (1999). Psychology of Intelligence Analysis.", "Klein, G. (2007). Performing a Project Premortem. HBR."],
+      "boundaryConditions": [
+        "Time pressure exacerbates the bias",
+        "Structured adversarial processes (red teaming) can counteract it"
+      ],
+      "canonicalCitations": [
+        "Heuer, R. (1999). Psychology of Intelligence Analysis.",
+        "Klein, G. (2007). Performing a Project Premortem. HBR."
+      ],
       "systemElevation": null
     },
     {
@@ -1263,8 +1960,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "A forecasting method that bases predictions on the statistical outcomes of a reference class of similar past projects or events (outside view), rather than on the specific details and plans of the current case (inside view). This corrects the planning fallacy by grounding estimates in empirical base rates.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Requires an appropriate reference class; truly novel situations have no good analog", "The choice of reference class significantly affects the forecast"],
-      "canonicalCitations": ["Kahneman, D. & Tversky, A. (1979). Intuitive Prediction: Biases and Corrective Procedures.", "Flyvbjerg, B. (2006). From Nobel Prize to Project Management: Getting Risks Right."],
+      "boundaryConditions": [
+        "Requires an appropriate reference class; truly novel situations have no good analog",
+        "The choice of reference class significantly affects the forecast"
+      ],
+      "canonicalCitations": [
+        "Kahneman, D. & Tversky, A. (1979). Intuitive Prediction: Biases and Corrective Procedures.",
+        "Flyvbjerg, B. (2006). From Nobel Prize to Project Management: Getting Risks Right."
+      ],
       "systemElevation": null
     },
     {
@@ -1273,8 +1976,14 @@
       "domain": "Economics",
       "formalDefinition": "Decision quality and accountability improve when decision-makers bear a proportional share of the consequences of their decisions. Symmetry between authority and downside risk aligns incentives and produces more prudent choices.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Excessive personal risk can lead to excessive conservatism", "Some decisions require shielding the decision-maker to encourage necessary risk-taking"],
-      "canonicalCitations": ["Taleb, N.N. (2018). Skin in the Game.", "Smith, A. (1776). The Wealth of Nations."],
+      "boundaryConditions": [
+        "Excessive personal risk can lead to excessive conservatism",
+        "Some decisions require shielding the decision-maker to encourage necessary risk-taking"
+      ],
+      "canonicalCitations": [
+        "Taleb, N.N. (2018). Skin in the Game.",
+        "Smith, A. (1776). The Wealth of Nations."
+      ],
       "systemElevation": null
     },
     {
@@ -1283,8 +1992,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The psychological tendency for losses to loom larger than equivalent gains. The pain of losing $100 is approximately twice the pleasure of gaining $100. This asymmetry in the value function around the reference point explains risk aversion for gains and risk seeking for losses.",
       "mathematicalFormulation": "v(x) = x^alpha for x >= 0; v(x) = -lambda * (-x)^beta for x < 0, where lambda ~ 2.25",
-      "boundaryConditions": ["Reference point shifts with experience and context", "Professional traders and experienced decision-makers show reduced loss aversion"],
-      "canonicalCitations": ["Kahneman, D. & Tversky, A. (1979). Prospect Theory. Econometrica.", "Kahneman, D. (2011). Thinking, Fast and Slow."],
+      "boundaryConditions": [
+        "Reference point shifts with experience and context",
+        "Professional traders and experienced decision-makers show reduced loss aversion"
+      ],
+      "canonicalCitations": [
+        "Kahneman, D. & Tversky, A. (1979). Prospect Theory. Econometrica.",
+        "Kahneman, D. (2011). Thinking, Fast and Slow."
+      ],
       "systemElevation": null
     },
     {
@@ -1293,8 +2008,14 @@
       "domain": "Economics",
       "formalDefinition": "When an incentive designed to solve a problem inadvertently creates a perverse incentive that worsens the problem. Named after the apocryphal British colonial bounty on cobras in India, which led to cobra farming. The intervention changes the system dynamics in ways that produce the opposite of the intended outcome.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["More likely when the incentive targets a proxy measure rather than the root cause", "Mitigated by modeling second-order responses before implementation"],
-      "canonicalCitations": ["Siebert, H. (2001). Der Kobra-Effekt.", "Kerr, S. (1975). On the Folly of Rewarding A While Hoping for B."],
+      "boundaryConditions": [
+        "More likely when the incentive targets a proxy measure rather than the root cause",
+        "Mitigated by modeling second-order responses before implementation"
+      ],
+      "canonicalCitations": [
+        "Siebert, H. (2001). Der Kobra-Effekt.",
+        "Kerr, S. (1975). On the Folly of Rewarding A While Hoping for B."
+      ],
       "systemElevation": null
     },
     {
@@ -1303,7 +2024,10 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Before removing or changing something, understand why it exists. If you encounter a fence across a road and cannot see the reason for it, do not remove it until you understand its purpose. Reforms undertaken without understanding the original rationale risk destroying a function that was invisible but important.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Does not mean all existing structures are justified; only that they should be understood before changing", "In fast-moving environments, the original rationale may be obsolete"],
+      "boundaryConditions": [
+        "Does not mean all existing structures are justified; only that they should be understood before changing",
+        "In fast-moving environments, the original rationale may be obsolete"
+      ],
       "canonicalCitations": ["Chesterton, G.K. (1929). The Thing: Why I Am a Catholic."],
       "systemElevation": null
     },
@@ -1313,8 +2037,14 @@
       "domain": "Information Theory",
       "formalDefinition": "A claim or hypothesis has scientific value only if it makes predictions that could, in principle, be proven wrong by observation. Unfalsifiable claims are not wrong; they are worse than wrong: they are uninformative, because they are consistent with any possible observation.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Some useful models make probabilistic rather than deterministic predictions", "The boundary between falsifiable and unfalsifiable is sometimes debatable"],
-      "canonicalCitations": ["Popper, K. (1959). The Logic of Scientific Discovery.", "Popper, K. (1963). Conjectures and Refutations."],
+      "boundaryConditions": [
+        "Some useful models make probabilistic rather than deterministic predictions",
+        "The boundary between falsifiable and unfalsifiable is sometimes debatable"
+      ],
+      "canonicalCitations": [
+        "Popper, K. (1959). The Logic of Scientific Discovery.",
+        "Popper, K. (1963). Conjectures and Refutations."
+      ],
       "systemElevation": null
     },
     {
@@ -1323,8 +2053,14 @@
       "domain": "Information Theory",
       "formalDefinition": "A measure of the amount of information that one random variable contains about another. It quantifies the reduction in uncertainty about one variable given knowledge of the other. Mutual information is symmetric and zero if and only if the variables are independent.",
       "mathematicalFormulation": "I(X;Y) = H(X) + H(Y) - H(X,Y) = sum_x sum_y p(x,y) * log(p(x,y) / (p(x)*p(y)))",
-      "boundaryConditions": ["Requires knowledge of the joint probability distribution", "Does not capture causal direction, only statistical dependence"],
-      "canonicalCitations": ["Shannon, C. (1948). A Mathematical Theory of Communication.", "Cover, T. & Thomas, J. (2006). Elements of Information Theory."],
+      "boundaryConditions": [
+        "Requires knowledge of the joint probability distribution",
+        "Does not capture causal direction, only statistical dependence"
+      ],
+      "canonicalCitations": [
+        "Shannon, C. (1948). A Mathematical Theory of Communication.",
+        "Cover, T. & Thomas, J. (2006). Elements of Information Theory."
+      ],
       "systemElevation": null
     },
     {
@@ -1333,8 +2069,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "A threshold of energy or effort that must be overcome to initiate a transition from one state to another, even when the destination state is energetically favorable. In organizational contexts, the activation energy represents the transition cost that prevents adoption of objectively superior approaches.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Catalysts can lower the required activation energy", "The activation energy may be distributed across multiple barriers"],
-      "canonicalCitations": ["Arrhenius, S. (1889). On the Reaction Velocity of the Inversion of Cane Sugar.", "Gladwell, M. (2000). The Tipping Point (social analog)."],
+      "boundaryConditions": [
+        "Catalysts can lower the required activation energy",
+        "The activation energy may be distributed across multiple barriers"
+      ],
+      "canonicalCitations": [
+        "Arrhenius, S. (1889). On the Reaction Velocity of the Inversion of Cane Sugar.",
+        "Gladwell, M. (2000). The Tipping Point (social analog)."
+      ],
       "systemElevation": null
     },
     {
@@ -1343,8 +2085,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The tendency to overemphasize personal characteristics (character, intelligence, motivation) and underemphasize situational factors (incentives, constraints, information) when explaining others' behavior. When explaining our own behavior, we do the reverse, attributing it to circumstances.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Less prevalent in collectivist cultures", "Reduced when observers are given information about situational constraints"],
-      "canonicalCitations": ["Ross, L. (1977). The Intuitive Psychologist and His Shortcomings.", "Jones, E. & Harris, V. (1967). The Attribution of Attitudes."],
+      "boundaryConditions": [
+        "Less prevalent in collectivist cultures",
+        "Reduced when observers are given information about situational constraints"
+      ],
+      "canonicalCitations": [
+        "Ross, L. (1977). The Intuitive Psychologist and His Shortcomings.",
+        "Jones, E. & Harris, V. (1967). The Attribution of Attitudes."
+      ],
       "systemElevation": null
     },
     {
@@ -1353,8 +2101,14 @@
       "domain": "Organizational Theory",
       "formalDefinition": "The range of ideas or policies considered acceptable in current public discourse. Ideas outside this window are dismissed regardless of their merits. The window can shift over time through social movements, crisis events, and incremental normalization.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["The window differs across audiences and contexts", "Rapid crisis events can shift the window dramatically in a short time"],
-      "canonicalCitations": ["Overton, J. (1990s). Mackinac Center for Public Policy.", "Lehman, J. (2010). A Brief Explanation of the Overton Window."],
+      "boundaryConditions": [
+        "The window differs across audiences and contexts",
+        "Rapid crisis events can shift the window dramatically in a short time"
+      ],
+      "canonicalCitations": [
+        "Overton, J. (1990s). Mackinac Center for Public Policy.",
+        "Lehman, J. (2010). A Brief Explanation of the Overton Window."
+      ],
       "systemElevation": null
     },
     {
@@ -1363,8 +2117,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The tendency to prefer complex explanations, solutions, and strategies over simpler ones, even when the simpler option is equally or more effective. Complex solutions feel more sophisticated and thorough, leading to systematically over-engineered responses.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Sometimes the problem is genuinely complex and requires a complex solution", "Expertise can help distinguish necessary complexity from gratuitous complexity"],
-      "canonicalCitations": ["Lombrozo, T. (2007). Simplicity and Probability in Causal Explanation. Cognitive Psychology.", "Kahneman, D. (2011). Thinking, Fast and Slow."],
+      "boundaryConditions": [
+        "Sometimes the problem is genuinely complex and requires a complex solution",
+        "Expertise can help distinguish necessary complexity from gratuitous complexity"
+      ],
+      "canonicalCitations": [
+        "Lombrozo, T. (2007). Simplicity and Probability in Causal Explanation. Cognitive Psychology.",
+        "Kahneman, D. (2011). Thinking, Fast and Slow."
+      ],
       "systemElevation": null
     },
     {
@@ -1373,8 +2133,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "The tendency of all closed systems to move toward states of increasing disorder over time. Maintaining order, structure, and organization requires continuous energy input. In organizational contexts, processes, cultures, and standards degrade without sustained effort to maintain them.",
       "mathematicalFormulation": "dS >= 0 for isolated systems (Second Law of Thermodynamics)",
-      "boundaryConditions": ["Open systems can decrease local entropy by increasing entropy elsewhere", "Does not apply to self-organizing systems that are far from equilibrium"],
-      "canonicalCitations": ["Clausius, R. (1865). On the Mechanical Theory of Heat.", "Schrodinger, E. (1944). What is Life?"],
+      "boundaryConditions": [
+        "Open systems can decrease local entropy by increasing entropy elsewhere",
+        "Does not apply to self-organizing systems that are far from equilibrium"
+      ],
+      "canonicalCitations": [
+        "Clausius, R. (1865). On the Mechanical Theory of Heat.",
+        "Schrodinger, E. (1944). What is Life?"
+      ],
       "systemElevation": null
     },
     {
@@ -1383,8 +2149,14 @@
       "domain": "Information Theory",
       "formalDefinition": "The act of observing or measuring a system changes the system being observed. In social systems, knowledge that one is being measured changes behavior (Hawthorne effect). In markets, the publication of a predictive model changes the phenomena it predicts. Measurement is never fully passive.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["The magnitude of the effect varies with the intrusiveness of observation", "Some systems are robust to observation effects"],
-      "canonicalCitations": ["Heisenberg, W. (1927). Uncertainty Principle (physics analog).", "Roethlisberger, F. & Dickson, W. (1939). Management and the Worker (Hawthorne studies)."],
+      "boundaryConditions": [
+        "The magnitude of the effect varies with the intrusiveness of observation",
+        "Some systems are robust to observation effects"
+      ],
+      "canonicalCitations": [
+        "Heisenberg, W. (1927). Uncertainty Principle (physics analog).",
+        "Roethlisberger, F. & Dickson, W. (1939). Management and the Worker (Hawthorne studies)."
+      ],
       "systemElevation": null
     },
     {
@@ -1393,8 +2165,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "Growth is slow and gradual, while collapse is rapid and catastrophic. Systems tend to accumulate capacity, value, and structure over long periods but can lose them suddenly. The fragility that builds during the growth phase creates the conditions for rapid decline.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Not all systems exhibit this asymmetry; some fail gradually", "Awareness of the asymmetry can motivate protective measures"],
-      "canonicalCitations": ["Seneca (c. 4 BC - 65 AD). Letters to Lucilius.", "Taleb, N.N. (2012). Antifragile."],
+      "boundaryConditions": [
+        "Not all systems exhibit this asymmetry; some fail gradually",
+        "Awareness of the asymmetry can motivate protective measures"
+      ],
+      "canonicalCitations": [
+        "Seneca (c. 4 BC - 65 AD). Letters to Lucilius.",
+        "Taleb, N.N. (2012). Antifragile."
+      ],
       "systemElevation": null
     },
     {
@@ -1403,8 +2181,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "Knowledge grows more through subtraction (removing what is wrong) than through addition (adding what might be right). In strategy, the most reliable improvements come from eliminating obvious errors, unnecessary complexity, and harmful practices rather than from adding new initiatives.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Not a substitute for creative addition when genuinely new capabilities are needed", "Requires the ability to identify what to remove, which is its own skill"],
-      "canonicalCitations": ["Taleb, N.N. (2012). Antifragile.", "Michelangelo (attributed). 'I saw the angel in the marble and carved until I set him free.'"],
+      "boundaryConditions": [
+        "Not a substitute for creative addition when genuinely new capabilities are needed",
+        "Requires the ability to identify what to remove, which is its own skill"
+      ],
+      "canonicalCitations": [
+        "Taleb, N.N. (2012). Antifragile.",
+        "Michelangelo (attributed). 'I saw the angel in the marble and carved until I set him free.'"
+      ],
       "systemElevation": null
     },
     {
@@ -1413,8 +2197,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "Organisms and organizations do not merely adapt passively to their environment; they actively modify and construct their niche, changing the selection pressures that then act on them and their descendants. This creates a co-evolutionary dynamic between the entity and its environment.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Niche construction can create either favorable or adverse feedback loops", "The ability to construct niches varies with the power and agency of the organism or organization"],
-      "canonicalCitations": ["Odling-Smee, F.J. et al. (2003). Niche Construction: The Neglected Process in Evolution.", "Lewontin, R. (1983). Gene, Organism, and Environment."],
+      "boundaryConditions": [
+        "Niche construction can create either favorable or adverse feedback loops",
+        "The ability to construct niches varies with the power and agency of the organism or organization"
+      ],
+      "canonicalCitations": [
+        "Odling-Smee, F.J. et al. (2003). Niche Construction: The Neglected Process in Evolution.",
+        "Lewontin, R. (1983). Gene, Organism, and Environment."
+      ],
       "systemElevation": null
     },
     {
@@ -1423,8 +2213,14 @@
       "domain": "Systems Dynamics",
       "formalDefinition": "Three distinct responses to disorder: Robustness resists shocks without changing (a levee). Resilience absorbs shocks and recovers to the original state (a spring). Antifragility gains from shocks and becomes stronger (an immune system). Most planning targets robustness; the highest-value strategy targets antifragility.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["The same system may exhibit different responses at different shock magnitudes", "Antifragility requires exposure to bounded stressors"],
-      "canonicalCitations": ["Taleb, N.N. (2012). Antifragile.", "Holling, C.S. (1973). Resilience and Stability of Ecological Systems."],
+      "boundaryConditions": [
+        "The same system may exhibit different responses at different shock magnitudes",
+        "Antifragility requires exposure to bounded stressors"
+      ],
+      "canonicalCitations": [
+        "Taleb, N.N. (2012). Antifragile.",
+        "Holling, C.S. (1973). Resilience and Stability of Ecological Systems."
+      ],
       "systemElevation": null
     },
     {
@@ -1433,8 +2229,14 @@
       "domain": "Cognitive Science",
       "formalDefinition": "The disciplined practice of assigning precise probability estimates to future events and systematically tracking accuracy over time. Superforecasters achieve calibration (events they rate at 70% occur ~70% of the time) through frequent updating, granular probability scales, and base rate attention.",
       "mathematicalFormulation": "Brier Score = (1/N) * sum((f_t - o_t)^2), where f_t = forecast probability, o_t = outcome (0 or 1)",
-      "boundaryConditions": ["Calibration is meaningful only over a sufficient number of predictions", "Some domains are fundamentally unpredictable beyond short time horizons"],
-      "canonicalCitations": ["Tetlock, P. (2015). Superforecasting: The Art and Science of Prediction.", "Brier, G.W. (1950). Verification of Forecasts Expressed in Terms of Probability."],
+      "boundaryConditions": [
+        "Calibration is meaningful only over a sufficient number of predictions",
+        "Some domains are fundamentally unpredictable beyond short time horizons"
+      ],
+      "canonicalCitations": [
+        "Tetlock, P. (2015). Superforecasting: The Art and Science of Prediction.",
+        "Brier, G.W. (1950). Verification of Forecasts Expressed in Terms of Probability."
+      ],
       "systemElevation": null
     },
     {
@@ -1443,8 +2245,14 @@
       "domain": "Organizational Theory",
       "formalDefinition": "All organizations, regardless of how democratic their initial structure, inevitably develop oligarchic tendencies as a small leadership group consolidates control over resources, information, and decision-making. The technical demands of organization create a division between leaders and followers that becomes self-perpetuating.",
       "mathematicalFormulation": null,
-      "boundaryConditions": ["Transparency mechanisms and term limits can slow but not eliminate the tendency", "Very small organizations may avoid oligarchic dynamics through informal coordination"],
-      "canonicalCitations": ["Michels, R. (1911). Political Parties: A Sociological Study of the Oligarchical Tendencies of Modern Democracy.", "Tolbert, P. & Hiatt, S. (2009). On Organizations and Oligarchies."],
+      "boundaryConditions": [
+        "Transparency mechanisms and term limits can slow but not eliminate the tendency",
+        "Very small organizations may avoid oligarchic dynamics through informal coordination"
+      ],
+      "canonicalCitations": [
+        "Michels, R. (1911). Political Parties: A Sociological Study of the Oligarchical Tendencies of Modern Democracy.",
+        "Tolbert, P. & Hiatt, S. (2009). On Organizations and Oligarchies."
+      ],
       "systemElevation": null
     }
   ]

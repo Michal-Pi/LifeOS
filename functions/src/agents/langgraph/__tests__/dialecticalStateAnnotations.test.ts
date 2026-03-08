@@ -30,9 +30,6 @@ describe('DialecticalStateAnnotation reducer semantics', () => {
   it('degradedPhases appends fallback markers', () => {
     const reducer = (cur: string[], upd: string[]) => [...cur, ...upd]
 
-    expect(reducer(['cross_negation'], ['sublation'])).toEqual([
-      'cross_negation',
-      'sublation',
-    ])
+    expect(reducer(['cross_negation'], ['sublation'])).toEqual(['cross_negation', 'sublation'])
   })
 })

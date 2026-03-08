@@ -45,10 +45,7 @@ export interface TemplatesTabProps {
   loadWorkflows: () => Promise<void>
 }
 
-export function TemplatesTab({
-  createWorkflow,
-  loadWorkflows,
-}: TemplatesTabProps) {
+export function TemplatesTab({ createWorkflow, loadWorkflows }: TemplatesTabProps) {
   const { confirm, alert: showAlert } = useDialog()
   const navigate = useNavigate()
 

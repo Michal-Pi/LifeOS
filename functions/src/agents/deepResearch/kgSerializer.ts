@@ -26,10 +26,7 @@ const COMPACT_NODE_TYPES = new Set(['claim', 'concept', 'mechanism', 'prediction
 /**
  * Convert a live KnowledgeHypergraph instance into a CompactGraph.
  */
-export function serializeKGToCompactGraph(
-  kg: KnowledgeHypergraph,
-  maxNodes = 50,
-): CompactGraph {
+export function serializeKGToCompactGraph(kg: KnowledgeHypergraph, maxNodes = 50): CompactGraph {
   const allTypes = new Set(kg.getAllNodes().map((n) => n.type))
   const dropped = [...allTypes].filter((t) => !COMPACT_NODE_TYPES.has(t))
   if (dropped.length > 0) {
@@ -97,9 +94,10 @@ export function serializeKGToCompactGraph(
             base.sourceId = sourceNode.id
             base.sourceUrl = typeof srcData.url === 'string' ? srcData.url : undefined
           }
-          base.sourceConfidence = typeof data.confidence === 'number'
-            ? data.confidence
-            : (sourceEdges[0].data.weight ?? undefined)
+          base.sourceConfidence =
+            typeof data.confidence === 'number'
+              ? data.confidence
+              : (sourceEdges[0].data.weight ?? undefined)
         }
       }
 
@@ -112,13 +110,11 @@ export function serializeKGToCompactGraph(
     .sort(
       (a, b) =>
         ((b.node.data as { confidence?: number }).confidence ?? 0) -
-        ((a.node.data as { confidence?: number }).confidence ?? 0),
+        ((a.node.data as { confidence?: number }).confidence ?? 0)
     )
     .slice(0, 3)
   const summary =
-    claimNodes.length > 0
-      ? `Key findings: ${claimNodes.map((c) => c.node.label).join('; ')}`
-      : ''
+    claimNodes.length > 0 ? `Key findings: ${claimNodes.map((c) => c.node.label).join('; ')}` : ''
 
   // 7. Average confidence across all selected claim nodes
   const claimConfidences = selected

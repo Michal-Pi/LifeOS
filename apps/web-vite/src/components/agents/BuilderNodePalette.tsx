@@ -123,19 +123,21 @@ export function BuilderNodePalette({
       {selectedNodeId && (
         <div className="node-palette__section">
           <div className="node-palette__label">Actions</div>
-          {onEditNodeProperties && (
-            <Button variant="outline" type="button" onClick={onEditNodeProperties}>
-              Edit Properties
+          <div className="node-palette__actions">
+            {onEditNodeProperties && (
+              <Button variant="secondary" type="button" onClick={onEditNodeProperties}>
+                Edit Properties
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              type="button"
+              className="node-palette__delete-btn"
+              onClick={onDeleteNode}
+            >
+              Delete Node
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            type="button"
-            className="node-palette__delete-btn"
-            onClick={onDeleteNode}
-          >
-            Delete Node
-          </Button>
+          </div>
           <span className="node-palette__hint">Press Delete key to remove</span>
         </div>
       )}

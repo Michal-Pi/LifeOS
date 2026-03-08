@@ -22,7 +22,10 @@ export const builtinTools: BuiltinToolMeta[] = [
     parameters: {
       type: 'object',
       properties: {
-        collection: { type: 'string', description: 'Collection to query (e.g., "todos", "events", "notes")' },
+        collection: {
+          type: 'string',
+          description: 'Collection to query (e.g., "todos", "events", "notes")',
+        },
         filters: { type: 'object', description: 'Optional filters to apply to the query' },
         limit: { type: 'number', description: 'Maximum number of results to return (default: 10)' },
       },
@@ -36,7 +39,10 @@ export const builtinTools: BuiltinToolMeta[] = [
     parameters: {
       type: 'object',
       properties: {
-        expression: { type: 'string', description: 'Mathematical expression to evaluate (e.g., "2 + 2", "sqrt(16)")' },
+        expression: {
+          type: 'string',
+          description: 'Mathematical expression to evaluate (e.g., "2 + 2", "sqrt(16)")',
+        },
       },
       required: ['expression'],
     },
@@ -48,9 +54,18 @@ export const builtinTools: BuiltinToolMeta[] = [
     parameters: {
       type: 'object',
       properties: {
-        startMs: { type: 'number', description: 'Filter events starting after this timestamp (default: now)' },
-        endMs: { type: 'number', description: 'Filter events ending before this timestamp (optional)' },
-        limit: { type: 'number', description: 'Maximum number of events to return (default: 10, max: 50)' },
+        startMs: {
+          type: 'number',
+          description: 'Filter events starting after this timestamp (default: now)',
+        },
+        endMs: {
+          type: 'number',
+          description: 'Filter events ending before this timestamp (optional)',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of events to return (default: 10, max: 50)',
+        },
       },
     },
   },
@@ -78,7 +93,10 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         projectId: { type: 'string', description: 'Filter notes by project/topic ID (optional)' },
-        limit: { type: 'number', description: 'Maximum number of notes to return (default: 10, max: 50)' },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of notes to return (default: 10, max: 50)',
+        },
       },
     },
   },
@@ -90,8 +108,14 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         title: { type: 'string', description: 'Note title' },
-        content: { type: 'string', description: 'Note content as plain text (will be converted to ProseMirror JSON)' },
-        projectId: { type: 'string', description: 'Topic/folder ID to organize the note (optional)' },
+        content: {
+          type: 'string',
+          description: 'Note content as plain text (will be converted to ProseMirror JSON)',
+        },
+        projectId: {
+          type: 'string',
+          description: 'Topic/folder ID to organize the note (optional)',
+        },
       },
       required: ['title'],
     },
@@ -142,7 +166,10 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         topic: { type: 'string', description: 'Research topic' },
-        questions: { type: 'string', description: 'List of research questions (JSON array of strings)' },
+        questions: {
+          type: 'string',
+          description: 'List of research questions (JSON array of strings)',
+        },
         maxBudget: { type: 'number', description: 'Maximum budget for the research (optional)' },
       },
       required: ['topic', 'questions'],
@@ -155,7 +182,10 @@ export const builtinTools: BuiltinToolMeta[] = [
     parameters: {
       type: 'object',
       properties: {
-        goal: { type: 'string', description: 'The goal or prompt to run through the Expert Council pipeline' },
+        goal: {
+          type: 'string',
+          description: 'The goal or prompt to run through the Expert Council pipeline',
+        },
       },
       required: ['goal'],
     },
@@ -169,9 +199,18 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Search query' },
-        maxResults: { type: 'number', description: 'Maximum number of results to return (default: 5, max: 10)' },
-        searchType: { type: 'string', description: 'Type of search: "search" for web, "news" for news (default: "search")' },
-        gl: { type: 'string', description: 'Country code for localized results (e.g. "us", "uk", "de")' },
+        maxResults: {
+          type: 'number',
+          description: 'Maximum number of results to return (default: 5, max: 10)',
+        },
+        searchType: {
+          type: 'string',
+          description: 'Type of search: "search" for web, "news" for news (default: "search")',
+        },
+        gl: {
+          type: 'string',
+          description: 'Country code for localized results (e.g. "us", "uk", "de")',
+        },
         hl: { type: 'string', description: 'Language code for results (e.g. "en", "es", "de")' },
       },
       required: ['query'],
@@ -199,7 +238,11 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         url: { type: 'string', description: 'The full URL to scrape' },
-        formats: { type: 'string', description: 'Output formats: "markdown", "html", "links", "screenshot" (JSON array of strings)' },
+        formats: {
+          type: 'string',
+          description:
+            'Output formats: "markdown", "html", "links", "screenshot" (JSON array of strings)',
+        },
       },
       required: ['url'],
     },
@@ -215,7 +258,10 @@ export const builtinTools: BuiltinToolMeta[] = [
         query: { type: 'string', description: 'Semantic search query' },
         numResults: { type: 'number', description: 'Number of results to return (default: 5)' },
         category: { type: 'string', description: 'Category filter (optional)' },
-        searchType: { type: 'string', description: 'Search type: "neural" or "keyword" (default: "neural")' },
+        searchType: {
+          type: 'string',
+          description: 'Search type: "neural" or "keyword" (default: "neural")',
+        },
       },
       required: ['query'],
     },
@@ -255,7 +301,10 @@ export const builtinTools: BuiltinToolMeta[] = [
         title: { type: 'string', description: 'Todo title' },
         urgency: { type: 'string', description: 'Urgency level (low, medium, high, critical)' },
         importance: { type: 'number', description: 'Importance score 1-10' },
-        status: { type: 'string', description: 'Initial status: inbox, next_action, scheduled, waiting, someday, done' },
+        status: {
+          type: 'string',
+          description: 'Initial status: inbox, next_action, scheduled, waiting, someday, done',
+        },
       },
       required: ['title'],
     },
@@ -267,7 +316,10 @@ export const builtinTools: BuiltinToolMeta[] = [
     parameters: {
       type: 'object',
       properties: {
-        status: { type: 'string', description: 'Filter by status: inbox, next_action, scheduled, waiting, someday, done' },
+        status: {
+          type: 'string',
+          description: 'Filter by status: inbox, next_action, scheduled, waiting, someday, done',
+        },
         limit: { type: 'number', description: 'Maximum number of todos to return (default: 20)' },
       },
     },
@@ -280,7 +332,10 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Search query for Google Drive files' },
-        maxResults: { type: 'number', description: 'Maximum number of results to return (default: 10)' },
+        maxResults: {
+          type: 'number',
+          description: 'Maximum number of results to return (default: 10)',
+        },
       },
       required: ['query'],
     },
@@ -304,7 +359,10 @@ export const builtinTools: BuiltinToolMeta[] = [
     parameters: {
       type: 'object',
       properties: {
-        maxResults: { type: 'number', description: 'Maximum number of messages to return (default: 10)' },
+        maxResults: {
+          type: 'number',
+          description: 'Maximum number of messages to return (default: 10)',
+        },
         query: { type: 'string', description: 'Gmail search query (optional)' },
       },
     },
@@ -359,7 +417,10 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Image search query' },
-        maxResults: { type: 'number', description: 'Maximum number of results to return (default: 5)' },
+        maxResults: {
+          type: 'number',
+          description: 'Maximum number of results to return (default: 5)',
+        },
       },
       required: ['query'],
     },
@@ -372,7 +433,10 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Video search query' },
-        maxResults: { type: 'number', description: 'Maximum number of results to return (default: 5)' },
+        maxResults: {
+          type: 'number',
+          description: 'Maximum number of results to return (default: 5)',
+        },
       },
       required: ['query'],
     },
@@ -385,9 +449,18 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Academic search query' },
-        maxResults: { type: 'number', description: 'Maximum number of results to return (default: 5)' },
-        yearFrom: { type: 'number', description: 'Filter papers published from this year (optional)' },
-        yearTo: { type: 'number', description: 'Filter papers published up to this year (optional)' },
+        maxResults: {
+          type: 'number',
+          description: 'Maximum number of results to return (default: 5)',
+        },
+        yearFrom: {
+          type: 'number',
+          description: 'Filter papers published from this year (optional)',
+        },
+        yearTo: {
+          type: 'number',
+          description: 'Filter papers published up to this year (optional)',
+        },
       },
       required: ['query'],
     },
@@ -400,7 +473,10 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Places search query' },
-        maxResults: { type: 'number', description: 'Maximum number of results to return (default: 5)' },
+        maxResults: {
+          type: 'number',
+          description: 'Maximum number of results to return (default: 5)',
+        },
       },
       required: ['query'],
     },
@@ -413,7 +489,10 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         url: { type: 'string', description: 'URL to find similar pages for' },
-        numResults: { type: 'number', description: 'Number of similar results to return (default: 5)' },
+        numResults: {
+          type: 'number',
+          description: 'Number of similar results to return (default: 5)',
+        },
       },
       required: ['url'],
     },
@@ -426,7 +505,10 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         urls: { type: 'string', description: 'URLs to extract data from (JSON array of strings)' },
-        prompt: { type: 'string', description: 'Prompt describing what data to extract (optional)' },
+        prompt: {
+          type: 'string',
+          description: 'Prompt describing what data to extract (optional)',
+        },
       },
       required: ['urls'],
     },
@@ -464,7 +546,10 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Web search query' },
-        maxResults: { type: 'number', description: 'Maximum number of results to return (default: 5)' },
+        maxResults: {
+          type: 'number',
+          description: 'Maximum number of results to return (default: 5)',
+        },
       },
       required: ['query'],
     },
@@ -477,7 +562,10 @@ export const builtinTools: BuiltinToolMeta[] = [
       type: 'object',
       properties: {
         todoId: { type: 'string', description: 'The ID of the todo to update' },
-        status: { type: 'string', description: 'New status: inbox, next_action, scheduled, waiting, someday, done' },
+        status: {
+          type: 'string',
+          description: 'New status: inbox, next_action, scheduled, waiting, someday, done',
+        },
         urgency: { type: 'string', description: 'Urgency level (low, medium, high, critical)' },
         importance: { type: 'number', description: 'Importance score 1-10' },
         estimatedMinutes: { type: 'number', description: 'Estimated time in minutes' },
@@ -527,7 +615,8 @@ export const builtinTools: BuiltinToolMeta[] = [
   {
     toolId: 'tool:code_interpreter',
     name: 'code_interpreter',
-    description: 'Execute JavaScript code in a sandboxed environment for calculations and data processing',
+    description:
+      'Execute JavaScript code in a sandboxed environment for calculations and data processing',
     parameters: {
       type: 'object',
       properties: {
@@ -539,7 +628,8 @@ export const builtinTools: BuiltinToolMeta[] = [
   {
     toolId: 'tool:webhook_call',
     name: 'webhook_call',
-    description: 'Call an external webhook URL with a JSON payload (limited to user-whitelisted HTTPS URLs)',
+    description:
+      'Call an external webhook URL with a JSON payload (limited to user-whitelisted HTTPS URLs)',
     parameters: {
       type: 'object',
       properties: {
@@ -553,11 +643,16 @@ export const builtinTools: BuiltinToolMeta[] = [
   {
     toolId: 'tool:ask_user',
     name: 'ask_user',
-    description: 'Pause the workflow and ask the user a clarifying question. The workflow will resume once the user responds.',
+    description:
+      'Pause the workflow and ask the user a clarifying question. The workflow will resume once the user responds.',
     parameters: {
       type: 'object',
       properties: {
-        question: { type: 'string', description: 'The question to ask the user. Be specific about what information you need and why.' },
+        question: {
+          type: 'string',
+          description:
+            'The question to ask the user. Be specific about what information you need and why.',
+        },
       },
       required: ['question'],
     },

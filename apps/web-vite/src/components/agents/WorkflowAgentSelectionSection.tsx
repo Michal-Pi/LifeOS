@@ -34,9 +34,7 @@ export function WorkflowAgentSelectionSection({
 }: AgentSelectionSectionProps) {
   const filteredTemplates = useMemo(() => {
     if (roleFilter === 'all') return agentTemplatePresets
-    return agentTemplatePresets.filter(
-      (t) => t.agentConfig.role === (roleFilter as AgentRole)
-    )
+    return agentTemplatePresets.filter((t) => t.agentConfig.role === (roleFilter as AgentRole))
   }, [roleFilter])
 
   const isTemplateView = agentSource === 'templates'

@@ -761,7 +761,12 @@ Return ONLY valid JSON, no explanation.`
               <Button variant="ghost" type="button" onClick={onClose} disabled={isSaving}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSaving || (activeAgents.length === 0 && selectedTemplateNames.length === 0)}>
+              <Button
+                type="submit"
+                disabled={
+                  isSaving || (activeAgents.length === 0 && selectedTemplateNames.length === 0)
+                }
+              >
                 {isSaving ? 'Saving...' : workflow ? 'Update Workflow' : 'Create Workflow'}
               </Button>
             </div>

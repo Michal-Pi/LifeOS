@@ -16,6 +16,7 @@ You are implementing Phase 2 of the Dialectical Workflow Improvement Plan. Read 
 ## Prerequisite Context
 
 Phase 1 already completed these changes (do NOT re-implement):
+
 - `functions/src/agents/langgraph/dialecticalPrompts.ts` exists with `resolveThesisLens()`.
 - `functions/src/agents/knowledgeHypergraph.ts` has `findClaimByNormalizedText()` and dedup guard in `addClaim()`.
 - `functions/src/agents/deepResearch/claimExtraction.ts` has the duplicate causal edge guard.
@@ -34,6 +35,7 @@ This module converts between the runtime `KnowledgeHypergraph` (graphlib-based) 
 Converts a live KG instance into a `CompactGraph` suitable for prompt injection.
 
 Implementation:
+
 1. Read all nodes via `kg.getNodesByType()` for types: `'claim'`, `'concept'`, `'mechanism'`, `'prediction'`. The KG node type is `KGNodeType` (string union).
 2. Each `KGNode` has shape `{ id: string, type: KGNodeType, label: string, data: unknown }`. For claims, `data` is a `Claim` object with `text`, `confidence`, etc.
 3. Score nodes by: `(edgeCount * 0.4) + (confidence * 0.6)` where edgeCount = number of edges incident on that node (use `kg.getOutEdges(id).length + kg.getInEdges(id).length`), and confidence comes from `(node.data as { confidence?: number }).confidence ?? 0.5`.
@@ -59,6 +61,7 @@ Implementation:
 Serializes a `CompactGraph` to a JSON string, pruning if necessary to stay under the character budget.
 
 Implementation:
+
 1. `maxChars` defaults to 4000.
 2. `const json = JSON.stringify(graph)` — if `json.length <= maxChars`, return it.
 3. Prune iteratively:
@@ -75,9 +78,10 @@ import type { KnowledgeHypergraph } from '../knowledgeHypergraph.js'
 ```
 
 The `KGEdge` type is defined in `knowledgeHypergraph.ts`:
+
 ```ts
 interface KGEdge {
-  type: KGEdgeType  // string like 'causal_link', 'contradicts', 'supports', etc.
+  type: KGEdgeType // string like 'causal_link', 'contradicts', 'supports', etc.
   weight: number
   temporal: BiTemporalEdge
   metadata?: Record<string, unknown>
@@ -85,12 +89,13 @@ interface KGEdge {
 ```
 
 The `KGNode` type:
+
 ```ts
 interface KGNode {
   id: string
-  type: KGNodeType  // 'claim' | 'concept' | 'mechanism' | 'prediction' | 'source' | 'contradiction' | 'regime' | 'community'
+  type: KGNodeType // 'claim' | 'concept' | 'mechanism' | 'prediction' | 'source' | 'contradiction' | 'regime' | 'community'
   label: string
-  data: unknown  // The actual domain object (Claim, Concept, etc.)
+  data: unknown // The actual domain object (Claim, Concept, etc.)
 }
 ```
 
@@ -127,6 +132,7 @@ Import it: `import type { ToolDefinition, ToolExecutionContext } from './toolExe
 ### Tool specifications:
 
 **1. `kg_summary`**
+
 - Description: `"Get a summary of the knowledge graph: node/edge counts, top claims by confidence, and active contradictions"`
 - Parameters: none (`properties: {}, required: []`)
 - Execute: Call `kg.getStats()`, then `kg.getNodesByType('claim')` sorted by confidence descending (top 10), then `kg.getActiveContradictions()`. Return a JSON object:
@@ -139,6 +145,7 @@ Import it: `import type { ToolDefinition, ToolExecutionContext } from './toolExe
   ```
 
 **2. `kg_get_claims`**
+
 - Description: `"Query claims from the knowledge graph, optionally filtering by concept and minimum confidence"`
 - Parameters:
   - `conceptFilter` (string, optional): `"Only return claims connected to this concept node ID"`
@@ -147,6 +154,7 @@ Import it: `import type { ToolDefinition, ToolExecutionContext } from './toolExe
 - Execute: Get all claims via `kg.getNodesByType('claim')`. Filter by confidence if `minConfidence` given. If `conceptFilter` given, use `kg.getNeighbors(conceptFilter)` to get connected node IDs, then filter claims to those whose `id` is in that set. Sort by confidence descending, slice to limit. Return array of `{ id, label, confidence, text }`.
 
 **3. `kg_get_neighborhood`**
+
 - Description: `"Get the local neighborhood of a node in the knowledge graph (nodes and edges within N hops)"`
 - Parameters:
   - `nodeId` (string, required): `"The node ID to explore from"`
@@ -155,17 +163,20 @@ Import it: `import type { ToolDefinition, ToolExecutionContext } from './toolExe
 - Execute: Call `kg.getNeighborhood(nodeId, { maxDepth, limit: maxSize })`. Returns `KGQueryResult` which has `{ nodes: KGNode[], edges: Array<{ source, target, data }> }`. Map to a simplified shape for the LLM.
 
 **4. `kg_get_sources_for_claim`**
+
 - Description: `"Get the source records (URLs, titles, quality scores) that support a specific claim"`
 - Parameters:
   - `claimId` (string, required): `"The claim node ID"`
 - Execute: Call `kg.getSourcesForClaim(claimId)`. Returns `KGNode[]` where each node's `data` is a source record. Map to `{ sourceId, label, url, domain }` — extract fields from `node.data` with safe access.
 
 **5. `kg_get_contradictions`**
+
 - Description: `"Get all active (unresolved) contradictions in the knowledge graph"`
 - Parameters: none
 - Execute: Call `kg.getActiveContradictions()`. Map each contradiction node to `{ id, label, data: node.data }`.
 
 **6. `kg_shortest_path`**
+
 - Description: `"Find the shortest path between two nodes in the knowledge graph"`
 - Parameters:
   - `fromNodeId` (string, required): `"Starting node ID"`
@@ -205,12 +216,14 @@ Copy the existing `buildThesisPrompt` function from `dialecticalGraph.ts` (aroun
 **2. `buildNegationPrompt(sourceThesis, targetThesis): string`**
 
 Copy from `dialecticalGraph.ts` (around line 1830). Apply:
+
 - Replace `JSON.stringify(sourceThesis.graph)` and `JSON.stringify(targetThesis.graph)` with `capGraphForPrompt(thesis.graph, 3000)` calls.
 - Keep `truncateRawText` as a local helper in this file (copy it + the `MAX_RAW_TEXT_LENGTH = 3000` constant).
 
 **3. `buildSublationPrompt(theses, negations, contradictions, mergedGraph?, cycleNumber?, researchEvidence?): string`**
 
 Copy from `dialecticalGraph.ts` (around line 1868). Apply:
+
 - Replace `JSON.stringify(mergedGraph)` with `capGraphForPrompt(mergedGraph, 5000)`.
 - Replace `JSON.stringify(t.graph)` in thesis representations with `capGraphForPrompt(t.graph, 2000)`.
 - Sort research claims by confidence descending before slicing (same pattern as thesis).
@@ -218,12 +231,14 @@ Copy from `dialecticalGraph.ts` (around line 1868). Apply:
 **4. `repairJsonOutput(rawText, zodError, schema, execContext): Promise<string | null>`**
 
 New utility for structured output parse failure recovery. When a Zod parse fails:
+
 1. Build a repair prompt: `"The following JSON output failed validation. Fix it to match the schema.\n\nOriginal output:\n${rawText}\n\nValidation errors:\n${zodError.message}\n\nReturn ONLY the corrected JSON."`
 2. Call the LLM via `executeAgentWithEvents` (from `./utils.js`) using a lightweight repair agent config.
 3. Parse the response — if valid, return the corrected JSON string. If still invalid, return `null`.
 4. This is a **1-retry** strategy: call once, if that fails return null (no infinite loops).
 
 Signature:
+
 ```ts
 import type { ZodError } from 'zod'
 import type { AgentExecutionContext } from './utils.js'
@@ -238,6 +253,7 @@ export async function repairJsonOutput(
 ```
 
 Implementation:
+
 - Create a minimal repair agent config inline (don't import from elsewhere):
   ```ts
   const repairAgent = {
@@ -245,7 +261,8 @@ Implementation:
     name: 'JSON Repair',
     modelProvider: 'openai' as const,
     modelName: 'gpt-4o-mini',
-    systemPrompt: 'You fix malformed JSON to match a schema. Return ONLY valid JSON, no explanation.',
+    systemPrompt:
+      'You fix malformed JSON to match a schema. Return ONLY valid JSON, no explanation.',
     temperature: 0,
     archived: false,
     createdAtMs: Date.now(),
@@ -262,15 +279,28 @@ Implementation:
 ### Types to import
 
 ```ts
-import type { CompactGraph, ThesisOutput, NegationOutput, ContradictionOutput, AgentConfig } from '@lifeos/agents'
+import type {
+  CompactGraph,
+  ThesisOutput,
+  NegationOutput,
+  ContradictionOutput,
+  AgentConfig,
+} from '@lifeos/agents'
 import type { ExtractedClaim } from '@lifeos/agents'
 ```
 
 You'll also need the `ResearchEvidence` interface. It's currently defined in `dialecticalGraph.ts` (line 94):
+
 ```ts
 export interface ResearchEvidence {
   claims: ExtractedClaim[]
-  sources: Array<{ sourceId: string; title: string; url: string; domain: string; qualityScore: number }>
+  sources: Array<{
+    sourceId: string
+    title: string
+    url: string
+    domain: string
+    qualityScore: number
+  }>
   gapTypes: string[]
   searchRationale: string
 }
@@ -288,6 +318,7 @@ export interface ResearchEvidence {
 ### Critical: verify no behavior change
 
 The extraction must produce **identical prompt strings** for the existing code paths. The only differences are:
+
 - `capGraphForPrompt` may truncate very large graphs (which previously were injected untruncated — this is strictly an improvement, not a behavior change).
 - Research claims are now sorted by confidence before slicing (strictly better ordering).
 
@@ -379,6 +410,7 @@ describe('serializeKGToCompactGraph', () => {
 ```
 
 Mock setup: Create a `KnowledgeHypergraph` instance with the Firestore mock pattern from Phase 1 tests:
+
 ```ts
 vi.mock('firebase-admin/firestore', () => ({
   getFirestore: vi.fn(() => mockDb),
@@ -462,6 +494,7 @@ describe('repairJsonOutput', () => {
 ```
 
 For `repairJsonOutput` tests, mock `executeAgentWithEvents` from `../utils.js` (same pattern as `graphGuardrails.test.ts`):
+
 ```ts
 vi.mock('../utils.js', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>
@@ -472,9 +505,11 @@ vi.mock('../utils.js', async (importOriginal) => {
 ### Verify existing tests
 
 After all changes, run:
+
 ```bash
 cd functions && npx vitest run src/agents/langgraph/__tests__/dialecticalGraph
 ```
+
 to verify WF1 tests still pass with the extracted prompt builders.
 
 ---
@@ -494,19 +529,19 @@ Fix any lint errors, type errors, or test failures before committing.
 
 ## Files Summary
 
-| File | Action | What |
-|---|---|---|
-| `functions/src/agents/deepResearch/kgSerializer.ts` | **CREATE** | `serializeKGToCompactGraph`, `capGraphForPrompt` |
-| `functions/src/agents/kgTools.ts` | **CREATE** | `createKGTools` — 6 semantic KG tool definitions |
-| `functions/src/agents/langgraph/dialecticalPrompts.ts` | **EXTEND** | Add `buildThesisPrompt`, `buildNegationPrompt`, `buildSublationPrompt`, `repairJsonOutput`, `ResearchEvidence` |
-| `functions/src/agents/langgraph/dialecticalGraph.ts` | **MODIFY** | Remove extracted prompt builders, import from `dialecticalPrompts.js` |
-| `packages/agents/src/domain/workflowState.ts` | **MODIFY** | Add `KGCompactSnapshot` interface |
-| `packages/agents/src/domain/dialectical.ts` | **MODIFY** | Add `enableReactiveResearch?: boolean` to `DialecticalWorkflowConfig` |
-| `packages/agents/src/domain/models.ts` | **MODIFY** | Add `DeepResearchRunConfig` with `researchFirstMode?: boolean` |
-| Package barrel file(s) | **MODIFY** | Export new types |
-| `functions/src/agents/deepResearch/__tests__/kgSerializer.test.ts` | **CREATE** | Tests for serializer |
-| `functions/src/agents/__tests__/kgTools.test.ts` | **CREATE** | Tests for KG tools |
-| `functions/src/agents/langgraph/__tests__/dialecticalPrompts.test.ts` | **EXTEND** | Tests for prompt builders + repairJsonOutput |
+| File                                                                  | Action     | What                                                                                                           |
+| --------------------------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------- |
+| `functions/src/agents/deepResearch/kgSerializer.ts`                   | **CREATE** | `serializeKGToCompactGraph`, `capGraphForPrompt`                                                               |
+| `functions/src/agents/kgTools.ts`                                     | **CREATE** | `createKGTools` — 6 semantic KG tool definitions                                                               |
+| `functions/src/agents/langgraph/dialecticalPrompts.ts`                | **EXTEND** | Add `buildThesisPrompt`, `buildNegationPrompt`, `buildSublationPrompt`, `repairJsonOutput`, `ResearchEvidence` |
+| `functions/src/agents/langgraph/dialecticalGraph.ts`                  | **MODIFY** | Remove extracted prompt builders, import from `dialecticalPrompts.js`                                          |
+| `packages/agents/src/domain/workflowState.ts`                         | **MODIFY** | Add `KGCompactSnapshot` interface                                                                              |
+| `packages/agents/src/domain/dialectical.ts`                           | **MODIFY** | Add `enableReactiveResearch?: boolean` to `DialecticalWorkflowConfig`                                          |
+| `packages/agents/src/domain/models.ts`                                | **MODIFY** | Add `DeepResearchRunConfig` with `researchFirstMode?: boolean`                                                 |
+| Package barrel file(s)                                                | **MODIFY** | Export new types                                                                                               |
+| `functions/src/agents/deepResearch/__tests__/kgSerializer.test.ts`    | **CREATE** | Tests for serializer                                                                                           |
+| `functions/src/agents/__tests__/kgTools.test.ts`                      | **CREATE** | Tests for KG tools                                                                                             |
+| `functions/src/agents/langgraph/__tests__/dialecticalPrompts.test.ts` | **EXTEND** | Tests for prompt builders + repairJsonOutput                                                                   |
 
 ## Commit
 

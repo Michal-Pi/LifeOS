@@ -166,7 +166,7 @@ const BASE_STYLESHEET: cytoscape.Stylesheet[] = [
       'border-color': '#6d28d9',
       'border-opacity': 0.3,
       shape: 'round-rectangle',
-      'padding': '20px',
+      padding: '20px',
       label: 'data(label)',
       'text-valign': 'top',
       'text-halign': 'center',
@@ -340,7 +340,6 @@ export function KGGraphCanvas({
       layout: { name: 'grid' }, // placeholder — real layout applied after elements
       minZoom: 0.2,
       maxZoom: 4,
-      wheelSensitivity: 0.3,
     })
 
     cyRef.current = cy
@@ -499,13 +498,15 @@ export function KGGraphCanvas({
           <span className="kg-legend-line" style={{ background: '#22c55e' }} /> supports
         </span>
         <span className="kg-legend-item">
-          <span className="kg-legend-line kg-legend-dashed" style={{ background: '#ef4444' }} /> contradicts
+          <span className="kg-legend-line kg-legend-dashed" style={{ background: '#ef4444' }} />{' '}
+          contradicts
         </span>
         <span className="kg-legend-item">
           <span className="kg-legend-line" style={{ background: '#6b7280' }} /> causes
         </span>
         <span className="kg-legend-item">
-          <span className="kg-legend-line kg-legend-dotted" style={{ background: '#8b5cf6' }} /> mediates
+          <span className="kg-legend-line kg-legend-dotted" style={{ background: '#8b5cf6' }} />{' '}
+          mediates
         </span>
         <span className="kg-legend-item">
           <span className="kg-legend-line" style={{ background: '#9ca3af' }} /> scopes

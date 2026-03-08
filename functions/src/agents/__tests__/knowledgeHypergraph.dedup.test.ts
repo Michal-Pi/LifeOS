@@ -11,7 +11,13 @@ const mockCollection = vi.fn(() => ({ get: mockGet }))
 const mockDb = { doc: mockDoc, collection: mockCollection }
 
 import { KnowledgeHypergraph } from '../knowledgeHypergraph.js'
-import type { DialecticalSessionId, CreateClaimInput, EpisodeId, AgentId, ThesisLens } from '@lifeos/agents'
+import type {
+  DialecticalSessionId,
+  CreateClaimInput,
+  EpisodeId,
+  AgentId,
+  ThesisLens,
+} from '@lifeos/agents'
 
 function makeClaimInput(text: string, overrides?: Partial<CreateClaimInput>): CreateClaimInput {
   return {
@@ -34,11 +40,7 @@ describe('KG duplicate claim guard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    kg = new KnowledgeHypergraph(
-      'session-1' as DialecticalSessionId,
-      'user-1',
-      mockDb as never
-    )
+    kg = new KnowledgeHypergraph('session-1' as DialecticalSessionId, 'user-1', mockDb as never)
   })
 
   it('findClaimByNormalizedText returns null for no match', () => {
@@ -61,28 +63,32 @@ describe('KG duplicate claim guard', () => {
     expect(first.claimId).toBe(second.claimId)
     // Firestore set should only have been called once for this claim text
     const setCalls = mockSet.mock.calls
-    const claimSetCalls = setCalls.filter((c: unknown[]) =>
-      (c[0] as { text?: string })?.text === 'Interest rates affect growth'
+    const claimSetCalls = setCalls.filter(
+      (c: unknown[]) => (c[0] as { text?: string })?.text === 'Interest rates affect growth'
     )
     expect(claimSetCalls).toHaveLength(1)
   })
 
   it('addClaim attaches missing source edge to existing claim', async () => {
-    const first = await kg.addClaim(makeClaimInput('Interest rates affect growth', {
-      sourceEpisodeId: 'episode:source:src-1' as EpisodeId,
-    }))
+    const first = await kg.addClaim(
+      makeClaimInput('Interest rates affect growth', {
+        sourceEpisodeId: 'episode:source:src-1' as EpisodeId,
+      })
+    )
 
     // Add again with a different source
-    const second = await kg.addClaim(makeClaimInput('Interest rates affect growth', {
-      sourceEpisodeId: 'episode:source:src-2' as EpisodeId,
-    }))
+    const second = await kg.addClaim(
+      makeClaimInput('Interest rates affect growth', {
+        sourceEpisodeId: 'episode:source:src-2' as EpisodeId,
+      })
+    )
 
     expect(first.claimId).toBe(second.claimId)
 
     // Check that the claim now has an edge to src-2
     const outEdges = kg.getOutEdges(first.claimId)
-    const sourceEdges = outEdges.filter(e => e.data.type === 'sourced_from')
-    const targets = sourceEdges.map(e => e.target)
+    const sourceEdges = outEdges.filter((e) => e.data.type === 'sourced_from')
+    const targets = sourceEdges.map((e) => e.target)
     expect(targets).toContain('episode:source:src-2')
   })
 

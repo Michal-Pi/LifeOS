@@ -27,6 +27,7 @@ import type {
   NoteRepository,
 } from '@lifeos/notes'
 import { updateNoteLinks } from '@/notes/linkExtractor'
+import { sanitizeNoteContent } from '@/notes/noteContent'
 import { invalidateGraphCache } from './firestoreGraphRepository'
 import { getNoteMetadataCache } from './noteMetadataCache'
 
@@ -106,6 +107,7 @@ export const createFirestoreNoteRepository = (): NoteRepository => {
       linkedNoteIds,
       mentionedNoteIds,
       paragraphLinks,
+      content: sanitizeNoteContent(noteWithDefaults.content) ?? { type: 'doc', content: [] },
     }
 
     const ref = doc(db, `users/${userId}/${COLLECTION_NOTES}/${noteId}`)
@@ -166,12 +168,14 @@ export const createFirestoreNoteRepository = (): NoteRepository => {
       paragraphLinks = extracted.paragraphLinks || {}
     }
 
+    const mergedContent = updates.content !== undefined ? updates.content : existingNote.content
     const updatedNote: Note = {
       ...existingNote,
       ...updates,
       userId: existingNote.userId ?? userId,
       updatedAtMs: Date.now(),
       version: existingNote.version + 1,
+      content: sanitizeNoteContent(mergedContent) ?? { type: 'doc', content: [] },
       linkedNoteIds,
       mentionedNoteIds,
       paragraphLinks,

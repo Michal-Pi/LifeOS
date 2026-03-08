@@ -28,7 +28,7 @@ import type {
  */
 export function buildPhaseSummarizerPrompt(
   phase: OraclePhase,
-  gateResult?: OracleGateResult,
+  gateResult?: OracleGateResult
 ): string {
   const gateContext = gateResult
     ? `\n\nThe preceding quality gate ${gateResult.passed ? 'PASSED' : 'FAILED'} with average score ${gateResult.averageScore}.` +
@@ -53,7 +53,7 @@ Respond with JSON ONLY matching this exact schema.${gateContext}`
  */
 export function parsePhaseSummary(
   phase: OraclePhase,
-  llmOutput: string,
+  llmOutput: string
 ): OraclePhaseSummary | null {
   try {
     const jsonMatch = llmOutput.match(/\{[\s\S]*\}/)
@@ -65,22 +65,24 @@ export function parsePhaseSummary(
       phase,
       executive: Array.isArray(parsed.executive) ? parsed.executive.slice(0, 10) : [],
       keyClaims: Array.isArray(parsed.keyClaims)
-        ? parsed.keyClaims.slice(0, 15).map((c: { id?: string; summary?: string; confidence?: number }) => ({
-            id: c.id ?? '',
-            summary: c.summary ?? '',
-            confidence: typeof c.confidence === 'number' ? c.confidence : 0.5,
-          }))
+        ? parsed.keyClaims
+            .slice(0, 15)
+            .map((c: { id?: string; summary?: string; confidence?: number }) => ({
+              id: c.id ?? '',
+              summary: c.summary ?? '',
+              confidence: typeof c.confidence === 'number' ? c.confidence : 0.5,
+            }))
         : [],
       keyAssumptions: Array.isArray(parsed.keyAssumptions)
-        ? parsed.keyAssumptions.map((a: { id?: string; statement?: string; sensitivity?: string }) => ({
-            id: a.id ?? '',
-            statement: a.statement ?? '',
-            sensitivity: a.sensitivity ?? 'medium',
-          }))
+        ? parsed.keyAssumptions.map(
+            (a: { id?: string; statement?: string; sensitivity?: string }) => ({
+              id: a.id ?? '',
+              statement: a.statement ?? '',
+              sensitivity: a.sensitivity ?? 'medium',
+            })
+          )
         : [],
-      unresolvedTensions: Array.isArray(parsed.unresolvedTensions)
-        ? parsed.unresolvedTensions
-        : [],
+      unresolvedTensions: Array.isArray(parsed.unresolvedTensions) ? parsed.unresolvedTensions : [],
       tokenCount: llmOutput.length / 4, // Rough estimate
     }
   } catch {
@@ -97,7 +99,7 @@ export function buildFallbackSummary(
   claims: OracleClaim[],
   assumptions: OracleAssumption[],
   trends?: TrendObject[],
-  uncertainties?: UncertaintyObject[],
+  uncertainties?: UncertaintyObject[]
 ): OraclePhaseSummary {
   // For trend_scanning phase, use trends/uncertainties if available
   if (phase === 'trend_scanning' && trends && trends.length > 0) {
@@ -121,10 +123,18 @@ export function buildFallbackSummary(
 
     // Synthetic tensions from Phase 2 data
     const unresolvedTensions: string[] = []
-    const lowCoverage = ['social', 'technological', 'economic', 'environmental', 'political', 'values']
-      .filter((cat) => !trends.some((t) => t.steepCategory === cat))
-    if (lowCoverage.length > 0) unresolvedTensions.push(`Missing STEEP+V coverage: ${lowCoverage.join(', ')}`)
-    if ((uncertainties?.length ?? 0) > 8) unresolvedTensions.push('High uncertainty density may indicate insufficient evidence')
+    const lowCoverage = [
+      'social',
+      'technological',
+      'economic',
+      'environmental',
+      'political',
+      'values',
+    ].filter((cat) => !trends.some((t) => t.steepCategory === cat))
+    if (lowCoverage.length > 0)
+      unresolvedTensions.push(`Missing STEEP+V coverage: ${lowCoverage.join(', ')}`)
+    if ((uncertainties?.length ?? 0) > 8)
+      unresolvedTensions.push('High uncertainty density may indicate insufficient evidence')
 
     return { phase, executive, keyClaims, keyAssumptions, unresolvedTensions, tokenCount: 0 }
   }
@@ -151,9 +161,11 @@ export function buildFallbackSummary(
   // Synthetic tensions
   const unresolvedTensions: string[] = []
   const lowConfidence = claims.filter((c) => c.confidence < 0.5)
-  if (lowConfidence.length > 0) unresolvedTensions.push(`${lowConfidence.length} low-confidence claims need investigation`)
+  if (lowConfidence.length > 0)
+    unresolvedTensions.push(`${lowConfidence.length} low-confidence claims need investigation`)
   const highSensitivity = assumptions.filter((a) => a.sensitivity === 'high')
-  if (highSensitivity.length > 3) unresolvedTensions.push(`${highSensitivity.length} high-sensitivity assumptions untested`)
+  if (highSensitivity.length > 3)
+    unresolvedTensions.push(`${highSensitivity.length} high-sensitivity assumptions untested`)
 
   return {
     phase,
@@ -173,9 +185,7 @@ export function buildFallbackSummary(
  * Format prior phase summaries as context for subsequent phases.
  * Returns a compact markdown string.
  */
-export function formatPhaseSummariesForContext(
-  summaries: OraclePhaseSummary[],
-): string {
+export function formatPhaseSummariesForContext(summaries: OraclePhaseSummary[]): string {
   if (summaries.length === 0) return ''
 
   const sections = summaries.map((s) => {
@@ -184,9 +194,8 @@ export function formatPhaseSummariesForContext(
       .slice(0, 10)
       .map((c) => `  - ${c.id}: ${c.summary} (conf: ${c.confidence})`)
       .join('\n')
-    const tensions = s.unresolvedTensions.length > 0
-      ? `\n  Unresolved: ${s.unresolvedTensions.join('; ')}`
-      : ''
+    const tensions =
+      s.unresolvedTensions.length > 0 ? `\n  Unresolved: ${s.unresolvedTensions.join('; ')}` : ''
 
     return `### ${s.phase}\n${bullets}\n  Key claims:\n${claims}${tensions}`
   })

@@ -59,6 +59,7 @@
 .npp-panel__body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1rem;
 }
 
@@ -105,6 +106,7 @@
 .npp-field input[type='number'],
 .npp-field textarea {
   width: 100%;
+  box-sizing: border-box;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -217,6 +219,7 @@
 
 .npp-custom-prompt textarea {
   width: 100%;
+  box-sizing: border-box;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -225,7 +228,7 @@
   font-size: var(--text-sm);
   font-family: var(--font-sans);
   resize: vertical;
-  min-height: 80px;
+  min-height: 160px;
   transition: border-color var(--motion-fast) var(--motion-ease);
 }
 

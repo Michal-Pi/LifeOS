@@ -41,7 +41,10 @@ vi.mock('../../expertCouncil.js', () => ({
 }))
 
 import { executeAgentWithEvents } from '../../langgraph/utils.js'
-import { executeOracleWorkflowLangGraph, type OracleGraphConfig } from '../../langgraph/oracleGraph.js'
+import {
+  executeOracleWorkflowLangGraph,
+  type OracleGraphConfig,
+} from '../../langgraph/oracleGraph.js'
 
 const mockExecuteAgent = vi.mocked(executeAgentWithEvents)
 
@@ -140,84 +143,97 @@ describe('Oracle gate escalation', () => {
 
       switch (nodeId) {
         case 'equilibrium_analyst':
-          return mockStep(JSON.stringify({
-            selectedSkeletons: ['SK-1'],
-            candidateSkeletons: [
-              { id: 'SK-1', premise: { disruption: 'high' }, consistency: 0.8, plausibility: 0.6, divergence: 0.8 },
-            ],
-          }))
+          return mockStep(
+            JSON.stringify({
+              selectedSkeletons: ['SK-1'],
+              candidateSkeletons: [
+                {
+                  id: 'SK-1',
+                  premise: { disruption: 'high' },
+                  consistency: 0.8,
+                  plausibility: 0.6,
+                  divergence: 0.8,
+                },
+              ],
+            })
+          )
         case 'scenario_developer':
-          return mockStep(JSON.stringify({
-            scenarios: [
-              {
-                id: 'SCN-001',
-                name: 'Escalated Scenario',
-                premise: { disruption: 'high' },
-                narrative: 'A scenario that still needs work.',
-                reinforcedPrinciples: [],
-                disruptedPrinciples: [],
-                feedbackLoops: [],
-                implications: 'Implications',
-                signposts: ['Signpost'],
-                tailRisks: ['Tail risk'],
-                assumptionRegister: [],
-                councilAssessment: { agreementRate: 0, persistentDissent: [] },
-                plausibilityScore: 0.6,
-                divergenceScore: 0.8,
-              },
-            ],
-          }))
+          return mockStep(
+            JSON.stringify({
+              scenarios: [
+                {
+                  id: 'SCN-001',
+                  name: 'Escalated Scenario',
+                  premise: { disruption: 'high' },
+                  narrative: 'A scenario that still needs work.',
+                  reinforcedPrinciples: [],
+                  disruptedPrinciples: [],
+                  feedbackLoops: [],
+                  implications: 'Implications',
+                  signposts: ['Signpost'],
+                  tailRisks: ['Tail risk'],
+                  assumptionRegister: [],
+                  councilAssessment: { agreementRate: 0, persistentDissent: [] },
+                  plausibilityScore: 0.6,
+                  divergenceScore: 0.8,
+                },
+              ],
+            })
+          )
         case 'red_team':
-          return mockStep(JSON.stringify({
-            assessments: [{ scenarioId: 'SCN-001', tailRisks: ['Red-team risk'], overallRobustness: 'low' }],
-          }))
+          return mockStep(
+            JSON.stringify({
+              assessments: [
+                { scenarioId: 'SCN-001', tailRisks: ['Red-team risk'], overallRobustness: 'low' },
+              ],
+            })
+          )
         case 'gate_c':
-          return mockStep(JSON.stringify({
-            mechanisticClarity: 3,
-            completeness: 3,
-            causalDiscipline: 3,
-            decisionUsefulness: 3,
-            uncertaintyHygiene: 3,
-            evidenceQuality: 3,
-            feedback: 'Need sharper differentiation between disruption paths.',
-          }))
+          return mockStep(
+            JSON.stringify({
+              mechanisticClarity: 3,
+              completeness: 3,
+              causalDiscipline: 3,
+              decisionUsefulness: 3,
+              uncertaintyHygiene: 3,
+              evidenceQuality: 3,
+              feedback: 'Need sharper differentiation between disruption paths.',
+            })
+          )
         case 'backcasting':
-          return mockStep(JSON.stringify({
-            backcastTimelines: [],
-            strategicMoves: [],
-          }))
+          return mockStep(
+            JSON.stringify({
+              backcastTimelines: [],
+              strategicMoves: [],
+            })
+          )
         default:
           throw new Error(`Unexpected node in escalation test: ${nodeId}`)
       }
     })
 
-    const result = await executeOracleWorkflowLangGraph(
-      makeGraphConfig(),
-      'Test goal',
-      {},
-      {
-        currentPhase: 'scenario_simulation',
-        scope: {
-          topic: 'AI disruption',
-          domain: 'technology',
-          timeHorizon: '5 years',
-          geography: 'global',
-          decisionContext: 'Strategic planning',
-          boundaries: { inScope: [], outOfScope: [] },
-        },
-        scenarioPortfolio: [],
-        phaseSummaries: [],
-        currentGateRefinements: 1,
-        gateResults: [],
-        costTracker: {
-          total: 0,
-          byPhase: {},
-          byModel: {},
-          byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 },
-        },
-        status: 'running',
-      } as never,
-    )
+    const result = await executeOracleWorkflowLangGraph(makeGraphConfig(), 'Test goal', {}, {
+      currentPhase: 'scenario_simulation',
+      scope: {
+        topic: 'AI disruption',
+        domain: 'technology',
+        timeHorizon: '5 years',
+        geography: 'global',
+        decisionContext: 'Strategic planning',
+        boundaries: { inScope: [], outOfScope: [] },
+      },
+      scenarioPortfolio: [],
+      phaseSummaries: [],
+      currentGateRefinements: 1,
+      gateResults: [],
+      costTracker: {
+        total: 0,
+        byPhase: {},
+        byModel: {},
+        byComponent: { search: 0, llm: 0, council: 0, evaluation: 0 },
+      },
+      status: 'running',
+    } as never)
 
     expect(result.status).toBe('waiting_for_input')
     expect(result.pendingInput?.nodeId).toBe('gate_escalation')

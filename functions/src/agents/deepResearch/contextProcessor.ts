@@ -83,10 +83,11 @@ function getUploadedFileText(file: UploadedFileContext): string {
 
 function getAttachedNotes(val: unknown): AttachedNoteContext[] {
   if (!Array.isArray(val)) return []
-  return val.filter((item): item is AttachedNoteContext =>
-    typeof item?.noteId === 'string'
-    && typeof item?.title === 'string'
-    && typeof item?.content === 'string'
+  return val.filter(
+    (item): item is AttachedNoteContext =>
+      typeof item?.noteId === 'string' &&
+      typeof item?.title === 'string' &&
+      typeof item?.content === 'string'
   )
 }
 
@@ -94,9 +95,11 @@ function getUploadedFiles(val: unknown): UploadedFileContext[] {
   if (!Array.isArray(val)) return []
   return val.filter((item): item is UploadedFileContext => {
     const content = item?.content
-    return typeof item?.name === 'string'
-      && typeof item?.type === 'string'
-      && (typeof content === 'string' || (!!content && typeof content === 'object'))
+    return (
+      typeof item?.name === 'string' &&
+      typeof item?.type === 'string' &&
+      (typeof content === 'string' || (!!content && typeof content === 'object'))
+    )
   })
 }
 
@@ -106,9 +109,7 @@ function getUploadedFiles(val: unknown): UploadedFileContext[] {
  * Extract and format user context from run context record.
  * Returns a formatted text block suitable for prompt injection.
  */
-export function extractUserContext(
-  context: Record<string, unknown>
-): ProcessedUserContext {
+export function extractUserContext(context: Record<string, unknown>): ProcessedUserContext {
   const notes = getAttachedNotes(context.attachedNotes)
   const files = getUploadedFiles(context.uploadedFiles)
 
@@ -137,7 +138,11 @@ export function extractUserContext(
     MAX_CONTEXT_CHARS
   )
 
-  log.info('Extracted user context', { noteCount: notes.length, fileCount: files.length, rawCharCount })
+  log.info('Extracted user context', {
+    noteCount: notes.length,
+    fileCount: files.length,
+    rawCharCount,
+  })
 
   return {
     formattedText: formatted,
@@ -152,9 +157,7 @@ export function extractUserContext(
  * Build synthetic SourceRecord objects from user context.
  * Used by deep research to run claim extraction on context items.
  */
-export function buildContextSourceRecords(
-  context: Record<string, unknown>
-): ContextSourceRecords {
+export function buildContextSourceRecords(context: Record<string, unknown>): ContextSourceRecords {
   const notes = getAttachedNotes(context.attachedNotes)
   const files = getUploadedFiles(context.uploadedFiles)
 

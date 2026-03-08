@@ -145,10 +145,13 @@ describe('agentUsecases', () => {
       const result = await usecase('user123', input)
 
       expect(result).toEqual(mockAgent)
-      expect(mockRepo.create).toHaveBeenCalledWith('user123', expect.objectContaining({
-        ...input,
-        configHash: expect.any(String),
-      }))
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        'user123',
+        expect.objectContaining({
+          ...input,
+          configHash: expect.any(String),
+        })
+      )
     })
   })
 

@@ -15,6 +15,12 @@ import type {
 } from '@lifeos/agents'
 import type { ZodError, z } from 'zod'
 import { capGraphForPrompt } from '../deepResearch/kgSerializer.js'
+import { DEFAULT_MODELS } from '../providerKeys.js'
+import {
+  COMPACT_GRAPH_EXAMPLE,
+  NEGATION_OUTPUT_EXAMPLE,
+  SUBLATION_OUTPUT_EXAMPLE,
+} from '../shared/fewShotExamples.js'
 import { executeAgentWithEvents, type AgentExecutionContext } from './utils.js'
 
 // ----- Lens Resolution -----
@@ -80,7 +86,7 @@ export function buildThesisPrompt(
   lens: string,
   mergedGraph?: CompactGraph | null,
   researchEvidence?: ResearchEvidence | null,
-  userContext?: string | null,
+  userContext?: string | null
 ): string {
   const sanitizedGoal = sanitizeForPrompt(goal, 500)
   const priorGraphContext = mergedGraph
@@ -95,27 +101,48 @@ export function buildThesisPrompt(
   // Inject research evidence when available (relevance-weighted sorting)
   let researchSection = ''
   if (researchEvidence && researchEvidence.claims.length > 0) {
-    const goalTerms = new Set(sanitizedGoal.toLowerCase().split(/\W+/).filter(t => t.length > 3))
-    const scoredClaims = researchEvidence.claims.map(c => {
+    const goalTerms = new Set(
+      sanitizedGoal
+        .toLowerCase()
+        .split(/\W+/)
+        .filter((t) => t.length > 3)
+    )
+    const scoredClaims = researchEvidence.claims.map((c) => {
       const terms = c.claimText.toLowerCase().split(/\W+/)
-      const overlap = terms.filter(t => goalTerms.has(t)).length
-      const relevance = Math.min(1, overlap / Math.max(1, goalTerms.size) * 2)
+      const overlap = terms.filter((t) => goalTerms.has(t)).length
+      const relevance = Math.min(1, (overlap / Math.max(1, goalTerms.size)) * 2)
       return { ...c, score: c.confidence * (0.5 + 0.5 * relevance) }
     })
     const claimLines = scoredClaims
       .sort((a, b) => b.score - a.score)
       .slice(0, 10)
       .map((c, i) => {
-        const source = researchEvidence.sources.find(s => s.sourceId === c.sourceId)
-        const sourceTag = source ? `[${source.domain}, quality=${source.qualityScore.toFixed(2)}]` : ''
+        const source = researchEvidence.sources.find((s) => s.sourceId === c.sourceId)
+        const sourceTag = source
+          ? `[${source.domain}, quality=${source.qualityScore.toFixed(2)}]`
+          : ''
         return `  ${i + 1}. [${c.evidenceType}, conf=${c.confidence.toFixed(2)}] ${sourceTag} ${c.claimText}`
-      }).join('\n')
+      })
+      .join('\n')
 
     researchSection = `
 RESEARCH EVIDENCE (ground your analysis in these — cite source domains when building nodes):
 ${claimLines}
 `
   }
+
+  const lensSpecificGuidance =
+    lens === 'economic'
+      ? `
+## Economic Lens Guidance
+1. Prioritize serp_search for current market signals and economic evidence.
+2. Use semantic_search only when you need conceptual expansion or rival framings.
+3. Use read_url only for one or two high-value URLs when a specific datapoint or caveat materially changes the thesis.
+4. If tool budget is nearly exhausted, stop researching and return the compact graph immediately.
+5. Keep labels terse. Put quantitative support, thresholds, and caveats in "note" or "reasoning", not labels.
+6. Do not wrap the graph in outer keys like "thesis", "analysis", or "structuredThesis".
+`
+      : ''
 
   return `CRITICAL: Output ONLY a valid JSON object. No markdown fences, no explanation, no preamble.
 
@@ -127,7 +154,7 @@ Analyze the topic below from a **${lens}** perspective. Build a knowledge graph 
 
 ## Topic
 ${sanitizedGoal}
-${userContextSection}${priorGraphContext}${researchSection}
+${userContextSection}${priorGraphContext}${researchSection}${lensSpecificGuidance}
 ## Output Schema
 Return one JSON object matching this structure exactly:
 {
@@ -157,6 +184,9 @@ Return one JSON object matching this structure exactly:
   "temporalGrain": "Time scale of analysis (e.g., months, years, decades)"
 }
 
+## Example Output
+${COMPACT_GRAPH_EXAMPLE}
+
 ## Rules
 1. Maximum 10 nodes. Each label <=80 characters.
 2. Use the "note" field for caveats, qualifications, or uncertainty markers.
@@ -171,7 +201,10 @@ Return one JSON object matching this structure exactly:
 CRITICAL (restated): Output ONLY the JSON object. No other text.`
 }
 
-export function buildNegationPrompt(sourceThesis: ThesisOutput, targetThesis: ThesisOutput): string {
+export function buildNegationPrompt(
+  sourceThesis: ThesisOutput,
+  targetThesis: ThesisOutput
+): string {
   // Use compact graph if available, fall back to truncated rawText
   const sourceRepr = sourceThesis.graph
     ? capGraphForPrompt(sourceThesis.graph, 3000)
@@ -213,6 +246,9 @@ Critique the target thesis from the standpoint of your thesis. For each weakness
   "operatorArgs": {}
 }
 
+## Example Output
+${NEGATION_OUTPUT_EXAMPLE}
+
 ## Rules
 1. Every internal tension MUST reference specific node IDs from the target thesis. Format: "Node X vs Node Y: [why they conflict]". If the target uses a knowledge graph, use the actual node IDs (e.g., "n1", "n2").
 2. Every category attack must explain what the category misses or distorts.
@@ -232,35 +268,43 @@ export function buildSublationPrompt(
   mergedGraph?: CompactGraph | null,
   cycleNumber?: number,
   researchEvidence?: ResearchEvidence | null,
-  userContext?: string | null,
+  userContext?: string | null
 ): string {
   // Use compact graphs if available, fall back to truncated rawText
-  const thesesRepr = theses.map((t, i) => {
-    if (t.graph) return `[${i + 1}] (${t.lens}): ${capGraphForPrompt(t.graph, 2000)}`
-    return `[${i + 1}] (${t.lens}): ${truncateRawText(t.rawText)}`
-  }).join('\n\n')
+  const thesesRepr = theses
+    .map((t, i) => {
+      if (t.graph) return `[${i + 1}] (${t.lens}): ${capGraphForPrompt(t.graph, 2000)}`
+      return `[${i + 1}] (${t.lens}): ${truncateRawText(t.rawText)}`
+    })
+    .join('\n\n')
 
-  const negationsRepr = negations.map((n, i) =>
-    `[${i + 1}]: tensions=${JSON.stringify(n.internalTensions)}, attacks=${JSON.stringify(n.categoryAttacks)}, operator=${n.rewriteOperator}`
-  ).join('\n')
+  const negationsRepr = negations
+    .map(
+      (n, i) =>
+        `[${i + 1}]: tensions=${JSON.stringify(n.internalTensions)}, attacks=${JSON.stringify(n.categoryAttacks)}, operator=${n.rewriteOperator}`
+    )
+    .join('\n')
 
-  const contradictionsRepr = contradictions.length > 0
-    ? contradictions.map((c) => `- [${c.severity}] ${c.type}: ${c.description}`).join('\n')
-    : '(No contradictions found)'
+  const contradictionsRepr =
+    contradictions.length > 0
+      ? contradictions.map((c) => `- [${c.severity}] ${c.type}: ${c.description}`).join('\n')
+      : '(No contradictions found)'
 
   const isFirstCycle = !cycleNumber || cycleNumber <= 1
-  const priorGraphContext = mergedGraph && !isFirstCycle
-    ? `\nPRIOR MERGED GRAPH (evolve this — preserve valid nodes, add new insights, resolve contradictions):\n${capGraphForPrompt(mergedGraph, 5000)}\n`
-    : ''
+  const priorGraphContext =
+    mergedGraph && !isFirstCycle
+      ? `\nPRIOR MERGED GRAPH (evolve this — preserve valid nodes, add new insights, resolve contradictions):\n${capGraphForPrompt(mergedGraph, 5000)}\n`
+      : ''
 
   const graphInstruction = isFirstCycle
     ? 'Create an initial merged knowledge graph by integrating all thesis perspectives.'
     : 'Evolve the prior merged graph by integrating new thesis insights and resolving contradictions.'
 
   // Inject user-provided context on first cycle only (later cycles have it in the graph)
-  const userContextSection = userContext && isFirstCycle
-    ? `\n${userContext}\n\nIncorporate claims and concepts from the user-provided context above into the merged graph where relevant.\n`
-    : ''
+  const userContextSection =
+    userContext && isFirstCycle
+      ? `\n${userContext}\n\nIncorporate claims and concepts from the user-provided context above into the merged graph where relevant.\n`
+      : ''
 
   // Inject research evidence for grounding synthesis in external data
   let researchSection = ''
@@ -269,10 +313,13 @@ export function buildSublationPrompt(
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, 8)
       .map((c, i) => {
-        const source = researchEvidence.sources.find(s => s.sourceId === c.sourceId)
-        const sourceTag = source ? `[${source.domain}, quality=${source.qualityScore.toFixed(2)}]` : ''
+        const source = researchEvidence.sources.find((s) => s.sourceId === c.sourceId)
+        const sourceTag = source
+          ? `[${source.domain}, quality=${source.qualityScore.toFixed(2)}]`
+          : ''
         return `  ${i + 1}. [${c.evidenceType}, conf=${c.confidence.toFixed(2)}] ${sourceTag} ${c.claimText}`
-      }).join('\n')
+      })
+      .join('\n')
 
     researchSection = `
 RESEARCH EVIDENCE (use to ground synthesis — preserve sourceId/sourceUrl on evidence-backed nodes):
@@ -319,6 +366,9 @@ ${researchSection}
   },
   "resolvedContradictions": ["Which input contradictions were resolved and how"]
 }
+
+## Example Output
+${SUBLATION_OUTPUT_EXAMPLE}
 
 ## Rules
 1. Maximum 15 nodes in your synthesis output graph. Prune low-confidence nodes that are not critical to resolving contradictions.
@@ -372,60 +422,83 @@ function extractJsonFromOutput(output: string): unknown | null {
   return null
 }
 
+export interface JsonRepairOptions {
+  context?: string
+  goal?: string
+  originalTaskPrompt?: string
+  originalSystemPrompt?: string
+  schemaHint?: string
+}
+
 /**
  * Attempt a single LLM repair of malformed JSON output.
  *
- * Sends the raw text + Zod validation errors to a lightweight repair agent.
+ * Sends the raw text + optional validation errors to a dedicated GPT repair agent.
  * Returns corrected JSON string on success, null on failure.
  */
 export async function repairJsonOutput(
   rawText: string,
-  zodError: ZodError,
+  zodError: ZodError | null | undefined,
   schema: z.ZodTypeAny,
   execContext: AgentExecutionContext,
+  options: JsonRepairOptions = {}
 ): Promise<string | null> {
+  const contextBlock = options.context ? `## Context\n${sanitizeForPrompt(options.context, 200)}\n\n` : ''
+  const goalBlock = options.goal ? `## Goal\n${sanitizeForPrompt(options.goal, 400)}\n\n` : ''
+  const taskBlock = options.originalTaskPrompt
+    ? `## Original Task Prompt\n${truncateRawText(options.originalTaskPrompt)}\n\n`
+    : ''
+  const systemBlock = options.originalSystemPrompt
+    ? `## Original System Prompt\n${truncateRawText(options.originalSystemPrompt)}\n\n`
+    : ''
+  const schemaBlock = options.schemaHint
+    ? `## Target Schema Summary\n${truncateRawText(options.schemaHint)}\n\n`
+    : ''
+  const validationBlock = zodError
+    ? `## Validation Errors\n${truncateRawText(zodError.message)}\n\n`
+    : '## Validation Errors\nThe output either did not contain valid JSON or could not be validated against the target schema.\n\n'
+
   const repairPrompt = `CRITICAL: Return ONLY valid JSON. No explanation, no markdown fences.
 
 ## Task
-The JSON output below failed schema validation. Fix it so it passes validation.
+Repair the output below so it matches the target JSON schema exactly.
 
-## Original Output
-${rawText}
-
-## Validation Errors
-${zodError.message}
+${contextBlock}${goalBlock}${taskBlock}${systemBlock}${schemaBlock}${validationBlock}## Original Output
+${truncateRawText(rawText)}
 
 ## Rules
-1. Fix only the validation errors — preserve all other content.
-2. If a required field is missing, add it with a reasonable default.
-3. If a field has the wrong type, cast it to the correct type.
+1. Preserve substantive content when possible.
+2. If the output is relevant but malformed, repair it into schema-compliant JSON.
+3. If a required field is missing, add it with a reasonable default.
+4. If a field has the wrong type, cast it to the correct type.
+5. If the output contains prose plus structured content, extract only the structured content.
+6. Do not return markdown, code fences, commentary, placeholders, or ellipses.
 
 CRITICAL (restated): Return ONLY the corrected JSON object. No other text.`
 
   const repairAgent = {
     agentId: 'system_json_repair' as AgentConfig['agentId'],
-    name: 'JSON Repair',
+    name: 'JSON Repair (GPT)',
     modelProvider: 'openai' as const,
-    modelName: 'gpt-4o-mini',
-    systemPrompt: 'You are a JSON repair specialist. You receive malformed JSON and its validation errors, then return corrected JSON that passes the schema. Return ONLY valid JSON — no explanation, no markdown fences, no preamble.',
+    modelName: DEFAULT_MODELS.openai,
+    modelTier: 'fast' as const,
+    systemPrompt:
+      'You are a JSON repair specialist. You receive malformed or off-schema outputs, preserve the relevant content, and return corrected JSON that passes the target schema. Return ONLY valid JSON with all required keys present.',
     temperature: 0,
     archived: false,
     createdAtMs: Date.now(),
     updatedAtMs: Date.now(),
-    role: 'custom' as const,
+    role: 'formatter' as const,
     syncState: 'synced' as const,
     version: 1,
     userId: execContext.userId,
   } satisfies AgentConfig
 
   try {
-    const step = await executeAgentWithEvents(
-      repairAgent,
-      repairPrompt,
-      {},
-      execContext,
-      { stepNumber: 0, nodeId: 'json_repair' },
-    )
+    const step = await executeAgentWithEvents(repairAgent, repairPrompt, {}, execContext, {
+      stepNumber: 0,
+      nodeId: 'json_repair',
+    })
 
     const parsed = extractJsonFromOutput(step.output)
     if (!parsed) return null

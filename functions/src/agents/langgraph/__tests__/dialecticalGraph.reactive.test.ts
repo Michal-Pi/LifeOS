@@ -128,6 +128,7 @@ vi.mock('../../contradictionTrackers.js', () => ({
 vi.mock('../iterationBudget.js', () => ({
   calculateIterationBudget: vi.fn().mockReturnValue({
     perThesisAgent: 3,
+    perThesisAgentByLens: { economic: 4, systems: 3 },
     perNegationAgent: 2,
     perSynthesisAgent: 3,
     perMetaAgent: 2,
@@ -228,18 +229,30 @@ describe('dialectical graph — reactive research', () => {
         researchIntensity: 'targeted',
       })
 
-      const result = evaluateResearchNeed(null, 'test', {
-        cycleNumber: 2,
-        budget: {
-          maxBudgetUsd: 5, spentUsd: 1, spentTokens: 1000,
-          searchCallsUsed: 2, maxSearchCalls: 20, llmCallsUsed: 3,
-          phase: 'full', maxRecursiveDepth: 3, gapIterationsUsed: 0,
+      const result = evaluateResearchNeed(
+        null,
+        'test',
+        {
+          cycleNumber: 2,
+          budget: {
+            maxBudgetUsd: 5,
+            spentUsd: 1,
+            spentTokens: 1000,
+            searchCallsUsed: 2,
+            maxSearchCalls: 20,
+            llmCallsUsed: 3,
+            phase: 'full',
+            maxRecursiveDepth: 3,
+            gapIterationsUsed: 0,
+          },
+          focusAreas: ['economic impact'],
         },
-        focusAreas: ['economic impact'],
-      }, 'pre_cycle')
+        'pre_cycle'
+      )
 
       expect(mockEvaluateResearchNeed).toHaveBeenCalledWith(
-        null, 'test',
+        null,
+        'test',
         expect.objectContaining({ focusAreas: ['economic impact'] }),
         'pre_cycle'
       )
@@ -262,27 +275,42 @@ describe('dialectical graph — reactive research', () => {
         researchIntensity: 'verification',
       })
 
-      const result = evaluateResearchNeed(null, 'test', {
-        cycleNumber: 2,
-        budget: {
-          maxBudgetUsd: 5, spentUsd: 1, spentTokens: 1000,
-          searchCallsUsed: 2, maxSearchCalls: 20, llmCallsUsed: 3,
-          phase: 'full', maxRecursiveDepth: 3, gapIterationsUsed: 0,
+      const result = evaluateResearchNeed(
+        null,
+        'test',
+        {
+          cycleNumber: 2,
+          budget: {
+            maxBudgetUsd: 5,
+            spentUsd: 1,
+            spentTokens: 1000,
+            searchCallsUsed: 2,
+            maxSearchCalls: 20,
+            llmCallsUsed: 3,
+            phase: 'full',
+            maxRecursiveDepth: 3,
+            gapIterationsUsed: 0,
+          },
+          contradictions: [
+            {
+              id: 'c1',
+              type: 'SYNCHRONIC' as const,
+              severity: 'HIGH' as const,
+              description: 'Test contradiction',
+              participatingClaims: ['claim1', 'claim2'],
+              trackerAgent: 'tracker1',
+              actionDistance: 1,
+            },
+          ],
         },
-        contradictions: [{
-          id: 'c1', type: 'SYNCHRONIC' as const, severity: 'HIGH' as const,
-          description: 'Test contradiction',
-          participatingClaims: ['claim1', 'claim2'], trackerAgent: 'tracker1',
-          actionDistance: 1,
-        }],
-      }, 'post_synthesis')
+        'post_synthesis'
+      )
 
       expect(mockEvaluateResearchNeed).toHaveBeenCalledWith(
-        null, 'test',
+        null,
+        'test',
         expect.objectContaining({
-          contradictions: expect.arrayContaining([
-            expect.objectContaining({ severity: 'HIGH' }),
-          ]),
+          contradictions: expect.arrayContaining([expect.objectContaining({ severity: 'HIGH' })]),
         }),
         'post_synthesis'
       )
@@ -329,9 +357,7 @@ describe('dialectical graph — reactive research', () => {
       })
 
       // Simulate the routing function
-      const route = state.researchDecision?.needsResearch
-        ? 'execute_research'
-        : 'retrieve_context'
+      const route = state.researchDecision?.needsResearch ? 'execute_research' : 'retrieve_context'
       expect(route).toBe('execute_research')
     })
 
@@ -347,9 +373,7 @@ describe('dialectical graph — reactive research', () => {
         },
       })
 
-      const route = state.researchDecision?.needsResearch
-        ? 'execute_research'
-        : 'retrieve_context'
+      const route = state.researchDecision?.needsResearch ? 'execute_research' : 'retrieve_context'
       expect(route).toBe('retrieve_context')
     })
 
@@ -362,7 +386,8 @@ describe('dialectical graph — reactive research', () => {
       // Simulate the reactive routing from meta_reflect
       let destination: string
       if (state.status === 'waiting_for_input') destination = '__end__'
-      else if (state.metaDecision === 'TERMINATE' || state.status === 'completed') destination = '__end__'
+      else if (state.metaDecision === 'TERMINATE' || state.status === 'completed')
+        destination = '__end__'
       else destination = 'decide_research_pre'
 
       expect(destination).toBe('decide_research_pre')
@@ -376,7 +401,8 @@ describe('dialectical graph — reactive research', () => {
 
       let destination: string
       if (state.status === 'waiting_for_input') destination = '__end__'
-      else if (state.metaDecision === 'TERMINATE' || state.status === 'completed') destination = '__end__'
+      else if (state.metaDecision === 'TERMINATE' || state.status === 'completed')
+        destination = '__end__'
       else destination = 'decide_research_pre'
 
       expect(destination).toBe('__end__')
@@ -400,9 +426,7 @@ describe('dialectical graph — reactive research', () => {
         },
       })
 
-      const route = state.researchDecision?.needsResearch
-        ? 'execute_research_post'
-        : 'meta_reflect'
+      const route = state.researchDecision?.needsResearch ? 'execute_research_post' : 'meta_reflect'
       expect(route).toBe('execute_research_post')
     })
 
@@ -418,9 +442,7 @@ describe('dialectical graph — reactive research', () => {
         },
       })
 
-      const route = state.researchDecision?.needsResearch
-        ? 'execute_research_post'
-        : 'meta_reflect'
+      const route = state.researchDecision?.needsResearch ? 'execute_research_post' : 'meta_reflect'
       expect(route).toBe('meta_reflect')
     })
   })
@@ -441,7 +463,8 @@ describe('dialectical graph — reactive research', () => {
       // Legacy route function
       let destination: string
       if (state.status === 'waiting_for_input') destination = '__end__'
-      else if (state.metaDecision === 'TERMINATE' || state.status === 'completed') destination = '__end__'
+      else if (state.metaDecision === 'TERMINATE' || state.status === 'completed')
+        destination = '__end__'
       else destination = 'retrieve_context' // Legacy goes directly to retrieve_context
 
       expect(destination).toBe('retrieve_context')

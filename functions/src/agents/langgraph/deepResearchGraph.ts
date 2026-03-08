@@ -17,6 +17,7 @@
  */
 
 import { StateGraph, END, START } from '@langchain/langgraph'
+import type { ZodError, ZodTypeAny } from 'zod'
 import type {
   AgentConfig,
   Workflow,
@@ -50,8 +51,15 @@ import type { ProviderKeys } from '../providerService.js'
 import { executeWithProvider } from '../providerService.js'
 import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
+import { DEFAULT_MODELS } from '../providerKeys.js'
 import type { ToolRegistry } from '../toolExecutor.js'
-import { executeAgentWithEvents, handleAskUserInterrupt, type AgentExecutionContext } from './utils.js'
+import {
+  executeAgentWithEvents,
+  handleAskUserInterrupt,
+  type AgentExecutionContext,
+} from './utils.js'
+import { SENSE_MAKING_EXAMPLE } from '../shared/fewShotExamples.js'
+import { safeParseJson } from '../shared/jsonParser.js'
 import {
   DeepResearchStateAnnotation,
   type DeepResearchState,
@@ -83,12 +91,17 @@ import {
 import { runContradictionTrackers } from '../contradictionTrackers.js'
 import type { ContradictionTrackerContext } from '../contradictionTrackers.js'
 import { runCompetitiveSynthesis } from '../sublationEngine.js'
-import { runMetaReflection } from '../metaReflection.js'
+import { runMetaReflection, MIN_CYCLES_BEFORE_TERMINATE } from '../metaReflection.js'
 import type { MetaReflectionInput, CycleMetrics } from '../metaReflection.js'
 import { recordMessage } from '../messageStore.js'
 import { checkQuotaSoft } from '../quotaManager.js'
 import { checkRunRateLimitSoft } from '../rateLimiter.js'
-import { resolveThesisLens, buildThesisPrompt, buildNegationPrompt } from './dialecticalPrompts.js'
+import {
+  resolveThesisLens,
+  buildThesisPrompt,
+  buildNegationPrompt,
+  repairJsonOutput,
+} from './dialecticalPrompts.js'
 import { serializeKGToCompactGraph } from '../deepResearch/kgSerializer.js'
 import {
   createSupportsEdges,
@@ -107,6 +120,13 @@ import {
   summarizeNormalizedStartupInput,
 } from '../startup/inputNormalizer.js'
 import { buildStartupSeedSummary } from '../startup/starterGraph.js'
+import {
+  CompactGraphSchema,
+  GraphSublationOutputSchema,
+  NegationOutputSchema,
+  normalizeCompactGraphCandidate,
+  SublationOutputSchema,
+} from './structuredOutputSchemas.js'
 
 const log = createLogger('DeepResearchGraph')
 
@@ -122,7 +142,7 @@ function normalizeUrl(url: string): string {
 
 async function applySynthesisDiffToSharedKg(
   sharedKg: KnowledgeHypergraph,
-  state: DeepResearchState,
+  state: DeepResearchState
 ): Promise<void> {
   if (!state.kgDiff) return
 
@@ -183,15 +203,15 @@ async function checkQuotaOrRateLimit(
     return {
       phase,
       status: 'waiting_for_input',
+      resumeNodeHint: phase,
       constraintPause: {
         constraintType: quotaHit.quotaType,
         currentValue: quotaHit.currentValue,
         limitValue: quotaHit.limitValue,
         unit: quotaHit.unit,
         partialOutput,
-        suggestedIncrease: quotaHit.unit === 'USD'
-          ? quotaHit.limitValue * 2
-          : Math.ceil(quotaHit.limitValue * 1.5),
+        suggestedIncrease:
+          quotaHit.unit === 'USD' ? quotaHit.limitValue * 2 : Math.ceil(quotaHit.limitValue * 1.5),
       },
     }
   }
@@ -201,6 +221,7 @@ async function checkQuotaOrRateLimit(
     return {
       phase,
       status: 'waiting_for_input',
+      resumeNodeHint: phase,
       constraintPause: {
         constraintType: rateHit.limitType,
         currentValue: rateHit.currentValue,
@@ -214,9 +235,7 @@ async function checkQuotaOrRateLimit(
   return null
 }
 
-function createInputNormalizerNode(
-  execContext: AgentExecutionContext,
-) {
+function createInputNormalizerNode(execContext: AgentExecutionContext) {
   return async (state: DeepResearchState): Promise<Partial<DeepResearchState>> => {
     log.info('Deep Research: Input Normalizer phase')
     await emitPhaseEvent(execContext, 'input_normalizer', {
@@ -345,10 +364,7 @@ function captureKGSnapshot(
 
 // ----- Node: KG Snapshot (transition from research to dialectical) -----
 
-function createKGSnapshotNode(
-  sharedKg: KnowledgeHypergraph,
-  execContext: AgentExecutionContext,
-) {
+function createKGSnapshotNode(sharedKg: KnowledgeHypergraph, execContext: AgentExecutionContext) {
   return async (state: DeepResearchState): Promise<Partial<DeepResearchState>> => {
     log.info('Deep Research: KG Snapshot phase — transitioning to dialectical engine')
 
@@ -362,7 +378,7 @@ function createKGSnapshotNode(
       claimCount: stats.nodesByType.claim ?? 0,
       conceptCount: stats.nodesByType.concept ?? 0,
       sourceCount: stats.nodesByType.source ?? 0,
-      contradictionEdgeCount: compactGraph.edges.filter(e => e.rel === 'contradicts').length,
+      contradictionEdgeCount: compactGraph.edges.filter((e) => e.rel === 'contradicts').length,
       snapshotAtMs: Date.now(),
       gapIteration: state.gapIterationsUsed,
     }
@@ -375,6 +391,7 @@ function createKGSnapshotNode(
       claimCount: snapshot.claimCount,
       conceptCount: snapshot.conceptCount,
       contradictionEdgeCount: snapshot.contradictionEdgeCount,
+      mergedGraph: compactGraph,
     })
 
     log.info('KG snapshot created', {
@@ -389,7 +406,9 @@ function createKGSnapshotNode(
       phase: 'thesis_generation' as DeepResearchPhase,
       kgSnapshot: snapshot,
       mergedGraph: compactGraph,
-      kgSnapshots: [captureKGSnapshot(sharedKg, state.kgSnapshots.length, 'kg_snapshot', state.kgSnapshots)],
+      kgSnapshots: [
+        captureKGSnapshot(sharedKg, state.kgSnapshots.length, 'kg_snapshot', state.kgSnapshots),
+      ],
       context: { ...state.context, kgTools, kgSnapshot: snapshot },
     }
   }
@@ -406,48 +425,184 @@ const VALID_REWRITE_OPERATORS: RewriteOperatorType[] = [
   'TEMPORALIZE',
 ]
 
+function isSubstantiveThesis(thesis: ThesisOutput | null | undefined): thesis is ThesisOutput {
+  if (!thesis) return false
+  if (thesis.graph && thesis.graph.nodes.length > 0) return true
+  if (Object.keys(thesis.conceptGraph ?? {}).length > 0) return true
+  if ((thesis.causalModel?.length ?? 0) > 0) return true
+  if ((thesis.falsificationCriteria?.length ?? 0) > 0) return true
+  if ((thesis.decisionImplications?.length ?? 0) > 0) return true
+
+  const rawText = thesis.rawText?.trim() ?? ''
+  if (rawText.length < 20) return false
+  if (rawText.startsWith('[PARTIAL RESULT')) return false
+  if (rawText.toLowerCase() === 'parse failure') return false
+
+  return true
+}
+
+function getValidationErrorForRepair(output: string, schema?: ZodTypeAny): ZodError | null {
+  if (!schema) return null
+  const parsed = safeParseJson(output)
+  if (!parsed) return null
+  const validated = schema.safeParse(parsed)
+  return validated.success ? null : validated.error
+}
+
+async function withJsonParseRetry<T>(
+  rawOutput: string,
+  parseFn: (output: string) => T,
+  opts: {
+    context: string
+    jsonSchema: string
+    emptyFallback: string
+    goal: string
+    baseAgent: AgentConfig
+    execContext: AgentExecutionContext
+    nodeId: string
+    stepNumber: number
+    runId: string
+    repairSchema?: ZodTypeAny
+    originalTaskPrompt?: string
+  }
+): Promise<T> {
+  try {
+    return parseFn(rawOutput)
+  } catch (firstError) {
+    log.warn(`${opts.context} parse failed, retrying with strict JSON prompt`, {
+      runId: opts.runId,
+      error: firstError instanceof Error ? firstError.message : String(firstError),
+    })
+
+    const retryAgent: AgentConfig = {
+      ...opts.baseAgent,
+      toolIds: [],
+      temperature: 0,
+      systemPrompt: `You are a JSON formatter repairing a prior response for the same task. Return ONLY a valid JSON object matching the required schema. No markdown, no explanation, no commentary.
+
+Original system prompt:
+${opts.baseAgent.systemPrompt.slice(0, 3000)}
+
+Required schema:
+${opts.jsonSchema}`,
+    }
+
+    const retryStep = await executeAgentWithEvents(
+      retryAgent,
+      `${opts.originalTaskPrompt ? `Original task:\n${opts.originalTaskPrompt.slice(0, 4000)}\n\n` : ''}Convert this prior response to JSON:\n\n${rawOutput.slice(0, 8000)}`,
+      {},
+      opts.execContext,
+      { nodeId: opts.nodeId, stepNumber: opts.stepNumber }
+    )
+
+    try {
+      return parseFn(retryStep.output)
+    } catch (retryError) {
+      log.warn(`${opts.context} retry failed, attempting GPT repair`, {
+        runId: opts.runId,
+        error: retryError instanceof Error ? retryError.message : String(retryError),
+      })
+
+      if (opts.repairSchema) {
+        const repairInput =
+          retryStep.output.trim().length >= rawOutput.trim().length * 0.5 ? retryStep.output : rawOutput
+        const repairedOutput = await repairJsonOutput(
+          repairInput,
+          getValidationErrorForRepair(repairInput, opts.repairSchema),
+          opts.repairSchema,
+          opts.execContext,
+          {
+            context: opts.context,
+            goal: opts.goal,
+            originalTaskPrompt: opts.originalTaskPrompt,
+            originalSystemPrompt: opts.baseAgent.systemPrompt,
+            schemaHint: opts.jsonSchema,
+          }
+        )
+
+        if (repairedOutput) {
+          try {
+            return parseFn(repairedOutput)
+          } catch (repairError) {
+            log.warn(`${opts.context} GPT repair failed, falling back to Anthropic fast`, {
+              runId: opts.runId,
+              error: repairError instanceof Error ? repairError.message : String(repairError),
+            })
+          }
+        } else {
+          log.warn(`${opts.context} GPT repair returned no valid JSON, falling back to Anthropic fast`, {
+            runId: opts.runId,
+          })
+        }
+      }
+
+      const haikuAgent: AgentConfig = {
+        ...opts.baseAgent,
+        name: `${opts.nodeId}-json-fixer`,
+        toolIds: [],
+        modelProvider: 'anthropic',
+        modelName: DEFAULT_MODELS.anthropic,
+        modelTier: 'fast',
+        temperature: 0,
+        systemPrompt: `You are a strict JSON extraction assistant. You will receive text that was supposed to be a JSON analysis, but may instead be an error message, refusal, or irrelevant text.
+
+Step 1: Determine if the text contains substantive analysis relevant to the goal: "${opts.goal}"
+- If the text is an error message, API failure, refusal, or completely unrelated to the goal, respond with EXACTLY: ${opts.emptyFallback}
+- If the text contains relevant analysis (even partial), proceed to step 2.
+
+Step 2: Extract the analysis into this exact JSON schema. Output ONLY valid JSON, nothing else.
+${opts.jsonSchema}`,
+      }
+
+      const haikuStep = await executeAgentWithEvents(
+        haikuAgent,
+        `${opts.originalTaskPrompt ? `Original task:\n${opts.originalTaskPrompt.slice(0, 4000)}\n\n` : ''}${rawOutput.slice(0, 8000)}`,
+        {},
+        opts.execContext,
+        { nodeId: opts.nodeId, stepNumber: opts.stepNumber }
+      )
+
+      try {
+        return parseFn(haikuStep.output)
+      } catch (haikuError) {
+        // Layer 4: hard fallback — use the empty fallback directly instead of crashing
+        log.error(`${opts.context} all JSON repair layers failed, using empty fallback`, {
+          runId: opts.runId,
+          error: haikuError instanceof Error ? haikuError.message : String(haikuError),
+        })
+        return parseFn(opts.emptyFallback)
+      }
+    }
+  }
+}
+
+function extractJsonFromOutput(output: string): unknown | null {
+  return safeParseJson(output)
+}
+
 function parseThesisOutput(
   rawText: string,
   agentId: string,
   model: string,
   lens: string
 ): ThesisOutput {
-  const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) {
+  const parsed = extractJsonFromOutput(rawText)
+  if (!parsed || typeof parsed !== 'object') {
     throw new Error(`Thesis output from ${agentId} did not contain JSON`)
   }
 
   try {
-    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>
+    const record = parsed as Record<string, unknown>
+    const normalizedRecord = normalizeCompactGraphCandidate(record) as Record<string, unknown>
 
     // Detect graph-format output (nodes/edges) vs legacy format (conceptGraph/causalModel)
-    const hasGraphFormat = Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)
+    const compactGraph = CompactGraphSchema.safeParse(normalizedRecord)
+    const hasGraphFormat = compactGraph.success
 
     // Build CompactGraph if graph-format output detected
     let graph: CompactGraph | undefined
-    if (hasGraphFormat) {
-      graph = {
-        nodes: (parsed.nodes as Array<Record<string, unknown>>).map(n => ({
-          id: String(n.id ?? ''),
-          label: String(n.label ?? ''),
-          type: (n.type ?? 'claim') as 'claim' | 'concept' | 'mechanism' | 'prediction',
-          note: typeof n.note === 'string' ? n.note : undefined,
-          sourceId: typeof n.sourceId === 'string' ? n.sourceId : undefined,
-          sourceUrl: typeof n.sourceUrl === 'string' ? n.sourceUrl : undefined,
-          sourceConfidence: typeof n.sourceConfidence === 'number' ? n.sourceConfidence : undefined,
-        })),
-        edges: (parsed.edges as Array<Record<string, unknown>>).map(e => ({
-          from: String(e.from ?? ''),
-          to: String(e.to ?? ''),
-          rel: (e.rel ?? 'supports') as CompactGraph['edges'][number]['rel'],
-          weight: typeof e.weight === 'number' ? e.weight : undefined,
-        })),
-        summary: String(parsed.summary ?? ''),
-        reasoning: String(parsed.reasoning ?? ''),
-        confidence: Number(parsed.confidence) || 0.7,
-        regime: String(parsed.regime ?? ''),
-        temporalGrain: String(parsed.temporalGrain ?? ''),
-      }
+    if (compactGraph.success) {
+      graph = compactGraph.data as CompactGraph
     }
 
     // Bridge graph format to legacy fields for contradiction trackers
@@ -460,8 +615,8 @@ function parseThesisOutput(
       // Build conceptGraph as adjacency list from graph edges
       const adj: Record<string, string[]> = {}
       for (const edge of graph.edges) {
-        const fromNode = graph.nodes.find(n => n.id === edge.from)
-        const toNode = graph.nodes.find(n => n.id === edge.to)
+        const fromNode = graph.nodes.find((n) => n.id === edge.from)
+        const toNode = graph.nodes.find((n) => n.id === edge.to)
         if (fromNode && toNode) {
           const key = fromNode.label
           if (!adj[key]) adj[key] = []
@@ -472,32 +627,35 @@ function parseThesisOutput(
 
       // Extract causal model from 'causes' edges
       causalModel = graph.edges
-        .filter(e => e.rel === 'causes')
-        .map(e => {
-          const from = graph!.nodes.find(n => n.id === e.from)
-          const to = graph!.nodes.find(n => n.id === e.to)
+        .filter((e) => e.rel === 'causes')
+        .map((e) => {
+          const from = graph!.nodes.find((n) => n.id === e.from)
+          const to = graph!.nodes.find((n) => n.id === e.to)
           return `${from?.label ?? e.from} causes ${to?.label ?? e.to}`
         })
 
       // Extract falsification criteria from prediction nodes
       falsificationCriteria = graph.nodes
-        .filter(n => n.type === 'prediction')
-        .map(n => n.note || n.label)
+        .filter((n) => n.type === 'prediction')
+        .map((n) => n.note || n.label)
 
       // Extract decision implications from mechanism nodes
       decisionImplications = graph.nodes
-        .filter(n => n.type === 'mechanism')
-        .map(n => n.note || n.label)
+        .filter((n) => n.type === 'mechanism')
+        .map((n) => n.note || n.label)
     } else {
-      conceptGraph = parsed.conceptGraph && typeof parsed.conceptGraph === 'object'
-        ? (parsed.conceptGraph as Record<string, unknown>)
-        : {}
-      causalModel = Array.isArray(parsed.causalModel) ? parsed.causalModel.map(String) : []
-      falsificationCriteria = Array.isArray(parsed.falsificationCriteria)
-        ? parsed.falsificationCriteria.map(String)
+      conceptGraph =
+        normalizedRecord.conceptGraph && typeof normalizedRecord.conceptGraph === 'object'
+          ? (normalizedRecord.conceptGraph as Record<string, unknown>)
+          : {}
+      causalModel = Array.isArray(normalizedRecord.causalModel)
+        ? normalizedRecord.causalModel.map(String)
         : []
-      decisionImplications = Array.isArray(parsed.decisionImplications)
-        ? parsed.decisionImplications.map(String)
+      falsificationCriteria = Array.isArray(normalizedRecord.falsificationCriteria)
+        ? normalizedRecord.falsificationCriteria.map(String)
+        : []
+      decisionImplications = Array.isArray(normalizedRecord.decisionImplications)
+        ? normalizedRecord.decisionImplications.map(String)
         : []
     }
 
@@ -509,12 +667,12 @@ function parseThesisOutput(
       causalModel,
       falsificationCriteria,
       decisionImplications,
-      unitOfAnalysis: String(parsed.unitOfAnalysis ?? ''),
-      temporalGrain: String(parsed.temporalGrain ?? ''),
-      regimeAssumptions: Array.isArray(parsed.regimeAssumptions)
-        ? parsed.regimeAssumptions.map(String)
+      unitOfAnalysis: String(normalizedRecord.unitOfAnalysis ?? ''),
+      temporalGrain: String(normalizedRecord.temporalGrain ?? ''),
+      regimeAssumptions: Array.isArray(normalizedRecord.regimeAssumptions)
+        ? normalizedRecord.regimeAssumptions.map(String)
         : [],
-      confidence: Math.min(1, Math.max(0, Number(parsed.confidence) || 0.7)),
+      confidence: Math.min(1, Math.max(0, Number(normalizedRecord.confidence) || 0.7)),
       rawText,
       graph,
     }
@@ -532,14 +690,14 @@ function parseNegationOutput(
   agentId: string,
   targetThesisAgentId: string
 ): NegationOutput {
-  const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) {
+  const parsed = extractJsonFromOutput(rawText)
+  if (!parsed || typeof parsed !== 'object') {
     throw new Error(`Negation output from ${agentId} did not contain JSON`)
   }
 
   try {
-    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>
-    const rawOperator = String(parsed.rewriteOperator ?? 'SPLIT')
+    const record = parsed as Record<string, unknown>
+    const rawOperator = String(record.rewriteOperator ?? 'SPLIT')
     const operator = VALID_REWRITE_OPERATORS.includes(rawOperator as RewriteOperatorType)
       ? (rawOperator as RewriteOperatorType)
       : 'SPLIT'
@@ -547,18 +705,20 @@ function parseNegationOutput(
     return {
       agentId,
       targetThesisAgentId,
-      internalTensions: Array.isArray(parsed.internalTensions)
-        ? parsed.internalTensions.map(String)
+      internalTensions: Array.isArray(record.internalTensions)
+        ? record.internalTensions.map(String)
         : [],
-      categoryAttacks: Array.isArray(parsed.categoryAttacks)
-        ? parsed.categoryAttacks.map(String)
+      categoryAttacks: Array.isArray(record.categoryAttacks)
+        ? record.categoryAttacks.map(String)
         : [],
-      preservedValid: Array.isArray(parsed.preservedValid) ? parsed.preservedValid.map(String) : [],
-      rivalFraming: String(parsed.rivalFraming ?? ''),
+      preservedValid: Array.isArray(record.preservedValid)
+        ? record.preservedValid.map(String)
+        : [],
+      rivalFraming: String(record.rivalFraming ?? ''),
       rewriteOperator: operator,
       operatorArgs:
-        parsed.operatorArgs && typeof parsed.operatorArgs === 'object'
-          ? (parsed.operatorArgs as Record<string, unknown>)
+        record.operatorArgs && typeof record.operatorArgs === 'object'
+          ? (record.operatorArgs as Record<string, unknown>)
           : {},
       rawText,
     }
@@ -569,6 +729,69 @@ function parseNegationOutput(
   }
 }
 
+function parseSublationOutput(output: string): {
+  synthesis: SublationOutput
+  mergedGraph: CompactGraph | null
+  graphDiff: GraphDiff | null
+} {
+  const parsed = extractJsonFromOutput(output)
+  if (!parsed) {
+    throw new Error('Sublation output did not contain valid JSON')
+  }
+
+  const graphValidated = GraphSublationOutputSchema.safeParse(parsed)
+  if (graphValidated.success) {
+    const {
+      mergedGraph: validatedGraph,
+      diff: validatedDiff,
+      resolvedContradictions: validatedResolved,
+    } = graphValidated.data
+    return {
+      synthesis: {
+        operators: [],
+        preservedElements: validatedDiff.addedNodes,
+        negatedElements: validatedDiff.removedNodes,
+        newConceptGraph: {},
+        newClaims: validatedGraph.nodes
+          .filter((n) => n.type === 'claim')
+          .map((n) => ({ id: n.id, text: n.label, confidence: validatedGraph.confidence })),
+        newPredictions: validatedGraph.nodes
+          .filter((n) => n.type === 'prediction')
+          .map((n) => ({ id: n.id, text: n.label, threshold: 'TBD' })),
+        schemaDiff: {
+          resolvedContradictions: validatedResolved,
+        },
+        incompleteReason:
+          typeof (parsed as Record<string, unknown>).incompleteReason === 'string'
+            ? String((parsed as Record<string, unknown>).incompleteReason)
+            : undefined,
+      },
+      mergedGraph: validatedGraph,
+      graphDiff: validatedDiff,
+    }
+  }
+
+  const validated = SublationOutputSchema.safeParse(parsed)
+  if (validated.success) {
+    return {
+      synthesis: {
+        operators: validated.data.operators,
+        preservedElements: validated.data.preservedElements,
+        negatedElements: validated.data.negatedElements,
+        newConceptGraph: validated.data.newConceptGraph,
+        newClaims: validated.data.newClaims,
+        newPredictions: validated.data.newPredictions,
+        schemaDiff: null,
+        incompleteReason: validated.data.incompleteReason,
+      },
+      mergedGraph: null,
+      graphDiff: null,
+    }
+  }
+
+  throw new Error(`Sublation output did not match supported schemas: ${validated.error.message}`)
+}
+
 // ----- Helper: Build Dialectical Config -----
 
 function buildDialecticalConfig(
@@ -577,7 +800,7 @@ function buildDialecticalConfig(
 ): DialecticalWorkflowConfig {
   return {
     maxCycles: researchConfig.maxDialecticalCycles,
-    minCycles: 1,
+    minCycles: Math.min(MIN_CYCLES_BEFORE_TERMINATE, researchConfig.maxDialecticalCycles),
     enabledTrackers: ['LOGIC', 'PRAGMATIC', 'SEMANTIC', 'BOUNDARY'],
     velocityThreshold: 0.1,
     sublationStrategy: 'COMPETITIVE',
@@ -627,9 +850,20 @@ function createSenseMakingNode(
 ) {
   return async (state: DeepResearchState): Promise<Partial<DeepResearchState>> => {
     log.info('Deep Research: Sense Making phase')
+
+    // If resuming after user confirmed the search plan, skip re-execution
+    const approval = state.context?.humanApproval as
+      | { nodeId?: string; response?: string }
+      | undefined
+    if (approval?.nodeId === 'sense_making') {
+      log.info('Deep Research: Sense Making resumed with user approval, skipping re-execution')
+      return {}
+    }
+
     await emitPhaseEvent(execContext, 'sense_making', { query: state.goal })
 
-    const normalizedInput = state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
+    const normalizedInput =
+      state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
     const contextSection = normalizedInput.contextSummary
       ? `\n${normalizedInput.contextSummary}\n\nUse the above context to inform your search planning — identify claims, concepts, and gaps worth investigating further.\n`
       : ''
@@ -672,7 +906,10 @@ Respond with JSON:
     "rationale": "Why these queries",
     "targetSourceCount": 8-15
   }
-}`
+}
+
+## Example Output
+${SENSE_MAKING_EXAMPLE}`
 
     try {
       const step = await executeAgentWithEvents(
@@ -686,7 +923,7 @@ Respond with JSON:
       // Check if agent requested user input
       const interrupt = handleAskUserInterrupt(step, 'sense_making')
       if (interrupt) {
-        return { steps: [step], ...interrupt }
+        return { steps: [step], resumeNodeHint: 'sense_making', ...interrupt }
       }
 
       const plan = parseSenseMakingOutput(step.output, state, researchConfig)
@@ -731,7 +968,11 @@ Respond with JSON:
   }
 }
 
-function parseSenseMakingOutput(output: string, state: DeepResearchState, config: DeepResearchRunConfig) {
+function parseSenseMakingOutput(
+  output: string,
+  state: DeepResearchState,
+  config: DeepResearchRunConfig
+) {
   const fallbackPlan: SearchPlan = {
     serpQueries: [state.goal],
     scholarQueries: config.includeAcademic ? [`${state.goal} research`] : [],
@@ -742,7 +983,7 @@ function parseSenseMakingOutput(output: string, state: DeepResearchState, config
 
   return parseDeepResearchGoalFrame(
     output,
-    createFallbackDeepResearchGoalFrame(state.goal, fallbackPlan),
+    createFallbackDeepResearchGoalFrame(state.goal, fallbackPlan)
   )
 }
 
@@ -759,7 +1000,8 @@ function createContextSeedingNode(
   apiKeys: ProviderKeys
 ) {
   return async (state: DeepResearchState): Promise<Partial<DeepResearchState>> => {
-    const normalizedInput = state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
+    const normalizedInput =
+      state.normalizedInput ?? normalizeStartupInput(state.goal, state.context)
     const contextSources = normalizedInput.sources
     const contextContentMap = normalizedInput.contentMap
 
@@ -802,12 +1044,12 @@ function createContextSeedingNode(
         providerFn,
         currentBudget,
         contextSources.length,
-        extractionAgent.modelName,
+        extractionAgent.modelName
       )
       currentBudget = updatedBudget
 
       // Apply confidence multiplier for user-provided context
-      const contextClaims = claims.map(c => ({
+      const contextClaims = claims.map((c) => ({
         ...c,
         confidence: Math.min(1.0, c.confidence * 0.85),
       }))
@@ -842,7 +1084,7 @@ function createContextSeedingNode(
           contextClaims.length,
           addedClaimIds.length + addedConceptIds.length,
           0,
-          0,
+          0
         ),
       }
     } catch (err) {
@@ -916,7 +1158,7 @@ function createSearchAndIngestNode(
 
     // Cross-iteration source dedup: filter out URLs already processed
     const previousUrls = new Set(state.processedSourceUrls ?? [])
-    const searchResults = rawSearchResults.filter(r => {
+    const searchResults = rawSearchResults.filter((r) => {
       if (!r.url) return true
       return !previousUrls.has(normalizeUrl(r.url))
     })
@@ -984,7 +1226,7 @@ function createSearchAndIngestNode(
     })
 
     // Track newly processed URLs for cross-iteration dedup
-    const newProcessedUrls = sources.map(s => normalizeUrl(s.url))
+    const newProcessedUrls = sources.map((s) => normalizeUrl(s.url))
 
     return {
       phase: 'claim_extraction',
@@ -1001,7 +1243,7 @@ function createSearchAndIngestNode(
 function createClaimExtractionNode(
   extractionAgent: AgentConfig,
   execContext: AgentExecutionContext,
-  apiKeys: ProviderKeys,
+  apiKeys: ProviderKeys
 ) {
   return async (state: DeepResearchState): Promise<Partial<DeepResearchState>> => {
     log.info('Deep Research: Claim Extraction phase')
@@ -1025,7 +1267,7 @@ function createClaimExtractionNode(
         providerFn,
         currentBudget,
         3, // batch size
-        extractionAgent.modelName,
+        extractionAgent.modelName
       )
     currentBudget = postBatchBudget
     allClaims.push(...batchClaims)
@@ -1055,7 +1297,7 @@ function createClaimExtractionNode(
 function createKGConstructionNode(
   sharedKg: KnowledgeHypergraph,
   execContext: AgentExecutionContext,
-  researchConfig: DeepResearchRunConfig,
+  researchConfig: DeepResearchRunConfig
 ) {
   return async (state: DeepResearchState): Promise<Partial<DeepResearchState>> => {
     // Only process claims that haven't been mapped to the KG yet
@@ -1173,12 +1415,13 @@ Base your thesis on evidence from the knowledge graph. Cite node IDs when refere
       const lens = resolveThesisLens(agent)
 
       // Use shared prompt builder + KG tool instructions
-      const prompt = buildThesisPrompt(
-        state.goal,
-        lens,
-        state.mergedGraph,
-        null, // no researchEvidence — agents query KG via tools
-      ) + kgToolInstructions
+      const prompt =
+        buildThesisPrompt(
+          state.goal,
+          lens,
+          state.mergedGraph,
+          null // no researchEvidence — agents query KG via tools
+        ) + kgToolInstructions
 
       // Create KG-only exec context (strip search tools)
       const kgOnlyExecContext: AgentExecutionContext = {
@@ -1196,35 +1439,75 @@ Base your thesis on evidence from the knowledge graph. Cite node IDs when refere
           { stepNumber: state.steps.length + idx + 1, maxIterations: 4 }
         )
 
-        const thesis = parseThesisOutput(step.output, agent.agentId, step.model, lens)
+        const thesis = await withJsonParseRetry(
+          step.output,
+          (text) => parseThesisOutput(text, agent.agentId, step.model, lens),
+          {
+            context: `Deep Research Thesis (${lens})`,
+            jsonSchema: '{"nodes":[{"id":"string","label":"string","type":"claim|concept|mechanism|prediction","note":"string","sourceId":"string","sourceUrl":"string","sourceConfidence":0.0}],"edges":[{"from":"string","to":"string","rel":"causes|contradicts|supports|mediates|scopes","weight":0.0}],"summary":"string","reasoning":"string","confidence":0.0,"regime":"string","temporalGrain":"string"}',
+            emptyFallback: '{"nodes":[],"edges":[],"summary":"Parse failure","reasoning":"No relevant thesis content recovered","confidence":0,"regime":"unknown","temporalGrain":"unknown"}',
+            goal: state.goal,
+            baseAgent: agent,
+            execContext: kgOnlyExecContext,
+            nodeId: 'thesis_generation',
+            stepNumber: state.steps.length + idx + 1,
+            runId: state.runId,
+            repairSchema: CompactGraphSchema,
+            originalTaskPrompt: prompt,
+          }
+        )
 
         // Track budget for this thesis agent
         currentBudget = recordSpend(currentBudget, step.estimatedCost, step.tokensUsed, 'llm')
 
         return { step, thesis }
       } catch (err) {
-        throw new Error(`Thesis agent ${agent.name} failed: ${err instanceof Error ? err.message : String(err)}`)
+        throw new Error(
+          `Thesis agent ${agent.name} failed: ${err instanceof Error ? err.message : String(err)}`
+        )
       }
     })
 
     const results = await Promise.all(thesisPromises)
+    const newSteps = results.map((r) => r.step)
+    const newTheses = results.map((r) => r.thesis)
+    const substantiveTheses = newTheses.filter(isSubstantiveThesis)
+    const droppedLenses: string[] = []
+    for (const thesis of newTheses) {
+      const lens = thesis.lens
+      if (!isSubstantiveThesis(thesis)) droppedLenses.push(lens)
+    }
 
     // Check if any thesis agent requested user input
     const interruptedThesisStep = results.find((r) => r.step.askUserInterrupt)
     if (interruptedThesisStep) {
       const interrupt = handleAskUserInterrupt(interruptedThesisStep.step, 'thesis_generation')
       if (interrupt) {
-        return { steps: results.map((r) => r.step), ...interrupt }
+        return { steps: newSteps, resumeNodeHint: 'thesis_generation', ...interrupt }
       }
+    }
+
+    if (droppedLenses.length > 0) {
+      log.warn('Deep Research: dropping non-substantive theses before cross-negation', {
+        droppedLenses,
+        keptLenses: substantiveTheses.map((thesis) => thesis.lens),
+      })
+    }
+
+    if (substantiveTheses.length < 2) {
+      throw new Error(
+        `Deep Research thesis generation requires at least 2 substantive theses, got ${substantiveTheses.length}. Non-substantive lenses: ${droppedLenses.join(', ') || 'unknown'}`
+      )
     }
 
     return {
       phase: 'cross_negation',
-      theses: results.map((r) => r.thesis),
-      steps: results.map((r) => r.step),
+      theses: substantiveTheses,
+      steps: newSteps,
       budget: currentBudget,
-      totalTokensUsed: results.reduce((sum, r) => sum + r.step.tokensUsed, 0),
-      totalEstimatedCost: results.reduce((sum, r) => sum + r.step.estimatedCost, 0),
+      totalTokensUsed: newSteps.reduce((sum, step) => sum + step.tokensUsed, 0),
+      totalEstimatedCost: newSteps.reduce((sum, step) => sum + step.estimatedCost, 0),
+      ...(droppedLenses.length > 0 ? { degradedPhases: ['thesis_generation'] } : {}),
     }
   }
 }
@@ -1254,10 +1537,25 @@ function createCrossNegationNode(thesisAgents: AgentConfig[], execContext: Agent
       const agent = thesisAgents[i]
       const thesis = state.theses[i]
       if (!thesis) continue
+      const sourceLens = thesis.lens
+      if (!isSubstantiveThesis(thesis)) {
+        log.warn('Deep Research: skipping negation pair due to non-substantive source thesis', {
+          sourceLens,
+        })
+        continue
+      }
 
       const targetIdx = (i + 1) % state.theses.length
       const targetThesis = state.theses[targetIdx]
       if (!targetThesis) continue
+      const targetLens = targetThesis.lens
+      if (!isSubstantiveThesis(targetThesis)) {
+        log.warn('Deep Research: skipping negation pair due to non-substantive target thesis', {
+          sourceLens,
+          targetLens,
+        })
+        continue
+      }
 
       negationPromises.push(
         (async () => {
@@ -1273,14 +1571,32 @@ function createCrossNegationNode(thesisAgents: AgentConfig[], execContext: Agent
               { stepNumber: state.steps.length + i + 1, maxIterations: 2 }
             )
 
-            const negation = parseNegationOutput(step.output, agent.agentId, targetThesis.agentId)
+            const negation = await withJsonParseRetry(
+              step.output,
+              (text) => parseNegationOutput(text, agent.agentId, targetThesis.agentId),
+              {
+                context: 'Deep Research Negation',
+                jsonSchema: '{"internalTensions":["string"],"categoryAttacks":["string"],"preservedValid":["string"],"rivalFraming":"string","rewriteOperator":"SPLIT|MERGE|REVERSE_EDGE|ADD_MEDIATOR|SCOPE_TO_REGIME|TEMPORALIZE","operatorArgs":{}}',
+                emptyFallback: '{"internalTensions":[],"categoryAttacks":[],"preservedValid":[],"rivalFraming":"","rewriteOperator":"SPLIT","operatorArgs":{}}',
+                goal: state.goal,
+                baseAgent: agent,
+                execContext,
+                nodeId: 'cross_negation',
+                stepNumber: state.steps.length + i + 1,
+                runId: state.runId,
+                repairSchema: NegationOutputSchema,
+                originalTaskPrompt: prompt,
+              }
+            )
 
             // Track budget
             currentBudget = recordSpend(currentBudget, step.estimatedCost, step.tokensUsed, 'llm')
 
             return { step, negation }
           } catch (err) {
-            throw new Error(`Negation by ${agent.name} failed: ${err instanceof Error ? err.message : String(err)}`)
+            throw new Error(
+              `Negation by ${agent.name} failed: ${err instanceof Error ? err.message : String(err)}`
+            )
           }
         })()
       )
@@ -1293,7 +1609,7 @@ function createCrossNegationNode(thesisAgents: AgentConfig[], execContext: Agent
     if (interruptedNegStep) {
       const interrupt = handleAskUserInterrupt(interruptedNegStep.step, 'cross_negation')
       if (interrupt) {
-        return { steps: results.map((r) => r.step), ...interrupt }
+        return { steps: results.map((r) => r.step), resumeNodeHint: 'cross_negation', ...interrupt }
       }
     }
 
@@ -1404,7 +1720,7 @@ function createSublationNode(
       if (interruptedSynthStep) {
         const interrupt = handleAskUserInterrupt(interruptedSynthStep, 'sublation')
         if (interrupt) {
-          return { steps: result.steps, ...interrupt }
+          return { steps: result.steps, resumeNodeHint: 'sublation', ...interrupt }
         }
       }
 
@@ -1415,57 +1731,34 @@ function createSublationNode(
         negatedClaims: result.winner.claimsNegated,
       })
 
-      // Extract SublationOutput from the winner
-      const synthesis: SublationOutput = {
-        operators: result.winner.synthesis?.operators ?? [],
-        preservedElements: result.winner.synthesis?.preservedElements ?? [],
-        negatedElements: result.winner.synthesis?.negatedElements ?? [],
-        newConceptGraph: result.winner.synthesis?.newConceptGraph ?? {},
-        newClaims: result.winner.synthesis?.newClaims ?? [],
-        newPredictions: result.winner.synthesis?.newPredictions ?? [],
-        schemaDiff: result.winner.synthesis?.schemaDiff ?? null,
-      }
+      const winnerAgent =
+        synthesisAgents.find((agent) => agent.agentId === result.winner.agentId) ?? synthesisAgents[0]
 
-      // Extract evolved mergedGraph from winner's raw output
-      let evolvedGraph: CompactGraph | null = null
-      let graphDiff: GraphDiff | null = null
-      const codeBlockMatch = result.winner.rawText.match(/```(?:json)?\s*([\s\S]*?)```/)
-      const jsonStr = codeBlockMatch
-        ? codeBlockMatch[1].trim()
-        : result.winner.rawText.match(/\{[\s\S]*\}/)?.[0]
-      if (jsonStr) {
-        const parsed = JSON.parse(jsonStr)
-        if (parsed.mergedGraph?.nodes && Array.isArray(parsed.mergedGraph.nodes)) {
-          evolvedGraph = {
-            nodes: parsed.mergedGraph.nodes,
-            edges: parsed.mergedGraph.edges ?? [],
-            summary: parsed.mergedGraph.summary ?? '',
-            reasoning: parsed.mergedGraph.reasoning ?? '',
-            confidence: parsed.mergedGraph.confidence ?? 0.5,
-            regime: parsed.mergedGraph.regime ?? 'multi-regime',
-            temporalGrain: parsed.mergedGraph.temporalGrain ?? 'mixed',
-          }
-        }
-        if (parsed.diff) {
-          graphDiff = {
-            addedNodes: parsed.diff.addedNodes ?? [],
-            removedNodes: parsed.diff.removedNodes ?? [],
-            modifiedNodes: (parsed.diff.modifiedNodes ?? []).map((m: Record<string, string>) => ({
-              id: m.id ?? '',
-              oldLabel: m.oldLabel ?? '',
-              newLabel: m.newLabel ?? '',
-            })),
-            addedEdges: parsed.diff.addedEdges ?? [],
-            removedEdges: parsed.diff.removedEdges ?? [],
-            newContradictions: parsed.diff.newContradictions ?? parsed.newContradictions ?? [],
-            resolvedContradictions: parsed.diff.resolvedContradictions ?? parsed.resolvedContradictions ?? [],
-          }
-        }
-      }
+      const {
+        synthesis,
+        mergedGraph: evolvedGraph,
+        graphDiff,
+      } = await withJsonParseRetry(result.winner.rawText, (text) => parseSublationOutput(text), {
+        context: 'Deep Research Sublation',
+        jsonSchema: '{"mergedGraph":{"nodes":[{"id":"string","label":"string","type":"claim|concept|mechanism|prediction","note":"string","sourceId":"string","sourceUrl":"string","sourceConfidence":0.0}],"edges":[{"from":"string","to":"string","rel":"causes|contradicts|supports|mediates|scopes","weight":0.0}],"summary":"string","reasoning":"string","confidence":0.0,"regime":"string","temporalGrain":"string"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[],"resolvedContradictions":[],"newContradictions":[]}}',
+        emptyFallback: '{"mergedGraph":{"nodes":[],"edges":[],"summary":"Parse failure","reasoning":"No relevant synthesis content recovered","confidence":0,"regime":"unknown","temporalGrain":"unknown"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[],"resolvedContradictions":[],"newContradictions":[]}}',
+        goal: state.goal,
+        baseAgent: winnerAgent,
+        execContext,
+        nodeId: 'sublation',
+        stepNumber: state.steps.length + 1,
+        runId: state.runId,
+        repairSchema: GraphSublationOutputSchema,
+      })
 
       // Track budget for sublation
       let currentBudget = { ...state.budget }
-      currentBudget = recordSpend(currentBudget, result.totalEstimatedCost, result.totalTokensUsed, 'llm')
+      currentBudget = recordSpend(
+        currentBudget,
+        result.totalEstimatedCost,
+        result.totalTokensUsed,
+        'llm'
+      )
 
       // Construct KGDiff from synthesis output for meta-reflection metrics
       const synthesisKgDiff: KGDiff = {
@@ -1475,7 +1768,7 @@ function createSublationNode(
         edgeReversals: [],
         regimeScopings: [],
         temporalizations: [],
-        newClaims: (synthesis.newClaims ?? []).map(c => ({
+        newClaims: (synthesis.newClaims ?? []).map((c) => ({
           id: typeof c === 'object' && 'id' in c ? String(c.id) : '',
           text: typeof c === 'object' && 'text' in c ? String(c.text) : String(c),
         })),
@@ -1484,7 +1777,7 @@ function createSublationNode(
         resolvedContradictions: Array.isArray(synthesis.schemaDiff?.resolvedContradictions)
           ? (synthesis.schemaDiff!.resolvedContradictions as string[])
           : [],
-        newPredictions: (synthesis.newPredictions ?? []).map(p => ({
+        newPredictions: (synthesis.newPredictions ?? []).map((p) => ({
           id: typeof p === 'object' && 'id' in p ? String(p.id) : '',
           text: typeof p === 'object' && 'text' in p ? String(p.text) : String(p),
         })),
@@ -1509,10 +1802,21 @@ function createSublationNode(
       }
 
       if (graphDiff) {
-        stateUpdate.graphHistory = [{
-          cycle: state.dialecticalCycleCount,
-          diff: graphDiff,
-        }]
+        stateUpdate.graphHistory = [
+          {
+            cycle: state.dialecticalCycleCount,
+            diff: graphDiff,
+          },
+        ]
+      }
+
+      // Emit KG update event for live visualization
+      if (evolvedGraph || graphDiff) {
+        await emitPhaseEvent(execContext, 'sublation', {
+          mergedGraph: evolvedGraph ?? undefined,
+          graphDiff: graphDiff ?? undefined,
+          cycleNumber: state.dialecticalCycleCount,
+        })
       }
 
       return stateUpdate
@@ -1602,6 +1906,7 @@ function createDialecticalMetaNode(
           dialecticalMetaDecision: 'TERMINATE',
           dialecticalCycleCount: cycleCount,
           status: 'waiting_for_input',
+          resumeNodeHint: 'dialectical_meta',
           constraintPause: {
             constraintType: 'max_dialectical_cycles',
             currentValue: cycleCount,
@@ -1626,9 +1931,8 @@ function createDialecticalMetaNode(
 
     // Build input for real meta-reflection with convergence detection
     // Get latest graph diff from graphHistory for this cycle
-    const latestGraphDiff = state.graphHistory.length > 0
-      ? state.graphHistory[state.graphHistory.length - 1].diff
-      : null
+    const latestGraphDiff =
+      state.graphHistory.length > 0 ? state.graphHistory[state.graphHistory.length - 1].diff : null
 
     const input: MetaReflectionInput = {
       cycleNumber: cycleCount,
@@ -1658,23 +1962,28 @@ function createDialecticalMetaNode(
       state.steps.length
     )
 
-      // Check if meta agent requested user input
-      const metaInterrupt = handleAskUserInterrupt(result.step, 'dialectical_meta')
-      if (metaInterrupt) {
-        return { steps: [result.step], dialecticalCycleCount: cycleCount, ...metaInterrupt }
-      }
+    // Check if meta agent requested user input
+    const metaInterrupt = handleAskUserInterrupt(result.step, 'dialectical_meta')
+    if (metaInterrupt) {
+      return { steps: [result.step], dialecticalCycleCount: cycleCount, resumeNodeHint: 'dialectical_meta', ...metaInterrupt }
+    }
 
-      log.info('Meta reflection complete', {
-        decision: result.decision,
-        velocity: result.metrics.velocity,
-        convergenceScore: result.metrics.convergenceScore,
-        learningRate: result.metrics.learningRate,
-        warnings: result.warnings,
-      })
+    log.info('Meta reflection complete', {
+      decision: result.decision,
+      velocity: result.metrics.velocity,
+      convergenceScore: result.metrics.convergenceScore,
+      learningRate: result.metrics.learningRate,
+      warnings: result.warnings,
+    })
 
-      // Track budget for meta reflection
-      let currentBudget = { ...state.budget }
-      currentBudget = recordSpend(currentBudget, result.step.estimatedCost, result.step.tokensUsed, 'llm')
+    // Track budget for meta reflection
+    let currentBudget = { ...state.budget }
+    currentBudget = recordSpend(
+      currentBudget,
+      result.step.estimatedCost,
+      result.step.tokensUsed,
+      'llm'
+    )
 
     return {
       dialecticalMetaDecision: result.decision,
@@ -1728,7 +2037,7 @@ function createGapAnalysisNode(
       providerFn,
       currentBudget,
       2,
-      gapAnalysisAgent.modelName,
+      gapAnalysisAgent.modelName
     )
     currentBudget = recordGapIteration(updatedBudget)
 
@@ -1752,13 +2061,9 @@ function createGapAnalysisNode(
 
     // Check if we're about to be stopped by a constraint but gaps remain
     const willContinue = shouldContinueGapLoop(currentBudget, gapResult, maxGapIterations)
-    if (
-      !willContinue &&
-      gapResult.shouldContinue &&
-      gapResult.overallCoverageScore < 0.85
-    ) {
+    if (!willContinue && gapResult.shouldContinue && gapResult.overallCoverageScore < 0.85) {
       const constraintOverride = state.context.constraintOverride as
-        | { type: string; newLimit?: number }
+        | { type: string; newLimit?: number; action?: string }
         | undefined
 
       // Budget exhausted
@@ -1796,6 +2101,7 @@ function createGapAnalysisNode(
             searchPlans: newSearchPlans,
             kgSnapshots: [snapshot],
             status: 'waiting_for_input',
+            resumeNodeHint: 'gap_analysis',
             constraintPause: {
               constraintType: 'budget',
               currentValue: parseFloat(currentBudget.spentUsd.toFixed(4)),
@@ -1846,6 +2152,7 @@ function createGapAnalysisNode(
             searchPlans: newSearchPlans,
             kgSnapshots: [snapshot],
             status: 'waiting_for_input',
+            resumeNodeHint: 'gap_analysis',
             constraintPause: {
               constraintType: 'max_gap_iterations',
               currentValue: currentBudget.gapIterationsUsed,
@@ -1961,56 +2268,55 @@ function createCounterclaimNode(
     const providerFn = makeProviderFn(extractionAgent, apiKeys)
 
     // Build adversarial search function using existing search infrastructure
-    const adversarialSearchFn: AdversarialSearchFn | undefined =
-      execContext.toolRegistry
-        ? async (queries: string[]) => {
-            const searchPlan: SearchPlan = {
-              serpQueries: queries,
-              scholarQueries: [],
-              semanticQueries: [],
-              rationale: 'Adversarial counterclaim search',
-              targetSourceCount: Math.min(queries.length * 2, 6),
-            }
-            const toolContext = {
-              userId: execContext.userId,
-              runId: execContext.runId,
-              workflowId: execContext.workflowId,
-              agentId: extractionAgent.agentId,
-              agentName: extractionAgent.name,
-              provider: extractionAgent.modelProvider,
-              modelName: extractionAgent.modelName,
-              iteration: 0,
-              searchToolKeys,
-            }
-
-            const { results } = await executeSearchPlan(
-              searchPlan,
-              execContext.toolRegistry!,
-              toolContext,
-              state.budget
-            )
-
-            // Skip relevance scoring for adversarial sources — we want diverse results
-            const scoreRelevanceFn = async () => 0.7 // Accept most results
-
-            const { sources, contentMap } = await ingestSources(
-              results,
-              state.goal,
-              execContext.toolRegistry!,
-              toolContext,
-              state.budget,
-              scoreRelevanceFn
-            )
-
-            return { sources, contentMap }
+    const adversarialSearchFn: AdversarialSearchFn | undefined = execContext.toolRegistry
+      ? async (queries: string[]) => {
+          const searchPlan: SearchPlan = {
+            serpQueries: queries,
+            scholarQueries: [],
+            semanticQueries: [],
+            rationale: 'Adversarial counterclaim search',
+            targetSourceCount: Math.min(queries.length * 2, 6),
           }
-        : undefined
+          const toolContext = {
+            userId: execContext.userId,
+            runId: execContext.runId,
+            workflowId: execContext.workflowId,
+            agentId: extractionAgent.agentId,
+            agentName: extractionAgent.name,
+            provider: extractionAgent.modelProvider,
+            modelName: extractionAgent.modelName,
+            iteration: 0,
+            searchToolKeys,
+          }
+
+          const { results } = await executeSearchPlan(
+            searchPlan,
+            execContext.toolRegistry!,
+            toolContext,
+            state.budget
+          )
+
+          // Skip relevance scoring for adversarial sources — we want diverse results
+          const scoreRelevanceFn = async () => 0.7 // Accept most results
+
+          const { sources, contentMap } = await ingestSources(
+            results,
+            state.goal,
+            execContext.toolRegistry!,
+            toolContext,
+            state.budget,
+            scoreRelevanceFn
+          )
+
+          return { sources, contentMap }
+        }
+      : undefined
 
     const counterclaims = await generateCounterclaims(
       state.extractedClaims,
       state.goal,
       providerFn,
-      adversarialSearchFn,
+      adversarialSearchFn
     )
 
     log.info('Counterclaim search complete', { counterclaims: counterclaims.length })
@@ -2035,6 +2341,84 @@ export function routeAfterSearch(
     return 'answer_generation'
   }
   return 'claim_extraction'
+}
+
+/**
+ * Determine which node to start at on graph entry.
+ * On fresh runs, starts at input_normalizer.
+ * On resume after pause, skips to the paused node via resumeNodeHint.
+ */
+function determineDeepResearchStartNode(state: DeepResearchState): string {
+  const hint = state.resumeNodeHint
+  if (
+    hint &&
+    [
+      'input_normalizer',
+      'sense_making',
+      'context_seeding',
+      'search_and_ingest',
+      'claim_extraction',
+      'kg_construction',
+      'gap_analysis',
+      'kg_snapshot',
+      'thesis_generation',
+      'cross_negation',
+      'contradiction',
+      'sublation',
+      'dialectical_meta',
+      'counterclaim_search',
+      'answer_generation',
+    ].includes(hint)
+  ) {
+    return hint
+  }
+  return 'input_normalizer'
+}
+
+/**
+ * Serialize full graph state for persistence across pause/resume cycles.
+ */
+function buildDeepResearchResumeState(state: DeepResearchState): Partial<DeepResearchState> {
+  return {
+    phase: state.phase,
+    normalizedInput: state.normalizedInput,
+    goalFrame: state.goalFrame,
+    startupSeedSummary: state.startupSeedSummary,
+    budget: state.budget,
+    searchPlans: state.searchPlans,
+    sources: state.sources,
+    extractedClaims: state.extractedClaims,
+    sourceContentMap: state.sourceContentMap,
+    kgSessionId: state.kgSessionId,
+    kgSnapshot: state.kgSnapshot,
+    mergedGraph: state.mergedGraph,
+    graphHistory: state.graphHistory,
+    processedSourceUrls: state.processedSourceUrls,
+    claimsProcessedCount: state.claimsProcessedCount,
+    gapIterationsUsed: state.gapIterationsUsed,
+    dialecticalCycleCount: state.dialecticalCycleCount,
+    theses: state.theses,
+    negations: state.negations,
+    contradictions: state.contradictions,
+    synthesis: state.synthesis,
+    dialecticalMetaDecision: state.dialecticalMetaDecision,
+    gapAnalysis: state.gapAnalysis,
+    kgSnapshots: state.kgSnapshots,
+    counterclaims: state.counterclaims,
+    cycleMetricsHistory: state.cycleMetricsHistory,
+    kgDiff: state.kgDiff,
+    answer: state.answer,
+    steps: state.steps,
+    totalTokensUsed: state.totalTokensUsed,
+    totalEstimatedCost: state.totalEstimatedCost,
+    constraintPause: state.constraintPause,
+    pendingInput: state.pendingInput,
+    resumeNodeHint: state.resumeNodeHint,
+    finalOutput: state.finalOutput,
+    status: state.status,
+    error: state.error,
+    degradedPhases: state.degradedPhases,
+  }
 }
 
 // ----- Graph Creation -----
@@ -2149,13 +2533,14 @@ export function createDeepResearchGraph(
 
   // ----- Research Phase Edges -----
 
-  graph.addEdge(START, 'input_normalizer' as typeof START)
-  graph.addEdge('input_normalizer' as typeof START, 'sense_making' as typeof START)
-  graph.addConditionalEdges(
-    'sense_making' as typeof START,
-    edgeOrEnd('context_seeding'),
-    { context_seeding: 'context_seeding' as typeof START, [END]: END }
+  graph.addConditionalEdges(START, (state: DeepResearchState) =>
+    determineDeepResearchStartNode(state)
   )
+  graph.addEdge('input_normalizer' as typeof START, 'sense_making' as typeof START)
+  graph.addConditionalEdges('sense_making' as typeof START, edgeOrEnd('context_seeding'), {
+    context_seeding: 'context_seeding' as typeof START,
+    [END]: END,
+  })
   graph.addEdge('context_seeding' as typeof START, 'search_and_ingest' as typeof START)
 
   // Quick mode skips claim extraction and dialectical phases
@@ -2198,22 +2583,19 @@ export function createDeepResearchGraph(
 
   // kg_snapshot → dialectical engine
   graph.addEdge('kg_snapshot' as typeof START, 'thesis_generation' as typeof START)
-  graph.addConditionalEdges(
-    'thesis_generation' as typeof START,
-    edgeOrEnd('cross_negation'),
-    { cross_negation: 'cross_negation' as typeof START, [END]: END }
-  )
-  graph.addConditionalEdges(
-    'cross_negation' as typeof START,
-    edgeOrEnd('contradiction'),
-    { contradiction: 'contradiction' as typeof START, [END]: END }
-  )
+  graph.addConditionalEdges('thesis_generation' as typeof START, edgeOrEnd('cross_negation'), {
+    cross_negation: 'cross_negation' as typeof START,
+    [END]: END,
+  })
+  graph.addConditionalEdges('cross_negation' as typeof START, edgeOrEnd('contradiction'), {
+    contradiction: 'contradiction' as typeof START,
+    [END]: END,
+  })
   graph.addEdge('contradiction' as typeof START, 'sublation' as typeof START)
-  graph.addConditionalEdges(
-    'sublation' as typeof START,
-    edgeOrEnd('dialectical_meta'),
-    { dialectical_meta: 'dialectical_meta' as typeof START, [END]: END }
-  )
+  graph.addConditionalEdges('sublation' as typeof START, edgeOrEnd('dialectical_meta'), {
+    dialectical_meta: 'dialectical_meta' as typeof START,
+    [END]: END,
+  })
 
   // Dialectical loop or exit: meta → thesis_generation (CONTINUE) or counterclaim_search (TERMINATE)
   graph.addConditionalEdges(
@@ -2249,13 +2631,15 @@ export function createDeepResearchGraph(
 export async function executeDeepResearchWorkflowLangGraph(
   config: DeepResearchGraphConfig,
   goal: string,
-  context?: Record<string, unknown>
+  context?: Record<string, unknown>,
+  resumeState?: Partial<DeepResearchState>
 ): Promise<{
   output: string
   steps: AgentExecutionStep[]
   totalTokensUsed: number
   totalEstimatedCost: number
   status: 'running' | 'completed' | 'failed' | 'paused' | 'waiting_for_input'
+  error?: string
   answer: DeepResearchAnswer | null
   budget: RunBudget
   kgSnapshots: KGSnapshot[]
@@ -2268,8 +2652,11 @@ export async function executeDeepResearchWorkflowLangGraph(
     goalFrame: Record<string, unknown> | null
     startupSeedSummary: Record<string, unknown> | null
   }
+  mergedGraph: CompactGraph | null
+  graphHistory: Array<{ cycle: number; diff: GraphDiff }>
   constraintPause?: Run['constraintPause']
   pendingInput?: { prompt: string; nodeId: string }
+  deepResearchResumeState?: Partial<DeepResearchState>
 }> {
   const { workflow, researchConfig, runId, userId } = config
   const trimmedGoal = goal.trim()
@@ -2281,13 +2668,26 @@ export async function executeDeepResearchWorkflowLangGraph(
       totalTokensUsed: 0,
       totalEstimatedCost: 0,
       status: 'failed' as const,
+      error: 'Goal is required',
       answer: null,
-      budget: { maxBudgetUsd: researchConfig.maxBudgetUsd, spentUsd: 0, spentTokens: 0, searchCallsUsed: 0, maxSearchCalls: 0, llmCallsUsed: 0, phase: 'full' as const, maxRecursiveDepth: 3, gapIterationsUsed: 0 },
+      budget: {
+        maxBudgetUsd: researchConfig.maxBudgetUsd,
+        spentUsd: 0,
+        spentTokens: 0,
+        searchCallsUsed: 0,
+        maxSearchCalls: 0,
+        llmCallsUsed: 0,
+        phase: 'full' as const,
+        maxRecursiveDepth: 3,
+        gapIterationsUsed: 0,
+      },
       kgSnapshots: [],
       sources: [],
       extractedClaims: [],
       gapIterationsUsed: 0,
       degradedPhases: [],
+      mergedGraph: null,
+      graphHistory: [],
     }
   }
 
@@ -2314,17 +2714,30 @@ export async function executeDeepResearchWorkflowLangGraph(
       totalTokensUsed: 0,
       totalEstimatedCost: 0,
       status: 'failed' as const,
+      error: msg,
       answer: null,
-      budget: { maxBudgetUsd: researchConfig.maxBudgetUsd, spentUsd: 0, spentTokens: 0, searchCallsUsed: 0, maxSearchCalls: 0, llmCallsUsed: 0, phase: 'full' as const, maxRecursiveDepth: 3, gapIterationsUsed: 0 },
+      budget: {
+        maxBudgetUsd: researchConfig.maxBudgetUsd,
+        spentUsd: 0,
+        spentTokens: 0,
+        searchCallsUsed: 0,
+        maxSearchCalls: 0,
+        llmCallsUsed: 0,
+        phase: 'full' as const,
+        maxRecursiveDepth: 3,
+        gapIterationsUsed: 0,
+      },
       kgSnapshots: [],
       sources: [],
       extractedClaims: [],
       gapIterationsUsed: 0,
       degradedPhases: [],
+      mergedGraph: null,
+      graphHistory: [],
     }
   }
 
-  const initialState: Partial<DeepResearchState> = {
+  const freshState: Partial<DeepResearchState> = {
     workflowId: workflow.workflowId,
     runId,
     userId,
@@ -2389,7 +2802,7 @@ export async function executeDeepResearchWorkflowLangGraph(
 
   let finalState: DeepResearchState
   try {
-    finalState = await compiledGraph.invoke(initialState) as DeepResearchState
+    finalState = (await compiledGraph.invoke(initialState)) as DeepResearchState
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e)
     const errorStack = e instanceof Error ? e.stack : undefined
@@ -2406,6 +2819,7 @@ export async function executeDeepResearchWorkflowLangGraph(
       totalTokensUsed: 0,
       totalEstimatedCost: 0,
       status: 'failed' as const,
+      error: errorMessage,
       answer: null,
       budget: initialBudget,
       kgSnapshots: [],
@@ -2413,6 +2827,8 @@ export async function executeDeepResearchWorkflowLangGraph(
       extractedClaims: [],
       gapIterationsUsed: 0,
       degradedPhases: [],
+      mergedGraph: null,
+      graphHistory: [],
     }
   }
 
@@ -2436,7 +2852,10 @@ export async function executeDeepResearchWorkflowLangGraph(
       goalFrame: (finalState.goalFrame as Record<string, unknown> | null) ?? null,
       startupSeedSummary: (finalState.startupSeedSummary as Record<string, unknown> | null) ?? null,
     },
+    mergedGraph: finalState.mergedGraph ?? null,
+    graphHistory: finalState.graphHistory ?? [],
     constraintPause: finalState.constraintPause ?? undefined,
     pendingInput: finalState.pendingInput ?? undefined,
+    deepResearchResumeState: buildDeepResearchResumeState(finalState),
   }
 }

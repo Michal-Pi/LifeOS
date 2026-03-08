@@ -211,13 +211,16 @@ export function useKnowledgeGraph(sessionId: DialecticalSessionId | null): UseKn
     }
   }, [subscriptionKey])
 
-  const scheduleFlush = useCallback((key: string, data: unknown, markLoaded?: boolean) => {
-    pendingUpdates.current[key] = data
-    if (markLoaded) pendingUpdates.current[`${key}Loaded`] = true
-    if (rafId.current === null) {
-      rafId.current = requestAnimationFrame(flushUpdates)
-    }
-  }, [flushUpdates])
+  const scheduleFlush = useCallback(
+    (key: string, data: unknown, markLoaded?: boolean) => {
+      pendingUpdates.current[key] = data
+      if (markLoaded) pendingUpdates.current[`${key}Loaded`] = true
+      if (rafId.current === null) {
+        rafId.current = requestAnimationFrame(flushUpdates)
+      }
+    },
+    [flushUpdates]
+  )
 
   // Subscribe to all 6 collections in a single useEffect
   useEffect(() => {

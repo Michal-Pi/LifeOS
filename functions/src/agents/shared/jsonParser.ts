@@ -35,7 +35,7 @@ export function safeParseJsonWithSchema<T>(
   if (!result.success) {
     log.warn('safeParseJsonWithSchema: schema validation failed', {
       context,
-      errors: result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`),
+      errors: result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
     })
     return { data: fallback, validationErrors: result.error }
   }
@@ -56,8 +56,16 @@ function stripTrailingCommas(json: string): string {
 }
 
 function tryParse(json: string): unknown | null {
-  try { return JSON.parse(json) } catch { /* ignore */ }
-  try { return JSON.parse(stripTrailingCommas(json)) } catch { /* ignore */ }
+  try {
+    return JSON.parse(json)
+  } catch {
+    /* ignore */
+  }
+  try {
+    return JSON.parse(stripTrailingCommas(json))
+  } catch {
+    /* ignore */
+  }
   return null
 }
 

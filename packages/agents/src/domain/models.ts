@@ -421,6 +421,7 @@ export interface Run {
       | 'rate_runs_per_hour'
       | 'rate_tokens_per_day'
       | 'rate_cost_per_day'
+      | 'rate_provider'
       | 'max_oracle_refinements'
       | 'oracle_human_gate'
     currentValue: number
@@ -438,6 +439,7 @@ export interface Run {
       | 'rate_runs_per_hour'
       | 'rate_tokens_per_day'
       | 'rate_cost_per_day'
+      | 'rate_provider'
     queuedAtMs: number
     nextRetryAtMs: number
     retryCount: number

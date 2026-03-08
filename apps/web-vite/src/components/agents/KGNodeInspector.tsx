@@ -22,12 +22,7 @@ interface KGNodeInspectorProps {
 
 function ConfidenceBar({ value }: { value: number }) {
   const pct = Math.round(value * 100)
-  const color =
-    value >= 0.8
-      ? 'var(--success)'
-      : value >= 0.6
-        ? 'var(--warning)'
-        : 'var(--error)'
+  const color = value >= 0.8 ? 'var(--success)' : value >= 0.6 ? 'var(--warning)' : 'var(--error)'
 
   return (
     <div className="kg-confidence-bar">
@@ -134,9 +129,7 @@ export function KGNodeInspector({
 
           {connectedEdges.length > 0 && (
             <div className="kg-inspector-section">
-              <h4 className="kg-inspector-label">
-                Connections ({connectedEdges.length})
-              </h4>
+              <h4 className="kg-inspector-label">Connections ({connectedEdges.length})</h4>
               <ul className="kg-inspector-edges">
                 {connectedEdges.slice(0, 10).map((edge, i) => {
                   const otherNodeId = edge.from === node.id ? edge.to : edge.from
@@ -146,9 +139,7 @@ export function KGNodeInspector({
                     <li key={i} className="kg-inspector-edge-item">
                       <RelBadge rel={edge.rel} />
                       <span className="kg-edge-direction">{direction}</span>
-                      <span className="kg-edge-target">
-                        {otherNode?.label || otherNodeId}
-                      </span>
+                      <span className="kg-edge-target">{otherNode?.label || otherNodeId}</span>
                       {edge.weight !== undefined && (
                         <span className="kg-edge-weight">w:{edge.weight.toFixed(2)}</span>
                       )}
@@ -156,9 +147,7 @@ export function KGNodeInspector({
                   )
                 })}
                 {connectedEdges.length > 10 && (
-                  <li className="kg-inspector-more">
-                    +{connectedEdges.length - 10} more
-                  </li>
+                  <li className="kg-inspector-more">+{connectedEdges.length - 10} more</li>
                 )}
               </ul>
             </div>

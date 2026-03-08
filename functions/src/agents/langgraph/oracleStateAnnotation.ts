@@ -77,6 +77,11 @@ export const OracleStateAnnotation = Annotation.Root({
     reducer: (current, update) => [...current, ...update].slice(-200),
     default: () => [],
   }),
+  /** Full crawled page content keyed by evidence ID. Not serialized to Firestore run doc. */
+  crawledContentMap: Annotation<Record<string, string>>({
+    reducer: (current, update) => ({ ...current, ...update }),
+    default: () => ({}),
+  }),
 
   // ----- Knowledge Graph (replaced each phase — evolves via graph ops) -----
   knowledgeGraph: Annotation<OracleKnowledgeGraph>({

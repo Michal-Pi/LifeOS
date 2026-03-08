@@ -27,7 +27,7 @@ type OracleDepthMode = 'quick' | 'standard' | 'deep'
 function buildCookbookContext(
   agentRole: string,
   phase?: string,
-  depthMode: OracleDepthMode = 'standard',
+  depthMode: OracleDepthMode = 'standard'
 ): string {
   const allRecipes = getRecipesForAgent(agentRole, phase)
   if (allRecipes.length === 0) return ''
@@ -63,11 +63,36 @@ function buildPriorContext(phaseSummaries: OraclePhaseSummary[]): string {
 function buildEvidenceContext(evidence: OracleEvidence[]): string {
   if (evidence.length === 0) return ''
 
-  const lines = evidence.slice(0, 12).map((item) => {
-    const source = sanitizeForPrompt(item.source, 80)
-    const excerpt = sanitizeForPrompt(item.excerpt, 180)
-    return `- ${item.id} [${item.category}] ${source} (${item.date}, rel=${item.reliability.toFixed(2)}): ${excerpt}`
-  })
+  // Separate enriched (crawled) from snippet-only evidence
+  const enriched = evidence.filter((e) => e.enrichedExcerpt && e.crawlStatus === 'success')
+  const snippetOnly = evidence.filter((e) => !e.enrichedExcerpt || e.crawlStatus !== 'success')
+
+  const lines: string[] = []
+
+  // Show enriched evidence first (up to 6 items, ~500 chars each)
+  if (enriched.length > 0) {
+    lines.push('### Deep Evidence (full-page crawl)')
+    for (const item of enriched.slice(0, 6)) {
+      const source = sanitizeForPrompt(item.source, 80)
+      const excerpt = sanitizeForPrompt(item.enrichedExcerpt!, 500)
+      lines.push(
+        `- ${item.id} [${item.category}] ${source} (${item.date}, rel=${item.reliability.toFixed(2)}):\n  ${excerpt}`
+      )
+    }
+  }
+
+  // Then show snippet-only evidence to fill remaining slots (up to 12 total)
+  const snippetSlots = Math.max(0, 12 - enriched.length)
+  if (snippetOnly.length > 0 && snippetSlots > 0) {
+    if (enriched.length > 0) lines.push('### Additional Evidence (search snippets)')
+    for (const item of snippetOnly.slice(0, snippetSlots)) {
+      const source = sanitizeForPrompt(item.source, 80)
+      const excerpt = sanitizeForPrompt(item.excerpt, 180)
+      lines.push(
+        `- ${item.id} [${item.category}] ${source} (${item.date}, rel=${item.reliability.toFixed(2)}): ${excerpt}`
+      )
+    }
+  }
 
   return `\n## Phase 0 Evidence\nUse these evidence items when grounding claims, evidenceIds, and graph structure:\n${lines.join('\n')}\n`
 }
@@ -108,6 +133,109 @@ Treat this as a binding refinement request. Adjust scenario selection, narrative
 `
 }
 
+function buildJsonOnlyRules(extraRules: string[] = []): string {
+  return [
+    'Output ONLY one JSON object.',
+    'Do not include markdown fences, prose, labels, or commentary before/after JSON.',
+    'Do not echo the input context, evidence, or schema.',
+    'Include every required top-level key even when arrays are empty.',
+    'Use empty arrays instead of null for list fields unless the schema explicitly requires null.',
+    'Do not invent extra top-level keys.',
+    ...extraRules,
+  ]
+    .map((rule, index) => `${index + 1}. ${rule}`)
+    .join('\n')
+}
+
+const DECOMPOSER_OUTPUT_EXAMPLE = `{
+  "claims": [
+    {
+      "id": "CLM-001",
+      "type": "causal",
+      "text": "AI reduces feature-development cost for horizontal SaaS vendors.",
+      "confidence": 0.74,
+      "confidenceBasis": "expert_judgment",
+      "assumptions": ["ASM-001"],
+      "evidenceIds": ["EVD-001"],
+      "dependencies": [],
+      "axiomRefs": ["AXM-058"],
+      "createdBy": "decomposer:model_name",
+      "phase": 1
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "ASM-001",
+      "type": "technical",
+      "statement": "AI coding tools continue improving through the analysis horizon.",
+      "sensitivity": "high",
+      "observables": ["Benchmark gains in coding-agent performance"],
+      "confidence": 0.65
+    }
+  ]
+}`
+
+const DECOMPOSER_EMPTY_EXAMPLE = `{
+  "claims": [],
+  "assumptions": []
+}`
+
+const SYSTEMS_MAPPER_OUTPUT_EXAMPLE = `{
+  "nodes": [
+    {
+      "id": "N-001",
+      "type": "trend",
+      "label": "AI lowers software development costs",
+      "ledgerRef": "CLM-001",
+      "properties": {
+        "domain": "technological",
+        "impact": "high"
+      }
+    },
+    {
+      "id": "N-002",
+      "type": "constraint",
+      "label": "Feature moats weaken",
+      "ledgerRef": "CLM-002",
+      "properties": {
+        "domain": "economic"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "N-001",
+      "target": "N-002",
+      "type": "causes",
+      "polarity": "-",
+      "strength": 0.81,
+      "lag": "short"
+    }
+  ],
+  "loops": []
+}`
+
+const SYSTEMS_MAPPER_EMPTY_EXAMPLE = `{
+  "nodes": [],
+  "edges": [],
+  "loops": []
+}`
+
+const VERIFIER_OUTPUT_EXAMPLE = `{
+  "verifiedClaims": [
+    {
+      "claimId": "CLM-001",
+      "adjustedConfidence": 0.68
+    }
+  ],
+  "axiomGroundingPercent": 0.83
+}`
+
+const VERIFIER_EMPTY_EXAMPLE = `{
+  "verifiedClaims": [],
+  "axiomGroundingPercent": 0
+}`
+
 /**
  * Build system elevation constraints for prompts that require them.
  * The 7 system elevations are axioms elevated from passive references
@@ -119,9 +247,8 @@ function buildSystemElevationContext(relevantIds: string[]): string {
   const elevations = getSystemElevations()
   if (elevations.length === 0) return ''
 
-  const relevant = relevantIds.length > 0
-    ? elevations.filter((a) => relevantIds.includes(a.id))
-    : elevations
+  const relevant =
+    relevantIds.length > 0 ? elevations.filter((a) => relevantIds.includes(a.id)) : elevations
 
   if (relevant.length === 0) return ''
 
@@ -146,7 +273,7 @@ function buildSystemElevationContext(relevantIds: string[]): string {
 
 export function buildContextGathererPrompt(
   goal: string,
-  depthMode: OracleDepthMode = 'standard',
+  depthMode: OracleDepthMode = 'standard'
 ): string {
   const cookbook = buildCookbookContext('context_gatherer', 'Phase 0', depthMode)
   const sanitizedGoal = sanitizeForPrompt(goal, 500)
@@ -200,10 +327,7 @@ ${cookbook}
 }`
 }
 
-export function buildEvidenceClusteringPrompt(
-  scope: OracleScope,
-  searchResults: string,
-): string {
+export function buildEvidenceClusteringPrompt(scope: OracleScope, searchResults: string): string {
   const safeScope = sanitizeScope(scope)
   return `You are an Oracle Context Gatherer performing evidence clustering.
 
@@ -255,19 +379,21 @@ export function buildDecomposerPrompt(
   depthMode: OracleDepthMode = 'standard',
   evidence: OracleEvidence[] = [],
   verificationTargets: string[] = [],
-  seedClaimsSummary = '',
+  seedClaimsSummary = ''
 ): string {
   const cookbook = buildCookbookContext('decomposer', 'Phase 1', depthMode)
   const prior = buildPriorContext(phaseSummaries)
   const evidenceContext = buildEvidenceContext(evidence)
   const sanitizedGoal = sanitizeForPrompt(goal, 500)
   const safeScope = sanitizeScope(scope)
-  const verificationContext = verificationTargets.length > 0
-    ? `\n## Verification Targets\n${verificationTargets.map((target) => `- ${sanitizeForPrompt(target, 160)}`).join('\n')}\n`
-    : ''
-  const seedClaimsContext = seedClaimsSummary.trim().length > 0
-    ? `\n## Seed Claims From Attached Context\n${seedClaimsSummary}\n`
-    : ''
+  const verificationContext =
+    verificationTargets.length > 0
+      ? `\n## Verification Targets\n${verificationTargets.map((target) => `- ${sanitizeForPrompt(target, 160)}`).join('\n')}\n`
+      : ''
+  const seedClaimsContext =
+    seedClaimsSummary.trim().length > 0
+      ? `\n## Seed Claims From Attached Context\n${seedClaimsSummary}\n`
+      : ''
 
   return `You are an Oracle Decomposer. Break down a strategic question into a sub-question tree with axiom-guided reasoning scaffolds.
 
@@ -294,7 +420,7 @@ ${cookbook}
 3. Generate initial claims with confidence levels and axiom references.
 4. When evidence is available, anchor claims to the strongest relevant evidence items and populate evidenceIds.
 
-## Output Format (JSON only):
+## Output Format (JSON only — no markdown, no preamble, no explanation):
 {
   "claims": [
     {
@@ -307,7 +433,8 @@ ${cookbook}
       "evidenceIds": ["EVD-001"],
       "dependencies": [],
       "axiomRefs": ["AXM-058"],
-      "subQuestionId": "SQ-001"
+      "createdBy": "decomposer:model_name",
+      "phase": 1
     }
   ],
   "assumptions": [
@@ -320,7 +447,21 @@ ${cookbook}
       "confidence": 0.6
     }
   ]
-}`
+}
+
+## Example Output
+${DECOMPOSER_OUTPUT_EXAMPLE}
+
+## Empty-but-valid Fallback
+${DECOMPOSER_EMPTY_EXAMPLE}
+
+## Rules
+${buildJsonOnlyRules([
+  'Return both "claims" and "assumptions" keys every time.',
+  'Use only the allowed claim and assumption enum values shown in the schema.',
+  'If evidence is weak, lower confidence instead of adding prose outside JSON.',
+  'Do not duplicate semantically identical claims.',
+])}`
 }
 
 export function buildSystemsMapperPrompt(
@@ -329,15 +470,16 @@ export function buildSystemsMapperPrompt(
   phaseSummaries: OraclePhaseSummary[],
   depthMode: OracleDepthMode = 'standard',
   evidence: OracleEvidence[] = [],
-  priorGraphSummary = '',
+  priorGraphSummary = ''
 ): string {
   const cookbook = buildCookbookContext('systems_mapper', 'Phase 1', depthMode)
   const prior = buildPriorContext(phaseSummaries)
   const evidenceContext = buildEvidenceContext(evidence)
   const safeScope = sanitizeScope(scope)
-  const starterGraphContext = priorGraphSummary.trim().length > 0
-    ? `\n## Starter Graph From Attached Context\n${priorGraphSummary}\n`
-    : ''
+  const starterGraphContext =
+    priorGraphSummary.trim().length > 0
+      ? `\n## Starter Graph From Attached Context\n${priorGraphSummary}\n`
+      : ''
 
   return `You are an Oracle Systems Mapper. Construct a causal knowledge graph from the claims and evidence gathered so far.
 
@@ -372,7 +514,21 @@ ${cookbook}
   "loops": [
     { "id": "L-001", "type": "reinforcing|balancing", "nodes": ["N-001", "N-002", "N-003"], "description": "<string>" }
   ]
-}`
+}
+
+## Example Output
+${SYSTEMS_MAPPER_OUTPUT_EXAMPLE}
+
+## Empty-but-valid Fallback
+${SYSTEMS_MAPPER_EMPTY_EXAMPLE}
+
+## Rules
+${buildJsonOnlyRules([
+  'Return "nodes", "edges", and "loops" keys every time.',
+  'Use only the allowed node and edge type values shown in the schema.',
+  'Every edge source and target must reference an existing node ID.',
+  'Use an empty "loops" array when no valid loop is found.',
+])}`
 }
 
 export function buildVerifierPrompt(
@@ -380,14 +536,15 @@ export function buildVerifierPrompt(
   phaseSummaries: OraclePhaseSummary[],
   depthMode: OracleDepthMode = 'standard',
   evidence: OracleEvidence[] = [],
-  verificationTargets: string[] = [],
+  verificationTargets: string[] = []
 ): string {
   const cookbook = buildCookbookContext('verifier', 'Phase 1', depthMode)
   const prior = buildPriorContext(phaseSummaries)
   const evidenceContext = buildEvidenceContext(evidence)
-  const verificationContext = verificationTargets.length > 0
-    ? `\n## Verification Targets\n${verificationTargets.map((target) => `- ${sanitizeForPrompt(target, 160)}`).join('\n')}\n`
-    : ''
+  const verificationContext =
+    verificationTargets.length > 0
+      ? `\n## Verification Targets\n${verificationTargets.map((target) => `- ${sanitizeForPrompt(target, 160)}`).join('\n')}\n`
+      : ''
 
   const elevations = buildSystemElevationContext(['AXM-096'])
 
@@ -424,7 +581,20 @@ ${elevations}
     }
   ],
   "axiomGroundingPercent": 0.82
-}`
+}
+
+## Example Output
+${VERIFIER_OUTPUT_EXAMPLE}
+
+## Empty-but-valid Fallback
+${VERIFIER_EMPTY_EXAMPLE}
+
+## Rules
+${buildJsonOnlyRules([
+  'Return both "verifiedClaims" and "axiomGroundingPercent" keys every time.',
+  'If no claim confidence changes are justified, return an empty "verifiedClaims" array.',
+  'Keep "axiomGroundingPercent" numeric between 0 and 1.',
+])}`
 }
 
 // ----- Phase 2: Trend Scanning -----
@@ -432,7 +602,7 @@ ${elevations}
 export function buildScannerPrompt(
   scope: OracleScope,
   phaseSummaries: OraclePhaseSummary[],
-  depthMode: OracleDepthMode = 'standard',
+  depthMode: OracleDepthMode = 'standard'
 ): string {
   const cookbook = buildCookbookContext('scanner', 'Phase 2', depthMode)
   const prior = buildPriorContext(phaseSummaries)
@@ -475,7 +645,7 @@ ${cookbook}
 export function buildImpactAssessorPrompt(
   trendsSummary: string,
   phaseSummaries: OraclePhaseSummary[],
-  depthMode: OracleDepthMode = 'standard',
+  depthMode: OracleDepthMode = 'standard'
 ): string {
   const cookbook = buildCookbookContext('impact_assessor', 'Phase 2', depthMode)
   const prior = buildPriorContext(phaseSummaries)
@@ -519,7 +689,7 @@ export function buildWeakSignalHunterPrompt(
   scope: OracleScope,
   trendsSummary: string,
   phaseSummaries: OraclePhaseSummary[],
-  depthMode: OracleDepthMode = 'standard',
+  depthMode: OracleDepthMode = 'standard'
 ): string {
   const cookbook = buildCookbookContext('weak_signal_hunter', 'Phase 2', depthMode)
   const prior = buildPriorContext(phaseSummaries)
@@ -568,7 +738,7 @@ export function buildScenarioDeveloperPrompt(
   skeletonsSummary: string,
   phaseSummaries: OraclePhaseSummary[],
   humanGateFeedback?: string | null,
-  depthMode: OracleDepthMode = 'standard',
+  depthMode: OracleDepthMode = 'standard'
 ): string {
   const cookbook = buildCookbookContext('scenario_developer', 'Phase 3', depthMode)
   const prior = buildPriorContext(phaseSummaries)
@@ -630,7 +800,7 @@ export function buildEquilibriumAnalystPrompt(
   phaseSummaries: OraclePhaseSummary[],
   targetScenarioCount = 4,
   humanGateFeedback?: string | null,
-  depthMode: OracleDepthMode = 'standard',
+  depthMode: OracleDepthMode = 'standard'
 ): string {
   const cookbook = buildCookbookContext('equilibrium_analyst', 'Phase 3', depthMode)
   const prior = buildPriorContext(phaseSummaries)
@@ -676,7 +846,7 @@ export function buildRedTeamPrompt(
   scenariosSummary: string,
   phaseSummaries: OraclePhaseSummary[],
   humanGateFeedback?: string | null,
-  depthMode: OracleDepthMode = 'standard',
+  depthMode: OracleDepthMode = 'standard'
 ): string {
   const cookbook = buildCookbookContext('red_team', 'Phase 3', depthMode)
   const prior = buildPriorContext(phaseSummaries)
@@ -729,7 +899,7 @@ export function buildBackcastingPrompt(
   scenarios: string,
   phaseSummaries: OraclePhaseSummary[],
   humanGateFeedback?: string | null,
-  depthMode: OracleDepthMode = 'standard',
+  depthMode: OracleDepthMode = 'standard'
 ): string {
   const cookbook = buildCookbookContext('scenario_developer', 'Phase 3', depthMode)
   const prior = buildPriorContext(phaseSummaries)

@@ -6,7 +6,7 @@
  * For agent nodes, includes custom prompt override and agent preview.
  */
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Select, type SelectOption } from '@/components/Select'
 import { Button } from '@/components/ui/button'
 import type { AgentConfig, AgentId, JoinAggregationMode, WorkflowNodeType } from '@lifeos/agents'
@@ -79,6 +79,15 @@ export function NodePropertiesPanel({
     if (!node?.agentId) return null
     return agents.find((a) => a.agentId === node.agentId) ?? null
   }, [node?.agentId, agents])
+
+  // Pre-populate custom prompt with the agent's system prompt when agent changes
+  useEffect(() => {
+    if (selectedAgent?.systemPrompt) {
+      setCustomPrompt(selectedAgent.systemPrompt)
+    } else {
+      setCustomPrompt('')
+    }
+  }, [selectedAgent?.agentId])
 
   const outgoingEdges = useMemo(() => {
     if (!node) return []
@@ -213,17 +222,17 @@ export function NodePropertiesPanel({
                 <div className="npp-custom-prompt">
                   <label htmlFor="npp-custom-prompt">Custom Prompt Override</label>
                   <p className="npp-field-hint">
-                    Add a custom prompt to extend or override the agent&apos;s behavior for this
-                    workflow. This will create a new version of the agent.
+                    The agent&apos;s current system prompt is pre-loaded below. Edit it to create a
+                    customized version for this workflow node.
                   </p>
                   <textarea
                     id="npp-custom-prompt"
                     value={customPrompt}
                     onChange={(e) => setCustomPrompt(e.target.value)}
                     placeholder="Enter additional instructions or override the system prompt..."
-                    rows={4}
+                    rows={8}
                   />
-                  {customPrompt.trim() && (
+                  {customPrompt.trim() && customPrompt.trim() !== selectedAgent?.systemPrompt?.trim() && (
                     <div className="npp-create-version">
                       <Button onClick={handleCreateVersion} disabled={isCreatingVersion}>
                         {isCreatingVersion ? 'Creating...' : 'Create Agent Version'}

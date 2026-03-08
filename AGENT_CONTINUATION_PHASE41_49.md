@@ -306,6 +306,7 @@ export async function createTodosFromPlan(
 ```
 
 Implementation:
+
 1. Parse the structured plan output
 2. For each task in each milestone, call Firestore to create a todo with:
    - `title`: task title
@@ -342,10 +343,10 @@ This event fires after plan approval, triggering todo creation.
 
 ```typescript
 export interface BrandVoice {
-  tone: string           // e.g. "professional but conversational"
-  vocabulary: string[]   // preferred/avoided words
-  structure: string      // e.g. "short paragraphs, lots of headers"
-  examples: string[]     // sample sentences/paragraphs
+  tone: string // e.g. "professional but conversational"
+  vocabulary: string[] // preferred/avoided words
+  structure: string // e.g. "short paragraphs, lots of headers"
+  examples: string[] // sample sentences/paragraphs
 }
 ```
 
@@ -354,13 +355,14 @@ Add to a workflow-level config or as standalone user preference:
 ```typescript
 export interface ContentPipelineConfig {
   brandVoice?: BrandVoice
-  seoFirstMode?: boolean  // When true, run SEO Specialist before Writer
+  seoFirstMode?: boolean // When true, run SEO Specialist before Writer
 }
 ```
 
 **`apps/web-vite/src/agents/templatePresets.ts`** — Modify writer agent templates:
 
 1. Update `Thought Leadership Writer (Balanced)` system prompt: add a section for brand voice injection:
+
    ```
    {{#if brandVoice}}
    BRAND VOICE GUIDELINES:
@@ -370,6 +372,7 @@ export interface ContentPipelineConfig {
    Reference examples: {{brandVoice.examples}}
    {{/if}}
    ```
+
    Since we don't have a template engine, implement this as: if the workflow config includes `brandVoice`, the execution engine appends a "BRAND VOICE" section to the writer agent's system prompt at runtime.
 
 2. For SEO-first mode: Add a second workflow template `Content Pipeline (SEO-First)` with reversed order:
@@ -413,6 +416,7 @@ These complement the existing `LinkedIn Draft Writer (Balanced)`.
 Add new workflow template:
 
 **`Multi-Format Content Factory`** — type: `parallel`
+
 - **Stage 1** (sequential): `Content Strategist (Balanced)` → `Content Research Analyst (Balanced)` — produces strategy + research
 - **Stage 2** (parallel fan-out): Feed research into 4 parallel writers: `Blog Article Writer (Fast)`, `Newsletter Writer (Fast)`, `X Thread Writer (Fast)`, `LinkedIn Draft Writer (Balanced)`
 - **Stage 3** (join): Combine outputs into a multi-format document
@@ -451,6 +455,7 @@ export function classifyQueryType(query: string): QueryType
 ```
 
 Implementation: Use keyword heuristics (no LLM needed):
+
 - `factual`: starts with "what is", "when did", "how many", "who is", contains dates/numbers
 - `academic`: contains "study", "research", "paper", "peer-reviewed", "meta-analysis", "evidence"
 - `conceptual`: contains "why", "how does", "explain", "what causes", "relationship between"
@@ -467,6 +472,7 @@ export function getSearchStrategy(queryType: QueryType): {
 ```
 
 Routing rules:
+
 - `factual` → SERP primary, skip scholar/semantic
 - `academic` → Scholar primary, SERP secondary, Semantic optional
 - `conceptual` → Semantic primary, SERP secondary
@@ -532,6 +538,7 @@ export async function extractSubQuestions(
 ```
 
 Implementation:
+
 1. From gap analysis results and existing claims, identify unanswered sub-questions
 2. Use a fast model to generate 2-5 targeted follow-up queries
 3. Each sub-question should be more specific than the original query
@@ -550,6 +557,7 @@ export async function executeMultiHopSearch(
 ```
 
 Implementation:
+
 1. Extract sub-questions from gaps
 2. For each hop (up to `maxHops`):
    - Execute searches for sub-questions
@@ -600,6 +608,7 @@ export async function suggestNoteConnections(
 ```
 
 Implementation:
+
 1. Query the user's recent notes (last 50) from Firestore
 2. Use a fast model to compare the current note's key concepts against other notes
 3. Return suggested connections with reason and confidence strength (0-1)
@@ -619,7 +628,7 @@ export interface CalendarAnalysis {
   totalMeetingHours: number
   recurringMeetings: Array<{ title: string; frequency: string; totalHoursPerMonth: number }>
   meetingFreeBlocks: Array<{ day: string; startTime: string; duration: number }>
-  suggestions: string[]  // e.g. "Cancel or reduce 'Weekly Sync' — attended 12 times, average duration 45min"
+  suggestions: string[] // e.g. "Cancel or reduce 'Weekly Sync' — attended 12 times, average duration 45min"
 }
 
 export async function analyzeCalendarPatterns(
@@ -630,6 +639,7 @@ export async function analyzeCalendarPatterns(
 ```
 
 Implementation:
+
 1. Group events by recurrence pattern
 2. Calculate total meeting hours per week
 3. Identify focus blocks (meeting-free periods > 2 hours)
@@ -668,6 +678,7 @@ export interface CoachingContext {
 **`apps/web-vite/src/agents/templatePresets.ts`** — Update GTM coaching agent system prompts:
 
 1. `GTM Offer Coach (Balanced)` — Prepend to system prompt:
+
    ```
    {{#if coachingContext}}
    BUSINESS CONTEXT (from previous sessions):
@@ -677,12 +688,15 @@ export interface CoachingContext {
    Past decisions: {{coachingContext.pastDecisions}}
    {{/if}}
    ```
+
    (Same injection pattern as brand voice — append at runtime when available)
 
 2. `GTM Marketing Coach (Balanced)` — Add `serp_search` to `toolIds` so it can pull real competitor data:
+
    ```typescript
    toolIds: ['tool:serp_search', 'tool:query_firestore']
    ```
+
    Update system prompt to include: "Before making recommendations, use serp_search to research current competitor positioning and market trends."
 
 3. Add to the `GTM Marketing Coach (Balanced)` system prompt a structured output section for the weekly content calendar:
@@ -726,10 +740,12 @@ Apply when agent role is `'advisor'` or `'custom'` and coaching context exists i
 **`apps/web-vite/src/agents/templatePresets.ts`** — Update the `Structured Project Planning` workflow graph:
 
 1. Add a conditional edge from `quality_check` back to `improvement`:
+
    ```
    quality_check → end_node (if quality passes)
    quality_check → improvement (if quality fails, max 1 loop)
    ```
+
    Use `condition: { type: 'output_contains', value: 'NEEDS_REVISION' }` for the loop-back edge.
 
 2. Track refinement count: the `Plan Quality Reviewer (Thinking)` system prompt should include:
@@ -756,6 +772,7 @@ export async function getHistoricalCalibration(
 ```
 
 Implementation:
+
 1. Query completed todos from Firestore for the user (last 90 days)
 2. Calculate average actual hours per task (using `completedAt - createdAt`)
 3. Calculate completion rate (completed / total)
@@ -765,6 +782,7 @@ Implementation:
 **`apps/web-vite/src/agents/templatePresets.ts`** — Update `Time-Aware Planner (Balanced)` system prompt:
 
 Append:
+
 ```
 {{#if historicalCalibration}}
 HISTORICAL CALIBRATION DATA:
@@ -782,10 +800,7 @@ Use this data to adjust time estimates. If the user typically underestimates by 
 **`functions/src/agents/langgraph/utils.ts`** — Add historical calibration injection:
 
 ```typescript
-function injectHistoricalCalibration(
-  systemPrompt: string,
-  calibration?: HistoricalEstimate
-): string
+function injectHistoricalCalibration(systemPrompt: string, calibration?: HistoricalEstimate): string
 ```
 
 Apply when the agent template name contains "Time-Aware" or "Planner".
@@ -818,16 +833,16 @@ Apply when the agent template name contains "Time-Aware" or "Planner".
 
 ## Summary: Track I + J Phase Count
 
-| Phase | Focus | Key Deliverables |
-|-------|-------|-----------------|
-| 41 | Project Planning — Time-Aware + Quick Mode | Time-Aware Planner node in graph, Quick Project Plan template |
-| 42 | Project Planning — Structured Output + Todos | JSON plan output, `createTodosFromPlan()`, plan approved event |
-| 43 | Content — Brand Voice + SEO-First | `BrandVoice` type, runtime injection, SEO-First template |
-| 44 | Content — Multi-Format Output | 3 new writer agents, Multi-Format Content Factory graph workflow |
-| 45 | Research — Smart Search Router + Caching | `classifyQueryType()`, Firestore search cache, TTL management |
-| 46 | Research — Multi-Hop + Citation Scoring | `extractSubQuestions()`, `executeMultiHopSearch()`, max 2 hops |
-| 47 | Productivity — Knowledge Graph + Calendar | Note connection suggestions, dashed edges in graph view, `analyzeCalendarPatterns()` |
-| 48 | Marketing — Coaching Memory + Competitive Intel | `CoachingContext` type, runtime injection, `serp_search` on GTM agents |
-| 49 | Refinement — Loop + Historical Calibration | Quality check → improvement loop, `getHistoricalCalibration()`, estimate adjustment |
+| Phase | Focus                                           | Key Deliverables                                                                     |
+| ----- | ----------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 41    | Project Planning — Time-Aware + Quick Mode      | Time-Aware Planner node in graph, Quick Project Plan template                        |
+| 42    | Project Planning — Structured Output + Todos    | JSON plan output, `createTodosFromPlan()`, plan approved event                       |
+| 43    | Content — Brand Voice + SEO-First               | `BrandVoice` type, runtime injection, SEO-First template                             |
+| 44    | Content — Multi-Format Output                   | 3 new writer agents, Multi-Format Content Factory graph workflow                     |
+| 45    | Research — Smart Search Router + Caching        | `classifyQueryType()`, Firestore search cache, TTL management                        |
+| 46    | Research — Multi-Hop + Citation Scoring         | `extractSubQuestions()`, `executeMultiHopSearch()`, max 2 hops                       |
+| 47    | Productivity — Knowledge Graph + Calendar       | Note connection suggestions, dashed edges in graph view, `analyzeCalendarPatterns()` |
+| 48    | Marketing — Coaching Memory + Competitive Intel | `CoachingContext` type, runtime injection, `serp_search` on GTM agents               |
+| 49    | Refinement — Loop + Historical Calibration      | Quality check → improvement loop, `getHistoricalCalibration()`, estimate adjustment  |
 
 **Total: 9 phases** | Each ≤20 min agent coding time | Quality gate after every phase

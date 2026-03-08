@@ -128,7 +128,9 @@ function generateSuggestions(
   }
 
   if (focusBlocks.length === 0) {
-    suggestions.push('No focus blocks (>2 hours uninterrupted) found — consider blocking dedicated deep work time.')
+    suggestions.push(
+      'No focus blocks (>2 hours uninterrupted) found — consider blocking dedicated deep work time.'
+    )
   } else if (focusBlocks.length >= 3) {
     suggestions.push(
       `You have ${focusBlocks.length} focus blocks available — protect these for deep work.`

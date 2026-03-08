@@ -46,7 +46,7 @@ describe('calculateConceptualVelocity', () => {
         newContradictions: ['c1', 'c2'],
         resolvedContradictions: ['c1'],
       } as never,
-      [],
+      []
     )
 
     expect(velocity).toBeCloseTo(0.2458, 3)

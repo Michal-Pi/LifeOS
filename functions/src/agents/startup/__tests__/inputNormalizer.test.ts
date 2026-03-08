@@ -19,7 +19,8 @@ describe('startup input normalizer', () => {
         {
           name: 'market-brief.md',
           type: 'markdown',
-          content: 'Regional adoption is rising fastest in imaging workflows and back-office automation.',
+          content:
+            'Regional adoption is rising fastest in imaging workflows and back-office automation.',
         },
       ],
     })
@@ -35,20 +36,30 @@ describe('startup input normalizer', () => {
       'user_file:market-brief.md',
     ])
     expect(normalized.contentMap['user_note:n-1']).toContain('AI triage pilots')
-    expect(normalized.contentMap['user_file:market-brief.md']).toContain('Regional adoption is rising')
+    expect(normalized.contentMap['user_file:market-brief.md']).toContain(
+      'Regional adoption is rising'
+    )
     expect(normalized.warnings).toEqual([])
   })
 
   it('skips malformed or trivially short context items and records warnings', () => {
     const normalized = normalizeStartupInput('Investigate grid resilience', {
       attachedNotes: [
-        { noteId: 'good', title: 'Valid note', content: 'Transmission congestion is rising during peak summer demand windows.' },
+        {
+          noteId: 'good',
+          title: 'Valid note',
+          content: 'Transmission congestion is rising during peak summer demand windows.',
+        },
         { noteId: 'short', title: 'Short note', content: 'Too short' },
         { title: 'Malformed note', content: 'Missing noteId and should be ignored' },
       ],
       uploadedFiles: [
         { name: 'tiny.md', type: 'markdown', content: 'tiny' },
-        { name: 'valid.md', type: 'markdown', content: 'Battery storage reduces peak volatility when dispatch rules are stable.' },
+        {
+          name: 'valid.md',
+          type: 'markdown',
+          content: 'Battery storage reduces peak volatility when dispatch rules are stable.',
+        },
         { type: 'markdown', content: 'Missing file name should be ignored' },
       ],
     })
@@ -89,7 +100,7 @@ describe('startup planner schemas', () => {
         focusAreas: [],
         candidateTensions: [],
         retrievalIntent: { useKnowledgeGraph: true, useExternalResearch: true },
-      },
+      }
     )
 
     expect(parsed.canonicalGoal).toBe('Fallback goal')

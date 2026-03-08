@@ -18,12 +18,7 @@ describe('safeParseJson', () => {
 
   it('parses arrays with trailing commas inside markdown fences', () => {
     const parsed = safeParseJson<Array<{ id: string }>>(
-      '```json\n' +
-        '[\n' +
-        '  { "id": "A" },\n' +
-        '  { "id": "B" },\n' +
-        ']\n' +
-        '```'
+      '```json\n' + '[\n' + '  { "id": "A" },\n' + '  { "id": "B" },\n' + ']\n' + '```'
     )
 
     expect(parsed).toEqual([{ id: 'A' }, { id: 'B' }])

@@ -28,6 +28,7 @@ import { recordSpend, canAffordOperation, estimateLLMCost } from './budgetContro
 import { chunkDocument } from './sourceIngestion.js'
 import { createLogger } from '../../lib/logger.js'
 import { safeParseJson } from '../shared/jsonParser.js'
+import { CLAIM_EXTRACTION_EXAMPLE, BATCH_CLAIM_EXTRACTION_EXAMPLE } from '../shared/fewShotExamples.js'
 
 const log = createLogger('ClaimExtraction')
 
@@ -49,7 +50,10 @@ You are a precision claim extraction agent specializing in decomposing text into
 CRITICAL (restated): Output valid JSON only. No other text.`
 
 function sanitizeForPrompt(input: string, maxLength = 500): string {
-  return input.replace(/[{}\\"<>]/g, ' ').substring(0, maxLength).trim()
+  return input
+    .replace(/[{}\\"<>]/g, ' ')
+    .substring(0, maxLength)
+    .trim()
 }
 
 function buildExtractionUserPrompt(chunk: string, query: string): string {
@@ -72,7 +76,10 @@ Each claim object must contain:
 - confidence (number, 0.0-1.0): Based on the strength of evidence language. 1.0 = definitive ("X causes Y"), 0.5 = suggestive ("X may cause Y").
 - evidenceType (string): One of "empirical", "theoretical", "anecdotal", "expert_opinion", "meta_analysis", "statistical", "review".
 - sourceQuote (string, max 200 chars): The exact quote from the source text supporting this claim.
-- concepts (string[]): Key concept names this claim references.`
+- concepts (string[]): Key concept names this claim references.
+
+## Example Output
+${CLAIM_EXTRACTION_EXAMPLE}`
 }
 
 // ----- Types -----
@@ -97,7 +104,7 @@ export async function extractClaimsFromSource(
   query: string,
   executeProvider: ProviderExecuteFn,
   budget: RunBudget,
-  modelName?: string,
+  modelName?: string
 ): Promise<{ claims: ExtractedClaim[]; updatedBudget: RunBudget }> {
   let currentBudget = { ...budget }
   const chunks = chunkDocument(content, source.sourceId)
@@ -378,7 +385,10 @@ Each claim object must contain:
 - confidence (number, 0.0-1.0): Based on evidence strength. 1.0 = definitive, 0.5 = suggestive.
 - evidenceType (string): One of "empirical", "theoretical", "anecdotal", "expert_opinion", "meta_analysis", "statistical", "review".
 - sourceQuote (string, max 200 chars): Exact quote from the source text supporting this claim.
-- concepts (string[]): Key concept names this claim references.`
+- concepts (string[]): Key concept names this claim references.
+
+## Example Output
+${BATCH_CLAIM_EXTRACTION_EXAMPLE}`
 }
 
 interface RawBatchClaim extends RawExtractedClaim {
@@ -440,7 +450,7 @@ export async function extractClaimsFromSourceBatch(
   executeProvider: ProviderExecuteFn,
   budget: RunBudget,
   batchSize: number = 3,
-  modelName?: string,
+  modelName?: string
 ): Promise<{ claims: ExtractedClaim[]; updatedBudget: RunBudget }> {
   let currentBudget = { ...budget }
   const allClaims: ExtractedClaim[] = []

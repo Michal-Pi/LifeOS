@@ -20,7 +20,7 @@ export const ORACLE_PHASES = [
   'scenario_simulation', // Phase 3
 ] as const
 
-export type OraclePhase = typeof ORACLE_PHASES[number]
+export type OraclePhase = (typeof ORACLE_PHASES)[number]
 
 export type OracleDepthMode = 'quick' | 'standard' | 'deep'
 
@@ -74,6 +74,8 @@ export interface OracleEvidence {
   date: string
   timestamp?: number
   excerpt: string
+  enrichedExcerpt?: string // ~500-char LLM summary of full-page crawl content
+  crawlStatus?: 'skipped' | 'success' | 'failed'
   reliability: number // 0-1
   searchTool: 'serper' | 'exa' | 'firecrawl' | 'jina' | 'serp' | 'scholar' | 'semantic'
 }
@@ -333,6 +335,13 @@ export interface AxiomTechnique {
 
 // ----- Run Configuration -----
 
+export interface OracleCrawlEnrichmentConfig {
+  enabled: boolean // default true
+  maxUrlsToCrawl: number // default 6
+  maxContentChars: number // default 8000 per page
+  summarizeToChars: number // default 500
+}
+
 export interface OracleRunConfig {
   depthMode: OracleDepthMode
   maxBudgetUsd: number
@@ -342,6 +351,7 @@ export interface OracleRunConfig {
   scenarioCount: number // Target 3-5
   timeHorizon?: string
   geography?: string
+  crawlEnrichment?: OracleCrawlEnrichmentConfig
 }
 
 export function createDefaultOracleConfig(): OracleRunConfig {
@@ -352,5 +362,11 @@ export function createDefaultOracleConfig(): OracleRunConfig {
     maxCouncilSessions: 3,
     enableHumanGate: true,
     scenarioCount: 4,
+    crawlEnrichment: {
+      enabled: true,
+      maxUrlsToCrawl: 6,
+      maxContentChars: 8000,
+      summarizeToChars: 500,
+    },
   }
 }

@@ -28,7 +28,11 @@ import type { RunEventWriter } from '../runEvents.js'
 import type { SearchToolKeys } from '../providerKeys.js'
 import type { ToolRegistry } from '../toolExecutor.js'
 import { createFirestoreCheckpointer } from './firestoreCheckpointer.js'
-import { executeAgentWithEvents, handleAskUserInterrupt, type AgentExecutionContext } from './utils.js'
+import {
+  executeAgentWithEvents,
+  handleAskUserInterrupt,
+  type AgentExecutionContext,
+} from './utils.js'
 import { ParallelStateAnnotation, type ParallelState } from './stateAnnotations.js'
 import { agentFailedEvent, formatEventForLog } from './events.js'
 import { ErrorCodes } from '../shared/config.js'
@@ -90,13 +94,33 @@ function mergeOutputs(
   failedAgents: FailedAgent[],
   strategy: JoinAggregationMode = 'list'
 ): string {
-  const entries = Object.values(outputs)
+  const allEntries = Object.values(outputs)
+
+  // Filter out agents that returned empty output and log a warning
+  const emptyEntries = allEntries.filter((e) => !e.output || e.output.trim() === '')
+  if (emptyEntries.length > 0) {
+    log.warn('Parallel merge received empty outputs from agents', {
+      emptyAgents: emptyEntries.map((e) => e.agentName ?? e.agentId),
+      totalEntries: allEntries.length,
+    })
+  }
+  // Use substantive entries for merge; fall back to all if none have content
+  const entries =
+    allEntries.length > emptyEntries.length
+      ? allEntries.filter((e) => e.output && e.output.trim() !== '')
+      : allEntries
 
   // Include failure notices if any agents failed
   let failureNotice = ''
   if (failedAgents.length > 0) {
     const failureDetails = failedAgents.map((f) => `- **${f.agentName}**: ${f.error}`).join('\n')
     failureNotice = `\n\n---\n\n⚠️ **${failedAgents.length} agent(s) failed:**\n${failureDetails}`
+  }
+
+  // Include empty output notices
+  if (emptyEntries.length > 0 && entries.length > 0) {
+    const emptyNames = emptyEntries.map((e) => e.agentName ?? e.agentId).join(', ')
+    failureNotice += `\n\n---\n\n⚠️ **${emptyEntries.length} agent(s) returned empty output:** ${emptyNames}`
   }
 
   if (entries.length === 0) {
@@ -411,6 +435,7 @@ export function createParallelGraph(config: ParallelGraphConfig) {
           failedAgents,
           totalTokensUsed: totalTokens,
           totalEstimatedCost: totalCost,
+          resumeNodeHint: 'parallel_execution',
           ...interrupt,
         }
       }
@@ -529,9 +554,10 @@ export function createParallelGraph(config: ParallelGraphConfig) {
       mergedOutput,
       finalOutput: mergedOutput,
       status: finalStatus,
-      error: hasFailures && hasSuccesses
-        ? `Partial failure: ${state.failedAgents.length} agent(s) failed: ${state.failedAgents.map((a: FailedAgent) => a.agentName).join(', ')}`
-        : null,
+      error:
+        hasFailures && hasSuccesses
+          ? `Partial failure: ${state.failedAgents.length} agent(s) failed: ${state.failedAgents.map((a: FailedAgent) => a.agentName).join(', ')}`
+          : null,
     }
   })
 
@@ -555,7 +581,8 @@ export function createParallelGraph(config: ParallelGraphConfig) {
 export async function executeParallelWorkflowLangGraph(
   config: ParallelGraphConfig,
   goal: string,
-  context?: Record<string, unknown>
+  context?: Record<string, unknown>,
+  resumeState?: Partial<ParallelState>
 ): Promise<{
   output: string
   steps: AgentExecutionStep[]
@@ -566,13 +593,13 @@ export async function executeParallelWorkflowLangGraph(
   status: UnifiedWorkflowState['status']
   error?: string
   pendingInput?: { prompt: string; nodeId: string }
+  parallelResumeState?: Partial<ParallelState>
 }> {
   const { workflow, userId, runId } = config
 
   const compiledGraph = createParallelGraph(config)
 
-  // Initial state
-  const initialState: Partial<ParallelState> = {
+  const freshState: Partial<ParallelState> = {
     workflowId: workflow.workflowId,
     runId,
     userId,
@@ -587,7 +614,14 @@ export async function executeParallelWorkflowLangGraph(
     finalOutput: null,
     status: 'running',
     error: null,
+    pendingInput: null,
+    resumeNodeHint: null,
   }
+
+  // If resuming, merge previous state (parallel re-runs all agents)
+  const initialState: Partial<ParallelState> = resumeState
+    ? { ...freshState, ...resumeState, status: 'running', pendingInput: null }
+    : freshState
 
   // Execute the graph
   const finalState = await compiledGraph.invoke(initialState)
@@ -602,5 +636,17 @@ export async function executeParallelWorkflowLangGraph(
     status: finalState.status ?? 'completed',
     error: finalState.error ?? undefined,
     pendingInput: finalState.pendingInput ?? undefined,
+    parallelResumeState: {
+      agentOutputs: finalState.agentOutputs,
+      steps: finalState.steps,
+      failedAgents: finalState.failedAgents,
+      totalTokensUsed: finalState.totalTokensUsed,
+      totalEstimatedCost: finalState.totalEstimatedCost,
+      pendingInput: finalState.pendingInput,
+      resumeNodeHint: finalState.resumeNodeHint,
+      finalOutput: finalState.finalOutput,
+      status: finalState.status,
+      error: finalState.error,
+    },
   }
 }

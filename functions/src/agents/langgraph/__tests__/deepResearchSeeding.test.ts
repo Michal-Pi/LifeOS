@@ -12,10 +12,7 @@ describe('deep research context seeding progress', () => {
 
     expect(contextSeedingResult.claimsProcessedCount).toBe(5)
 
-    const accumulatedClaims = [
-      ...contextSeedingResult.extractedClaims,
-      ...newlyExtractedClaims,
-    ]
+    const accumulatedClaims = [...contextSeedingResult.extractedClaims, ...newlyExtractedClaims]
     const newClaimsForKG = accumulatedClaims.slice(contextSeedingResult.claimsProcessedCount)
 
     expect(accumulatedClaims).toHaveLength(8)

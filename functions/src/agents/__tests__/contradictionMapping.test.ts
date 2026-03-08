@@ -47,16 +47,10 @@ describe('runContradictionTrackers', () => {
   }
 
   it('uses KG claim IDs when agentClaimMapping is provided', () => {
-    const result = runContradictionTrackers(
-      theses,
-      negations,
-      ['LOGIC'],
-      context as never,
-      {
-        agent_systems: ['claim_123'],
-        agent_critical: ['claim_456'],
-      },
-    )
+    const result = runContradictionTrackers(theses, negations, ['LOGIC'], context as never, {
+      agent_systems: ['claim_123'],
+      agent_critical: ['claim_456'],
+    })
 
     expect(result.allContradictions).toHaveLength(1)
     expect(result.allContradictions[0]?.participatingClaims).toEqual(

@@ -5,7 +5,7 @@
  * Displays current activity, pending agents, token usage, and allows manual stopping.
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type { Run, WorkflowGraph } from '@lifeos/agents'
 import type { RunEvent } from '@/hooks/useRunEvents'
@@ -28,13 +28,16 @@ export function RunStatusIndicator({
     return events[events.length - 1]
   }, [events])
 
+  // Capture current time outside useMemo to satisfy react-hooks/purity
+  const [now] = useState(() => Date.now())
+
   // Determine current status message
   const statusMessage = useMemo(() => {
     if (run.status === 'queued') {
       const nextRetryAtMs = run.queueInfo?.nextRetryAtMs
       const retryLabel =
-        typeof nextRetryAtMs === 'number' && nextRetryAtMs > Date.now()
-          ? `retrying in ${Math.max(1, Math.ceil((nextRetryAtMs - Date.now()) / 60000))}m`
+        typeof nextRetryAtMs === 'number' && nextRetryAtMs > now
+          ? `retrying in ${Math.max(1, Math.ceil((nextRetryAtMs - now) / 60000))}m`
           : 'retry pending'
       return `⏳ Waiting for capacity - ${retryLabel}`
     }
@@ -134,7 +137,7 @@ export function RunStatusIndicator({
       ? `Step ${run.currentStep}/${run.totalSteps}`
       : `Step ${run.currentStep}`
     return `⚙️ ${progress}`
-  }, [run, latestEvent, events, workflowGraph])
+  }, [run, latestEvent, events, workflowGraph, now])
 
   // Calculate token usage and cost
   const { tokens, cost } = useMemo(() => {

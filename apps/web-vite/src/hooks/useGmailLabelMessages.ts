@@ -42,17 +42,14 @@ export function useGmailLabelMessages(): UseGmailLabelMessagesResult {
 
       try {
         const idToken = await user.getIdToken()
-        const response = await fetch(
-          `${import.meta.env.VITE_FUNCTIONS_URL}/mailboxFetchByLabel`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({ uid: user.uid, labelName, maxResults }),
-          }
-        )
+        const response = await fetch(`${import.meta.env.VITE_FUNCTIONS_URL}/mailboxFetchByLabel`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ uid: user.uid, labelName, maxResults }),
+        })
 
         if (!response.ok) {
           const err = await response.json()

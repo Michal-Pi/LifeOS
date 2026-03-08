@@ -20,7 +20,11 @@ describe('Phase 44 — Multi-Format Content Factory', () => {
       { id: 'blog_writer', type: 'agent', agentTemplateName: 'Blog Article Writer (Fast)' },
       { id: 'newsletter_writer', type: 'agent', agentTemplateName: 'Newsletter Writer (Fast)' },
       { id: 'x_thread_writer', type: 'agent', agentTemplateName: 'X Thread Writer (Fast)' },
-      { id: 'linkedin_writer', type: 'agent', agentTemplateName: 'LinkedIn Draft Writer (Balanced)' },
+      {
+        id: 'linkedin_writer',
+        type: 'agent',
+        agentTemplateName: 'LinkedIn Draft Writer (Balanced)',
+      },
       { id: 'join_outputs', type: 'join', aggregationMode: 'concatenate' as JoinAggregationMode },
       { id: 'end_node', type: 'end' },
     ],
@@ -53,7 +57,12 @@ describe('Phase 44 — Multi-Format Content Factory', () => {
     const joinEdges = graph.edges.filter((e) => e.to === 'join_outputs')
     expect(joinEdges).toHaveLength(4)
     const sources = joinEdges.map((e) => e.from).sort()
-    expect(sources).toEqual(['blog_writer', 'linkedin_writer', 'newsletter_writer', 'x_thread_writer'])
+    expect(sources).toEqual([
+      'blog_writer',
+      'linkedin_writer',
+      'newsletter_writer',
+      'x_thread_writer',
+    ])
   })
 
   it('join node uses concatenate aggregation mode', () => {
@@ -63,10 +72,7 @@ describe('Phase 44 — Multi-Format Content Factory', () => {
 
   it('all writer agents use fast-tier models (cost-sensitive parallel)', () => {
     const fastWriters = graph.nodes.filter(
-      (n) =>
-        n.type === 'agent' &&
-        n.agentTemplateName &&
-        n.agentTemplateName.includes('(Fast)')
+      (n) => n.type === 'agent' && n.agentTemplateName && n.agentTemplateName.includes('(Fast)')
     )
     // Blog, Newsletter, X Thread are all (Fast)
     expect(fastWriters).toHaveLength(3)

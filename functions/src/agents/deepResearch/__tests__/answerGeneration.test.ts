@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type {
-  DialecticalSessionId,
-  ExtractedClaim,
-  RunBudget,
-  SourceRecord,
-} from '@lifeos/agents'
+import type { DialecticalSessionId, ExtractedClaim, RunBudget, SourceRecord } from '@lifeos/agents'
 
 vi.mock('firebase-admin/firestore', () => ({
   getFirestore: vi.fn(() => mockDb),
@@ -80,13 +75,7 @@ describe('answer generation quality markers', () => {
   })
 
   it('includes single-source markers in the KG summary used for answer generation', async () => {
-    await mapClaimsToKG(
-      [makeClaim()],
-      [makeSource('src-1')],
-      kg,
-      SESSION_ID,
-      'user-1',
-    )
+    await mapClaimsToKG([makeClaim()], [makeSource('src-1')], kg, SESSION_ID, 'user-1')
 
     let capturedPrompt = ''
     await generateAnswer(
@@ -104,20 +93,14 @@ describe('answer generation quality markers', () => {
           knowledgeGraphSummary: { resolvedCount: 0 },
         })
       },
-      makeBudget(),
+      makeBudget()
     )
 
     expect(capturedPrompt).toContain('[single-source]')
   })
 
   it('appends a traceability warning when answer claims do not match KG claims', async () => {
-    await mapClaimsToKG(
-      [makeClaim()],
-      [makeSource('src-1')],
-      kg,
-      SESSION_ID,
-      'user-1',
-    )
+    await mapClaimsToKG([makeClaim()], [makeSource('src-1')], kg, SESSION_ID, 'user-1')
 
     const { answer } = await generateAnswer(
       kg,
@@ -139,7 +122,7 @@ describe('answer generation quality markers', () => {
           citations: [],
           knowledgeGraphSummary: { resolvedCount: 0 },
         }),
-      makeBudget(),
+      makeBudget()
     )
 
     expect(answer.directAnswer).toContain(

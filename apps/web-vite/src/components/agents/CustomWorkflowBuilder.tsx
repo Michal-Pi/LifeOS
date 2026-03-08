@@ -21,6 +21,7 @@ import type { Node, Edge, Connection, OnNodeDrag, OnSelectionChangeFunc } from '
 import '@xyflow/react/dist/style.css'
 import { useTheme } from '@/contexts/useTheme'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/Modal'
 import type {
   AgentConfig,
   AgentId,
@@ -103,6 +104,10 @@ function BuilderCanvas({
 
   // Panel state for node properties (slide-in panel replaces modal)
   const [showPropertiesPanel, setShowPropertiesPanel] = useState(false)
+
+  // Prompt editor modal state
+  const [promptModalNodeId, setPromptModalNodeId] = useState<string | null>(null)
+  const [promptModalValue, setPromptModalValue] = useState('')
 
   // Track locally created agents (versions created during this session)
   const [localAgents, setLocalAgents] = useState<AgentConfig[]>([])
@@ -284,14 +289,76 @@ function BuilderCanvas({
     [dispatch]
   )
 
-  // Inline prompt update: opens properties panel with the node selected
-  const handleUpdatePrompt = useCallback(
-    (nodeId: string, _prompt: string) => {
-      dispatch({ type: 'SELECT_NODE', nodeId })
-      setShowPropertiesPanel(true)
+  // Open the prompt editor modal for a node
+  const handleOpenPromptModal = useCallback(
+    (nodeId: string) => {
+      const node = state.nodes.find((n: BuilderNode) => n.id === nodeId)
+      if (!node?.agentId) return
+      const agent = allAgents.find((a) => a.agentId === node.agentId)
+      if (!agent) return
+      setPromptModalNodeId(nodeId)
+      setPromptModalValue(agent.systemPrompt ?? '')
     },
-    [dispatch]
+    [state.nodes, allAgents]
   )
+
+  // Handle creating a versioned copy of an agent with custom prompt
+  const handleCreateAgentVersion = useCallback(
+    async (baseAgent: AgentConfig, customPrompt: string): Promise<AgentConfig | null> => {
+      if (!onCreateAgent) return null
+
+      const newName = getNextVersionName(baseAgent.name, allAgents)
+      const combinedPrompt = customPrompt.trim().startsWith('REPLACE:')
+        ? customPrompt.replace(/^REPLACE:\s*/, '')
+        : `${baseAgent.systemPrompt}\n\n--- Custom Instructions ---\n${customPrompt}`
+
+      const input: CreateAgentInput = {
+        name: newName,
+        role: baseAgent.role,
+        systemPrompt: combinedPrompt,
+        modelProvider: baseAgent.modelProvider,
+        modelName: baseAgent.modelName,
+        temperature: baseAgent.temperature,
+        maxTokens: baseAgent.maxTokens,
+        toolIds: baseAgent.toolIds,
+        description:
+          `${baseAgent.description ?? ''} (Workflow version of ${baseAgent.name})`.trim(),
+      }
+
+      try {
+        const newAgent = await onCreateAgent(input)
+        setLocalAgents((prev) => [...prev, newAgent])
+        return newAgent
+      } catch (err) {
+        console.error('Failed to create agent version:', err)
+        return null
+      }
+    },
+    [onCreateAgent, allAgents]
+  )
+
+  // Save prompt from the modal (creates a new agent version)
+  const handleSavePromptModal = useCallback(() => {
+    if (!promptModalNodeId) return
+    const node = state.nodes.find((n: BuilderNode) => n.id === promptModalNodeId)
+    if (!node?.agentId) return
+    const agent = allAgents.find((a) => a.agentId === node.agentId)
+    if (!agent) return
+
+    if (promptModalValue.trim() !== agent.systemPrompt?.trim()) {
+      void handleCreateAgentVersion(agent, `REPLACE: ${promptModalValue}`).then((newAgent) => {
+        if (newAgent) {
+          dispatch({
+            type: 'UPDATE_NODE',
+            nodeId: node.id,
+            updates: { agentId: newAgent.agentId as AgentId, label: newAgent.name },
+          })
+        }
+      })
+    }
+    setPromptModalNodeId(null)
+    setPromptModalValue('')
+  }, [promptModalNodeId, promptModalValue, state.nodes, allAgents, handleCreateAgentVersion, dispatch])
 
   // Multi-select: sync ReactFlow selection back to reducer
   const handleSelectionChange: OnSelectionChangeFunc = useCallback(
@@ -394,7 +461,7 @@ function BuilderCanvas({
           onAddAfter: handleAddNodeAfter,
           onToggleBypass: handleToggleBypass,
           onToggleMute: handleToggleMute,
-          onUpdatePrompt: handleUpdatePrompt,
+          onOpenPromptModal: handleOpenPromptModal,
           canDelete,
         },
         width: WORKFLOW_LAYOUT.node.width,
@@ -456,7 +523,7 @@ function BuilderCanvas({
     handleAddNodeAfter,
     handleToggleBypass,
     handleToggleMute,
-    handleUpdatePrompt,
+    handleOpenPromptModal,
     agentMap,
     nodeCosts,
   ])
@@ -493,41 +560,6 @@ function BuilderCanvas({
       })
     },
     [state.edges, dispatch]
-  )
-
-  // Handle creating a versioned copy of an agent with custom prompt
-  const handleCreateAgentVersion = useCallback(
-    async (baseAgent: AgentConfig, customPrompt: string): Promise<AgentConfig | null> => {
-      if (!onCreateAgent) return null
-
-      const newName = getNextVersionName(baseAgent.name, allAgents)
-      const combinedPrompt = customPrompt.trim().startsWith('REPLACE:')
-        ? customPrompt.replace(/^REPLACE:\s*/, '')
-        : `${baseAgent.systemPrompt}\n\n--- Custom Instructions ---\n${customPrompt}`
-
-      const input: CreateAgentInput = {
-        name: newName,
-        role: baseAgent.role,
-        systemPrompt: combinedPrompt,
-        modelProvider: baseAgent.modelProvider,
-        modelName: baseAgent.modelName,
-        temperature: baseAgent.temperature,
-        maxTokens: baseAgent.maxTokens,
-        toolIds: baseAgent.toolIds,
-        description:
-          `${baseAgent.description ?? ''} (Workflow version of ${baseAgent.name})`.trim(),
-      }
-
-      try {
-        const newAgent = await onCreateAgent(input)
-        setLocalAgents((prev) => [...prev, newAgent])
-        return newAgent
-      } catch (err) {
-        console.error('Failed to create agent version:', err)
-        return null
-      }
-    },
-    [onCreateAgent, allAgents]
   )
 
   return (
@@ -685,6 +717,45 @@ function BuilderCanvas({
           onCreateAgentVersion={handleCreateAgentVersion}
         />
       </div>
+
+      {/* Prompt Editor Modal */}
+      <Modal
+        open={promptModalNodeId !== null}
+        onClose={() => {
+          setPromptModalNodeId(null)
+          setPromptModalValue('')
+        }}
+        size="lg"
+        title="Edit System Prompt"
+        subtitle={
+          promptModalNodeId
+            ? (state.nodes.find((n: BuilderNode) => n.id === promptModalNodeId)?.label ??
+              undefined)
+            : undefined
+        }
+        className="prompt-editor-modal"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setPromptModalNodeId(null)
+                setPromptModalValue('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSavePromptModal}>Save &amp; Create Version</Button>
+          </>
+        }
+      >
+        <textarea
+          className="prompt-editor-modal__textarea"
+          value={promptModalValue}
+          onChange={(e) => setPromptModalValue(e.target.value)}
+          placeholder="Enter system prompt..."
+        />
+      </Modal>
     </div>
   )
 }

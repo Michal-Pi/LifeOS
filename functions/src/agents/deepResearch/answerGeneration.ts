@@ -25,6 +25,8 @@ import type { KnowledgeHypergraph } from '../knowledgeHypergraph.js'
 import { recordSpend, canAffordOperation, estimateLLMCost } from './budgetController.js'
 import type { ProviderExecuteFn } from './claimExtraction.js'
 import { createLogger } from '../../lib/logger.js'
+import { ANSWER_GENERATION_EXAMPLE } from '../shared/fewShotExamples.js'
+import { safeParseJson } from '../shared/jsonParser.js'
 
 const log = createLogger('AnswerGeneration')
 
@@ -123,7 +125,10 @@ CRITICAL CITATION RULES:
     "contradictionCount": 0,
     "resolvedCount": 0
   }
-}`
+}
+
+## Example Output (adapt structure; do NOT reuse example content)
+${ANSWER_GENERATION_EXAMPLE}`
 }
 
 // ----- Main Generation -----
@@ -409,10 +414,7 @@ function formatCounterclaimResults(counterclaims: CounterclaimResult[]): string 
   return lines.join('\n')
 }
 
-function formatDialecticalContext(
-  theses?: ThesisOutput[],
-  negations?: NegationOutput[]
-): string {
+function formatDialecticalContext(theses?: ThesisOutput[], negations?: NegationOutput[]): string {
   if ((!theses || theses.length === 0) && (!negations || negations.length === 0)) return ''
 
   const lines = ['## Dialectical Reasoning (Thesis-Antithesis Analysis)']
@@ -495,11 +497,11 @@ function formatGraphStructure(graph?: CompactGraph | null): string {
   lines.push('')
 
   // Show key relationships — the causal and contradiction structure
-  const causalEdges = graph.edges.filter(e => e.rel === 'causes')
-  const contradictEdges = graph.edges.filter(e => e.rel === 'contradicts')
-  const supportEdges = graph.edges.filter(e => e.rel === 'supports')
+  const causalEdges = graph.edges.filter((e) => e.rel === 'causes')
+  const contradictEdges = graph.edges.filter((e) => e.rel === 'contradicts')
+  const supportEdges = graph.edges.filter((e) => e.rel === 'supports')
 
-  const nodeMap = new Map(graph.nodes.map(n => [n.id, n]))
+  const nodeMap = new Map(graph.nodes.map((n) => [n.id, n]))
 
   if (causalEdges.length > 0) {
     lines.push('### Causal Chains')
@@ -540,7 +542,7 @@ function formatGraphStructure(graph?: CompactGraph | null): string {
   }
 
   // List nodes with source attribution for traceability
-  const sourcedNodes = graph.nodes.filter(n => n.sourceUrl)
+  const sourcedNodes = graph.nodes.filter((n) => n.sourceUrl)
   if (sourcedNodes.length > 0) {
     lines.push('### Source Attribution Map')
     for (const n of sourcedNodes.slice(0, 30)) {
@@ -559,9 +561,7 @@ function formatRawSourceContext(
   if (sources.length === 0) return ''
 
   const lines = ['## Raw Source Evidence (quick mode — no KG available)']
-  lines.push(
-    `${sources.length} source(s) were fetched. Use these directly as evidence.\n`
-  )
+  lines.push(`${sources.length} source(s) were fetched. Use these directly as evidence.\n`)
 
   for (const source of sources.slice(0, 15)) {
     const content = contentMap[source.sourceId] ?? ''
@@ -584,16 +584,11 @@ function formatRawSourceContext(
 
 // ----- Parsing -----
 
-function parseAnswerResult(
-  output: string,
-  kg: KnowledgeHypergraph,
-): DeepResearchAnswer {
-  const jsonMatch = output.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) {
+function parseAnswerResult(output: string, kg: KnowledgeHypergraph): DeepResearchAnswer {
+  const parsed = safeParseJson<Record<string, unknown>>(output)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error('Answer output did not contain JSON')
   }
-
-  const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>
   if (typeof parsed.directAnswer !== 'string' || parsed.directAnswer.trim().length === 0) {
     throw new Error('Answer output did not contain a directAnswer')
   }
@@ -605,9 +600,10 @@ function parseAnswerResult(
     kg,
     parsed.directAnswer,
     supportingClaims,
-    counterclaims,
+    counterclaims
   )
-  const traceabilityWarning = 'Note: Some claims in this analysis could not be traced to indexed sources.'
+  const traceabilityWarning =
+    'Note: Some claims in this analysis could not be traced to indexed sources.'
 
   return {
     directAnswer: `${parsed.directAnswer}${hasUntraceableClaims ? `\n\n${traceabilityWarning}` : ''}`,
@@ -707,21 +703,26 @@ function getClaimTextsFromKg(kg: KnowledgeHypergraph): string[] {
 }
 
 function getSingleSourceClaimTexts(kg: KnowledgeHypergraph): string[] {
-  return kg.getNodesByType('claim')
-    .filter((node) => kg.getOutEdges(node.id).filter((edge) => edge.data.type === 'sourced_from').length < 2)
+  return kg
+    .getNodesByType('claim')
+    .filter(
+      (node) =>
+        kg.getOutEdges(node.id).filter((edge) => edge.data.type === 'sourced_from').length < 2
+    )
     .map((node) => normalizeText(getNodeText(node)))
 }
 
 function markSingleSourceClaims(
   kg: KnowledgeHypergraph,
-  claims: DeepResearchAnswer['supportingClaims'],
+  claims: DeepResearchAnswer['supportingClaims']
 ): DeepResearchAnswer['supportingClaims'] {
   const singleSourceClaims = getSingleSourceClaimTexts(kg)
 
   return claims.map((claim) => {
     const normalized = normalizeText(claim.claimText)
-    const isSingleSource = singleSourceClaims.some((kgClaim) =>
-      kgClaim === normalized || kgClaim.includes(normalized) || normalized.includes(kgClaim)
+    const isSingleSource = singleSourceClaims.some(
+      (kgClaim) =>
+        kgClaim === normalized || kgClaim.includes(normalized) || normalized.includes(kgClaim)
     )
 
     if (!isSingleSource || claim.claimText.includes('[single-source]')) {
@@ -739,10 +740,9 @@ function hasMatchingKgClaim(claimText: string, normalizedKgClaims: string[]): bo
   const normalized = normalizeText(claimText)
   if (!normalized) return true
 
-  return normalizedKgClaims.some((kgClaim) =>
-    kgClaim === normalized ||
-    kgClaim.includes(normalized) ||
-    normalized.includes(kgClaim)
+  return normalizedKgClaims.some(
+    (kgClaim) =>
+      kgClaim === normalized || kgClaim.includes(normalized) || normalized.includes(kgClaim)
   )
 }
 
@@ -750,12 +750,14 @@ function hasUntraceableAnswerClaims(
   kg: KnowledgeHypergraph,
   directAnswer: string,
   supportingClaims: DeepResearchAnswer['supportingClaims'],
-  counterclaims: DeepResearchAnswer['counterclaims'],
+  counterclaims: DeepResearchAnswer['counterclaims']
 ): boolean {
   const normalizedKgClaims = getClaimTextsFromKg(kg)
   if (normalizedKgClaims.length === 0) return false
 
-  const directAnswerClaimRefs = Array.from(directAnswer.matchAll(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g))
+  const directAnswerClaimRefs = Array.from(
+    directAnswer.matchAll(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g)
+  )
     .map((match) => match[1]?.trim() ?? '')
     .filter(Boolean)
 

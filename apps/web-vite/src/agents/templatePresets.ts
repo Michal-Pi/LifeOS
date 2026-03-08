@@ -1,10 +1,5 @@
-import type {
-  AgentConfig,
-  TemplateParameter,
-  Workflow,
-  WorkflowGraph,
-  WorkflowNode,
-} from '@lifeos/agents'
+import type { AgentConfig, TemplateParameter, Workflow, WorkflowGraph, WorkflowNode } from '@lifeos/agents'
+import { LENS_MODEL_PRESETS } from '@lifeos/agents'
 
 type AgentTemplatePresetConfig = Omit<
   AgentConfig,
@@ -48,6 +43,8 @@ export type WorkflowTemplatePreset = {
   /** Template parameters — {{variable}} placeholders resolved at run time */
   parameters?: Record<string, TemplateParameter>
 }
+
+const ECONOMIC_LENS_MODEL_PRESET = LENS_MODEL_PRESETS.economic
 
 export const agentTemplatePresets: AgentTemplatePreset[] = [
   {
@@ -507,7 +504,8 @@ Each must include the primary keyword, be 50-60 characters, and be compelling en
   // ── Phase 44: Multi-Format Writers ──
   {
     name: 'Blog Article Writer (Fast)',
-    description: 'Writes long-form blog articles (1000-2000 words) with headers, intro, body, and conclusion.',
+    description:
+      'Writes long-form blog articles (1000-2000 words) with headers, intro, body, and conclusion.',
     agentConfig: {
       name: 'Blog Article Writer (Fast)',
       role: 'writer',
@@ -3042,21 +3040,21 @@ Target length: 1200-2000 words. Use markdown formatting for structure.`,
   // ── Dialectical Reasoning Agents ──
 
   {
-    name: 'Dialectical Economic Thesis Agent (Anthropic)',
+    name: 'Dialectical Economic Thesis Agent (OpenAI)',
     description:
-      'Generates economic thesis with research-first approach. Searches for current data before forming thesis.',
+      'Generates economic thesis with research-first discipline and concise compact-graph synthesis.',
     agentConfig: {
-      name: 'Dialectical Economic Thesis Agent (Anthropic)',
+      name: 'Dialectical Economic Thesis Agent (OpenAI)',
       role: 'thesis_generator',
       systemPrompt: `You are an ECONOMIC THESIS GENERATOR in a Hegelian dialectical reasoning system.
 
 ## CRITICAL: RESEARCH-FIRST PROTOCOL
 Before generating ANY thesis, you MUST:
-1. Use serp_search to find the latest data, news, and analysis related to the topic
-2. Use semantic_search for deeper conceptual research on the subject
-3. If you find relevant URLs with key data, use read_url to extract the details
+1. Use serp_search as the primary tool for current data, market signals, and relevant sources
+2. Use semantic_search selectively for conceptual expansion or opposing economic framings
+3. Use read_url only when a specific URL is necessary to extract one high-value data point or caveat
 
-You MUST call at least 2 search tools before generating your thesis. Do NOT rely on prior knowledge alone — ground your thesis in current, verifiable information.
+Ground your thesis in current, verifiable information, but do not keep researching once you have enough evidence to build the graph. If tool budget is nearly exhausted, stop researching and compress your findings into the exact compact-graph schema.
 
 ## YOUR ANALYTICAL LENS: ECONOMIC
 Analyze from an economic perspective focusing on:
@@ -3066,28 +3064,22 @@ Analyze from an economic perspective focusing on:
 - Resource allocation and scarcity
 - Game theory and strategic interactions
 
-## THESIS OUTPUT FORMAT
-After completing research, produce a structured thesis with:
+## OUTPUT RULES
+- After completing research, output ONLY a valid JSON object — no markdown, no preamble, no explanation.
+- The exact JSON schema will be provided in the task prompt. Follow it precisely.
+- Ground every claim in the evidence you gathered. Flag where evidence is thin or contradictory.
+- Keep labels concise and under schema limits. Put numbers, thresholds, and caveats in "note" or "reasoning", not labels.
+- Do not include long quotations or evidence summaries verbatim.
+- Do not wrap the graph in outer keys like "thesis", "analysis", or "structuredThesis".
+- Use "note" fields for caveats. Use "reasoning" for qualitative insights the graph cannot capture.
 
-### Research Findings
-Summarize the key facts and data points discovered through your searches. Cite sources with URLs.
-
-### Structured Thesis
-1. **Concept Graph**: Key concepts and their causal/correlational relationships (as a list of "A -> B: relationship" entries)
-2. **Causal Model**: Specific cause-effect chains grounded in your research
-3. **Falsification Criteria**: What evidence would disprove this thesis
-4. **Decision Implications**: What actions/decisions follow from this analysis
-5. **Unit of Analysis**: The primary entity or system under examination
-6. **Temporal Grain**: Time horizon (immediate / short_term / medium_term / long_term / historical)
-7. **Regime Assumptions**: Environmental conditions under which this thesis holds true
-8. **Confidence**: Your confidence level (0.0 to 1.0), informed by evidence quality
-
-Ground every claim in the evidence you gathered. Flag where evidence is thin or contradictory.`,
-      modelProvider: 'anthropic',
-      modelName: 'claude-sonnet-4-6',
+## VALID OUTPUT EXAMPLE
+{"nodes":[{"id":"n1","label":"AI lowers software build costs","type":"claim","note":"Falsified if dev cost per shipped feature stays flat through 2027"}],"edges":[],"summary":"AI compresses build-cost moats","reasoning":"Economic pressure shifts advantage toward distribution, data, and embedded workflows.","confidence":0.72,"regime":"Holds if capable coding agents remain widely accessible","temporalGrain":"years"}`,
+      modelProvider: ECONOMIC_LENS_MODEL_PRESET.provider,
+      modelName: ECONOMIC_LENS_MODEL_PRESET.modelName,
       temperature: 0.6,
       maxTokens: 4000,
-      description: 'Economic thesis agent with research-first protocol.',
+      description: 'Economic thesis agent with research-first protocol and compact graph output.',
       toolIds: ['tool:serp_search', 'tool:semantic_search', 'tool:read_url'],
     },
   },
@@ -3117,23 +3109,11 @@ Analyze from a systems thinking perspective focusing on:
 - Delays, accumulations, and stock-flow relationships
 - Leverage points and system archetypes
 
-## THESIS OUTPUT FORMAT
-After completing research, produce a structured thesis with:
-
-### Research Findings
-Summarize the key facts and data points discovered through your searches. Cite sources with URLs.
-
-### Structured Thesis
-1. **Concept Graph**: Key concepts and their feedback loop / emergent property relationships (as a list of "A -> B: relationship" entries)
-2. **Causal Model**: System dynamics, feedback loops, and cascading effects
-3. **Falsification Criteria**: What evidence would disprove this thesis
-4. **Decision Implications**: What leverage points and interventions follow
-5. **Unit of Analysis**: The system boundary under examination
-6. **Temporal Grain**: Time horizon (immediate / short_term / medium_term / long_term / historical)
-7. **Regime Assumptions**: System conditions under which this thesis holds
-8. **Confidence**: Your confidence level (0.0 to 1.0), informed by evidence quality
-
-Map feedback loops explicitly. Identify delays and non-linearities. Ground every claim in evidence.`,
+## OUTPUT RULES
+- After completing research, output ONLY a valid JSON object — no markdown, no preamble, no explanation.
+- The exact JSON schema will be provided in the task prompt. Follow it precisely.
+- Map feedback loops explicitly. Identify delays and non-linearities.
+- Ground every claim in evidence. Use "note" fields for caveats and "reasoning" for qualitative insights.`,
       modelProvider: 'openai',
       modelName: 'gpt-5.2',
       temperature: 0.6,
@@ -3168,23 +3148,11 @@ Analyze from an adversarial/red team perspective focusing on:
 - How the proposed approach could fail or be gamed
 - Robustness under adversarial conditions
 
-## THESIS OUTPUT FORMAT
-After completing research, produce a structured thesis with:
-
-### Research Findings (FOCUS ON RISKS AND FAILURES)
-Summarize counter-evidence, failure cases, criticisms, and risks found through research. Cite sources with URLs.
-
-### Structured Thesis
-1. **Concept Graph**: Key vulnerabilities, failure modes, and attack surfaces (as a list of "A -> B: relationship" entries)
-2. **Causal Model**: How failure cascades and unintended consequences propagate
-3. **Falsification Criteria**: What would prove the mainstream view correct despite your thesis
-4. **Decision Implications**: What protective actions or contingency plans follow
-5. **Unit of Analysis**: The weakest link or most vulnerable component
-6. **Temporal Grain**: Time horizon (immediate / short_term / medium_term / long_term / historical)
-7. **Regime Assumptions**: Conditions under which failures are most likely
-8. **Confidence**: Your confidence level (0.0 to 1.0), informed by evidence quality
-
-Be constructively adversarial. Every attack must suggest what it reveals about the system.`,
+## OUTPUT RULES
+- After completing research, output ONLY a valid JSON object — no markdown, no preamble, no explanation.
+- The exact JSON schema will be provided in the task prompt. Follow it precisely.
+- Be constructively adversarial. Every attack must suggest what it reveals about the system.
+- Ground every claim in evidence. Use "note" fields for caveats and "reasoning" for qualitative insights.`,
       modelProvider: 'google',
       modelName: 'gemini-2.5-pro',
       temperature: 0.7,
@@ -3442,7 +3410,8 @@ Output valid JSON only. No markdown fences.`,
       modelName: 'gpt-5-mini',
       temperature: 0.4,
       maxTokens: 2000,
-      description: 'Structures analytical questions into testable hypotheses with data requirements.',
+      description:
+        'Structures analytical questions into testable hypotheses with data requirements.',
       toolIds: ['tool:query_firestore', 'tool:calculate'],
     },
   },
@@ -3531,7 +3500,8 @@ Output valid JSON only. No markdown fences.`,
       modelName: 'claude-sonnet-4-6',
       temperature: 0.5,
       maxTokens: 2000,
-      description: 'Behavioral/demographic/value network segmentation with actionable recommendations.',
+      description:
+        'Behavioral/demographic/value network segmentation with actionable recommendations.',
       toolIds: ['tool:query_firestore', 'tool:list_calendar_events'],
     },
   },
@@ -3657,7 +3627,8 @@ Output a competitive content analysis with actionable differentiation opportunit
   },
   {
     name: 'LinkedIn Final Polish (Fast)',
-    description: 'Final editing pass for LinkedIn content — grammar, tone, and platform optimization.',
+    description:
+      'Final editing pass for LinkedIn content — grammar, tone, and platform optimization.',
     agentConfig: {
       name: 'LinkedIn Final Polish (Fast)',
       role: 'custom',
@@ -3685,7 +3656,7 @@ Output a competitive content analysis with actionable differentiation opportunit
   },
   {
     name: 'Morning Calendar Checker (Fast)',
-    description: 'Reviews today\'s calendar and summarizes upcoming commitments.',
+    description: "Reviews today's calendar and summarizes upcoming commitments.",
     agentConfig: {
       name: 'Morning Calendar Checker (Fast)',
       role: 'custom',
@@ -3708,7 +3679,7 @@ Be brief and action-oriented. Use bullet points. Flag anything urgent.`,
   },
   {
     name: 'Morning Meeting Prep (Fast)',
-    description: 'Prepares brief summaries and talking points for today\'s meetings.',
+    description: "Prepares brief summaries and talking points for today's meetings.",
     agentConfig: {
       name: 'Morning Meeting Prep (Fast)',
       role: 'custom',
@@ -3848,7 +3819,7 @@ Use a traffic-light system (green/yellow/red) for status. Be concise and honest 
   },
   {
     name: 'Weekly Reflection Prompter (Fast)',
-    description: 'Generates personalized reflection prompts based on the week\'s data.',
+    description: "Generates personalized reflection prompts based on the week's data.",
     agentConfig: {
       name: 'Weekly Reflection Prompter (Fast)',
       role: 'custom',
@@ -4027,8 +3998,7 @@ Focus on content that builds authority and drives inbound interest.`,
   },
   {
     name: 'Oracle Verifier (Balanced)',
-    description:
-      'Runs Chain-of-Verification on claims and checks axiom grounding percentage.',
+    description: 'Runs Chain-of-Verification on claims and checks axiom grounding percentage.',
     agentConfig: {
       name: 'Oracle Verifier (Balanced)',
       role: 'verifier',
@@ -4061,8 +4031,7 @@ Focus on content that builds authority and drives inbound interest.`,
   },
   {
     name: 'Oracle Impact Assessor (Balanced)',
-    description:
-      'Builds cross-impact matrix showing how trends and uncertainties interact.',
+    description: 'Builds cross-impact matrix showing how trends and uncertainties interact.',
     agentConfig: {
       name: 'Oracle Impact Assessor (Balanced)',
       role: 'impact_assessor',
@@ -4078,13 +4047,12 @@ Focus on content that builds authority and drives inbound interest.`,
   },
   {
     name: 'Oracle Weak Signal Hunter (Fast)',
-    description:
-      'Searches for contrarian and weak signals that mainstream analysis misses.',
+    description: 'Searches for contrarian and weak signals that mainstream analysis misses.',
     agentConfig: {
       name: 'Oracle Weak Signal Hunter (Fast)',
       role: 'weak_signal_hunter',
       systemPrompt:
-        'You are an Oracle Weak Signal Hunter. Your job is to find what others miss: (1) Search for contrarian signals and minority viewpoints. (2) Look for anomalies in data that don\'t fit dominant narratives. (3) Check adjacent domains for parallel patterns. (4) Apply anti-availability search (T09): seek historical, statistical, cross-domain, and disconfirming evidence. (5) For each signal: assess novelty, potential impact, and confidence. Output structured JSON: weak signals with evidence and impact assessment.',
+        "You are an Oracle Weak Signal Hunter. Your job is to find what others miss: (1) Search for contrarian signals and minority viewpoints. (2) Look for anomalies in data that don't fit dominant narratives. (3) Check adjacent domains for parallel patterns. (4) Apply anti-availability search (T09): seek historical, statistical, cross-domain, and disconfirming evidence. (5) For each signal: assess novelty, potential impact, and confidence. Output structured JSON: weak signals with evidence and impact assessment.",
       modelProvider: 'xai',
       modelName: 'grok-4-1-fast-non-reasoning',
       temperature: 0.6,
@@ -4112,8 +4080,7 @@ Focus on content that builds authority and drives inbound interest.`,
   },
   {
     name: 'Oracle Equilibrium Analyst (Balanced)',
-    description:
-      'Scores scenario skeletons for consistency, plausibility, and divergence.',
+    description: 'Scores scenario skeletons for consistency, plausibility, and divergence.',
     agentConfig: {
       name: 'Oracle Equilibrium Analyst (Balanced)',
       role: 'equilibrium_analyst',
@@ -4179,7 +4146,8 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
     parameters: {
       question: {
         name: 'question',
-        description: 'The strategic question to explore (e.g., "How will AI regulation evolve in Europe by 2030?")',
+        description:
+          'The strategic question to explore (e.g., "How will AI regulation evolve in Europe by 2030?")',
         type: 'string',
         required: true,
       },
@@ -4211,7 +4179,7 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
   {
     name: 'Dialectical Reasoning',
     description:
-      'Hegelian dialectical analysis with research-first thesis generation. 3 heterogeneous models (Anthropic, OpenAI, Google) independently research and generate competing theses from economic, systems, and adversarial lenses. Full 6-phase cycle: context retrieval, thesis generation with live web search, cross-negation, contradiction crystallization, sublation with typed rewrite operators, and meta-reflection with iterative loops.',
+      'Hegelian dialectical analysis with research-first thesis generation. Three lens-specific agents independently research and generate competing theses from economic, systems, and adversarial perspectives. Full 6-phase cycle: context retrieval, thesis generation with live web search, cross-negation, contradiction crystallization, sublation with typed rewrite operators, and meta-reflection with iterative loops.',
     category: 'analysis',
     icon: 'RESEARCH',
     tags: ['dialectical', 'hegel', 'multi-model', 'reasoning', 'research-first', 'analysis'],
@@ -4224,7 +4192,7 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
       'Contradiction tracking',
     ],
     agentTemplateNames: [
-      'Dialectical Economic Thesis Agent (Anthropic)',
+      'Dialectical Economic Thesis Agent (OpenAI)',
       'Dialectical Systems Thesis Agent (OpenAI)',
       'Dialectical Adversarial Thesis Agent (Google)',
       'Dialectical Synthesis Agent (Thinking)',
@@ -4271,7 +4239,7 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
       'Deep Research Claim Extractor (Fast)',
       'Deep Research Gap Analyst (Fast)',
       'Deep Research Answer Generator (Strong)',
-      'Dialectical Economic Thesis Agent (Anthropic)',
+      'Dialectical Economic Thesis Agent (OpenAI)',
       'Dialectical Systems Thesis Agent (OpenAI)',
       'Dialectical Adversarial Thesis Agent (Google)',
       'Dialectical Synthesis Agent (Thinking)',
@@ -5233,7 +5201,12 @@ export const workflowTemplatePresets: WorkflowTemplatePreset[] = [
     category: 'content',
     icon: 'PLAN',
     tags: ['linkedin', 'content', 'social-media', 'sequential'],
-    featureBadges: ['Topic research', 'Competitive analysis', 'Algorithm-optimized', 'Expert critique'],
+    featureBadges: [
+      'Topic research',
+      'Competitive analysis',
+      'Algorithm-optimized',
+      'Expert critique',
+    ],
     agentTemplateNames: [
       'LinkedIn Content Researcher (Fast)',
       'LinkedIn Competitor Analyst (Fast)',

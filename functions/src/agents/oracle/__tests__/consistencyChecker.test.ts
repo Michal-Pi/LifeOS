@@ -642,10 +642,7 @@ describe('Consistency Checker', () => {
         }),
       ]
       const assumptions = [makeAssumption({ id: 'ASM-001' })]
-      const evidence = [
-        makeEvidence({ id: 'EVD-001' }),
-        makeEvidence({ id: 'EVD-002' }),
-      ]
+      const evidence = [makeEvidence({ id: 'EVD-001' }), makeEvidence({ id: 'EVD-002' })]
 
       const flags = runTier1Checks(claims, assumptions, emptyGraph(), evidence)
       expect(flags.length).toBe(0)
@@ -829,17 +826,13 @@ describe('Consistency Checker', () => {
     })
 
     it('subtracts 0.05 for each warning flag', () => {
-      const flags = [
-        makeFlag({ severity: 'warning' }),
-      ]
+      const flags = [makeFlag({ severity: 'warning' })]
 
       expect(computeHealthScore(flags)).toBe(0.95)
     })
 
     it('subtracts 0.01 for each info flag', () => {
-      const flags = [
-        makeFlag({ severity: 'info' }),
-      ]
+      const flags = [makeFlag({ severity: 'info' })]
 
       expect(computeHealthScore(flags)).toBe(0.99)
     })
@@ -875,17 +868,13 @@ describe('Consistency Checker', () => {
     })
 
     it('counts flags where llmConfirmed is true', () => {
-      const flags = [
-        makeFlag({ severity: 'critical', llmConfirmed: true }),
-      ]
+      const flags = [makeFlag({ severity: 'critical', llmConfirmed: true })]
 
       expect(computeHealthScore(flags)).toBe(0.85)
     })
 
     it('counts flags where llmConfirmed is undefined (Tier 2 not run)', () => {
-      const flags = [
-        makeFlag({ severity: 'critical', llmConfirmed: undefined }),
-      ]
+      const flags = [makeFlag({ severity: 'critical', llmConfirmed: undefined })]
 
       // undefined !== false, so the flag still counts
       expect(computeHealthScore(flags)).toBe(0.85)
@@ -893,9 +882,9 @@ describe('Consistency Checker', () => {
 
     it('mixes confirmed and unconfirmed flags correctly', () => {
       const flags = [
-        makeFlag({ severity: 'critical', llmConfirmed: true }),  // counts: -0.15
+        makeFlag({ severity: 'critical', llmConfirmed: true }), // counts: -0.15
         makeFlag({ severity: 'critical', id: 'CF-002', llmConfirmed: false }), // skipped
-        makeFlag({ severity: 'warning', id: 'CF-003' }),         // counts: -0.05
+        makeFlag({ severity: 'warning', id: 'CF-003' }), // counts: -0.05
       ]
 
       // 1.0 - 0.15 - 0.05 = 0.80
@@ -903,9 +892,7 @@ describe('Consistency Checker', () => {
     })
 
     it('normalizes penalties for larger graphs', () => {
-      const flags = [
-        makeFlag({ severity: 'critical' }),
-      ]
+      const flags = [makeFlag({ severity: 'critical' })]
 
       // Without normalization: 1.0 - 0.15 = 0.85
       const scoreSmall = computeHealthScore(flags)
@@ -984,9 +971,24 @@ describe('Consistency Checker', () => {
 
     it('correctly aggregates a complex mix of flags', () => {
       const flags = [
-        makeFlag({ id: 'CF-001', severity: 'critical', type: 'circular_dependency', llmConfirmed: true }),
-        makeFlag({ id: 'CF-002', severity: 'critical', type: 'graph_contradiction', llmConfirmed: false }),
-        makeFlag({ id: 'CF-003', severity: 'warning', type: 'axiom_violation', llmConfirmed: true }),
+        makeFlag({
+          id: 'CF-001',
+          severity: 'critical',
+          type: 'circular_dependency',
+          llmConfirmed: true,
+        }),
+        makeFlag({
+          id: 'CF-002',
+          severity: 'critical',
+          type: 'graph_contradiction',
+          llmConfirmed: false,
+        }),
+        makeFlag({
+          id: 'CF-003',
+          severity: 'warning',
+          type: 'axiom_violation',
+          llmConfirmed: true,
+        }),
         makeFlag({ id: 'CF-004', severity: 'warning', type: 'invalid_reference' }),
         makeFlag({ id: 'CF-005', severity: 'info', type: 'orphan_claim' }),
       ]
@@ -1003,9 +1005,7 @@ describe('Consistency Checker', () => {
     })
 
     it('passes totalItems to health score normalization', () => {
-      const flags = [
-        makeFlag({ id: 'CF-001', severity: 'critical' }),
-      ]
+      const flags = [makeFlag({ id: 'CF-001', severity: 'critical' })]
 
       const reportSmall = buildConsistencyReport(flags)
       const reportLarge = buildConsistencyReport(flags, 200)
@@ -1022,7 +1022,11 @@ describe('Consistency Checker', () => {
   describe('buildBatchedTier2Prompt', () => {
     it('includes all flags in the prompt', () => {
       const flags = [
-        makeFlag({ id: 'CF-001', type: 'graph_contradiction', message: 'Contradiction between N1 and N2' }),
+        makeFlag({
+          id: 'CF-001',
+          type: 'graph_contradiction',
+          message: 'Contradiction between N1 and N2',
+        }),
         makeFlag({ id: 'CF-002', type: 'orphan_claim', message: 'Orphan claim CLM-005' }),
       ]
       const claims = [makeClaim({ id: 'CLM-001' })]
@@ -1038,9 +1042,7 @@ describe('Consistency Checker', () => {
     })
 
     it('includes relevant claim text for affected IDs', () => {
-      const flags = [
-        makeFlag({ id: 'CF-001', affectedIds: ['CLM-001'] }),
-      ]
+      const flags = [makeFlag({ id: 'CF-001', affectedIds: ['CLM-001'] })]
       const claims = [makeClaim({ id: 'CLM-001', text: 'AI will transform diagnostics' })]
 
       const prompt = buildBatchedTier2Prompt(flags, claims)

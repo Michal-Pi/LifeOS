@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { updateTodoToolConfig, deleteTodoToolConfig, memoryRecallToolConfig, generateChartToolConfig, codeInterpreterToolConfig, webhookCallToolConfig } from '@lifeos/agents'
+import {
+  updateTodoToolConfig,
+  deleteTodoToolConfig,
+  memoryRecallToolConfig,
+  generateChartToolConfig,
+  codeInterpreterToolConfig,
+  webhookCallToolConfig,
+} from '@lifeos/agents'
 
 describe('Tool Definitions (Phases 31-34)', () => {
   describe('update_todo (Phase 31)', () => {

@@ -241,7 +241,8 @@ export async function executeWithGrok(
             content:
               'IMPORTANT: You are at your tool-calling budget limit. ' +
               'You MUST synthesize your findings into a complete response NOW. ' +
-              'Do NOT make additional tool calls. Provide your best output with what you have gathered.',
+              'Do NOT make additional tool calls. ' +
+              'Your response MUST follow the exact output format specified in your system instructions — if you were asked to output JSON, output ONLY valid JSON with no preamble or markdown.',
           })
         }
 
@@ -263,16 +264,58 @@ export async function executeWithGrok(
       }
     }
 
-    if (iteration >= MAX_ITERATIONS && !finalOutput) {
-      log.warn('Agent reached max iterations with tool calls', { maxIterations: MAX_ITERATIONS })
-      const lastContent = messages[messages.length - 1]?.content?.toString() ?? ''
-      if (!lastContent || lastContent.startsWith('{') || lastContent.startsWith('[')) {
-        finalOutput =
-          `[PARTIAL RESULT - iteration budget exhausted after ${iteration} tool calls]\n\n` +
-          `The agent gathered research data but could not complete synthesis. ` +
-          `Consider increasing the iteration budget for tool-heavy agents.`
+    // Detect empty output: either budget exhausted or agent returned empty within budget
+    const hadToolCalls = iteration > 1 || messages.some((m) => m.role === 'tool')
+    if (!finalOutput && hadToolCalls) {
+      if (iteration >= MAX_ITERATIONS) {
+        log.warn('Agent reached max iterations with tool calls', { maxIterations: MAX_ITERATIONS })
       } else {
-        finalOutput = lastContent
+        log.warn('Agent returned empty output after tool calls within budget', {
+          iteration,
+          maxIterations: MAX_ITERATIONS,
+        })
+      }
+
+      // One final attempt: ask the model to synthesize from gathered data
+      try {
+        messages.push({
+          role: 'user',
+          content:
+            'You have exhausted your tool-calling budget. ' +
+            'Synthesize ALL findings from your research into a final response NOW. ' +
+            'Do NOT make additional tool calls. ' +
+            'Your response MUST follow the exact output format specified in your system instructions — if you were asked to output JSON, output ONLY valid JSON with no preamble or markdown.',
+        })
+        const synthResponse = await executeWithTimeout(
+          client.chat.completions.create({
+            model: modelName,
+            messages,
+            temperature: agent.temperature ?? 0.7,
+            max_tokens: agent.maxTokens ?? 2048,
+          }),
+          TIMEOUTS.PROVIDER,
+          'xai.chat.completions.create.synthesis'
+        )
+        finalOutput = synthResponse.choices[0]?.message?.content ?? ''
+        if (finalOutput) {
+          totalInputTokens += synthResponse.usage?.prompt_tokens ?? 0
+          totalOutputTokens += synthResponse.usage?.completion_tokens ?? 0
+          log.info('Post-loop synthesis succeeded', { outputLength: finalOutput.length })
+        }
+      } catch (error) {
+        log.warn('Post-loop synthesis failed', { error: (error as Error).message })
+      }
+
+      if (!finalOutput) {
+        const lastContent = messages[messages.length - 2]?.content?.toString() ?? ''
+        if (!lastContent || lastContent.startsWith('{') || lastContent.startsWith('[')) {
+          finalOutput =
+            `[PARTIAL RESULT - iteration budget exhausted after ${iteration} tool calls]\n\n` +
+            `The agent gathered research data but could not complete synthesis. ` +
+            `Consider increasing the iteration budget for tool-heavy agents.`
+        } else {
+          finalOutput = lastContent
+        }
       }
       if (toolContext) {
         await recordMessage({

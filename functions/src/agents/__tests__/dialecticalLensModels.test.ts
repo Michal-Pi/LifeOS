@@ -4,7 +4,17 @@ import type { ThesisLens } from '@lifeos/agents'
 
 describe('LENS_MODEL_PRESETS (Phase 26)', () => {
   it('has presets for all 9 lens types', () => {
-    const lenses: ThesisLens[] = ['economic', 'systems', 'adversarial', 'behavioral', 'historical', 'technical', 'political', 'ecological', 'custom']
+    const lenses: ThesisLens[] = [
+      'economic',
+      'systems',
+      'adversarial',
+      'behavioral',
+      'historical',
+      'technical',
+      'political',
+      'ecological',
+      'custom',
+    ]
     for (const lens of lenses) {
       expect(LENS_MODEL_PRESETS[lens]).toBeDefined()
       expect(LENS_MODEL_PRESETS[lens].provider).toBeTruthy()
@@ -13,7 +23,7 @@ describe('LENS_MODEL_PRESETS (Phase 26)', () => {
   })
 
   it('uses different providers for diversity', () => {
-    const providers = new Set(Object.values(LENS_MODEL_PRESETS).map(p => p.provider))
+    const providers = new Set(Object.values(LENS_MODEL_PRESETS).map((p) => p.provider))
     expect(providers.size).toBeGreaterThanOrEqual(3) // at least 3 different providers
   })
 

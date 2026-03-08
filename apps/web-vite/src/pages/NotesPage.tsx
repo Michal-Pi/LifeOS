@@ -9,7 +9,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { NoteEditor } from '@/components/editor'
 import { ProjectSidebar } from '@/components/notes/ProjectSidebar'
 import { NoteTitleEditor } from '@/components/notes/NoteTitleEditor'
@@ -32,6 +32,7 @@ export function NotesPage() {
   // Initialize cache hook (refreshes cache on mount and user changes)
   useNoteMetadataCache()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const {
     notes,
     currentNote,
@@ -60,6 +61,26 @@ export function NotesPage() {
   const [showImportModal, setShowImportModal] = useState(false)
   const overflowRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Handle ?noteId= query param from external navigation (e.g. workflow "View" toast)
+  const noteIdParam = searchParams.get('noteId')
+  useEffect(() => {
+    if (!noteIdParam) return
+    // Refresh from IndexedDB so newly-created notes appear, then select
+    listNotes()
+      .then((refreshed) => {
+        const target = refreshed.find((n) => n.noteId === noteIdParam)
+        if (target) {
+          setSelectedNoteId(noteIdParam)
+          setCurrentNote(target)
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load note from query param:', error)
+      })
+    // Clear the param so it doesn't re-trigger on every render
+    setSearchParams({}, { replace: true })
+  }, [noteIdParam]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (lastSyncMs) {

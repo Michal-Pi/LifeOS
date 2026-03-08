@@ -70,9 +70,7 @@ describe('starter graph helpers', () => {
       }),
     ])
 
-    expect(graph.edges).toContainEqual(
-      expect.objectContaining({ rel: 'contradicts' }),
-    )
+    expect(graph.edges).toContainEqual(expect.objectContaining({ rel: 'contradicts' }))
   })
 
   it('caps starter graph nodes deterministically', () => {
@@ -106,7 +104,7 @@ describe('starter graph helpers', () => {
 
     const linkedIds = linkEvidenceIdsForClaim(
       'Regulatory approval delays slow AI deployment in hospitals.',
-      evidence,
+      evidence
     )
     const graph = buildStarterOracleGraphFromClaims([
       makeOracleClaim({
@@ -125,9 +123,7 @@ describe('starter graph helpers', () => {
     expect(graph.nodes).toHaveLength(2)
     expect(graph.nodes[0]?.type).toBe('constraint')
     expect(graph.edges).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ type: 'depends_on' }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ type: 'depends_on' })])
     )
   })
 })

@@ -60,7 +60,15 @@ describe('Phase 41 — Project Planning Modes', () => {
     // Mirrors the Project Plan Builder template graph
     const fullModeGraph = {
       startNodeId: 'planner',
-      nodes: ['planner', 'time_check', 'evaluator', 'gap_researcher', 'improvement', 'quality_review', 'end_node'],
+      nodes: [
+        'planner',
+        'time_check',
+        'evaluator',
+        'gap_researcher',
+        'improvement',
+        'quality_review',
+        'end_node',
+      ],
       edges: [
         { from: 'planner', to: 'time_check' },
         { from: 'time_check', to: 'evaluator' },
@@ -85,9 +93,7 @@ describe('Phase 41 — Project Planning Modes', () => {
     })
 
     it('has no direct planner → evaluator edge', () => {
-      const direct = fullModeGraph.edges.find(
-        (e) => e.from === 'planner' && e.to === 'evaluator'
-      )
+      const direct = fullModeGraph.edges.find((e) => e.from === 'planner' && e.to === 'evaluator')
       expect(direct).toBeUndefined()
     })
 

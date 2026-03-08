@@ -53,7 +53,11 @@ function makeExhaustedBudget(): RunBudget {
   }
 }
 
-function makeGraph(opts?: { lowConfidence?: boolean; withContradicts?: boolean; thin?: boolean }): CompactGraph {
+function makeGraph(opts?: {
+  lowConfidence?: boolean
+  withContradicts?: boolean
+  thin?: boolean
+}): CompactGraph {
   const nodes: CompactGraph['nodes'] = [
     { id: 'n1', label: 'Claim about economics', type: 'claim' },
     { id: 'n2', label: 'Claim about technology', type: 'claim' },
@@ -73,7 +77,7 @@ function makeGraph(opts?: { lowConfidence?: boolean; withContradicts?: boolean; 
     nodes.push(
       { id: 'n4', label: 'Isolated A', type: 'concept' },
       { id: 'n5', label: 'Isolated B', type: 'concept' },
-      { id: 'n6', label: 'Isolated C', type: 'concept' },
+      { id: 'n6', label: 'Isolated C', type: 'concept' }
     )
   }
 
@@ -103,11 +107,16 @@ function makeHighSeverityContradiction(): ContradictionOutput {
 describe('evaluateResearchNeed', () => {
   describe('pre_cycle phase', () => {
     it('returns targeted research when focusAreas present', () => {
-      const result = evaluateResearchNeed(makeGraph(), 'test goal', {
-        cycleNumber: 2,
-        budget: makeHealthyBudget(),
-        focusAreas: ['economic impact'],
-      }, 'pre_cycle')
+      const result = evaluateResearchNeed(
+        makeGraph(),
+        'test goal',
+        {
+          cycleNumber: 2,
+          budget: makeHealthyBudget(),
+          focusAreas: ['economic impact'],
+        },
+        'pre_cycle'
+      )
       expect(result.needsResearch).toBe(true)
       expect(result.researchIntensity).toBe('targeted')
     })
@@ -132,20 +141,30 @@ describe('evaluateResearchNeed', () => {
     })
 
     it('returns no research when budget exhausted', () => {
-      const result = evaluateResearchNeed(makeGraph(), 'test', {
-        cycleNumber: 2,
-        budget: makeExhaustedBudget(),
-      }, 'pre_cycle')
+      const result = evaluateResearchNeed(
+        makeGraph(),
+        'test',
+        {
+          cycleNumber: 2,
+          budget: makeExhaustedBudget(),
+        },
+        'pre_cycle'
+      )
       expect(result.needsResearch).toBe(false)
       expect(result.researchIntensity).toBe('none')
     })
 
     it('returns targeted even when base analysis returns full', () => {
       // Cycle 1 with no graph would normally return 'full'
-      const result = evaluateResearchNeed(null, 'new exploratory topic', {
-        cycleNumber: 1,
-        budget: makeHealthyBudget(),
-      }, 'pre_cycle')
+      const result = evaluateResearchNeed(
+        null,
+        'new exploratory topic',
+        {
+          cycleNumber: 1,
+          budget: makeHealthyBudget(),
+        },
+        'pre_cycle'
+      )
       expect(result.researchIntensity).toBe('targeted')
     })
   })
@@ -186,10 +205,15 @@ describe('evaluateResearchNeed', () => {
         temporalGrain: 'medium-term',
         reasoning: '',
       }
-      const result = evaluateResearchNeed(wellCovered, 'test', {
-        cycleNumber: 2,
-        budget: makeHealthyBudget(),
-      }, 'post_synthesis')
+      const result = evaluateResearchNeed(
+        wellCovered,
+        'test',
+        {
+          cycleNumber: 2,
+          budget: makeHealthyBudget(),
+        },
+        'post_synthesis'
+      )
       expect(result.needsResearch).toBe(false)
     })
 
@@ -210,16 +234,26 @@ describe('evaluateResearchNeed', () => {
 
   it('never returns full intensity from non-Phase-1 research', () => {
     // Even with null graph (initial exploration), should cap at targeted/verification
-    const preCycle = evaluateResearchNeed(null, 'test', {
-      cycleNumber: 1,
-      budget: makeHealthyBudget(),
-    }, 'pre_cycle')
+    const preCycle = evaluateResearchNeed(
+      null,
+      'test',
+      {
+        cycleNumber: 1,
+        budget: makeHealthyBudget(),
+      },
+      'pre_cycle'
+    )
     expect(preCycle.researchIntensity).not.toBe('full')
 
-    const postSynthesis = evaluateResearchNeed(null, 'test', {
-      cycleNumber: 1,
-      budget: makeHealthyBudget(),
-    }, 'post_synthesis')
+    const postSynthesis = evaluateResearchNeed(
+      null,
+      'test',
+      {
+        cycleNumber: 1,
+        budget: makeHealthyBudget(),
+      },
+      'post_synthesis'
+    )
     expect(postSynthesis.researchIntensity).not.toBe('full')
   })
 })

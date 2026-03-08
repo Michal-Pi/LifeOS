@@ -36,7 +36,11 @@ import { randomUUID } from 'crypto'
 import jsonLogic from 'json-logic-js'
 import { createLogger } from '../../lib/logger.js'
 import { createFirestoreCheckpointer } from './firestoreCheckpointer.js'
-import { executeAgentWithEvents, handleAskUserInterrupt, type AgentExecutionContext } from './utils.js'
+import {
+  executeAgentWithEvents,
+  handleAskUserInterrupt,
+  type AgentExecutionContext,
+} from './utils.js'
 import { parseStructuredPlan, createTodosFromPlan } from '../planToTodos.js'
 
 const log = createLogger('GenericGraph')
@@ -185,6 +189,17 @@ export const GenericGraphStateAnnotation = Annotation.Root({
 
 export type GenericGraphState = typeof GenericGraphStateAnnotation.State
 
+function determineGenericStartNode(
+  state: Partial<GenericGraphState>,
+  defaultStartNodeId: string
+): string {
+  const nextNodeId = state.nextNodeId
+  if (typeof nextNodeId === 'string' && nextNodeId.length > 0) {
+    return nextNodeId
+  }
+  return defaultStartNodeId
+}
+
 /**
  * Evaluate an edge condition
  */
@@ -238,11 +253,24 @@ function aggregateJoinOutputs(
   entries: JoinBufferEntry[],
   mode: string = 'list'
 ): Record<string, unknown> | JoinBufferEntry[] {
+  // Filter out agents that returned empty output and log a warning
+  const emptyEntries = entries.filter((e) => !e.output || e.output.trim() === '')
+  if (emptyEntries.length > 0) {
+    log.warn('Join received empty outputs from agents', {
+      emptyAgents: emptyEntries.map((e) => e.agentName ?? e.agentId ?? 'unknown'),
+      totalEntries: entries.length,
+    })
+  }
+  // Use only entries with substantive output for aggregation
+  const substantiveEntries = entries.filter((e) => e.output && e.output.trim() !== '')
+
   if (mode === 'list') {
-    return entries
+    return substantiveEntries.length > 0 ? substantiveEntries : entries
   }
 
-  const sorted = [...entries].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+  const sorted = [...(substantiveEntries.length > 0 ? substantiveEntries : entries)].sort(
+    (a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)
+  )
 
   if (mode === 'ranked') {
     return { experts: sorted }
@@ -381,9 +409,8 @@ export function createGenericGraph(config: GenericGraphConfig) {
               limitValue: effectiveLimit,
               unit: 'visits',
               nodeId: node.id,
-              partialOutput: typeof state.lastOutput === 'string'
-                ? state.lastOutput.slice(0, 2000)
-                : undefined,
+              partialOutput:
+                typeof state.lastOutput === 'string' ? state.lastOutput.slice(0, 2000) : undefined,
               suggestedIncrease: effectiveLimit * 2,
             },
             pendingInput: {
@@ -416,9 +443,8 @@ export function createGenericGraph(config: GenericGraphConfig) {
               limitValue: effectiveBudget,
               unit: 'USD',
               nodeId: node.id,
-              partialOutput: typeof state.lastOutput === 'string'
-                ? state.lastOutput.slice(0, 2000)
-                : undefined,
+              partialOutput:
+                typeof state.lastOutput === 'string' ? state.lastOutput.slice(0, 2000) : undefined,
               suggestedIncrease: effectiveBudget * 2,
             },
             pendingInput: {
@@ -554,9 +580,10 @@ export function createGenericGraph(config: GenericGraphConfig) {
           // Fork distributes the current output to all downstream branches.
           // Each branch runs serially (LangGraph StateGraph doesn't support
           // true parallel branching). Branches converge at a join node.
-          const forkOutput = typeof state.lastOutput === 'string'
-            ? state.lastOutput
-            : JSON.stringify(state.lastOutput ?? '')
+          const forkOutput =
+            typeof state.lastOutput === 'string'
+              ? state.lastOutput
+              : JSON.stringify(state.lastOutput ?? '')
 
           return {
             ...baseUpdate,
@@ -854,7 +881,9 @@ export function createGenericGraph(config: GenericGraphConfig) {
 
   // Add edges with conditional routing
   // Note: Type assertions needed because LangGraph's strict typing requires compile-time node names
-  graph.addEdge(START, graphDef.startNodeId as typeof START)
+  graph.addConditionalEdges(START, (state: GenericGraphState) =>
+    determineGenericStartNode(state, graphDef.startNodeId)
+  )
 
   for (const node of graphDef.nodes) {
     if (node.type === 'end') {
@@ -888,8 +917,7 @@ export function createGenericGraph(config: GenericGraphConfig) {
 
   // Auto-enable checkpointing when constraints are configured (so paused state is recoverable)
   const shouldCheckpoint =
-    config.enableCheckpointing ??
-    (workflow.maxBudget !== undefined || maxNodeVisits < Infinity)
+    config.enableCheckpointing ?? (workflow.maxBudget !== undefined || maxNodeVisits < Infinity)
 
   if (shouldCheckpoint) {
     const checkpointer = createFirestoreCheckpointer(userId, workflow.workflowId, runId)
@@ -905,7 +933,8 @@ export function createGenericGraph(config: GenericGraphConfig) {
 export async function executeGenericGraphWorkflowLangGraph(
   config: GenericGraphConfig,
   goal: string,
-  context?: Record<string, unknown>
+  context?: Record<string, unknown>,
+  resumeState?: Partial<GenericGraphState>
 ): Promise<{
   output: string
   steps: AgentExecutionStep[]
@@ -922,7 +951,7 @@ export async function executeGenericGraphWorkflowLangGraph(
   const compiledGraph = createGenericGraph(config)
 
   // Initial state
-  const initialState: Partial<GenericGraphState> = {
+  const freshState: Partial<GenericGraphState> = {
     workflowId: workflow.workflowId,
     runId,
     userId,
@@ -943,10 +972,25 @@ export async function executeGenericGraphWorkflowLangGraph(
     error: null,
     lastError: null,
     pendingInput: null,
+    constraintPause: null,
     pendingResearchRequestId: null,
     pendingResearchOutputKey: null,
     nextNodeId: graphDef.startNodeId,
   }
+
+  const initialState: Partial<GenericGraphState> = resumeState
+    ? {
+        ...freshState,
+        ...resumeState,
+        goal,
+        context: context ?? resumeState.context ?? {},
+        status: 'running',
+        error: null,
+        lastError: null,
+        pendingInput: null,
+        constraintPause: null,
+      }
+    : freshState
 
   // Execute the graph
   let finalState: typeof initialState
@@ -974,11 +1018,7 @@ export async function executeGenericGraphWorkflowLangGraph(
       ? finalState.lastOutput
       : JSON.stringify(finalState.lastOutput ?? ''))
 
-  if (
-    typeof output === 'string' &&
-    output.startsWith('APPROVED:') &&
-    finalState.namedOutputs
-  ) {
+  if (typeof output === 'string' && output.startsWith('APPROVED:') && finalState.namedOutputs) {
     // Look for a structured plan in named outputs from planner/improvement nodes
     const namedValues = Object.values(finalState.namedOutputs)
     for (const val of namedValues) {
@@ -999,10 +1039,7 @@ export async function executeGenericGraphWorkflowLangGraph(
               workflowId: workflow.workflowId,
               details: {
                 projectName: plan.projectName,
-                taskCount: plan.milestones.reduce(
-                  (sum, m) => sum + m.tasks.length,
-                  0
-                ),
+                taskCount: plan.milestones.reduce((sum, m) => sum + m.tasks.length, 0),
               },
             })
           }

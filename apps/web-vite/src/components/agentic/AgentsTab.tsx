@@ -157,9 +157,10 @@ export function AgentsTab({
       }
     }
 
-    const warning = usedAgents.length > 0
-      ? `\n\nThe following agents are used by workflows and will need to be replaced:\n${usedAgents.join('\n')}`
-      : ''
+    const warning =
+      usedAgents.length > 0
+        ? `\n\nThe following agents are used by workflows and will need to be replaced:\n${usedAgents.join('\n')}`
+        : ''
 
     const confirmed = await confirm({
       title: `Delete ${selectedAgentIds.size} agents`,

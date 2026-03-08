@@ -9,6 +9,22 @@ import type { Note } from '@lifeos/notes'
 
 const DEFAULT_NOTE_TITLE = 'Untitled'
 
+/**
+ * Recursively strip undefined values from a plain object so Firestore
+ * doesn't reject it as containing an "invalid nested entity".
+ */
+function stripUndefined<T>(obj: T): T {
+  if (obj === null || obj === undefined || typeof obj !== 'object') return obj
+  if (Array.isArray(obj)) return obj.map(stripUndefined) as T
+  const clean: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    if (v !== undefined) {
+      clean[k] = stripUndefined(v)
+    }
+  }
+  return clean as T
+}
+
 function sanitizeNode(node: JSONContent | undefined): JSONContent | null {
   if (!node) return null
 
@@ -17,11 +33,11 @@ function sanitizeNode(node: JSONContent | undefined): JSONContent | null {
     if (text.length === 0) {
       return null
     }
-    return node
+    return stripUndefined(node)
   }
 
   if (!node.content) {
-    return node
+    return stripUndefined(node)
   }
 
   const nextContent = node.content
@@ -35,7 +51,7 @@ function sanitizeNode(node: JSONContent | undefined): JSONContent | null {
     delete nextNode.content
   }
 
-  return nextNode
+  return stripUndefined(nextNode)
 }
 
 export function sanitizeNoteContent(content?: JSONContent): JSONContent | undefined {

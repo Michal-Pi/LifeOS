@@ -741,9 +741,8 @@ export const mailboxGetLabels = onRequest(
     if (!(await verifyAuth(request, response, uid))) return
 
     try {
-      const { getGmailConnections, getGmailLabelsForUser } = await import(
-        '../channels/gmailAdapter.js'
-      )
+      const { getGmailConnections, getGmailLabelsForUser } =
+        await import('../channels/gmailAdapter.js')
       const connections = await getGmailConnections(uid)
       if (connections.length === 0) {
         response.json({ labels: [] })
@@ -792,9 +791,8 @@ export const mailboxLabelMessage = onRequest(
         return
       }
 
-      const { getOrCreateGmailLabel, modifyGmailMessage, listGmailLabels } = await import(
-        '../google/gmailApi.js'
-      )
+      const { getOrCreateGmailLabel, modifyGmailMessage, listGmailLabels } =
+        await import('../google/gmailApi.js')
       const accountId = msgData.accountId!
       const rawMessageId = msgData.originalMessageId!.startsWith('gmail_')
         ? msgData.originalMessageId!.slice(6)

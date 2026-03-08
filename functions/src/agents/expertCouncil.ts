@@ -764,7 +764,11 @@ export function createExpertCouncilPipeline(params: {
             try {
               const agent = buildAgentConfig({
                 userId,
-                model: { ...model, systemPrompt: 'You are an expert responding to peer critique. Address each criticism with specific evidence. Concede where the criticism is valid, and defend with reasoning where it is not. Be concise and intellectually honest.' },
+                model: {
+                  ...model,
+                  systemPrompt:
+                    'You are an expert responding to peer critique. Address each criticism with specific evidence. Concede where the criticism is valid, and defend with reasoning where it is not. Be concise and intellectually honest.',
+                },
                 role: 'researcher',
                 systemPromptFallback: 'You are defending your reasoning.',
                 nameSuffix: 'DeepDive',

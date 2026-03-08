@@ -18,6 +18,7 @@ import { recordSpend, estimateLLMCost, canAffordOperation } from './budgetContro
 import { planMultiHopSearch } from './multiHopSearch.js'
 import type { ProviderExecuteFn } from './claimExtraction.js'
 import { createLogger } from '../../lib/logger.js'
+import { GAP_ANALYSIS_EXAMPLE } from '../shared/fewShotExamples.js'
 
 const log = createLogger('GapAnalysis')
 
@@ -74,7 +75,10 @@ Analyze the knowledge graph for gaps across all five categories (fragile evidenc
 ## Scoring Guidance
 - overallCoverageScore: 0.0 = no coverage, 0.5 = partial, 0.8+ = sufficient for a comprehensive answer.
 - shouldContinue: true when high-priority gaps remain and additional research would meaningfully improve the answer.
-- priority: "high" = gap would significantly change the answer, "medium" = gap would add useful nuance, "low" = gap is minor or tangential.`
+- priority: "high" = gap would significantly change the answer, "medium" = gap would add useful nuance, "low" = gap is minor or tangential.
+
+## Example Output
+${GAP_ANALYSIS_EXAMPLE}`
 }
 
 // ----- Main Analysis -----
@@ -89,7 +93,7 @@ export async function analyzeKnowledgeGaps(
   budget: RunBudget,
   /** Maximum multi-hop depth for follow-up searches (Phase 46, default 2) */
   maxMultiHopDepth: number = 2,
-  modelName?: string,
+  modelName?: string
 ): Promise<{ result: GapAnalysisResult; updatedBudget: RunBudget }> {
   let currentBudget = { ...budget }
 
@@ -196,9 +200,10 @@ function buildKGSummary(kg: KnowledgeHypergraph): string {
     .sort((a, b) => b.confidence - a.confidence)
 
   const topClaims = allMappedClaims.slice(0, 15)
-  const bottomClaims = allMappedClaims.length > 15
-    ? allMappedClaims.slice(-Math.min(10, allMappedClaims.length - 15))
-    : []
+  const bottomClaims =
+    allMappedClaims.length > 15
+      ? allMappedClaims.slice(-Math.min(10, allMappedClaims.length - 15))
+      : []
 
   lines.push('## Top Claims (highest confidence, well-supported)')
   for (const claim of topClaims) {
@@ -207,7 +212,9 @@ function buildKGSummary(kg: KnowledgeHypergraph): string {
     const data = kg.getNode(claim.id)?.data as Record<string, unknown> | undefined
     const corr = Number(data?.corroborationCount ?? 1)
     const supCount = outEdges.filter((e) => e.data.type === 'supports').length
-    lines.push(`- [c=${claim.confidence.toFixed(2)}, sources=${sourceCount}, corr=${corr}, supports=${supCount}] ${claim.text}`)
+    lines.push(
+      `- [c=${claim.confidence.toFixed(2)}, sources=${sourceCount}, corr=${corr}, supports=${supCount}] ${claim.text}`
+    )
   }
   lines.push('')
 

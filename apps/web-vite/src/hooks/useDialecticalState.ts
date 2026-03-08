@@ -10,7 +10,10 @@
 
 import { useMemo } from 'react'
 import type { Run, DialecticalPhase, CompactGraph, GraphDiff } from '@lifeos/agents'
-import type { CycleState, CycleHistoryEntry } from '@/components/agents/DialecticalCycleVisualization'
+import type {
+  CycleState,
+  CycleHistoryEntry,
+} from '@/components/agents/DialecticalCycleVisualization'
 import type { RunEvent } from '@/hooks/useRunEvents'
 import { mapStatus, extractLiveCosts } from '@/hooks/runEventUtils'
 
@@ -21,9 +24,7 @@ import { mapStatus, extractLiveCosts } from '@/hooks/runEventUtils'
  */
 function buildStateFromEvents(run: Run, events: RunEvent[]): CycleState | null {
   // Only build from events if there are dialectical events
-  const dialecticalEvents = events.filter((e) =>
-    e.type.startsWith('dialectical_')
-  )
+  const dialecticalEvents = events.filter((e) => e.type.startsWith('dialectical_'))
   if (dialecticalEvents.length === 0) return null
 
   // Track the latest cycle number from phase events
@@ -110,7 +111,8 @@ function buildStateFromEvents(run: Run, events: RunEvent[]): CycleState | null {
       case 'dialectical_negation': {
         negations.push({
           agentId: event.agentId ?? '',
-          targetThesisAgentId: (details?.targetThesisLens as string) ?? (details?.targetThesisAgentId as string) ?? '',
+          targetThesisAgentId:
+            (details?.targetThesisLens as string) ?? (details?.targetThesisAgentId as string) ?? '',
           rawText: event.output ?? '',
           internalTensions: (details?.internalTensions as string[]) ?? [],
           categoryAttacks: (details?.categoryAttacks as string[]) ?? [],
@@ -157,7 +159,10 @@ function buildStateFromEvents(run: Run, events: RunEvent[]): CycleState | null {
           velocityHistory.push(velocity)
         }
         synthesis = {
-          operators: (details?.operators as CycleState['synthesis'] extends null ? never : NonNullable<CycleState['synthesis']>['operators']) ?? [],
+          operators:
+            (details?.operators as CycleState['synthesis'] extends null
+              ? never
+              : NonNullable<CycleState['synthesis']>['operators']) ?? [],
           preservedElements: new Array((details?.preservedCount as number) ?? 0).fill(''),
           negatedElements: new Array((details?.negatedCount as number) ?? 0).fill(''),
           newConceptGraph: {},
@@ -203,7 +208,11 @@ function buildStateFromEvents(run: Run, events: RunEvent[]): CycleState | null {
   }
 
   // Archive any remaining per-cycle data for the current cycle
-  if (pendingCycleTheses.length > 0 || pendingCycleNegations.length > 0 || pendingCycleContradictions.length > 0) {
+  if (
+    pendingCycleTheses.length > 0 ||
+    pendingCycleNegations.length > 0 ||
+    pendingCycleContradictions.length > 0
+  ) {
     cycleHistory.push({
       cycle: lastArchiveCycle || cycleNumber,
       theses: pendingCycleTheses,
@@ -250,10 +259,7 @@ function buildStateFromEvents(run: Run, events: RunEvent[]): CycleState | null {
  * When events are provided and the run is active, builds live state from events.
  * Otherwise falls back to persisted workflowState.dialectical.
  */
-export function useDialecticalState(
-  run: Run | null,
-  events?: RunEvent[]
-): CycleState | null {
+export function useDialecticalState(run: Run | null, events?: RunEvent[]): CycleState | null {
   return useMemo(() => {
     if (!run) return null
 
@@ -281,8 +287,13 @@ export function useDialecticalState(
         negations: dialectical.negations,
         contradictions: dialectical.contradictions,
         synthesis: dialectical.synthesis,
-        mergedGraph: ((dialectical as Record<string, unknown>).mergedGraph as CompactGraph | undefined) ?? null,
-        graphHistory: ((dialectical as Record<string, unknown>).graphHistory as Array<{ cycle: number; diff: GraphDiff }> | undefined) ?? [],
+        mergedGraph:
+          ((dialectical as Record<string, unknown>).mergedGraph as CompactGraph | undefined) ??
+          null,
+        graphHistory:
+          ((dialectical as Record<string, unknown>).graphHistory as
+            | Array<{ cycle: number; diff: GraphDiff }>
+            | undefined) ?? [],
         metaDecision: dialectical.metaDecision,
         conceptualVelocity: dialectical.conceptualVelocity,
         velocityHistory: dialectical.velocityHistory || [],
