@@ -6,10 +6,11 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'
+import { collection, collectionGroup, getDocs, query, where, orderBy, limit } from 'firebase/firestore'
 import { getFirestoreClient } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
-import type { RunTelemetry, ComponentTelemetry, RunId } from '@lifeos/agents'
+import { useRunEvents } from '@/hooks/useRunEvents'
+import type { RunTelemetry, ComponentTelemetry, RunId, Run, WorkflowState } from '@lifeos/agents'
 import type { TraceStep } from '@/components/evaluation/TraceViewer'
 
 // ----- Types -----
@@ -24,6 +25,14 @@ export interface UseRunTraceReturn {
   telemetry: RunTelemetry | null
   steps: TraceStep[]
   componentTelemetry: ComponentTelemetry[]
+  events: ReturnType<typeof useRunEvents>['events']
+  run: Run | null
+  workflowState: WorkflowState | null
+  workflowAnnotations: {
+    workflowType: string | null
+    summaryBadges: string[]
+    notes: string[]
+  }
 
   // Loading states
   loading: boolean
@@ -49,10 +58,12 @@ function getComponentTelemetryPath(userId: string): string {
 export function useRunTrace(options: UseRunTraceOptions): UseRunTraceReturn {
   const { user } = useAuth()
   const { runId, includeComponentTelemetry = true } = options
+  const { events } = useRunEvents(runId)
 
   // State
   const [telemetry, setTelemetry] = useState<RunTelemetry | null>(null)
   const [componentTelemetry, setComponentTelemetry] = useState<ComponentTelemetry[]>([])
+  const [run, setRun] = useState<Run | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
@@ -62,6 +73,7 @@ export function useRunTrace(options: UseRunTraceOptions): UseRunTraceReturn {
     if (!user || !runId) {
       setTelemetry(null)
       setComponentTelemetry([])
+      setRun(null)
       return
     }
 
@@ -82,6 +94,14 @@ export function useRunTrace(options: UseRunTraceOptions): UseRunTraceReturn {
         } else {
           setTelemetry(null)
         }
+
+        const runsRef = collectionGroup(db, 'runs')
+        const runSnapshot = await getDocs(query(runsRef, where('runId', '==', runId), limit(5)))
+        const matchedRun =
+          runSnapshot.docs
+            .map((doc) => doc.data() as Partial<Run>)
+            .find((doc) => typeof doc.currentStep === 'number') ?? null
+        setRun(matchedRun as Run | null)
 
         // Load component telemetry if requested
         if (includeComponentTelemetry) {
@@ -105,6 +125,8 @@ export function useRunTrace(options: UseRunTraceOptions): UseRunTraceReturn {
 
     loadTelemetry()
   }, [user, runId, includeComponentTelemetry, refreshTrigger])
+
+  const workflowState = run?.workflowState ?? null
 
   // Convert telemetry to TraceSteps
   const steps = useMemo((): TraceStep[] => {
@@ -156,6 +178,7 @@ export function useRunTrace(options: UseRunTraceOptions): UseRunTraceReturn {
     if (!telemetry) return '{}'
 
     const exportData = {
+      run,
       runId: telemetry.runId,
       workflowId: telemetry.workflowId,
       workflowType: telemetry.workflowType,
@@ -198,12 +221,80 @@ export function useRunTrace(options: UseRunTraceOptions): UseRunTraceReturn {
           relevanceScore: mo.relevanceScore,
         })),
       })),
+      eventCount: events.length,
       errorMessage: telemetry.errorMessage,
       exportedAtMs: Date.now(),
     }
 
     return JSON.stringify(exportData, null, 2)
-  }, [telemetry, steps])
+  }, [events.length, run, telemetry, steps])
+
+  const workflowAnnotations = useMemo(() => {
+    const workflowType =
+      telemetry?.workflowType ??
+      (workflowState?.oracle
+        ? 'oracle'
+        : workflowState?.deepResearch
+          ? 'deep_research'
+          : workflowState?.dialectical
+            ? 'dialectical'
+            : null)
+
+    if (workflowType === 'oracle') {
+      const oracle = workflowState?.oracle
+      const gateResults = oracle?.gateResults ?? []
+      return {
+        workflowType,
+        summaryBadges: [
+          `Phase: ${oracle?.currentPhase ?? 'unknown'}`,
+          `Gates: ${gateResults.filter((gate) => gate.passed).length}/${gateResults.length}`,
+          `Council: ${oracle?.councilRecords.length ?? 0}`,
+        ],
+        notes: [
+          `Scenarios: ${oracle?.scenarioPortfolio.length ?? 0}`,
+          `Uncertainties: ${oracle?.uncertainties.length ?? 0}`,
+        ],
+      }
+    }
+
+    if (workflowType === 'deep_research') {
+      const deepResearch = workflowState?.deepResearch
+      return {
+        workflowType,
+        summaryBadges: [
+          `Budget: ${deepResearch?.budget.phase ?? 'unknown'}`,
+          `Sources: ${deepResearch?.sources.length ?? 0}`,
+          `Claims: ${deepResearch?.extractedClaims.length ?? 0}`,
+        ],
+        notes: [
+          `Gap iterations: ${deepResearch?.gapIterationsUsed ?? 0}`,
+          `KG snapshots: ${deepResearch?.kgSnapshots.length ?? 0}`,
+        ],
+      }
+    }
+
+    if (workflowType === 'dialectical') {
+      const dialectical = workflowState?.dialectical
+      return {
+        workflowType,
+        summaryBadges: [
+          `Cycle: ${dialectical?.cycleNumber ?? 0}`,
+          `Phase: ${dialectical?.phase ?? 'unknown'}`,
+          `Meta: ${dialectical?.metaDecision ?? 'pending'}`,
+        ],
+        notes: [
+          `Contradictions: ${dialectical?.contradictions.length ?? 0}`,
+          `Velocity: ${dialectical?.conceptualVelocity ?? 0}`,
+        ],
+      }
+    }
+
+    return {
+      workflowType,
+      summaryBadges: telemetry ? [telemetry.workflowType, telemetry.status] : [],
+      notes: run?.output ? [`Output length: ${run.output.length} chars`] : [],
+    }
+  }, [run, telemetry, workflowState])
 
   const refresh = useCallback(() => {
     setRefreshTrigger((prev) => prev + 1)
@@ -213,6 +304,10 @@ export function useRunTrace(options: UseRunTraceOptions): UseRunTraceReturn {
     telemetry,
     steps,
     componentTelemetry,
+    events,
+    run,
+    workflowState,
+    workflowAnnotations,
     loading,
     error,
     refresh,

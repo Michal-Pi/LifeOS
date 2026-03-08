@@ -39,6 +39,8 @@ export type TrajectoryEvalId = Id<'trajectoryEval'>
 export type TrajectoryPatternId = Id<'trajectoryPattern'>
 export type DerivedTestCaseId = Id<'derivedTestCase'>
 export type EvaluatorConfigId = Id<'evaluatorConfig'>
+export type BenchmarkCohortId = Id<'benchmarkCohort'>
+export type SharedComparisonResultId = Id<'sharedComparisonResult'>
 
 // ----- Telemetry -----
 
@@ -1039,6 +1041,62 @@ export interface RegressionTestResult {
   // Execution info
   workflowVersion: string
   executedAtMs: number
+}
+
+// ----- Benchmark Cohorts -----
+
+/**
+ * A benchmark cohort defines a shared comparison space for heterogeneous workflows.
+ */
+export interface BenchmarkCohort {
+  cohortId: BenchmarkCohortId
+  userId: string
+
+  // Identity
+  name: string
+  description?: string
+  useCase: string
+
+  // Scope
+  workflowTypes: string[]
+  sharedRubricId: EvalRubricId
+  testCaseIds: DerivedTestCaseId[]
+
+  // Comparison behavior
+  comparisonMode: 'pairwise' | 'leaderboard'
+  allowManualReview: boolean
+  acceptanceThresholds?: {
+    minScore?: number
+    maxCost?: number
+    maxDurationMs?: number
+    minPassRate?: number
+  }
+  workflowSpecificRubricIds?: Record<string, EvalRubricId>
+  rawOutputComparisonAllowed?: boolean
+  allVsAllEnabled?: boolean
+
+  // Lifecycle
+  isActive: boolean
+
+  createdAtMs: number
+  updatedAtMs: number
+}
+
+/**
+ * Shared comparison score for a run evaluated under a cohort-compatible rubric.
+ */
+export interface SharedComparisonResult {
+  resultId: SharedComparisonResultId
+  runId: RunId
+  rubricId: EvalRubricId
+  cohortId?: BenchmarkCohortId
+  userId: string
+
+  aggregateScore: number
+  criterionScores: Record<string, number>
+  normalizedScores: Record<string, number>
+
+  createdAtMs: number
 }
 
 // ----- Evaluator Routing -----
