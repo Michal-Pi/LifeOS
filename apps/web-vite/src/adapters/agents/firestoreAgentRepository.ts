@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, getDoc, setDoc, query, where, orderBy } from 'firebase/firestore'
+import { collection, doc, getDocs, getDoc, setDoc, query, where, orderBy, limit as firestoreLimit } from 'firebase/firestore'
 import { getFirestoreClient as getDb } from '@/lib/firestoreClient'
 import { newId } from '@lifeos/core'
 import type {
@@ -107,14 +107,13 @@ export const createFirestoreAgentRepository = (): AgentRepository => {
 
       let q = query(agentsCol, orderBy('name', 'asc'))
 
-      // Filter by role if specified
+      // Chain filters incrementally (not rebuild from scratch)
       if (options?.role) {
-        q = query(agentsCol, where('role', '==', options.role), orderBy('name', 'asc'))
+        q = query(q, where('role', '==', options.role))
       }
 
-      // Filter by provider if specified
       if (options?.provider) {
-        q = query(agentsCol, where('modelProvider', '==', options.provider), orderBy('name', 'asc'))
+        q = query(q, where('modelProvider', '==', options.provider))
       }
 
       const snapshot = await getDocs(q)
@@ -126,6 +125,20 @@ export const createFirestoreAgentRepository = (): AgentRepository => {
       }
 
       return agents
+    },
+
+    async findByConfigHash(userId: string, hash: string): Promise<AgentConfig | null> {
+      const db = await getDb()
+      const agentsCol = collection(db, `users/${userId}/agents`)
+      const q = query(
+        agentsCol,
+        where('configHash', '==', hash),
+        where('archived', '==', false),
+        firestoreLimit(1)
+      )
+      const snapshot = await getDocs(q)
+      if (snapshot.empty) return null
+      return normalizeAgent(snapshot.docs[0].data())
     },
   }
 }

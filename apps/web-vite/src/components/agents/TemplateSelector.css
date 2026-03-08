@@ -1,9 +1,9 @@
 .template-selector {
-  margin: 1.5rem 0 2rem;
+  margin: var(--space-5) 0 var(--space-6);
 }
 
 .template-selector__header {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-5);
 }
 
 .template-selector__subhead {
@@ -14,13 +14,13 @@
 .template-selector__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 1.5rem;
-  align-items: stretch;
+  gap: var(--space-6);
+  align-items: start;
 }
 
 .template-selector__notice {
-  margin-top: 1rem;
-  padding: 0.75rem 1rem;
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--background-secondary);
@@ -41,7 +41,7 @@
 
 .template-card__header {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
   align-items: flex-start;
 }
 
@@ -66,14 +66,14 @@
 }
 
 .template-card__description {
-  margin: 0.35rem 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--text-secondary);
 }
 
 .template-card__agents {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .template-card__label {
@@ -86,11 +86,11 @@
 .template-card__agent-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--space-1);
 }
 
 .template-card__agent {
-  padding: 0.25rem 0.6rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-full);
   background: var(--background-secondary);
   border: 1px solid var(--border);
@@ -100,11 +100,11 @@
 .template-card__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .template-card__badge {
-  padding: 0.25rem 0.6rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-full);
   border: 1px solid var(--border);
   background: var(--background-secondary);
@@ -117,7 +117,7 @@
 .template-card__selector {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-1);
 }
 
 .template-card__selector label {
@@ -135,7 +135,7 @@
 
 @media (max-width: 720px) {
   .template-card {
-    padding: 1.25rem;
+    padding: var(--space-4);
   }
 
   .template-card__header {
@@ -143,6 +143,6 @@
   }
 
   .template-card__icon {
-    width: 56px;
+    width: 48px;
   }
 }

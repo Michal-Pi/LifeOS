@@ -19,12 +19,14 @@ import { usePromptLibrary } from '@/hooks/usePromptLibrary'
 import { useAuth } from '@/hooks/useAuth'
 import { useAiProviderKeys } from '@/hooks/useAiProviderKeys'
 import { getFirstAvailableProvider, generateWithProvider } from '@/lib/aiProviderApi'
+import { agentTemplatePresets } from '@/agents/templatePresets'
 import { Button } from '@/components/ui/button'
 import type { SelectOption } from '@/components/Select'
 import type {
   Workflow,
   AgentId,
   AgentRole,
+  CreateAgentInput,
   ExpertCouncilConfig,
   ExecutionMode,
   ModelProvider,
@@ -33,6 +35,7 @@ import type {
   PromptTemplate,
   JoinAggregationMode,
 } from '@lifeos/agents'
+import { hashAgentConfig } from '@lifeos/agents'
 import {
   PROVIDER_OPTIONS,
   DEFAULT_AGENT_OPTION,
@@ -40,6 +43,7 @@ import {
   createDefaultCouncilModel,
   getDefaultModelForProvider,
   type WorkflowType,
+  type AgentSource,
 } from './workflowFormConstants'
 import { WorkflowBasicInfoSection } from './WorkflowBasicInfoSection'
 import { WorkflowAgentSelectionSection } from './WorkflowAgentSelectionSection'
@@ -137,6 +141,8 @@ export function WorkflowFormModal({
   const [showCustomBuilder, setShowCustomBuilder] = useState(false)
   const [showGraphPreview, setShowGraphPreview] = useState(false)
   const [supervisorAgentId, setSupervisorAgentId] = useState<AgentId | undefined>(undefined)
+  const [agentSource, setAgentSource] = useState<AgentSource>('active')
+  const [selectedTemplateNames, setSelectedTemplateNames] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
@@ -234,6 +240,8 @@ export function WorkflowFormModal({
 
     setProjectManagerConfig(pmConfig)
     setPromptConfig(source?.promptConfig)
+    setAgentSource('active')
+    setSelectedTemplateNames([])
     setError(null)
   }, [isOpen, workflow, prefill, connectedProviders])
 
@@ -255,6 +263,20 @@ export function WorkflowFormModal({
         }
         return newList
       }
+    })
+  }
+
+  const handleTemplateToggle = (templateName: string) => {
+    setSelectedTemplateNames((prev) => {
+      if (prev.includes(templateName)) {
+        return prev.filter((n) => n !== templateName)
+      }
+      const next = [...prev, templateName]
+      if (validationErrors.agents) {
+        const { agents: _, ...rest } = validationErrors
+        setValidationErrors(rest)
+      }
+      return next
     })
   }
 
@@ -360,7 +382,8 @@ Return ONLY valid JSON, no explanation.`
     const errors: Record<string, string> = {}
 
     if (!name.trim()) errors.name = 'Workflow name is required'
-    if (selectedAgentIds.length === 0) errors.agents = 'At least one agent must be selected'
+    const hasAgents = selectedAgentIds.length > 0 || selectedTemplateNames.length > 0
+    if (!hasAgents) errors.agents = 'At least one agent or template must be selected'
     if (defaultAgentId && !selectedAgentIds.includes(defaultAgentId)) {
       setError('Default agent must be in the selected agents list')
       return
@@ -507,8 +530,8 @@ Return ONLY valid JSON, no explanation.`
             selfExclusionEnabled: expertCouncilSelfExclusionEnabled,
             minCouncilSize: ecMinSize,
             maxCouncilSize: ecMaxSize,
-            requireConsensusThreshold: ecConsensus,
-            maxCostPerTurn: ecMaxCost,
+            ...(ecConsensus !== undefined ? { requireConsensusThreshold: ecConsensus } : {}),
+            ...(ecMaxCost !== undefined ? { maxCostPerTurn: ecMaxCost } : {}),
             enableCaching: expertCouncilCachingEnabled,
             cacheExpirationHours: ecCacheHrs,
           }
@@ -521,30 +544,64 @@ Return ONLY valid JSON, no explanation.`
             selfExclusionEnabled: expertCouncilSelfExclusionEnabled,
             minCouncilSize: Number.isNaN(ecMinSize) ? 2 : ecMinSize,
             maxCouncilSize: Number.isNaN(ecMaxSize) ? 10 : ecMaxSize,
-            requireConsensusThreshold: ecConsensus,
-            maxCostPerTurn: ecMaxCost,
+            ...(ecConsensus !== undefined ? { requireConsensusThreshold: ecConsensus } : {}),
+            ...(ecMaxCost !== undefined ? { maxCostPerTurn: ecMaxCost } : {}),
             enableCaching: expertCouncilCachingEnabled,
             cacheExpirationHours: Number.isNaN(ecCacheHrs) ? 24 : ecCacheHrs,
           }
 
+      // Resolve selected templates → agents (reuse existing via configHash, or create new)
+      const templateAgentIds: AgentId[] = []
+      if (selectedTemplateNames.length > 0) {
+        const latestAgents = agents.filter((a) => !a.archived)
+        for (const tplName of selectedTemplateNames) {
+          const preset = agentTemplatePresets.find((p) => p.name === tplName)
+          if (!preset) continue
+          const agentInput: CreateAgentInput = {
+            ...preset.agentConfig,
+            toolIds: preset.agentConfig.toolIds ?? [],
+          }
+          const hash = hashAgentConfig(agentInput)
+          // Check for existing agent with same configHash
+          const existing = latestAgents.find((a) => a.configHash === hash)
+          if (existing) {
+            templateAgentIds.push(existing.agentId as AgentId)
+          } else {
+            // Check for name match (may be a modified version)
+            const nameMatch = latestAgents.find((a) => a.name === agentInput.name)
+            if (nameMatch) {
+              // Reuse the name-matched agent rather than creating a duplicate name
+              templateAgentIds.push(nameMatch.agentId as AgentId)
+            } else {
+              const created = await createAgent({ ...agentInput, configHash: hash })
+              templateAgentIds.push(created.agentId as AgentId)
+              // Add to latestAgents so subsequent templates can dedup against it
+              latestAgents.push(created)
+            }
+          }
+        }
+      }
+
+      const allAgentIds = [...selectedAgentIds, ...templateAgentIds]
+
       const finalAgentIds =
         workflowType === 'supervisor' && supervisorAgentId
-          ? [supervisorAgentId, ...selectedAgentIds.filter((id) => id !== supervisorAgentId)]
-          : selectedAgentIds
+          ? [supervisorAgentId, ...allAgentIds.filter((id) => id !== supervisorAgentId)]
+          : allAgentIds
 
       const input = {
         name: name.trim(),
-        description: description.trim() || undefined,
         agentIds: finalAgentIds,
-        defaultAgentId,
         workflowType,
-        workflowGraph,
-        parallelMergeStrategy: workflowType === 'parallel' ? parallelMergeStrategy : undefined,
         maxIterations,
-        memoryMessageLimit,
         expertCouncilConfig,
         projectManagerConfig,
-        promptConfig,
+        ...(description.trim() ? { description: description.trim() } : {}),
+        ...(defaultAgentId ? { defaultAgentId } : {}),
+        ...(workflowGraph ? { workflowGraph } : {}),
+        ...(workflowType === 'parallel' ? { parallelMergeStrategy } : {}),
+        ...(memoryMessageLimit !== undefined ? { memoryMessageLimit } : {}),
+        ...(promptConfig ? { promptConfig } : {}),
       }
 
       if (workflow) {
@@ -620,6 +677,10 @@ Return ONLY valid JSON, no explanation.`
               onAgentToggle={handleAgentToggle}
               defaultAgentOptions={defaultAgentOptions}
               validationErrors={validationErrors}
+              agentSource={agentSource}
+              setAgentSource={setAgentSource}
+              selectedTemplateNames={selectedTemplateNames}
+              onTemplateToggle={handleTemplateToggle}
             />
 
             <WorkflowTypeConfigSection
@@ -700,7 +761,7 @@ Return ONLY valid JSON, no explanation.`
               <Button variant="ghost" type="button" onClick={onClose} disabled={isSaving}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSaving || activeAgents.length === 0}>
+              <Button type="submit" disabled={isSaving || (activeAgents.length === 0 && selectedTemplateNames.length === 0)}>
                 {isSaving ? 'Saving...' : workflow ? 'Update Workflow' : 'Create Workflow'}
               </Button>
             </div>

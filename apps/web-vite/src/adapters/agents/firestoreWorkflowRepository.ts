@@ -65,7 +65,7 @@ export const createFirestoreWorkflowRepository = (): WorkflowRepository => {
       const cleanedWorkflow = stripUndefined(workflow)
       const undefinedPaths = collectUndefinedPaths(workflow)
       if (undefinedPaths.length > 0) {
-        console.warn('[WorkflowRepository] Stripped undefined fields from workflow payload', {
+        console.debug('[WorkflowRepository] Stripped undefined fields from workflow payload', {
           workflowId,
           undefinedPaths,
         })

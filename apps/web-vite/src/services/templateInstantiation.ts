@@ -285,12 +285,14 @@ export async function instantiateTemplate({
     preset.name
   )
 
+  const resolvedGraph = workflowGraph ?? preset.workflowConfig.workflowGraph
+
   const workflowInput: CreateWorkflowInput = {
     ...preset.workflowConfig,
     name: customization?.name ?? preset.workflowConfig.name,
     agentIds: resultAgents.map((agent) => agent.agentId),
-    defaultAgentId,
-    workflowGraph: workflowGraph ?? preset.workflowConfig.workflowGraph,
+    ...(defaultAgentId ? { defaultAgentId } : {}),
+    ...(resolvedGraph ? { workflowGraph: resolvedGraph } : {}),
   }
 
   const workflow = await createWorkflow(workflowInput)

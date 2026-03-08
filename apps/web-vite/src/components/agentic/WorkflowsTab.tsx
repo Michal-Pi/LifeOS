@@ -3,10 +3,12 @@
  * Extracted from WorkflowsPage for the unified Agentic Workflows page.
  */
 
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { useDialog } from '@/contexts/useDialog'
+import { workflowTemplatePresets } from '@/agents/templatePresets'
 import type { Workflow, AgentConfig } from '@lifeos/agents'
 
 export interface WorkflowsTabProps {
@@ -30,6 +32,16 @@ export function WorkflowsTab({
 }: WorkflowsTabProps) {
   const { confirm } = useDialog()
   const navigate = useNavigate()
+
+  const presetDescriptionMap = useMemo(
+    () =>
+      new Map(
+        workflowTemplatePresets
+          .filter((p) => p.description)
+          .map((p) => [p.name, p.description!])
+      ),
+    []
+  )
 
   const getAgentName = (agentId: string) => {
     const agent = agents.find((a) => a.agentId === agentId)
@@ -74,7 +86,7 @@ export function WorkflowsTab({
   return (
     <div className="workflows-grid">
       {workflows.map((workflow) => (
-        <div key={workflow.workflowId} className="workflow-card">
+        <div key={workflow.workflowId} className="workflow-card" title={presetDescriptionMap.get(workflow.name)}>
           <div className="card-header">
             <h3>{workflow.name}</h3>
             <span className="badge">{workflow.workflowType}</span>

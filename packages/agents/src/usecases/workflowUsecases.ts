@@ -106,13 +106,13 @@ export function updateWorkflowUsecase(workflowRepo: WorkflowRepository) {
       throw new Error('Workflow must have at least one agent')
     }
 
-    // Business rule: If updating default agent, validate it's in the list
-    if (
-      updates.defaultAgentId &&
-      updates.agentIds &&
-      !updates.agentIds.includes(updates.defaultAgentId)
-    ) {
-      throw new Error('Default agent must be in the workflow agent list')
+    // Business rule: If updating default agent, validate it's in the effective agent list
+    if (updates.defaultAgentId) {
+      const effectiveAgentIds =
+        updates.agentIds ?? (await workflowRepo.get(userId, workflowId))?.agentIds ?? []
+      if (effectiveAgentIds.length > 0 && !effectiveAgentIds.includes(updates.defaultAgentId)) {
+        throw new Error('Default agent must be in the workflow agent list')
+      }
     }
 
     // Business rule: Max iterations validation

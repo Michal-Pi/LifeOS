@@ -6,13 +6,14 @@
  */
 
 import type { AgentRepository } from '../ports/agentRepository'
-import type {
-  AgentConfig,
-  AgentId,
-  CreateAgentInput,
-  UpdateAgentInput,
-  AgentRole,
-  ModelProvider,
+import {
+  hashAgentConfig,
+  type AgentConfig,
+  type AgentId,
+  type CreateAgentInput,
+  type UpdateAgentInput,
+  type AgentRole,
+  type ModelProvider,
 } from '../domain/models'
 
 /**
@@ -45,7 +46,13 @@ export function createAgentUsecase(agentRepo: AgentRepository) {
       throw new Error('Max tokens must be positive')
     }
 
-    return await agentRepo.create(userId, input)
+    // Auto-compute configHash for deduplication
+    const inputWithHash: CreateAgentInput = {
+      ...input,
+      configHash: input.configHash ?? hashAgentConfig(input),
+    }
+
+    return await agentRepo.create(userId, inputWithHash)
   }
 }
 
@@ -81,6 +88,34 @@ export function updateAgentUsecase(agentRepo: AgentRepository) {
     // Business rule: Max tokens validation
     if (updates.maxTokens !== undefined && updates.maxTokens <= 0) {
       throw new Error('Max tokens must be positive')
+    }
+
+    // Recompute configHash when config fields change
+    const configFieldUpdated =
+      updates.systemPrompt !== undefined ||
+      updates.role !== undefined ||
+      updates.toolIds !== undefined ||
+      updates.modelProvider !== undefined ||
+      updates.modelName !== undefined ||
+      updates.temperature !== undefined ||
+      updates.modelTier !== undefined
+
+    if (configFieldUpdated) {
+      // Fetch existing agent to merge fields for hash computation
+      const existing = await agentRepo.get(userId, agentId)
+      if (!existing) {
+        throw new Error(`Agent ${agentId} not found`)
+      }
+      const merged = {
+        systemPrompt: updates.systemPrompt ?? existing.systemPrompt,
+        role: updates.role ?? existing.role,
+        toolIds: updates.toolIds ?? existing.toolIds,
+        modelProvider: updates.modelProvider ?? existing.modelProvider,
+        modelName: updates.modelName ?? existing.modelName,
+        temperature: updates.temperature ?? existing.temperature,
+        modelTier: updates.modelTier ?? existing.modelTier,
+      }
+      updates = { ...updates, configHash: hashAgentConfig(merged) }
     }
 
     return await agentRepo.update(userId, agentId, updates)

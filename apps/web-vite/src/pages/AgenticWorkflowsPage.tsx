@@ -232,10 +232,6 @@ export function AgenticWorkflowsPage() {
 
       {activeTab === 'templates' && (
         <TemplatesTab
-          onUseAgentTemplate={handleUseAgentTemplate}
-          onCreateAgentFromTemplate={async () => {
-            /* handled by TemplatesTab batch create */
-          }}
           createWorkflow={createWorkflow}
           loadWorkflows={loadWorkflows}
         />
@@ -244,11 +240,13 @@ export function AgenticWorkflowsPage() {
       {activeTab === 'agents' && (
         <AgentsTab
           agents={agents}
+          workflows={workflows}
           isLoading={agentsLoading}
           onNew={handleNewAgent}
           onEdit={handleEditAgent}
           onSaveTemplate={handleSaveAgentTemplate}
           onDelete={(agentId) => void deleteAgent(agentId)}
+          onUseAgentTemplate={handleUseAgentTemplate}
         />
       )}
 
@@ -275,6 +273,7 @@ export function AgenticWorkflowsPage() {
       <AgentBuilderModal
         key={agentModalKey}
         agent={selectedAgent}
+        existingAgents={agents}
         isOpen={showAgentModal}
         onClose={handleAgentModalClose}
         onSave={handleAgentModalSave}

@@ -49,6 +49,18 @@ export const ROLE_LABELS: Record<AgentRole, string> = {
   analyst: 'Analyst',
   advisor: 'Advisor',
   translator: 'Translator',
+  context_gatherer: 'Context Gatherer',
+  decomposer: 'Decomposer',
+  systems_mapper: 'Systems Mapper',
+  verifier: 'Verifier',
+  scanner: 'Scanner',
+  impact_assessor: 'Impact Assessor',
+  weak_signal_hunter: 'Weak Signal Hunter',
+  scenario_developer: 'Scenario Developer',
+  equilibrium_analyst: 'Equilibrium Analyst',
+  red_team: 'Red Team',
+  gate_evaluator: 'Gate Evaluator',
+  consistency_checker: 'Consistency Checker',
 }
 
 export const ROLE_FILTER_OPTIONS: SelectOption[] = [
@@ -94,6 +106,16 @@ export const WORKFLOW_OPTIONS: { value: WorkflowType; label: string; description
     value: 'dialectical',
     label: 'Dialectical',
     description: 'Multi-agent Hegelian reasoning cycle',
+  },
+  {
+    value: 'deep_research',
+    label: 'Deep Research',
+    description: 'Budget-aware research with KG construction',
+  },
+  {
+    value: 'oracle',
+    label: 'Oracle',
+    description: '4-phase scenario planning with axiom-guided reasoning',
   },
 ]
 
@@ -251,6 +273,8 @@ export interface BasicInfoSectionProps {
   setValidationErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>
 }
 
+export type AgentSource = 'active' | 'templates'
+
 export interface AgentSelectionSectionProps {
   agents: AgentConfig[]
   activeAgents: AgentConfig[]
@@ -263,6 +287,10 @@ export interface AgentSelectionSectionProps {
   onAgentToggle: (agentId: AgentId) => void
   defaultAgentOptions: SelectOption[]
   validationErrors: Record<string, string>
+  agentSource: AgentSource
+  setAgentSource: (source: AgentSource) => void
+  selectedTemplateNames: string[]
+  onTemplateToggle: (templateName: string) => void
 }
 
 export interface WorkflowTypeConfigSectionProps {

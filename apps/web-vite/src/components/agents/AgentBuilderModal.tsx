@@ -10,12 +10,13 @@
  * - Form validation
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/Select'
 import {
   MODEL_OPTIONS_BY_PROVIDER,
+  hashAgentConfig,
   type AgentConfig,
   type AgentRole,
   type ModelProvider,
@@ -26,6 +27,7 @@ import type { BuiltinToolMeta } from '@/agents/builtinTools'
 interface AgentBuilderModalProps {
   agent: AgentConfig | null
   prefill?: Partial<AgentConfig>
+  existingAgents?: AgentConfig[]
   isOpen: boolean
   onClose: () => void
   onSave: () => void
@@ -81,6 +83,7 @@ type WizardStep = 1 | 2 | 3
 export function AgentBuilderModal({
   agent,
   prefill,
+  existingAgents = [],
   isOpen,
   onClose,
   onSave,
@@ -112,6 +115,24 @@ export function AgentBuilderModal({
         return true
     }
   }
+
+  // Detect duplicate agents by config hash (only for create mode)
+  const duplicateAgent = useMemo(() => {
+    if (agent) return null // Skip in edit mode
+    if (step !== 3) return null // Only check on review step
+    const currentHash = hashAgentConfig({
+      systemPrompt: systemPrompt ?? '',
+      role,
+      toolIds: selectedToolIds,
+      modelProvider,
+      modelName: modelName ?? '',
+      temperature,
+      modelTier: 'balanced',
+    })
+    return existingAgents.find(
+      (existing) => !existing.archived && existing.configHash === currentHash
+    ) ?? null
+  }, [agent, step, systemPrompt, role, selectedToolIds, modelProvider, modelName, temperature, existingAgents])
 
   // Clean up any orphaned Radix portal elements on unmount
   useEffect(() => {
@@ -423,6 +444,13 @@ export function AgentBuilderModal({
           {/* Step 3: Review */}
           {step === 3 && (
             <div className="wizard-review">
+              {duplicateAgent && (
+                <div className="wizard-review__duplicate-warning">
+                  <strong>Duplicate detected:</strong> An agent with an identical configuration
+                  already exists: &ldquo;{duplicateAgent.name}&rdquo;. Consider reusing the
+                  existing agent instead of creating a duplicate.
+                </div>
+              )}
               <div className="wizard-review__section">
                 <h4>Basics</h4>
                 <div className="wizard-review__row">
