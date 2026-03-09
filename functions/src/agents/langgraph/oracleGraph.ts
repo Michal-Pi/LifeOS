@@ -944,9 +944,7 @@ ${jsonSchema}`,
       error: retried.validationError?.message ?? initial.validationError?.message,
     })
     const repairInput =
-      retryStep.output.trim().length >= rawOutput.trim().length * 0.5
-        ? retryStep.output
-        : rawOutput
+      retryStep.output.trim().length >= rawOutput.trim().length * 0.5 ? retryStep.output : rawOutput
     const repairedOutput = await repairJsonOutput(
       repairInput,
       retried.validationError ?? initial.validationError,
@@ -1809,24 +1807,29 @@ function createOracleGraph(config: OracleGraphConfig) {
           )
 
           const fetchPromise = (async (): Promise<string | null> => {
+            // Try read_url first; on failure fall through to scrape_url
             if (readUrl) {
-              const result = await readUrl.execute(
-                { url: evidenceItem.url },
-                {
-                  userId: config.userId,
-                  agentId: 'oracle_evidence_enrichment',
-                  workflowId: config.workflow.workflowId,
-                  runId: config.runId,
-                  provider: 'openai',
-                  modelName: 'oracle-crawl',
-                  iteration: 0,
-                  searchToolKeys: config.searchToolKeys,
-                  toolRegistry: config.toolRegistry,
+              try {
+                const result = await readUrl.execute(
+                  { url: evidenceItem.url },
+                  {
+                    userId: config.userId,
+                    agentId: 'oracle_evidence_enrichment',
+                    workflowId: config.workflow.workflowId,
+                    runId: config.runId,
+                    provider: 'openai',
+                    modelName: 'oracle-crawl',
+                    iteration: 0,
+                    searchToolKeys: config.searchToolKeys,
+                    toolRegistry: config.toolRegistry,
+                  }
+                )
+                const content = typeof result === 'string' ? result : JSON.stringify(result ?? '')
+                if (content.length > 200) {
+                  return content.slice(0, crawlConfig.maxContentChars)
                 }
-              )
-              const content = typeof result === 'string' ? result : JSON.stringify(result ?? '')
-              if (content.length > 200) {
-                return content.slice(0, crawlConfig.maxContentChars)
+              } catch {
+                // read_url failed — fall through to scrape_url
               }
             }
             if (scrapeUrl) {
