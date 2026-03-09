@@ -896,6 +896,27 @@ export const readUrlTool: ToolDefinition = {
       throw new Error('A valid URL starting with http:// or https:// is required')
     }
 
+    const MIN_CONTENT_LENGTH = 100
+
+    // --- Helper: format a successful result ---
+    const formatResult = (content: string, title: string, method: string) => {
+      const maxLength = 15000
+      const truncated = content.length > maxLength
+      const trimmedContent = truncated
+        ? content.substring(0, maxLength) + '\n\n[... content truncated]'
+        : content
+      return {
+        url,
+        title,
+        content: trimmedContent,
+        wordCount: content.split(/\s+/).length,
+        truncated,
+        note: `Successfully extracted content from "${title}" via ${method} (${content.split(/\s+/).length} words)`,
+      }
+    }
+
+    // --- 1. Try Jina Reader (fastest, covers ~90% of URLs) ---
+    let jinaError: unknown = null
     try {
       const headers: Record<string, string> = {
         Accept: returnFormat === 'html' ? 'text/html' : 'text/plain',
@@ -912,32 +933,85 @@ export const readUrlTool: ToolDefinition = {
 
       const response = await fetch(`https://r.jina.ai/${url}`, { headers })
 
-      if (!response.ok) throwApiError('read_url', response.status, response.statusText)
-
-      const content = await response.text()
-
-      // Extract title from the first markdown heading if present
-      const titleMatch = content.match(/^#\s+(.+)$/m)
-      const title = titleMatch?.[1] || url
-
-      // Truncate very long content to avoid token bloat
-      const maxLength = 15000
-      const truncated = content.length > maxLength
-      const trimmedContent = truncated
-        ? content.substring(0, maxLength) + '\n\n[... content truncated]'
-        : content
-
-      return {
-        url,
-        title,
-        content: trimmedContent,
-        wordCount: content.split(/\s+/).length,
-        truncated,
-        note: `Successfully extracted content from "${title}" (${content.split(/\s+/).length} words)`,
+      if (response.ok) {
+        const content = await response.text()
+        if (content.length > MIN_CONTENT_LENGTH) {
+          const titleMatch = content.match(/^#\s+(.+)$/m)
+          const title = titleMatch?.[1] || url
+          return formatResult(content, title, 'jina')
+        }
       }
-    } catch (error) {
-      throw wrapError(error, 'read_url')
+      // Non-ok response or thin content — fall through to Firecrawl
+    } catch (err) {
+      jinaError = err
+      // Fall through to Firecrawl
     }
+
+    // --- 2. Fallback: Firecrawl scrape (handles JS-heavy / blocked sites) ---
+    let firecrawlError: unknown = null
+    const firecrawlKey = context?.searchToolKeys?.firecrawl || process.env.FIRECRAWL_API_KEY
+    if (firecrawlKey) {
+      try {
+        const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${firecrawlKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url, formats: ['markdown'] }),
+        })
+
+        if (response.ok) {
+          const data = (await response.json()) as {
+            success: boolean
+            data?: { markdown?: string; metadata?: { title?: string } }
+          }
+          const content = data.data?.markdown || ''
+          if (data.success && content.length > MIN_CONTENT_LENGTH) {
+            const title = data.data?.metadata?.title || url
+            return formatResult(content, title, 'firecrawl')
+          }
+        }
+      } catch (err) {
+        firecrawlError = err
+        // Fall through to PDF parser
+      }
+    }
+
+    // --- 3. Last resort: PDF parser (catches PDF URLs both tools missed) ---
+    const isPDF = url.toLowerCase().endsWith('.pdf') || url.includes('/pdf/')
+    if (isPDF) {
+      const parsePdf = context?.toolRegistry?.get('parse_pdf')
+      if (parsePdf) {
+        try {
+          const result = await parsePdf.execute(
+            { url },
+            {
+              userId: context?.userId ?? '',
+              agentId: context?.agentId ?? 'read_url_pdf_fallback',
+              workflowId: context?.workflowId ?? '',
+              runId: context?.runId ?? '',
+              provider: context?.provider ?? 'openai',
+              modelName: context?.modelName ?? 'read_url',
+              iteration: context?.iteration ?? 0,
+              searchToolKeys: context?.searchToolKeys,
+              toolRegistry: context?.toolRegistry,
+            }
+          )
+          const content = String(result ?? '')
+          if (content.length > MIN_CONTENT_LENGTH) {
+            return formatResult(content, url, 'parse_pdf')
+          }
+        } catch {
+          // All methods exhausted
+        }
+      }
+    }
+
+    // --- All methods failed — throw the most informative error ---
+    const rootCause =
+      jinaError || firecrawlError || new Error('All fetch methods returned insufficient content')
+    throw wrapError(rootCause, 'read_url')
   },
 }
 
