@@ -28,7 +28,10 @@ import { recordSpend, canAffordOperation, estimateLLMCost } from './budgetContro
 import { chunkDocument } from './sourceIngestion.js'
 import { createLogger } from '../../lib/logger.js'
 import { safeParseJson } from '../shared/jsonParser.js'
-import { CLAIM_EXTRACTION_EXAMPLE, BATCH_CLAIM_EXTRACTION_EXAMPLE } from '../shared/fewShotExamples.js'
+import {
+  CLAIM_EXTRACTION_EXAMPLE,
+  BATCH_CLAIM_EXTRACTION_EXAMPLE,
+} from '../shared/fewShotExamples.js'
 
 const log = createLogger('ClaimExtraction')
 

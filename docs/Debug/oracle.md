@@ -12,7 +12,7 @@ Tags: #workflow:Oracle Scenario Planning
 
 ### User → Workflow
 
-*08/03/2026, 22:54:15*
+_08/03/2026, 22:54:15_
 
 You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change.
 
@@ -20,7 +20,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → serp_search
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Used:** serp_search
 
@@ -28,7 +28,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → serp_search
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Used:** serp_search
 
@@ -36,7 +36,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → serp_search
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Used:** serp_search
 
@@ -44,7 +44,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → serp_search
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Used:** serp_search
 
@@ -52,7 +52,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → serp_search
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Used:** serp_search
 
@@ -60,7 +60,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → serp_search
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Used:** serp_search
 
@@ -68,7 +68,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → serp_search
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Used:** serp_search
 
@@ -76,7 +76,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → serp_search
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Used:** serp_search
 
@@ -84,7 +84,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → serp_search
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Used:** serp_search
 
@@ -92,7 +92,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → serp_search
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Used:** serp_search
 
@@ -100,7 +100,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → serp_search
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Used:** serp_search
 
@@ -108,7 +108,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → serp_search
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Used:** serp_search
 
@@ -116,7 +116,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### serp_search → Agent
 
-*08/03/2026, 22:54:32*
+_08/03/2026, 22:54:32_
 
 **Tool Result:** serp_search
 
@@ -171,7 +171,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### serp_search → Agent
 
-*08/03/2026, 22:54:33*
+_08/03/2026, 22:54:33_
 
 **Tool Result:** serp_search
 
@@ -238,7 +238,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### serp_search → Agent
 
-*08/03/2026, 22:54:33*
+_08/03/2026, 22:54:33_
 
 **Tool Result:** serp_search
 
@@ -305,7 +305,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### serp_search → Agent
 
-*08/03/2026, 22:54:33*
+_08/03/2026, 22:54:33_
 
 **Tool Result:** serp_search
 
@@ -392,7 +392,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### serp_search → Agent
 
-*08/03/2026, 22:54:33*
+_08/03/2026, 22:54:33_
 
 **Tool Result:** serp_search
 
@@ -459,7 +459,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### serp_search → Agent
 
-*08/03/2026, 22:54:33*
+_08/03/2026, 22:54:33_
 
 **Tool Result:** serp_search
 
@@ -546,7 +546,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### serp_search → Agent
 
-*08/03/2026, 22:54:33*
+_08/03/2026, 22:54:33_
 
 **Tool Result:** serp_search
 
@@ -627,7 +627,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### serp_search → Agent
 
-*08/03/2026, 22:54:33*
+_08/03/2026, 22:54:33_
 
 **Tool Result:** serp_search
 
@@ -682,7 +682,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### serp_search → Agent
 
-*08/03/2026, 22:54:33*
+_08/03/2026, 22:54:33_
 
 **Tool Result:** serp_search
 
@@ -769,7 +769,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### serp_search → Agent
 
-*08/03/2026, 22:54:33*
+_08/03/2026, 22:54:33_
 
 **Tool Result:** serp_search
 
@@ -836,7 +836,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### serp_search → Agent
 
-*08/03/2026, 22:54:33*
+_08/03/2026, 22:54:33_
 
 **Tool Result:** serp_search
 
@@ -891,7 +891,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### serp_search → Agent
 
-*08/03/2026, 22:54:34*
+_08/03/2026, 22:54:34_
 
 **Tool Result:** serp_search
 
@@ -958,7 +958,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → read_url
 
-*08/03/2026, 22:54:44*
+_08/03/2026, 22:54:44_
 
 **Tool Used:** read_url
 
@@ -966,7 +966,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → read_url
 
-*08/03/2026, 22:54:44*
+_08/03/2026, 22:54:44_
 
 **Tool Used:** read_url
 
@@ -974,7 +974,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → read_url
 
-*08/03/2026, 22:54:44*
+_08/03/2026, 22:54:44_
 
 **Tool Used:** read_url
 
@@ -982,7 +982,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → read_url
 
-*08/03/2026, 22:54:44*
+_08/03/2026, 22:54:44_
 
 **Tool Used:** read_url
 
@@ -990,7 +990,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → read_url
 
-*08/03/2026, 22:54:44*
+_08/03/2026, 22:54:44_
 
 **Tool Used:** read_url
 
@@ -998,7 +998,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → read_url
 
-*08/03/2026, 22:54:44*
+_08/03/2026, 22:54:44_
 
 **Tool Used:** read_url
 
@@ -1006,7 +1006,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → read_url
 
-*08/03/2026, 22:54:44*
+_08/03/2026, 22:54:44_
 
 **Tool Used:** read_url
 
@@ -1014,7 +1014,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### Agent → read_url
 
-*08/03/2026, 22:54:44*
+_08/03/2026, 22:54:44_
 
 **Tool Used:** read_url
 
@@ -1022,7 +1022,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### read_url → Agent
 
-*08/03/2026, 22:54:44*
+_08/03/2026, 22:54:44_
 
 **Tool Result:** read_url
 
@@ -1041,7 +1041,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### read_url → Agent
 
-*08/03/2026, 22:54:45*
+_08/03/2026, 22:54:45_
 
 **Tool Result:** read_url
 
@@ -1060,7 +1060,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### read_url → Agent
 
-*08/03/2026, 22:54:45*
+_08/03/2026, 22:54:45_
 
 **Tool Result:** read_url
 
@@ -1079,7 +1079,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### read_url → Agent
 
-*08/03/2026, 22:54:45*
+_08/03/2026, 22:54:45_
 
 **Tool Result:** read_url
 
@@ -1098,7 +1098,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### read_url → Agent
 
-*08/03/2026, 22:54:45*
+_08/03/2026, 22:54:45_
 
 **Tool Result:** read_url
 
@@ -1117,7 +1117,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### read_url → Agent
 
-*08/03/2026, 22:54:48*
+_08/03/2026, 22:54:48_
 
 **Tool Result:** read_url
 
@@ -1136,7 +1136,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### read_url → Agent
 
-*08/03/2026, 22:54:51*
+_08/03/2026, 22:54:51_
 
 **Tool Result:** read_url
 
@@ -1155,7 +1155,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### read_url → Agent
 
-*08/03/2026, 22:54:54*
+_08/03/2026, 22:54:54_
 
 **Tool Result:** read_url
 
@@ -1174,7 +1174,7 @@ You are an investor, you are investing into Software (SaaS, Marketplace business
 
 ### User → Agent
 
-*08/03/2026, 22:59:29*
+_08/03/2026, 22:59:29_
 
 Goal: Original task:
 You are an Oracle Decomposer. Break down a strategic question into a sub-question tree with axiom-guided reasoning scaffolds.
@@ -1210,68 +1210,68 @@ Use these evidence items when grounding claims, evidenceIds, and graph structure
 ## Output Format (JSON only — no markdown, no preamble, no explanation):
 
 {
-  "claims": [
-    {
-      "id": "CLM-001",
-      "type": "descriptive|causal|forecast",
-      "text": "<string>",
-      "confidence": 0.7,
-      "confidenceBasis": "data|model_consensus|expert_judgment|speculative",
-      "assumptions": [],
-      "evidenceIds": ["EVD-001"],
-      "dependencies": [],
-      "axiomRefs": ["AXM-058"],
-      "createdBy": "decomposer:model_name",
-      "phase": 1
-    }
-  ],
-  "assumptions": [
-    {
-      "id": "ASM-001",
-      "type": "economic|technical|behavioral|regulatory|structural",
-      "statement": "<string>",
-      "sensitivity": "high|medium|low",
-      "observables": ["<what would confirm/deny>"],
-      "confidence": 0.6
-    }
-  ]
+"claims": [
+{
+"id": "CLM-001",
+"type": "descriptive|causal|forecast",
+"text": "<string>",
+"confidence": 0.7,
+"confidenceBasis": "data|model_consensus|expert_judgment|speculative",
+"assumptions": [],
+"evidenceIds": ["EVD-001"],
+"dependencies": [],
+"axiomRefs": ["AXM-058"],
+"createdBy": "decomposer:model_name",
+"phase": 1
+}
+],
+"assumptions": [
+{
+"id": "ASM-001",
+"type": "economic|technical|behavioral|regulatory|structural",
+"statement": "<string>",
+"sensitivity": "high|medium|low",
+"observables": ["<what would confirm/deny>"],
+"confidence": 0.6
+}
+]
 }
 
 ## Example Output
 
 {
-  "claims": [
-    {
-      "id": "CLM-001",
-      "type": "causal",
-      "text": "AI reduces feature-development cost for horizontal SaaS vendors.",
-      "confidence": 0.74,
-      "confidenceBasis": "expert_judgment",
-      "assumptions": ["ASM-001"],
-      "evidenceIds": ["EVD-001"],
-      "dependencies": [],
-      "axiomRefs": ["AXM-058"],
-      "createdBy": "decomposer:model_name",
-      "phase": 1
-    }
-  ],
-  "assumptions": [
-    {
-      "id": "ASM-001",
-      "type": "technical",
-      "statement": "AI coding tools continue improving through the analysis horizon.",
-      "sensitivity": "high",
-      "observables": ["Benchmark gains in coding-agent performance"],
-      "confidence": 0.65
-    }
-  ]
+"claims": [
+{
+"id": "CLM-001",
+"type": "causal",
+"text": "AI reduces feature-development cost for horizontal SaaS vendors.",
+"confidence": 0.74,
+"confidenceBasis": "expert_judgment",
+"assumptions": ["ASM-001"],
+"evidenceIds": ["EVD-001"],
+"dependencies": [],
+"axiomRefs": ["AXM-058"],
+"createdBy": "decomposer:model_name",
+"phase": 1
+}
+],
+"assumptions": [
+{
+"id": "ASM-001",
+"type": "technical",
+"statement": "AI coding tools continue improving through the analysis horizon.",
+"sensitivity": "high",
+"observables": ["Benchmark gains in coding-agent performance"],
+"confidence": 0.65
+}
+]
 }
 
 ## Empty-but-valid Fallback
 
 {
-  "claims": [],
-  "assumptions": []
+"claims": [],
+"assumptions": []
 }
 
 ## Rules
@@ -1281,7 +1281,7 @@ Use these evidence items when grounding claims, evidenceIds, and graph structure
 
 Convert this prior response to JSON:
 
-```json
+````json
 {
   "claims": [
     {
@@ -2636,13 +2636,13 @@ Context:
   ],
   "loops": []
 }
-```
+````
 
 ---
 
 ### User → Agent
 
-*08/03/2026, 23:01:29*
+_08/03/2026, 23:01:29_
 
 Goal: CRITICAL: Return ONLY valid JSON. No explanation, no markdown fences.
 
@@ -2702,36 +2702,36 @@ N-004 -causes-> N-005
 ## Output Format (JSON only):
 
 {
-  "nodes": [
-    { "id": "N-001", "type": "principle|constraint|trend|uncertainty|variable|scenario_state", "label": "<string>", "ledgerRef": "CLM-001", "properties": {} }
-  ],
-  "edges": [
-    { "source": "N-001", "target": "N-002", "type": "causes|constrains|disrupts|reinforces|resolves_as|supports|contradicts|depends_on", "polarity": "+|-|conditional", "strength": 0.8, "lag": "immediate|short|medium|long" }
-  ],
-  "loops": [
-    { "id": "L-001", "type": "reinforcing|balancing", "nodes": ["N-001", "N-002", "N-003"], "description": "<string>" }
-  ]
+"nodes": [
+{ "id": "N-001", "type": "principle|constraint|trend|uncertainty|variable|scenario_state", "label": "<string>", "ledgerRef": "CLM-001", "properties": {} }
+],
+"edges": [
+{ "source": "N-001", "target": "N-002", "type": "causes|constrains|disrupts|reinforces|resolves_as|supports|contradicts|depends_on", "polarity": "+|-|conditional", "strength": 0.8, "lag": "immediate|short|medium|long" }
+],
+"loops": [
+{ "id": "L-001", "type": "reinforcing|balancing", "nodes": ["N-001", "N-002", "N-003"], "description": "<string>" }
+]
 }
 
 ## Example Output
 
 {
-  "nodes": [
-    {
-      "id": "N-001",
-      "type": "trend",
-      "label": "AI lowers software development costs",
-      "ledgerRef": "CLM-001",
-      "properties": {
-        "domain": "technological",
-        "impact": "high"
-      }
-    },
-    {
-      "id": "N-002",
-      "type": "constraint",
-      "label": "Feature moats weaken",
-      "ledgerRef": "CLM-002",
+"nodes": [
+{
+"id": "N-001",
+"type": "trend",
+"label": "AI lowers software development costs",
+"ledgerRef": "CLM-001",
+"properties": {
+"domain": "technological",
+"impact": "high"
+}
+},
+{
+"id": "N-002",
+"type": "constraint",
+"label": "Feature moats weaken",
+"ledgerRef": "CLM-002",
 
 [...truncated]
 
@@ -2746,61 +2746,61 @@ You are an Oracle Systems Mapper. From a set of claims and evidence, construct a
 ## Validation Errors
 
 [
-  {
-    "code": "invalid_type",
-    "expected": "string",
-    "received": "null",
-    "path": [
-      "nodes",
-      0,
-      "ledgerRef"
-    ],
-    "message": "Expected string, received null"
-  },
-  {
-    "code": "invalid_type",
-    "expected": "string",
-    "received": "null",
-    "path": [
-      "nodes",
-      1,
-      "ledgerRef"
-    ],
-    "message": "Expected string, received null"
-  },
-  {
-    "code": "invalid_type",
-    "expected": "string",
-    "received": "null",
-    "path": [
-      "nodes",
-      2,
-      "ledgerRef"
-    ],
-    "message": "Expected string, received null"
-  },
-  {
-    "code": "invalid_type",
-    "expected": "string",
-    "received": "null",
-    "path": [
-      "nodes",
-      3,
-      "ledgerRef"
-    ],
-    "message": "Expected string, received null"
-  },
-  {
-    "code": "invalid_type",
-    "expected": "string",
-    "received": "null",
-    "path": [
-      "nodes",
-      4,
-      "ledgerRef"
-    ],
-    "message": "Expected string, received null"
-  }
+{
+"code": "invalid_type",
+"expected": "string",
+"received": "null",
+"path": [
+"nodes",
+0,
+"ledgerRef"
+],
+"message": "Expected string, received null"
+},
+{
+"code": "invalid_type",
+"expected": "string",
+"received": "null",
+"path": [
+"nodes",
+1,
+"ledgerRef"
+],
+"message": "Expected string, received null"
+},
+{
+"code": "invalid_type",
+"expected": "string",
+"received": "null",
+"path": [
+"nodes",
+2,
+"ledgerRef"
+],
+"message": "Expected string, received null"
+},
+{
+"code": "invalid_type",
+"expected": "string",
+"received": "null",
+"path": [
+"nodes",
+3,
+"ledgerRef"
+],
+"message": "Expected string, received null"
+},
+{
+"code": "invalid_type",
+"expected": "string",
+"received": "null",
+"path": [
+"nodes",
+4,
+"ledgerRef"
+],
+"message": "Expected string, received null"
+}
 ]
 
 ## Original Output
@@ -2814,9 +2814,7 @@ You are an Oracle Systems Mapper. From a set of claims and evidence, construct a
       "label": "AI Integration in Software Development",
       "ledgerRef": null,
       "properties": {
-        "evidence": [
-          "EVD-001"
-        ]
+        "evidence": ["EVD-001"]
       }
     },
     {
@@ -2825,9 +2823,7 @@ You are an Oracle Systems Mapper. From a set of claims and evidence, construct a
       "label": "Friction & Cost of Switching Software",
       "ledgerRef": null,
       "properties": {
-        "evidence": [
-          "EVD-002"
-        ]
+        "evidence": ["EVD-002"]
       }
     },
     {
@@ -2836,9 +2832,7 @@ You are an Oracle Systems Mapper. From a set of claims and evidence, construct a
       "label": "Strength of Switching Costs Moat",
       "ledgerRef": null,
       "properties": {
-        "evidence": [
-          "EVD-003"
-        ]
+        "evidence": ["EVD-003"]
       }
     },
     {
@@ -2920,296 +2914,296 @@ Context:
 
 ### system_json_repair → User
 
-*08/03/2026, 23:01:42*
+_08/03/2026, 23:01:42_
 
 {
-  "nodes": [
-    {
-      "id": "N-001",
-      "type": "trend",
-      "label": "AI Integration in Software Development",
-      "ledgerRef": "CLM-001",
-      "properties": {
-        "domain": "technological",
-        "impact": "high",
-        "evidence": [
-          "EVD-001"
-        ]
-      }
-    },
-    {
-      "id": "N-002",
-      "type": "variable",
-      "label": "Friction & Cost of Switching Software",
-      "ledgerRef": "CLM-002",
-      "properties": {
-        "domain": "economic",
-        "impact": "high",
-        "evidence": [
-          "EVD-002"
-        ]
-      }
-    },
-    {
-      "id": "N-003",
-      "type": "constraint",
-      "label": "Strength of Switching Costs Moat",
-      "ledgerRef": "CLM-003",
-      "properties": {
-        "domain": "strategic",
-        "impact": "high",
-        "evidence": [
-          "EVD-003"
-        ]
-      }
-    },
-    {
-      "id": "N-004",
-      "type": "variable",
-      "label": "Market Competition Intensity",
-      "ledgerRef": "CLM-004",
-      "properties": {
-        "domain": "economic",
-        "impact": "medium"
-      }
-    },
-    {
-      "id": "N-005",
-      "type": "uncertainty",
-      "label": "Long-term Viability of Incumbent Software Businesses",
-      "ledgerRef": "CLM-005",
-      "properties": {
-        "domain": "strategic",
-        "impact": "high"
-      }
-    }
-  ],
-  "edges": [
-    {
-      "source": "N-001",
-      "target": "N-002",
-      "type": "causes",
-      "polarity": "-",
-      "strength": 0.8,
-      "lag": "short"
-    },
-    {
-      "source": "N-002",
-      "target": "N-003",
-      "type": "causes",
-      "polarity": "-",
-      "strength": 0.9,
-      "lag": "immediate"
-    },
-    {
-      "source": "N-003",
-      "target": "N-004",
-      "type": "causes",
-      "polarity": "-",
-      "strength": 0.7,
-      "lag": "medium"
-    },
-    {
-      "source": "N-003",
-      "target": "N-005",
-      "type": "supports",
-      "polarity": "+",
-      "strength": 0.8,
-      "lag": "long"
-    },
-    {
-      "source": "N-004",
-      "target": "N-005",
-      "type": "causes",
-      "polarity": "-",
-      "strength": 0.7,
-      "lag": "long"
-    }
-  ],
-  "loops": [
-    {
-      "id": "L-001",
-      "type": "reinforcing",
-      "nodes": [
-        "N-001",
-        "N-002",
-        "N-003",
-        "N-004",
-        "N-005"
-      ],
-      "description": "AI integration (N-001) reduces switching friction (N-002) which weakens switching-cost moats (N-003); weaker moats increase market competition (N-004) and reduce incumbents' long-term viability (N-005), reinforcing dynamics that accelerate incumbent decline as AI adoption grows."
-    }
-  ]
+"nodes": [
+{
+"id": "N-001",
+"type": "trend",
+"label": "AI Integration in Software Development",
+"ledgerRef": "CLM-001",
+"properties": {
+"domain": "technological",
+"impact": "high",
+"evidence": [
+"EVD-001"
+]
+}
+},
+{
+"id": "N-002",
+"type": "variable",
+"label": "Friction & Cost of Switching Software",
+"ledgerRef": "CLM-002",
+"properties": {
+"domain": "economic",
+"impact": "high",
+"evidence": [
+"EVD-002"
+]
+}
+},
+{
+"id": "N-003",
+"type": "constraint",
+"label": "Strength of Switching Costs Moat",
+"ledgerRef": "CLM-003",
+"properties": {
+"domain": "strategic",
+"impact": "high",
+"evidence": [
+"EVD-003"
+]
+}
+},
+{
+"id": "N-004",
+"type": "variable",
+"label": "Market Competition Intensity",
+"ledgerRef": "CLM-004",
+"properties": {
+"domain": "economic",
+"impact": "medium"
+}
+},
+{
+"id": "N-005",
+"type": "uncertainty",
+"label": "Long-term Viability of Incumbent Software Businesses",
+"ledgerRef": "CLM-005",
+"properties": {
+"domain": "strategic",
+"impact": "high"
+}
+}
+],
+"edges": [
+{
+"source": "N-001",
+"target": "N-002",
+"type": "causes",
+"polarity": "-",
+"strength": 0.8,
+"lag": "short"
+},
+{
+"source": "N-002",
+"target": "N-003",
+"type": "causes",
+"polarity": "-",
+"strength": 0.9,
+"lag": "immediate"
+},
+{
+"source": "N-003",
+"target": "N-004",
+"type": "causes",
+"polarity": "-",
+"strength": 0.7,
+"lag": "medium"
+},
+{
+"source": "N-003",
+"target": "N-005",
+"type": "supports",
+"polarity": "+",
+"strength": 0.8,
+"lag": "long"
+},
+{
+"source": "N-004",
+"target": "N-005",
+"type": "causes",
+"polarity": "-",
+"strength": 0.7,
+"lag": "long"
+}
+],
+"loops": [
+{
+"id": "L-001",
+"type": "reinforcing",
+"nodes": [
+"N-001",
+"N-002",
+"N-003",
+"N-004",
+"N-005"
+],
+"description": "AI integration (N-001) reduces switching friction (N-002) which weakens switching-cost moats (N-003); weaker moats increase market competition (N-004) and reduce incumbents' long-term viability (N-005), reinforcing dynamics that accelerate incumbent decline as AI adoption grows."
+}
+]
 }
 
 ---
 
 ### User → Agent
 
-*08/03/2026, 23:01:43*
+_08/03/2026, 23:01:43_
 
 Goal: Verify 0 claims
 
 Context:
 {
-  "claims": [],
-  "evidence": [
-    {
-      "id": "EVD-001",
-      "category": "technological",
-      "query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change.",
-      "source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
-      "url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
-      "date": "2026-03-08",
-      "timestamp": 1773010545559,
-      "excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
-      "reliability": 0.7,
-      "searchTool": "serper"
-    },
-    {
-      "id": "EVD-002",
-      "category": "economic",
-      "query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change. market drivers",
-      "source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
-      "url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
-      "date": "2026-03-08",
-      "timestamp": 1773010545559,
-      "excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
-      "reliability": 0.7,
-      "searchTool": "serper"
-    },
-    {
-      "id": "EVD-003",
-      "category": "political",
-      "query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change. policy",
-      "source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
-      "url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
-      "date": "2026-03-08",
-      "timestamp": 1773010545560,
-      "excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
-      "reliability": 0.7,
-      "searchTool": "serper"
-    }
-  ],
-  "verificationTargets": [
-    "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change."
-  ]
+"claims": [],
+"evidence": [
+{
+"id": "EVD-001",
+"category": "technological",
+"query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change.",
+"source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
+"url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
+"date": "2026-03-08",
+"timestamp": 1773010545559,
+"excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
+"reliability": 0.7,
+"searchTool": "serper"
+},
+{
+"id": "EVD-002",
+"category": "economic",
+"query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change. market drivers",
+"source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
+"url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
+"date": "2026-03-08",
+"timestamp": 1773010545559,
+"excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
+"reliability": 0.7,
+"searchTool": "serper"
+},
+{
+"id": "EVD-003",
+"category": "political",
+"query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change. policy",
+"source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
+"url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
+"date": "2026-03-08",
+"timestamp": 1773010545560,
+"excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
+"reliability": 0.7,
+"searchTool": "serper"
+}
+],
+"verificationTargets": [
+"You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change."
+]
 }
 
 ---
 
 ### agent:6b05826b-02b4-4de0-be2a-82672385686c → User
 
-*08/03/2026, 23:01:45*
+_08/03/2026, 23:01:45_
 
 {
-  "verifiedClaims": [],
-  "axiomGroundingPercent": 0
+"verifiedClaims": [],
+"axiomGroundingPercent": 0
 }
 
 ---
 
 ### User → Agent
 
-*08/03/2026, 23:01:46*
+_08/03/2026, 23:01:46_
 
 Goal: Evaluate Gate A for phase 1 output
 
 Context:
 {
-  "phaseOutput": "Claims: 0, KG nodes: 5, Assumptions: 0\n\n"
+"phaseOutput": "Claims: 0, KG nodes: 5, Assumptions: 0\n\n"
 }
 
 ---
 
 ### agent:6b05826b-02b4-4de0-be2a-82672385686c → User
 
-*08/03/2026, 23:01:51*
+_08/03/2026, 23:01:51_
 
 {
-  "mechanisticClarity": 1,
-  "completeness": 1,
-  "causalDiscipline": 1,
-  "decisionUsefulness": 1,
-  "uncertaintyHygiene": 1,
-  "evidenceQuality": 1,
-  "feedback": "The phase output is effectively empty (only counts: Claims:0, KG nodes:5, Assumptions:0). Improve by: (1) stating explicit, testable claims and linking each to causal mechanisms; (2) listing assumptions and how they could be tested or falsified; (3) expanding the KG nodes with relationships and provenance; (4) covering STEEP+V dimensions (Social, Technological, Economic, Environmental, Political, Values) and noting blind spots; (5) distinguishing correlation from causation and citing evidence for causal claims; (6) providing decision-relevant implications and concrete actions; (7) reporting uncertainty (confidence levels, ranges, sensitivity) and citing sources/methods. With those additions re-evaluate."
+"mechanisticClarity": 1,
+"completeness": 1,
+"causalDiscipline": 1,
+"decisionUsefulness": 1,
+"uncertaintyHygiene": 1,
+"evidenceQuality": 1,
+"feedback": "The phase output is effectively empty (only counts: Claims:0, KG nodes:5, Assumptions:0). Improve by: (1) stating explicit, testable claims and linking each to causal mechanisms; (2) listing assumptions and how they could be tested or falsified; (3) expanding the KG nodes with relationships and provenance; (4) covering STEEP+V dimensions (Social, Technological, Economic, Environmental, Political, Values) and noting blind spots; (5) distinguishing correlation from causation and citing evidence for causal claims; (6) providing decision-relevant implications and concrete actions; (7) reporting uncertainty (confidence levels, ranges, sensitivity) and citing sources/methods. With those additions re-evaluate."
 }
 
 ---
 
 ### User → Agent
 
-*08/03/2026, 23:01:51*
+_08/03/2026, 23:01:51_
 
 Goal: You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change.
 
 Context:
 {
-  "scope": {
-    "topic": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change.",
-    "domain": "general",
-    "timeHorizon": "5 years",
-    "geography": "global",
-    "decisionContext": "Strategic decision support",
-    "boundaries": {
-      "inScope": [
-        "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change."
-      ],
-      "outOfScope": []
-    }
-  },
-  "evidence": [
-    {
-      "id": "EVD-001",
-      "category": "technological",
-      "query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change.",
-      "source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
-      "url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
-      "date": "2026-03-08",
-      "timestamp": 1773010545559,
-      "excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
-      "reliability": 0.7,
-      "searchTool": "serper"
-    },
-    {
-      "id": "EVD-002",
-      "category": "economic",
-      "query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change. market drivers",
-      "source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
-      "url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
-      "date": "2026-03-08",
-      "timestamp": 1773010545559,
-      "excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
-      "reliability": 0.7,
-      "searchTool": "serper"
-    },
-    {
-      "id": "EVD-003",
-      "category": "political",
-      "query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change. policy",
-      "source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
-      "url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
-      "date": "2026-03-08",
-      "timestamp": 1773010545560,
-      "excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
-      "reliability": 0.7,
-      "searchTool": "serper"
-    }
-  ],
-  "seededClaims": [],
-  "verificationTargets": [
-    "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change."
-  ]
+"scope": {
+"topic": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change.",
+"domain": "general",
+"timeHorizon": "5 years",
+"geography": "global",
+"decisionContext": "Strategic decision support",
+"boundaries": {
+"inScope": [
+"You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change."
+],
+"outOfScope": []
+}
+},
+"evidence": [
+{
+"id": "EVD-001",
+"category": "technological",
+"query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change.",
+"source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
+"url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
+"date": "2026-03-08",
+"timestamp": 1773010545559,
+"excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
+"reliability": 0.7,
+"searchTool": "serper"
+},
+{
+"id": "EVD-002",
+"category": "economic",
+"query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change. market drivers",
+"source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
+"url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
+"date": "2026-03-08",
+"timestamp": 1773010545559,
+"excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
+"reliability": 0.7,
+"searchTool": "serper"
+},
+{
+"id": "EVD-003",
+"category": "political",
+"query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change. policy",
+"source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
+"url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
+"date": "2026-03-08",
+"timestamp": 1773010545560,
+"excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
+"reliability": 0.7,
+"searchTool": "serper"
+}
+],
+"seededClaims": [],
+"verificationTargets": [
+"You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change."
+]
 }
 
 ---
 
 ### agent:e044205c-d0b2-4217-a1c9-1bc4877cac00 → User
 
-*08/03/2026, 23:02:38*
+_08/03/2026, 23:02:38_
 
-```json
+````json
 {
   "claims": [
     {
@@ -4004,7 +3998,7 @@ The output either did not contain valid JSON or could not be validated against t
     {
       "id": "CLM-005",
       "type": "forecast",
-      "text": "Vertical SaaS companies with deep domain data, regulatory moats, and mission-critical workflow integration (e.g., Veeva in pharma, Toast in restaurants, Procore in construction) will be relative winners over the 5-year horizon because AI amplifies their data advantage without 
+      "text": "Vertical SaaS companies with deep domain data, regulatory moats, and mission-critical workflow integration (e.g., Veeva in pharma, Toast in restaurants, Procore in construction) will be relative winners over the 5-year horizon because AI amplifies their data advantage without
 [...truncated]
 
 ## Rules
@@ -5063,13 +5057,13 @@ Context:
   ],
   "loops": []
 }
-```
+````
 
 ---
 
 ### User → Agent
 
-*08/03/2026, 23:04:42*
+_08/03/2026, 23:04:42_
 
 Goal: CRITICAL: Return ONLY valid JSON. No explanation, no markdown fences.
 
@@ -5129,36 +5123,36 @@ N-004 -causes-> N-005
 ## Output Format (JSON only):
 
 {
-  "nodes": [
-    { "id": "N-001", "type": "principle|constraint|trend|uncertainty|variable|scenario_state", "label": "<string>", "ledgerRef": "CLM-001", "properties": {} }
-  ],
-  "edges": [
-    { "source": "N-001", "target": "N-002", "type": "causes|constrains|disrupts|reinforces|resolves_as|supports|contradicts|depends_on", "polarity": "+|-|conditional", "strength": 0.8, "lag": "immediate|short|medium|long" }
-  ],
-  "loops": [
-    { "id": "L-001", "type": "reinforcing|balancing", "nodes": ["N-001", "N-002", "N-003"], "description": "<string>" }
-  ]
+"nodes": [
+{ "id": "N-001", "type": "principle|constraint|trend|uncertainty|variable|scenario_state", "label": "<string>", "ledgerRef": "CLM-001", "properties": {} }
+],
+"edges": [
+{ "source": "N-001", "target": "N-002", "type": "causes|constrains|disrupts|reinforces|resolves_as|supports|contradicts|depends_on", "polarity": "+|-|conditional", "strength": 0.8, "lag": "immediate|short|medium|long" }
+],
+"loops": [
+{ "id": "L-001", "type": "reinforcing|balancing", "nodes": ["N-001", "N-002", "N-003"], "description": "<string>" }
+]
 }
 
 ## Example Output
 
 {
-  "nodes": [
-    {
-      "id": "N-001",
-      "type": "trend",
-      "label": "AI lowers software development costs",
-      "ledgerRef": "CLM-001",
-      "properties": {
-        "domain": "technological",
-        "impact": "high"
-      }
-    },
-    {
-      "id": "N-002",
-      "type": "constraint",
-      "label": "Feature moats weaken",
-      "ledgerRef": "CLM-002",
+"nodes": [
+{
+"id": "N-001",
+"type": "trend",
+"label": "AI lowers software development costs",
+"ledgerRef": "CLM-001",
+"properties": {
+"domain": "technological",
+"impact": "high"
+}
+},
+{
+"id": "N-002",
+"type": "constraint",
+"label": "Feature moats weaken",
+"ledgerRef": "CLM-002",
 
 [...truncated]
 
@@ -5173,61 +5167,61 @@ You are an Oracle Systems Mapper. From a set of claims and evidence, construct a
 ## Validation Errors
 
 [
-  {
-    "code": "invalid_type",
-    "expected": "string",
-    "received": "null",
-    "path": [
-      "nodes",
-      0,
-      "ledgerRef"
-    ],
-    "message": "Expected string, received null"
-  },
-  {
-    "code": "invalid_type",
-    "expected": "string",
-    "received": "null",
-    "path": [
-      "nodes",
-      1,
-      "ledgerRef"
-    ],
-    "message": "Expected string, received null"
-  },
-  {
-    "code": "invalid_type",
-    "expected": "string",
-    "received": "null",
-    "path": [
-      "nodes",
-      2,
-      "ledgerRef"
-    ],
-    "message": "Expected string, received null"
-  },
-  {
-    "code": "invalid_type",
-    "expected": "string",
-    "received": "null",
-    "path": [
-      "nodes",
-      3,
-      "ledgerRef"
-    ],
-    "message": "Expected string, received null"
-  },
-  {
-    "code": "invalid_type",
-    "expected": "string",
-    "received": "null",
-    "path": [
-      "nodes",
-      4,
-      "ledgerRef"
-    ],
-    "message": "Expected string, received null"
-  }
+{
+"code": "invalid_type",
+"expected": "string",
+"received": "null",
+"path": [
+"nodes",
+0,
+"ledgerRef"
+],
+"message": "Expected string, received null"
+},
+{
+"code": "invalid_type",
+"expected": "string",
+"received": "null",
+"path": [
+"nodes",
+1,
+"ledgerRef"
+],
+"message": "Expected string, received null"
+},
+{
+"code": "invalid_type",
+"expected": "string",
+"received": "null",
+"path": [
+"nodes",
+2,
+"ledgerRef"
+],
+"message": "Expected string, received null"
+},
+{
+"code": "invalid_type",
+"expected": "string",
+"received": "null",
+"path": [
+"nodes",
+3,
+"ledgerRef"
+],
+"message": "Expected string, received null"
+},
+{
+"code": "invalid_type",
+"expected": "string",
+"received": "null",
+"path": [
+"nodes",
+4,
+"ledgerRef"
+],
+"message": "Expected string, received null"
+}
 ]
 
 ## Original Output
@@ -5241,9 +5235,7 @@ You are an Oracle Systems Mapper. From a set of claims and evidence, construct a
       "label": "AI Integration in Software Development",
       "ledgerRef": null,
       "properties": {
-        "evidence": [
-          "EVD-001"
-        ]
+        "evidence": ["EVD-001"]
       }
     },
     {
@@ -5252,9 +5244,7 @@ You are an Oracle Systems Mapper. From a set of claims and evidence, construct a
       "label": "Friction & Cost of Switching Software",
       "ledgerRef": null,
       "properties": {
-        "evidence": [
-          "EVD-002"
-        ]
+        "evidence": ["EVD-002"]
       }
     },
     {
@@ -5263,9 +5253,7 @@ You are an Oracle Systems Mapper. From a set of claims and evidence, construct a
       "label": "Strength of Switching Costs Moat",
       "ledgerRef": null,
       "properties": {
-        "evidence": [
-          "EVD-003"
-        ]
+        "evidence": ["EVD-003"]
       }
     },
     {
@@ -5347,202 +5335,202 @@ Context:
 
 ### system_json_repair → User
 
-*08/03/2026, 23:04:56*
+_08/03/2026, 23:04:56_
 
 {
-  "nodes": [
-    {
-      "id": "N-001",
-      "type": "trend",
-      "label": "AI Integration in Software Development",
-      "ledgerRef": "CLM-001",
-      "properties": {
-        "evidence": [
-          "EVD-001"
-        ]
-      }
-    },
-    {
-      "id": "N-002",
-      "type": "variable",
-      "label": "Friction & Cost of Switching Software",
-      "ledgerRef": "CLM-002",
-      "properties": {
-        "evidence": [
-          "EVD-002"
-        ]
-      }
-    },
-    {
-      "id": "N-003",
-      "type": "constraint",
-      "label": "Strength of Switching Costs Moat",
-      "ledgerRef": "CLM-003",
-      "properties": {
-        "evidence": [
-          "EVD-003"
-        ]
-      }
-    },
-    {
-      "id": "N-004",
-      "type": "variable",
-      "label": "Market Competition Intensity",
-      "ledgerRef": "CLM-004",
-      "properties": {}
-    },
-    {
-      "id": "N-005",
-      "type": "uncertainty",
-      "label": "Long-term Viability of Incumbent Software Businesses",
-      "ledgerRef": "CLM-005",
-      "properties": {}
-    }
-  ],
-  "edges": [
-    {
-      "source": "N-001",
-      "target": "N-002",
-      "type": "causes",
-      "polarity": "-",
-      "strength": 0.8,
-      "lag": "short"
-    },
-    {
-      "source": "N-002",
-      "target": "N-003",
-      "type": "causes",
-      "polarity": "-",
-      "strength": 0.9,
-      "lag": "immediate"
-    },
-    {
-      "source": "N-003",
-      "target": "N-004",
-      "type": "causes",
-      "polarity": "-",
-      "strength": 0.7,
-      "lag": "medium"
-    },
-    {
-      "source": "N-003",
-      "target": "N-005",
-      "type": "supports",
-      "polarity": "+",
-      "strength": 0.8,
-      "lag": "long"
-    },
-    {
-      "source": "N-004",
-      "target": "N-005",
-      "type": "causes",
-      "polarity": "-",
-      "strength": 0.7,
-      "lag": "long"
-    }
-  ],
-  "loops": []
+"nodes": [
+{
+"id": "N-001",
+"type": "trend",
+"label": "AI Integration in Software Development",
+"ledgerRef": "CLM-001",
+"properties": {
+"evidence": [
+"EVD-001"
+]
+}
+},
+{
+"id": "N-002",
+"type": "variable",
+"label": "Friction & Cost of Switching Software",
+"ledgerRef": "CLM-002",
+"properties": {
+"evidence": [
+"EVD-002"
+]
+}
+},
+{
+"id": "N-003",
+"type": "constraint",
+"label": "Strength of Switching Costs Moat",
+"ledgerRef": "CLM-003",
+"properties": {
+"evidence": [
+"EVD-003"
+]
+}
+},
+{
+"id": "N-004",
+"type": "variable",
+"label": "Market Competition Intensity",
+"ledgerRef": "CLM-004",
+"properties": {}
+},
+{
+"id": "N-005",
+"type": "uncertainty",
+"label": "Long-term Viability of Incumbent Software Businesses",
+"ledgerRef": "CLM-005",
+"properties": {}
+}
+],
+"edges": [
+{
+"source": "N-001",
+"target": "N-002",
+"type": "causes",
+"polarity": "-",
+"strength": 0.8,
+"lag": "short"
+},
+{
+"source": "N-002",
+"target": "N-003",
+"type": "causes",
+"polarity": "-",
+"strength": 0.9,
+"lag": "immediate"
+},
+{
+"source": "N-003",
+"target": "N-004",
+"type": "causes",
+"polarity": "-",
+"strength": 0.7,
+"lag": "medium"
+},
+{
+"source": "N-003",
+"target": "N-005",
+"type": "supports",
+"polarity": "+",
+"strength": 0.8,
+"lag": "long"
+},
+{
+"source": "N-004",
+"target": "N-005",
+"type": "causes",
+"polarity": "-",
+"strength": 0.7,
+"lag": "long"
+}
+],
+"loops": []
 }
 
 ---
 
 ### User → Agent
 
-*08/03/2026, 23:04:56*
+_08/03/2026, 23:04:56_
 
 Goal: Verify 0 claims
 
 Context:
 {
-  "claims": [],
-  "evidence": [
-    {
-      "id": "EVD-001",
-      "category": "technological",
-      "query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change.",
-      "source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
-      "url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
-      "date": "2026-03-08",
-      "timestamp": 1773010545559,
-      "excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
-      "reliability": 0.7,
-      "searchTool": "serper"
-    },
-    {
-      "id": "EVD-002",
-      "category": "economic",
-      "query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change. market drivers",
-      "source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
-      "url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
-      "date": "2026-03-08",
-      "timestamp": 1773010545559,
-      "excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
-      "reliability": 0.7,
-      "searchTool": "serper"
-    },
-    {
-      "id": "EVD-003",
-      "category": "political",
-      "query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change. policy",
-      "source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
-      "url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
-      "date": "2026-03-08",
-      "timestamp": 1773010545560,
-      "excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
-      "reliability": 0.7,
-      "searchTool": "serper"
-    }
-  ],
-  "verificationTargets": [
-    "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change."
-  ]
+"claims": [],
+"evidence": [
+{
+"id": "EVD-001",
+"category": "technological",
+"query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change.",
+"source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
+"url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
+"date": "2026-03-08",
+"timestamp": 1773010545559,
+"excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
+"reliability": 0.7,
+"searchTool": "serper"
+},
+{
+"id": "EVD-002",
+"category": "economic",
+"query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change. market drivers",
+"source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
+"url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
+"date": "2026-03-08",
+"timestamp": 1773010545559,
+"excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
+"reliability": 0.7,
+"searchTool": "serper"
+},
+{
+"id": "EVD-003",
+"category": "political",
+"query": "You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change. policy",
+"source": "Good news: AI Will Eat Application Software | Andreessen Horowitz",
+"url": "[https://a16z.com/good-news-ai-will-eat-application-software/](https://a16z.com/good-news-ai-will-eat-application-software/)",
+"date": "2026-03-08",
+"timestamp": 1773010545560,
+"excerpt": "Switching costs are perhaps the one moat that really is going to change. It's definitely true that AI is changing the friction and the cost ...",
+"reliability": 0.7,
+"searchTool": "serper"
+}
+],
+"verificationTargets": [
+"You are an investor, you are investing into Software (SaaS, Marketplace businesses, AI, etc.). AI has changed how we develop software in the last year. It changed the moats and long-term prospects for business. Create for me an investment thesis for existing SaaS, consumer software and marketplace businesses. Who will be the future winners and losers. What will be the moats. Who will be the losers of the change."
+]
 }
 
 ---
 
 ### agent:6b05826b-02b4-4de0-be2a-82672385686c → User
 
-*08/03/2026, 23:04:59*
+_08/03/2026, 23:04:59_
 
 {
-  "verifiedClaims": [],
-  "axiomGroundingPercent": 0
+"verifiedClaims": [],
+"axiomGroundingPercent": 0
 }
 
 ---
 
 ### User → Agent
 
-*08/03/2026, 23:05:00*
+_08/03/2026, 23:05:00_
 
 Goal: Evaluate Gate A for phase 1 output
 
 Context:
 {
-  "phaseOutput": "Claims: 0, KG nodes: 5, Assumptions: 0\n\n"
+"phaseOutput": "Claims: 0, KG nodes: 5, Assumptions: 0\n\n"
 }
 
 ---
 
 ### agent:6b05826b-02b4-4de0-be2a-82672385686c → User
 
-*08/03/2026, 23:05:05*
+_08/03/2026, 23:05:05_
 
 {
-  "mechanisticClarity": 1,
-  "completeness": 1,
-  "causalDiscipline": 1,
-  "decisionUsefulness": 1,
-  "uncertaintyHygiene": 1,
-  "evidenceQuality": 1,
-  "feedback": "The phase output is extremely sparse (only counts: Claims:0, KG nodes:5, Assumptions:0) and provides no substantive content to evaluate. To improve: (1) List explicit claims and map each to supporting evidence and KG nodes; (2) State assumptions clearly and mark which are testable; (3) Provide mechanistic explanations for causal claims (how X leads to Y) and distinguish correlation from causation; (4) Cover relevant STEEP+V dimensions or justify exclusions; (5) Offer actionable implications or decisions tied to findings; (6) Include uncertainty estimates or confidence levels for major claims; (7) Cite or summarize supporting sources/evidence. Without these, the output cannot support decision-making or rigorous evaluation."
+"mechanisticClarity": 1,
+"completeness": 1,
+"causalDiscipline": 1,
+"decisionUsefulness": 1,
+"uncertaintyHygiene": 1,
+"evidenceQuality": 1,
+"feedback": "The phase output is extremely sparse (only counts: Claims:0, KG nodes:5, Assumptions:0) and provides no substantive content to evaluate. To improve: (1) List explicit claims and map each to supporting evidence and KG nodes; (2) State assumptions clearly and mark which are testable; (3) Provide mechanistic explanations for causal claims (how X leads to Y) and distinguish correlation from causation; (4) Cover relevant STEEP+V dimensions or justify exclusions; (5) Offer actionable implications or decisions tied to findings; (6) Include uncertainty estimates or confidence levels for major claims; (7) Cite or summarize supporting sources/evidence. Without these, the output cannot support decision-making or rigorous evaluation."
 }
 
 ---
 
 ### agent → User
 
-*Invalid Date*
+_Invalid Date_
 
 Gate escalation requires human review before continuing.
 

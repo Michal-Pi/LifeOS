@@ -443,7 +443,9 @@ export async function repairJsonOutput(
   execContext: AgentExecutionContext,
   options: JsonRepairOptions = {}
 ): Promise<string | null> {
-  const contextBlock = options.context ? `## Context\n${sanitizeForPrompt(options.context, 200)}\n\n` : ''
+  const contextBlock = options.context
+    ? `## Context\n${sanitizeForPrompt(options.context, 200)}\n\n`
+    : ''
   const goalBlock = options.goal ? `## Goal\n${sanitizeForPrompt(options.goal, 400)}\n\n` : ''
   const taskBlock = options.originalTaskPrompt
     ? `## Original Task Prompt\n${truncateRawText(options.originalTaskPrompt)}\n\n`

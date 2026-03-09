@@ -316,7 +316,10 @@ export const onRunUpdated = onDocumentUpdated(
       before.status === 'failed' &&
       (before.quotaExceeded === true || before.errorCategory === 'rate_limit')
 
-    if ((!resumableStatuses.has(before.status) && !resumableFailure) || after.status !== 'pending') {
+    if (
+      (!resumableStatuses.has(before.status) && !resumableFailure) ||
+      after.status !== 'pending'
+    ) {
       return
     }
 

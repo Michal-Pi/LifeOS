@@ -2036,7 +2036,9 @@ describe('Oracle Graph Integration', () => {
 // ===== selectUrlsForCrawl =====
 
 describe('selectUrlsForCrawl', () => {
-  function makeEvidence(overrides: Partial<import('@lifeos/agents').OracleEvidence> = {}): import('@lifeos/agents').OracleEvidence {
+  function makeEvidence(
+    overrides: Partial<import('@lifeos/agents').OracleEvidence> = {}
+  ): import('@lifeos/agents').OracleEvidence {
     return {
       id: 'EVD-001',
       source: 'Test Source',
@@ -2083,9 +2085,24 @@ describe('selectUrlsForCrawl', () => {
 
   it('prioritizes category diversity', () => {
     const evidence = [
-      makeEvidence({ id: 'EVD-001', url: 'https://a.com/1', category: 'economic', reliability: 0.9 }),
-      makeEvidence({ id: 'EVD-002', url: 'https://b.com/1', category: 'economic', reliability: 0.9 }),
-      makeEvidence({ id: 'EVD-003', url: 'https://c.com/1', category: 'technological', reliability: 0.5 }),
+      makeEvidence({
+        id: 'EVD-001',
+        url: 'https://a.com/1',
+        category: 'economic',
+        reliability: 0.9,
+      }),
+      makeEvidence({
+        id: 'EVD-002',
+        url: 'https://b.com/1',
+        category: 'economic',
+        reliability: 0.9,
+      }),
+      makeEvidence({
+        id: 'EVD-003',
+        url: 'https://c.com/1',
+        category: 'technological',
+        reliability: 0.5,
+      }),
     ]
     const selected = selectUrlsForCrawl(evidence, 2)
     const categories = selected.map((e) => e.category)
@@ -2095,8 +2112,18 @@ describe('selectUrlsForCrawl', () => {
 
   it('prefers higher reliability within same domain/category', () => {
     const evidence = [
-      makeEvidence({ id: 'EVD-001', url: 'https://a.com/1', category: 'economic', reliability: 0.3 }),
-      makeEvidence({ id: 'EVD-002', url: 'https://a.com/2', category: 'economic', reliability: 0.9 }),
+      makeEvidence({
+        id: 'EVD-001',
+        url: 'https://a.com/1',
+        category: 'economic',
+        reliability: 0.3,
+      }),
+      makeEvidence({
+        id: 'EVD-002',
+        url: 'https://a.com/2',
+        category: 'economic',
+        reliability: 0.9,
+      }),
     ]
     const selected = selectUrlsForCrawl(evidence, 1)
     // Both have same domain+category so diversity bonus is equal; reliability breaks the tie

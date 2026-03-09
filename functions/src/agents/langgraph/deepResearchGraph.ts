@@ -505,7 +505,9 @@ ${opts.jsonSchema}`,
 
       if (opts.repairSchema) {
         const repairInput =
-          retryStep.output.trim().length >= rawOutput.trim().length * 0.5 ? retryStep.output : rawOutput
+          retryStep.output.trim().length >= rawOutput.trim().length * 0.5
+            ? retryStep.output
+            : rawOutput
         const repairedOutput = await repairJsonOutput(
           repairInput,
           getValidationErrorForRepair(repairInput, opts.repairSchema),
@@ -530,9 +532,12 @@ ${opts.jsonSchema}`,
             })
           }
         } else {
-          log.warn(`${opts.context} GPT repair returned no valid JSON, falling back to Anthropic fast`, {
-            runId: opts.runId,
-          })
+          log.warn(
+            `${opts.context} GPT repair returned no valid JSON, falling back to Anthropic fast`,
+            {
+              runId: opts.runId,
+            }
+          )
         }
       }
 
@@ -711,9 +716,7 @@ function parseNegationOutput(
       categoryAttacks: Array.isArray(record.categoryAttacks)
         ? record.categoryAttacks.map(String)
         : [],
-      preservedValid: Array.isArray(record.preservedValid)
-        ? record.preservedValid.map(String)
-        : [],
+      preservedValid: Array.isArray(record.preservedValid) ? record.preservedValid.map(String) : [],
       rivalFraming: String(record.rivalFraming ?? ''),
       rewriteOperator: operator,
       operatorArgs:
@@ -1444,8 +1447,10 @@ Base your thesis on evidence from the knowledge graph. Cite node IDs when refere
           (text) => parseThesisOutput(text, agent.agentId, step.model, lens),
           {
             context: `Deep Research Thesis (${lens})`,
-            jsonSchema: '{"nodes":[{"id":"string","label":"string","type":"claim|concept|mechanism|prediction","note":"string","sourceId":"string","sourceUrl":"string","sourceConfidence":0.0}],"edges":[{"from":"string","to":"string","rel":"causes|contradicts|supports|mediates|scopes","weight":0.0}],"summary":"string","reasoning":"string","confidence":0.0,"regime":"string","temporalGrain":"string"}',
-            emptyFallback: '{"nodes":[],"edges":[],"summary":"Parse failure","reasoning":"No relevant thesis content recovered","confidence":0,"regime":"unknown","temporalGrain":"unknown"}',
+            jsonSchema:
+              '{"nodes":[{"id":"string","label":"string","type":"claim|concept|mechanism|prediction","note":"string","sourceId":"string","sourceUrl":"string","sourceConfidence":0.0}],"edges":[{"from":"string","to":"string","rel":"causes|contradicts|supports|mediates|scopes","weight":0.0}],"summary":"string","reasoning":"string","confidence":0.0,"regime":"string","temporalGrain":"string"}',
+            emptyFallback:
+              '{"nodes":[],"edges":[],"summary":"Parse failure","reasoning":"No relevant thesis content recovered","confidence":0,"regime":"unknown","temporalGrain":"unknown"}',
             goal: state.goal,
             baseAgent: agent,
             execContext: kgOnlyExecContext,
@@ -1576,8 +1581,10 @@ function createCrossNegationNode(thesisAgents: AgentConfig[], execContext: Agent
               (text) => parseNegationOutput(text, agent.agentId, targetThesis.agentId),
               {
                 context: 'Deep Research Negation',
-                jsonSchema: '{"internalTensions":["string"],"categoryAttacks":["string"],"preservedValid":["string"],"rivalFraming":"string","rewriteOperator":"SPLIT|MERGE|REVERSE_EDGE|ADD_MEDIATOR|SCOPE_TO_REGIME|TEMPORALIZE","operatorArgs":{}}',
-                emptyFallback: '{"internalTensions":[],"categoryAttacks":[],"preservedValid":[],"rivalFraming":"","rewriteOperator":"SPLIT","operatorArgs":{}}',
+                jsonSchema:
+                  '{"internalTensions":["string"],"categoryAttacks":["string"],"preservedValid":["string"],"rivalFraming":"string","rewriteOperator":"SPLIT|MERGE|REVERSE_EDGE|ADD_MEDIATOR|SCOPE_TO_REGIME|TEMPORALIZE","operatorArgs":{}}',
+                emptyFallback:
+                  '{"internalTensions":[],"categoryAttacks":[],"preservedValid":[],"rivalFraming":"","rewriteOperator":"SPLIT","operatorArgs":{}}',
                 goal: state.goal,
                 baseAgent: agent,
                 execContext,
@@ -1732,7 +1739,8 @@ function createSublationNode(
       })
 
       const winnerAgent =
-        synthesisAgents.find((agent) => agent.agentId === result.winner.agentId) ?? synthesisAgents[0]
+        synthesisAgents.find((agent) => agent.agentId === result.winner.agentId) ??
+        synthesisAgents[0]
 
       const {
         synthesis,
@@ -1740,8 +1748,10 @@ function createSublationNode(
         graphDiff,
       } = await withJsonParseRetry(result.winner.rawText, (text) => parseSublationOutput(text), {
         context: 'Deep Research Sublation',
-        jsonSchema: '{"mergedGraph":{"nodes":[{"id":"string","label":"string","type":"claim|concept|mechanism|prediction","note":"string","sourceId":"string","sourceUrl":"string","sourceConfidence":0.0}],"edges":[{"from":"string","to":"string","rel":"causes|contradicts|supports|mediates|scopes","weight":0.0}],"summary":"string","reasoning":"string","confidence":0.0,"regime":"string","temporalGrain":"string"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[],"resolvedContradictions":[],"newContradictions":[]}}',
-        emptyFallback: '{"mergedGraph":{"nodes":[],"edges":[],"summary":"Parse failure","reasoning":"No relevant synthesis content recovered","confidence":0,"regime":"unknown","temporalGrain":"unknown"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[],"resolvedContradictions":[],"newContradictions":[]}}',
+        jsonSchema:
+          '{"mergedGraph":{"nodes":[{"id":"string","label":"string","type":"claim|concept|mechanism|prediction","note":"string","sourceId":"string","sourceUrl":"string","sourceConfidence":0.0}],"edges":[{"from":"string","to":"string","rel":"causes|contradicts|supports|mediates|scopes","weight":0.0}],"summary":"string","reasoning":"string","confidence":0.0,"regime":"string","temporalGrain":"string"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[],"resolvedContradictions":[],"newContradictions":[]}}',
+        emptyFallback:
+          '{"mergedGraph":{"nodes":[],"edges":[],"summary":"Parse failure","reasoning":"No relevant synthesis content recovered","confidence":0,"regime":"unknown","temporalGrain":"unknown"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[],"resolvedContradictions":[],"newContradictions":[]}}',
         goal: state.goal,
         baseAgent: winnerAgent,
         execContext,
@@ -1965,7 +1975,12 @@ function createDialecticalMetaNode(
     // Check if meta agent requested user input
     const metaInterrupt = handleAskUserInterrupt(result.step, 'dialectical_meta')
     if (metaInterrupt) {
-      return { steps: [result.step], dialecticalCycleCount: cycleCount, resumeNodeHint: 'dialectical_meta', ...metaInterrupt }
+      return {
+        steps: [result.step],
+        dialecticalCycleCount: cycleCount,
+        resumeNodeHint: 'dialectical_meta',
+        ...metaInterrupt,
+      }
     }
 
     log.info('Meta reflection complete', {
@@ -2779,9 +2794,7 @@ export async function executeDeepResearchWorkflowLangGraph(
 
   // If resuming (e.g. after user approval or constraint increase), merge previous state
   // and clear pause indicators so the graph can proceed from the paused node
-  const humanApproval = context?.humanApproval as
-    | { nodeId?: string; response?: string }
-    | undefined
+  const humanApproval = context?.humanApproval as { nodeId?: string; response?: string } | undefined
   const mergedResumeContext = {
     ...(resumeState?.context ?? {}),
     ...(freshState.context ?? {}),
@@ -2794,9 +2807,7 @@ export async function executeDeepResearchWorkflowLangGraph(
         constraintPause: null,
         pendingInput: null,
         // Inject humanApproval into context so sense_making can detect it
-        context: humanApproval
-          ? { ...mergedResumeContext, humanApproval }
-          : mergedResumeContext,
+        context: humanApproval ? { ...mergedResumeContext, humanApproval } : mergedResumeContext,
       }
     : freshState
 

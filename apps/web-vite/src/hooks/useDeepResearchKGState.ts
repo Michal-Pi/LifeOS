@@ -153,10 +153,7 @@ export function useDeepResearchKGState(
     // Executor stores deep research state flat on workflowState (not nested under .deepResearch)
     const ws = run.workflowState as Record<string, unknown> | undefined
     if (ws && (ws.mergedGraph || ws.kgSnapshots || ws.sources)) {
-      const answer = ws.answer as
-        | { confidenceAssessment?: { overall?: number } }
-        | null
-        | undefined
+      const answer = ws.answer as { confidenceAssessment?: { overall?: number } } | null | undefined
       return {
         snapshots: (ws.kgSnapshots as KGSnapshot[]) ?? [],
         mergedGraph: (ws.mergedGraph as CompactGraph) ?? null,

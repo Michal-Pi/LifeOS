@@ -113,7 +113,12 @@ export function calculateIterationBudget(input: BudgetInput): IterationBudget {
       for (const lens of Object.keys(thesisBudgetsByLens) as ThesisLens[]) {
         const current = thesisBudgetsByLens[lens]
         if (current) {
-          thesisBudgetsByLens[lens] = blendWithHistory(current, aggregated.thesis.p75, sampleCount, 3)
+          thesisBudgetsByLens[lens] = blendWithHistory(
+            current,
+            aggregated.thesis.p75,
+            sampleCount,
+            3
+          )
         }
       }
     }

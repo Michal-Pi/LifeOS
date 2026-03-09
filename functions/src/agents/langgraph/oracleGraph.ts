@@ -179,9 +179,7 @@ const DecomposerAssumptionSchema = z
   }))
 
 const DecomposerOutputSchema = z.object({
-  claims: z
-    .array(DecomposerClaimSchema)
-    .default([]),
+  claims: z.array(DecomposerClaimSchema).default([]),
   assumptions: z.array(DecomposerAssumptionSchema).default([]),
 })
 const SystemsMapperOutputSchema = z.object({
@@ -190,7 +188,14 @@ const SystemsMapperOutputSchema = z.object({
       z
         .object({
           id: z.string(),
-          type: z.enum(['principle', 'constraint', 'trend', 'uncertainty', 'variable', 'scenario_state']),
+          type: z.enum([
+            'principle',
+            'constraint',
+            'trend',
+            'uncertainty',
+            'variable',
+            'scenario_state',
+          ]),
           label: z.string(),
           ledgerRef: z.string().optional(),
           properties: z.record(z.string(), z.unknown()).optional(),
@@ -899,7 +904,7 @@ async function parseJsonWithRetry<T>(
   nodeId: string,
   stepNumber: number,
   runId: string,
-  originalTaskPrompt?: string,
+  originalTaskPrompt?: string
 ): Promise<T> {
   // Layer 1: direct parse + validation
   const initial = parseJsonCandidate<T>(rawOutput, schema)
@@ -1000,7 +1005,9 @@ ${jsonSchema}`,
   const fallback = parseJsonCandidate<T>(emptyFallback, schema)
   if (fallback.data) return fallback.data
 
-  throw new Error(`${context} output did not contain valid schema-compliant JSON and empty fallback also failed`)
+  throw new Error(
+    `${context} output did not contain valid schema-compliant JSON and empty fallback also failed`
+  )
 }
 
 function hasSearchQueries(searchPlan: OracleSearchPlan): boolean {
@@ -1113,10 +1120,7 @@ function selectEvidenceCandidate(
  * Select the best URLs from evidence for full-page crawl enrichment.
  * Scores by domain diversity, STEEP+V category diversity, snippet richness, and reliability.
  */
-export function selectUrlsForCrawl(
-  evidence: OracleEvidence[],
-  maxUrls: number
-): OracleEvidence[] {
+export function selectUrlsForCrawl(evidence: OracleEvidence[], maxUrls: number): OracleEvidence[] {
   if (evidence.length === 0) return []
 
   const withUrls = evidence.filter(
@@ -1733,7 +1737,11 @@ function createOracleGraph(config: OracleGraphConfig) {
       return {}
     }
 
-    const budgetPause = getBudgetPauseUpdate(state, 'evidence_enrichment', oracleConfig.maxBudgetUsd)
+    const budgetPause = getBudgetPauseUpdate(
+      state,
+      'evidence_enrichment',
+      oracleConfig.maxBudgetUsd
+    )
     if (budgetPause) return budgetPause
 
     // Check remaining budget headroom (~$0.008/URL)
@@ -1844,7 +1852,10 @@ function createOracleGraph(config: OracleGraphConfig) {
     // Summarize crawled content
     let totalCrawlCost = 0
     let totalCrawlTokens = 0
-    const enrichedMap = new Map<string, { enrichedExcerpt: string; crawlStatus: 'success' | 'failed' }>()
+    const enrichedMap = new Map<
+      string,
+      { enrichedExcerpt: string; crawlStatus: 'success' | 'failed' }
+    >()
 
     for (const result of crawlResults) {
       if (result.status !== 'fulfilled' || !result.value.content) {
@@ -1919,7 +1930,11 @@ function createOracleGraph(config: OracleGraphConfig) {
       totalEstimatedCost: totalCrawlCost,
       ...trackCost(
         state,
-        { model: config.verifier.modelName, tokensUsed: totalCrawlTokens, estimatedCost: totalCrawlCost },
+        {
+          model: config.verifier.modelName,
+          tokensUsed: totalCrawlTokens,
+          estimatedCost: totalCrawlCost,
+        },
         0,
         'search'
       ),
@@ -2063,7 +2078,8 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'decomposer', stepNumber: 2 }
     )
 
-    const DECOMPOSER_SCHEMA = '{"claims":[{"id":"CLM-001","type":"descriptive|causal|forecast","text":"...","confidence":0.7,"confidenceBasis":"data|model_consensus|expert_judgment|speculative","assumptions":[],"evidenceIds":[],"dependencies":[],"axiomRefs":[],"createdBy":"agent:model","phase":1}],"assumptions":[{"id":"ASM-001","type":"economic|technical|behavioral|regulatory|structural","statement":"...","sensitivity":"high|medium|low","observables":["..."],"confidence":0.6}]}'
+    const DECOMPOSER_SCHEMA =
+      '{"claims":[{"id":"CLM-001","type":"descriptive|causal|forecast","text":"...","confidence":0.7,"confidenceBasis":"data|model_consensus|expert_judgment|speculative","assumptions":[],"evidenceIds":[],"dependencies":[],"axiomRefs":[],"createdBy":"agent:model","phase":1}],"assumptions":[{"id":"ASM-001","type":"economic|technical|behavioral|regulatory|structural","statement":"...","sensitivity":"high|medium|low","observables":["..."],"confidence":0.6}]}'
     const parsed = await parseJsonWithRetry<{
       claims: OracleClaim[]
       assumptions: OracleAssumption[]
@@ -2165,7 +2181,8 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'systems_mapper', stepNumber: 3 }
     )
 
-    const SYSTEMS_MAPPER_SCHEMA = '{"nodes":[{"id":"N-001","type":"principle|constraint|trend|uncertainty|variable|scenario_state","label":"...","ledgerRef":"CLM-001","properties":{}}],"edges":[{"source":"N-001","target":"N-002","type":"causes|constrains|disrupts|reinforces|resolves_as|supports|contradicts|depends_on","polarity":"+|-|conditional","strength":0.8,"lag":"immediate|short|medium|long"}],"loops":[{"id":"L-001","type":"reinforcing|balancing","nodes":["N-001","N-002"],"description":"..."}]}'
+    const SYSTEMS_MAPPER_SCHEMA =
+      '{"nodes":[{"id":"N-001","type":"principle|constraint|trend|uncertainty|variable|scenario_state","label":"...","ledgerRef":"CLM-001","properties":{}}],"edges":[{"source":"N-001","target":"N-002","type":"causes|constrains|disrupts|reinforces|resolves_as|supports|contradicts|depends_on","polarity":"+|-|conditional","strength":0.8,"lag":"immediate|short|medium|long"}],"loops":[{"id":"L-001","type":"reinforcing|balancing","nodes":["N-001","N-002"],"description":"..."}]}'
     const parsed = await parseJsonWithRetry<{
       nodes: OracleKnowledgeGraph['nodes']
       edges: OracleKnowledgeGraph['edges']
@@ -2237,7 +2254,8 @@ function createOracleGraph(config: OracleGraphConfig) {
     )
 
     // Parse verification results and update claim confidences
-    const VERIFIER_SCHEMA = '{"verifiedClaims":[{"claimId":"CLM-001","adjustedConfidence":0.8}],"axiomGroundingPercent":0.75}'
+    const VERIFIER_SCHEMA =
+      '{"verifiedClaims":[{"claimId":"CLM-001","adjustedConfidence":0.8}],"axiomGroundingPercent":0.75}'
     const parsed = await parseJsonWithRetry<{
       verifiedClaims: Array<{ claimId: string; adjustedConfidence: number }>
       axiomGroundingPercent: number
@@ -2489,7 +2507,8 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'scanner' }
     )
 
-    const SCANNER_SCHEMA = '{"trends":[{"id":"T-001","statement":"...","steepCategory":"social|technological|economic|environmental|political|values","direction":"...","momentum":"accelerating|steady|decelerating","impactScore":0.8,"uncertaintyScore":0.5,"evidenceIds":[],"causalLinks":[],"secondOrderEffects":[]}]}'
+    const SCANNER_SCHEMA =
+      '{"trends":[{"id":"T-001","statement":"...","steepCategory":"social|technological|economic|environmental|political|values","direction":"...","momentum":"accelerating|steady|decelerating","impactScore":0.8,"uncertaintyScore":0.5,"evidenceIds":[],"causalLinks":[],"secondOrderEffects":[]}]}'
     const parsed = await parseJsonWithRetry<{ trends: TrendObject[] }>(
       step.output,
       'Scanner',
@@ -2543,7 +2562,8 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'impact_assessor' }
     )
 
-    const IMPACT_SCHEMA = '{"crossImpactMatrix":[{"sourceId":"T-001","targetId":"T-002","effect":"increases|decreases|enables|blocks|neutral","strength":0.8,"mechanism":"..."}],"criticalUncertainties":[{"id":"U-001","variable":"...","states":["..."],"drivers":["..."],"impacts":["..."],"observables":["..."],"controllability":"none|low|medium|high","timeToResolution":"..."}]}'
+    const IMPACT_SCHEMA =
+      '{"crossImpactMatrix":[{"sourceId":"T-001","targetId":"T-002","effect":"increases|decreases|enables|blocks|neutral","strength":0.8,"mechanism":"..."}],"criticalUncertainties":[{"id":"U-001","variable":"...","states":["..."],"drivers":["..."],"impacts":["..."],"observables":["..."],"controllability":"none|low|medium|high","timeToResolution":"..."}]}'
     const parsed = await parseJsonWithRetry<{
       crossImpactMatrix: CrossImpactEntry[]
       criticalUncertainties: UncertaintyObject[]
@@ -2604,7 +2624,8 @@ function createOracleGraph(config: OracleGraphConfig) {
     )
 
     // Weak signals become additional trends
-    const WEAK_SIGNAL_SCHEMA = '{"weakSignals":[{"id":"WS-001","statement":"...","category":"...","potentialImpact":0.7,"confidence":0.5}]}'
+    const WEAK_SIGNAL_SCHEMA =
+      '{"weakSignals":[{"id":"WS-001","statement":"...","category":"...","potentialImpact":0.7,"confidence":0.5}]}'
     const parsed = await parseJsonWithRetry<{
       weakSignals: Array<{
         id: string
@@ -3058,7 +3079,8 @@ function createOracleGraph(config: OracleGraphConfig) {
     )
 
     // Parse the selected skeletons as preliminary scenarios
-    const EQ_SCHEMA = '{"selectedSkeletons":["SK-001"],"candidateSkeletons":[{"id":"SK-001","premise":{},"consistency":0.8,"plausibility":0.7,"divergence":0.6}]}'
+    const EQ_SCHEMA =
+      '{"selectedSkeletons":["SK-001"],"candidateSkeletons":[{"id":"SK-001","premise":{},"consistency":0.8,"plausibility":0.7,"divergence":0.6}]}'
     const parsed = await parseJsonWithRetry<{
       selectedSkeletons: string[]
       candidateSkeletons: Array<{
@@ -3153,7 +3175,8 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'scenario_developer' }
     )
 
-    const SCENARIO_SCHEMA = '{"scenarios":[{"id":"SCN-001","name":"...","premise":{},"narrative":"...","reinforcedPrinciples":[],"disruptedPrinciples":[],"feedbackLoops":[{"id":"L-001","type":"reinforcing|balancing","nodes":[],"description":"..."}],"implications":"...","signposts":[],"tailRisks":[],"assumptionRegister":[],"councilAssessment":{"agreementRate":0.8,"persistentDissent":[]},"plausibilityScore":0.7,"divergenceScore":0.6}]}'
+    const SCENARIO_SCHEMA =
+      '{"scenarios":[{"id":"SCN-001","name":"...","premise":{},"narrative":"...","reinforcedPrinciples":[],"disruptedPrinciples":[],"feedbackLoops":[{"id":"L-001","type":"reinforcing|balancing","nodes":[],"description":"..."}],"implications":"...","signposts":[],"tailRisks":[],"assumptionRegister":[],"councilAssessment":{"agreementRate":0.8,"persistentDissent":[]},"plausibilityScore":0.7,"divergenceScore":0.6}]}'
     const parsed = await parseJsonWithRetry<{ scenarios: OracleScenario[] }>(
       step.output,
       'Scenario developer',
@@ -3223,7 +3246,8 @@ function createOracleGraph(config: OracleGraphConfig) {
     )
 
     // Red team results get attached as tail risks on scenarios
-    const RED_TEAM_SCHEMA = '{"assessments":[{"scenarioId":"SCN-001","failureConditions":[{"condition":"...","probability":0.3,"earlyIndicator":"..."}],"tailRisks":["..."],"overallRobustness":"high|medium|low"}]}'
+    const RED_TEAM_SCHEMA =
+      '{"assessments":[{"scenarioId":"SCN-001","failureConditions":[{"condition":"...","probability":0.3,"earlyIndicator":"..."}],"tailRisks":["..."],"overallRobustness":"high|medium|low"}]}'
     const parsed = await parseJsonWithRetry<{
       assessments: Array<{
         scenarioId: string
@@ -3439,7 +3463,8 @@ function createOracleGraph(config: OracleGraphConfig) {
       { nodeId: 'backcasting' }
     )
 
-    const BACKCAST_SCHEMA = '{"backcastTimelines":[{"scenarioId":"SCN-001","targetYear":"2030","milestones":[{"year":"2027","event":"...","prerequisites":["..."]}],"strategicMoves":[{"type":"no_regret|option_to_buy|hedge|kill_criterion","description":"...","worksAcross":["SCN-001"],"timing":"...","ledgerRefs":[]}]}],"strategicMoves":[{"type":"no_regret|option_to_buy|hedge|kill_criterion","description":"...","worksAcross":["SCN-001"],"timing":"...","ledgerRefs":[]}]}'
+    const BACKCAST_SCHEMA =
+      '{"backcastTimelines":[{"scenarioId":"SCN-001","targetYear":"2030","milestones":[{"year":"2027","event":"...","prerequisites":["..."]}],"strategicMoves":[{"type":"no_regret|option_to_buy|hedge|kill_criterion","description":"...","worksAcross":["SCN-001"],"timing":"...","ledgerRefs":[]}]}],"strategicMoves":[{"type":"no_regret|option_to_buy|hedge|kill_criterion","description":"...","worksAcross":["SCN-001"],"timing":"...","ledgerRefs":[]}]}'
     const parsed = await parseJsonWithRetry<{
       backcastTimelines: BackcastTimeline[]
       strategicMoves: StrategicMove[]

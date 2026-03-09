@@ -1117,7 +1117,8 @@ function createThesisGenerationNode(
       )
 
       try {
-        const thesisBudget = budget.perThesisAgentByLens[lens as ThesisLens] ?? budget.perThesisAgent
+        const thesisBudget =
+          budget.perThesisAgentByLens[lens as ThesisLens] ?? budget.perThesisAgent
         const step = await executeAgentWithEvents(
           agent,
           thesisPrompt,
@@ -1137,8 +1138,10 @@ function createThesisGenerationNode(
           (text) => parseThesisOutput(text, agent.agentId, step.model, lens),
           {
             context: `Thesis (${lens})`,
-            jsonSchema: '{"nodes":[{"id":"string","label":"string (max 80)","type":"claim|concept|mechanism|prediction","note":"string (optional)","sourceId":"string (optional)","sourceUrl":"string (optional)","sourceConfidence":0.0}],"edges":[{"from":"string","to":"string","rel":"causes|contradicts|supports|mediates|scopes","weight":0.0}],"summary":"string (max 200)","reasoning":"string (max 500)","confidence":0.0,"regime":"string","temporalGrain":"string"}',
-            emptyFallback: '{"nodes":[],"edges":[],"summary":"Parse failure","reasoning":"","confidence":0,"regime":"unknown","temporalGrain":"unknown"}',
+            jsonSchema:
+              '{"nodes":[{"id":"string","label":"string (max 80)","type":"claim|concept|mechanism|prediction","note":"string (optional)","sourceId":"string (optional)","sourceUrl":"string (optional)","sourceConfidence":0.0}],"edges":[{"from":"string","to":"string","rel":"causes|contradicts|supports|mediates|scopes","weight":0.0}],"summary":"string (max 200)","reasoning":"string (max 500)","confidence":0.0,"regime":"string","temporalGrain":"string"}',
+            emptyFallback:
+              '{"nodes":[],"edges":[],"summary":"Parse failure","reasoning":"","confidence":0,"regime":"unknown","temporalGrain":"unknown"}',
             goal: state.goal,
             baseAgent: agent,
             execContext,
@@ -1385,8 +1388,10 @@ function createCrossNegationNode(
               (text) => parseNegationOutput(text, agent.agentId, targetThesis.agentId),
               {
                 context: 'Negation',
-                jsonSchema: '{"internalTensions":["string"],"categoryAttacks":["string"],"preservedValid":["string"],"rivalFraming":"string","rewriteOperator":"SPLIT|MERGE|REVERSE_EDGE|ADD_MEDIATOR|SCOPE_TO_REGIME|TEMPORALIZE","operatorArgs":{}}',
-                emptyFallback: '{"internalTensions":[],"categoryAttacks":[],"preservedValid":[],"rivalFraming":"","rewriteOperator":"SPLIT","operatorArgs":{}}',
+                jsonSchema:
+                  '{"internalTensions":["string"],"categoryAttacks":["string"],"preservedValid":["string"],"rivalFraming":"string","rewriteOperator":"SPLIT|MERGE|REVERSE_EDGE|ADD_MEDIATOR|SCOPE_TO_REGIME|TEMPORALIZE","operatorArgs":{}}',
+                emptyFallback:
+                  '{"internalTensions":[],"categoryAttacks":[],"preservedValid":[],"rivalFraming":"","rewriteOperator":"SPLIT","operatorArgs":{}}',
                 goal: state.goal,
                 baseAgent: agent,
                 execContext,
@@ -1757,23 +1762,25 @@ function createSublationNode(
       return { steps: [step], resumeNodeHint: 'sublate', ...sublationInterrupt }
     }
 
-    const { synthesis, mergedGraph: newMergedGraph, graphDiff } = await withJsonParseRetry(
-      step.output,
-      (text) => parseSublationOutput(text),
-      {
-        context: 'Sublation',
-        jsonSchema: '{"mergedGraph":{"nodes":[{"id":"string","label":"string (max 80)","type":"claim|concept|mechanism|prediction","note":"string (optional)"}],"edges":[{"from":"string","to":"string","rel":"causes|contradicts|supports|mediates|scopes","weight":0.0}],"summary":"string (max 200)","reasoning":"string (max 500)","confidence":0.0,"regime":"string","temporalGrain":"string"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[],"resolvedContradictions":[],"newContradictions":[]},"resolvedContradictions":[]}',
-        emptyFallback: '{"mergedGraph":{"nodes":[],"edges":[],"summary":"Parse failure","reasoning":"","confidence":0,"regime":"unknown","temporalGrain":"unknown"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[],"resolvedContradictions":[],"newContradictions":[]},"resolvedContradictions":[]}',
-        goal: state.goal,
-        baseAgent: synthesisAgent,
-        execContext,
-        nodeId: 'sublation',
-        stepNumber: state.steps.length + 1,
-        runId: state.runId,
-        repairSchema: GraphSublationOutputSchema,
-        originalTaskPrompt: sublationPrompt,
-      }
-    )
+    const {
+      synthesis,
+      mergedGraph: newMergedGraph,
+      graphDiff,
+    } = await withJsonParseRetry(step.output, (text) => parseSublationOutput(text), {
+      context: 'Sublation',
+      jsonSchema:
+        '{"mergedGraph":{"nodes":[{"id":"string","label":"string (max 80)","type":"claim|concept|mechanism|prediction","note":"string (optional)"}],"edges":[{"from":"string","to":"string","rel":"causes|contradicts|supports|mediates|scopes","weight":0.0}],"summary":"string (max 200)","reasoning":"string (max 500)","confidence":0.0,"regime":"string","temporalGrain":"string"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[],"resolvedContradictions":[],"newContradictions":[]},"resolvedContradictions":[]}',
+      emptyFallback:
+        '{"mergedGraph":{"nodes":[],"edges":[],"summary":"Parse failure","reasoning":"","confidence":0,"regime":"unknown","temporalGrain":"unknown"},"diff":{"addedNodes":[],"removedNodes":[],"addedEdges":[],"removedEdges":[],"modifiedNodes":[],"resolvedContradictions":[],"newContradictions":[]},"resolvedContradictions":[]}',
+      goal: state.goal,
+      baseAgent: synthesisAgent,
+      execContext,
+      nodeId: 'sublation',
+      stepNumber: state.steps.length + 1,
+      runId: state.runId,
+      repairSchema: GraphSublationOutputSchema,
+      originalTaskPrompt: sublationPrompt,
+    })
 
     // Emit synthesis event and record message
     await emitAgentOutput(execContext, 'dialectical_synthesis', synthesisAgent, step.output, {
@@ -2884,12 +2891,18 @@ function getValidationErrorForRepair(output: string, schema?: ZodTypeAny): ZodEr
   return validated.success ? null : validated.error
 }
 
-function classifyParseFailure(error: unknown): 'no_json' | 'schema_mismatch' | 'post_repair_invalid' {
+function classifyParseFailure(
+  error: unknown
+): 'no_json' | 'schema_mismatch' | 'post_repair_invalid' {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
   if (message.includes('did not contain valid json') || message.includes('did not contain json')) {
     return 'no_json'
   }
-  if (message.includes('did not match supported schemas') || message.includes('invalid') || message.includes('schema')) {
+  if (
+    message.includes('did not match supported schemas') ||
+    message.includes('invalid') ||
+    message.includes('schema')
+  ) {
     return 'schema_mismatch'
   }
   return 'post_repair_invalid'
@@ -2925,7 +2938,8 @@ async function withJsonParseRetry<T>(
   }
 ): Promise<T> {
   // Layer 1: direct parse
-  let finalFailureCategory: 'no_json' | 'schema_mismatch' | 'post_repair_invalid' = 'post_repair_invalid'
+  let finalFailureCategory: 'no_json' | 'schema_mismatch' | 'post_repair_invalid' =
+    'post_repair_invalid'
   try {
     return parseFn(rawOutput)
   } catch (firstError) {
@@ -2966,7 +2980,9 @@ ${opts.jsonSchema}`,
 
       if (opts.repairSchema) {
         const repairInput =
-          retryStep.output.trim().length >= rawOutput.trim().length * 0.5 ? retryStep.output : rawOutput
+          retryStep.output.trim().length >= rawOutput.trim().length * 0.5
+            ? retryStep.output
+            : rawOutput
         const repairedOutput = await repairJsonOutput(
           repairInput,
           getValidationErrorForRepair(repairInput, opts.repairSchema),
@@ -2992,9 +3008,12 @@ ${opts.jsonSchema}`,
             })
           }
         } else {
-          log.warn(`${opts.context} GPT repair returned no valid JSON, falling back to Anthropic fast`, {
-            runId: opts.runId,
-          })
+          log.warn(
+            `${opts.context} GPT repair returned no valid JSON, falling back to Anthropic fast`,
+            {
+              runId: opts.runId,
+            }
+          )
         }
       }
 

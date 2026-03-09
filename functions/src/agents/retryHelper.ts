@@ -120,9 +120,7 @@ export function calculateBackoffDelay(
   // For rate-limit errors, enforce a minimum 15 s delay so we don't burn
   // retries before the provider's per-minute window resets.
   const RATE_LIMIT_FLOOR_MS = 15_000
-  const delay = isRateLimitError(error)
-    ? Math.max(baseDelay, RATE_LIMIT_FLOOR_MS)
-    : baseDelay
+  const delay = isRateLimitError(error) ? Math.max(baseDelay, RATE_LIMIT_FLOOR_MS) : baseDelay
 
   return Math.min(delay, config.maxDelayMs)
 }

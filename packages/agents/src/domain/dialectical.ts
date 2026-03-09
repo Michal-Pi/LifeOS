@@ -782,9 +782,10 @@ export const LENS_MODEL_PRESETS: Record<
   custom: { provider: 'openai', modelName: 'gpt-5.2' },
 }
 
-export function getDefaultLensModelPreset(
-  lens: ThesisLens
-): { provider: ModelProvider; modelName: string } {
+export function getDefaultLensModelPreset(lens: ThesisLens): {
+  provider: ModelProvider
+  modelName: string
+} {
   return LENS_MODEL_PRESETS[lens] ?? LENS_MODEL_PRESETS.custom
 }
 

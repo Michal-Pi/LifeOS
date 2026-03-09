@@ -392,12 +392,9 @@ export async function executeLangGraphWorkflow(
         const metaAgentDR = agents.find((a) => a.role === 'meta_reflection') ?? agents[0]
 
         // Fallbacks for thesis agents (need at least 2)
-        const thesisAgentsToUseDR =
-          (
-            thesisAgentsDR.length >= 2
-              ? thesisAgentsDR
-              : agents.slice(0, Math.min(3, agents.length))
-          ).map(alignTrackedEconomicThesisAgent)
+        const thesisAgentsToUseDR = (
+          thesisAgentsDR.length >= 2 ? thesisAgentsDR : agents.slice(0, Math.min(3, agents.length))
+        ).map(alignTrackedEconomicThesisAgent)
 
         const synthesisAgentsToUseDR =
           synthesisAgentsDR.length > 0

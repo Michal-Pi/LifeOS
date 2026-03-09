@@ -232,16 +232,17 @@ export function NodePropertiesPanel({
                     placeholder="Enter additional instructions or override the system prompt..."
                     rows={8}
                   />
-                  {customPrompt.trim() && customPrompt.trim() !== selectedAgent?.systemPrompt?.trim() && (
-                    <div className="npp-create-version">
-                      <Button onClick={handleCreateVersion} disabled={isCreatingVersion}>
-                        {isCreatingVersion ? 'Creating...' : 'Create Agent Version'}
-                      </Button>
-                      <span className="npp-version-hint">
-                        Creates &quot;{selectedAgent.name} v.2&quot; (or next version)
-                      </span>
-                    </div>
-                  )}
+                  {customPrompt.trim() &&
+                    customPrompt.trim() !== selectedAgent?.systemPrompt?.trim() && (
+                      <div className="npp-create-version">
+                        <Button onClick={handleCreateVersion} disabled={isCreatingVersion}>
+                          {isCreatingVersion ? 'Creating...' : 'Create Agent Version'}
+                        </Button>
+                        <span className="npp-version-hint">
+                          Creates &quot;{selectedAgent.name} v.2&quot; (or next version)
+                        </span>
+                      </div>
+                    )}
                 </div>
               </>
             )}

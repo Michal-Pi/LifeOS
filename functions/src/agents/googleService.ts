@@ -380,10 +380,13 @@ export async function executeWithGoogle(
           maxIterations: MAX_ITERATIONS,
         })
       } else {
-        log.warn('Agent returned empty output after tool calls within budget, attempting synthesis', {
-          iteration,
-          maxIterations: MAX_ITERATIONS,
-        })
+        log.warn(
+          'Agent returned empty output after tool calls within budget, attempting synthesis',
+          {
+            iteration,
+            maxIterations: MAX_ITERATIONS,
+          }
+        )
       }
 
       // One final attempt: ask the model to synthesize with an explicit JSON requirement

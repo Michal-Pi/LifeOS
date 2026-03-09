@@ -81,7 +81,9 @@ export function normalizeCompactGraphCandidate(value: unknown): unknown {
   const record = value as Record<string, unknown>
 
   const nodes = Array.isArray(record.nodes)
-    ? record.nodes.map(normalizeCompactGraphNode).filter((node): node is Record<string, unknown> => node !== null)
+    ? record.nodes
+        .map(normalizeCompactGraphNode)
+        .filter((node): node is Record<string, unknown> => node !== null)
     : undefined
   const validNodeIds = new Set((nodes ?? []).map((node) => String(node.id)))
   const edges = Array.isArray(record.edges)

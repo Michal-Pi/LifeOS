@@ -52,10 +52,7 @@ function buildStateFromEvents(run: Run, events: RunEvent[]): DeepResearchKGState
   }
 }
 
-export function useOracleKGState(
-  run: Run | null,
-  events?: RunEvent[]
-): DeepResearchKGState | null {
+export function useOracleKGState(run: Run | null, events?: RunEvent[]): DeepResearchKGState | null {
   return useMemo(() => {
     if (!run) return null
 

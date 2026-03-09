@@ -1,4 +1,10 @@
-import type { AgentConfig, TemplateParameter, Workflow, WorkflowGraph, WorkflowNode } from '@lifeos/agents'
+import type {
+  AgentConfig,
+  TemplateParameter,
+  Workflow,
+  WorkflowGraph,
+  WorkflowNode,
+} from '@lifeos/agents'
 import { LENS_MODEL_PRESETS } from '@lifeos/agents'
 
 type AgentTemplatePresetConfig = Omit<

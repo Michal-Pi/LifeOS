@@ -358,7 +358,14 @@ function BuilderCanvas({
     }
     setPromptModalNodeId(null)
     setPromptModalValue('')
-  }, [promptModalNodeId, promptModalValue, state.nodes, allAgents, handleCreateAgentVersion, dispatch])
+  }, [
+    promptModalNodeId,
+    promptModalValue,
+    state.nodes,
+    allAgents,
+    handleCreateAgentVersion,
+    dispatch,
+  ])
 
   // Multi-select: sync ReactFlow selection back to reducer
   const handleSelectionChange: OnSelectionChangeFunc = useCallback(
@@ -729,8 +736,7 @@ function BuilderCanvas({
         title="Edit System Prompt"
         subtitle={
           promptModalNodeId
-            ? (state.nodes.find((n: BuilderNode) => n.id === promptModalNodeId)?.label ??
-              undefined)
+            ? (state.nodes.find((n: BuilderNode) => n.id === promptModalNodeId)?.label ?? undefined)
             : undefined
         }
         className="prompt-editor-modal"

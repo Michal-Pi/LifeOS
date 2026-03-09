@@ -305,7 +305,9 @@ export function createSupervisorGraph(config: SupervisorGraphConfig) {
 
       const updates: Partial<SupervisorState> = {
         currentWorkerIndex: i + 1,
-        workerOutputs: { [`${worker.name}_output`]: workerOutput || `[Worker "${worker.name}" returned no output]` },
+        workerOutputs: {
+          [`${worker.name}_output`]: workerOutput || `[Worker "${worker.name}" returned no output]`,
+        },
         steps: [step],
         totalTokensUsed: step.tokensUsed,
         totalEstimatedCost: step.estimatedCost,

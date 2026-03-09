@@ -168,9 +168,7 @@ export const SUBLATION_OUTPUT_EXAMPLE: string = JSON.stringify(
           newLabel: 'Heat-related hospital admissions correlate with UHI',
         },
       ],
-      resolvedContradictions: [
-        'Direct UHI-health causation vs confounding by AC penetration',
-      ],
+      resolvedContradictions: ['Direct UHI-health causation vs confounding by AC penetration'],
       newContradictions: [],
     },
     resolvedContradictions: [
@@ -203,25 +201,19 @@ export const CLAIM_EXTRACTION_EXAMPLE: string = JSON.stringify(
   {
     claims: [
       {
-        claimText:
-          'Urban green spaces reduce ambient temperature by 1-4C within a 200m radius',
+        claimText: 'Urban green spaces reduce ambient temperature by 1-4C within a 200m radius',
         confidence: 0.85,
         evidenceType: 'empirical',
         sourceQuote:
           'parks and green corridors reduced local temperatures by 1-4C compared to surrounding built-up areas',
-        concepts: [
-          'urban green spaces',
-          'ambient temperature',
-          'thermal regulation',
-        ],
+        concepts: ['urban green spaces', 'ambient temperature', 'thermal regulation'],
       },
       {
         claimText:
           'The cooling effect of urban vegetation may be diminished during drought conditions',
         confidence: 0.55,
         evidenceType: 'theoretical',
-        sourceQuote:
-          'evapotranspiration-driven cooling is contingent on adequate soil moisture',
+        sourceQuote: 'evapotranspiration-driven cooling is contingent on adequate soil moisture',
         concepts: ['urban vegetation', 'drought', 'evapotranspiration'],
       },
     ],
@@ -237,12 +229,10 @@ export const BATCH_CLAIM_EXTRACTION_EXAMPLE: string = JSON.stringify(
     claims: [
       {
         sourceIndex: 1,
-        claimText:
-          'Urban tree canopy cover above 30% reduces peak summer temperatures by 2-5C',
+        claimText: 'Urban tree canopy cover above 30% reduces peak summer temperatures by 2-5C',
         confidence: 0.82,
         evidenceType: 'empirical',
-        sourceQuote:
-          'cities with >30% canopy cover showed 2-5C lower peak temps',
+        sourceQuote: 'cities with >30% canopy cover showed 2-5C lower peak temps',
         concepts: ['tree canopy', 'summer temperature', 'urban cooling'],
       },
       {
@@ -253,11 +243,7 @@ export const BATCH_CLAIM_EXTRACTION_EXAMPLE: string = JSON.stringify(
         evidenceType: 'empirical',
         sourceQuote:
           'reflected shortwave radiation increased mean radiant temperature at pedestrian height',
-        concepts: [
-          'reflective pavement',
-          'thermal comfort',
-          'mean radiant temperature',
-        ],
+        concepts: ['reflective pavement', 'thermal comfort', 'mean radiant temperature'],
       },
     ],
   },
@@ -273,10 +259,7 @@ export const GAP_ANALYSIS_EXAMPLE: string = JSON.stringify(
       {
         description:
           'No evidence on UHI effects in arid or tropical climates — all claims reference temperate cities',
-        missingEvidenceFor: [
-          'tropical UHI',
-          'arid climate heat islands',
-        ],
+        missingEvidenceFor: ['tropical UHI', 'arid climate heat islands'],
         uncertaintyScore: 0.8,
         suggestedQueries: [
           'urban heat island tropical cities health impacts',
@@ -289,9 +272,7 @@ export const GAP_ANALYSIS_EXAMPLE: string = JSON.stringify(
           'Green infrastructure cost-effectiveness claim supported by a single municipal report',
         missingEvidenceFor: ['green infrastructure ROI'],
         uncertaintyScore: 0.6,
-        suggestedQueries: [
-          'meta-analysis green infrastructure cost effectiveness urban cooling',
-        ],
+        suggestedQueries: ['meta-analysis green infrastructure cost effectiveness urban cooling'],
         priority: 'medium',
       },
     ],

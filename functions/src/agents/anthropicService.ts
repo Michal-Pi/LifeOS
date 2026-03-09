@@ -437,7 +437,13 @@ export async function executeWithAnthropic(
 
     // Detect empty output: either budget exhausted or agent returned empty within budget
     const hadToolCalls =
-      iteration > 1 || messages.some((m) => m.role === 'user' && Array.isArray(m.content) && m.content.some((b) => 'type' in b && b.type === 'tool_result'))
+      iteration > 1 ||
+      messages.some(
+        (m) =>
+          m.role === 'user' &&
+          Array.isArray(m.content) &&
+          m.content.some((b) => 'type' in b && b.type === 'tool_result')
+      )
     if (!finalOutput && hadToolCalls) {
       if (iteration >= MAX_ITERATIONS) {
         log.warn('Agent reached max iterations with tool calls', { maxIterations: MAX_ITERATIONS })
