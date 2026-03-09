@@ -910,97 +910,109 @@ async function parseJsonWithRetry<T>(
   const initial = parseJsonCandidate<T>(rawOutput, schema)
   if (initial.data) return initial.data
 
-  // Layer 2: same provider, strict JSON-only re-prompt
-  log.warn(`${context} JSON parse failed, retrying with strict prompt`, {
-    runId,
-    error: initial.validationError?.message,
-  })
-  const retryAgent = {
-    ...baseAgent,
-    toolIds: [],
-    temperature: 0,
-    systemPrompt: `You are a JSON formatter repairing a prior response for the same task. Return ONLY a valid JSON object matching the required schema. No markdown, no explanation, no commentary.
-
-Original system prompt:
-${baseAgent.systemPrompt.slice(0, 3000)}
+  // Layers 2-4 are wrapped in try-catch so a 422/API error in repair
+  // doesn't prevent fallback to the empty result.
+  let lastRepairError: string | undefined
+  try {
+    // Layer 2: same provider, strict JSON-only re-prompt
+    log.warn(`${context} JSON parse failed, retrying with strict prompt`, {
+      runId,
+      error: initial.validationError?.message,
+    })
+    const retryAgent = {
+      ...baseAgent,
+      toolIds: [],
+      temperature: 0,
+      systemPrompt: `You are a JSON formatter repairing a prior response for the same task. Return ONLY a valid JSON object matching the required schema. No markdown, no explanation, no commentary.
 
 Required schema:
 ${jsonSchema}`,
-  }
-  const retryStep = await executeAgentWithEvents(
-    retryAgent,
-    `${originalTaskPrompt ? `Original task:\n${originalTaskPrompt.slice(0, 4000)}\n\n` : ''}Convert this prior response to JSON:\n\n${rawOutput.slice(0, 8000)}`,
-    {},
-    execContext,
-    { nodeId, stepNumber }
-  )
-  const retried = parseJsonCandidate<T>(retryStep.output, schema)
-  if (retried.data) return retried.data
-
-  // Layer 3: dedicated GPT repair
-  log.warn(`${context} retry 1 failed, attempting GPT repair`, {
-    runId,
-    error: retried.validationError?.message ?? initial.validationError?.message,
-  })
-  const repairInput =
-    retryStep.output.trim().length >= rawOutput.trim().length * 0.5 ? retryStep.output : rawOutput
-  const repairedOutput = await repairJsonOutput(
-    repairInput,
-    retried.validationError ?? initial.validationError,
-    schema,
-    execContext,
-    {
-      context,
-      goal,
-      originalTaskPrompt,
-      originalSystemPrompt: baseAgent.systemPrompt,
-      schemaHint: jsonSchema,
     }
-  )
-  if (repairedOutput) {
-    const repaired = parseJsonCandidate<T>(repairedOutput, schema)
-    if (repaired.data) return repaired.data
-    log.warn(`${context} GPT repair still failed validation, falling back to Anthropic fast`, {
+    const retryStep = await executeAgentWithEvents(
+      retryAgent,
+      `Convert this prior response to JSON:\n\n${rawOutput.slice(0, 6000)}`,
+      {},
+      execContext,
+      { nodeId, stepNumber }
+    )
+    const retried = parseJsonCandidate<T>(retryStep.output, schema)
+    if (retried.data) return retried.data
+
+    // Layer 3: dedicated GPT repair
+    log.warn(`${context} retry 1 failed, attempting GPT repair`, {
       runId,
-      error: repaired.validationError?.message,
+      error: retried.validationError?.message ?? initial.validationError?.message,
     })
-  }
+    const repairInput =
+      retryStep.output.trim().length >= rawOutput.trim().length * 0.5
+        ? retryStep.output
+        : rawOutput
+    const repairedOutput = await repairJsonOutput(
+      repairInput,
+      retried.validationError ?? initial.validationError,
+      schema,
+      execContext,
+      {
+        context,
+        goal,
+        originalTaskPrompt,
+        originalSystemPrompt: baseAgent.systemPrompt,
+        schemaHint: jsonSchema,
+      }
+    )
+    if (repairedOutput) {
+      const repaired = parseJsonCandidate<T>(repairedOutput, schema)
+      if (repaired.data) return repaired.data
+      log.warn(`${context} GPT repair still failed validation, falling back to Anthropic fast`, {
+        runId,
+        error: repaired.validationError?.message,
+      })
+    }
 
-  // Layer 4: Anthropic fast fallback with relevance gate
-  log.warn(`${context} retry 2 failed, falling back to Anthropic fast with relevance gate`, {
-    runId,
-  })
-  const haikuAgent: AgentConfig = {
-    ...baseAgent,
-    name: `${nodeId}-json-fixer`,
-    toolIds: [],
-    modelProvider: 'anthropic',
-    modelName: DEFAULT_MODELS.anthropic,
-    modelTier: 'fast',
-    temperature: 0,
-    systemPrompt: `You are a strict JSON extraction assistant. You will receive text that was supposed to be a JSON analysis of a strategic question, but may instead be an error message, refusal, or irrelevant text.
+    // Layer 4: Anthropic fast fallback with relevance gate
+    log.warn(`${context} retry 2 failed, falling back to Anthropic fast with relevance gate`, {
+      runId,
+    })
+    const haikuAgent: AgentConfig = {
+      ...baseAgent,
+      name: `${nodeId}-json-fixer`,
+      toolIds: [],
+      modelProvider: 'anthropic',
+      modelName: DEFAULT_MODELS.anthropic,
+      modelTier: 'fast',
+      temperature: 0,
+      systemPrompt: `You are a strict JSON extraction assistant. You will receive text that was supposed to be a JSON analysis of a strategic question, but may instead be an error message, refusal, or irrelevant text.
 
-Step 1: Determine if the text contains substantive analysis relevant to the goal: "${goal}"
+Step 1: Determine if the text contains substantive analysis relevant to the goal: "${goal.slice(0, 500).replace(/["\\\n]/g, ' ')}"
 - If the text is an error message, API failure, refusal, or completely unrelated to the goal, respond with EXACTLY: ${emptyFallback}
 - If the text contains relevant analysis (even partial), proceed to step 2.
 
 Step 2: Extract the analysis into this exact JSON schema. Output ONLY valid JSON, nothing else.
 ${jsonSchema}`,
+    }
+    const haikuStep = await executeAgentWithEvents(
+      haikuAgent,
+      `${rawOutput.slice(0, 6000)}`,
+      {},
+      execContext,
+      { nodeId, stepNumber }
+    )
+    const fallbackAttempt = parseJsonCandidate<T>(haikuStep.output, schema)
+    if (fallbackAttempt.data) return fallbackAttempt.data
+    lastRepairError = fallbackAttempt.validationError?.message
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err)
+    log.error(`${context} repair layers threw (possibly 422), skipping to empty fallback`, {
+      runId,
+      error: errMsg,
+    })
+    lastRepairError = errMsg
   }
-  const haikuStep = await executeAgentWithEvents(
-    haikuAgent,
-    `${originalTaskPrompt ? `Original task:\n${originalTaskPrompt.slice(0, 4000)}\n\n` : ''}${rawOutput.slice(0, 8000)}`,
-    {},
-    execContext,
-    { nodeId, stepNumber }
-  )
-  const fallbackAttempt = parseJsonCandidate<T>(haikuStep.output, schema)
-  if (fallbackAttempt.data) return fallbackAttempt.data
 
   // Layer 5: hard fallback — use the empty fallback directly instead of crashing
   log.error(`${context} all JSON repair layers failed, using empty fallback`, {
     runId,
-    error: fallbackAttempt.validationError?.message,
+    error: lastRepairError,
   })
   const fallback = parseJsonCandidate<T>(emptyFallback, schema)
   if (fallback.data) return fallback.data
@@ -1515,6 +1527,8 @@ function buildPersistedOracleWorkflowState(state: OracleState): Record<string, u
         startupSeedSummary: state.startupSeedSummary,
       },
     },
+    // crawledContentMap intentionally excluded — too large for Firestore (up to 48KB).
+    // Enriched excerpts are already on individual evidence items.
     oracleResumeState: buildOracleResumeState(state),
   }
 }

@@ -448,16 +448,16 @@ export async function repairJsonOutput(
     : ''
   const goalBlock = options.goal ? `## Goal\n${sanitizeForPrompt(options.goal, 400)}\n\n` : ''
   const taskBlock = options.originalTaskPrompt
-    ? `## Original Task Prompt\n${truncateRawText(options.originalTaskPrompt)}\n\n`
+    ? `## Original Task Prompt\n${truncateRawText(options.originalTaskPrompt.slice(0, 1500))}\n\n`
     : ''
   const systemBlock = options.originalSystemPrompt
-    ? `## Original System Prompt\n${truncateRawText(options.originalSystemPrompt)}\n\n`
+    ? `## Original System Prompt\n${truncateRawText(options.originalSystemPrompt.slice(0, 1500))}\n\n`
     : ''
   const schemaBlock = options.schemaHint
     ? `## Target Schema Summary\n${truncateRawText(options.schemaHint)}\n\n`
     : ''
   const validationBlock = zodError
-    ? `## Validation Errors\n${truncateRawText(zodError.message)}\n\n`
+    ? `## Validation Errors\n${truncateRawText(zodError.message.slice(0, 1500))}\n\n`
     : '## Validation Errors\nThe output either did not contain valid JSON or could not be validated against the target schema.\n\n'
 
   const repairPrompt = `CRITICAL: Return ONLY valid JSON. No explanation, no markdown fences.
