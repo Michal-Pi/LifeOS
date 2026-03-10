@@ -8,115 +8,128 @@
 // ----- Telemetry Collections -----
 
 export const TelemetryPaths = {
-  /** Run-level telemetry: users/{userId}/telemetry/runs/{telemetryId} */
-  runs: (userId: string) => `users/${userId}/telemetry/runs`,
+  /** Run-level telemetry: users/{userId}/telemetryBuckets/default/runs/{telemetryId} */
+  runs: (userId: string) => `users/${userId}/telemetryBuckets/default/runs`,
 
   /** Single run telemetry document */
-  run: (userId: string, telemetryId: string) => `users/${userId}/telemetry/runs/${telemetryId}`,
+  run: (userId: string, telemetryId: string) =>
+    `users/${userId}/telemetryBuckets/default/runs/${telemetryId}`,
 
-  /** Daily summaries: users/{userId}/telemetry/summaries/{date} */
-  summaries: (userId: string) => `users/${userId}/telemetry/summaries`,
+  /** Daily summaries: users/{userId}/telemetryBuckets/default/summaries/{date} */
+  summaries: (userId: string) => `users/${userId}/telemetryBuckets/default/summaries`,
 
   /** Single summary document */
-  summary: (userId: string, date: string) => `users/${userId}/telemetry/summaries/${date}`,
+  summary: (userId: string, date: string) =>
+    `users/${userId}/telemetryBuckets/default/summaries/${date}`,
 
-  /** Component-level telemetry: users/{userId}/telemetry/components/{componentId} */
-  components: (userId: string) => `users/${userId}/telemetry/components`,
+  /** Component-level telemetry: users/{userId}/telemetryBuckets/default/components/{componentId} */
+  components: (userId: string) => `users/${userId}/telemetryBuckets/default/components`,
 
   /** Single component telemetry document */
   component: (userId: string, componentId: string) =>
-    `users/${userId}/telemetry/components/${componentId}`,
+    `users/${userId}/telemetryBuckets/default/components/${componentId}`,
 } as const
 
 // ----- Evaluation Collections -----
 
 export const EvaluationPaths = {
-  /** Rubrics: users/{userId}/evaluation/rubrics/{rubricId} */
-  rubrics: (userId: string) => `users/${userId}/evaluation/rubrics`,
-  rubric: (userId: string, rubricId: string) => `users/${userId}/evaluation/rubrics/${rubricId}`,
+  /** Rubrics: users/{userId}/evaluationBuckets/default/rubrics/{rubricId} */
+  rubrics: (userId: string) => `users/${userId}/evaluationBuckets/default/rubrics`,
+  rubric: (userId: string, rubricId: string) =>
+    `users/${userId}/evaluationBuckets/default/rubrics/${rubricId}`,
 
-  /** Eval results: users/{userId}/evaluation/results/{resultId} */
-  results: (userId: string) => `users/${userId}/evaluation/results`,
-  result: (userId: string, resultId: string) => `users/${userId}/evaluation/results/${resultId}`,
+  /** Eval results: users/{userId}/evaluationBuckets/default/results/{resultId} */
+  results: (userId: string) => `users/${userId}/evaluationBuckets/default/results`,
+  result: (userId: string, resultId: string) =>
+    `users/${userId}/evaluationBuckets/default/results/${resultId}`,
 
-  /** Experiments: users/{userId}/evaluation/experiments/{experimentId} */
-  experiments: (userId: string) => `users/${userId}/evaluation/experiments`,
+  /** Experiments: users/{userId}/evaluationBuckets/default/experiments/{experimentId} */
+  experiments: (userId: string) => `users/${userId}/evaluationBuckets/default/experiments`,
   experiment: (userId: string, experimentId: string) =>
-    `users/${userId}/evaluation/experiments/${experimentId}`,
+    `users/${userId}/evaluationBuckets/default/experiments/${experimentId}`,
 
-  /** Variants: users/{userId}/evaluation/variants/{variantId} */
-  variants: (userId: string) => `users/${userId}/evaluation/variants`,
+  /** Variants: users/{userId}/evaluationBuckets/default/promptVariants/{variantId} */
+  variants: (userId: string) => `users/${userId}/evaluationBuckets/default/promptVariants`,
   variant: (userId: string, variantId: string) =>
-    `users/${userId}/evaluation/variants/${variantId}`,
+    `users/${userId}/evaluationBuckets/default/promptVariants/${variantId}`,
 
   /** Consistency checks: users/{userId}/evaluation/consistency/{checkId} */
-  consistency: (userId: string) => `users/${userId}/evaluation/consistency`,
+  consistency: (userId: string) => `users/${userId}/evaluationBuckets/default/consistency`,
   consistencyCheck: (userId: string, checkId: string) =>
-    `users/${userId}/evaluation/consistency/${checkId}`,
+    `users/${userId}/evaluationBuckets/default/consistency/${checkId}`,
 
   /** Drift alerts: users/{userId}/evaluation/driftAlerts/{alertId} */
-  driftAlerts: (userId: string) => `users/${userId}/evaluation/driftAlerts`,
+  driftAlerts: (userId: string) => `users/${userId}/evaluationBuckets/default/driftAlerts`,
   driftAlert: (userId: string, alertId: string) =>
-    `users/${userId}/evaluation/driftAlerts/${alertId}`,
+    `users/${userId}/evaluationBuckets/default/driftAlerts/${alertId}`,
 
   /** Drift config: users/{userId}/evaluation/driftConfig/{workflowType} */
-  driftConfigs: (userId: string) => `users/${userId}/evaluation/driftConfig`,
+  driftConfigs: (userId: string) => `users/${userId}/evaluationBuckets/default/driftConfig`,
   driftConfig: (userId: string, workflowType: string) =>
-    `users/${userId}/evaluation/driftConfig/${workflowType}`,
+    `users/${userId}/evaluationBuckets/default/driftConfig/${workflowType}`,
 
   /** Code evaluators: users/{userId}/evaluation/codeEvaluators/{evaluatorId} */
-  codeEvaluators: (userId: string) => `users/${userId}/evaluation/codeEvaluators`,
+  codeEvaluators: (userId: string) => `users/${userId}/evaluationBuckets/default/codeEvaluators`,
   codeEvaluator: (userId: string, evaluatorId: string) =>
-    `users/${userId}/evaluation/codeEvaluators/${evaluatorId}`,
+    `users/${userId}/evaluationBuckets/default/codeEvaluators/${evaluatorId}`,
 
   /** Code eval results: users/{userId}/evaluation/codeEvalResults/{resultId} */
-  codeEvalResults: (userId: string) => `users/${userId}/evaluation/codeEvalResults`,
+  codeEvalResults: (userId: string) => `users/${userId}/evaluationBuckets/default/codeEvalResults`,
   codeEvalResult: (userId: string, resultId: string) =>
-    `users/${userId}/evaluation/codeEvalResults/${resultId}`,
+    `users/${userId}/evaluationBuckets/default/codeEvalResults/${resultId}`,
 
   /** Labeling queues: users/{userId}/evaluation/labelingQueues/{queueId} */
-  labelingQueues: (userId: string) => `users/${userId}/evaluation/labelingQueues`,
+  labelingQueues: (userId: string) => `users/${userId}/evaluationBuckets/default/labelingQueues`,
   labelingQueue: (userId: string, queueId: string) =>
-    `users/${userId}/evaluation/labelingQueues/${queueId}`,
+    `users/${userId}/evaluationBuckets/default/labelingQueues/${queueId}`,
 
   /** Labeling tasks: users/{userId}/evaluation/labelingTasks/{taskId} */
-  labelingTasks: (userId: string) => `users/${userId}/evaluation/labelingTasks`,
+  labelingTasks: (userId: string) => `users/${userId}/evaluationBuckets/default/labelingTasks`,
   labelingTask: (userId: string, taskId: string) =>
-    `users/${userId}/evaluation/labelingTasks/${taskId}`,
+    `users/${userId}/evaluationBuckets/default/labelingTasks/${taskId}`,
 
   /** Router evals: users/{userId}/evaluation/routerEvals/{evalId} */
-  routerEvals: (userId: string) => `users/${userId}/evaluation/routerEvals`,
+  routerEvals: (userId: string) => `users/${userId}/evaluationBuckets/default/routerEvals`,
   routerEval: (userId: string, evalId: string) =>
-    `users/${userId}/evaluation/routerEvals/${evalId}`,
+    `users/${userId}/evaluationBuckets/default/routerEvals/${evalId}`,
 
   /** Tool evals: users/{userId}/evaluation/toolEvals/{evalId} */
-  toolEvals: (userId: string) => `users/${userId}/evaluation/toolEvals`,
-  toolEval: (userId: string, evalId: string) => `users/${userId}/evaluation/toolEvals/${evalId}`,
+  toolEvals: (userId: string) => `users/${userId}/evaluationBuckets/default/toolEvals`,
+  toolEval: (userId: string, evalId: string) =>
+    `users/${userId}/evaluationBuckets/default/toolEvals/${evalId}`,
 
   /** Memory evals: users/{userId}/evaluation/memoryEvals/{evalId} */
-  memoryEvals: (userId: string) => `users/${userId}/evaluation/memoryEvals`,
+  memoryEvals: (userId: string) => `users/${userId}/evaluationBuckets/default/memoryEvals`,
   memoryEval: (userId: string, evalId: string) =>
-    `users/${userId}/evaluation/memoryEvals/${evalId}`,
+    `users/${userId}/evaluationBuckets/default/memoryEvals/${evalId}`,
 
   /** Trajectory evals: users/{userId}/evaluation/trajectoryEvals/{evalId} */
-  trajectoryEvals: (userId: string) => `users/${userId}/evaluation/trajectoryEvals`,
+  trajectoryEvals: (userId: string) => `users/${userId}/evaluationBuckets/default/trajectoryEvals`,
   trajectoryEval: (userId: string, evalId: string) =>
-    `users/${userId}/evaluation/trajectoryEvals/${evalId}`,
+    `users/${userId}/evaluationBuckets/default/trajectoryEvals/${evalId}`,
 
   /** Test cases: users/{userId}/evaluation/testCases/{testCaseId} */
-  testCases: (userId: string) => `users/${userId}/evaluation/testCases`,
+  testCases: (userId: string) => `users/${userId}/evaluationBuckets/default/testCases`,
   testCase: (userId: string, testCaseId: string) =>
-    `users/${userId}/evaluation/testCases/${testCaseId}`,
+    `users/${userId}/evaluationBuckets/default/testCases/${testCaseId}`,
 
   /** Regression results: users/{userId}/evaluation/regressionResults/{resultId} */
-  regressionResults: (userId: string) => `users/${userId}/evaluation/regressionResults`,
+  regressionResults: (userId: string) =>
+    `users/${userId}/evaluationBuckets/default/regressionResults`,
   regressionResult: (userId: string, resultId: string) =>
-    `users/${userId}/evaluation/regressionResults/${resultId}`,
+    `users/${userId}/evaluationBuckets/default/regressionResults/${resultId}`,
+
+  /** Agent eval records: users/{userId}/evaluation/agentEvalRecords/{recordId} */
+  agentEvalRecords: (userId: string) =>
+    `users/${userId}/evaluationBuckets/default/agentEvalRecords`,
+  agentEvalRecord: (userId: string, recordId: string) =>
+    `users/${userId}/evaluationBuckets/default/agentEvalRecords/${recordId}`,
 
   /** Agent experiment runs: users/{userId}/evaluation/agentExperimentRuns/{experimentRunId} */
-  agentExperimentRuns: (userId: string) => `users/${userId}/evaluation/agentExperimentRuns`,
+  agentExperimentRuns: (userId: string) =>
+    `users/${userId}/evaluationBuckets/default/agentExperimentRuns`,
   agentExperimentRun: (userId: string, experimentRunId: string) =>
-    `users/${userId}/evaluation/agentExperimentRuns/${experimentRunId}`,
+    `users/${userId}/evaluationBuckets/default/agentExperimentRuns/${experimentRunId}`,
 } as const
 
 // ----- Workflow Collections -----

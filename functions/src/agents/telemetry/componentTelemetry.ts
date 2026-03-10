@@ -24,7 +24,7 @@ const TELEMETRY_COLLECTION = 'telemetry'
 const COMPONENT_TELEMETRY_SUBCOLLECTION = 'components'
 
 function getComponentTelemetryPath(userId: string): string {
-  return `users/${userId}/${TELEMETRY_COLLECTION}/${COMPONENT_TELEMETRY_SUBCOLLECTION}`
+  return `users/${userId}/${TELEMETRY_COLLECTION}Buckets/default/${COMPONENT_TELEMETRY_SUBCOLLECTION}`
 }
 
 // ----- Recording Functions -----

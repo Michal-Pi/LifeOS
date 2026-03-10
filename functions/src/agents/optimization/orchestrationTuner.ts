@@ -20,6 +20,7 @@ import type {
 } from '@lifeos/agents'
 import { MODEL_TIER_MAP, asId } from '@lifeos/agents'
 import type { RunId, WorkflowId, AgentId } from '@lifeos/agents'
+import { EvaluationPaths, TelemetryPaths } from '../shared/collectionPaths.js'
 
 // ----- Collection Paths -----
 
@@ -261,7 +262,7 @@ async function fetchRunSummaries(
   const cutoffMs = Date.now() - lookbackDays * 24 * 60 * 60 * 1000
 
   let query = db
-    .collection(`users/${userId}/telemetry/runs`)
+    .collection(TelemetryPaths.runs(userId))
     .where('createdAtMs', '>=', cutoffMs)
     .orderBy('createdAtMs', 'desc')
 
@@ -826,7 +827,7 @@ export async function analyzeTemperatureTuning(
 
   // Get quality scores for this agent
   const evalSnapshot = await db
-    .collection(`users/${userId}/evaluation/results`)
+    .collection(EvaluationPaths.results(userId))
     .where('agentId', '==', agentId)
     .orderBy('evaluatedAtMs', 'desc')
     .limit(50)

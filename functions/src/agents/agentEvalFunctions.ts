@@ -4,6 +4,7 @@ import { asId } from '@lifeos/agents'
 import type { EvalCriterion, EvalRubric, RunId } from '@lifeos/agents'
 import { createLogger } from '../lib/logger.js'
 import { loadProviderKeys } from './providerKeys.js'
+import { EvaluationPaths } from './shared/collectionPaths.js'
 import { evaluateOutputInMemory, getDefaultRubric } from './evaluation/llmJudge.js'
 
 const log = createLogger('AgentEvalFunctions')
@@ -111,7 +112,7 @@ export const evaluateAgentStep = onCall({}, async (request) => {
   }
 
   const db = getFirestore()
-  const recordRef = db.doc(`users/${request.auth.uid}/evaluation/agentEvalRecords/${recordId}`)
+  const recordRef = db.doc(EvaluationPaths.agentEvalRecord(request.auth.uid, recordId))
   const snapshot = await recordRef.get()
   if (!snapshot.exists) {
     throw new HttpsError('not-found', 'Agent eval record not found')

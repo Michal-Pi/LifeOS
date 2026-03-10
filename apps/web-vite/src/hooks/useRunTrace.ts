@@ -16,6 +16,7 @@ import {
   limit,
 } from 'firebase/firestore'
 import { getFirestoreClient } from '@/lib/firebase'
+import { TelemetryPaths } from '@/lib/evaluationPaths'
 import { useAuth } from '@/hooks/useAuth'
 import { useRunEvents } from '@/hooks/useRunEvents'
 import {
@@ -58,11 +59,11 @@ export interface UseRunTraceReturn {
 // ----- Collection Paths -----
 
 function getTelemetryPath(userId: string): string {
-  return `users/${userId}/telemetry/runs`
+  return TelemetryPaths.runs(userId)
 }
 
 function getComponentTelemetryPath(userId: string): string {
-  return `users/${userId}/telemetry/components`
+  return TelemetryPaths.components(userId)
 }
 
 // ----- Hook Implementation -----

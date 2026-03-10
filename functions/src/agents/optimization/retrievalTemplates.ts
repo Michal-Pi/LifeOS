@@ -17,6 +17,7 @@ import type {
   RetrievalTemplateDerivationRequest,
   OptimizationEvent,
 } from '@lifeos/agents'
+import { EvaluationPaths, TelemetryPaths } from '../shared/collectionPaths.js'
 import { asId } from '@lifeos/agents'
 import type { RunId } from '@lifeos/agents'
 
@@ -264,7 +265,7 @@ export async function extractRetrievalTrace(
   const db = getFirestore()
 
   // Get run telemetry
-  const telemetryDoc = await db.doc(`users/${userId}/telemetry/runs/${runId}`).get()
+  const telemetryDoc = await db.doc(TelemetryPaths.run(userId, runId)).get()
   if (!telemetryDoc.exists) {
     return null
   }
@@ -276,7 +277,7 @@ export async function extractRetrievalTrace(
 
   // Get evaluation results for quality scores
   const evalSnapshot = await db
-    .collection(`users/${userId}/evaluation/results`)
+    .collection(EvaluationPaths.results(userId))
     .where('runId', '==', runId)
     .limit(1)
     .get()
@@ -957,7 +958,7 @@ export async function checkRunsForTemplateDerivation(
 
   // Find high-quality runs without template usage
   const runsSnapshot = await db
-    .collection(`users/${userId}/telemetry/runs`)
+    .collection(TelemetryPaths.runs(userId))
     .where('workflowType', '==', workflowType)
     .where('qualityScore', '>=', minQualityThreshold)
     .where('createdAtMs', '>=', cutoffMs)

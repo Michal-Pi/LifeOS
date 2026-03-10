@@ -27,11 +27,11 @@ const RUNS_SUBCOLLECTION = 'runs'
 const SUMMARIES_SUBCOLLECTION = 'summaries'
 
 function getTelemetryRunsPath(userId: string): string {
-  return `users/${userId}/${TELEMETRY_COLLECTION}/${RUNS_SUBCOLLECTION}`
+  return `users/${userId}/${TELEMETRY_COLLECTION}Buckets/default/${RUNS_SUBCOLLECTION}`
 }
 
 function getTelemetrySummariesPath(userId: string): string {
-  return `users/${userId}/${TELEMETRY_COLLECTION}/${SUMMARIES_SUBCOLLECTION}`
+  return `users/${userId}/${TELEMETRY_COLLECTION}Buckets/default/${SUMMARIES_SUBCOLLECTION}`
 }
 
 // ----- Input Types -----
