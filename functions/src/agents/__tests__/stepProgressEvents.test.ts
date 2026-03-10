@@ -27,6 +27,14 @@ vi.mock('../providerService.js', () => ({
   }),
 }))
 
+vi.mock('../evaluation/runtimeExperimentAllocator.ts', () => ({
+  allocateRuntimePromptVariant: vi.fn().mockResolvedValue(null),
+}))
+
+vi.mock('../telemetry/componentTelemetry.ts', () => ({
+  recordComponentTelemetry: vi.fn().mockResolvedValue(undefined),
+}))
+
 // Mock resolveEffectiveModel from @lifeos/agents
 vi.mock('@lifeos/agents', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>

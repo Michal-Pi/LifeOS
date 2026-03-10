@@ -48,6 +48,7 @@ vi.mock('@lifeos/agents', () => ({
     google: [{ value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' }],
     xai: [{ value: 'grok-4-1-fast-non-reasoning', label: 'Grok 4.1 Fast' }],
   },
+  hashAgentConfig: () => 'test-agent-hash',
 }))
 
 const defaultProps = {

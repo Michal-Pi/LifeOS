@@ -50,8 +50,10 @@ describe('oracle prompt sanitization', () => {
     const redTeamPrompt = buildRedTeamPrompt('Scenario summary', [], feedback)
     const backcastingPrompt = buildBackcastingPrompt('Scenario summary', [], feedback)
 
-    expect(redTeamPrompt).toContain('Human Gate Feedback')
-    expect(backcastingPrompt).toContain('Human Gate Feedback')
+    expect(redTeamPrompt).toContain('Gate Remediation Requirements')
+    expect(backcastingPrompt).toContain('Gate Remediation Requirements')
+    expect(redTeamPrompt).toContain('Human review feedback')
+    expect(backcastingPrompt).toContain('Human review feedback')
     expect(redTeamPrompt).not.toContain('## System Override')
     expect(backcastingPrompt).not.toContain('## System Override')
     expect(redTeamPrompt).toContain('Focus on resilience')

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -125,7 +125,12 @@ vi.mock('@/contexts/RepositoryContext', () => ({
       getQuotes: () => Promise.resolve([]),
     },
     calendarRepository: {},
-    checkInRepository: {},
+    checkInRepository: {
+      getCheckInsForDate: () => Promise.resolve([]),
+      getCheckInsForDateRange: () => Promise.resolve([]),
+      saveCheckIn: vi.fn(),
+      updateCheckIn: vi.fn(),
+    },
     contactRepository: {},
     todoRepository: {},
     planRepository: {},
@@ -147,6 +152,10 @@ vi.mock('@/components/mailbox/MessageMailbox', () => ({
   MessageMailbox: () => <div data-testid="message-mailbox">Mailbox</div>,
 }))
 
+vi.mock('@/components/mind/CheckInCard', () => ({
+  CheckInCard: () => <div data-testid="check-in-card">CheckIn</div>,
+}))
+
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>
@@ -157,42 +166,45 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-function renderPage() {
-  return render(
-    <MemoryRouter>
-      <TodayPage />
-    </MemoryRouter>
-  )
+async function renderPage() {
+  await act(async () => {
+    render(
+      <MemoryRouter>
+        <TodayPage />
+      </MemoryRouter>
+    )
+    await Promise.resolve()
+  })
 }
 
 describe('TodayPage', () => {
-  it('renders without crash', () => {
-    renderPage()
+  it('renders without crash', async () => {
+    await renderPage()
     expect(screen.getByTestId('today-telemetry')).toBeInTheDocument()
   })
 
-  it('renders telemetry bar with pill elements', () => {
-    renderPage()
+  it('renders telemetry bar with pill elements', async () => {
+    await renderPage()
     const telemetry = screen.getByTestId('today-telemetry')
     expect(telemetry).toBeInTheDocument()
     expect(telemetry.querySelectorAll('.today-telemetry-bar__pill')).toHaveLength(4)
   })
 
-  it('renders frog task with distinct styling', () => {
-    renderPage()
+  it('renders frog task with distinct styling', async () => {
+    await renderPage()
     const frog = screen.getByTestId('today-frog-task')
     expect(frog).toBeInTheDocument()
     expect(frog).toHaveClass('today-frog-task')
     expect(screen.getByText('Most important task')).toBeInTheDocument()
   })
 
-  it('renders quick-add input', () => {
-    renderPage()
+  it('renders quick-add input', async () => {
+    await renderPage()
     expect(screen.getByPlaceholderText('+ Create task...')).toBeInTheDocument()
   })
 
-  it('renders collapsible sections with <details> elements open by default', () => {
-    renderPage()
+  it('renders collapsible sections with <details> elements open by default', async () => {
+    await renderPage()
     const details = document.querySelectorAll('details.today-card-collapse')
     expect(details.length).toBeGreaterThanOrEqual(2)
     details.forEach((d) => {
@@ -201,14 +213,14 @@ describe('TodayPage', () => {
   })
 
   it('renders "See full calendar" link when no events', async () => {
-    renderPage()
+    await renderPage()
     // With mocked empty calendar events, loading skeleton shows first, then empty state
     expect(await screen.findByText('Calendar is open')).toBeInTheDocument()
   })
 
   it('creates a task via quick-add on Enter', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
     const input = screen.getByPlaceholderText('+ Create task...')
     await user.type(input, 'New task{Enter}')
     expect(mockCreateTask).toHaveBeenCalledWith(
@@ -221,7 +233,7 @@ describe('TodayPage', () => {
 
   it('completes a task when checkbox is clicked', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
     // The frog task checkbox has aria-label "Complete Most important task"
     const checkbox = screen.getByRole('button', { name: /Complete Most important task/i })
     await user.click(checkbox)
@@ -235,7 +247,7 @@ describe('TodayPage', () => {
 
   it('snoozes a task when snooze button is clicked', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
     const snoozeBtn = screen.getByRole('button', {
       name: /Snooze Most important task to tomorrow/i,
     })
@@ -248,8 +260,8 @@ describe('TodayPage', () => {
     )
   })
 
-  it('task checkboxes have aria-labels for accessibility', () => {
-    renderPage()
+  it('task checkboxes have aria-labels for accessibility', async () => {
+    await renderPage()
     expect(screen.getByRole('button', { name: /Complete Most important task/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Complete Second task/ })).toBeInTheDocument()
     expect(
@@ -257,28 +269,28 @@ describe('TodayPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('UTIL telemetry uses /10 denominator (0% with no events)', () => {
-    renderPage()
+  it('UTIL telemetry uses /10 denominator (0% with no events)', async () => {
+    await renderPage()
     // With no events, busyHours = 0, so UTIL = 0 / 10 * 100 = 0%
     expect(screen.getByText('UTIL 0%')).toBeInTheDocument()
   })
 
-  it('shows calendar loading skeleton while events are loading', () => {
-    renderPage()
+  it('shows calendar loading skeleton while events are loading', async () => {
+    await renderPage()
     // On initial render, eventsLoading is true and events are empty
     const skeletons = document.querySelectorAll('.today-skeleton-row')
     expect(skeletons.length).toBe(3)
   })
 
-  it('renders child components', () => {
-    renderPage()
+  it('renders child components', async () => {
+    await renderPage()
     expect(screen.getByTestId('follow-up-widget')).toBeInTheDocument()
     expect(screen.getByTestId('message-mailbox')).toBeInTheDocument()
   })
 
   it('shows importance selector when typing a task', async () => {
     const user = userEvent.setup()
-    renderPage()
+    await renderPage()
     const input = screen.getByPlaceholderText('+ Create task...')
     await user.type(input, 'Test task')
     // Importance buttons should appear
