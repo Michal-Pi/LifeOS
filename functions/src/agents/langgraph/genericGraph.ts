@@ -45,6 +45,11 @@ import { parseStructuredPlan, createTodosFromPlan } from '../planToTodos.js'
 
 const log = createLogger('GenericGraph')
 
+// Safety caps for constraint overrides
+const MAX_NODE_VISITS_CAP = 100
+const MAX_BUDGET_CAP = 100 // $100 USD absolute cap
+const MAX_PARTIAL_OUTPUT_LENGTH = 2000
+
 /**
  * Resolve {{variable}} placeholders in text using provided parameter values.
  * Unresolved placeholders are left as-is.
@@ -128,7 +133,12 @@ export const GenericGraphStateAnnotation = Annotation.Root({
     ) => {
       const result = { ...current }
       for (const [key, entries] of Object.entries(update)) {
-        result[key] = [...(result[key] ?? []), ...entries]
+        if (entries.length === 0) {
+          // Empty array is the "clear" signal for this join buffer
+          delete result[key]
+        } else {
+          result[key] = [...(result[key] ?? []), ...entries]
+        }
       }
       return result
     },
@@ -221,12 +231,23 @@ function evaluateCondition(edge: WorkflowEdge, data: Record<string, unknown>): b
       if (typeof condition.value !== 'string') return false
       try {
         return new RegExp(condition.value).test(String(rawValue ?? ''))
-      } catch {
+      } catch (err) {
+        log.warn('Invalid regex in edge condition', {
+          pattern: condition.value,
+          error: err instanceof Error ? err.message : String(err),
+        })
         return false
       }
     }
     case 'error':
       // Error edges are handled separately in routing, not via evaluateCondition
+      return false
+    case 'llm_evaluate':
+      // llm_evaluate requires async LLM call; not supported in synchronous evaluateCondition.
+      // Log a warning so this doesn't silently fail.
+      log.warn(
+        `llm_evaluate edge condition not supported in LangGraph generic graph (edge ${edge.from} -> ${edge.to}). Treating as false.`
+      )
       return false
     default:
       return false
@@ -374,17 +395,17 @@ export function createGenericGraph(config: GenericGraphConfig) {
         | { type: string; newLimit?: number }
         | undefined
 
-      // Validate constraint override bounds
-      const MAX_NODE_VISITS_CAP = 100
-      const MAX_BUDGET_CAP = 100 // $100 USD absolute cap
+      // Compute effective limits from constraint overrides (without mutating state)
+      let effectiveNodeVisitLimit = maxNodeVisits
+      let effectiveBudgetLimit = workflow.maxBudget ?? Infinity
       if (constraintOverride?.newLimit !== undefined) {
         if (constraintOverride.type === 'max_node_visits') {
-          constraintOverride.newLimit = Math.min(
+          effectiveNodeVisitLimit = Math.min(
             Math.max(constraintOverride.newLimit, maxNodeVisits),
             MAX_NODE_VISITS_CAP
           )
         } else if (constraintOverride.type === 'budget') {
-          constraintOverride.newLimit = Math.min(
+          effectiveBudgetLimit = Math.min(
             Math.max(constraintOverride.newLimit, workflow.maxBudget ?? 0),
             MAX_BUDGET_CAP
           )
@@ -392,13 +413,10 @@ export function createGenericGraph(config: GenericGraphConfig) {
       }
 
       if (currentVisits > maxNodeVisits) {
-        // Check if user already increased the limit
-        const effectiveLimit =
-          constraintOverride?.type === 'max_node_visits' && constraintOverride.newLimit
-            ? constraintOverride.newLimit
-            : maxNodeVisits
-        if (currentVisits > effectiveLimit) {
-          log.info(`Node ${node.id} hit visit limit (${effectiveLimit}), pausing for user decision`)
+        if (currentVisits > effectiveNodeVisitLimit) {
+          log.info(
+            `Node ${node.id} hit visit limit (${effectiveNodeVisitLimit}), pausing for user decision`
+          )
           return {
             currentNodeId: node.id,
             visitedCount: { [node.id]: 1 },
@@ -406,15 +424,17 @@ export function createGenericGraph(config: GenericGraphConfig) {
             constraintPause: {
               constraintType: 'max_node_visits',
               currentValue: currentVisits,
-              limitValue: effectiveLimit,
+              limitValue: effectiveNodeVisitLimit,
               unit: 'visits',
               nodeId: node.id,
               partialOutput:
-                typeof state.lastOutput === 'string' ? state.lastOutput.slice(0, 2000) : undefined,
-              suggestedIncrease: effectiveLimit * 2,
+                typeof state.lastOutput === 'string'
+                  ? state.lastOutput.slice(0, MAX_PARTIAL_OUTPUT_LENGTH)
+                  : undefined,
+              suggestedIncrease: effectiveNodeVisitLimit * 2,
             },
             pendingInput: {
-              prompt: `Node "${node.id}" has been visited ${currentVisits} times (limit: ${effectiveLimit}). This may indicate a loop. Would you like to increase the limit or stop?`,
+              prompt: `Node "${node.id}" has been visited ${currentVisits} times (limit: ${effectiveNodeVisitLimit}). This may indicate a loop. Would you like to increase the limit or stop?`,
               nodeId: node.id,
             },
             nextNodeId: null,
@@ -424,10 +444,7 @@ export function createGenericGraph(config: GenericGraphConfig) {
 
       // Phase 16: Budget guardrail — pause and ask user
       if (workflow.maxBudget && state.totalEstimatedCost > workflow.maxBudget) {
-        const effectiveBudget =
-          constraintOverride?.type === 'budget' && constraintOverride.newLimit
-            ? constraintOverride.newLimit
-            : workflow.maxBudget
+        const effectiveBudget = effectiveBudgetLimit
         if (state.totalEstimatedCost > effectiveBudget) {
           log.info('Budget limit reached, pausing for user decision', {
             cost: state.totalEstimatedCost,
@@ -444,7 +461,9 @@ export function createGenericGraph(config: GenericGraphConfig) {
               unit: 'USD',
               nodeId: node.id,
               partialOutput:
-                typeof state.lastOutput === 'string' ? state.lastOutput.slice(0, 2000) : undefined,
+                typeof state.lastOutput === 'string'
+                  ? state.lastOutput.slice(0, MAX_PARTIAL_OUTPUT_LENGTH)
+                  : undefined,
               suggestedIncrease: effectiveBudget * 2,
             },
             pendingInput: {
@@ -563,16 +582,13 @@ export function createGenericGraph(config: GenericGraphConfig) {
           const buffer = state.joinBuffers[node.id] ?? []
           const aggregation = aggregateJoinOutputs(buffer, node.aggregationMode ?? 'list')
 
-          // Clear the buffer for this node
-          const updatedBuffers = { ...state.joinBuffers }
-          delete updatedBuffers[node.id]
-
           return {
             ...baseUpdate,
             lastOutput: aggregation,
             joinOutputs: { [node.id]: aggregation },
             namedOutputs: node.outputKey ? { [node.outputKey]: aggregation } : {},
-            joinBuffers: updatedBuffers,
+            // Empty array signals the reducer to clear this join buffer
+            joinBuffers: { [node.id]: [] },
           }
         }
 
@@ -713,6 +729,11 @@ export function createGenericGraph(config: GenericGraphConfig) {
           }
         }
 
+        case 'subworkflow':
+          throw new Error(
+            `Subworkflow execution is not yet supported in LangGraph generic graph (node: ${node.id}, subworkflowId: ${node.subworkflowId ?? 'none'})`
+          )
+
         case 'agent':
         default: {
           const agent = node.agentId ? agentsById.get(node.agentId) : agents[0]
@@ -751,6 +772,10 @@ export function createGenericGraph(config: GenericGraphConfig) {
                 : agent
 
             // Execute the agent using shared utility
+            // Per-agent tool iteration budget — generous default so only graph-level
+            // limits (maxNodeVisits, maxBudget) act as guardrails.
+            const agentIterationBudget = node.maxToolIterations ?? 15
+
             const step = await executeAgentWithEvents(
               resolvedAgent,
               resolvedGoal,
@@ -759,6 +784,7 @@ export function createGenericGraph(config: GenericGraphConfig) {
               {
                 stepNumber: state.steps.length + 1,
                 nodeId: node.id,
+                maxIterations: agentIterationBudget,
               }
             )
 
@@ -1023,9 +1049,9 @@ export async function executeGenericGraphWorkflowLangGraph(
     const namedValues = Object.values(finalState.namedOutputs)
     for (const val of namedValues) {
       if (typeof val !== 'string') continue
-      const plan = parseStructuredPlan(val)
-      if (plan) {
-        try {
+      try {
+        const plan = parseStructuredPlan(val)
+        if (plan) {
           const db = getFirestore()
           const todoResult = await createTodosFromPlan(plan, userId, db)
           log.info('Created todos from approved plan', {
@@ -1043,10 +1069,10 @@ export async function executeGenericGraphWorkflowLangGraph(
               },
             })
           }
-        } catch (err) {
-          log.warn('Failed to create todos from plan', { error: String(err) })
+          break
         }
-        break
+      } catch (err) {
+        log.warn('Failed to parse/create todos from plan', { error: String(err) })
       }
     }
   }

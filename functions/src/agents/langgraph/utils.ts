@@ -12,6 +12,7 @@ import type {
   BrandVoice,
   CoachingContext,
   ModelTier,
+  RunId,
   WorkflowCriticality,
   WorkflowExecutionMode,
 } from '@lifeos/agents'
@@ -29,6 +30,8 @@ import type { StreamContext } from '../streamingTypes.js'
 import { injectBrandVoice } from '../brandVoiceInjection.js'
 import { injectCoachingContext } from '../coachingContextInjection.js'
 import { injectHistoricalCalibration, type HistoricalEstimate } from '../historicalCalibration.js'
+import { recordComponentTelemetry } from '../telemetry/componentTelemetry.js'
+import { allocateRuntimePromptVariant } from '../evaluation/runtimeExperimentAllocator.js'
 
 // ----- Status Constants -----
 
@@ -63,6 +66,7 @@ export const AgentEventStatus = {
 export interface AgentExecutionContext {
   userId: string
   workflowId: string
+  workflowType?: string
   runId: string
   apiKeys: ProviderKeys
   eventWriter?: RunEventWriter
@@ -89,6 +93,127 @@ export interface AgentExecutionOptions {
   historicalCalibration?: HistoricalEstimate | null
 }
 
+const MAX_CAPTURE_CHARS = 20000
+
+function stableStringify(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
+}
+
+function truncateCapture(value: string): { text: string; truncated: boolean } {
+  if (value.length <= MAX_CAPTURE_CHARS) {
+    return { text: value, truncated: false }
+  }
+  return {
+    text: `${value.slice(0, MAX_CAPTURE_CHARS - 1)}…`,
+    truncated: true,
+  }
+}
+
+function fingerprint(value: string): string {
+  let h1 = 0x811c9dc5 >>> 0
+  let h2 = 0x01000193 >>> 0
+  for (let index = 0; index < value.length; index += 1) {
+    const charCode = value.charCodeAt(index)
+    h1 = Math.imul(h1 ^ charCode, 0x01000193) >>> 0
+    h2 = Math.imul(h2 ^ charCode, 0x00010001) >>> 0
+  }
+  return `fp_${h1.toString(36)}_${h2.toString(36)}`
+}
+
+function summarizeContextKeys(value: Record<string, unknown>): string[] {
+  return Object.keys(value).sort().slice(0, 16)
+}
+
+async function recordAgentExecutionCapture(params: {
+  userId: string
+  runId: string
+  workflowType: string
+  stepIndex: number
+  agentId: string
+  agentName: string
+  startedAtMs: number
+  completedAtMs: number
+  effectiveSystemPrompt: string
+  userPrompt: string
+  fullContext: Record<string, unknown>
+  output: string
+  provider: string
+  model: string
+  runtimeExperiment?: {
+    experimentId: string
+    variantId: string
+    variantName: string
+    allocationMode: 'thompson' | 'winner'
+  } | null
+}) {
+  const contextPayload = stableStringify(params.fullContext)
+  const configPayload = stableStringify({
+    agentId: params.agentId,
+    workflowType: params.workflowType,
+    provider: params.provider,
+    model: params.model,
+    contextKeys: summarizeContextKeys(params.fullContext),
+    experimentId: params.runtimeExperiment?.experimentId ?? null,
+    variantId: params.runtimeExperiment?.variantId ?? null,
+  })
+  const upstreamHandoffPayload = stableStringify(
+    params.fullContext.lastOutput ??
+      params.fullContext.finalOutput ??
+      params.fullContext.namedOutputs ??
+      params.fullContext.joinOutputs ??
+      params.fullContext.context ??
+      null
+  )
+  const capturedPrompt = truncateCapture(params.effectiveSystemPrompt)
+  const capturedUserPrompt = truncateCapture(params.userPrompt)
+  const capturedContext = truncateCapture(contextPayload)
+  const capturedHandoff = truncateCapture(upstreamHandoffPayload)
+  const capturedOutput = truncateCapture(params.output)
+
+  await recordComponentTelemetry(params.userId, {
+    runId: params.runId as RunId,
+    userId: params.userId,
+    workflowType: params.workflowType,
+    componentType: 'agent',
+    componentId: params.agentId,
+    componentName: params.agentName,
+    stepIndex: params.stepIndex,
+    startedAtMs: params.startedAtMs,
+    completedAtMs: params.completedAtMs,
+    durationMs: params.completedAtMs - params.startedAtMs,
+    metadata: {
+      captureVersion: 1,
+      effectiveSystemPrompt: capturedPrompt.text,
+      effectiveSystemPromptTruncated: capturedPrompt.truncated,
+      effectiveSystemPromptFingerprint: fingerprint(params.effectiveSystemPrompt),
+      userPrompt: capturedUserPrompt.text,
+      userPromptTruncated: capturedUserPrompt.truncated,
+      userPromptFingerprint: fingerprint(params.userPrompt),
+      configFingerprint: fingerprint(configPayload),
+      contextPayload: capturedContext.text,
+      contextPayloadTruncated: capturedContext.truncated,
+      contextFingerprint: fingerprint(contextPayload),
+      contextKeys: summarizeContextKeys(params.fullContext),
+      upstreamHandoffPayload: capturedHandoff.text,
+      upstreamHandoffTruncated: capturedHandoff.truncated,
+      upstreamHandoffFingerprint: fingerprint(upstreamHandoffPayload),
+      outputSnapshot: capturedOutput.text,
+      outputSnapshotTruncated: capturedOutput.truncated,
+      outputFingerprint: fingerprint(params.output),
+      runtimeExperimentId: params.runtimeExperiment?.experimentId ?? null,
+      runtimeVariantId: params.runtimeExperiment?.variantId ?? null,
+      runtimeVariantName: params.runtimeExperiment?.variantName ?? null,
+      runtimeExperimentAllocationMode: params.runtimeExperiment?.allocationMode ?? null,
+    },
+  })
+}
+
 // ----- Agent Execution Utility -----
 
 /**
@@ -107,6 +232,7 @@ export async function executeAgentWithEvents(
   const {
     userId,
     workflowId,
+    workflowType,
     runId,
     apiKeys,
     eventWriter,
@@ -162,6 +288,23 @@ export async function executeAgentWithEvents(
     injectedPrompt !== effectiveAgent.systemPrompt
       ? { ...effectiveAgent, systemPrompt: injectedPrompt }
       : effectiveAgent
+
+  const runtimeAllocation = await allocateRuntimePromptVariant({
+    userId,
+    agent: agentToExecute,
+    workflowType:
+      workflowType ?? (typeof context.workflowType === 'string' ? context.workflowType : undefined),
+  })
+  const runtimeSystemPromptBase =
+    runtimeAllocation?.appliedSystemPrompt ?? agentToExecute.systemPrompt
+  const runtimePromptTemplate = runtimeAllocation?.appliedPromptTemplate?.trim()
+  const runtimeSystemPrompt = runtimePromptTemplate
+    ? `${runtimeSystemPromptBase}\n\n## Active Prompt Variant\n${runtimePromptTemplate}`
+    : runtimeSystemPromptBase
+  const runtimeAgent: AgentConfig =
+    runtimeSystemPrompt !== agentToExecute.systemPrompt
+      ? { ...agentToExecute, systemPrompt: runtimeSystemPrompt }
+      : agentToExecute
 
   // Build tool execution context
   const toolContext = {
@@ -242,14 +385,14 @@ export async function executeAgentWithEvents(
   try {
     result = streamContext
       ? await executeWithProviderStreaming(
-          agentToExecute,
+          runtimeAgent,
           goal,
           fullContext,
           apiKeys,
           toolContext,
           streamContext
         )
-      : await executeWithProvider(agentToExecute, goal, fullContext, apiKeys, toolContext)
+      : await executeWithProvider(runtimeAgent, goal, fullContext, apiKeys, toolContext)
   } catch (error) {
     if (error instanceof AskUserInterrupt) {
       log.info('Agent requested user input via ask_user tool', {
@@ -306,6 +449,41 @@ export async function executeAgentWithEvents(
     executedAtMs: Date.now(),
     iterationsUsed: result.iterationsUsed,
     agentRole: agent.role,
+  }
+
+  try {
+    await recordAgentExecutionCapture({
+      userId,
+      runId,
+      workflowType:
+        workflowType ??
+        (typeof fullContext.workflowType === 'string' ? fullContext.workflowType : 'unknown'),
+      stepIndex: stepNumber ?? 0,
+      agentId: effectiveAgent.agentId,
+      agentName: effectiveAgent.name,
+      startedAtMs: startMs,
+      completedAtMs: step.executedAtMs,
+      effectiveSystemPrompt: runtimeAgent.systemPrompt,
+      userPrompt: goal,
+      fullContext,
+      output: result.output,
+      provider: result.provider,
+      model: result.model,
+      runtimeExperiment: runtimeAllocation
+        ? {
+            experimentId: runtimeAllocation.experimentId,
+            variantId: runtimeAllocation.variantId,
+            variantName: runtimeAllocation.variantName,
+            allocationMode: runtimeAllocation.allocationMode,
+          }
+        : null,
+    })
+  } catch (captureError) {
+    log.warn('Failed to record agent execution capture', {
+      agentId: effectiveAgent.agentId,
+      runId,
+      error: captureError instanceof Error ? captureError.message : String(captureError),
+    })
   }
 
   // Emit agent done event

@@ -117,12 +117,16 @@ function BuilderCanvas({
 
   // Fit view whenever the node structure changes
   useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+    let innerRaf: number
+    const outerRaf = requestAnimationFrame(() => {
+      innerRaf = requestAnimationFrame(() => {
         fitView({ padding: 0.15, duration: 200 })
       })
     })
-    return () => cancelAnimationFrame(raf)
+    return () => {
+      cancelAnimationFrame(outerRaf)
+      cancelAnimationFrame(innerRaf)
+    }
   }, [state.nodes.length, state.edges.length, fitView])
 
   // Keyboard handling: Delete, Undo/Redo, Escape
@@ -201,9 +205,12 @@ function BuilderCanvas({
       // Delete or Backspace to remove selected node(s)
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()
-        // Multi-select bulk delete
+        // Multi-select bulk delete (exclude start node)
         if (state.selectedNodeIds.length > 1) {
-          dispatch({ type: 'REMOVE_NODES', nodeIds: state.selectedNodeIds })
+          const removable = state.selectedNodeIds.filter((id) => id !== state.startNodeId)
+          if (removable.length > 0) {
+            dispatch({ type: 'REMOVE_NODES', nodeIds: removable })
+          }
         } else if (state.selectedNodeId) {
           if (state.selectedNodeId !== state.startNodeId && state.nodes.length > 2) {
             dispatch({ type: 'REMOVE_NODE', nodeId: state.selectedNodeId })

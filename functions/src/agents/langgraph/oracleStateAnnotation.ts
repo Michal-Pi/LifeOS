@@ -28,8 +28,12 @@ import type {
   StrategicMove,
   OraclePhaseSummary,
   OracleGateResult,
+  OracleGateRemediationPlan,
+  OracleRemediationDelta,
   OracleCouncilRecord,
   OracleCostTracker,
+  OracleGateType,
+  OracleSteepCategory,
 } from '@lifeos/agents'
 import type { WorkflowStatusType } from './utils.js'
 import type { ConstraintPauseInfo } from './stateAnnotations.js'
@@ -73,8 +77,10 @@ export const OracleStateAnnotation = Annotation.Root({
     reducer: (_cur, upd) => upd,
     default: () => [],
   }),
+  // Evidence uses replace-on-write because enrichment nodes return the full
+  // updated array (not just new items). Capped at 200 items.
   evidence: Annotation<OracleEvidence[]>({
-    reducer: (current, update) => [...current, ...update].slice(-200),
+    reducer: (_cur, upd) => upd.slice(-200),
     default: () => [],
   }),
   /** Full crawled page content keyed by evidence ID. Not serialized to Firestore run doc. */
@@ -139,11 +145,23 @@ export const OracleStateAnnotation = Annotation.Root({
   }),
   // Current gate refinement count (reset per gate)
   currentGateRefinements: Annotation<number>,
+  activeGate: Annotation<OracleGateType | null>,
   gateEscalated: Annotation<boolean>({
-    reducer: (current, update) => current || update,
+    reducer: (_cur, upd) => upd,
     default: () => false,
   }),
   gateEscalationFeedback: Annotation<string | null>,
+  remediationPlan: Annotation<OracleGateRemediationPlan | null>,
+  remediationDelta: Annotation<OracleRemediationDelta | null>,
+  remediationRound: Annotation<number>,
+  remediationBaseline: Annotation<{
+    evidenceCount: number
+    claimsCount: number
+    assumptionsCount: number
+    kgEdges: number
+    axiomGroundingPercent: number
+    missingSteepvCategories: OracleSteepCategory[]
+  } | null>,
 
   // ----- Expert Council -----
   councilRecords: Annotation<OracleCouncilRecord[]>({

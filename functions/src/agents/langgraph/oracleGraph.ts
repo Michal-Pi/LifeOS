@@ -41,8 +41,12 @@ import type {
   StrategicMove,
   OraclePhaseSummary,
   OracleGateResult,
+  OracleGateRemediationPlan,
+  OracleRemediationDelta,
   OracleCostTracker,
   OracleCouncilRecord,
+  OracleGateType,
+  OracleSteepCategory,
   Run,
   RunId,
   ExpertCouncilConfig,
@@ -62,6 +66,7 @@ import { OracleStateAnnotation, type OracleState } from './oracleStateAnnotation
 import type { ConstraintPauseInfo } from './stateAnnotations.js'
 import {
   buildContextGathererPrompt,
+  buildGateRemediationPlannerPrompt,
   buildDecomposerPrompt,
   buildSystemsMapperPrompt,
   buildVerifierPrompt,
@@ -299,6 +304,28 @@ const GateRubricOutputSchema = z
     evidenceQuality: result.evidenceQuality ?? result.evidence_quality ?? 0,
     feedback: result.feedback,
   }))
+const RemediationPlanOutputSchema = z.object({
+  summary: z.string().default(''),
+  targetNode: z.enum(['decomposer', 'scanner', 'equilibrium_analyst']),
+  requiredFixes: StringArraySchema.default([]),
+  requiredDeliverables: StringArraySchema.default([]),
+  missingSteepvCategories: z
+    .array(z.enum(['social', 'technological', 'economic', 'environmental', 'political', 'values']))
+    .default([]),
+  requirePrimarySources: z.coerce.boolean().default(false),
+  requireAlternativeExplanations: z.coerce.boolean().default(false),
+  requireFalsifiers: z.coerce.boolean().default(false),
+  requireQuantification: z.coerce.boolean().default(false),
+  requireAssumptionRegisterExpansion: z.coerce.boolean().default(false),
+  requireKnowledgeGraphExpansion: z.coerce.boolean().default(false),
+  requireAxiomGroundingImprovement: z.coerce.boolean().default(false),
+  minNewEvidenceCount: z.coerce.number().int().min(0).default(0),
+  minNewClaimCount: z.coerce.number().int().min(0).default(0),
+  minNewAssumptionCount: z.coerce.number().int().min(0).default(0),
+  minNewKgEdges: z.coerce.number().int().min(0).default(0),
+  minAxiomGroundingPercent: RatioSchema.default(0),
+  searchPlan: z.record(z.string(), StringArraySchema).default({}),
+})
 const ScannerOutputSchema = z.object({
   trends: z
     .array(
@@ -780,6 +807,186 @@ function normalizeEvidenceCategory(category: string): string {
   return category.trim().toLowerCase()
 }
 
+function getSteepvCategories(): OracleSteepCategory[] {
+  return ['social', 'technological', 'economic', 'environmental', 'political', 'values']
+}
+
+function normalizeSteepCategory(category: string | undefined | null): OracleSteepCategory | null {
+  const value = (category ?? '').trim().toLowerCase()
+  if (!value) return null
+  if (value.startsWith('soc')) return 'social'
+  if (value.startsWith('tech') || value.includes('digital') || value === 'ai')
+    return 'technological'
+  if (value.startsWith('econ') || value.includes('market') || value.includes('financial'))
+    return 'economic'
+  if (value.startsWith('env') || value.includes('climate') || value.includes('ecolog'))
+    return 'environmental'
+  if (value.startsWith('pol') || value.includes('regulat') || value.includes('policy'))
+    return 'political'
+  if (value.startsWith('val') || value.includes('ethic') || value.includes('privacy'))
+    return 'values'
+  return null
+}
+
+function getMissingSteepvCoverage(
+  state: Pick<OracleState, 'evidence' | 'trends'>
+): OracleSteepCategory[] {
+  const covered = new Set<OracleSteepCategory>()
+  for (const item of state.evidence) {
+    const normalized = normalizeSteepCategory(item.category)
+    if (normalized) covered.add(normalized)
+  }
+  for (const trend of state.trends) {
+    covered.add(trend.steepCategory)
+  }
+  return getSteepvCategories().filter((category) => !covered.has(category))
+}
+
+function getAxiomGroundingPercent(state: Pick<OracleState, 'claims'>): number {
+  const groundedClaims = state.claims.filter((claim) => claim.axiomRefs.length > 0).length
+  return state.claims.length > 0 ? groundedClaims / state.claims.length : 0
+}
+
+function mergeSearchPlans(
+  basePlan: OracleSearchPlan,
+  overridePlan: OracleSearchPlan
+): OracleSearchPlan {
+  const merged: OracleSearchPlan = { ...basePlan }
+  for (const [category, queries] of Object.entries(overridePlan)) {
+    const normalizedQueries = queries
+      .map((query) => query.trim())
+      .filter((query) => query.length > 0)
+    const existing = merged[category] ?? []
+    merged[category] = [...new Set([...existing, ...normalizedQueries])]
+  }
+  return merged
+}
+
+function buildDefaultRemediationPlan(
+  gateType: OracleGateType,
+  gateFeedback: string | null,
+  humanFeedback: string | null,
+  state: Pick<
+    OracleState,
+    'searchPlan' | 'claims' | 'assumptions' | 'knowledgeGraph' | 'evidence' | 'trends'
+  >
+): OracleGateRemediationPlan {
+  const missingSteepvCategories = getMissingSteepvCoverage(state)
+  const targetNode =
+    gateType === 'gate_a' ? 'decomposer' : gateType === 'gate_b' ? 'scanner' : 'equilibrium_analyst'
+  const searchPlan = missingSteepvCategories.reduce<OracleSearchPlan>((acc, category) => {
+    acc[category] = [`${state.claims[0]?.text ?? 'strategic analysis'} ${category} primary sources`]
+    return acc
+  }, {})
+  return {
+    gateType,
+    targetNode,
+    summary: humanFeedback ?? gateFeedback ?? `Remediate ${gateType} before retry`,
+    requiredFixes: [gateFeedback ?? 'Address the failed gate feedback'],
+    requiredDeliverables: ['Add net-new evidence and improve traceability before retry'],
+    missingSteepvCategories,
+    requirePrimarySources: true,
+    requireAlternativeExplanations: true,
+    requireFalsifiers: gateType !== 'gate_c',
+    requireQuantification: true,
+    requireAssumptionRegisterExpansion: gateType === 'gate_a' || gateType === 'gate_c',
+    requireKnowledgeGraphExpansion: gateType !== 'gate_b',
+    requireAxiomGroundingImprovement: gateType === 'gate_a',
+    minNewEvidenceCount: gateType === 'gate_b' ? 6 : 4,
+    minNewClaimCount: gateType === 'gate_a' ? 3 : 2,
+    minNewAssumptionCount: gateType === 'gate_a' ? 2 : 1,
+    minNewKgEdges: gateType === 'gate_b' ? 2 : 4,
+    minAxiomGroundingPercent: gateType === 'gate_a' ? 0.8 : 0,
+    searchPlan: mergeSearchPlans({}, searchPlan),
+  }
+}
+
+function computeRemediationDelta(
+  before: {
+    evidenceCount: number
+    claimsCount: number
+    assumptionsCount: number
+    kgEdges: number
+    axiomGroundingPercent: number
+    missingSteepvCategories: OracleSteepCategory[]
+  },
+  state: Pick<OracleState, 'evidence' | 'claims' | 'assumptions' | 'knowledgeGraph' | 'trends'>
+): OracleRemediationDelta {
+  return {
+    newEvidenceCount: Math.max(0, state.evidence.length - before.evidenceCount),
+    newClaimCount: Math.max(0, state.claims.length - before.claimsCount),
+    newAssumptionCount: Math.max(0, state.assumptions.length - before.assumptionsCount),
+    newKgEdges: Math.max(0, state.knowledgeGraph.edges.length - before.kgEdges),
+    axiomGroundingBefore: before.axiomGroundingPercent,
+    axiomGroundingAfter: getAxiomGroundingPercent(state),
+    missingSteepvBefore: before.missingSteepvCategories,
+    missingSteepvAfter: getMissingSteepvCoverage(state),
+  }
+}
+
+function validateRemediationProgress(
+  plan: OracleGateRemediationPlan,
+  delta: OracleRemediationDelta
+): { ok: boolean; reasons: string[] } {
+  const reasons: string[] = []
+  if (delta.newEvidenceCount < plan.minNewEvidenceCount) {
+    reasons.push(`net-new evidence ${delta.newEvidenceCount}/${plan.minNewEvidenceCount}`)
+  }
+  if (plan.minNewClaimCount > 0 && delta.newClaimCount < plan.minNewClaimCount) {
+    reasons.push(`net-new claims ${delta.newClaimCount}/${plan.minNewClaimCount}`)
+  }
+  if (plan.minNewAssumptionCount > 0 && delta.newAssumptionCount < plan.minNewAssumptionCount) {
+    reasons.push(`net-new assumptions ${delta.newAssumptionCount}/${plan.minNewAssumptionCount}`)
+  }
+  if (plan.minNewKgEdges > 0 && delta.newKgEdges < plan.minNewKgEdges) {
+    reasons.push(`net-new KG edges ${delta.newKgEdges}/${plan.minNewKgEdges}`)
+  }
+  if (
+    plan.requireAxiomGroundingImprovement &&
+    delta.axiomGroundingAfter <= delta.axiomGroundingBefore
+  ) {
+    reasons.push(
+      `axiom grounding did not improve (${delta.axiomGroundingBefore.toFixed(2)} -> ${delta.axiomGroundingAfter.toFixed(2)})`
+    )
+  }
+  if (
+    plan.minAxiomGroundingPercent > 0 &&
+    delta.axiomGroundingAfter < plan.minAxiomGroundingPercent
+  ) {
+    reasons.push(
+      `axiom grounding ${delta.axiomGroundingAfter.toFixed(2)}/${plan.minAxiomGroundingPercent.toFixed(2)}`
+    )
+  }
+  if (
+    plan.missingSteepvCategories.length > 0 &&
+    delta.missingSteepvAfter.length >= delta.missingSteepvBefore.length
+  ) {
+    reasons.push('STEEP+V coverage did not improve')
+  }
+  return { ok: reasons.length === 0, reasons }
+}
+
+function shouldFinalizeCurrentFindings(
+  context?: Record<string, unknown>,
+  gateType?: OracleGateType | null
+): boolean {
+  if (gateType !== 'gate_c') return false
+  const override = context?.constraintOverride
+  if (
+    override &&
+    typeof override === 'object' &&
+    (override as Record<string, unknown>).action === 'finalize'
+  ) {
+    return true
+  }
+  const humanApproval = context?.humanApproval
+  if (!humanApproval || typeof humanApproval !== 'object') return false
+  const record = humanApproval as Record<string, unknown>
+  if (record.nodeId !== 'gate_escalation') return false
+  const response = typeof record.response === 'string' ? record.response.toLowerCase() : ''
+  return response.includes('finalize') || response.includes('synthesize current findings')
+}
+
 function stripTrailingCommas(value: string): string {
   return value.replace(/,\s*([}\]])/g, '$1')
 }
@@ -1180,8 +1387,9 @@ export async function collectEvidenceFromSearchPlan(
   config: Pick<
     OracleGraphConfig,
     'toolRegistry' | 'searchToolKeys' | 'userId' | 'workflow' | 'runId'
-  >
-): Promise<{ evidence: OracleEvidence[]; failedQueries: string[] }> {
+  >,
+  existingEvidence: OracleEvidence[] = []
+): Promise<{ evidence: OracleEvidence[]; failedQueries: string[]; newEvidenceCount: number }> {
   const plannedQueries = Object.entries(searchPlan).flatMap(([category, queries]) =>
     queries.map((query) => ({ category: normalizeEvidenceCategory(category), query }))
   )
@@ -1232,6 +1440,13 @@ export async function collectEvidenceFromSearchPlan(
   const failedQueries: string[] = []
   const usedUrls = new Set<string>()
   const usedDomains = new Set<string>()
+  existingEvidence.forEach((item) => {
+    const normalizedUrl = normalizeEvidenceUrl(item.url)
+    const domain = extractEvidenceDomain(item.url)
+    if (normalizedUrl) usedUrls.add(normalizedUrl)
+    if (domain) usedDomains.add(domain)
+  })
+  const evidenceIdOffset = existingEvidence.length
 
   settled.forEach((result, index) => {
     const plannedQuery = plannedQueries[index]
@@ -1250,7 +1465,7 @@ export async function collectEvidenceFromSearchPlan(
       if (domain) usedDomains.add(domain)
 
       evidence.push({
-        id: buildEvidenceId(result.value.index),
+        id: buildEvidenceId(evidenceIdOffset + evidence.length),
         category: result.value.category,
         query: result.value.query,
         source: selected.source ?? selected.title ?? result.value.query,
@@ -1276,26 +1491,32 @@ export async function collectEvidenceFromSearchPlan(
   return {
     evidence: evidence.slice(-200),
     failedQueries,
+    newEvidenceCount: evidence.length,
   }
 }
 
 function maybeGateEscalation(
   gateResult: Pick<OracleGateResult, 'passed' | 'feedback'>,
   currentGateRefinements: number,
-  maxRefinementsPerGate: number
+  maxRefinementsPerGate: number,
+  gateType: 'gate_a' | 'gate_b' | 'gate_c'
 ): Partial<OracleState> {
   if (gateResult.passed || currentGateRefinements < maxRefinementsPerGate) {
     return {}
   }
 
   return {
+    activeGate: gateType,
     gateEscalated: true,
     gateEscalationFeedback: gateResult.feedback,
+    remediationPlan: null,
+    remediationDelta: null,
     status: 'waiting_for_input' as const,
     pendingInput: {
       prompt: `Gate escalation requires human review before continuing.\n\nFeedback: ${gateResult.feedback}`,
       nodeId: 'gate_escalation',
     },
+    resumeNodeHint: 'gate_remediation_planner',
   }
 }
 
@@ -1396,7 +1617,11 @@ async function emitOracleEvent(
     | 'oracle_gate_result'
     | 'oracle_council_complete'
     | 'oracle_human_gate'
-    | 'oracle_consistency_check',
+    | 'oracle_consistency_check'
+    | 'oracle_remediation_planned'
+    | 'oracle_remediation_evidence_added'
+    | 'oracle_remediation_validated'
+    | 'oracle_finalize_current_findings',
   details: Record<string, unknown>
 ): Promise<void> {
   if (!config.eventWriter) return
@@ -1480,8 +1705,13 @@ function buildOracleResumeState(state: OracleState): Partial<OracleState> {
     phaseSummaries: state.phaseSummaries,
     gateResults: state.gateResults,
     currentGateRefinements: state.currentGateRefinements,
+    activeGate: state.activeGate,
     gateEscalated: state.gateEscalated,
     gateEscalationFeedback: state.gateEscalationFeedback,
+    remediationPlan: state.remediationPlan,
+    remediationDelta: state.remediationDelta,
+    remediationRound: state.remediationRound,
+    remediationBaseline: state.remediationBaseline,
     councilRecords: state.councilRecords,
     costTracker: state.costTracker,
     totalTokensUsed: state.totalTokensUsed,
@@ -1517,6 +1747,10 @@ function buildPersistedOracleWorkflowState(state: OracleState): Record<string, u
       humanGateFeedback: state.humanGateFeedback,
       gateEscalated: state.gateEscalated,
       gateEscalationFeedback: state.gateEscalationFeedback,
+      activeGate: state.activeGate,
+      remediationPlan: state.remediationPlan,
+      remediationDelta: state.remediationDelta,
+      remediationRound: state.remediationRound,
       startup: {
         normalizedInput: state.normalizedInput
           ? summarizeNormalizedStartupInput(state.normalizedInput)
@@ -1540,6 +1774,10 @@ function determineOracleStartNode(state: OracleState): string {
       'context_gathering',
       'evidence_gathering',
       'evidence_enrichment',
+      'gate_remediation_planner',
+      'remediation_evidence_gathering',
+      'remediation_evidence_enrichment',
+      'finalize_current_findings',
       'context_seeding',
       'decomposer',
       'systems_mapper',
@@ -1631,6 +1869,46 @@ function extractHumanGateFeedback(context?: Record<string, unknown>): string | n
   }
 
   return null
+}
+
+async function maybeValidateRemediationAtGate(
+  config: OracleGraphConfig,
+  state: OracleState,
+  gateType: OracleGateType
+): Promise<Partial<OracleState> | null> {
+  const plan = state.remediationPlan
+  const baseline = state.remediationBaseline
+  if (!plan || !baseline || state.activeGate !== gateType) return null
+
+  const delta = computeRemediationDelta(baseline, state)
+  const validation = validateRemediationProgress(plan, delta)
+
+  await emitOracleEvent(config, 'oracle_remediation_validated', {
+    gate: gateType,
+    status: validation.ok ? 'passed' : 'blocked',
+    newEvidenceCount: delta.newEvidenceCount,
+    axiomGroundingBefore: delta.axiomGroundingBefore,
+    axiomGroundingAfter: delta.axiomGroundingAfter,
+    coverageImproved: delta.missingSteepvAfter.length < delta.missingSteepvBefore.length,
+    reasons: validation.reasons,
+  })
+
+  if (!validation.ok) {
+    return {
+      remediationDelta: delta,
+      status: 'waiting_for_input' as const,
+      pendingInput: {
+        nodeId: 'gate_escalation',
+        prompt: `Remediation did not produce enough net-new evidence / axioms / coverage improvement to justify another gate retry.\n\nMissing improvements:\n- ${validation.reasons.join('\n- ')}`,
+      },
+      resumeNodeHint: 'gate_remediation_planner',
+    }
+  }
+
+  return {
+    remediationDelta: delta,
+    remediationBaseline: null,
+  }
 }
 
 // ----- Graph Construction -----
@@ -1725,7 +2003,7 @@ function createOracleGraph(config: OracleGraphConfig) {
 
     return {
       currentPhase: 'context_gathering' as const,
-      evidence,
+      evidence: [...state.evidence, ...evidence],
       degradedPhases: failedQueries.length > 0 ? ['evidence_gathering'] : [],
     }
   })
@@ -1802,9 +2080,10 @@ function createOracleGraph(config: OracleGraphConfig) {
         }
 
         try {
-          const timeoutPromise = new Promise<null>((resolve) =>
-            setTimeout(() => resolve(null), CRAWL_TIMEOUT_MS)
-          )
+          let timer: ReturnType<typeof setTimeout> | undefined
+          const timeoutPromise = new Promise<null>((resolve) => {
+            timer = setTimeout(() => resolve(null), CRAWL_TIMEOUT_MS)
+          })
 
           const fetchPromise = (async (): Promise<string | null> => {
             // Try read_url first; on failure fall through to scrape_url
@@ -1854,6 +2133,7 @@ function createOracleGraph(config: OracleGraphConfig) {
           })()
 
           const content = await Promise.race([fetchPromise, timeoutPromise])
+          clearTimeout(timer)
           return { id: evidenceItem.id, content, error: null as string | null }
         } catch (err) {
           log.warn('Crawl failed for evidence item', {
@@ -1885,7 +2165,11 @@ function createOracleGraph(config: OracleGraphConfig) {
       crawledContentMap[id] = content
 
       try {
-        const evidenceItem = state.evidence.find((e) => e.id === id)!
+        const evidenceItem = state.evidence.find((e) => e.id === id)
+        if (!evidenceItem) {
+          enrichedMap.set(id, { enrichedExcerpt: '', crawlStatus: 'failed' })
+          continue
+        }
         const summaryStep = await executeAgentWithEvents(
           {
             ...config.verifier,
@@ -1953,6 +2237,326 @@ function createOracleGraph(config: OracleGraphConfig) {
           estimatedCost: totalCrawlCost,
         },
         0,
+        'search'
+      ),
+    }
+  })
+
+  graph.addNode('gate_remediation_planner', async (state: OracleState) => {
+    const budgetPause = getBudgetPauseUpdate(
+      state,
+      'gate_remediation_planner',
+      oracleConfig.maxBudgetUsd
+    )
+    if (budgetPause) return budgetPause
+
+    const gateType = state.activeGate
+    if (!gateType) {
+      return {
+        status: 'waiting_for_input' as const,
+        pendingInput: {
+          nodeId: 'gate_escalation',
+          prompt: 'Gate remediation could not start because the failed gate was not recorded.',
+        },
+      }
+    }
+
+    const baseline = {
+      evidenceCount: state.evidence.length,
+      claimsCount: state.claims.length,
+      assumptionsCount: state.assumptions.length,
+      kgEdges: state.knowledgeGraph.edges.length,
+      axiomGroundingPercent: getAxiomGroundingPercent(state),
+      missingSteepvCategories: getMissingSteepvCoverage(state),
+    }
+    const fallbackPlan = buildDefaultRemediationPlan(
+      gateType,
+      state.gateEscalationFeedback ?? null,
+      state.humanGateFeedback ?? null,
+      state
+    )
+    const prompt = buildGateRemediationPlannerPrompt({
+      goal: state.goal,
+      gateType,
+      gateFeedback: state.gateEscalationFeedback ?? null,
+      humanFeedback: state.humanGateFeedback ?? null,
+      phaseSummaries: state.phaseSummaries,
+      artifactStats: {
+        claimsCount: baseline.claimsCount,
+        assumptionsCount: baseline.assumptionsCount,
+        evidenceCount: baseline.evidenceCount,
+        knowledgeGraphNodes: state.knowledgeGraph.nodes.length,
+        knowledgeGraphEdges: baseline.kgEdges,
+        axiomGroundingPercent: baseline.axiomGroundingPercent,
+        missingSteepvCategories: baseline.missingSteepvCategories,
+      },
+    })
+
+    const step = await executeAgentWithEvents(
+      { ...config.contextGatherer, systemPrompt: prompt },
+      `Plan remediation for ${gateType}`,
+      {},
+      execContext,
+      { nodeId: 'gate_remediation_planner' }
+    )
+
+    const parsed = await parseJsonWithRetry<Omit<OracleGateRemediationPlan, 'gateType'>>(
+      step.output,
+      'Gate remediation planner',
+      '{"summary":"","targetNode":"decomposer","requiredFixes":[],"requiredDeliverables":[],"missingSteepvCategories":[],"requirePrimarySources":true,"requireAlternativeExplanations":true,"requireFalsifiers":true,"requireQuantification":true,"requireAssumptionRegisterExpansion":true,"requireKnowledgeGraphExpansion":true,"requireAxiomGroundingImprovement":true,"minNewEvidenceCount":4,"minNewClaimCount":2,"minNewAssumptionCount":1,"minNewKgEdges":2,"minAxiomGroundingPercent":0.8,"searchPlan":{"technological":["query"]}}',
+      RemediationPlanOutputSchema,
+      JSON.stringify({
+        ...fallbackPlan,
+        gateType: undefined,
+      }),
+      state.goal,
+      config.contextGatherer,
+      execContext,
+      'gate_remediation_planner',
+      1,
+      state.runId,
+      prompt
+    )
+
+    const remediationPlan: OracleGateRemediationPlan = {
+      ...fallbackPlan,
+      ...parsed,
+      gateType,
+      targetNode:
+        gateType === 'gate_a'
+          ? 'decomposer'
+          : gateType === 'gate_b'
+            ? 'scanner'
+            : 'equilibrium_analyst',
+      searchPlan: hasSearchQueries(parsed.searchPlan)
+        ? mergeSearchPlans({}, parsed.searchPlan)
+        : fallbackPlan.searchPlan,
+    }
+
+    await emitOracleEvent(config, 'oracle_remediation_planned', {
+      gate: gateType,
+      targetNode: remediationPlan.targetNode,
+      requiredFixes: remediationPlan.requiredFixes,
+      missingSteepvCategories: remediationPlan.missingSteepvCategories,
+    })
+
+    return {
+      remediationPlan,
+      remediationBaseline: baseline,
+      remediationDelta: null,
+      steps: [step],
+      totalTokensUsed: step.tokensUsed,
+      totalEstimatedCost: step.estimatedCost,
+      ...trackCost(state, step, gateType === 'gate_c' ? 3 : gateType === 'gate_b' ? 2 : 1, 'llm'),
+    }
+  })
+
+  graph.addNode('remediation_evidence_gathering', async (state: OracleState) => {
+    const plan = state.remediationPlan
+    if (!plan || !hasSearchQueries(plan.searchPlan)) {
+      return {
+        status: 'waiting_for_input' as const,
+        pendingInput: {
+          nodeId: 'gate_escalation',
+          prompt:
+            'Remediation did not produce a targeted follow-up search plan. Refine the gate feedback and try again.',
+        },
+      }
+    }
+
+    const { evidence, failedQueries, newEvidenceCount } = await collectEvidenceFromSearchPlan(
+      plan.searchPlan,
+      config,
+      state.evidence
+    )
+
+    await emitOracleEvent(config, 'oracle_remediation_evidence_added', {
+      gate: plan.gateType,
+      newEvidenceCount,
+      failedQueries,
+    })
+
+    if (newEvidenceCount === 0) {
+      return {
+        status: 'waiting_for_input' as const,
+        pendingInput: {
+          nodeId: 'gate_escalation',
+          prompt:
+            'Remediation did not add any net-new evidence. Tighten the feedback or ask for a final synthesis instead of another retry.',
+        },
+      }
+    }
+
+    return {
+      evidence: [...state.evidence, ...evidence],
+      degradedPhases: failedQueries.length > 0 ? ['remediation_evidence_gathering'] : [],
+    }
+  })
+
+  graph.addNode('remediation_evidence_enrichment', async (state: OracleState) => {
+    const crawlConfig = oracleConfig.crawlEnrichment ?? {
+      enabled: true,
+      maxUrlsToCrawl: 6,
+      maxContentChars: 8000,
+      summarizeToChars: 500,
+    }
+    const baselineCount = state.remediationBaseline?.evidenceCount ?? state.evidence.length
+    const newEvidence = state.evidence.slice(baselineCount)
+    if (!crawlConfig.enabled || oracleConfig.depthMode === 'quick' || newEvidence.length === 0) {
+      return {}
+    }
+
+    const budgetPause = getBudgetPauseUpdate(
+      state,
+      'remediation_evidence_enrichment',
+      oracleConfig.maxBudgetUsd
+    )
+    if (budgetPause) return budgetPause
+
+    const urlsToCrawl = selectUrlsForCrawl(
+      newEvidence,
+      Math.min(crawlConfig.maxUrlsToCrawl, newEvidence.length)
+    )
+    if (urlsToCrawl.length === 0) return {}
+
+    const crawlTargetIds = new Set(urlsToCrawl.map((item) => item.id))
+    const CRAWL_TIMEOUT_MS = 15_000
+    const crawledContentMap: Record<string, string> = {}
+    const crawlResults = await Promise.allSettled(
+      urlsToCrawl.map(async (evidenceItem) => {
+        const readUrl = config.toolRegistry?.get('read_url')
+        const scrapeUrl = config.toolRegistry?.get('scrape_url')
+        if (!readUrl && !scrapeUrl) {
+          return { id: evidenceItem.id, content: null as string | null }
+        }
+        let timer: ReturnType<typeof setTimeout> | undefined
+        const timeoutPromise = new Promise<null>((resolve) => {
+          timer = setTimeout(() => resolve(null), CRAWL_TIMEOUT_MS)
+        })
+        const fetchPromise = (async (): Promise<string | null> => {
+          if (readUrl) {
+            try {
+              const result = await readUrl.execute(
+                { url: evidenceItem.url },
+                {
+                  userId: config.userId,
+                  agentId: 'oracle_evidence_enrichment',
+                  workflowId: config.workflow.workflowId,
+                  runId: config.runId,
+                  provider: 'openai',
+                  modelName: 'oracle-crawl',
+                  iteration: 0,
+                  searchToolKeys: config.searchToolKeys,
+                  toolRegistry: config.toolRegistry,
+                }
+              )
+              const content = typeof result === 'string' ? result : JSON.stringify(result ?? '')
+              if (content.length > 200) return content.slice(0, crawlConfig.maxContentChars)
+            } catch {
+              // fall through
+            }
+          }
+          if (!scrapeUrl) return null
+          const result = await scrapeUrl.execute(
+            { url: evidenceItem.url, formats: ['markdown'] },
+            {
+              userId: config.userId,
+              agentId: 'oracle_evidence_enrichment',
+              workflowId: config.workflow.workflowId,
+              runId: config.runId,
+              provider: 'openai',
+              modelName: 'oracle-crawl',
+              iteration: 0,
+              searchToolKeys: config.searchToolKeys,
+              toolRegistry: config.toolRegistry,
+            }
+          )
+          const content = typeof result === 'string' ? result : JSON.stringify(result ?? '')
+          return content.slice(0, crawlConfig.maxContentChars)
+        })()
+        const content = await Promise.race([fetchPromise, timeoutPromise])
+        clearTimeout(timer)
+        return { id: evidenceItem.id, content }
+      })
+    )
+
+    let totalCrawlCost = 0
+    let totalCrawlTokens = 0
+    const enrichedMap = new Map<
+      string,
+      { enrichedExcerpt: string; crawlStatus: 'success' | 'failed' }
+    >()
+
+    for (const result of crawlResults) {
+      if (result.status !== 'fulfilled' || !result.value.content) {
+        const id = result.status === 'fulfilled' ? result.value.id : 'unknown'
+        enrichedMap.set(id, { enrichedExcerpt: '', crawlStatus: 'failed' })
+        continue
+      }
+      const { id, content } = result.value
+      crawledContentMap[id] = content
+      try {
+        const evidenceItem = state.evidence.find((item) => item.id === id)
+        if (!evidenceItem) {
+          enrichedMap.set(id, { enrichedExcerpt: '', crawlStatus: 'failed' })
+          continue
+        }
+        const summaryStep = await executeAgentWithEvents(
+          {
+            ...config.verifier,
+            systemPrompt:
+              'You are a research summarizer. Produce a dense factual summary focused on causal mechanisms, numbers, dates, and counterevidence. Output only the summary text.',
+            maxTokens: 600,
+            temperature: 0.2,
+            toolIds: [],
+          },
+          `Research question: "${state.goal.slice(0, 300)}"\nEvidence category: ${evidenceItem.category ?? 'general'}\nOriginal query: "${(evidenceItem.query ?? '').slice(0, 200)}"\n\nArticle content:\n"""\n${content.slice(0, 6000)}\n"""`,
+          {},
+          execContext,
+          { nodeId: 'remediation_evidence_enrichment', stepNumber: 0 }
+        )
+        totalCrawlCost += summaryStep.estimatedCost
+        totalCrawlTokens += summaryStep.tokensUsed
+        enrichedMap.set(id, {
+          enrichedExcerpt: (summaryStep.output ?? '').slice(0, crawlConfig.summarizeToChars),
+          crawlStatus: 'success',
+        })
+      } catch (err) {
+        log.warn('Remediation crawl summarization failed', {
+          evidenceId: id,
+          error: err instanceof Error ? err.message : String(err),
+          runId: state.runId,
+        })
+        enrichedMap.set(id, { enrichedExcerpt: '', crawlStatus: 'failed' })
+      }
+    }
+
+    const enrichedEvidence = state.evidence.map((item) => {
+      if (!crawlTargetIds.has(item.id)) return item
+      const enrichment = enrichedMap.get(item.id)
+      if (!enrichment || enrichment.crawlStatus === 'failed') {
+        return { ...item, crawlStatus: 'failed' as const }
+      }
+      return {
+        ...item,
+        enrichedExcerpt: enrichment.enrichedExcerpt,
+        crawlStatus: 'success' as const,
+      }
+    })
+
+    return {
+      evidence: enrichedEvidence,
+      crawledContentMap,
+      totalTokensUsed: totalCrawlTokens,
+      totalEstimatedCost: totalCrawlCost,
+      ...trackCost(
+        state,
+        {
+          model: config.verifier.modelName,
+          tokensUsed: totalCrawlTokens,
+          estimatedCost: totalCrawlCost,
+        },
+        state.activeGate === 'gate_c' ? 3 : state.activeGate === 'gate_b' ? 2 : 1,
         'search'
       ),
     }
@@ -2077,7 +2681,10 @@ function createOracleGraph(config: OracleGraphConfig) {
       oracleConfig.depthMode,
       state.evidence,
       state.goalFrame?.verificationTargets ?? [],
-      claimsSummary(state.claims)
+      claimsSummary(state.claims),
+      state.remediationPlan,
+      state.gateEscalationFeedback,
+      state.humanGateFeedback
     )
     const agent = { ...config.decomposer, systemPrompt: prompt }
 
@@ -2181,7 +2788,10 @@ function createOracleGraph(config: OracleGraphConfig) {
       state.phaseSummaries,
       oracleConfig.depthMode,
       state.evidence,
-      knowledgeGraphSummary(state.knowledgeGraph)
+      knowledgeGraphSummary(state.knowledgeGraph),
+      state.remediationPlan,
+      state.gateEscalationFeedback,
+      state.humanGateFeedback
     )
     const agent = { ...config.systemsMapper, systemPrompt: prompt }
 
@@ -2253,7 +2863,10 @@ function createOracleGraph(config: OracleGraphConfig) {
       state.phaseSummaries,
       oracleConfig.depthMode,
       state.evidence,
-      state.goalFrame?.verificationTargets ?? []
+      state.goalFrame?.verificationTargets ?? [],
+      state.remediationPlan,
+      state.gateEscalationFeedback,
+      state.humanGateFeedback
     )
     const agent = { ...config.verifier, systemPrompt: prompt }
 
@@ -2313,6 +2926,9 @@ function createOracleGraph(config: OracleGraphConfig) {
     const budgetPause = getBudgetPauseUpdate(state, 'gate_a', oracleConfig.maxBudgetUsd)
     if (budgetPause) return budgetPause
 
+    const remediationValidation = await maybeValidateRemediationAtGate(config, state, 'gate_a')
+    if (remediationValidation?.status === 'waiting_for_input') return remediationValidation
+
     log.info('Gate A evaluation', { runId: state.runId })
 
     // Gate evaluation reuses the verifier agent's model — both require analytical
@@ -2356,9 +2972,7 @@ function createOracleGraph(config: OracleGraphConfig) {
       parseRubricScores(JSON.stringify(parsed)) ?? normalizeGateRubricResult(parsed)
 
     // Compute axiom grounding from claims
-    const claimsWithAxioms = state.claims.filter((c) => c.axiomRefs && c.axiomRefs.length > 0)
-    const axiomGroundingPercent =
-      state.claims.length > 0 ? claimsWithAxioms.length / state.claims.length : 0
+    const axiomGroundingPercent = getAxiomGroundingPercent(state)
 
     const { gateResult } = evaluateGate(
       {
@@ -2382,10 +2996,20 @@ function createOracleGraph(config: OracleGraphConfig) {
     return {
       gateResults: [gateResult],
       currentGateRefinements: gateResult.passed ? 0 : state.currentGateRefinements + 1,
+      ...(remediationValidation ?? {}),
+      ...(gateResult.passed
+        ? {
+            activeGate: null,
+            remediationPlan: null,
+            remediationDelta: null,
+            remediationBaseline: null,
+          }
+        : {}),
       ...maybeGateEscalation(
         gateResult,
         state.currentGateRefinements + 1,
-        oracleConfig.maxRefinementsPerGate
+        oracleConfig.maxRefinementsPerGate,
+        'gate_a'
       ),
       steps: [step],
       totalTokensUsed: step.tokensUsed,
@@ -2513,7 +3137,14 @@ function createOracleGraph(config: OracleGraphConfig) {
     })
 
     const scope = state.scope!
-    const prompt = buildScannerPrompt(scope, state.phaseSummaries, oracleConfig.depthMode)
+    const prompt = buildScannerPrompt(
+      scope,
+      state.phaseSummaries,
+      oracleConfig.depthMode,
+      state.remediationPlan,
+      state.gateEscalationFeedback,
+      state.humanGateFeedback
+    )
     const agent = { ...config.scanner, systemPrompt: prompt }
 
     const step = await executeAgentWithEvents(
@@ -2696,6 +3327,9 @@ function createOracleGraph(config: OracleGraphConfig) {
     const budgetPause = getBudgetPauseUpdate(state, 'gate_b', oracleConfig.maxBudgetUsd)
     if (budgetPause) return budgetPause
 
+    const remediationValidation = await maybeValidateRemediationAtGate(config, state, 'gate_b')
+    if (remediationValidation?.status === 'waiting_for_input') return remediationValidation
+
     log.info('Gate B evaluation', { runId: state.runId })
 
     const prompt = buildGateEvaluatorPrompt('gate_b')
@@ -2757,10 +3391,20 @@ function createOracleGraph(config: OracleGraphConfig) {
     return {
       gateResults: [gateResult],
       currentGateRefinements: gateResult.passed ? 0 : state.currentGateRefinements + 1,
+      ...(remediationValidation ?? {}),
+      ...(gateResult.passed
+        ? {
+            activeGate: null,
+            remediationPlan: null,
+            remediationDelta: null,
+            remediationBaseline: null,
+          }
+        : {}),
       ...maybeGateEscalation(
         gateResult,
         state.currentGateRefinements + 1,
-        oracleConfig.maxRefinementsPerGate
+        oracleConfig.maxRefinementsPerGate,
+        'gate_b'
       ),
       steps: [step],
       totalTokensUsed: step.tokensUsed,
@@ -3083,7 +3727,9 @@ function createOracleGraph(config: OracleGraphConfig) {
       state.phaseSummaries,
       targetScenarioCount,
       state.humanGateFeedback,
-      oracleConfig.depthMode
+      oracleConfig.depthMode,
+      state.remediationPlan,
+      state.gateEscalationFeedback
     )
     const agent = { ...config.equilibriumAnalyst, systemPrompt: prompt }
 
@@ -3180,7 +3826,9 @@ function createOracleGraph(config: OracleGraphConfig) {
       skeletonsSummary,
       state.phaseSummaries,
       state.humanGateFeedback,
-      oracleConfig.depthMode
+      oracleConfig.depthMode,
+      state.remediationPlan,
+      state.gateEscalationFeedback
     )
     const agent = { ...config.scenarioDeveloper, systemPrompt: prompt }
 
@@ -3213,19 +3861,23 @@ function createOracleGraph(config: OracleGraphConfig) {
     }
 
     // Merge developed scenarios with skeleton data by ID
-    const developedScenarios = parsed.scenarios.map((s) => {
+    const developedScenarios: typeof state.scenarioPortfolio = []
+    for (const s of parsed.scenarios) {
       const skeleton = state.scenarioPortfolio.find((sk) => sk.id === s.id)
       if (!skeleton) {
-        throw new Error(
-          `Scenario developer returned scenario ${s.id} with no matching skeleton. Expected one of: ${state.scenarioPortfolio.map((sk) => sk.id).join(', ')}`
-        )
+        log.warn('Scenario developer returned unmatched ID, skipping', {
+          returnedId: s.id,
+          expected: state.scenarioPortfolio.map((sk) => sk.id),
+          runId: state.runId,
+        })
+        continue
       }
-      return {
+      developedScenarios.push({
         ...skeleton,
         ...s,
-        id: skeleton?.id ?? s.id,
-      }
-    })
+        id: skeleton.id,
+      })
+    }
 
     return {
       scenarioPortfolio: developedScenarios,
@@ -3325,6 +3977,9 @@ function createOracleGraph(config: OracleGraphConfig) {
     const budgetPause = getBudgetPauseUpdate(state, 'gate_c', oracleConfig.maxBudgetUsd)
     if (budgetPause) return budgetPause
 
+    const remediationValidation = await maybeValidateRemediationAtGate(config, state, 'gate_c')
+    if (remediationValidation?.status === 'waiting_for_input') return remediationValidation
+
     log.info('Gate C evaluation', { runId: state.runId })
 
     const prompt = buildGateEvaluatorPrompt('gate_c')
@@ -3386,10 +4041,20 @@ function createOracleGraph(config: OracleGraphConfig) {
     return {
       gateResults: [gateResult],
       currentGateRefinements: gateResult.passed ? 0 : state.currentGateRefinements + 1,
+      ...(remediationValidation ?? {}),
+      ...(gateResult.passed
+        ? {
+            activeGate: null,
+            remediationPlan: null,
+            remediationDelta: null,
+            remediationBaseline: null,
+          }
+        : {}),
       ...maybeGateEscalation(
         gateResult,
         state.currentGateRefinements + 1,
-        oracleConfig.maxRefinementsPerGate
+        oracleConfig.maxRefinementsPerGate,
+        'gate_c'
       ),
       steps: [step],
       totalTokensUsed: step.tokensUsed,
@@ -3515,6 +4180,65 @@ function createOracleGraph(config: OracleGraphConfig) {
 
   // ===== Final Output =====
 
+  graph.addNode('finalize_current_findings', async (state: OracleState) => {
+    const contradictions = state.councilRecords
+      .flatMap((record) => record.persistentDissent)
+      .filter((value, index, array) => value.trim().length > 0 && array.indexOf(value) === index)
+    const unresolvedCoverage = getMissingSteepvCoverage(state)
+    const output = `# Oracle Current Findings Synthesis: ${state.scope?.topic ?? state.goal}
+
+## Current Findings
+${
+  state.claims
+    .slice(0, 8)
+    .map((claim) => `- ${claim.text} (confidence ${claim.confidence.toFixed(2)})`)
+    .join('\n') || '- No stable claims available yet'
+}
+
+## Current Scenarios
+${state.scenarioPortfolio.map((scenario) => `- ${scenario.name}: ${scenario.narrative || scenario.implications || 'Scenario scaffold only.'}`).join('\n') || '- No fully developed scenarios available'}
+
+## Contradictions And Persistent Dissent
+${contradictions.map((item) => `- ${item}`).join('\n') || '- No explicit contradictions captured'}
+
+## Unresolved Uncertainties
+${state.uncertainties.map((item) => `- ${item.variable}: ${item.states.join(', ')}`).join('\n') || '- No critical uncertainties captured'}
+
+## Weak Evidence Areas
+${unresolvedCoverage.map((item) => `- Missing or weak ${item} coverage`).join('\n') || '- No major STEEP+V coverage gaps detected'}
+
+## Decision Implications
+${state.scenarioPortfolio.map((scenario) => `- ${scenario.name}: ${scenario.implications || 'Implications not fully developed.'}`).join('\n') || '- Decision implications remain incomplete; treat this as an intermediate synthesis.'}
+
+## Monitoring Signals
+${
+  state.scenarioPortfolio
+    .flatMap((scenario) => scenario.signposts)
+    .slice(0, 12)
+    .map((signal) => `- ${signal}`)
+    .join('\n') || '- Define monitoring signals in the next iteration.'
+}
+`
+
+    await emitOracleEvent(config, 'oracle_finalize_current_findings', {
+      gate: state.activeGate,
+      contradictionCount: contradictions.length,
+      unresolvedCoverage,
+    })
+
+    return {
+      finalOutput: output,
+      status: 'completed' as const,
+      constraintPause: null,
+      pendingInput: null,
+      resumeNodeHint: null,
+      activeGate: null,
+      remediationPlan: null,
+      remediationDelta: state.remediationDelta,
+      remediationBaseline: null,
+    }
+  })
+
   graph.addNode('final_output', async (state: OracleState) => {
     log.info('Generating final output', { runId: state.runId })
 
@@ -3552,6 +4276,14 @@ function createOracleGraph(config: OracleGraphConfig) {
     }
     if (state.humanGateFeedback) {
       warnings.push(`Human gate feedback applied: ${state.humanGateFeedback}`)
+    }
+    if (state.remediationPlan) {
+      warnings.push(`Remediation plan applied: ${state.remediationPlan.summary}`)
+    }
+    if (state.remediationDelta) {
+      warnings.push(
+        `Remediation delta: +${state.remediationDelta.newEvidenceCount} evidence, +${state.remediationDelta.newClaimCount} claims, +${state.remediationDelta.newKgEdges} KG edges`
+      )
     }
 
     const warningsSection =
@@ -3666,6 +4398,33 @@ Total: $${state.costTracker.total.toFixed(4)}
     { context_seeding: 'context_seeding' as typeof START, [END]: END }
   )
   graph.addConditionalEdges(
+    'gate_remediation_planner' as typeof START,
+    (state: OracleState) => nextNodeOrEnd(state, 'remediation_evidence_gathering'),
+    { remediation_evidence_gathering: 'remediation_evidence_gathering' as typeof START, [END]: END }
+  )
+  graph.addConditionalEdges(
+    'remediation_evidence_gathering' as typeof START,
+    (state: OracleState) => nextNodeOrEnd(state, 'remediation_evidence_enrichment'),
+    {
+      remediation_evidence_enrichment: 'remediation_evidence_enrichment' as typeof START,
+      [END]: END,
+    }
+  )
+  graph.addConditionalEdges(
+    'remediation_evidence_enrichment' as typeof START,
+    (state: OracleState) => {
+      if (state.status !== 'running') return END
+      const targetNode = state.remediationPlan?.targetNode ?? 'decomposer'
+      return targetNode
+    },
+    {
+      decomposer: 'decomposer' as typeof START,
+      scanner: 'scanner' as typeof START,
+      equilibrium_analyst: 'equilibrium_analyst' as typeof START,
+      [END]: END,
+    }
+  )
+  graph.addConditionalEdges(
     'context_seeding' as typeof START,
     (state: OracleState) => nextNodeOrEnd(state, 'decomposer'),
     { decomposer: 'decomposer' as typeof START, [END]: END }
@@ -3674,7 +4433,7 @@ Total: $${state.costTracker.total.toFixed(4)}
   // Phase 1 chain
   graph.addConditionalEdges(
     'decomposer' as typeof START,
-    (state: OracleState) => (state.status === 'paused' ? END : 'systems_mapper'),
+    (state: OracleState) => nextNodeOrEnd(state, 'systems_mapper'),
     { systems_mapper: 'systems_mapper' as typeof START, [END]: END }
   )
   graph.addConditionalEdges(
@@ -3804,6 +4563,7 @@ Total: $${state.costTracker.total.toFixed(4)}
     (state: OracleState) => nextNodeOrEnd(state, 'final_output'),
     { final_output: 'final_output' as typeof START, [END]: END }
   )
+  graph.addEdge('finalize_current_findings' as typeof START, END)
   graph.addEdge('final_output' as typeof START, END)
 
   return graph.compile()
@@ -3840,8 +4600,12 @@ export async function executeOracleWorkflowLangGraph(
   councilRecords: OracleCouncilRecord[]
   crossImpactMatrix: CrossImpactEntry[]
   humanGateFeedback?: string
+  activeGate?: OracleGateType | null
   gateEscalated?: boolean
   gateEscalationFeedback?: string
+  remediationPlan?: OracleGateRemediationPlan | null
+  remediationDelta?: OracleRemediationDelta | null
+  remediationRound?: number
   degradedPhases?: string[]
   workflowState?: Record<string, unknown>
 }> {
@@ -3875,6 +4639,10 @@ export async function executeOracleWorkflowLangGraph(
       backcastTimelines: [],
       strategicMoves: [],
       councilRecords: [],
+      activeGate: null,
+      remediationPlan: null,
+      remediationDelta: null,
+      remediationRound: 0,
     }
   }
 
@@ -3911,6 +4679,10 @@ export async function executeOracleWorkflowLangGraph(
       backcastTimelines: [],
       strategicMoves: [],
       councilRecords: [],
+      activeGate: null,
+      remediationPlan: null,
+      remediationDelta: null,
+      remediationRound: 0,
     }
   }
 
@@ -3941,8 +4713,13 @@ export async function executeOracleWorkflowLangGraph(
     phaseSummaries: [],
     gateResults: [],
     currentGateRefinements: 0,
+    activeGate: null,
     gateEscalated: false,
     gateEscalationFeedback: null,
+    remediationPlan: null,
+    remediationDelta: null,
+    remediationRound: 0,
+    remediationBaseline: null,
     councilRecords: [],
     _skeletonCache: null,
     costTracker: {
@@ -3967,6 +4744,7 @@ export async function executeOracleWorkflowLangGraph(
   // and ensure humanGateApproved is set so the gate passes on re-entry
   const humanGateFeedback =
     extractHumanGateFeedback(context) ?? resumeState?.humanGateFeedback ?? null
+  const isGateEscalationResume = resumeState?.pendingInput?.nodeId === 'gate_escalation'
   const initialState: Partial<OracleState> = resumeState
     ? {
         ...freshState,
@@ -3978,6 +4756,23 @@ export async function executeOracleWorkflowLangGraph(
         humanGateApproved:
           resumeState.humanGateApproved === true ||
           resumeState.pendingInput?.nodeId === 'human_gate',
+        // After gate escalation: reset refinement counter so the gate
+        // refinement loop can run again with the human's feedback,
+        // and clear the escalation flag so new searches happen.
+        ...(isGateEscalationResume
+          ? {
+              currentGateRefinements: 0,
+              gateEscalated: false,
+              gateEscalationFeedback: resumeState.gateEscalationFeedback,
+              remediationPlan: resumeState.remediationPlan ?? null,
+              remediationDelta: null,
+              remediationBaseline: null,
+              remediationRound: (resumeState.remediationRound ?? 0) + 1,
+              resumeNodeHint: shouldFinalizeCurrentFindings(context, resumeState.activeGate ?? null)
+                ? 'finalize_current_findings'
+                : 'gate_remediation_planner',
+            }
+          : {}),
       }
     : {
         ...freshState,
@@ -4053,8 +4848,12 @@ export async function executeOracleWorkflowLangGraph(
     councilRecords: finalState.councilRecords ?? [],
     crossImpactMatrix: finalState.crossImpactMatrix ?? [],
     humanGateFeedback: finalState.humanGateFeedback ?? undefined,
+    activeGate: finalState.activeGate ?? undefined,
     gateEscalated: finalState.gateEscalated || undefined,
     gateEscalationFeedback: finalState.gateEscalationFeedback ?? undefined,
+    remediationPlan: finalState.remediationPlan ?? undefined,
+    remediationDelta: finalState.remediationDelta ?? undefined,
+    remediationRound: finalState.remediationRound ?? undefined,
     degradedPhases: finalState.degradedPhases?.length ? finalState.degradedPhases : undefined,
     workflowState: buildPersistedOracleWorkflowState(finalState),
   }

@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useWorkflowOperations } from '@/hooks/useWorkflowOperations'
 import { useWorkflowTemplateOperations } from '@/hooks/useWorkflowTemplateOperations'
 import { useAgentOperations } from '@/hooks/useAgentOperations'
@@ -19,14 +20,24 @@ import { WorkflowsTab } from '@/components/agentic/WorkflowsTab'
 import { TemplatesTab } from '@/components/agentic/TemplatesTab'
 import { AgentsTab } from '@/components/agentic/AgentsTab'
 import { ToolsTab } from '@/components/agentic/ToolsTab'
+import { EvalsTab } from '@/components/agentic/EvalsTab'
 import { Button } from '@/components/ui/button'
 import { builtinTools } from '@/agents/builtinTools'
 import type { AgentConfig, Workflow, AgentTemplate, ToolDefinition } from '@lifeos/agents'
 
-type AgenticTab = 'workflows' | 'templates' | 'agents' | 'tools'
+type AgenticTab = 'workflows' | 'templates' | 'agents' | 'tools' | 'evals'
 
 export function AgenticWorkflowsPage() {
-  const [activeTab, setActiveTab] = useState<AgenticTab>('workflows')
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState<AgenticTab>(
+    searchParams.get('tab') === 'evals' ? 'evals' : 'workflows'
+  )
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'evals') {
+      queueMicrotask(() => setActiveTab('evals'))
+    }
+  }, [searchParams])
 
   // Shared data hooks (called once, passed to tabs as needed)
   const {
@@ -215,6 +226,13 @@ export function AgenticWorkflowsPage() {
         >
           Tools
         </button>
+        <button
+          type="button"
+          className={`section-tab${activeTab === 'evals' ? ' active' : ''}`}
+          onClick={() => setActiveTab('evals')}
+        >
+          Evals
+        </button>
       </div>
 
       {/* Tab content */}
@@ -256,6 +274,8 @@ export function AgenticWorkflowsPage() {
           onDelete={(toolId) => void deleteTool(toolId)}
         />
       )}
+
+      {activeTab === 'evals' && <EvalsTab />}
 
       {/* ── Modals ── */}
 

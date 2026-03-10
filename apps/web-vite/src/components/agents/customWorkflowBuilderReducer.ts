@@ -311,6 +311,9 @@ export function builderReducer(state: BuilderState, action: BuilderAction): Buil
     case 'ADD_EDGE': {
       const exists = state.edges.some((e) => e.from === action.from && e.to === action.to)
       if (exists) return state
+      const fromExists = state.nodes.some((n) => n.id === action.from)
+      const toExists = state.nodes.some((n) => n.id === action.to)
+      if (!fromExists || !toExists) return state
       return computeLayout({
         ...state,
         edges: [...state.edges, { from: action.from, to: action.to, condition: action.condition }],

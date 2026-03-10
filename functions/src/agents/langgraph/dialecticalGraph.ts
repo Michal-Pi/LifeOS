@@ -112,6 +112,7 @@ import {
   buildThesisPrompt,
   buildNegationPrompt,
   buildSublationPrompt,
+  buildFinalMemoPrompt,
   repairJsonOutput,
   type ResearchEvidence,
 } from './dialecticalPrompts.js'
@@ -193,7 +194,8 @@ async function emitAgentOutput(
     | 'dialectical_negation'
     | 'dialectical_contradiction'
     | 'dialectical_synthesis'
-    | 'dialectical_meta',
+    | 'dialectical_meta'
+    | 'dialectical_final_memo',
   agent: AgentConfig,
   output: string,
   details?: Record<string, unknown>
@@ -1339,6 +1341,7 @@ function createCrossNegationNode(
     }
 
     // Each agent critiques assigned target theses
+    let executedPairCount = 0
     for (let pairIdx = 0; pairIdx < pairs.length; pairIdx++) {
       const { agentIdx, targetIdx } = pairs[pairIdx]
       const agent = thesisAgents[agentIdx % thesisAgents.length]
@@ -1365,6 +1368,8 @@ function createCrossNegationNode(
       }
 
       const negationPrompt = buildNegationPrompt(thesis, targetThesis)
+      const pairStepNumber = state.steps.length + executedPairCount + 1
+      executedPairCount++
 
       negationPromises.push(
         (async () => {
@@ -1378,7 +1383,7 @@ function createCrossNegationNode(
               },
               execContext,
               {
-                stepNumber: state.steps.length + pairIdx + 1,
+                stepNumber: pairStepNumber,
                 maxIterations: budget.perNegationAgent,
               }
             )
@@ -1396,7 +1401,7 @@ function createCrossNegationNode(
                 baseAgent: agent,
                 execContext,
                 nodeId: 'cross_negation',
-                stepNumber: state.steps.length + pairIdx + 1,
+                stepNumber: pairStepNumber,
                 runId: state.runId,
                 repairSchema: NegationOutputSchema,
                 originalTaskPrompt: negationPrompt,
@@ -1711,6 +1716,7 @@ function createSublationNode(
     // Wrap in timeout to prevent indefinite hangs (e.g. Firestore/API connection issues)
     const SUBLATION_TIMEOUT_MS = 180_000 // 3 minutes
     let step: AgentExecutionStep
+    let sublationTimer: ReturnType<typeof setTimeout> | undefined
     try {
       step = await Promise.race([
         executeAgentWithEvents(
@@ -1723,14 +1729,16 @@ function createSublationNode(
           execContext,
           { stepNumber: state.steps.length + 1, maxIterations: budget.perSynthesisAgent }
         ),
-        new Promise<never>((_, reject) =>
-          setTimeout(
+        new Promise<never>((_, reject) => {
+          sublationTimer = setTimeout(
             () => reject(new Error('Sublation agent timed out after 180s')),
             SUBLATION_TIMEOUT_MS
           )
-        ),
+        }),
       ])
+      clearTimeout(sublationTimer)
     } catch (error) {
+      clearTimeout(sublationTimer)
       const msg = error instanceof Error ? error.message : String(error)
       log.warn('Sublation agent execution failed, continuing in degraded mode', {
         error: msg,
@@ -1992,6 +2000,8 @@ function createMetaReflectionNode(
         claims: extractClaimsFromTheses(state.theses),
         mechanisms: [],
         synthesis: state.synthesis,
+        // BUG(MEDIUM): communities not persisted in DialecticalState — always [] here.
+        // To enable incremental schema building, add a communities field to the state annotation.
         previousCommunities: communities,
       }
 
@@ -2117,12 +2127,11 @@ function createMetaReflectionNode(
         }
       }
 
-      // Non-constraint termination (velocity threshold, convergence, etc.) — complete normally
+      // Non-constraint termination (velocity threshold, convergence, etc.)
+      // final_memo node will generate the LLM summary and set status: 'completed'
       return {
         metaDecision: metaResult.decision,
         cycleMetricsHistory: [metaResult.metrics],
-        finalOutput: formatFinalOutput(state),
-        status: 'completed',
         steps: allSteps,
         totalTokensUsed,
         totalEstimatedCost,
@@ -2231,6 +2240,66 @@ function extractClaimsFromTheses(theses: ThesisOutput[]) {
   return claims
 }
 
+// ----- Final Summary Memo Node -----
+
+function createFinalMemoNode(agent: AgentConfig, execContext: AgentExecutionContext) {
+  return async (state: DialecticalState): Promise<Partial<DialecticalState>> => {
+    log.info(`Dialectical cycle ${state.cycleNumber}: Final Summary Memo`)
+
+    await emitPhaseEvent(execContext, 'final_memo', state.cycleNumber, {
+      theses: state.theses.length,
+      contradictions: state.contradictions.length,
+    })
+
+    const prompt = buildFinalMemoPrompt({
+      goal: state.goal,
+      canonicalGoal: state.goalFrame?.canonicalGoal,
+      coreQuestion: state.goalFrame?.coreQuestion,
+      theses: state.theses,
+      contradictions: state.contradictions,
+      synthesis: state.synthesis,
+      mergedGraph: state.mergedGraph,
+      researchSources: state.researchSources,
+      cycleNumber: state.cycleNumber,
+      conceptualVelocity: state.conceptualVelocity,
+    })
+
+    try {
+      const step = await executeAgentWithEvents(
+        agent,
+        prompt,
+        { goal: state.goal, phase: 'final_memo' },
+        execContext,
+        { stepNumber: state.steps.length + 1, maxIterations: 1 }
+      )
+
+      await emitAgentOutput(execContext, 'dialectical_final_memo', agent, step.output, {
+        cycleNumber: state.cycleNumber,
+      })
+
+      // Combine LLM memo with statistical appendix
+      const appendix = formatFinalOutput(state)
+      const finalOutput = step.output + '\n\n---\n\n' + appendix
+
+      return {
+        finalOutput,
+        status: 'completed',
+        steps: [step],
+        totalTokensUsed: step.tokensUsed,
+        totalEstimatedCost: step.estimatedCost,
+      }
+    } catch (error) {
+      log.warn(
+        `Final memo LLM call failed, falling back to formatted output: ${error instanceof Error ? error.message : String(error)}`
+      )
+      return {
+        finalOutput: formatFinalOutput(state),
+        status: 'completed',
+      }
+    }
+  }
+}
+
 // ----- Routing Function -----
 
 /**
@@ -2238,11 +2307,14 @@ function extractClaimsFromTheses(theses: ThesisOutput[]) {
  */
 function routeMetaDecision(
   state: DialecticalState
-): 'goal_framing' | 'research_enrichment' | typeof END {
+): 'goal_framing' | 'research_enrichment' | 'final_memo' | typeof END {
   if (state.status === 'waiting_for_input') {
     return END // Constraint pause — exit graph so executor can handle
   }
-  if (state.metaDecision === 'TERMINATE' || state.status === 'completed') {
+  if (state.metaDecision === 'TERMINATE') {
+    return 'final_memo'
+  }
+  if (state.status === 'completed') {
     return END
   }
   if (state.metaDecision === 'RESPECIFY') {
@@ -2462,6 +2534,8 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
     )
   )
 
+  graph.addNode('final_memo', createFinalMemoNode(metaAgent, execContext))
+
   // Helper: route to next node unless paused for user input
   const edgeOrEnd = (target: string) => (state: DialecticalState) =>
     state.status === 'waiting_for_input' ? END : target
@@ -2522,14 +2596,19 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
       'meta_reflect' as typeof START,
       (state: DialecticalState) => {
         if (state.status === 'waiting_for_input') return END
-        if (state.metaDecision === 'TERMINATE' || state.status === 'completed') return END
+        if (state.metaDecision === 'TERMINATE') return 'final_memo'
+        if (state.status === 'completed') return END
+        if (state.metaDecision === 'RESPECIFY') return 'goal_framing'
         return 'decide_research_pre'
       },
       {
         decide_research_pre: 'decide_research_pre' as typeof START,
+        goal_framing: 'goal_framing' as typeof START,
+        final_memo: 'final_memo' as typeof START,
         [END]: END,
       }
     )
+    graph.addEdge('final_memo' as typeof START, END)
   } else {
     // --- Legacy topology ---
     graph.addConditionalEdges(START, (state: DialecticalState) =>
@@ -2557,8 +2636,10 @@ export function createDialecticalGraph(config: DialecticalGraphConfig) {
     graph.addConditionalEdges('meta_reflect' as typeof START, routeMetaDecision, {
       goal_framing: 'goal_framing' as typeof START,
       research_enrichment: 'research_enrichment' as typeof START,
+      final_memo: 'final_memo' as typeof START,
       [END]: END,
     })
+    graph.addEdge('final_memo' as typeof START, END)
   }
 
   // Compile with optional checkpointing

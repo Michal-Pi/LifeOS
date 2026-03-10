@@ -27,12 +27,17 @@ export type RunEventType =
   | 'dialectical_contradiction'
   | 'dialectical_synthesis'
   | 'dialectical_meta'
+  | 'dialectical_final_memo'
   // Oracle scenario planning events
   | 'oracle_phase'
   | 'oracle_gate_result'
   | 'oracle_council_complete'
   | 'oracle_human_gate'
   | 'oracle_consistency_check'
+  | 'oracle_remediation_planned'
+  | 'oracle_remediation_evidence_added'
+  | 'oracle_remediation_validated'
+  | 'oracle_finalize_current_findings'
   // Plan management events
   | 'plan_approved'
 

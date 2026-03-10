@@ -73,9 +73,7 @@ export function ProjectLinker({
     onProjectsChange(linkedProjectIds.filter((id) => id !== projectId))
     // Also remove any chapters belonging to this project
     if (onChaptersChange) {
-      const projectChapterIds = chapters
-        .filter((c) => c.projectId === projectId)
-        .map((c) => c.id)
+      const projectChapterIds = chapters.filter((c) => c.projectId === projectId).map((c) => c.id)
       onChaptersChange(linkedChapterIds.filter((id) => !projectChapterIds.includes(id)))
     }
   }
@@ -159,9 +157,7 @@ export function ProjectLinker({
                 {linkedProjects.length > 0 ? (
                   <div className="linker-list">
                     {linkedProjects.map((project) => {
-                      const projectChapters = chapters.filter(
-                        (c) => c.projectId === project.id
-                      )
+                      const projectChapters = chapters.filter((c) => c.projectId === project.id)
                       return (
                         <div key={project.id} className="linker-item">
                           <div className="linker-item-info">

@@ -19,6 +19,7 @@ import { useDialecticalState } from '@/hooks/useDialecticalState'
 import { useOracleKGState } from '@/hooks/useOracleKGState'
 import { useRunEvents } from '@/hooks/useRunEvents'
 import { useRunMessages } from '@/hooks/useRunMessages'
+import { useEvaluationActions } from '@/hooks/useEvaluationActions'
 import { markdownToJsonContent } from '@/lib/noteImport'
 
 const KnowledgeGraphVisualization = lazy(() => import('./KnowledgeGraphVisualization'))
@@ -50,6 +51,8 @@ export function RunDetailModal({
   const navigate = useNavigate()
   const { user } = useAuth()
   const { createNote } = useNoteOperations()
+  const { createTestCaseFromRun, openCompareFromRun, prepareCohortReview, submitting } =
+    useEvaluationActions()
   const [isSubmittingInput, setIsSubmittingInput] = useState(false)
   const [isSubmittingConstraint, setIsSubmittingConstraint] = useState(false)
   const [isSavingNote, setIsSavingNote] = useState(false)
@@ -189,6 +192,33 @@ export function RunDetailModal({
     }
   }
 
+  const handleCompareInEvals = () => {
+    openCompareFromRun(run)
+    void navigate('/workflows?tab=evals')
+    onClose()
+  }
+
+  const handlePrepareCohortReview = () => {
+    prepareCohortReview(run)
+    void navigate('/workflows?tab=evals')
+    onClose()
+  }
+
+  const handleCreateTestCase = async () => {
+    try {
+      await createTestCaseFromRun(run)
+      toast.success('Derived test case created', {
+        description: 'The run is now available in Evals > Suites.',
+      })
+      void navigate('/workflows?tab=evals')
+      onClose()
+    } catch (error) {
+      toast.error('Failed to create test case', {
+        description: (error as Error).message,
+      })
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -223,6 +253,22 @@ export function RunDetailModal({
         </div>
 
         <div className="modal-body">
+          <div className="eval-run-actions">
+            <Button variant="outline" size="sm" onClick={handleCompareInEvals}>
+              Compare in Evals
+            </Button>
+            <Button variant="outline" size="sm" onClick={handlePrepareCohortReview}>
+              Add to Cohort Review
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleCreateTestCase()}
+              disabled={submitting}
+            >
+              {submitting ? 'Creating Test Case...' : 'Create Test Case from Run'}
+            </Button>
+          </div>
           {run.status === 'running' && latestStep && (
             <div className="run-progress-indicator">
               <span className="run-progress-step">
@@ -243,7 +289,7 @@ export function RunDetailModal({
             finalOutput={displayOutput}
             onStop={onStop ? handleStop : undefined}
             onProvideInput={
-              onProvideInput && run.pendingInput
+              onProvideInput && run.pendingInput?.nodeId
                 ? async (response) => {
                     try {
                       setIsSubmittingInput(true)

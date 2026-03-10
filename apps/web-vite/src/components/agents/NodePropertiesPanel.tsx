@@ -80,14 +80,14 @@ export function NodePropertiesPanel({
     return agents.find((a) => a.agentId === node.agentId) ?? null
   }, [node?.agentId, agents])
 
-  // Pre-populate custom prompt with the agent's system prompt when agent changes
+  // Pre-populate custom prompt with the agent's system prompt when agent or node type changes
   useEffect(() => {
     if (selectedAgent?.systemPrompt) {
       setCustomPrompt(selectedAgent.systemPrompt)
     } else {
       setCustomPrompt('')
     }
-  }, [selectedAgent?.agentId])
+  }, [selectedAgent?.agentId, node?.type])
 
   const outgoingEdges = useMemo(() => {
     if (!node) return []
