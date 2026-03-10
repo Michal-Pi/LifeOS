@@ -11,7 +11,9 @@ import type {
   ThesisOutput,
   NegationOutput,
   ContradictionOutput,
+  SublationOutput,
   ExtractedClaim,
+  SourceRecord,
 } from '@lifeos/agents'
 import type { ZodError, z } from 'zod'
 import { capGraphForPrompt } from '../deepResearch/kgSerializer.js'
@@ -512,4 +514,129 @@ CRITICAL (restated): Return ONLY the corrected JSON object. No other text.`
   } catch {
     return null
   }
+}
+
+// ----- Final Summary Memo -----
+
+export interface FinalMemoInput {
+  goal: string
+  canonicalGoal?: string
+  coreQuestion?: string
+  theses: ThesisOutput[]
+  contradictions: ContradictionOutput[]
+  synthesis: SublationOutput | null
+  mergedGraph: CompactGraph | null
+  researchSources?: SourceRecord[]
+  cycleNumber: number
+  conceptualVelocity: number
+}
+
+export function buildFinalMemoPrompt(input: FinalMemoInput): string {
+  const question = input.canonicalGoal ?? input.goal
+  const coreQ = input.coreQuestion ? `\nCore question: ${input.coreQuestion}` : ''
+
+  // Thesis summaries
+  const thesesBlock = input.theses
+    .map((t, i) => {
+      const summary = t.graph?.summary ?? t.rawText.slice(0, 400)
+      const reasoning = t.graph?.reasoning ? `\n   Reasoning: ${t.graph.reasoning}` : ''
+      return `${i + 1}. [${t.lens}] (confidence ${(t.confidence * 100).toFixed(0)}%) ${summary}${reasoning}`
+    })
+    .join('\n')
+
+  // Contradictions
+  const contradictionsBlock =
+    input.contradictions.length > 0
+      ? input.contradictions
+          .slice(0, 6)
+          .map((c) => `- [${c.severity}] ${c.type}: ${c.description}`)
+          .join('\n')
+      : 'No contradictions identified.'
+
+  // Synthesis
+  let synthesisBlock = 'No synthesis available.'
+  if (input.synthesis) {
+    const s = input.synthesis
+    const claims = s.newClaims
+      .map((c) => `  - ${c.text} (conf ${(c.confidence * 100).toFixed(0)}%)`)
+      .join('\n')
+    const predictions = s.newPredictions
+      .map((p) => `  - ${p.text} (threshold: ${p.threshold})`)
+      .join('\n')
+    synthesisBlock = [
+      `Operators applied: ${s.operators.map((o) => `${o.type}(${o.target})`).join(', ')}`,
+      `Preserved elements: ${s.preservedElements.length}`,
+      `Negated elements: ${s.negatedElements.length}`,
+      claims ? `New claims:\n${claims}` : null,
+      predictions ? `Predictions:\n${predictions}` : null,
+      s.incompleteReason ? `Warning: ${s.incompleteReason}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n')
+  }
+
+  // Knowledge graph
+  let graphBlock = 'No knowledge graph available.'
+  if (input.mergedGraph) {
+    const g = input.mergedGraph
+    const contradictEdges = g.edges.filter((e) => e.rel === 'contradicts')
+    graphBlock = [
+      `Summary: ${g.summary}`,
+      g.reasoning ? `Reasoning: ${g.reasoning}` : null,
+      `${g.nodes.length} nodes, ${g.edges.length} edges, ${contradictEdges.length} contradiction edges`,
+      `Confidence: ${(g.confidence * 100).toFixed(0)}%, Regime: ${g.regime}`,
+      `Key nodes: ${g.nodes
+        .slice(0, 20)
+        .map((n) => `${n.label} (${n.type})`)
+        .join(', ')}`,
+    ]
+      .filter(Boolean)
+      .join('\n')
+  }
+
+  // Sources
+  let sourcesBlock = ''
+  if (input.researchSources && input.researchSources.length > 0) {
+    const topSources = [...input.researchSources]
+      .sort((a, b) => (b.sourceQualityScore ?? 0) - (a.sourceQualityScore ?? 0))
+      .slice(0, 8)
+    sourcesBlock = `\n## RESEARCH SOURCES\n${topSources.map((s) => `- [${s.domain}] ${s.title} — ${s.url}`).join('\n')}`
+  }
+
+  return `You are a senior analyst writing the final summary memo for a dialectical reasoning session.
+
+## YOUR TASK
+Write a clear, well-structured analytical memo that directly answers the user's question based on all evidence gathered during the dialectical analysis.
+
+## ORIGINAL QUESTION
+${question}${coreQ}
+
+## THESES (${input.theses.length} perspectives, ${input.cycleNumber} cycles, final velocity ${(input.conceptualVelocity * 100).toFixed(1)}%)
+${thesesBlock}
+
+## CONTRADICTIONS (${input.contradictions.length} found)
+${contradictionsBlock}
+
+## SYNTHESIS
+${synthesisBlock}
+
+## KNOWLEDGE GRAPH
+${graphBlock}
+${sourcesBlock}
+
+## MEMO REQUIREMENTS
+1. **Lead with the answer**: Start with a clear, direct response to the original question in 2-3 sentences.
+2. **Key findings**: Summarize the most important insights from the dialectical analysis, organized by theme.
+3. **Tensions and trade-offs**: Discuss unresolved contradictions and what they imply for decision-making.
+4. **Implications**: What are the practical consequences? What should the reader do differently?
+5. **Confidence assessment**: How confident is this analysis? Where are the gaps? What would change the conclusion?
+6. **Regime and outlook**: If the KG identifies a regime, explain what it means for the future.
+
+## RULES
+- Write in clear, analytical prose — not bullet dumps or data summaries.
+- Be specific and reference the actual thesis findings, not generic observations.
+- If contradictions remain unresolved, explain why and what they mean — do not hide them.
+- Keep the memo between 500 and 1500 words.
+- Use markdown headers (##) to structure the memo.
+- Do NOT output JSON. Write the memo directly as markdown prose.`
 }

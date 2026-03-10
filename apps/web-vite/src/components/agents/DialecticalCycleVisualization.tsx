@@ -63,6 +63,16 @@ interface DialecticalCycleVisualizationProps {
   onTerminate?: () => void
 }
 
+const EMPTY_GRAPH: CompactGraph = {
+  nodes: [],
+  edges: [],
+  summary: '',
+  reasoning: '',
+  confidence: 0,
+  regime: '',
+  temporalGrain: '',
+}
+
 // Phase metadata
 const PHASES: { key: DialecticalPhase; label: string; icon: string; description: string }[] = [
   {
@@ -246,16 +256,17 @@ export function DialecticalCycleVisualization({
       </div>
 
       {/* Interactive Graph Panel */}
-      {graphSource && state.mergedGraph && (
-        <DialecticalGraphPanel
-          source={graphSource}
-          mergedGraph={state.mergedGraph}
-          theses={state.theses}
-          graphHistory={state.graphHistory}
-          onClose={handleCloseGraph}
-          onSwitchSource={setGraphSource}
-        />
-      )}
+      {graphSource &&
+        (state.mergedGraph || (graphSource.type === 'thesis' && graphSource.thesis.graph)) && (
+          <DialecticalGraphPanel
+            source={graphSource}
+            mergedGraph={state.mergedGraph ?? EMPTY_GRAPH}
+            theses={state.theses}
+            graphHistory={state.graphHistory}
+            onClose={handleCloseGraph}
+            onSwitchSource={setGraphSource}
+          />
+        )}
 
       {/* Merged Knowledge Graph Summary */}
       {state.mergedGraph && (

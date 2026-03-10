@@ -76,16 +76,19 @@ function compactGraphToElements(
     classes: n.type,
   }))
 
-  const edges: cytoscape.ElementDefinition[] = graph.edges.map((e, i) => ({
-    data: {
-      id: `e-${e.from}-${e.to}-${i}`,
-      source: e.from,
-      target: e.to,
-      rel: e.rel,
-      weight: e.weight ?? 1,
-    },
-    classes: e.rel,
-  }))
+  const nodeIds = new Set(graph.nodes.map((n) => n.id))
+  const edges: cytoscape.ElementDefinition[] = graph.edges
+    .filter((e) => nodeIds.has(e.from) && nodeIds.has(e.to))
+    .map((e, i) => ({
+      data: {
+        id: `e-${e.from}-${e.to}-${i}`,
+        source: e.from,
+        target: e.to,
+        rel: e.rel,
+        weight: e.weight ?? 1,
+      },
+      classes: e.rel,
+    }))
 
   return [...parentNodes, ...nodes, ...edges]
 }
@@ -359,11 +362,34 @@ export function KGGraphCanvas({
     if (!cy || !graph) return
 
     const elements = compactGraphToElements(graph, communities, showCommunities)
+
+    // Save existing node positions before removing so we can restore them
+    const savedPositions = new Map<string, { x: number; y: number }>()
+    cy.nodes().forEach((node) => {
+      const pos = node.position()
+      if (pos.x !== 0 || pos.y !== 0) {
+        savedPositions.set(node.id(), { x: pos.x, y: pos.y })
+      }
+    })
+
     cy.elements().remove()
     cy.add(elements)
 
-    // Apply fCoSE layout — randomize only on first layout to avoid jarring jumps
-    const shouldRandomize = !hasLaidOut.current
+    // Restore saved positions so fCoSE can refine from last layout
+    cy.nodes().forEach((node) => {
+      const saved = savedPositions.get(node.id())
+      if (saved) {
+        node.position(saved)
+      } else if (!node.hasClass('community-parent')) {
+        node.position({
+          x: Math.random() * 600 - 300,
+          y: Math.random() * 600 - 300,
+        })
+      }
+    })
+
+    // Randomize on first layout OR when no prior positions exist (all new nodes)
+    const shouldRandomize = !hasLaidOut.current || savedPositions.size === 0
     hasLaidOut.current = true
 
     cy.layout({
@@ -372,7 +398,7 @@ export function KGGraphCanvas({
       animationDuration: 600,
       randomize: shouldRandomize,
       quality: 'default',
-      nodeSeparation: 80,
+      nodeSeparation: 100,
       idealEdgeLength: 120,
       nodeRepulsion: 6000,
       edgeElasticity: 0.45,
