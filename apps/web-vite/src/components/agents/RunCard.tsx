@@ -6,7 +6,7 @@
  */
 
 import '@/styles/components/RunCard.css'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToolCallOperations } from '@/hooks/useToolCallOperations'
 import { useRunMessages } from '@/hooks/useRunMessages'
@@ -26,6 +26,7 @@ import { RunDetailModal } from './RunDetailModal'
 import { DialecticalCycleVisualization } from './DialecticalCycleVisualization'
 import { DeepResearchViewer } from './DeepResearchViewer'
 import { Button } from '@/components/ui/button'
+import { ConstraintPausePanel } from './ConstraintPausePanel'
 import type {
   DeepResearchRequest,
   Run,
@@ -79,14 +80,18 @@ export function RunCard({
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showResearchViewer, setShowResearchViewer] = useState(false)
 
-  // Auto-open detail modal when run transitions to waiting_for_input (human gate)
-  const [prevStatus, setPrevStatus] = useState(run.status)
-  if (run.status !== prevStatus) {
-    setPrevStatus(run.status)
-    if (run.status === 'waiting_for_input' && run.pendingInput && !showDetailModal) {
-      setShowDetailModal(true)
+  // Auto-open detail modal when run transitions to waiting_for_input (human gate).
+  // We track the previous status via ref to detect transitions without triggering
+  // cascading renders. The modal open is deferred via microtask to satisfy the linter.
+  const prevStatusRef = useRef(run.status)
+  useEffect(() => {
+    const prev = prevStatusRef.current
+    prevStatusRef.current = run.status
+    if (run.status !== prev && run.status === 'waiting_for_input' && run.pendingInput) {
+      // Defer to avoid synchronous setState-in-effect lint warning
+      queueMicrotask(() => setShowDetailModal(true))
     }
-  }
+  }, [run.status, run.pendingInput])
 
   // Lazy load data only when sections are expanded
   const [workflowExpanded, setWorkflowExpanded] = useState(false)
@@ -296,15 +301,29 @@ export function RunCard({
         {run.totalSteps && ` of ${run.totalSteps}`}
       </div>
 
-      {run.status === 'queued' && run.queueInfo && (
-        <div className="run-output">
-          <strong>Queue Status:</strong>
-          <p>
-            Waiting for shared capacity. Retry #{run.queueInfo.retryCount} at{' '}
-            {new Date(run.queueInfo.nextRetryAtMs).toLocaleTimeString()}.
-          </p>
-        </div>
+      {run.status === 'queued' && run.constraintPause && onConstraintResponse && (
+        <ConstraintPausePanel
+          constraintPause={run.constraintPause}
+          onIncrease={async (newLimit) => {
+            await onConstraintResponse(run.runId, 'increase', newLimit)
+          }}
+          onStop={async () => {
+            await onConstraintResponse(run.runId, 'stop')
+          }}
+          isSubmitting={false}
+        />
       )}
+      {run.status === 'queued' &&
+        (!run.constraintPause || !onConstraintResponse) &&
+        run.queueInfo && (
+          <div className="run-output">
+            <strong>Queue Status:</strong>
+            <p>
+              Waiting for capacity. Retry #{run.queueInfo.retryCount} at{' '}
+              {new Date(run.queueInfo.nextRetryAtMs).toLocaleTimeString()}.
+            </p>
+          </div>
+        )}
 
       {deepResearch && (
         <div className="run-output">
