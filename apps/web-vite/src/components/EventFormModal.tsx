@@ -11,6 +11,8 @@ import {
   isValidEmail,
 } from '@/lib/validation'
 import { Select, type SelectOption } from './Select'
+import { Modal } from '@/components/ui/Modal'
+import { DateTimePicker } from './DateTimePicker'
 
 interface EventFormModalProps {
   isOpen: boolean
@@ -67,6 +69,14 @@ function getDefaultTimes(durationMinutes = 60) {
     endDate: toLocalDateString(end),
     endTime: toLocalTimeString(end),
   }
+}
+
+/** Combine separate date + time strings into an ISO string for DateTimePicker */
+function toIsoFromParts(dateStr: string, timeStr: string): string | null {
+  if (!dateStr) return null
+  const time = timeStr || '00:00'
+  const date = new Date(`${dateStr}T${time}:00`)
+  return isNaN(date.getTime()) ? null : date.toISOString()
 }
 
 const WEEKDAY_OPTIONS: { value: Weekday; label: string }[] = [
@@ -223,6 +233,20 @@ export const EventFormModal = React.memo(function EventFormModal({
     )
   }
 
+  // Compute ISO values for DateTimePicker
+  const startIso = useMemo(
+    () => toIsoFromParts(startDate, allDay ? '00:00' : startTime),
+    [startDate, startTime, allDay]
+  )
+  const endIso = useMemo(
+    () => toIsoFromParts(endDate, allDay ? '00:00' : endTime),
+    [endDate, endTime, allDay]
+  )
+  const repeatUntilIso = useMemo(
+    () => (repeatUntilDate ? toIsoFromParts(repeatUntilDate, '00:00') : null),
+    [repeatUntilDate]
+  )
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -334,297 +358,297 @@ export const EventFormModal = React.memo(function EventFormModal({
     })
   }
 
-  if (!isOpen) return null
+  const modalFooter = (
+    <>
+      {error && <p className="form-error">{error}</p>}
+      <div className="modal-actions">
+        <button type="button" className="ghost-button" onClick={onClose}>
+          Cancel
+        </button>
+        <button type="submit" form="event-form" className="primary-button">
+          {mode === 'create' ? 'Create Event' : 'Save Changes'}
+        </button>
+      </div>
+    </>
+  )
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{mode === 'create' ? 'New Event' : 'Edit Event'}</h2>
-          <button type="button" className="close-button" onClick={onClose} aria-label="Close">
-            ×
-          </button>
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      size="lg"
+      title={mode === 'create' ? 'New Event' : 'Edit Event'}
+      footer={modalFooter}
+      className="event-form-modal"
+    >
+      <form id="event-form" onSubmit={handleSubmit} className="event-form">
+        <div className="form-group">
+          <label htmlFor="title">Title *</label>
+          <input
+            id="title"
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Event title"
+            autoFocus
+          />
         </div>
-        <form onSubmit={handleSubmit} className="event-form">
+
+        <div className="form-group form-checkbox">
+          <input
+            id="allDay"
+            type="checkbox"
+            checked={allDay}
+            onChange={(e) => setAllDay(e.target.checked)}
+          />
+          <label htmlFor="allDay">All-day event</label>
+        </div>
+
+        <div className="form-row">
           <div className="form-group">
-            <label htmlFor="title">Title *</label>
-            <input
-              id="title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Event title"
-              autoFocus
+            <label>{allDay ? 'Start date' : 'Start'}</label>
+            <DateTimePicker
+              value={startIso}
+              onChange={(iso) => {
+                if (iso) {
+                  const date = new Date(iso)
+                  setStartDate(toLocalDateString(date))
+                  if (!allDay) setStartTime(toLocalTimeString(date))
+                } else {
+                  setStartDate('')
+                  setStartTime('')
+                }
+              }}
+              showTime={!allDay}
+              placeholder={allDay ? 'Select start date' : 'Select start date & time'}
+              displayFormat={allDay ? 'date' : 'datetime'}
             />
           </div>
+        </div>
 
-          <div className="form-group form-checkbox">
-            <input
-              id="allDay"
-              type="checkbox"
-              checked={allDay}
-              onChange={(e) => setAllDay(e.target.checked)}
+        <div className="form-row">
+          <div className="form-group">
+            <label>{allDay ? 'End date' : 'End'}</label>
+            <DateTimePicker
+              value={endIso}
+              onChange={(iso) => {
+                if (iso) {
+                  const date = new Date(iso)
+                  setEndDate(toLocalDateString(date))
+                  if (!allDay) setEndTime(toLocalTimeString(date))
+                } else {
+                  setEndDate('')
+                  setEndTime('')
+                }
+              }}
+              showTime={!allDay}
+              placeholder={allDay ? 'Select end date' : 'Select end date & time'}
+              displayFormat={allDay ? 'date' : 'datetime'}
             />
-            <label htmlFor="allDay">All-day event</label>
           </div>
+        </div>
 
-          <div className="form-row">
+        <div className="form-group">
+          <label htmlFor="location">Location</label>
+          <input
+            id="location"
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Add location"
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="attendees">Guests</label>
+          <input
+            id="attendees"
+            type="text"
+            value={attendeesInput}
+            onChange={(e) => setAttendeesInput(e.target.value)}
+            placeholder="Add guest emails, separated by commas"
+          />
+          <p className="calendar-meta">These guests will receive an invite when synced.</p>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="description">Notes</label>
+          <textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Add notes"
+            rows={3}
+          />
+        </div>
+
+        {/* Recurrence Options - only for create mode or editing series master */}
+        {(mode === 'create' || (initialEvent?.isRecurringSeries && !isRecurrenceInstance)) && (
+          <div className="recurrence-section">
+            <p className="section-label">Repeat</p>
+
             <div className="form-group">
-              <label htmlFor="startDate">Start date</label>
-              <input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+              <label htmlFor="repeatFrequency">Frequency</label>
+              <Select
+                id="repeatFrequency"
+                value={repeatFrequency}
+                onChange={(value) => setRepeatFrequency(value as RecurrenceFrequency | 'none')}
+                options={FREQUENCY_OPTIONS}
+                placeholder="Select frequency"
               />
             </div>
-            {!allDay && (
-              <div className="form-group">
-                <label htmlFor="startTime">Start time</label>
-                <input
-                  id="startTime"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="endDate">End date</label>
-              <input
-                id="endDate"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-            {!allDay && (
-              <div className="form-group">
-                <label htmlFor="endTime">End time</label>
-                <input
-                  id="endTime"
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
+            {repeatFrequency !== 'none' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="repeatInterval">Every</label>
+                  <div className="form-row">
+                    <input
+                      id="repeatInterval"
+                      type="number"
+                      min="1"
+                      max="99"
+                      value={repeatInterval}
+                      onChange={(e) => setRepeatInterval(parseInt(e.target.value, 10) || 1)}
+                      style={{ width: '80px' }}
+                    />
+                    <span>
+                      {repeatFrequency === 'DAILY' && (repeatInterval === 1 ? 'day' : 'days')}
+                      {repeatFrequency === 'WEEKLY' && (repeatInterval === 1 ? 'week' : 'weeks')}
+                      {repeatFrequency === 'MONTHLY' && (repeatInterval === 1 ? 'month' : 'months')}
+                      {repeatFrequency === 'YEARLY' && (repeatInterval === 1 ? 'year' : 'years')}
+                    </span>
+                  </div>
+                </div>
 
-          <div className="form-group">
-            <label htmlFor="location">Location</label>
-            <input
-              id="location"
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Add location"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="attendees">Guests</label>
-            <input
-              id="attendees"
-              type="text"
-              value={attendeesInput}
-              onChange={(e) => setAttendeesInput(e.target.value)}
-              placeholder="Add guest emails, separated by commas"
-            />
-            <p className="calendar-meta">These guests will receive an invite when synced.</p>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="description">Notes</label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add notes"
-              rows={3}
-            />
-          </div>
-
-          {/* Recurrence Options - only for create mode or editing series master */}
-          {(mode === 'create' || (initialEvent?.isRecurringSeries && !isRecurrenceInstance)) && (
-            <div className="recurrence-section">
-              <p className="section-label">Repeat</p>
-
-              <div className="form-group">
-                <label htmlFor="repeatFrequency">Frequency</label>
-                <Select
-                  id="repeatFrequency"
-                  value={repeatFrequency}
-                  onChange={(value) => setRepeatFrequency(value as RecurrenceFrequency | 'none')}
-                  options={FREQUENCY_OPTIONS}
-                  placeholder="Select frequency"
-                />
-              </div>
-
-              {repeatFrequency !== 'none' && (
-                <>
+                {repeatFrequency === 'WEEKLY' && (
                   <div className="form-group">
-                    <label htmlFor="repeatInterval">Every</label>
-                    <div className="form-row">
-                      <input
-                        id="repeatInterval"
-                        type="number"
-                        min="1"
-                        max="99"
-                        value={repeatInterval}
-                        onChange={(e) => setRepeatInterval(parseInt(e.target.value, 10) || 1)}
-                        style={{ width: '80px' }}
-                      />
-                      <span>
-                        {repeatFrequency === 'DAILY' && (repeatInterval === 1 ? 'day' : 'days')}
-                        {repeatFrequency === 'WEEKLY' && (repeatInterval === 1 ? 'week' : 'weeks')}
-                        {repeatFrequency === 'MONTHLY' &&
-                          (repeatInterval === 1 ? 'month' : 'months')}
-                        {repeatFrequency === 'YEARLY' && (repeatInterval === 1 ? 'year' : 'years')}
-                      </span>
+                    <label>On days</label>
+                    <div className="weekday-picker">
+                      {WEEKDAY_OPTIONS.map((day) => (
+                        <button
+                          key={day.value}
+                          type="button"
+                          className={`weekday-button ${repeatWeekdays.includes(day.value) ? 'selected' : ''}`}
+                          onClick={() => toggleWeekday(day.value)}
+                        >
+                          {day.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
+                )}
 
-                  {repeatFrequency === 'WEEKLY' && (
-                    <div className="form-group">
-                      <label>On days</label>
-                      <div className="weekday-picker">
-                        {WEEKDAY_OPTIONS.map((day) => (
-                          <button
-                            key={day.value}
-                            type="button"
-                            className={`weekday-button ${repeatWeekdays.includes(day.value) ? 'selected' : ''}`}
-                            onClick={() => toggleWeekday(day.value)}
-                          >
-                            {day.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {repeatFrequency === 'MONTHLY' && (
-                    <div className="form-group">
-                      <label htmlFor="repeatMonthDay">On day</label>
-                      <input
-                        id="repeatMonthDay"
-                        type="number"
-                        min="1"
-                        max="31"
-                        value={repeatMonthDay}
-                        onChange={(e) => setRepeatMonthDay(parseInt(e.target.value, 10) || 1)}
-                        style={{ width: '80px' }}
-                      />
-                    </div>
-                  )}
-
+                {repeatFrequency === 'MONTHLY' && (
                   <div className="form-group">
-                    <label htmlFor="repeatEndType">Ends</label>
-                    <Select
-                      id="repeatEndType"
-                      value={repeatEndType}
-                      onChange={(value) => setRepeatEndType(value as RecurrenceEndType)}
-                      options={END_TYPE_OPTIONS}
-                      placeholder="Select end type"
+                    <label htmlFor="repeatMonthDay">On day</label>
+                    <input
+                      id="repeatMonthDay"
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={repeatMonthDay}
+                      onChange={(e) => setRepeatMonthDay(parseInt(e.target.value, 10) || 1)}
+                      style={{ width: '80px' }}
                     />
                   </div>
+                )}
 
-                  {repeatEndType === 'until' && (
-                    <div className="form-group">
-                      <label htmlFor="repeatUntilDate">End date</label>
+                <div className="form-group">
+                  <label htmlFor="repeatEndType">Ends</label>
+                  <Select
+                    id="repeatEndType"
+                    value={repeatEndType}
+                    onChange={(value) => setRepeatEndType(value as RecurrenceEndType)}
+                    options={END_TYPE_OPTIONS}
+                    placeholder="Select end type"
+                  />
+                </div>
+
+                {repeatEndType === 'until' && (
+                  <div className="form-group">
+                    <label>End date</label>
+                    <DateTimePicker
+                      value={repeatUntilIso}
+                      onChange={(iso) => {
+                        setRepeatUntilDate(iso ? new Date(iso).toISOString().split('T')[0] : '')
+                      }}
+                      showTime={false}
+                      placeholder="Select end date"
+                      displayFormat="date"
+                    />
+                  </div>
+                )}
+
+                {repeatEndType === 'count' && (
+                  <div className="form-group">
+                    <label htmlFor="repeatCount">After</label>
+                    <div className="form-row">
                       <input
-                        id="repeatUntilDate"
-                        type="date"
-                        value={repeatUntilDate}
-                        onChange={(e) => setRepeatUntilDate(e.target.value)}
+                        id="repeatCount"
+                        type="number"
+                        min="1"
+                        max="999"
+                        value={repeatCount}
+                        onChange={(e) => setRepeatCount(parseInt(e.target.value, 10) || 10)}
+                        style={{ width: '80px' }}
                       />
+                      <span>occurrences</span>
                     </div>
-                  )}
-
-                  {repeatEndType === 'count' && (
-                    <div className="form-group">
-                      <label htmlFor="repeatCount">After</label>
-                      <div className="form-row">
-                        <input
-                          id="repeatCount"
-                          type="number"
-                          min="1"
-                          max="999"
-                          value={repeatCount}
-                          onChange={(e) => setRepeatCount(parseInt(e.target.value, 10) || 10)}
-                          style={{ width: '80px' }}
-                        />
-                        <span>occurrences</span>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Edit Scope Picker - for editing recurring instances */}
-          {showScopePicker && (
-            <div className="scope-picker-section">
-              <p className="section-label">Edit scope</p>
-              <p className="scope-description">
-                This event is part of a recurring series. Which events do you want to change?
-              </p>
-              <div className="scope-options">
-                <label className={`scope-option ${selectedScope === 'this' ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="editScope"
-                    value="this"
-                    checked={selectedScope === 'this'}
-                    onChange={() => setSelectedScope('this')}
-                  />
-                  <span className="scope-label">This event only</span>
-                  <span className="scope-hint">Change only this occurrence</span>
-                </label>
-                <label
-                  className={`scope-option ${selectedScope === 'this_and_future' ? 'selected' : ''}`}
-                >
-                  <input
-                    type="radio"
-                    name="editScope"
-                    value="this_and_future"
-                    checked={selectedScope === 'this_and_future'}
-                    onChange={() => setSelectedScope('this_and_future')}
-                  />
-                  <span className="scope-label">This and future events</span>
-                  <span className="scope-hint">Change this and all following occurrences</span>
-                </label>
-                <label className={`scope-option ${selectedScope === 'all' ? 'selected' : ''}`}>
-                  <input
-                    type="radio"
-                    name="editScope"
-                    value="all"
-                    checked={selectedScope === 'all'}
-                    onChange={() => setSelectedScope('all')}
-                  />
-                  <span className="scope-label">All events</span>
-                  <span className="scope-hint">Change all occurrences in the series</span>
-                </label>
-              </div>
-            </div>
-          )}
-
-          {error && <p className="form-error">{error}</p>}
-
-          <div className="modal-actions">
-            <button type="button" className="ghost-button" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="primary-button">
-              {mode === 'create' ? 'Create Event' : 'Save Changes'}
-            </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        </form>
-      </div>
-    </div>
+        )}
+
+        {/* Edit Scope Picker - for editing recurring instances */}
+        {showScopePicker && (
+          <div className="scope-picker-section">
+            <p className="section-label">Edit scope</p>
+            <p className="scope-description">
+              This event is part of a recurring series. Which events do you want to change?
+            </p>
+            <div className="scope-options">
+              <label className={`scope-option ${selectedScope === 'this' ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="editScope"
+                  value="this"
+                  checked={selectedScope === 'this'}
+                  onChange={() => setSelectedScope('this')}
+                />
+                <span className="scope-label">This event only</span>
+                <span className="scope-hint">Change only this occurrence</span>
+              </label>
+              <label
+                className={`scope-option ${selectedScope === 'this_and_future' ? 'selected' : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="editScope"
+                  value="this_and_future"
+                  checked={selectedScope === 'this_and_future'}
+                  onChange={() => setSelectedScope('this_and_future')}
+                />
+                <span className="scope-label">This and future events</span>
+                <span className="scope-hint">Change this and all following occurrences</span>
+              </label>
+              <label className={`scope-option ${selectedScope === 'all' ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="editScope"
+                  value="all"
+                  checked={selectedScope === 'all'}
+                  onChange={() => setSelectedScope('all')}
+                />
+                <span className="scope-label">All events</span>
+                <span className="scope-hint">Change all occurrences in the series</span>
+              </label>
+            </div>
+          </div>
+        )}
+      </form>
+    </Modal>
   )
 })

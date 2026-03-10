@@ -11,6 +11,7 @@ import {
 } from '@/lib/todoUi'
 import { Select, type SelectOption } from './Select'
 import { CalendarTimePicker } from './CalendarTimePicker'
+import { DateTimePicker } from './DateTimePicker'
 import { useEventService } from '@/hooks/useEventService'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -264,10 +265,17 @@ export function TaskDetailSidebar({
 
         <div className="form-group">
           <label>Due Date</label>
-          <input
-            type="date"
-            value={activeTask.dueDate || ''}
-            onChange={(e) => scheduleUpdate({ ...activeTask, dueDate: e.target.value })}
+          <DateTimePicker
+            value={
+              activeTask.dueDate ? new Date(activeTask.dueDate + 'T00:00:00').toISOString() : null
+            }
+            onChange={(iso) => {
+              const dateStr = iso ? new Date(iso).toISOString().split('T')[0] : ''
+              scheduleUpdate({ ...activeTask, dueDate: dateStr || undefined })
+            }}
+            showTime={false}
+            placeholder="Select due date"
+            displayFormat="date"
           />
         </div>
 

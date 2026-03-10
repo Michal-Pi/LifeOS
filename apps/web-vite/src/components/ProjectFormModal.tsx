@@ -7,6 +7,7 @@ import { generateId } from '@/lib/idGenerator'
 import { Select, type SelectOption } from '@/components/Select'
 import { ColorPicker } from '@/components/ColorPicker'
 import { PROJECT_COLOR_PALETTE } from '@/config/domainColors'
+import { Modal } from '@/components/ui/Modal'
 import { MarkdownImportModal } from './MarkdownImportModal'
 
 interface ProjectFormModalProps {
@@ -122,24 +123,37 @@ export function ProjectFormModal({
     setChapters(updated)
   }
 
-  if (!isOpen) return null
+  const modalFooter = (
+    <div className="modal-actions">
+      <button type="button" className="ghost-button" onClick={handleImportClick}>
+        Import Projects
+      </button>
+      <div className="modal-actions-right">
+        <button type="button" className="ghost-button" onClick={onClose}>
+          Cancel
+        </button>
+        <button
+          type="submit"
+          form="project-form"
+          className="primary-button"
+          disabled={isSubmitting}
+        >
+          Create Project
+        </button>
+      </div>
+    </div>
+  )
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content project-form-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div>
-            <h2>New Project</h2>
-            <button type="button" className="import-projects-link" onClick={handleImportClick}>
-              Import Projects
-            </button>
-          </div>
-          <button className="close-button" onClick={onClose}>
-            ×
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
+    <>
+      <Modal
+        open={isOpen}
+        onClose={onClose}
+        title="New Project"
+        footer={modalFooter}
+        className="project-form-modal"
+      >
+        <form id="project-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="project-title">Title</label>
             <input
@@ -221,17 +235,8 @@ export function ProjectFormModal({
               </div>
             ))}
           </div>
-
-          <div className="modal-actions">
-            <button type="button" className="ghost-button" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="primary-button" disabled={isSubmitting}>
-              Create Project
-            </button>
-          </div>
         </form>
-      </div>
+      </Modal>
 
       <MarkdownImportModal
         isOpen={showBulkImport}
@@ -243,6 +248,6 @@ export function ProjectFormModal({
           }
         }}
       />
-    </div>
+    </>
   )
 }

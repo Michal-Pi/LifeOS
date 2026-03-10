@@ -131,6 +131,8 @@
   overflow-y: auto;
   padding: 1rem;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Loading State */
@@ -203,6 +205,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
 }
 
 .ai-tools-panel__result h4 {
@@ -559,10 +563,14 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  flex: 1;
+  min-height: 0;
 }
 
 .ai-tools-panel__write-input {
   width: 100%;
+  flex: 1;
+  min-height: 120px;
   padding: 0.75rem;
   background: var(--background);
   border: 1px solid var(--border);
@@ -571,6 +579,7 @@
   color: var(--foreground);
   resize: vertical;
   font-family: inherit;
+  box-sizing: border-box;
 }
 
 .ai-tools-panel__write-input:focus {

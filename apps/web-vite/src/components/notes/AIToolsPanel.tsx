@@ -557,7 +557,6 @@ export function AIToolsPanel({
                 value={writePrompt}
                 onChange={(e) => setWritePrompt(e.target.value)}
                 placeholder="Describe what you want to add... (e.g., 'Add a conclusion paragraph' or 'Expand on the second point with examples')"
-                rows={3}
               />
               <button
                 type="button"
