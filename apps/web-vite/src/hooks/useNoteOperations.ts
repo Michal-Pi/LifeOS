@@ -41,6 +41,7 @@ export interface UseNoteOperationsReturn {
   searchNotes: (query: string) => Promise<Note[]>
   saveNoteContent: (noteId: NoteId, content: JSONContent, html: string) => Promise<void>
   updateProjectLinks: (noteId: NoteId, projectIds: string[]) => Promise<Note>
+  updateChapterLinks: (noteId: NoteId, chapterIds: string[]) => Promise<Note>
   updateOKRLinks: (noteId: NoteId, okrIds: string[]) => Promise<Note>
   updateAttachments: (noteId: NoteId, attachmentIds: AttachmentId[]) => Promise<Note>
   updateTags: (noteId: NoteId, tags: string[]) => Promise<Note>
@@ -79,6 +80,7 @@ export function useNoteOperations(): UseNoteOperationsReturn {
           topicId: input.topicId || null,
           sectionId: input.sectionId || null,
           projectIds: input.projectIds || [],
+          chapterIds: input.chapterIds || [],
           okrIds: input.okrIds || [],
           tags: input.tags || [],
           attachmentIds: input.attachmentIds || [],
@@ -388,6 +390,18 @@ export function useNoteOperations(): UseNoteOperationsReturn {
     [userId, updateNote]
   )
 
+  // Update chapter links for a note
+  const updateChapterLinks = useCallback(
+    async (noteId: NoteId, chapterIds: string[]): Promise<Note> => {
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
+
+      return updateNote(noteId, { chapterIds })
+    },
+    [userId, updateNote]
+  )
+
   // Update OKR links for a note
   const updateOKRLinks = useCallback(
     async (noteId: NoteId, okrIds: string[]): Promise<Note> => {
@@ -444,6 +458,7 @@ export function useNoteOperations(): UseNoteOperationsReturn {
     searchNotes,
     saveNoteContent,
     updateProjectLinks,
+    updateChapterLinks,
     updateOKRLinks,
     updateAttachments,
     updateTags,

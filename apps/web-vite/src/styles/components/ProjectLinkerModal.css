@@ -41,6 +41,10 @@
   padding: 0.5rem 1rem;
 }
 
+.linker-chapter-select {
+  margin-top: 0.5rem;
+}
+
 .linker-linked-section {
   margin-top: 1rem;
 }
@@ -54,7 +58,7 @@
 .linker-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 0.75rem 1rem;
   background: var(--background-secondary);
   border: 1px solid var(--border);
@@ -96,12 +100,49 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
   transition: all var(--motion-fast) var(--motion-ease);
 }
 
 .linker-item-remove:hover {
   background: var(--error-light, rgba(239, 68, 68, 0.1));
   color: var(--error, #ef4444);
+}
+
+.linker-item-chapters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.375rem;
+}
+
+.linker-chapter-tag {
+  font-size: var(--text-xs);
+  padding: 0.125rem 0.5rem;
+  background: var(--background-tertiary, var(--background-secondary));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full, 9999px);
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--motion-ease);
+}
+
+.linker-chapter-tag:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.linker-chapter-tag--active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground, #fff);
+}
+
+.linker-chapter-tag--active:hover {
+  opacity: 0.85;
+  color: var(--primary-foreground, #fff);
 }
 
 .linker-empty {

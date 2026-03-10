@@ -43,6 +43,7 @@ export function NotesPage() {
     deleteNote,
     listNotes,
     updateProjectLinks,
+    updateChapterLinks,
     updateOKRLinks,
     updateAttachments,
     updateTags,
@@ -152,6 +153,17 @@ export function NotesPage() {
       await updateProjectLinks(currentNote.noteId, projectIds)
     } catch (error) {
       console.error('Failed to update project links:', error)
+      throw error
+    }
+  }
+
+  const handleChaptersChange = async (chapterIds: string[]) => {
+    if (!currentNote) return
+
+    try {
+      await updateChapterLinks(currentNote.noteId, chapterIds)
+    } catch (error) {
+      console.error('Failed to update chapter links:', error)
       throw error
     }
   }
@@ -322,6 +334,7 @@ export function NotesPage() {
               topicId: source.topicId,
               sectionId: source.sectionId,
               projectIds: source.projectIds || [],
+              chapterIds: source.chapterIds || [],
               okrIds: source.okrIds || [],
               tags: source.tags || [],
               attachmentIds: source.attachmentIds || [],
@@ -516,7 +529,9 @@ export function NotesPage() {
           isOpen={showProjectLinker}
           onClose={() => setShowProjectLinker(false)}
           linkedProjectIds={currentNote.projectIds || []}
+          linkedChapterIds={currentNote.chapterIds || []}
           onProjectsChange={handleProjectsChange}
+          onChaptersChange={handleChaptersChange}
         />
       )}
     </div>

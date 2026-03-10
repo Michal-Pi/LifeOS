@@ -103,6 +103,7 @@ export interface NoteUpdatePayload {
     topicId?: TopicId | null
     sectionId?: SectionId | null
     projectIds?: string[]
+    chapterIds?: string[]
     okrIds?: string[]
     tags?: string[]
     attachmentIds?: string[]

@@ -83,7 +83,14 @@ export function stripHtml(html: string | undefined): string {
 export function isNoteEmptyDraft(
   note: Pick<
     Note,
-    'title' | 'content' | 'contentHtml' | 'attachmentIds' | 'projectIds' | 'okrIds' | 'tags'
+    | 'title'
+    | 'content'
+    | 'contentHtml'
+    | 'attachmentIds'
+    | 'projectIds'
+    | 'chapterIds'
+    | 'okrIds'
+    | 'tags'
   >,
   overrides?: { title?: string; content?: JSONContent; contentHtml?: string }
 ): boolean {

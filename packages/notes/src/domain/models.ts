@@ -32,6 +32,7 @@ export interface Note {
 
   // Associations
   projectIds: string[] // Linked projects
+  chapterIds: string[] // Linked chapters (within projects)
   okrIds: string[] // Linked OKRs
   tags: string[] // User tags
 
@@ -136,6 +137,7 @@ export interface NoteFilters {
   topicId?: TopicId
   sectionId?: SectionId
   projectIds?: string[]
+  chapterIds?: string[]
   okrIds?: string[]
   tags?: string[]
   searchQuery?: string // Full-text search
