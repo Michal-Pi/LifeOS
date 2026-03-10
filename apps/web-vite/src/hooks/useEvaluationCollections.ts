@@ -140,102 +140,183 @@ export function useEvaluationCollections() {
           runsSnapshot,
         ] = await Promise.all([
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.rubrics(user.uid)), orderBy('updatedAtMs', 'desc'), limit(50)),
+            query(
+              collection(db, EvaluationPaths.rubrics(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(50)
+            ),
             query(collection(db, EvaluationPaths.rubrics(user.uid)), limit(50)),
             'rubrics'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.results(user.uid)), orderBy('createdAtMs', 'desc'), limit(100)),
+            query(
+              collection(db, EvaluationPaths.results(user.uid)),
+              orderBy('createdAtMs', 'desc'),
+              limit(100)
+            ),
             query(collection(db, EvaluationPaths.results(user.uid)), limit(100)),
             'results'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.testCases(user.uid)), orderBy('updatedAtMs', 'desc'), limit(100)),
+            query(
+              collection(db, EvaluationPaths.testCases(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(100)
+            ),
             query(collection(db, EvaluationPaths.testCases(user.uid)), limit(100)),
             'testCases'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.capabilitySuites(user.uid)), orderBy('updatedAtMs', 'desc'), limit(50)),
+            query(
+              collection(db, EvaluationPaths.capabilitySuites(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(50)
+            ),
             query(collection(db, EvaluationPaths.capabilitySuites(user.uid)), limit(50)),
             'capabilitySuites'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.driftAlerts(user.uid)), orderBy('updatedAtMs', 'desc'), limit(50)),
+            query(
+              collection(db, EvaluationPaths.driftAlerts(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(50)
+            ),
             query(collection(db, EvaluationPaths.driftAlerts(user.uid)), limit(50)),
             'driftAlerts'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.experiments(user.uid)), orderBy('updatedAtMs', 'desc'), limit(50)),
+            query(
+              collection(db, EvaluationPaths.experiments(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(50)
+            ),
             query(collection(db, EvaluationPaths.experiments(user.uid)), limit(50)),
             'experiments'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.promptVariants(user.uid)), orderBy('updatedAtMs', 'desc'), limit(100)),
+            query(
+              collection(db, EvaluationPaths.promptVariants(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(100)
+            ),
             query(collection(db, EvaluationPaths.promptVariants(user.uid)), limit(100)),
             'promptVariants'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.benchmarkCohorts(user.uid)), orderBy('updatedAtMs', 'desc'), limit(50)),
+            query(
+              collection(db, EvaluationPaths.benchmarkCohorts(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(50)
+            ),
             query(collection(db, EvaluationPaths.benchmarkCohorts(user.uid)), limit(50)),
             'benchmarkCohorts'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.sharedComparisonResults(user.uid)), orderBy('createdAtMs', 'desc'), limit(100)),
+            query(
+              collection(db, EvaluationPaths.sharedComparisonResults(user.uid)),
+              orderBy('createdAtMs', 'desc'),
+              limit(100)
+            ),
             query(collection(db, EvaluationPaths.sharedComparisonResults(user.uid)), limit(100)),
             'sharedComparisonResults'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.manualReviewNotes(user.uid)), orderBy('updatedAtMs', 'desc'), limit(100)),
+            query(
+              collection(db, EvaluationPaths.manualReviewNotes(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(100)
+            ),
             query(collection(db, EvaluationPaths.manualReviewNotes(user.uid)), limit(100)),
             'manualReviewNotes'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.benchmarkRunAssignments(user.uid)), orderBy('updatedAtMs', 'desc'), limit(200)),
+            query(
+              collection(db, EvaluationPaths.benchmarkRunAssignments(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(200)
+            ),
             query(collection(db, EvaluationPaths.benchmarkRunAssignments(user.uid)), limit(200)),
             'benchmarkRunAssignments'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.testCaseReviewDecisions(user.uid)), orderBy('updatedAtMs', 'desc'), limit(100)),
+            query(
+              collection(db, EvaluationPaths.testCaseReviewDecisions(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(100)
+            ),
             query(collection(db, EvaluationPaths.testCaseReviewDecisions(user.uid)), limit(100)),
             'testCaseReviewDecisions'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.autoAttachProposalFeedback(user.uid)), orderBy('updatedAtMs', 'desc'), limit(200)),
+            query(
+              collection(db, EvaluationPaths.autoAttachProposalFeedback(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(200)
+            ),
             query(collection(db, EvaluationPaths.autoAttachProposalFeedback(user.uid)), limit(200)),
             'autoAttachProposalFeedback'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.benchmarkSnapshots(user.uid)), orderBy('updatedAtMs', 'desc'), limit(200)),
+            query(
+              collection(db, EvaluationPaths.benchmarkSnapshots(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(200)
+            ),
             query(collection(db, EvaluationPaths.benchmarkSnapshots(user.uid)), limit(200)),
             'benchmarkSnapshots'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.capabilityRunRecords(user.uid)), orderBy('updatedAtMs', 'desc'), limit(300)),
+            query(
+              collection(db, EvaluationPaths.capabilityRunRecords(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(300)
+            ),
             query(collection(db, EvaluationPaths.capabilityRunRecords(user.uid)), limit(300)),
             'capabilityRunRecords'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.capabilitySnapshots(user.uid)), orderBy('updatedAtMs', 'desc'), limit(200)),
+            query(
+              collection(db, EvaluationPaths.capabilitySnapshots(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(200)
+            ),
             query(collection(db, EvaluationPaths.capabilitySnapshots(user.uid)), limit(200)),
             'capabilitySnapshots'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.agentEvalRecords(user.uid)), orderBy('updatedAtMs', 'desc'), limit(300)),
+            query(
+              collection(db, EvaluationPaths.agentEvalRecords(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(300)
+            ),
             query(collection(db, EvaluationPaths.agentEvalRecords(user.uid)), limit(300)),
             'agentEvalRecords'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.agentExperimentRuns(user.uid)), orderBy('updatedAtMs', 'desc'), limit(300)),
+            query(
+              collection(db, EvaluationPaths.agentExperimentRuns(user.uid)),
+              orderBy('updatedAtMs', 'desc'),
+              limit(300)
+            ),
             query(collection(db, EvaluationPaths.agentExperimentRuns(user.uid)), limit(300)),
             'agentExperimentRuns'
           ),
           getDocsWithOrderedFallback(
-            query(collection(db, EvaluationPaths.regressionResults(user.uid)), orderBy('executedAtMs', 'desc'), limit(200)),
+            query(
+              collection(db, EvaluationPaths.regressionResults(user.uid)),
+              orderBy('executedAtMs', 'desc'),
+              limit(200)
+            ),
             query(collection(db, EvaluationPaths.regressionResults(user.uid)), limit(200)),
             'regressionResults'
           ),
           getDocsWithOrderedFallback(
-            query(collectionGroup(db, 'runs'), where('userId', '==', user.uid), orderBy('startedAtMs', 'desc'), limit(120)),
+            query(
+              collectionGroup(db, 'runs'),
+              where('userId', '==', user.uid),
+              orderBy('startedAtMs', 'desc'),
+              limit(120)
+            ),
             query(collectionGroup(db, 'runs'), where('userId', '==', user.uid), limit(120)),
             'recentRuns'
           ),
