@@ -46,6 +46,7 @@ import {
 import { createRunEventWriter } from './runEvents.js'
 import { loadToolRegistryForUser } from './toolExecutor.js'
 import { evaluateRunOutput } from './evaluation.js'
+import { reconcileRuntimeExperimentsForRun } from './evaluation/runtimeExperimentReconciler.js'
 import { executeWorkflow } from './workflowExecutor.js'
 import { sanitizeForFirestore } from './langgraph/firestoreSanitizer.js'
 
@@ -310,6 +311,30 @@ export const onRunUpdated = onDocumentUpdated(
     const before = snapshot.before.data() as Run
     const after = snapshot.after.data() as Run
     const { userId, workflowId, runId } = event.params
+    const beforeRecord = before as unknown as Record<string, unknown>
+    const afterRecord = after as unknown as Record<string, unknown>
+
+    const transitionedToTerminal =
+      before.status !== after.status && (after.status === 'completed' || after.status === 'failed')
+    const receivedEvaluationScores =
+      after.status === 'completed' &&
+      !('evaluationScores' in beforeRecord) &&
+      'evaluationScores' in afterRecord
+
+    if (transitionedToTerminal || receivedEvaluationScores) {
+      try {
+        await reconcileRuntimeExperimentsForRun({
+          userId,
+          runId,
+          run: after,
+        })
+      } catch (error) {
+        log.warn('Runtime experiment reconciliation failed (non-critical)', {
+          runId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
 
     const resumableStatuses = new Set<Run['status']>(['waiting_for_input', 'paused', 'queued'])
     const resumableFailure =

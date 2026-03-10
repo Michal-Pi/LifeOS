@@ -570,6 +570,8 @@ export interface WorkflowNode {
     estimatedTime?: string
     context?: Record<string, unknown>
   }
+  /** Max tool-call iterations for this agent node (default 15). */
+  maxToolIterations?: number
 }
 
 export interface WorkflowEdge {

@@ -129,6 +129,14 @@ export const discoverModels = onCall(
   }
 )
 
+export const evaluateAgentStep = onCall(
+  { timeoutSeconds: 120, memory: '512MiB' as const },
+  async (request) => {
+    const m = await import('./agents/agentEvalFunctions.js')
+    return m.evaluateAgentStep.run(request)
+  }
+)
+
 const log = createLogger('Functions')
 
 // ==================== Cloud Functions Configuration ====================

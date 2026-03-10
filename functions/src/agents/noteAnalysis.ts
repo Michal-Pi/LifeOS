@@ -771,14 +771,9 @@ async function writeWithAI(
   toolSettings: AIToolSettings
 ): Promise<ToolResult<string>> {
   const config = toolSettings.tools.writeWithAI
-  const userPrompt = `Existing content:
-${content}
-
----
-
-Request: ${prompt}
-
-Please generate the requested content:`
+  const userPrompt = content.trim()
+    ? `Existing content:\n${content}\n\n---\n\nRequest: ${prompt}\n\nPlease generate the requested content:`
+    : `Request: ${prompt}\n\nPlease generate the requested content:`
 
   const result = await executePrompt(
     client,
@@ -904,8 +899,13 @@ export const analyzeNoteWithAI = onCall(
     const userId = request.auth.uid
     const data = request.data as AIToolRequest
 
-    if (!data.tool || !data.content) {
-      throw new HttpsError('invalid-argument', 'Missing required fields: tool and content')
+    if (!data.tool) {
+      throw new HttpsError('invalid-argument', 'Missing required field: tool')
+    }
+
+    // writeWithAI can work with empty content (prompt is the primary input)
+    if (!data.content && data.tool !== 'writeWithAI') {
+      throw new HttpsError('invalid-argument', 'Missing required field: content')
     }
 
     // Load API keys and search tool keys in parallel
