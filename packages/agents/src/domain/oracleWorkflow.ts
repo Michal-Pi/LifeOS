@@ -222,6 +222,16 @@ export interface OraclePhaseSummary {
 
 export type OracleGateType = 'gate_a' | 'gate_b' | 'gate_c'
 
+export type OracleRemediationTargetNode = 'decomposer' | 'scanner' | 'equilibrium_analyst'
+
+export type OracleSteepCategory =
+  | 'social'
+  | 'technological'
+  | 'economic'
+  | 'environmental'
+  | 'political'
+  | 'values'
+
 export interface OracleRubricScores {
   mechanisticClarity: number // 1-5
   completeness: number // 1-5
@@ -240,6 +250,46 @@ export interface OracleGateResult {
   axiomGroundingPercent?: number // Gate A specific
   refinementAttempt: number // 0 = first try
   evaluatedAtMs: number
+}
+
+export interface OracleGateRemediationPlan {
+  gateType: OracleGateType
+  targetNode: OracleRemediationTargetNode
+  summary: string
+  requiredFixes: string[]
+  requiredDeliverables: string[]
+  missingSteepvCategories: OracleSteepCategory[]
+  requirePrimarySources: boolean
+  requireAlternativeExplanations: boolean
+  requireFalsifiers: boolean
+  requireQuantification: boolean
+  requireAssumptionRegisterExpansion: boolean
+  requireKnowledgeGraphExpansion: boolean
+  requireAxiomGroundingImprovement: boolean
+  minNewEvidenceCount: number
+  minNewClaimCount: number
+  minNewAssumptionCount: number
+  minNewKgEdges: number
+  minAxiomGroundingPercent: number
+  searchPlan: OracleSearchPlan
+}
+
+export interface OracleRemediationDelta {
+  newEvidenceCount: number
+  newClaimCount: number
+  newAssumptionCount: number
+  newKgEdges: number
+  axiomGroundingBefore: number
+  axiomGroundingAfter: number
+  missingSteepvBefore: OracleSteepCategory[]
+  missingSteepvAfter: OracleSteepCategory[]
+}
+
+export interface OracleGateEscalationContext {
+  activeGate?: OracleGateType
+  remediationPlan?: OracleGateRemediationPlan | null
+  remediationDelta?: OracleRemediationDelta | null
+  remediationRound?: number
 }
 
 // ----- Expert Council Records -----

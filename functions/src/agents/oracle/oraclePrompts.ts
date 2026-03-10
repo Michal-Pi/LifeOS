@@ -9,7 +9,14 @@
  * - Structured JSON output format
  */
 
-import type { OracleEvidence, OraclePhaseSummary, OracleScope } from '@lifeos/agents'
+import type {
+  OracleEvidence,
+  OracleGateRemediationPlan,
+  OracleGateType,
+  OraclePhaseSummary,
+  OracleScope,
+  OracleSteepCategory,
+} from '@lifeos/agents'
 import {
   getRecipesForAgent,
   getTechniquesForRecipe,
@@ -120,17 +127,72 @@ function sanitizeScope(scope: OracleScope): OracleScope {
   }
 }
 
-function buildHumanFeedbackContext(feedback?: string | null): string {
-  const trimmed = feedback?.trim()
-  if (!trimmed) return ''
-  const sanitized = sanitizeForPrompt(trimmed, 400)
+function formatSteepCategories(categories: OracleSteepCategory[]): string {
+  return categories.length > 0 ? categories.map((category) => `- ${category}`).join('\n') : '- none'
+}
 
-  return `## Human Gate Feedback
-The user explicitly requested that Phase 3 incorporate this guidance:
-"${sanitized}"
+function buildRemediationContext(
+  remediationPlan?: OracleGateRemediationPlan | null,
+  gateFeedback?: string | null,
+  humanFeedback?: string | null
+): string {
+  const gateText = gateFeedback?.trim()
+  const humanText = humanFeedback?.trim()
+  if (!remediationPlan && !gateText && !humanText) return ''
 
-Treat this as a binding refinement request. Adjust scenario selection, narrative emphasis, and signposts accordingly while preserving causal discipline.
-`
+  const parts: string[] = ['## Gate Remediation Requirements']
+
+  if (gateText) {
+    parts.push(`Failed gate feedback:\n"${sanitizeForPrompt(gateText, 900)}"`)
+  }
+
+  if (humanText) {
+    parts.push(`Human review feedback:\n"${sanitizeForPrompt(humanText, 600)}"`)
+  }
+
+  if (remediationPlan) {
+    parts.push(`Target retry node: ${remediationPlan.targetNode}`)
+    parts.push(`Summary: ${sanitizeForPrompt(remediationPlan.summary, 500)}`)
+    parts.push(
+      `Required fixes:\n${
+        remediationPlan.requiredFixes.length > 0
+          ? remediationPlan.requiredFixes
+              .map((item: string) => `- ${sanitizeForPrompt(item, 220)}`)
+              .join('\n')
+          : '- produce meaningful improvements before retry'
+      }`
+    )
+    parts.push(
+      `Required deliverables:\n${
+        remediationPlan.requiredDeliverables.length > 0
+          ? remediationPlan.requiredDeliverables
+              .map((item: string) => `- ${sanitizeForPrompt(item, 220)}`)
+              .join('\n')
+          : '- strengthen traceability and decision usefulness'
+      }`
+    )
+    parts.push(
+      `Missing STEEP+V coverage:\n${formatSteepCategories(remediationPlan.missingSteepvCategories)}`
+    )
+    parts.push(
+      `Retry guardrails:
+- Use net-new evidence where available.
+- Do not restate weak claims unless strengthened.
+- Add assumptions, KG structure, falsifiers, and measurable indicators when requested.
+- Improve axiom grounding when required.
+- Minimum new evidence: ${remediationPlan.minNewEvidenceCount}
+- Minimum new claims: ${remediationPlan.minNewClaimCount}
+- Minimum new assumptions: ${remediationPlan.minNewAssumptionCount}
+- Minimum new KG edges: ${remediationPlan.minNewKgEdges}
+- Minimum axiom grounding: ${remediationPlan.minAxiomGroundingPercent}`
+    )
+  }
+
+  parts.push(
+    'Treat these remediation requirements as binding. If a requirement cannot be satisfied, reduce confidence and improve traceability instead of ignoring it.'
+  )
+
+  return `${parts.join('\n\n')}\n`
 }
 
 function buildJsonOnlyRules(extraRules: string[] = []): string {
@@ -327,6 +389,102 @@ ${cookbook}
 }`
 }
 
+export function buildGateRemediationPlannerPrompt(input: {
+  goal: string
+  gateType: OracleGateType
+  gateFeedback?: string | null
+  humanFeedback?: string | null
+  phaseSummaries: OraclePhaseSummary[]
+  artifactStats: {
+    claimsCount: number
+    assumptionsCount: number
+    evidenceCount: number
+    knowledgeGraphNodes: number
+    knowledgeGraphEdges: number
+    axiomGroundingPercent: number
+    missingSteepvCategories: OracleSteepCategory[]
+  }
+}): string {
+  const prior = buildPriorContext(input.phaseSummaries)
+  const gateFeedback = input.gateFeedback?.trim()
+    ? sanitizeForPrompt(input.gateFeedback, 900)
+    : 'none provided'
+  const humanFeedback = input.humanFeedback?.trim()
+    ? sanitizeForPrompt(input.humanFeedback, 600)
+    : 'none provided'
+
+  return `You are an Oracle Gate Remediation Planner. Convert a failed Oracle gate review into a concrete remediation plan that forces targeted evidence gathering and measurable improvement before retry.
+
+## Goal
+"${sanitizeForPrompt(input.goal, 500)}"
+
+## Gate
+${input.gateType}
+
+${prior}
+
+## Failed Gate Feedback
+"${gateFeedback}"
+
+## Human Review Feedback
+"${humanFeedback}"
+
+## Current Artifact Stats
+- Claims: ${input.artifactStats.claimsCount}
+- Assumptions: ${input.artifactStats.assumptionsCount}
+- Evidence items: ${input.artifactStats.evidenceCount}
+- KG nodes: ${input.artifactStats.knowledgeGraphNodes}
+- KG edges: ${input.artifactStats.knowledgeGraphEdges}
+- Axiom grounding percent: ${input.artifactStats.axiomGroundingPercent}
+- Missing STEEP+V coverage:
+${formatSteepCategories(input.artifactStats.missingSteepvCategories)}
+
+## Task
+1. Identify the minimum required fixes before a retry is justified.
+2. Choose the correct retry target node for the failed gate.
+3. Produce targeted search queries to fill evidence, coverage, falsification, and primary-source gaps.
+4. Set concrete thresholds for new evidence, new claims, new assumptions, and new KG edges.
+5. Raise the axiom grounding threshold when the feedback calls it out.
+
+## Output Format (JSON only):
+{
+  "summary": "<string>",
+  "targetNode": "decomposer|scanner|equilibrium_analyst",
+  "requiredFixes": ["<fix>"],
+  "requiredDeliverables": ["<deliverable>"],
+  "missingSteepvCategories": ["social", "political"],
+  "requirePrimarySources": true,
+  "requireAlternativeExplanations": true,
+  "requireFalsifiers": true,
+  "requireQuantification": true,
+  "requireAssumptionRegisterExpansion": true,
+  "requireKnowledgeGraphExpansion": true,
+  "requireAxiomGroundingImprovement": true,
+  "minNewEvidenceCount": 6,
+  "minNewClaimCount": 3,
+  "minNewAssumptionCount": 2,
+  "minNewKgEdges": 4,
+  "minAxiomGroundingPercent": 0.8,
+  "searchPlan": {
+    "social": ["query 1"],
+    "technological": ["query 1"],
+    "economic": ["query 1"],
+    "environmental": ["query 1"],
+    "political": ["query 1"],
+    "values": ["query 1"]
+  }
+}
+
+## Rules
+${buildJsonOnlyRules([
+  'Return every top-level key every time.',
+  'Use empty arrays instead of null for missing categories or requirements.',
+  'Use a targeted follow-up searchPlan, not a generic full restart.',
+  'Choose the retry target that matches the failed gate.',
+  'Set thresholds high enough to block superficial retries.',
+])}`
+}
+
 export function buildEvidenceClusteringPrompt(scope: OracleScope, searchResults: string): string {
   const safeScope = sanitizeScope(scope)
   return `You are an Oracle Context Gatherer performing evidence clustering.
@@ -379,7 +537,10 @@ export function buildDecomposerPrompt(
   depthMode: OracleDepthMode = 'standard',
   evidence: OracleEvidence[] = [],
   verificationTargets: string[] = [],
-  seedClaimsSummary = ''
+  seedClaimsSummary = '',
+  remediationPlan?: OracleGateRemediationPlan | null,
+  gateFeedback?: string | null,
+  humanFeedback?: string | null
 ): string {
   const cookbook = buildCookbookContext('decomposer', 'Phase 1', depthMode)
   const prior = buildPriorContext(phaseSummaries)
@@ -394,6 +555,7 @@ export function buildDecomposerPrompt(
     seedClaimsSummary.trim().length > 0
       ? `\n## Seed Claims From Attached Context\n${seedClaimsSummary}\n`
       : ''
+  const remediationContext = buildRemediationContext(remediationPlan, gateFeedback, humanFeedback)
 
   return `You are an Oracle Decomposer. Break down a strategic question into a sub-question tree with axiom-guided reasoning scaffolds.
 
@@ -411,6 +573,8 @@ ${evidenceContext}
 ${verificationContext}
 
 ${seedClaimsContext}
+
+${remediationContext}
 
 ${cookbook}
 
@@ -470,7 +634,10 @@ export function buildSystemsMapperPrompt(
   phaseSummaries: OraclePhaseSummary[],
   depthMode: OracleDepthMode = 'standard',
   evidence: OracleEvidence[] = [],
-  priorGraphSummary = ''
+  priorGraphSummary = '',
+  remediationPlan?: OracleGateRemediationPlan | null,
+  gateFeedback?: string | null,
+  humanFeedback?: string | null
 ): string {
   const cookbook = buildCookbookContext('systems_mapper', 'Phase 1', depthMode)
   const prior = buildPriorContext(phaseSummaries)
@@ -480,6 +647,7 @@ export function buildSystemsMapperPrompt(
     priorGraphSummary.trim().length > 0
       ? `\n## Starter Graph From Attached Context\n${priorGraphSummary}\n`
       : ''
+  const remediationContext = buildRemediationContext(remediationPlan, gateFeedback, humanFeedback)
 
   return `You are an Oracle Systems Mapper. Construct a causal knowledge graph from the claims and evidence gathered so far.
 
@@ -491,6 +659,8 @@ ${prior}
 ${evidenceContext}
 
 ${starterGraphContext}
+
+${remediationContext}
 
 ## Claims from Decomposition
 ${claimsSummary}
@@ -536,7 +706,10 @@ export function buildVerifierPrompt(
   phaseSummaries: OraclePhaseSummary[],
   depthMode: OracleDepthMode = 'standard',
   evidence: OracleEvidence[] = [],
-  verificationTargets: string[] = []
+  verificationTargets: string[] = [],
+  remediationPlan?: OracleGateRemediationPlan | null,
+  gateFeedback?: string | null,
+  humanFeedback?: string | null
 ): string {
   const cookbook = buildCookbookContext('verifier', 'Phase 1', depthMode)
   const prior = buildPriorContext(phaseSummaries)
@@ -545,6 +718,7 @@ export function buildVerifierPrompt(
     verificationTargets.length > 0
       ? `\n## Verification Targets\n${verificationTargets.map((target) => `- ${sanitizeForPrompt(target, 160)}`).join('\n')}\n`
       : ''
+  const remediationContext = buildRemediationContext(remediationPlan, gateFeedback, humanFeedback)
 
   const elevations = buildSystemElevationContext(['AXM-096'])
 
@@ -555,6 +729,8 @@ ${prior}
 ${evidenceContext}
 
 ${verificationContext}
+
+${remediationContext}
 
 ## Claims to Verify
 ${claimsSummary}
@@ -602,11 +778,15 @@ ${buildJsonOnlyRules([
 export function buildScannerPrompt(
   scope: OracleScope,
   phaseSummaries: OraclePhaseSummary[],
-  depthMode: OracleDepthMode = 'standard'
+  depthMode: OracleDepthMode = 'standard',
+  remediationPlan?: OracleGateRemediationPlan | null,
+  gateFeedback?: string | null,
+  humanFeedback?: string | null
 ): string {
   const cookbook = buildCookbookContext('scanner', 'Phase 2', depthMode)
   const prior = buildPriorContext(phaseSummaries)
   const safeScope = sanitizeScope(scope)
+  const remediationContext = buildRemediationContext(remediationPlan, gateFeedback, humanFeedback)
 
   return `You are an Oracle Trend Scanner. Identify STEEP+V signals and build trend objects.
 
@@ -614,6 +794,8 @@ export function buildScannerPrompt(
 ${safeScope.topic} | ${safeScope.domain} | ${safeScope.timeHorizon} | ${safeScope.geography}
 
 ${prior}
+
+${remediationContext}
 
 ${cookbook}
 
@@ -738,11 +920,17 @@ export function buildScenarioDeveloperPrompt(
   skeletonsSummary: string,
   phaseSummaries: OraclePhaseSummary[],
   humanGateFeedback?: string | null,
-  depthMode: OracleDepthMode = 'standard'
+  depthMode: OracleDepthMode = 'standard',
+  remediationPlan?: OracleGateRemediationPlan | null,
+  gateFeedback?: string | null
 ): string {
   const cookbook = buildCookbookContext('scenario_developer', 'Phase 3', depthMode)
   const prior = buildPriorContext(phaseSummaries)
-  const humanFeedback = buildHumanFeedbackContext(humanGateFeedback)
+  const remediationContext = buildRemediationContext(
+    remediationPlan,
+    gateFeedback,
+    humanGateFeedback
+  )
   const safeScope = sanitizeScope(scope)
 
   const elevations = buildSystemElevationContext(['AXM-095', 'AXM-094'])
@@ -754,7 +942,7 @@ ${safeScope.topic} | ${safeScope.domain} | ${safeScope.timeHorizon}
 
 ${prior}
 
-${humanFeedback}
+${remediationContext}
 
 ## Scenario Skeletons to Develop
 ${skeletonsSummary}
@@ -800,17 +988,23 @@ export function buildEquilibriumAnalystPrompt(
   phaseSummaries: OraclePhaseSummary[],
   targetScenarioCount = 4,
   humanGateFeedback?: string | null,
-  depthMode: OracleDepthMode = 'standard'
+  depthMode: OracleDepthMode = 'standard',
+  remediationPlan?: OracleGateRemediationPlan | null,
+  gateFeedback?: string | null
 ): string {
   const cookbook = buildCookbookContext('equilibrium_analyst', 'Phase 3', depthMode)
   const prior = buildPriorContext(phaseSummaries)
-  const humanFeedback = buildHumanFeedbackContext(humanGateFeedback)
+  const remediationContext = buildRemediationContext(
+    remediationPlan,
+    gateFeedback,
+    humanGateFeedback
+  )
 
   return `You are an Oracle Equilibrium Analyst. Generate scenario skeletons from critical uncertainties using morphological analysis, then score for consistency and divergence.
 
 ${prior}
 
-${humanFeedback}
+${remediationContext}
 
 ## Critical Uncertainties
 ${uncertaintiesSummary}
@@ -850,7 +1044,7 @@ export function buildRedTeamPrompt(
 ): string {
   const cookbook = buildCookbookContext('red_team', 'Phase 3', depthMode)
   const prior = buildPriorContext(phaseSummaries)
-  const humanFeedback = buildHumanFeedbackContext(humanGateFeedback)
+  const humanFeedback = buildRemediationContext(undefined, null, humanGateFeedback)
 
   const elevations = buildSystemElevationContext(['AXM-093', 'AXM-097', 'AXM-094'])
 
@@ -903,7 +1097,7 @@ export function buildBackcastingPrompt(
 ): string {
   const cookbook = buildCookbookContext('scenario_developer', 'Phase 3', depthMode)
   const prior = buildPriorContext(phaseSummaries)
-  const humanFeedback = buildHumanFeedbackContext(humanGateFeedback)
+  const humanFeedback = buildRemediationContext(undefined, null, humanGateFeedback)
 
   const elevations = buildSystemElevationContext(['AXM-098', 'AXM-093'])
 
