@@ -16,6 +16,9 @@ import type {
   EvalResult,
   EvalResultId,
   EvalCriterion,
+  EvaluationMode,
+  JudgeEvaluationDetail,
+  CouncilSynthesisDetail,
   ModelProvider,
 } from '@lifeos/agents'
 import { asId } from '@lifeos/agents'
@@ -251,6 +254,7 @@ export async function createRubric(
     judgeModel?: string
     judgeProvider?: string
     systemPrompt?: string
+    evaluationMode?: EvalRubric['evaluationMode']
     isDefault?: boolean
   }
 ): Promise<EvalRubric> {
@@ -273,6 +277,7 @@ export async function createRubric(
     judgeModel: input.judgeModel || 'gpt-5.2',
     judgeProvider: input.judgeProvider || 'openai',
     systemPrompt: input.systemPrompt,
+    evaluationMode: input.evaluationMode ?? { mode: 'single_judge' },
     isDefault: input.isDefault || false,
     isArchived: false,
     version: 1,
@@ -418,6 +423,107 @@ Respond in JSON format:
 }`
 }
 
+function buildCouncilSynthesisPrompt(
+  rubric: EvalRubric,
+  input: string,
+  output: string,
+  panelResults: JudgeEvaluationDetail[]
+): string {
+  const panelSummary = panelResults
+    .map(
+      (result) =>
+        `Judge ${result.role ?? result.judgeId} (${result.judgeProvider}/${result.judgeModel})
+- Aggregate score: ${result.aggregateScore.toFixed(3)}
+- Criterion scores: ${JSON.stringify(result.criterionScores)}
+- Reasoning: ${result.reasoning ?? 'n/a'}`
+    )
+    .join('\n\n')
+
+  return `You are reconciling an expert evaluation council reviewing an AI-generated output.
+
+## Input/Request:
+${input}
+
+## Output to Evaluate:
+${output}
+
+## Rubric:
+${rubric.name}
+${rubric.description}
+
+## Independent Judge Results:
+${panelSummary}
+
+Produce a reconciled evaluation summary that:
+1. identifies main areas of agreement
+2. identifies meaningful disagreement or dissent
+3. proposes final reconciled criterion scores
+4. explains the final reconciled assessment
+
+Respond in JSON format:
+{
+  "reconciled_scores": {
+    "<criterion_name>": <number>
+  },
+  "summary": "<reconciled evaluation summary>",
+  "dissent_notes": ["<optional dissent 1>", "<optional dissent 2>"]
+}`
+}
+
+function parseCouncilSynthesisResponse(
+  response: string,
+  rubric: EvalRubric
+): {
+  summary: string
+  dissentNotes?: string[]
+  reconciledCriterionScores?: Record<string, number>
+  reconciledNormalizedScores?: Record<string, number>
+  reconciledAggregateScore?: number
+} {
+  try {
+    const jsonMatch = response.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('No JSON found in council response')
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]) as {
+      summary?: string
+      dissent_notes?: string[]
+      reconciled_scores?: Record<string, number>
+    }
+
+    const reconciledCriterionScores: Record<string, number> = {}
+    for (const criterion of rubric.criteria) {
+      const score = parsed.reconciled_scores?.[criterion.name]
+      if (typeof score === 'number') {
+        reconciledCriterionScores[criterion.name] = score
+      }
+    }
+
+    if (Object.keys(reconciledCriterionScores).length === rubric.criteria.length) {
+      const reconciledNormalizedScores = normalizeScores(reconciledCriterionScores, rubric)
+      const reconciledAggregateScore = computeAggregateScore(reconciledNormalizedScores, rubric)
+      return {
+        summary: parsed.summary || 'Council reconciliation completed.',
+        dissentNotes: parsed.dissent_notes,
+        reconciledCriterionScores,
+        reconciledNormalizedScores,
+        reconciledAggregateScore,
+      }
+    }
+
+    return {
+      summary: parsed.summary || 'Council reconciliation completed.',
+      dissentNotes: parsed.dissent_notes,
+    }
+  } catch (error) {
+    log.warn('Failed to parse council synthesis response', { error })
+    return {
+      summary: response.slice(0, 2000) || 'Council reconciliation completed.',
+    }
+  }
+}
+
 /**
  * Parse the judge response to extract scores
  */
@@ -502,6 +608,113 @@ function computeAggregateScore(
   return totalWeight > 0 ? aggregate / totalWeight : 0
 }
 
+function buildJudgeAgent(
+  userId: string,
+  runId: RunId,
+  input: {
+    judgeProvider: string
+    judgeModel: string
+    role?: string
+    systemPrompt?: string
+  }
+) {
+  return {
+    agentId: asId<'agent'>('agent:judge'),
+    userId,
+    name: input.role ? `Quality Judge (${input.role})` : 'Quality Judge',
+    role: 'critic' as const,
+    systemPrompt:
+      input.systemPrompt ||
+      'You are an expert evaluator. Be fair, consistent, and thorough in your assessments.',
+    modelProvider: input.judgeProvider as ModelProvider,
+    modelName: input.judgeModel,
+    temperature: 0.3,
+    archived: false,
+    createdAtMs: Date.now(),
+    updatedAtMs: Date.now(),
+    syncState: 'synced' as const,
+    version: 1,
+  }
+}
+
+async function executeJudge(
+  userId: string,
+  runId: RunId,
+  rubric: EvalRubric,
+  judgePrompt: string,
+  apiKeys: ProviderKeys,
+  input: {
+    judgeProvider: string
+    judgeModel: string
+    role?: string
+    systemPrompt?: string
+  }
+): Promise<JudgeEvaluationDetail> {
+  const judgeAgent = buildJudgeAgent(userId, runId, input)
+  const result = await executeWithProvider(judgeAgent, judgePrompt, {}, apiKeys, {
+    userId,
+    agentId: asId<'agent'>('agent:judge'),
+    workflowId: asId<'workflow'>('workflow:eval'),
+    runId,
+  })
+  const parsed = parseJudgeResponse(result.output, rubric)
+  const normalizedScores = normalizeScores(parsed.criterionScores, rubric)
+  const aggregateScore = computeAggregateScore(normalizedScores, rubric)
+
+  return {
+    judgeId: `${input.role ?? 'judge'}:${input.judgeProvider}:${input.judgeModel}`,
+    role: input.role,
+    judgeModel: input.judgeModel,
+    judgeProvider: input.judgeProvider,
+    criterionScores: parsed.criterionScores,
+    normalizedScores,
+    aggregateScore,
+    reasoning: parsed.reasoning,
+    tokensUsed: result.tokensUsed,
+    cost: result.estimatedCost,
+  }
+}
+
+function averageJudgeScores(
+  panelResults: JudgeEvaluationDetail[],
+  rubric: EvalRubric
+): {
+  criterionScores: Record<string, number>
+  normalizedScores: Record<string, number>
+  aggregateScore: number
+  scoreVariance: number
+} {
+  const criterionScores: Record<string, number> = {}
+  const normalizedScores: Record<string, number> = {}
+
+  for (const criterion of rubric.criteria) {
+    const scores = panelResults.map(
+      (result) => result.criterionScores[criterion.name] ?? criterion.scoreRange.min
+    )
+    const normalized = panelResults.map((result) => result.normalizedScores[criterion.name] ?? 0)
+    criterionScores[criterion.name] = scores.reduce((sum, score) => sum + score, 0) / scores.length
+    normalizedScores[criterion.name] =
+      normalized.reduce((sum, score) => sum + score, 0) / normalized.length
+  }
+
+  const aggregateScore =
+    panelResults.reduce((sum, result) => sum + result.aggregateScore, 0) / panelResults.length
+  const variance =
+    panelResults.reduce((sum, result) => sum + (result.aggregateScore - aggregateScore) ** 2, 0) /
+    panelResults.length
+
+  return {
+    criterionScores,
+    normalizedScores,
+    aggregateScore,
+    scoreVariance: variance,
+  }
+}
+
+function resolveEvaluationMode(rubric: EvalRubric): EvaluationMode {
+  return rubric.evaluationMode?.mode ?? 'single_judge'
+}
+
 /**
  * Evaluate an output using LLM-as-Judge
  */
@@ -513,49 +726,184 @@ export async function evaluateOutput(
   output: string,
   apiKeys: ProviderKeys
 ): Promise<EvalResult> {
-  const db = getFirestore()
   const evalResultId = randomUUID() as EvalResultId
-  const startTime = Date.now()
-
-  // Build the judge prompt
-  const judgePrompt = buildFullJudgePrompt(rubric, input, output)
-
-  // Create a minimal agent config for the judge
-  const judgeAgent = {
-    agentId: asId<'agent'>('agent:judge'),
+  const evalResult = await evaluateOutputInMemory(
     userId,
-    name: 'Quality Judge',
-    role: 'critic' as const,
-    systemPrompt:
-      rubric.systemPrompt ||
-      'You are an expert evaluator. Be fair, consistent, and thorough in your assessments.',
-    modelProvider: rubric.judgeProvider as ModelProvider,
-    modelName: rubric.judgeModel,
-    temperature: 0.3, // Low temperature for consistency
-    archived: false,
-    createdAtMs: Date.now(),
-    updatedAtMs: Date.now(),
-    syncState: 'synced' as const,
-    version: 1,
-  }
-
-  // Execute the judge
-  const result = await executeWithProvider(judgeAgent, judgePrompt, {}, apiKeys, {
-    userId,
-    agentId: asId<'agent'>('agent:judge'),
-    workflowId: asId<'workflow'>('workflow:eval'),
     runId,
-  })
+    rubric,
+    input,
+    output,
+    apiKeys,
+    evalResultId
+  )
+  const db = getFirestore()
+  await db.doc(`${getResultsPath(userId)}/${evalResultId}`).set(evalResult)
+  return evalResult
+}
+
+export async function evaluateOutputInMemory(
+  userId: string,
+  runId: RunId,
+  rubric: EvalRubric,
+  input: string,
+  output: string,
+  apiKeys: ProviderKeys,
+  evalResultId: EvalResultId = randomUUID() as EvalResultId
+): Promise<EvalResult> {
+  const startTime = Date.now()
+  const judgePrompt = buildFullJudgePrompt(rubric, input, output)
+  const evaluationMode = resolveEvaluationMode(rubric)
+
+  let criterionScores: Record<string, number>
+  let normalizedScores: Record<string, number>
+  let aggregateScore: number
+  let panelCriterionScores: Record<string, number> | undefined
+  let panelNormalizedScores: Record<string, number> | undefined
+  let panelAggregateScore: number | undefined
+  let finalScoreSource: EvalResult['finalScoreSource'] = 'single_judge'
+  let reasoning: string
+  let judgeModel: string
+  let judgeProvider: string
+  let judgeTokensUsed = 0
+  let judgeCost = 0
+  let individualJudgeResults: JudgeEvaluationDetail[] | undefined
+  let scoreVariance: number | undefined
+  let requiresHumanReview: boolean | undefined
+  let councilSynthesis: CouncilSynthesisDetail | undefined
+
+  if (evaluationMode === 'single_judge') {
+    const detail = await executeJudge(userId, runId, rubric, judgePrompt, apiKeys, {
+      judgeProvider: rubric.judgeProvider,
+      judgeModel: rubric.judgeModel,
+      systemPrompt: rubric.systemPrompt,
+    })
+    criterionScores = detail.criterionScores
+    normalizedScores = detail.normalizedScores
+    aggregateScore = detail.aggregateScore
+    finalScoreSource = 'single_judge'
+    reasoning = detail.reasoning ?? ''
+    judgeModel = detail.judgeModel
+    judgeProvider = detail.judgeProvider
+    judgeTokensUsed = detail.tokensUsed
+    judgeCost = detail.cost
+  } else {
+    const panelMembers = rubric.evaluationMode?.panelMembers?.length
+      ? rubric.evaluationMode.panelMembers
+      : [
+          {
+            role: 'primary_judge',
+            judgeProvider: rubric.judgeProvider,
+            judgeModel: rubric.judgeModel,
+          },
+        ]
+
+    individualJudgeResults = []
+    for (const member of panelMembers) {
+      const detail = await executeJudge(userId, runId, rubric, judgePrompt, apiKeys, {
+        judgeProvider: member.judgeProvider,
+        judgeModel: member.judgeModel,
+        role: member.role,
+        systemPrompt: rubric.systemPrompt,
+      })
+      individualJudgeResults.push(detail)
+      judgeTokensUsed += detail.tokensUsed
+      judgeCost += detail.cost
+    }
+
+    const averaged = averageJudgeScores(individualJudgeResults, rubric)
+    panelCriterionScores = averaged.criterionScores
+    panelNormalizedScores = averaged.normalizedScores
+    panelAggregateScore = averaged.aggregateScore
+    criterionScores = averaged.criterionScores
+    normalizedScores = averaged.normalizedScores
+    aggregateScore = averaged.aggregateScore
+    finalScoreSource = 'panel_average'
+    scoreVariance = averaged.scoreVariance
+    requiresHumanReview =
+      typeof rubric.evaluationMode?.requireHumanReviewAboveVariance === 'number'
+        ? averaged.scoreVariance >= rubric.evaluationMode.requireHumanReviewAboveVariance
+        : false
+
+    if (evaluationMode === 'expert_council_eval') {
+      const shouldReconcile =
+        !rubric.evaluationMode?.triggerOnDisagreementOnly ||
+        averaged.scoreVariance >= (rubric.evaluationMode?.disagreementThreshold ?? 0.04)
+
+      if (shouldReconcile) {
+        const reconciliationJudge = rubric.evaluationMode?.reconciliationJudge ?? {
+          judgeProvider: rubric.judgeProvider,
+          judgeModel: rubric.judgeModel,
+        }
+        const councilPrompt = buildCouncilSynthesisPrompt(
+          rubric,
+          input,
+          output,
+          individualJudgeResults
+        )
+        const councilAgent = buildJudgeAgent(userId, runId, {
+          judgeProvider: reconciliationJudge.judgeProvider,
+          judgeModel: reconciliationJudge.judgeModel,
+          role: 'council_reconciler',
+          systemPrompt:
+            'You are reconciling an expert evaluation council. Preserve disagreement when meaningful and do not flatten valid dissent.',
+        })
+        const councilResult = await executeWithProvider(councilAgent, councilPrompt, {}, apiKeys, {
+          userId,
+          agentId: asId<'agent'>('agent:judge'),
+          workflowId: asId<'workflow'>('workflow:eval'),
+          runId,
+        })
+        judgeTokensUsed += councilResult.tokensUsed
+        judgeCost += councilResult.estimatedCost
+
+        const parsedCouncil = parseCouncilSynthesisResponse(councilResult.output, rubric)
+        councilSynthesis = {
+          reconciledByModel: reconciliationJudge.judgeModel,
+          reconciledByProvider: reconciliationJudge.judgeProvider,
+          summary: parsedCouncil.summary,
+          dissentNotes: parsedCouncil.dissentNotes,
+          reconciledCriterionScores: parsedCouncil.reconciledCriterionScores,
+          reconciledNormalizedScores: parsedCouncil.reconciledNormalizedScores,
+          reconciledAggregateScore: parsedCouncil.reconciledAggregateScore,
+        }
+
+        if (
+          parsedCouncil.reconciledCriterionScores &&
+          parsedCouncil.reconciledNormalizedScores &&
+          typeof parsedCouncil.reconciledAggregateScore === 'number'
+        ) {
+          criterionScores = parsedCouncil.reconciledCriterionScores
+          normalizedScores = parsedCouncil.reconciledNormalizedScores
+          aggregateScore = parsedCouncil.reconciledAggregateScore
+          finalScoreSource = 'council_reconciled'
+        }
+      } else {
+        councilSynthesis = {
+          summary:
+            'Council reconciliation skipped because judge disagreement remained below the configured threshold.',
+        }
+      }
+    }
+
+    reasoning =
+      councilSynthesis?.summary ||
+      individualJudgeResults
+        .map((detail) => `${detail.role ?? detail.judgeId}: ${detail.reasoning ?? 'n/a'}`)
+        .join('\n\n')
+    judgeModel =
+      councilSynthesis?.reconciledByModel ||
+      rubric.evaluationMode?.reconciliationJudge?.judgeModel ||
+      'judge_panel'
+    judgeProvider =
+      councilSynthesis?.reconciledByProvider ||
+      rubric.evaluationMode?.reconciliationJudge?.judgeProvider ||
+      'multi'
+  }
 
   const endTime = Date.now()
 
-  // Parse the response
-  const { criterionScores, reasoning } = parseJudgeResponse(result.output, rubric)
-  const normalizedScores = normalizeScores(criterionScores, rubric)
-  const aggregateScore = computeAggregateScore(normalizedScores, rubric)
-
   // Store the result
-  const evalResult: EvalResult = {
+  return {
     evalResultId,
     rubricId: rubric.rubricId,
     runId,
@@ -563,21 +911,26 @@ export async function evaluateOutput(
     criterionScores,
     normalizedScores,
     aggregateScore,
+    panelCriterionScores,
+    panelNormalizedScores,
+    panelAggregateScore,
+    finalScoreSource,
     judgeReasoning: reasoning,
-    judgeModel: rubric.judgeModel,
-    judgeProvider: rubric.judgeProvider,
-    judgeTokensUsed: result.tokensUsed,
-    judgeCost: result.estimatedCost,
+    judgeModel,
+    judgeProvider,
+    judgeTokensUsed,
+    judgeCost,
+    evaluationMode,
+    individualJudgeResults,
+    scoreVariance,
+    requiresHumanReview,
+    councilSynthesis,
     evaluatedAtMs: endTime,
     durationMs: endTime - startTime,
     inputSnapshot: input.slice(0, 1000), // Truncate for storage
     outputSnapshot: output.slice(0, 1000),
     createdAtMs: Date.now(),
   }
-
-  await db.doc(`${getResultsPath(userId)}/${evalResultId}`).set(evalResult)
-
-  return evalResult
 }
 
 /**

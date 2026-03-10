@@ -1,0 +1,611 @@
+.evals-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.evals-shell__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 12%, transparent),
+    transparent
+  );
+}
+
+.evals-shell__subtitle {
+  margin: 0.4rem 0 0;
+  max-width: 56rem;
+  color: var(--muted-foreground);
+}
+
+.eval-refresh-button,
+.eval-subtab,
+.eval-run-picker,
+.eval-input,
+.eval-select,
+.eval-textarea {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.eval-refresh-button {
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+}
+
+.eval-input,
+.eval-select,
+.eval-textarea {
+  width: 100%;
+  border-radius: 0.85rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.eval-input--compact {
+  width: 12rem;
+  min-width: 12rem;
+}
+
+.eval-textarea {
+  resize: vertical;
+}
+
+.eval-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.eval-subtab {
+  border-radius: 999px;
+  padding: 0.65rem 1rem;
+}
+
+.eval-subtab.active {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.eval-loading,
+.eval-error-banner,
+.eval-empty {
+  padding: 1rem 1.1rem;
+  border: 1px dashed var(--border);
+  border-radius: 1rem;
+  color: var(--muted-foreground);
+}
+
+.eval-error-banner {
+  border-style: solid;
+  color: var(--destructive, #b42318);
+}
+
+.eval-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.eval-card-grid,
+.eval-workflow-grid,
+.eval-split-grid,
+.eval-cohort-grid,
+.eval-compare-grid,
+.eval-live-layout,
+.eval-form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.eval-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.eval-workflow-grid,
+.eval-split-grid,
+.eval-cohort-grid,
+.eval-compare-grid,
+.eval-live-layout,
+.eval-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.eval-form-grid--compact {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.eval-live-sidebar,
+.eval-live-main {
+  display: grid;
+  gap: 1rem;
+}
+
+.eval-card,
+.eval-stat-card,
+.eval-workflow-card,
+.eval-cohort-card,
+.eval-compare-card {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--card);
+  padding: 1rem;
+}
+
+.eval-card--compact {
+  padding: 0.85rem;
+}
+
+.eval-card--warning {
+  border-color: color-mix(in srgb, #f59e0b 55%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, #f59e0b 20%, transparent);
+}
+
+.eval-stat-card {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.eval-stat-card strong {
+  font-size: 1.5rem;
+}
+
+.eval-stat-label,
+.eval-section-heading p,
+.eval-workflow-card__header span,
+.eval-list-item p,
+.eval-metric-list dt,
+.eval-shell__small {
+  color: var(--muted-foreground);
+}
+
+.eval-shell__small {
+  margin: 0.35rem 0 0;
+}
+
+.eval-section-heading {
+  margin-bottom: 0.8rem;
+}
+
+.eval-section-heading h3 {
+  margin: 0;
+}
+
+.eval-section-heading p {
+  margin: 0.3rem 0 0;
+}
+
+.eval-workflow-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+
+.eval-metric-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin: 1rem 0 0;
+}
+
+.eval-metric-list div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.eval-metric-list dt,
+.eval-metric-list dd {
+  margin: 0;
+}
+
+.eval-metric-list dd {
+  font-weight: 600;
+}
+
+.eval-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.eval-list-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--card) 75%, var(--muted) 25%);
+}
+
+button.eval-list-item {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.eval-list-item--stacked {
+  align-items: flex-start;
+}
+
+.eval-record-item--selected {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.eval-capture-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.eval-capture-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--card) 78%, var(--muted) 22%);
+}
+
+.eval-capture-card h4 {
+  margin: 0;
+}
+
+.eval-code-block {
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--background) 72%, var(--muted) 28%);
+  color: var(--foreground);
+  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.83rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 22rem;
+  overflow: auto;
+}
+
+.eval-facet-compare-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.eval-facet-compare-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: center;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--card) 78%, var(--muted) 22%);
+}
+
+.eval-facet-compare-row__label {
+  color: var(--muted-foreground);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.eval-facet-compare-row__value {
+  font-weight: 600;
+}
+
+.eval-warning-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+
+.eval-judge-summary {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--card) 72%, var(--muted) 28%);
+}
+
+.eval-judge-summary__header,
+.eval-judge-card__header,
+.eval-judge-criteria__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.eval-judge-summary p,
+.eval-judge-reasoning {
+  margin: 0;
+}
+
+.eval-judge-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  margin-top: 1rem;
+}
+
+.eval-judge-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--card) 80%, var(--muted) 20%);
+}
+
+.eval-judge-criteria {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.eval-judge-reasoning {
+  color: var(--muted-foreground);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.eval-snapshot-diff-list {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.eval-snapshot-diff-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.eval-pill {
+  display: inline-flex;
+  align-items: center;
+  height: fit-content;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+  border: 1px solid var(--border);
+}
+
+.eval-pill.active,
+.eval-pill.ok {
+  background: color-mix(in srgb, #198754 16%, transparent);
+}
+
+.eval-pill.warning {
+  background: color-mix(in srgb, #f59e0b 16%, transparent);
+}
+
+.eval-pill.critical {
+  background: color-mix(in srgb, #dc2626 16%, transparent);
+}
+
+.eval-pill.neutral,
+.eval-pill.archived,
+.eval-pill.running,
+.eval-pill.completed,
+.eval-pill.draft {
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+.eval-badge-row,
+.eval-note-list,
+.eval-trace-actions,
+.eval-compare-picker,
+.eval-inline-actions,
+.eval-form-actions,
+.eval-history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.eval-form-actions {
+  align-items: center;
+}
+
+.eval-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted-foreground);
+}
+
+.eval-action-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.eval-action-banner p {
+  margin: 0.25rem 0 0;
+  color: var(--muted-foreground);
+}
+
+.eval-inline-warning {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid color-mix(in srgb, #f59e0b 55%, var(--border));
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, #f59e0b 10%, transparent);
+  color: var(--foreground);
+}
+
+.eval-history-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 80%, var(--muted) 20%);
+  font-size: 0.85rem;
+}
+
+.eval-note-list {
+  display: grid;
+  margin: 0.75rem 0 0;
+  padding-left: 1rem;
+}
+
+.eval-preview-explanation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+
+.eval-workflow-highlights,
+.eval-trace-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.eval-detail-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.eval-detail-summary,
+.eval-detail-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.eval-detail-callout {
+  width: 100%;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.eval-detail-callout p {
+  margin: 0.3rem 0 0;
+  color: var(--muted-foreground);
+}
+
+.eval-detail-facet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.8rem;
+}
+
+.eval-detail-facet {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--card) 82%, var(--muted) 18%);
+}
+
+.eval-hint-card {
+  min-width: 14rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--card) 80%, var(--muted) 20%);
+}
+
+.eval-hint-card p {
+  margin: 0.35rem 0 0;
+  color: var(--muted-foreground);
+}
+
+.eval-trace-layout {
+  display: grid;
+  grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.eval-trace-sidebar,
+.eval-trace-main {
+  min-width: 0;
+}
+
+.eval-run-picker {
+  display: grid;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.8rem;
+  border-radius: 0.85rem;
+  text-align: left;
+}
+
+.eval-run-picker.active {
+  outline: 2px solid var(--foreground);
+}
+
+.eval-compare-picker {
+  margin-bottom: 1rem;
+}
+
+.eval-compare-picker label,
+.eval-cohort-selector {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.eval-compare-picker select,
+.eval-cohort-selector select {
+  min-width: 16rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.eval-output-preview {
+  margin: 1rem 0 0;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: var(--background);
+  white-space: pre-wrap;
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.eval-compare-status {
+  padding: 0.85rem 1rem;
+  border-radius: 0.85rem;
+}
+
+.eval-compare-status.ok {
+  background: color-mix(in srgb, #198754 12%, transparent);
+}
+
+.eval-compare-status.warning {
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+}
+
+@media (max-width: 900px) {
+  .eval-trace-layout {
+    grid-template-columns: 1fr;
+  }
+}

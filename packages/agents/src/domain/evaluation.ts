@@ -41,6 +41,7 @@ export type DerivedTestCaseId = Id<'derivedTestCase'>
 export type EvaluatorConfigId = Id<'evaluatorConfig'>
 export type BenchmarkCohortId = Id<'benchmarkCohort'>
 export type SharedComparisonResultId = Id<'sharedComparisonResult'>
+export type CapabilitySuiteId = Id<'capabilitySuite'>
 
 // ----- Telemetry -----
 
@@ -165,6 +166,49 @@ export interface EvalCriterion {
   }
 }
 
+export type EvaluationMode = 'single_judge' | 'judge_panel' | 'expert_council_eval'
+
+export interface JudgePanelMemberConfig {
+  role: string
+  judgeProvider: string
+  judgeModel: string
+}
+
+export interface EvaluationModeConfig {
+  mode: EvaluationMode
+  panelMembers?: JudgePanelMemberConfig[]
+  reconciliationJudge?: {
+    judgeProvider: string
+    judgeModel: string
+  }
+  triggerOnDisagreementOnly?: boolean
+  disagreementThreshold?: number
+  requireHumanReviewAboveVariance?: number
+}
+
+export interface JudgeEvaluationDetail {
+  judgeId: string
+  role?: string
+  judgeModel: string
+  judgeProvider: string
+  criterionScores: Record<string, number>
+  normalizedScores: Record<string, number>
+  aggregateScore: number
+  reasoning?: string
+  tokensUsed: number
+  cost: number
+}
+
+export interface CouncilSynthesisDetail {
+  reconciledByModel?: string
+  reconciledByProvider?: string
+  summary: string
+  dissentNotes?: string[]
+  reconciledCriterionScores?: Record<string, number>
+  reconciledNormalizedScores?: Record<string, number>
+  reconciledAggregateScore?: number
+}
+
 /**
  * An evaluation rubric for a specific workflow type
  */
@@ -187,6 +231,7 @@ export interface EvalRubric {
   judgeModel: string // e.g., 'gpt-4o', 'claude-3-5-sonnet'
   judgeProvider: string // e.g., 'openai', 'anthropic'
   systemPrompt?: string // Optional custom system prompt for judge
+  evaluationMode?: EvaluationModeConfig // Optional override; default is single_judge
 
   // Lifecycle
   isDefault: boolean // If true, used when no specific rubric is selected
@@ -210,6 +255,10 @@ export interface EvalResult {
   criterionScores: Record<string, number> // Per-criterion raw scores
   normalizedScores: Record<string, number> // Normalized to 0-1
   aggregateScore: number // Weighted aggregate (0-1)
+  panelCriterionScores?: Record<string, number>
+  panelNormalizedScores?: Record<string, number>
+  panelAggregateScore?: number
+  finalScoreSource?: 'single_judge' | 'panel_average' | 'council_reconciled'
 
   // Judge output
   judgeReasoning?: string // Optional reasoning from the judge
@@ -217,6 +266,11 @@ export interface EvalResult {
   judgeProvider: string
   judgeTokensUsed: number
   judgeCost: number
+  evaluationMode?: EvaluationMode
+  individualJudgeResults?: JudgeEvaluationDetail[]
+  scoreVariance?: number
+  requiresHumanReview?: boolean
+  councilSynthesis?: CouncilSynthesisDetail
 
   // Timing
   evaluatedAtMs: number
@@ -248,6 +302,9 @@ export interface PromptVariant {
   description?: string
   promptTemplate: string // The actual prompt content
   systemPrompt?: string // Optional system prompt override
+  promptFingerprint?: string
+  configFingerprint?: string
+  contextFingerprint?: string
 
   // Control vs treatment
   isControl: boolean // The baseline variant
@@ -969,6 +1026,22 @@ export interface DerivedTestCase {
   // Test input
   input: string
   context?: Record<string, unknown>
+  taskFamily?:
+    | 'strategic_reasoning'
+    | 'causal_reasoning'
+    | 'synthesis_under_conflict'
+    | 'tradeoff_reasoning'
+    | 'uncertainty_calibration'
+    | 'adversarial_truth_seeking'
+    | 'abstraction_and_decomposition'
+    | 'counterfactual_update'
+    | 'transfer_reasoning'
+  difficulty?: 'easy' | 'medium' | 'hard' | 'frontier'
+  ambiguityLevel?: 'low' | 'medium' | 'high'
+  evidenceAvailability?: 'strong' | 'mixed' | 'weak' | 'underspecified'
+  capabilityTags?: string[]
+  evaluationFocus?: string[]
+  isHoldout?: boolean
 
   // Expected behavior (from successful run)
   expectedOutput?: string
@@ -1038,6 +1111,14 @@ export interface RegressionTestResult {
   missingTools?: string[]
   extraTools?: string[]
 
+  // Router decision comparison
+  routerDecisionsMatched?: boolean
+  missingRouterDecisions?: Array<{
+    step: number
+    chosenPath: string
+  }>
+  actualRouterChoices?: string[]
+
   // Execution info
   workflowVersion: string
   executedAtMs: number
@@ -1074,10 +1155,27 @@ export interface BenchmarkCohort {
   workflowSpecificRubricIds?: Record<string, EvalRubricId>
   rawOutputComparisonAllowed?: boolean
   allVsAllEnabled?: boolean
+  evaluationMode?: EvaluationModeConfig // Optional cohort-level override
 
   // Lifecycle
   isActive: boolean
 
+  createdAtMs: number
+  updatedAtMs: number
+}
+
+/**
+ * Capability suites organize reasoning evaluations by task family rather than workflow type.
+ */
+export interface CapabilitySuite {
+  suiteId: CapabilitySuiteId
+  userId: string
+  name: string
+  description?: string
+  taskFamilies: NonNullable<DerivedTestCase['taskFamily']>[]
+  testCaseIds: DerivedTestCaseId[]
+  sharedRubricId?: EvalRubricId
+  isActive: boolean
   createdAtMs: number
   updatedAtMs: number
 }

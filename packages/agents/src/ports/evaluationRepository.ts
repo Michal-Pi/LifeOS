@@ -28,6 +28,9 @@ import type {
   DriftAlertId,
   DriftDetectionConfig,
   DriftSeverity,
+  EvaluationModeConfig,
+  JudgeEvaluationDetail,
+  CouncilSynthesisDetail,
 } from '../domain/evaluation'
 
 // ----- Input Types -----
@@ -62,6 +65,7 @@ export interface CreateEvalRubricInput {
   judgeModel: string
   judgeProvider: string
   systemPrompt?: string
+  evaluationMode?: EvaluationModeConfig
   isDefault?: boolean
 }
 
@@ -72,6 +76,7 @@ export interface UpdateEvalRubricInput {
   judgeModel?: string
   judgeProvider?: string
   systemPrompt?: string
+  evaluationMode?: EvaluationModeConfig
   isDefault?: boolean
   isArchived?: boolean
 }
@@ -82,11 +87,20 @@ export interface CreateEvalResultInput {
   criterionScores: Record<string, number>
   normalizedScores: Record<string, number>
   aggregateScore: number
+  panelCriterionScores?: Record<string, number>
+  panelNormalizedScores?: Record<string, number>
+  panelAggregateScore?: number
+  finalScoreSource?: EvalResult['finalScoreSource']
   judgeReasoning?: string
   judgeModel: string
   judgeProvider: string
   judgeTokensUsed: number
   judgeCost: number
+  evaluationMode?: EvalResult['evaluationMode']
+  individualJudgeResults?: JudgeEvaluationDetail[]
+  scoreVariance?: number
+  requiresHumanReview?: boolean
+  councilSynthesis?: CouncilSynthesisDetail
   durationMs: number
   inputSnapshot?: string
   outputSnapshot?: string

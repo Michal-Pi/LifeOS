@@ -575,6 +575,13 @@ export async function deriveTestCase(
     userId,
     workflowType: telemetry.workflowType,
     input,
+    taskFamily: inferTaskFamily(telemetry.workflowType),
+    difficulty: 'medium',
+    ambiguityLevel: 'medium',
+    evidenceAvailability: 'mixed',
+    capabilityTags: ['derived-from-run', telemetry.workflowType, 'general-thinking'],
+    evaluationFocus: ['quality', 'depth', 'usefulness'],
+    isHoldout: false,
     expectedOutput,
     expectedOutputHash: hashContent(expectedOutput),
     expectedSteps: telemetry.stepCount,
@@ -602,6 +609,19 @@ export async function deriveTestCase(
 
 function hashContent(content: string): string {
   return createHash('sha256').update(content).digest('hex').slice(0, 16)
+}
+
+function inferTaskFamily(workflowType: string): DerivedTestCase['taskFamily'] {
+  switch (workflowType) {
+    case 'oracle':
+      return 'strategic_reasoning'
+    case 'dialectical':
+      return 'synthesis_under_conflict'
+    case 'deep_research':
+      return 'causal_reasoning'
+    default:
+      return 'transfer_reasoning'
+  }
 }
 
 /**

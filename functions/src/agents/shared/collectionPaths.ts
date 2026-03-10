@@ -112,6 +112,11 @@ export const EvaluationPaths = {
   regressionResults: (userId: string) => `users/${userId}/evaluation/regressionResults`,
   regressionResult: (userId: string, resultId: string) =>
     `users/${userId}/evaluation/regressionResults/${resultId}`,
+
+  /** Agent experiment runs: users/{userId}/evaluation/agentExperimentRuns/{experimentRunId} */
+  agentExperimentRuns: (userId: string) => `users/${userId}/evaluation/agentExperimentRuns`,
+  agentExperimentRun: (userId: string, experimentRunId: string) =>
+    `users/${userId}/evaluation/agentExperimentRuns/${experimentRunId}`,
 } as const
 
 // ----- Workflow Collections -----

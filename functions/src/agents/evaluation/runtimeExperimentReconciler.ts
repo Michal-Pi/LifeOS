@@ -60,7 +60,17 @@ function deriveRuntimeAllocations(telemetry: ComponentTelemetry[]): RuntimeAlloc
   return Array.from(deduped.values()).sort((left, right) => left.stepIndex - right.stepIndex)
 }
 
-function deriveRunScore(run: Run): { score: number | null; requiresReview: boolean } {
+function deriveRunScore(
+  run: Run,
+  allocationCount: number
+): { score: number | null; requiresReview: boolean } {
+  if (allocationCount > 1) {
+    return {
+      score: null,
+      requiresReview: true,
+    }
+  }
+
   const evaluationScores = (
     run as Run & {
       evaluationScores?: { relevance?: number; completeness?: number; accuracy?: number }
@@ -146,7 +156,7 @@ export async function reconcileRuntimeExperimentsForRun(params: {
   const allocations = deriveRuntimeAllocations(agentTelemetry)
   if (allocations.length === 0) return
 
-  const { score, requiresReview } = deriveRunScore(run)
+  const { score, requiresReview } = deriveRunScore(run, allocations.length)
   const now = Date.now()
 
   for (const allocation of allocations) {

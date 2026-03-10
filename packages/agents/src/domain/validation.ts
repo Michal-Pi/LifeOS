@@ -842,18 +842,89 @@ export const EvalRubricSchema = z.object({
   description: z.string().optional(),
   workflowType: WorkflowTypeSchema,
   criteria: z.array(EvalCriterionSchema),
+  judgeModel: z.string().optional(),
+  judgeProvider: z.string().optional(),
+  systemPrompt: z.string().optional(),
+  evaluationMode: z
+    .object({
+      mode: z.enum(['single_judge', 'judge_panel', 'expert_council_eval']),
+      panelMembers: z
+        .array(
+          z.object({
+            role: z.string(),
+            judgeProvider: z.string(),
+            judgeModel: z.string(),
+          })
+        )
+        .optional(),
+      reconciliationJudge: z
+        .object({
+          judgeProvider: z.string(),
+          judgeModel: z.string(),
+        })
+        .optional(),
+      triggerOnDisagreementOnly: z.boolean().optional(),
+      disagreementThreshold: z.number().optional(),
+      requireHumanReviewAboveVariance: z.number().optional(),
+    })
+    .optional(),
+  isDefault: z.boolean().optional(),
+  isArchived: z.boolean().optional(),
+  version: z.number().optional(),
   createdAtMs: z.number().int().positive(),
   updatedAtMs: z.number().int().positive(),
 })
 
 export const EvalResultSchema = z.object({
-  resultId: z.string(),
+  evalResultId: z.string(),
   runId: z.string(),
   rubricId: z.string(),
   userId: z.string(),
-  scores: z.record(z.string(), z.number()),
+  criterionScores: z.record(z.string(), z.number()),
+  normalizedScores: z.record(z.string(), z.number()),
   aggregateScore: z.number(),
-  evaluatorModel: z.string(),
-  reasoning: z.string().optional(),
+  panelCriterionScores: z.record(z.string(), z.number()).optional(),
+  panelNormalizedScores: z.record(z.string(), z.number()).optional(),
+  panelAggregateScore: z.number().optional(),
+  finalScoreSource: z.enum(['single_judge', 'panel_average', 'council_reconciled']).optional(),
+  judgeModel: z.string(),
+  judgeProvider: z.string(),
+  judgeReasoning: z.string().optional(),
+  judgeTokensUsed: z.number().optional(),
+  judgeCost: z.number().optional(),
+  evaluationMode: z.enum(['single_judge', 'judge_panel', 'expert_council_eval']).optional(),
+  individualJudgeResults: z
+    .array(
+      z.object({
+        judgeId: z.string(),
+        role: z.string().optional(),
+        judgeModel: z.string(),
+        judgeProvider: z.string(),
+        criterionScores: z.record(z.string(), z.number()),
+        normalizedScores: z.record(z.string(), z.number()),
+        aggregateScore: z.number(),
+        reasoning: z.string().optional(),
+        tokensUsed: z.number(),
+        cost: z.number(),
+      })
+    )
+    .optional(),
+  scoreVariance: z.number().optional(),
+  requiresHumanReview: z.boolean().optional(),
+  councilSynthesis: z
+    .object({
+      reconciledByModel: z.string().optional(),
+      reconciledByProvider: z.string().optional(),
+      summary: z.string(),
+      dissentNotes: z.array(z.string()).optional(),
+      reconciledCriterionScores: z.record(z.string(), z.number()).optional(),
+      reconciledNormalizedScores: z.record(z.string(), z.number()).optional(),
+      reconciledAggregateScore: z.number().optional(),
+    })
+    .optional(),
+  durationMs: z.number().optional(),
+  inputSnapshot: z.string().optional(),
+  outputSnapshot: z.string().optional(),
   evaluatedAtMs: z.number().int().positive(),
+  createdAtMs: z.number().int().positive(),
 })
