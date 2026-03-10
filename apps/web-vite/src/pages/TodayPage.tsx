@@ -20,16 +20,12 @@
  * - Focus time suggestions
  */
 
-import { isDeleted, listEvents } from '@lifeos/calendar'
-import type { CanonicalCalendarEvent } from '@lifeos/calendar'
-import { createLogger, getDefaultQuotes, getQuoteForDate } from '@lifeos/core'
-import type { Quote } from '@lifeos/core'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNow } from '@/hooks/useNow'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useRepositories } from '@/contexts/RepositoryContext'
-import { listEventsByDayKeysLocally, bulkSaveEventsLocally } from '@/calendar/offlineStore'
-import { getQuotesLocally, saveQuotesLocally } from '@/quotes/offlineStore'
+import { useTodayQuote } from '@/hooks/useTodayQuote'
+import { useTodayCalendarPreview } from '@/hooks/useTodayCalendarPreview'
 
 import { CheckInCard } from '@/components/mind/CheckInCard'
 import { FollowUpWidget } from '@/components/contacts/FollowUpWidget'
@@ -43,8 +39,6 @@ import { useTrainingToday } from '@/hooks/useTrainingToday'
 import { calculatePriorityScore } from '@/lib/priority'
 import type { ImportanceLevel } from '@/types/todo'
 import { seedDemoTrainingData } from '@/utils/seedDemoTraining'
-
-const logger = createLogger('TodayPage')
 
 const timeFormat = new Intl.DateTimeFormat('en-US', {
   hour: '2-digit',
@@ -71,11 +65,6 @@ export function TodayPage() {
     if (!userId || searchParams.get('demo') !== 'true') return
     void seedDemoTrainingData(userId, new Date().toISOString().split('T')[0])
   }, [userId, searchParams])
-
-  const [quote, setQuote] = useState<Quote | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [events, setEvents] = useState<CanonicalCalendarEvent[]>([])
-  const [eventsLoading, setEventsLoading] = useState(true)
 
   const [briefingEvent, setBriefingEvent] = useState<{
     id: string
@@ -125,70 +114,16 @@ export function TodayPage() {
   }, [now])
   const allDayKeys = useMemo(() => [todayKey, ...upcomingDayKeys], [todayKey, upcomingDayKeys])
 
-  // Load quotes independently (local-first)
-  useEffect(() => {
-    if (!userId) return
-
-    // 1. Read from IndexedDB first for instant display
-    getQuotesLocally(userId)
-      .then((localQuotes) => {
-        if (localQuotes.length > 0) {
-          setQuote(getQuoteForDate(localQuotes, todayKey))
-          setLoading(false)
-        }
-      })
-      .catch(() => {
-        /* ignore local read failure */
-      })
-
-    // 2. Fetch from Firestore in background and cache
-    quoteRepository
-      .getQuotes(userId)
-      .then((userQuotes) => {
-        const quotesToUse = userQuotes.length > 0 ? userQuotes : getDefaultQuotes()
-        setQuote(getQuoteForDate(quotesToUse, todayKey))
-        if (userQuotes.length > 0) {
-          void saveQuotesLocally(userId, userQuotes)
-        }
-      })
-      .catch((error) => {
-        logger.error('Failed to load quotes from Firestore:', error)
-        // Only fall back to defaults if we don't already have a quote displayed
-        setQuote((prev) => prev ?? getDefaultQuotes()[0])
-      })
-      .finally(() => setLoading(false))
-  }, [userId, todayKey, quoteRepository])
-
-  // Load calendar events independently (local-first) — today + next 3 days
-  useEffect(() => {
-    if (!userId) return
-
-    // 1. Read from IndexedDB first for instant display
-    listEventsByDayKeysLocally(userId, allDayKeys)
-      .then((localEvents) => {
-        if (localEvents.length > 0) {
-          setEvents(localEvents.filter((e) => !isDeleted(e)))
-          setEventsLoading(false)
-        }
-      })
-      .catch(() => {
-        /* ignore local read failure */
-      })
-
-    // 2. Fetch from Firestore in background and cache
-    listEvents({ repository: calendarRepository }, { userId, dayKeys: allDayKeys })
-      .then((canonicalEvents) => {
-        const freshEvents = canonicalEvents.filter((e) => !isDeleted(e))
-        setEvents(freshEvents)
-        void bulkSaveEventsLocally(canonicalEvents)
-      })
-      .catch((error) => {
-        logger.error('Failed to load calendar events from Firestore:', error)
-        // Keep local data if we already have it
-        setEvents((prev) => (prev.length > 0 ? prev : []))
-      })
-      .finally(() => setEventsLoading(false))
-  }, [userId, allDayKeys, calendarRepository])
+  const { quote, loading } = useTodayQuote({
+    userId,
+    todayKey,
+    quoteRepository,
+  })
+  const { events, eventsLoading } = useTodayCalendarPreview({
+    userId,
+    dayKeys: allDayKeys,
+    calendarRepository,
+  })
 
   // Load tasks independently (already offline-first via useTodoOperations)
   useEffect(() => {

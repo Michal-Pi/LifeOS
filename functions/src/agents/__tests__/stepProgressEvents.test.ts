@@ -7,6 +7,15 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+vi.mock('../../lib/logger.js', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
+}))
+
 // Mock providerService — inline values (vi.mock is hoisted, no access to module-level vars)
 vi.mock('../providerService.js', () => ({
   executeWithProvider: vi.fn().mockResolvedValue({
