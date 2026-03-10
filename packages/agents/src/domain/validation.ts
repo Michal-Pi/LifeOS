@@ -928,3 +928,255 @@ export const EvalResultSchema = z.object({
   evaluatedAtMs: z.number().int().positive(),
   createdAtMs: z.number().int().positive(),
 })
+
+export const EvalWorkflowLineageSchema = z.object({
+  workflowId: z.string(),
+  workflowType: z.string(),
+  workflowVersionHash: z.string(),
+  workflowVersionLabel: z.string().optional(),
+  configHash: z.string(),
+  configSnapshot: z.record(z.string(), z.unknown()).optional(),
+  experimentId: z.string().optional(),
+  variantId: z.string().optional(),
+})
+
+export const EvalAgentLineageSchema = z.object({
+  agentId: z.string(),
+  agentName: z.string().optional(),
+  agentRole: z.string().optional(),
+  agentVersionHash: z.string(),
+  promptHash: z.string().optional(),
+  configHash: z.string(),
+  promptVariantId: z.string().optional(),
+  runtimeExperimentId: z.string().optional(),
+  runtimeVariantId: z.string().optional(),
+})
+
+export const EvalBenchmarkContextSchema = z.object({
+  cohortId: z.string().optional(),
+  testCaseId: z.string().optional(),
+  sharedRubricId: z.string().optional(),
+  comparisonMode: z.enum(['pairwise', 'leaderboard']).optional(),
+})
+
+export const EvalCapabilityContextSchema = z.object({
+  suiteId: z.string().optional(),
+  taskFamily: z
+    .enum([
+      'strategic_reasoning',
+      'causal_reasoning',
+      'synthesis_under_conflict',
+      'tradeoff_reasoning',
+      'uncertainty_calibration',
+      'adversarial_truth_seeking',
+      'abstraction_and_decomposition',
+      'counterfactual_update',
+      'transfer_reasoning',
+    ])
+    .optional(),
+  difficulty: z.enum(['easy', 'medium', 'hard', 'frontier']).optional(),
+  isHoldout: z.boolean().optional(),
+})
+
+export const EvalExecutionSummarySchema = z.object({
+  runId: z.string().optional(),
+  status: z.string(),
+  startedAtMs: z.number().int().positive().optional(),
+  completedAtMs: z.number().int().positive().optional(),
+  durationMs: z.number().int().nonnegative().optional(),
+  totalSteps: z.number().int().nonnegative().optional(),
+  totalTokens: z.number().int().nonnegative().optional(),
+  totalCost: z.number().nonnegative().optional(),
+  totalToolCalls: z.number().int().nonnegative().optional(),
+  totalRouterDecisions: z.number().int().nonnegative().optional(),
+  humanInterventionCount: z.number().int().nonnegative().optional(),
+  resumedCount: z.number().int().nonnegative().optional(),
+  outputSummary: z.string().optional(),
+  outputHash: z.string().optional(),
+})
+
+export const EvalCheckpointSnapshotSchema = z.object({
+  checkpointId: z.string(),
+  label: z.string(),
+  stepIndex: z.number().int().nonnegative().optional(),
+  nodeId: z.string().optional(),
+  phase: z.string().optional(),
+  kind: z.enum([
+    'decomposition',
+    'evidence_gathering',
+    'routing',
+    'synthesis',
+    'gate_failure',
+    'remediation',
+    'final_output',
+    'agent_step',
+  ]),
+  summary: z.string(),
+  structuredState: z.record(z.string(), z.unknown()).optional(),
+  artifactRefs: z.array(z.string()).optional(),
+  createdAtMs: z.number().int().positive(),
+})
+
+export const EvalArtifactRefSchema = z.object({
+  artifactId: z.string(),
+  kind: z.enum(['run', 'agent_record', 'eval_result', 'trace', 'checkpoint', 'export', 'other']),
+  label: z.string().optional(),
+  refId: z.string().optional(),
+  path: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+})
+
+export const EvalFailureTagDefinitionSchema = z.object({
+  tagId: z.string(),
+  userId: z.string(),
+  category: z.enum([
+    'reasoning',
+    'evidence',
+    'routing',
+    'context',
+    'synthesis',
+    'calibration',
+    'tool_use',
+    'workflow_design',
+    'agent_design',
+  ]),
+  tag: z.enum([
+    'shallow_synthesis',
+    'missed_evidence',
+    'weak_decomposition',
+    'hallucinated_mechanism',
+    'context_overload',
+    'context_omission',
+    'wrong_tool_choice',
+    'wrong_router_decision',
+    'uncertainty_miscalibration',
+    'contradiction_ignored',
+    'verbosity_without_depth',
+    'poor_actionability',
+    'weak_transfer',
+    'fragile_counterfactual_reasoning',
+  ]),
+  label: z.string(),
+  description: z.string().optional(),
+  isDefault: z.boolean(),
+  createdAtMs: z.number().int().positive(),
+  updatedAtMs: z.number().int().positive(),
+})
+
+export const EvalFailureTagAssignmentSchema = z.object({
+  tagId: z.string(),
+  category: z.enum([
+    'reasoning',
+    'evidence',
+    'routing',
+    'context',
+    'synthesis',
+    'calibration',
+    'tool_use',
+    'workflow_design',
+    'agent_design',
+  ]),
+  tag: z.enum([
+    'shallow_synthesis',
+    'missed_evidence',
+    'weak_decomposition',
+    'hallucinated_mechanism',
+    'context_overload',
+    'context_omission',
+    'wrong_tool_choice',
+    'wrong_router_decision',
+    'uncertainty_miscalibration',
+    'contradiction_ignored',
+    'verbosity_without_depth',
+    'poor_actionability',
+    'weak_transfer',
+    'fragile_counterfactual_reasoning',
+  ]),
+  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  source: z.enum(['human', 'judge', 'council', 'heuristic']),
+  notes: z.string().optional(),
+  stepIndex: z.number().int().nonnegative().optional(),
+  nodeId: z.string().optional(),
+})
+
+export const EvalImprovementHypothesisSchema = z.object({
+  hypothesisId: z.string(),
+  title: z.string(),
+  problemStatement: z.string(),
+  likelyCause: z.string(),
+  proposedChange: z.string(),
+  targetLayer: z.enum(['workflow', 'agent', 'prompt', 'context_policy', 'tooling', 'evaluation']),
+  expectedImpact: z.string(),
+  confidence: z.number().min(0).max(1),
+  successCriteria: z.array(z.string()),
+  status: z.enum(['proposed', 'accepted', 'experimenting', 'validated', 'rejected']),
+  linkedExperimentId: z.string().optional(),
+  createdAtMs: z.number().int().positive(),
+  updatedAtMs: z.number().int().positive(),
+})
+
+export const EvalComparisonRefSchema = z.object({
+  comparisonId: z.string(),
+  comparedCaseFileId: z.string().optional(),
+  label: z.string(),
+  summary: z.string().optional(),
+  beforeSubjectId: z.string().optional(),
+  afterSubjectId: z.string().optional(),
+})
+
+export const EvalAssessmentBundleSchema = z.object({
+  primaryEvalResultId: z.string().optional(),
+  sharedComparisonResultId: z.string().optional(),
+  evalResultIds: z.array(z.string()).optional(),
+  councilEvalResultId: z.string().optional(),
+  manualReviewNoteIds: z.array(z.string()).optional(),
+  requiresHumanReview: z.boolean().optional(),
+  scoreVariance: z.number().optional(),
+  summary: z.string().optional(),
+})
+
+export const EvalCaseFileSchema = z.object({
+  caseFileId: z.string(),
+  userId: z.string(),
+  subjectType: z.enum(['workflow_run', 'agent_step', 'benchmark_case', 'capability_case']),
+  subjectId: z.string(),
+  title: z.string(),
+  summary: z.string(),
+  status: z.enum([
+    'open',
+    'reviewed',
+    'hypothesis_defined',
+    'experimenting',
+    'resolved',
+    'archived',
+  ]),
+  workflow: EvalWorkflowLineageSchema.optional(),
+  agent: EvalAgentLineageSchema.optional(),
+  benchmark: EvalBenchmarkContextSchema.optional(),
+  capability: EvalCapabilityContextSchema.optional(),
+  executionSummary: EvalExecutionSummarySchema,
+  checkpoints: z.array(EvalCheckpointSnapshotSchema),
+  artifacts: z.array(EvalArtifactRefSchema),
+  evaluations: EvalAssessmentBundleSchema,
+  failureTags: z.array(EvalFailureTagAssignmentSchema),
+  hypotheses: z.array(EvalImprovementHypothesisSchema),
+  comparisons: z.array(EvalComparisonRefSchema),
+  createdAtMs: z.number().int().positive(),
+  updatedAtMs: z.number().int().positive(),
+  lastReviewedAtMs: z.number().int().positive().optional(),
+})
+
+export const EvalCaseExportPacketSchema = z.object({
+  exportId: z.string(),
+  caseFileId: z.string(),
+  userId: z.string(),
+  format: z.enum(['json', 'markdown']),
+  title: z.string(),
+  summary: z.string(),
+  caseFile: EvalCaseFileSchema,
+  supportingRunIds: z.array(z.string()).optional(),
+  supportingAgentRecordIds: z.array(z.string()).optional(),
+  supportingEvalResultIds: z.array(z.string()).optional(),
+  comparisonCaseFileIds: z.array(z.string()).optional(),
+  createdAtMs: z.number().int().positive(),
+})

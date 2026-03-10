@@ -289,6 +289,97 @@
   font-size: var(--text-xs);
 }
 
+/* Tab bar for Design/Runtime toggle */
+.npp-tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.npp-tab {
+  flex: 1;
+  padding: 0.5rem 0;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: center;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
+}
+
+.npp-tab:hover {
+  color: var(--foreground);
+}
+
+.npp-tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Runtime data display */
+.npp-runtime-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.npp-runtime-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--text-sm);
+}
+
+.npp-runtime-label {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+
+.npp-badge--success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.npp-badge--error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.npp-badge--running {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.npp-badge--pending {
+  background: var(--surface-muted);
+  color: var(--muted-foreground);
+}
+
+.npp-badge--skipped {
+  background: var(--surface-muted);
+  color: var(--muted-foreground);
+}
+
+.npp-runtime-output {
+  margin: 0;
+  padding: 0.5rem;
+  background: var(--surface-muted);
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-family: var(--font-mono, monospace);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 10rem;
+  overflow-y: auto;
+  color: var(--foreground);
+}
+
 @media (max-width: 768px) {
   .npp-panel--open {
     width: 100%;

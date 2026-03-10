@@ -10,6 +10,8 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Handle, Position, NodeToolbar } from '@xyflow/react'
 import type { WorkflowNodeType } from '@lifeos/agents'
 import { NODE_TYPE_COLORS } from './workflowLayoutUtils'
+import type { NodeRunData } from '@/hooks/useWorkflowRunOverlay'
+import './RuntimeOverlay.css'
 
 export interface BuilderNodeData {
   label: string
@@ -25,6 +27,8 @@ export interface BuilderNodeData {
   bypassed?: boolean
   muted?: boolean
   groupId?: string
+  // Runtime overlay (present when viewing a run on canvas)
+  runtime?: NodeRunData
   // Callbacks
   onSelect: (nodeId: string) => void
   onDoubleClick?: (nodeId: string) => void
@@ -153,6 +157,7 @@ export function BuilderCustomNode({ data }: { data: BuilderNodeData }) {
           data.isSelected ? 'builder-node--selected' : '',
           isBypassed ? 'builder-node--bypassed' : '',
           isMuted ? 'builder-node--muted' : '',
+          data.runtime ? `builder-node--runtime-${data.runtime.status}` : '',
         ]
           .filter(Boolean)
           .join(' ')}
@@ -220,6 +225,32 @@ export function BuilderCustomNode({ data }: { data: BuilderNodeData }) {
         )}
 
         {data.isStart && <div className="builder-node__start-badge">START</div>}
+
+        {/* Runtime overlay metrics */}
+        {data.runtime && (
+          <>
+            <div className="builder-node__exec-order">{data.runtime.executionOrder}</div>
+            <div className="builder-node__runtime-bar">
+              {data.runtime.durationMs != null && data.runtime.durationMs > 0 && (
+                <span className="builder-node__runtime-metric">
+                  {data.runtime.durationMs >= 1000
+                    ? `${(data.runtime.durationMs / 1000).toFixed(1)}s`
+                    : `${data.runtime.durationMs}ms`}
+                </span>
+              )}
+              {data.runtime.tokensUsed != null && data.runtime.tokensUsed > 0 && (
+                <span className="builder-node__runtime-metric">
+                  {data.runtime.tokensUsed.toLocaleString()} tok
+                </span>
+              )}
+              {data.runtime.estimatedCost != null && data.runtime.estimatedCost > 0 && (
+                <span className="builder-node__runtime-metric">
+                  ${data.runtime.estimatedCost.toFixed(4)}
+                </span>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Source handle with "+" add button */}
         {!isEnd && (

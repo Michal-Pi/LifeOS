@@ -163,7 +163,7 @@ interface MailboxMessageListProps {
   error: string | null
   selectedMessageId?: string | null
   onSelectMessage?: (message: PrioritizedMessage) => void
-  onDismiss: (messageId: string) => void
+  onDismiss: (messageIds: string[]) => void
   onMarkAsRead?: (messageId: string) => Promise<void>
 }
 
@@ -244,7 +244,7 @@ export function MailboxMessageList({
           e.preventDefault()
           const thread = threads[focusedIndex]
           if (thread) {
-            void onDismiss(thread.latestMessage.messageId)
+            void onDismiss(thread.messages.map((m) => m.messageId))
             setFocusedIndex((i) => Math.min(i, threads.length - 2))
           }
           break
@@ -332,7 +332,7 @@ interface ConversationRowProps {
   isSelected: boolean
   onToggle: () => void
   onSelect?: (message: PrioritizedMessage) => void
-  onDismiss: (messageId: string) => void
+  onDismiss: (messageIds: string[]) => void
   onSelectForReply?: (message: PrioritizedMessage) => void
 }
 
@@ -429,7 +429,7 @@ function ConversationRow({
           className="conv-row__action-btn conv-row__action-btn--archive"
           onClick={(e) => {
             e.stopPropagation()
-            void onDismiss(latest.messageId)
+            void onDismiss(thread.messages.map((m) => m.messageId))
           }}
           aria-label={`Archive conversation with ${thread.sender}`}
         >

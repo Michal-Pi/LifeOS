@@ -125,6 +125,27 @@ export const EvaluationPaths = {
   agentEvalRecord: (userId: string, recordId: string) =>
     `users/${userId}/evaluationBuckets/default/agentEvalRecords/${recordId}`,
 
+  /** Case files: users/{userId}/evaluationBuckets/default/caseFiles/{caseFileId} */
+  caseFiles: (userId: string) => `users/${userId}/evaluationBuckets/default/caseFiles`,
+  caseFile: (userId: string, caseFileId: string) =>
+    `users/${userId}/evaluationBuckets/default/caseFiles/${caseFileId}`,
+
+  /** Failure taxonomy: users/{userId}/evaluationBuckets/default/failureTaxonomy/{tagId} */
+  failureTaxonomy: (userId: string) => `users/${userId}/evaluationBuckets/default/failureTaxonomy`,
+  failureTaxonomyTag: (userId: string, tagId: string) =>
+    `users/${userId}/evaluationBuckets/default/failureTaxonomy/${tagId}`,
+
+  /** Improvement hypotheses: users/{userId}/evaluationBuckets/default/improvementHypotheses/{hypothesisId} */
+  improvementHypotheses: (userId: string) =>
+    `users/${userId}/evaluationBuckets/default/improvementHypotheses`,
+  improvementHypothesis: (userId: string, hypothesisId: string) =>
+    `users/${userId}/evaluationBuckets/default/improvementHypotheses/${hypothesisId}`,
+
+  /** Case file exports: users/{userId}/evaluationBuckets/default/caseFileExports/{exportId} */
+  caseFileExports: (userId: string) => `users/${userId}/evaluationBuckets/default/caseFileExports`,
+  caseFileExport: (userId: string, exportId: string) =>
+    `users/${userId}/evaluationBuckets/default/caseFileExports/${exportId}`,
+
   /** Agent experiment runs: users/{userId}/evaluation/agentExperimentRuns/{experimentRunId} */
   agentExperimentRuns: (userId: string) =>
     `users/${userId}/evaluationBuckets/default/agentExperimentRuns`,

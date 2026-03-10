@@ -38,6 +38,8 @@ export type RunEventType =
   | 'oracle_remediation_evidence_added'
   | 'oracle_remediation_validated'
   | 'oracle_finalize_current_findings'
+  // Node state inspection events
+  | 'node_state_snapshot'
   // Plan management events
   | 'plan_approved'
 

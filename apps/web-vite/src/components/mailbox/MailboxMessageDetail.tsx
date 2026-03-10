@@ -38,7 +38,7 @@ import '@/styles/components/MailboxMessageDetail.css'
 interface MailboxMessageDetailProps {
   message: PrioritizedMessage
   threadMessages?: PrioritizedMessage[]
-  onDismiss: (messageId: string) => void
+  onDismiss: (messageIds: string[]) => void
   onReplySent?: (messageId: string) => void
   onOverrideTriage?: (messageId: string, category: TriageCategory) => Promise<void>
   onCreateTask?: (data: {
@@ -51,12 +51,12 @@ interface MailboxMessageDetailProps {
   onSetFollowUp?: (contactId: string, dueDate?: string) => void
   onEditContact?: (contactId: string, details?: string) => void
   gmailLabels?: Array<{ id: string; name: string }>
-  onLabelMessage?: (
-    messageId: string,
+  onLabelConversation?: (
+    messageIds: string[],
     addLabels?: string[],
     removeLabels?: string[]
   ) => Promise<void>
-  onArchiveMessage?: (messageId: string) => Promise<void>
+  onArchiveConversation?: (messageIds: string[]) => Promise<void>
 }
 
 const SOURCE_LABELS: Record<MessageSource, string> = {
@@ -100,9 +100,14 @@ export function MailboxMessageDetail({
   onSetFollowUp,
   onEditContact,
   gmailLabels,
-  onLabelMessage,
-  onArchiveMessage,
+  onLabelConversation,
+  onArchiveConversation,
 }: MailboxMessageDetailProps) {
+  // Collect all message IDs in the conversation for batch operations
+  const allMessageIds =
+    threadMessages && threadMessages.length > 0
+      ? threadMessages.map((m) => m.messageId)
+      : [message.messageId]
   const timeAgo = formatDistanceToNow(new Date(message.receivedAtMs), { addSuffix: true })
   const fullDate = format(new Date(message.receivedAtMs), 'PPpp')
 
@@ -284,7 +289,7 @@ export function MailboxMessageDetail({
 
   const handleToggleLabel = useCallback(
     async (label: { id: string; name: string }) => {
-      if (!onLabelMessage || labelBusy) return
+      if (!onLabelConversation || labelBusy) return
       if (!message.accountId) {
         toast.error('Sync this message to your inbox before modifying labels')
         return
@@ -294,14 +299,14 @@ export function MailboxMessageDetail({
       setLabelBusy(true)
       try {
         if (isApplied) {
-          await onLabelMessage(message.messageId, undefined, [label.name])
+          await onLabelConversation(allMessageIds, undefined, [label.name])
           setAppliedLabels((prev) => {
             const next = new Set(prev)
             next.delete(label.id)
             return next
           })
         } else {
-          await onLabelMessage(message.messageId, [label.name], undefined)
+          await onLabelConversation(allMessageIds, [label.name], undefined)
           setAppliedLabels((prev) => new Set(prev).add(label.id))
         }
       } catch (err) {
@@ -310,7 +315,7 @@ export function MailboxMessageDetail({
         setLabelBusy(false)
       }
     },
-    [onLabelMessage, appliedLabels, message.messageId, message.accountId, labelBusy]
+    [onLabelConversation, appliedLabels, allMessageIds, message.accountId, labelBusy]
   )
 
   const triageCategory = message.triageCategoryOverride || message.triageCategory
@@ -652,7 +657,7 @@ export function MailboxMessageDetail({
           {extracting ? 'Extracting...' : 'Extract Actions'}
         </button>
         {/* Label picker dropdown (Gmail only) */}
-        {message.source === 'gmail' && gmailLabels && onLabelMessage && (
+        {message.source === 'gmail' && gmailLabels && onLabelConversation && (
           <div className="mailbox-detail__label-picker-wrapper">
             <button
               type="button"
@@ -692,10 +697,10 @@ export function MailboxMessageDetail({
               toast.error('Sync this message to your inbox before archiving')
               return
             }
-            if (onArchiveMessage) {
-              void onArchiveMessage(message.messageId)
+            if (onArchiveConversation) {
+              void onArchiveConversation(allMessageIds)
             } else {
-              void onDismiss(message.messageId)
+              void onDismiss(allMessageIds)
             }
           }}
         >

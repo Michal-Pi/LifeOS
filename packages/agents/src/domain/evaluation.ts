@@ -42,6 +42,10 @@ export type EvaluatorConfigId = Id<'evaluatorConfig'>
 export type BenchmarkCohortId = Id<'benchmarkCohort'>
 export type SharedComparisonResultId = Id<'sharedComparisonResult'>
 export type CapabilitySuiteId = Id<'capabilitySuite'>
+export type EvalCaseFileId = Id<'evalCaseFile'>
+export type EvalFailureTagId = Id<'evalFailureTag'>
+export type EvalImprovementHypothesisId = Id<'evalImprovementHypothesis'>
+export type EvalCaseExportId = Id<'evalCaseExport'>
 
 // ----- Telemetry -----
 
@@ -1178,6 +1182,233 @@ export interface CapabilitySuite {
   isActive: boolean
   createdAtMs: number
   updatedAtMs: number
+}
+
+// ----- Eval Case Files & Improvement Loop -----
+
+export type EvalCaseSubjectType =
+  | 'workflow_run'
+  | 'agent_step'
+  | 'benchmark_case'
+  | 'capability_case'
+
+export type EvalCaseStatus =
+  | 'open'
+  | 'reviewed'
+  | 'hypothesis_defined'
+  | 'experimenting'
+  | 'resolved'
+  | 'archived'
+
+export interface EvalWorkflowLineage {
+  workflowId: WorkflowId
+  workflowType: string
+  workflowVersionHash: string
+  workflowVersionLabel?: string
+  configHash: string
+  configSnapshot?: Record<string, unknown>
+  experimentId?: ExperimentId
+  variantId?: PromptVariantId
+}
+
+export interface EvalAgentLineage {
+  agentId: AgentId
+  agentName?: string
+  agentRole?: string
+  agentVersionHash: string
+  promptHash?: string
+  configHash: string
+  promptVariantId?: PromptVariantId
+  runtimeExperimentId?: ExperimentId
+  runtimeVariantId?: PromptVariantId
+}
+
+export interface EvalBenchmarkContext {
+  cohortId?: BenchmarkCohortId
+  testCaseId?: DerivedTestCaseId
+  sharedRubricId?: EvalRubricId
+  comparisonMode?: BenchmarkCohort['comparisonMode']
+}
+
+export interface EvalCapabilityContext {
+  suiteId?: CapabilitySuiteId
+  taskFamily?: NonNullable<DerivedTestCase['taskFamily']>
+  difficulty?: DerivedTestCase['difficulty']
+  isHoldout?: boolean
+}
+
+export interface EvalExecutionSummary {
+  runId?: RunId
+  status: string
+  startedAtMs?: number
+  completedAtMs?: number
+  durationMs?: number
+  totalSteps?: number
+  totalTokens?: number
+  totalCost?: number
+  totalToolCalls?: number
+  totalRouterDecisions?: number
+  humanInterventionCount?: number
+  resumedCount?: number
+  outputSummary?: string
+  outputHash?: string
+}
+
+export type EvalCheckpointKind =
+  | 'decomposition'
+  | 'evidence_gathering'
+  | 'routing'
+  | 'synthesis'
+  | 'gate_failure'
+  | 'remediation'
+  | 'final_output'
+  | 'agent_step'
+
+export interface EvalCheckpointSnapshot {
+  checkpointId: string
+  label: string
+  stepIndex?: number
+  nodeId?: string
+  phase?: string
+  kind: EvalCheckpointKind
+  summary: string
+  structuredState?: Record<string, unknown>
+  artifactRefs?: string[]
+  createdAtMs: number
+}
+
+export interface EvalArtifactRef {
+  artifactId: string
+  kind: 'run' | 'agent_record' | 'eval_result' | 'trace' | 'checkpoint' | 'export' | 'other'
+  label?: string
+  refId?: string
+  path?: string
+  metadata?: Record<string, unknown>
+}
+
+export type EvalFailureCategory =
+  | 'reasoning'
+  | 'evidence'
+  | 'routing'
+  | 'context'
+  | 'synthesis'
+  | 'calibration'
+  | 'tool_use'
+  | 'workflow_design'
+  | 'agent_design'
+
+export type EvalFailureTagName =
+  | 'shallow_synthesis'
+  | 'missed_evidence'
+  | 'weak_decomposition'
+  | 'hallucinated_mechanism'
+  | 'context_overload'
+  | 'context_omission'
+  | 'wrong_tool_choice'
+  | 'wrong_router_decision'
+  | 'uncertainty_miscalibration'
+  | 'contradiction_ignored'
+  | 'verbosity_without_depth'
+  | 'poor_actionability'
+  | 'weak_transfer'
+  | 'fragile_counterfactual_reasoning'
+
+export interface EvalFailureTagDefinition {
+  tagId: EvalFailureTagId
+  userId: string
+  category: EvalFailureCategory
+  tag: EvalFailureTagName
+  label: string
+  description?: string
+  isDefault: boolean
+  createdAtMs: number
+  updatedAtMs: number
+}
+
+export interface EvalFailureTagAssignment {
+  tagId: EvalFailureTagId
+  category: EvalFailureCategory
+  tag: EvalFailureTagName
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  source: 'human' | 'judge' | 'council' | 'heuristic'
+  notes?: string
+  stepIndex?: number
+  nodeId?: string
+}
+
+export interface EvalImprovementHypothesis {
+  hypothesisId: EvalImprovementHypothesisId
+  title: string
+  problemStatement: string
+  likelyCause: string
+  proposedChange: string
+  targetLayer: 'workflow' | 'agent' | 'prompt' | 'context_policy' | 'tooling' | 'evaluation'
+  expectedImpact: string
+  confidence: number
+  successCriteria: string[]
+  status: 'proposed' | 'accepted' | 'experimenting' | 'validated' | 'rejected'
+  linkedExperimentId?: ExperimentId
+  createdAtMs: number
+  updatedAtMs: number
+}
+
+export interface EvalComparisonRef {
+  comparisonId: string
+  comparedCaseFileId?: EvalCaseFileId
+  label: string
+  summary?: string
+  beforeSubjectId?: string
+  afterSubjectId?: string
+}
+
+export interface EvalAssessmentBundle {
+  primaryEvalResultId?: EvalResultId
+  sharedComparisonResultId?: SharedComparisonResultId
+  evalResultIds?: EvalResultId[]
+  councilEvalResultId?: EvalResultId
+  manualReviewNoteIds?: string[]
+  requiresHumanReview?: boolean
+  scoreVariance?: number
+  summary?: string
+}
+
+export interface EvalCaseFile {
+  caseFileId: EvalCaseFileId
+  userId: string
+  subjectType: EvalCaseSubjectType
+  subjectId: string
+  title: string
+  summary: string
+  status: EvalCaseStatus
+  workflow?: EvalWorkflowLineage
+  agent?: EvalAgentLineage
+  benchmark?: EvalBenchmarkContext
+  capability?: EvalCapabilityContext
+  executionSummary: EvalExecutionSummary
+  checkpoints: EvalCheckpointSnapshot[]
+  artifacts: EvalArtifactRef[]
+  evaluations: EvalAssessmentBundle
+  failureTags: EvalFailureTagAssignment[]
+  hypotheses: EvalImprovementHypothesis[]
+  comparisons: EvalComparisonRef[]
+  createdAtMs: number
+  updatedAtMs: number
+  lastReviewedAtMs?: number
+}
+
+export interface EvalCaseExportPacket {
+  exportId: EvalCaseExportId
+  caseFileId: EvalCaseFileId
+  userId: string
+  format: 'json' | 'markdown'
+  title: string
+  summary: string
+  caseFile: EvalCaseFile
+  supportingRunIds?: RunId[]
+  supportingAgentRecordIds?: string[]
+  supportingEvalResultIds?: EvalResultId[]
+  comparisonCaseFileIds?: EvalCaseFileId[]
+  createdAtMs: number
 }
 
 /**

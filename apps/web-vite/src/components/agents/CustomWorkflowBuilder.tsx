@@ -42,7 +42,9 @@ import { BuilderCustomNode } from './BuilderCustomNode'
 import { BuilderNodePalette } from './BuilderNodePalette'
 import { NodePropertiesPanel } from './NodePropertiesPanel'
 import { WORKFLOW_LAYOUT, getNodePosition } from './workflowLayoutUtils'
+import type { WorkflowRunOverlay } from '@/hooks/useWorkflowRunOverlay'
 import './CustomWorkflowBuilder.css'
+import './RuntimeOverlay.css'
 
 interface CustomWorkflowBuilderProps {
   isOpen: boolean
@@ -51,6 +53,8 @@ interface CustomWorkflowBuilderProps {
   agents: AgentConfig[]
   onSave: (graph: WorkflowGraph) => void
   onCreateAgent?: (input: CreateAgentInput) => Promise<AgentConfig>
+  runOverlay?: WorkflowRunOverlay | null
+  onExitOverlay?: () => void
 }
 
 const nodeTypes = { builderNode: BuilderCustomNode }
@@ -85,6 +89,8 @@ function BuilderCanvas({
   onSave,
   onClose,
   onCreateAgent,
+  runOverlay,
+  onExitOverlay,
 }: Omit<CustomWorkflowBuilderProps, 'isOpen'>) {
   const { theme } = useTheme()
   const { fitView } = useReactFlow()
@@ -467,6 +473,8 @@ function BuilderCanvas({
           bypassed: node.bypassed,
           muted: node.muted,
           groupId: node.groupId,
+          // Runtime overlay data
+          runtime: runOverlay?.nodeData.get(node.id),
           // Callbacks
           onSelect: handleSelect,
           onDoubleClick: handleNodeDoubleClick,
@@ -488,11 +496,35 @@ function BuilderCanvas({
     const flowEdges: Edge[] = state.edges.map((edge, index) => {
       const isConditional = edge.condition.type !== 'always'
       const isLLM = edge.condition.type === 'llm_evaluate'
-      const strokeColor = isLLM
-        ? 'var(--accent)'
-        : isConditional
-          ? 'var(--warning)'
-          : 'var(--border-strong)'
+
+      // Runtime overlay: highlight traversed edges
+      const edgeRunKey = `${edge.from}->${edge.to}`
+      const edgeRun = runOverlay?.edgeData.get(edgeRunKey)
+      const hasOverlay = !!runOverlay
+
+      let strokeColor: string
+      let strokeWidth = 2
+      let animated: boolean
+      let opacity = 1
+
+      if (hasOverlay && edgeRun?.wasTraversed) {
+        strokeColor = '#22c55e'
+        strokeWidth = 3
+        animated = true
+        opacity = 1
+      } else if (hasOverlay) {
+        strokeColor = 'var(--border)'
+        animated = false
+        opacity = 0.3
+      } else {
+        strokeColor = isLLM
+          ? 'var(--accent)'
+          : isConditional
+            ? 'var(--warning)'
+            : 'var(--border-strong)'
+        animated = isConditional || isLLM
+      }
+
       const edgeLabel = isLLM
         ? `AI: ${(edge.condition.value ?? '').slice(0, 30)}${(edge.condition.value ?? '').length > 30 ? '...' : ''}`
         : isConditional
@@ -503,7 +535,7 @@ function BuilderCanvas({
         source: edge.from,
         target: edge.to,
         type: 'smoothstep',
-        animated: isConditional || isLLM,
+        animated,
         label: edgeLabel,
         markerEnd: {
           type: MarkerType.ArrowClosed,
@@ -513,14 +545,17 @@ function BuilderCanvas({
         },
         style: {
           stroke: strokeColor,
-          strokeWidth: 2,
+          strokeWidth,
+          opacity,
         },
         labelStyle: {
-          fill: isLLM
-            ? 'var(--accent)'
-            : isConditional
-              ? 'var(--warning)'
-              : 'var(--muted-foreground)',
+          fill: hasOverlay
+            ? strokeColor
+            : isLLM
+              ? 'var(--accent)'
+              : isConditional
+                ? 'var(--warning)'
+                : 'var(--muted-foreground)',
           fontSize: 10,
           fontWeight: 600,
         },
@@ -540,6 +575,7 @@ function BuilderCanvas({
     handleOpenPromptModal,
     agentMap,
     nodeCosts,
+    runOverlay,
   ])
 
   const selectedNode = state.selectedNodeId
@@ -578,8 +614,41 @@ function BuilderCanvas({
 
   return (
     <div className="custom-builder-modal" ref={containerRef} tabIndex={-1}>
+      {/* Runtime overlay banner */}
+      {runOverlay && (
+        <div className="runtime-overlay-banner">
+          <div className="runtime-overlay-banner__metrics">
+            {runOverlay.isLive && (
+              <span className="runtime-overlay-banner__live">
+                <span className="runtime-overlay-banner__live-dot" />
+                Live
+              </span>
+            )}
+            <span className="runtime-overlay-banner__metric">
+              {runOverlay.totalDuration >= 1000
+                ? `${(runOverlay.totalDuration / 1000).toFixed(1)}s`
+                : `${runOverlay.totalDuration}ms`}
+            </span>
+            {runOverlay.totalTokens > 0 && (
+              <span className="runtime-overlay-banner__metric">
+                {runOverlay.totalTokens.toLocaleString()} tokens
+              </span>
+            )}
+            {runOverlay.totalCost > 0 && (
+              <span className="runtime-overlay-banner__metric">
+                ${runOverlay.totalCost.toFixed(4)}
+              </span>
+            )}
+          </div>
+          {onExitOverlay && (
+            <Button variant="ghost" size="sm" onClick={onExitOverlay} style={{ color: '#fff' }}>
+              Exit Overlay
+            </Button>
+          )}
+        </div>
+      )}
       <div className="custom-builder__header">
-        <h2>Custom Workflow Builder</h2>
+        <h2>{runOverlay ? 'Run Execution View' : 'Custom Workflow Builder'}</h2>
         <div className="custom-builder__header-actions">
           <span className="custom-builder__node-count">
             {state.nodes.length} nodes · {state.edges.length} edges
@@ -715,6 +784,9 @@ function BuilderCanvas({
           node={selectedNode}
           agents={allAgents}
           edges={state.edges}
+          runtimeData={
+            selectedNode && runOverlay ? (runOverlay.nodeData.get(selectedNode.id) ?? null) : null
+          }
           onUpdate={(nodeId, updates) => dispatch({ type: 'UPDATE_NODE', nodeId, updates })}
           onUpdateEdge={(from, to, condType, key, value) =>
             dispatch({
@@ -786,6 +858,8 @@ export function CustomWorkflowBuilder(props: CustomWorkflowBuilderProps) {
             onSave={props.onSave}
             onClose={props.onClose}
             onCreateAgent={props.onCreateAgent}
+            runOverlay={props.runOverlay}
+            onExitOverlay={props.onExitOverlay}
           />
         </ReactFlowProvider>
       </div>

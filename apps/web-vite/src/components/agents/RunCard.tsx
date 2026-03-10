@@ -55,6 +55,7 @@ interface RunCardProps {
   onRunAgain?: (runId: string) => void
   onContinue?: (runId: string) => void
   onStop?: (runId: string) => Promise<void>
+  onViewOnCanvas?: (runId: string) => void
 }
 
 export function RunCard({
@@ -71,6 +72,7 @@ export function RunCard({
   onRunAgain,
   onContinue,
   onStop,
+  onViewOnCanvas,
 }: RunCardProps) {
   const navigate = useNavigate()
   const [selectedNode, setSelectedNode] = useState<{
@@ -593,6 +595,11 @@ export function RunCard({
         {onRunAgain && (run.status === 'completed' || run.status === 'failed') && (
           <Button variant="ghost" onClick={() => onRunAgain(run.runId)}>
             Run Again
+          </Button>
+        )}
+        {onViewOnCanvas && (
+          <Button variant="ghost" onClick={() => onViewOnCanvas(run.runId)}>
+            View on Canvas
           </Button>
         )}
         {onResume && run.status === 'failed' && (

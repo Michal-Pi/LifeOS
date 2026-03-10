@@ -11,6 +11,7 @@ import { Select, type SelectOption } from '@/components/Select'
 import { Button } from '@/components/ui/button'
 import type { AgentConfig, AgentId, JoinAggregationMode, WorkflowNodeType } from '@lifeos/agents'
 import type { BuilderNode, BuilderEdge } from './customWorkflowBuilderReducer'
+import type { NodeRunData } from '@/hooks/useWorkflowRunOverlay'
 import '@/styles/components/NodePropertiesPanel.css'
 
 interface NodePropertiesPanelProps {
@@ -31,6 +32,7 @@ interface NodePropertiesPanelProps {
     baseAgent: AgentConfig,
     customPrompt: string
   ) => Promise<AgentConfig | null>
+  runtimeData?: NodeRunData | null
 }
 
 const NODE_TYPE_OPTIONS: SelectOption[] = [
@@ -70,10 +72,12 @@ export function NodePropertiesPanel({
   onUpdate,
   onUpdateEdge,
   onCreateAgentVersion,
+  runtimeData,
 }: NodePropertiesPanelProps) {
   const [showAgentPreview, setShowAgentPreview] = useState(false)
   const [customPrompt, setCustomPrompt] = useState('')
   const [isCreatingVersion, setIsCreatingVersion] = useState(false)
+  const [activeTab, setActiveTab] = useState<'design' | 'runtime'>('design')
 
   const selectedAgent = useMemo(() => {
     if (!node?.agentId) return null
@@ -131,8 +135,92 @@ export function NodePropertiesPanel({
         </button>
       </div>
 
+      {/* Tab bar when runtime data is available */}
+      {runtimeData && (
+        <div className="npp-tab-bar">
+          <button
+            type="button"
+            className={`npp-tab${activeTab === 'design' ? ' npp-tab--active' : ''}`}
+            onClick={() => setActiveTab('design')}
+          >
+            Design
+          </button>
+          <button
+            type="button"
+            className={`npp-tab${activeTab === 'runtime' ? ' npp-tab--active' : ''}`}
+            onClick={() => setActiveTab('runtime')}
+          >
+            Runtime
+          </button>
+        </div>
+      )}
+
       <div className="npp-panel__body">
-        {/* Basic Properties */}
+        {/* Runtime tab */}
+        {runtimeData && activeTab === 'runtime' && (
+          <div className="npp-section">
+            <div className="npp-section-header">Execution Data</div>
+            <div className="npp-runtime-grid">
+              <div className="npp-runtime-row">
+                <span className="npp-runtime-label">Status</span>
+                <span className={`npp-badge npp-badge--${runtimeData.status}`}>
+                  {runtimeData.status}
+                </span>
+              </div>
+              <div className="npp-runtime-row">
+                <span className="npp-runtime-label">Execution Order</span>
+                <span>#{runtimeData.executionOrder}</span>
+              </div>
+              {runtimeData.durationMs != null && (
+                <div className="npp-runtime-row">
+                  <span className="npp-runtime-label">Duration</span>
+                  <span>
+                    {runtimeData.durationMs >= 1000
+                      ? `${(runtimeData.durationMs / 1000).toFixed(1)}s`
+                      : `${runtimeData.durationMs}ms`}
+                  </span>
+                </div>
+              )}
+              {runtimeData.tokensUsed != null && runtimeData.tokensUsed > 0 && (
+                <div className="npp-runtime-row">
+                  <span className="npp-runtime-label">Tokens</span>
+                  <span>{runtimeData.tokensUsed.toLocaleString()}</span>
+                </div>
+              )}
+              {runtimeData.estimatedCost != null && runtimeData.estimatedCost > 0 && (
+                <div className="npp-runtime-row">
+                  <span className="npp-runtime-label">Cost</span>
+                  <span>${runtimeData.estimatedCost.toFixed(4)}</span>
+                </div>
+              )}
+              {runtimeData.visitCount > 1 && (
+                <div className="npp-runtime-row">
+                  <span className="npp-runtime-label">Visit Count</span>
+                  <span>{runtimeData.visitCount}</span>
+                </div>
+              )}
+            </div>
+            {runtimeData.output && (
+              <div className="npp-section" style={{ marginTop: '0.5rem' }}>
+                <div className="npp-section-header">Output Preview</div>
+                <pre className="npp-runtime-output">{runtimeData.output}</pre>
+              </div>
+            )}
+            {runtimeData.error && (
+              <div className="npp-section" style={{ marginTop: '0.5rem' }}>
+                <div className="npp-section-header" style={{ color: '#ef4444' }}>
+                  Error
+                </div>
+                <pre className="npp-runtime-output" style={{ color: '#ef4444' }}>
+                  {runtimeData.error}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Design tab (existing content) */}
+        {(!runtimeData || activeTab === 'design') && (
         <div className="npp-section">
           <div className="npp-section-header">Basic Settings</div>
 
@@ -385,6 +473,7 @@ export function NodePropertiesPanel({
               </div>
             ))}
           </div>
+        )}
         )}
       </div>
     </div>

@@ -81,6 +81,14 @@ interface UseMessageMailboxResult {
   labelMessage: (messageId: string, addLabels?: string[], removeLabels?: string[]) => Promise<void>
   /** Archive a message (remove from inbox, no label change) */
   archiveMessage: (messageId: string) => Promise<void>
+  /** Archive all messages in a conversation */
+  archiveConversation: (messageIds: string[]) => Promise<void>
+  /** Apply labels to all messages in a conversation */
+  labelConversation: (
+    messageIds: string[],
+    addLabels?: string[],
+    removeLabels?: string[]
+  ) => Promise<void>
 }
 
 export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMessageMailboxResult {
@@ -445,6 +453,22 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
     [dismissMessage]
   )
 
+  // Archive all messages in a conversation
+  const archiveConversation = useCallback(
+    async (messageIds: string[]) => {
+      await Promise.all(messageIds.map((id) => dismissMessage(id, { archive: true })))
+    },
+    [dismissMessage]
+  )
+
+  // Apply labels to all messages in a conversation
+  const labelConversation = useCallback(
+    async (messageIds: string[], addLabels?: string[], removeLabels?: string[]) => {
+      await Promise.all(messageIds.map((id) => labelMessage(id, addLabels, removeLabels)))
+    },
+    [labelMessage]
+  )
+
   // Override triage category for a message
   const overrideTriageCategory = useCallback(
     async (messageId: string, category: TriageCategory) => {
@@ -480,5 +504,7 @@ export function useMessageMailbox(options: UseMessageMailboxOptions = {}): UseMe
     overrideTriageCategory,
     labelMessage,
     archiveMessage,
+    archiveConversation,
+    labelConversation,
   }
 }

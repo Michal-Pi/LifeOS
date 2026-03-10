@@ -63,8 +63,8 @@ export function MailboxPage() {
     markAsRead,
     dismissMessage,
     overrideTriageCategory,
-    labelMessage,
-    archiveMessage,
+    archiveConversation,
+    labelConversation,
   } = useMessageMailbox({ maxMessages: 100, autoSync: true })
 
   const { labels: gmailLabels } = useGmailLabels()
@@ -174,12 +174,19 @@ export function MailboxPage() {
   }, [selectedMessage, markAsRead])
 
   const handleDismiss = useCallback(
-    async (messageId: string) => {
-      const msg = filteredMessages.find((m) => m.messageId === messageId)
-      await dismissMessage(messageId, msg?.source === 'gmail' ? { archive: true } : undefined)
-      if (selectedMessage?.messageId === messageId) {
-        const currentIdx = filteredMessages.findIndex((m) => m.messageId === messageId)
-        const remaining = filteredMessages.filter((m) => m.messageId !== messageId)
+    async (messageIds: string[]) => {
+      const idSet = new Set(messageIds)
+      await Promise.all(
+        messageIds.map((id) => {
+          const msg = filteredMessages.find((m) => m.messageId === id)
+          return dismissMessage(id, msg?.source === 'gmail' ? { archive: true } : undefined)
+        })
+      )
+      if (selectedMessage && idSet.has(selectedMessage.messageId)) {
+        const currentIdx = filteredMessages.findIndex(
+          (m) => m.messageId === selectedMessage.messageId
+        )
+        const remaining = filteredMessages.filter((m) => !idSet.has(m.messageId))
         if (remaining.length > 0) {
           const nextIdx = Math.min(currentIdx, remaining.length - 1)
           setSelectedMessage(remaining[nextIdx])
@@ -413,8 +420,8 @@ export function MailboxPage() {
                 navigate(`/contacts/${contactId}`)
               }}
               gmailLabels={gmailLabels}
-              onLabelMessage={labelMessage}
-              onArchiveMessage={archiveMessage}
+              onLabelConversation={labelConversation}
+              onArchiveConversation={archiveConversation}
             />
           )
         }

@@ -383,458 +383,544 @@ export function createGenericGraph(config: GenericGraphConfig) {
     return Object.keys(entries).length > 0 ? { joinBuffers: entries } : {}
   }
 
+  // Truncate a value to maxLen chars for snapshot payloads
+  const truncate = (val: unknown, maxLen = 500): string => {
+    const s = typeof val === 'string' ? val : JSON.stringify(val ?? null)
+    return s.length > maxLen ? s.slice(0, maxLen) + '…' : s
+  }
+
+  /**
+   * Wrap a node handler to emit a node_state_snapshot event after execution.
+   * Captures input state summary, output delta, edges, and timing.
+   */
+  function wrapNodeHandler(
+    node: (typeof graphDef.nodes)[number],
+    handler: (state: GenericGraphState) => Promise<Partial<GenericGraphState>>
+  ): (state: GenericGraphState) => Promise<Partial<GenericGraphState>> {
+    if (!eventWriter) return handler
+
+    return async (state: GenericGraphState) => {
+      const startMs = Date.now()
+
+      const inputState = {
+        lastOutput: truncate(state.lastOutput),
+        namedOutputKeys: Object.keys(state.namedOutputs ?? {}),
+        currentNodeId: state.currentNodeId,
+        totalTokensUsed: state.totalTokensUsed,
+        totalEstimatedCost: state.totalEstimatedCost,
+        visitedCount: state.visitedCount[node.id] ?? 0,
+        status: state.status,
+      }
+
+      const result = await handler(state)
+
+      const durationMs = Date.now() - startMs
+      const outputDelta: Record<string, unknown> = {
+        status: result.status ?? state.status,
+        durationMs,
+      }
+      if (result.lastOutput !== undefined) {
+        outputDelta.lastOutput = truncate(result.lastOutput)
+      }
+      if (result.namedOutputs) {
+        outputDelta.namedOutputKeys = Object.keys(result.namedOutputs)
+      }
+      if (result.totalTokensUsed !== undefined) {
+        outputDelta.tokensUsed = result.totalTokensUsed
+      }
+      if (result.totalEstimatedCost !== undefined) {
+        outputDelta.estimatedCost = result.totalEstimatedCost
+      }
+      if (result.error) {
+        outputDelta.error = truncate(result.error)
+      }
+      if (result.steps && result.steps.length > 0) {
+        const step = result.steps[result.steps.length - 1]
+        outputDelta.stepOutput = truncate(step.output)
+        outputDelta.tokensUsed = step.tokensUsed
+        outputDelta.estimatedCost = step.estimatedCost
+      }
+
+      const edges = (edgesFromNode.get(node.id) ?? []).map((e) => ({
+        to: e.to,
+        conditionType: e.condition.type,
+      }))
+
+      await eventWriter.writeEvent({
+        type: 'node_state_snapshot',
+        agentId: node.agentId,
+        agentName: node.label ?? node.id,
+        step: (state.visitedCount[node.id] ?? 0) + 1,
+        details: {
+          nodeId: node.id,
+          nodeType: node.type,
+          nodeLabel: node.label ?? node.id,
+          inputState,
+          outputDelta,
+          edgesFromNode: edges,
+          stepIndex: state.steps.length,
+        },
+      })
+
+      return result
+    }
+  }
+
   // Create the state graph
   const graph = new StateGraph(GenericGraphStateAnnotation)
 
   // Create a node for each workflow node
   for (const node of graphDef.nodes) {
-    graph.addNode(node.id, async (state: GenericGraphState) => {
-      // Phase 16: Graceful loop termination — pause and ask user
-      const currentVisits = (state.visitedCount[node.id] ?? 0) + 1
-      const constraintOverride = state.context.constraintOverride as
-        | { type: string; newLimit?: number }
-        | undefined
+    graph.addNode(
+      node.id,
+      wrapNodeHandler(node, async (state: GenericGraphState) => {
+        // Phase 16: Graceful loop termination — pause and ask user
+        const currentVisits = (state.visitedCount[node.id] ?? 0) + 1
+        const constraintOverride = state.context.constraintOverride as
+          | { type: string; newLimit?: number }
+          | undefined
 
-      // Compute effective limits from constraint overrides (without mutating state)
-      let effectiveNodeVisitLimit = maxNodeVisits
-      let effectiveBudgetLimit = workflow.maxBudget ?? Infinity
-      if (constraintOverride?.newLimit !== undefined) {
-        if (constraintOverride.type === 'max_node_visits') {
-          effectiveNodeVisitLimit = Math.min(
-            Math.max(constraintOverride.newLimit, maxNodeVisits),
-            MAX_NODE_VISITS_CAP
-          )
-        } else if (constraintOverride.type === 'budget') {
-          effectiveBudgetLimit = Math.min(
-            Math.max(constraintOverride.newLimit, workflow.maxBudget ?? 0),
-            MAX_BUDGET_CAP
-          )
-        }
-      }
-
-      if (currentVisits > maxNodeVisits) {
-        if (currentVisits > effectiveNodeVisitLimit) {
-          log.info(
-            `Node ${node.id} hit visit limit (${effectiveNodeVisitLimit}), pausing for user decision`
-          )
-          return {
-            currentNodeId: node.id,
-            visitedCount: { [node.id]: 1 },
-            status: 'waiting_for_input' as const,
-            constraintPause: {
-              constraintType: 'max_node_visits',
-              currentValue: currentVisits,
-              limitValue: effectiveNodeVisitLimit,
-              unit: 'visits',
-              nodeId: node.id,
-              partialOutput:
-                typeof state.lastOutput === 'string'
-                  ? state.lastOutput.slice(0, MAX_PARTIAL_OUTPUT_LENGTH)
-                  : undefined,
-              suggestedIncrease: effectiveNodeVisitLimit * 2,
-            },
-            pendingInput: {
-              prompt: `Node "${node.id}" has been visited ${currentVisits} times (limit: ${effectiveNodeVisitLimit}). This may indicate a loop. Would you like to increase the limit or stop?`,
-              nodeId: node.id,
-            },
-            nextNodeId: null,
-          }
-        }
-      }
-
-      // Phase 16: Budget guardrail — pause and ask user
-      if (workflow.maxBudget && state.totalEstimatedCost > workflow.maxBudget) {
-        const effectiveBudget = effectiveBudgetLimit
-        if (state.totalEstimatedCost > effectiveBudget) {
-          log.info('Budget limit reached, pausing for user decision', {
-            cost: state.totalEstimatedCost,
-            budget: effectiveBudget,
-          })
-          return {
-            currentNodeId: node.id,
-            visitedCount: { [node.id]: 1 },
-            status: 'waiting_for_input' as const,
-            constraintPause: {
-              constraintType: 'budget',
-              currentValue: parseFloat(state.totalEstimatedCost.toFixed(4)),
-              limitValue: effectiveBudget,
-              unit: 'USD',
-              nodeId: node.id,
-              partialOutput:
-                typeof state.lastOutput === 'string'
-                  ? state.lastOutput.slice(0, MAX_PARTIAL_OUTPUT_LENGTH)
-                  : undefined,
-              suggestedIncrease: effectiveBudget * 2,
-            },
-            pendingInput: {
-              prompt: `Budget limit reached: $${state.totalEstimatedCost.toFixed(4)} spent of $${effectiveBudget} budget. Would you like to increase the budget or stop with current results?`,
-              nodeId: node.id,
-            },
-            nextNodeId: null,
-          }
-        }
-      }
-
-      const baseUpdate: Partial<GenericGraphState> = {
-        currentNodeId: node.id,
-        visitedCount: { [node.id]: 1 },
-      }
-
-      // Handle different node types
-      switch (node.type) {
-        case 'end': {
-          const finalOutput =
-            typeof state.lastOutput === 'string'
-              ? state.lastOutput
-              : JSON.stringify(state.lastOutput ?? '')
-          return {
-            ...baseUpdate,
-            status: 'completed' as const,
-            finalOutput,
-            nextNodeId: null,
+        // Compute effective limits from constraint overrides (without mutating state)
+        let effectiveNodeVisitLimit = maxNodeVisits
+        let effectiveBudgetLimit = workflow.maxBudget ?? Infinity
+        if (constraintOverride?.newLimit !== undefined) {
+          if (constraintOverride.type === 'max_node_visits') {
+            effectiveNodeVisitLimit = Math.min(
+              Math.max(constraintOverride.newLimit, maxNodeVisits),
+              MAX_NODE_VISITS_CAP
+            )
+          } else if (constraintOverride.type === 'budget') {
+            effectiveBudgetLimit = Math.min(
+              Math.max(constraintOverride.newLimit, workflow.maxBudget ?? 0),
+              MAX_BUDGET_CAP
+            )
           }
         }
 
-        case 'human_input': {
-          const humanInput = state.context.humanInput as
-            | { nodeId?: string; response?: string }
-            | string
-            | undefined
-
-          if (typeof humanInput === 'string') {
+        if (currentVisits > maxNodeVisits) {
+          if (currentVisits > effectiveNodeVisitLimit) {
+            log.info(
+              `Node ${node.id} hit visit limit (${effectiveNodeVisitLimit}), pausing for user decision`
+            )
             return {
-              ...baseUpdate,
-              lastOutput: humanInput,
-              namedOutputs: { [node.outputKey ?? node.id]: humanInput },
-            }
-          }
-
-          if (humanInput && humanInput.nodeId === node.id && humanInput.response) {
-            return {
-              ...baseUpdate,
-              lastOutput: humanInput.response,
-              namedOutputs: { [node.outputKey ?? node.id]: humanInput.response },
-            }
-          }
-
-          // No input yet - pause
-          return {
-            ...baseUpdate,
-            status: 'waiting_for_input' as const,
-            pendingInput: { prompt: node.label ?? 'Additional input required', nodeId: node.id },
-            nextNodeId: null,
-          }
-        }
-
-        case 'human_approval': {
-          // Phase 15: Human-in-the-loop approval node
-          const humanApproval = state.context.humanApproval as
-            | { nodeId?: string; approved?: boolean; response?: string }
-            | undefined
-
-          if (humanApproval && humanApproval.nodeId === node.id) {
-            if (humanApproval.approved) {
-              // Approved — continue to next node
-              return {
-                ...baseUpdate,
-                lastOutput: humanApproval.response ?? 'Approved',
-                namedOutputs: {
-                  [node.outputKey ?? node.id]: humanApproval.response ?? 'Approved',
-                },
-              }
-            } else {
-              // Rejected — terminate workflow
-              return {
-                ...baseUpdate,
-                lastOutput: humanApproval.response ?? 'Rejected',
-                namedOutputs: {
-                  [node.outputKey ?? node.id]: humanApproval.response ?? 'Rejected',
-                },
-                status: 'completed' as const,
-                finalOutput: humanApproval.response ?? 'Workflow rejected by user',
-                nextNodeId: null,
-              }
-            }
-          }
-
-          // No approval yet — pause and wait for input
-          if (execContext.eventWriter) {
-            await execContext.eventWriter.writeEvent({
-              type: 'status',
-              status: 'waiting_for_approval',
-              details: {
+              currentNodeId: node.id,
+              visitedCount: { [node.id]: 1 },
+              status: 'waiting_for_input' as const,
+              constraintPause: {
+                constraintType: 'max_node_visits',
+                currentValue: currentVisits,
+                limitValue: effectiveNodeVisitLimit,
+                unit: 'visits',
                 nodeId: node.id,
-                prompt: node.label ?? 'Approval required',
-                workflowId: workflow.workflowId,
+                partialOutput:
+                  typeof state.lastOutput === 'string'
+                    ? state.lastOutput.slice(0, MAX_PARTIAL_OUTPUT_LENGTH)
+                    : undefined,
+                suggestedIncrease: effectiveNodeVisitLimit * 2,
               },
+              pendingInput: {
+                prompt: `Node "${node.id}" has been visited ${currentVisits} times (limit: ${effectiveNodeVisitLimit}). This may indicate a loop. Would you like to increase the limit or stop?`,
+                nodeId: node.id,
+              },
+              nextNodeId: null,
+            }
+          }
+        }
+
+        // Phase 16: Budget guardrail — pause and ask user
+        if (workflow.maxBudget && state.totalEstimatedCost > workflow.maxBudget) {
+          const effectiveBudget = effectiveBudgetLimit
+          if (state.totalEstimatedCost > effectiveBudget) {
+            log.info('Budget limit reached, pausing for user decision', {
+              cost: state.totalEstimatedCost,
+              budget: effectiveBudget,
             })
-          }
-
-          return {
-            ...baseUpdate,
-            status: 'waiting_for_input' as const,
-            pendingInput: { prompt: node.label ?? 'Approval required', nodeId: node.id },
-            nextNodeId: null,
+            return {
+              currentNodeId: node.id,
+              visitedCount: { [node.id]: 1 },
+              status: 'waiting_for_input' as const,
+              constraintPause: {
+                constraintType: 'budget',
+                currentValue: parseFloat(state.totalEstimatedCost.toFixed(4)),
+                limitValue: effectiveBudget,
+                unit: 'USD',
+                nodeId: node.id,
+                partialOutput:
+                  typeof state.lastOutput === 'string'
+                    ? state.lastOutput.slice(0, MAX_PARTIAL_OUTPUT_LENGTH)
+                    : undefined,
+                suggestedIncrease: effectiveBudget * 2,
+              },
+              pendingInput: {
+                prompt: `Budget limit reached: $${state.totalEstimatedCost.toFixed(4)} spent of $${effectiveBudget} budget. Would you like to increase the budget or stop with current results?`,
+                nodeId: node.id,
+              },
+              nextNodeId: null,
+            }
           }
         }
 
-        case 'join': {
-          const buffer = state.joinBuffers[node.id] ?? []
-          const aggregation = aggregateJoinOutputs(buffer, node.aggregationMode ?? 'list')
-
-          return {
-            ...baseUpdate,
-            lastOutput: aggregation,
-            joinOutputs: { [node.id]: aggregation },
-            namedOutputs: node.outputKey ? { [node.outputKey]: aggregation } : {},
-            // Empty array signals the reducer to clear this join buffer
-            joinBuffers: { [node.id]: [] },
-          }
+        const baseUpdate: Partial<GenericGraphState> = {
+          currentNodeId: node.id,
+          visitedCount: { [node.id]: 1 },
         }
 
-        case 'fork': {
-          // Fork distributes the current output to all downstream branches.
-          // Each branch runs serially (LangGraph StateGraph doesn't support
-          // true parallel branching). Branches converge at a join node.
-          const forkOutput =
-            typeof state.lastOutput === 'string'
-              ? state.lastOutput
-              : JSON.stringify(state.lastOutput ?? '')
-
-          return {
-            ...baseUpdate,
-            lastOutput: forkOutput,
-            namedOutputs: node.outputKey ? { [node.outputKey]: forkOutput } : {},
-            ...buildJoinBufferUpdate(node.id, node.agentId, node.label, forkOutput),
-          }
-        }
-
-        case 'tool': {
-          if (!toolRegistry) {
-            throw new Error('Tool registry unavailable for tool node execution')
-          }
-
-          let tool = toolRegistry.get(node.label ?? node.id)
-          if (!tool && node.toolId) {
-            for (const t of toolRegistry.values()) {
-              if (t.toolId === node.toolId) {
-                tool = t
-                break
-              }
-            }
-          }
-
-          if (!tool) {
-            throw new Error(`Tool ${node.toolId ?? node.id} not found in registry`)
-          }
-
-          const agent = (node.agentId && agentsById.get(node.agentId)) ?? agents[0]
-          if (!agent) {
-            throw new Error('No agent available for tool execution context')
-          }
-
-          const toolContext = {
-            userId,
-            agentId: agent.agentId,
-            workflowId: workflow.workflowId,
-            runId,
-            provider: agent.modelProvider,
-            modelName: agent.modelName,
-            iteration: state.steps.length + 1,
-            eventWriter,
-            toolRegistry,
-            searchToolKeys,
-          }
-
-          const toolResult = await tool.execute({}, toolContext)
-
-          return {
-            ...baseUpdate,
-            ...buildJoinBufferUpdate(node.id, node.agentId, node.label, toolResult),
-            lastOutput: toolResult,
-            namedOutputs: { [node.outputKey ?? node.id]: toolResult },
-          }
-        }
-
-        case 'research_request': {
-          if (!node.requestConfig) {
-            throw new Error(`Research request node ${node.id} is missing requestConfig`)
-          }
-
-          const { topic, questions, priority = 'medium', waitForCompletion } = node.requestConfig
-          const outputKey = node.outputKey ?? node.id
-
-          // Check for existing request
-          const existingRequestId = state.pendingResearchRequestId
-          let request: DeepResearchRequest | null = null
-
-          if (existingRequestId) {
-            const requestDoc = await db
-              .doc(
-                `users/${userId}/workflows/${workflow.workflowId}/deepResearchRequests/${existingRequestId}`
-              )
-              .get()
-            if (requestDoc.exists) {
-              request = requestDoc.data() as DeepResearchRequest
-            }
-          }
-
-          if (!request) {
-            const createdBy = node.agentId ?? agents[0]?.agentId
-            if (!createdBy) {
-              throw new Error('No agent available to attribute research request')
-            }
-
-            const requestId = `research:${randomUUID()}` as DeepResearchRequest['requestId']
-            const createdRequest: DeepResearchRequest = {
-              requestId,
-              workflowId: workflow.workflowId,
-              runId: runId as DeepResearchRequest['runId'],
-              userId,
-              topic: topic.trim(),
-              questions: questions.filter((q: string) => q.trim()),
-              priority: priority as DeepResearchRequest['priority'],
-              createdBy: createdBy as DeepResearchRequest['createdBy'],
-              createdAtMs: Date.now(),
-              status: 'pending',
-              results: [],
-            }
-
-            await db
-              .doc(
-                `users/${userId}/workflows/${workflow.workflowId}/deepResearchRequests/${requestId}`
-              )
-              .set(createdRequest)
-            request = createdRequest
-          }
-
-          if (waitForCompletion && request.status !== 'completed') {
+        // Handle different node types
+        switch (node.type) {
+          case 'end': {
+            const finalOutput =
+              typeof state.lastOutput === 'string'
+                ? state.lastOutput
+                : JSON.stringify(state.lastOutput ?? '')
             return {
               ...baseUpdate,
-              status: 'paused' as const,
-              lastOutput: request,
-              namedOutputs: { [outputKey]: request },
-              pendingResearchRequestId: request.requestId,
-              pendingResearchOutputKey: outputKey,
+              status: 'completed' as const,
+              finalOutput,
               nextNodeId: null,
             }
           }
 
-          return {
-            ...baseUpdate,
-            lastOutput: request,
-            namedOutputs: { [outputKey]: request },
-            pendingResearchRequestId: null,
-            pendingResearchOutputKey: null,
-          }
-        }
+          case 'human_input': {
+            const humanInput = state.context.humanInput as
+              | { nodeId?: string; response?: string }
+              | string
+              | undefined
 
-        case 'subworkflow':
-          throw new Error(
-            `Subworkflow execution is not yet supported in LangGraph generic graph (node: ${node.id}, subworkflowId: ${node.subworkflowId ?? 'none'})`
-          )
-
-        case 'agent':
-        default: {
-          const agent = node.agentId ? agentsById.get(node.agentId) : agents[0]
-          if (!agent) {
-            throw new Error(`Agent not found for node ${node.id}`)
-          }
-
-          // Phase 16: Error recovery — wrap agent execution in try/catch
-          try {
-            // Phase 17: Resolve template parameters in goal and agent context
-            const templateParams = (state.context.templateParameters ?? {}) as Record<
-              string,
-              string
-            >
-            const resolvedGoal =
-              Object.keys(templateParams).length > 0
-                ? resolveTemplateParameters(state.goal, templateParams)
-                : state.goal
-
-            const nodeContext = {
-              ...state.context,
-              workflowState: {
-                namedOutputs: state.namedOutputs ?? {},
-                joinOutputs: state.joinOutputs ?? {},
-                lastOutput: state.lastOutput,
-              },
-            }
-
-            // Phase 17: Resolve template parameters in agent system prompt
-            const resolvedAgent =
-              Object.keys(templateParams).length > 0
-                ? {
-                    ...agent,
-                    systemPrompt: resolveTemplateParameters(agent.systemPrompt, templateParams),
-                  }
-                : agent
-
-            // Execute the agent using shared utility
-            // Per-agent tool iteration budget — generous default so only graph-level
-            // limits (maxNodeVisits, maxBudget) act as guardrails.
-            const agentIterationBudget = node.maxToolIterations ?? 15
-
-            const step = await executeAgentWithEvents(
-              resolvedAgent,
-              resolvedGoal,
-              nodeContext,
-              execContext,
-              {
-                stepNumber: state.steps.length + 1,
-                nodeId: node.id,
-                maxIterations: agentIterationBudget,
-              }
-            )
-
-            // Check for ask_user interrupt
-            const interrupt = handleAskUserInterrupt(step, node.id)
-            if (interrupt) {
+            if (typeof humanInput === 'string') {
               return {
                 ...baseUpdate,
-                steps: [step],
-                totalTokensUsed: step.tokensUsed,
-                totalEstimatedCost: step.estimatedCost,
-                ...interrupt,
+                lastOutput: humanInput,
+                namedOutputs: { [node.outputKey ?? node.id]: humanInput },
+              }
+            }
+
+            if (humanInput && humanInput.nodeId === node.id && humanInput.response) {
+              return {
+                ...baseUpdate,
+                lastOutput: humanInput.response,
+                namedOutputs: { [node.outputKey ?? node.id]: humanInput.response },
+              }
+            }
+
+            // No input yet - pause
+            return {
+              ...baseUpdate,
+              status: 'waiting_for_input' as const,
+              pendingInput: { prompt: node.label ?? 'Additional input required', nodeId: node.id },
+              nextNodeId: null,
+            }
+          }
+
+          case 'human_approval': {
+            // Phase 15: Human-in-the-loop approval node
+            const humanApproval = state.context.humanApproval as
+              | { nodeId?: string; approved?: boolean; response?: string }
+              | undefined
+
+            if (humanApproval && humanApproval.nodeId === node.id) {
+              if (humanApproval.approved) {
+                // Approved — continue to next node
+                return {
+                  ...baseUpdate,
+                  lastOutput: humanApproval.response ?? 'Approved',
+                  namedOutputs: {
+                    [node.outputKey ?? node.id]: humanApproval.response ?? 'Approved',
+                  },
+                }
+              } else {
+                // Rejected — terminate workflow
+                return {
+                  ...baseUpdate,
+                  lastOutput: humanApproval.response ?? 'Rejected',
+                  namedOutputs: {
+                    [node.outputKey ?? node.id]: humanApproval.response ?? 'Rejected',
+                  },
+                  status: 'completed' as const,
+                  finalOutput: humanApproval.response ?? 'Workflow rejected by user',
+                  nextNodeId: null,
+                }
+              }
+            }
+
+            // No approval yet — pause and wait for input
+            if (execContext.eventWriter) {
+              await execContext.eventWriter.writeEvent({
+                type: 'status',
+                status: 'waiting_for_approval',
+                details: {
+                  nodeId: node.id,
+                  prompt: node.label ?? 'Approval required',
+                  workflowId: workflow.workflowId,
+                },
+              })
+            }
+
+            return {
+              ...baseUpdate,
+              status: 'waiting_for_input' as const,
+              pendingInput: { prompt: node.label ?? 'Approval required', nodeId: node.id },
+              nextNodeId: null,
+            }
+          }
+
+          case 'join': {
+            const buffer = state.joinBuffers[node.id] ?? []
+            const aggregation = aggregateJoinOutputs(buffer, node.aggregationMode ?? 'list')
+
+            return {
+              ...baseUpdate,
+              lastOutput: aggregation,
+              joinOutputs: { [node.id]: aggregation },
+              namedOutputs: node.outputKey ? { [node.outputKey]: aggregation } : {},
+              // Empty array signals the reducer to clear this join buffer
+              joinBuffers: { [node.id]: [] },
+            }
+          }
+
+          case 'fork': {
+            // Fork distributes the current output to all downstream branches.
+            // Each branch runs serially (LangGraph StateGraph doesn't support
+            // true parallel branching). Branches converge at a join node.
+            const forkOutput =
+              typeof state.lastOutput === 'string'
+                ? state.lastOutput
+                : JSON.stringify(state.lastOutput ?? '')
+
+            return {
+              ...baseUpdate,
+              lastOutput: forkOutput,
+              namedOutputs: node.outputKey ? { [node.outputKey]: forkOutput } : {},
+              ...buildJoinBufferUpdate(node.id, node.agentId, node.label, forkOutput),
+            }
+          }
+
+          case 'tool': {
+            if (!toolRegistry) {
+              throw new Error('Tool registry unavailable for tool node execution')
+            }
+
+            let tool = toolRegistry.get(node.label ?? node.id)
+            if (!tool && node.toolId) {
+              for (const t of toolRegistry.values()) {
+                if (t.toolId === node.toolId) {
+                  tool = t
+                  break
+                }
+              }
+            }
+
+            if (!tool) {
+              throw new Error(`Tool ${node.toolId ?? node.id} not found in registry`)
+            }
+
+            const agent = (node.agentId && agentsById.get(node.agentId)) ?? agents[0]
+            if (!agent) {
+              throw new Error('No agent available for tool execution context')
+            }
+
+            const toolContext = {
+              userId,
+              agentId: agent.agentId,
+              workflowId: workflow.workflowId,
+              runId,
+              provider: agent.modelProvider,
+              modelName: agent.modelName,
+              iteration: state.steps.length + 1,
+              eventWriter,
+              toolRegistry,
+              searchToolKeys,
+            }
+
+            const toolResult = await tool.execute({}, toolContext)
+
+            return {
+              ...baseUpdate,
+              ...buildJoinBufferUpdate(node.id, node.agentId, node.label, toolResult),
+              lastOutput: toolResult,
+              namedOutputs: { [node.outputKey ?? node.id]: toolResult },
+            }
+          }
+
+          case 'research_request': {
+            if (!node.requestConfig) {
+              throw new Error(`Research request node ${node.id} is missing requestConfig`)
+            }
+
+            const { topic, questions, priority = 'medium', waitForCompletion } = node.requestConfig
+            const outputKey = node.outputKey ?? node.id
+
+            // Check for existing request
+            const existingRequestId = state.pendingResearchRequestId
+            let request: DeepResearchRequest | null = null
+
+            if (existingRequestId) {
+              const requestDoc = await db
+                .doc(
+                  `users/${userId}/workflows/${workflow.workflowId}/deepResearchRequests/${existingRequestId}`
+                )
+                .get()
+              if (requestDoc.exists) {
+                request = requestDoc.data() as DeepResearchRequest
+              }
+            }
+
+            if (!request) {
+              const createdBy = node.agentId ?? agents[0]?.agentId
+              if (!createdBy) {
+                throw new Error('No agent available to attribute research request')
+              }
+
+              const requestId = `research:${randomUUID()}` as DeepResearchRequest['requestId']
+              const createdRequest: DeepResearchRequest = {
+                requestId,
+                workflowId: workflow.workflowId,
+                runId: runId as DeepResearchRequest['runId'],
+                userId,
+                topic: topic.trim(),
+                questions: questions.filter((q: string) => q.trim()),
+                priority: priority as DeepResearchRequest['priority'],
+                createdBy: createdBy as DeepResearchRequest['createdBy'],
+                createdAtMs: Date.now(),
+                status: 'pending',
+                results: [],
+              }
+
+              await db
+                .doc(
+                  `users/${userId}/workflows/${workflow.workflowId}/deepResearchRequests/${requestId}`
+                )
+                .set(createdRequest)
+              request = createdRequest
+            }
+
+            if (waitForCompletion && request.status !== 'completed') {
+              return {
+                ...baseUpdate,
+                status: 'paused' as const,
+                lastOutput: request,
+                namedOutputs: { [outputKey]: request },
+                pendingResearchRequestId: request.requestId,
+                pendingResearchOutputKey: outputKey,
+                nextNodeId: null,
               }
             }
 
             return {
               ...baseUpdate,
-              ...buildJoinBufferUpdate(node.id, agent.agentId, agent.name, step.output),
-              lastError: null, // Clear any previous error
-              steps: [step],
-              totalTokensUsed: step.tokensUsed,
-              totalEstimatedCost: step.estimatedCost,
-              lastOutput: step.output,
-              namedOutputs: node.outputKey ? { [node.outputKey]: step.output } : {},
+              lastOutput: request,
+              namedOutputs: { [outputKey]: request },
+              pendingResearchRequestId: null,
+              pendingResearchOutputKey: null,
             }
-          } catch (e) {
-            const errorMsg = e instanceof Error ? e.message : String(e)
-            const hasErrorEdge = (edgesFromNode.get(node.id) ?? []).some(
-              (edge) => edge.condition.type === 'error'
+          }
+
+          case 'subworkflow':
+            throw new Error(
+              `Subworkflow execution is not yet supported in LangGraph generic graph (node: ${node.id}, subworkflowId: ${node.subworkflowId ?? 'none'})`
             )
 
-            if (hasErrorEdge) {
-              // Follow error edge — store error and let routing handle it
-              log.warn(`Agent node ${node.id} failed, following error edge`, { error: errorMsg })
-              return {
-                ...baseUpdate,
-                ...buildJoinBufferUpdate(node.id, node.agentId, undefined, errorMsg),
-                lastError: errorMsg,
-                lastOutput: errorMsg,
-                namedOutputs: node.outputKey ? { [node.outputKey]: errorMsg } : {},
-              }
+          case 'agent':
+          default: {
+            const agent = node.agentId ? agentsById.get(node.agentId) : agents[0]
+            if (!agent) {
+              throw new Error(`Agent not found for node ${node.id}`)
             }
 
-            // No error edge — re-throw to fail the graph execution
-            log.error(`Agent node ${node.id} failed with no error edge`, { error: errorMsg })
-            throw new Error(`Workflow failed at node ${node.id}: ${errorMsg}`)
+            // Phase 16: Error recovery — wrap agent execution in try/catch
+            try {
+              // Phase 17: Resolve template parameters in goal and agent context
+              const templateParams = (state.context.templateParameters ?? {}) as Record<
+                string,
+                string
+              >
+              const resolvedGoal =
+                Object.keys(templateParams).length > 0
+                  ? resolveTemplateParameters(state.goal, templateParams)
+                  : state.goal
+
+              const nodeContext = {
+                ...state.context,
+                workflowState: {
+                  namedOutputs: state.namedOutputs ?? {},
+                  joinOutputs: state.joinOutputs ?? {},
+                  lastOutput: state.lastOutput,
+                },
+              }
+
+              // Phase 17: Resolve template parameters in agent system prompt
+              const resolvedAgent =
+                Object.keys(templateParams).length > 0
+                  ? {
+                      ...agent,
+                      systemPrompt: resolveTemplateParameters(agent.systemPrompt, templateParams),
+                    }
+                  : agent
+
+              // Execute the agent using shared utility
+              // Per-agent tool iteration budget — generous default so only graph-level
+              // limits (maxNodeVisits, maxBudget) act as guardrails.
+              const agentIterationBudget = node.maxToolIterations ?? 15
+
+              const step = await executeAgentWithEvents(
+                resolvedAgent,
+                resolvedGoal,
+                nodeContext,
+                execContext,
+                {
+                  stepNumber: state.steps.length + 1,
+                  nodeId: node.id,
+                  maxIterations: agentIterationBudget,
+                }
+              )
+
+              // Check for ask_user interrupt
+              const interrupt = handleAskUserInterrupt(step, node.id)
+              if (interrupt) {
+                return {
+                  ...baseUpdate,
+                  steps: [step],
+                  totalTokensUsed: step.tokensUsed,
+                  totalEstimatedCost: step.estimatedCost,
+                  ...interrupt,
+                }
+              }
+
+              return {
+                ...baseUpdate,
+                ...buildJoinBufferUpdate(node.id, agent.agentId, agent.name, step.output),
+                lastError: null, // Clear any previous error
+                steps: [step],
+                totalTokensUsed: step.tokensUsed,
+                totalEstimatedCost: step.estimatedCost,
+                lastOutput: step.output,
+                namedOutputs: node.outputKey ? { [node.outputKey]: step.output } : {},
+              }
+            } catch (e) {
+              const errorMsg = e instanceof Error ? e.message : String(e)
+              const hasErrorEdge = (edgesFromNode.get(node.id) ?? []).some(
+                (edge) => edge.condition.type === 'error'
+              )
+
+              if (hasErrorEdge) {
+                // Follow error edge — store error and let routing handle it
+                log.warn(`Agent node ${node.id} failed, following error edge`, { error: errorMsg })
+                return {
+                  ...baseUpdate,
+                  ...buildJoinBufferUpdate(node.id, node.agentId, undefined, errorMsg),
+                  lastError: errorMsg,
+                  lastOutput: errorMsg,
+                  namedOutputs: node.outputKey ? { [node.outputKey]: errorMsg } : {},
+                }
+              }
+
+              // No error edge — re-throw to fail the graph execution
+              log.error(`Agent node ${node.id} failed with no error edge`, { error: errorMsg })
+              throw new Error(`Workflow failed at node ${node.id}: ${errorMsg}`)
+            }
           }
         }
-      }
-    })
+      })
+    )
   }
 
   // Add conditional routing

@@ -23,6 +23,8 @@ import { RunWorkflowModal } from '@/components/agents/RunWorkflowModal'
 import { RunCard } from '@/components/agents/RunCard'
 import { WorkflowGraphView } from '@/components/agents/WorkflowGraphView'
 import { CustomWorkflowBuilder } from '@/components/agents/CustomWorkflowBuilder'
+import { useRunEvents } from '@/hooks/useRunEvents'
+import { useWorkflowRunOverlay } from '@/hooks/useWorkflowRunOverlay'
 import { ResearchQueue } from '@/components/agents/ResearchQueue'
 import { Button } from '@/components/ui/button'
 import { Select, type SelectOption } from '@/components/Select'
@@ -51,10 +53,16 @@ export function WorkflowDetailPage() {
   const [showProjectManager, setShowProjectManager] = useState(true)
   const [showFullGraphPreview, setShowFullGraphPreview] = useState(false)
   const [showGraphEditor, setShowGraphEditor] = useState(false)
+  const [overlayRunId, setOverlayRunId] = useState<RunId | null>(null)
   const [configOpen, setConfigOpen] = useState(false)
   const [runs, setRuns] = useState<Run[]>([])
   const [pageLoading, setPageLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+
+  // Run overlay for viewing execution data on the builder canvas
+  const overlayRun = overlayRunId ? runs.find((r) => r.runId === overlayRunId) : null
+  const { events: overlayEvents } = useRunEvents(overlayRunId)
+  const runOverlay = useWorkflowRunOverlay(overlayEvents, overlayRun?.status === 'running')
 
   // Refs for stable callbacks in effects (avoids re-triggering on identity changes)
   const getWorkflowRef = useRef(getWorkflow)
@@ -510,6 +518,14 @@ export function WorkflowDetailPage() {
                   onRunAgain={handleRunAgain}
                   onContinue={handleContinue}
                   onStop={handleStopRun}
+                  onViewOnCanvas={
+                    workflow.workflowGraph
+                      ? (runId) => {
+                          setOverlayRunId(runId as RunId)
+                          setShowGraphEditor(true)
+                        }
+                      : undefined
+                  }
                 />
               ))}
             </div>
@@ -565,15 +581,21 @@ export function WorkflowDetailPage() {
       {workflow.workflowGraph && (
         <CustomWorkflowBuilder
           isOpen={showGraphEditor}
-          onClose={() => setShowGraphEditor(false)}
+          onClose={() => {
+            setShowGraphEditor(false)
+            setOverlayRunId(null)
+          }}
           initialGraph={workflow.workflowGraph}
           agents={agents}
           onSave={async (graph) => {
             await updateWorkflow(workflow.workflowId, { workflowGraph: graph })
             setShowGraphEditor(false)
+            setOverlayRunId(null)
             void getWorkflow(workflow.workflowId)
             toast.success('Workflow graph updated')
           }}
+          runOverlay={runOverlay}
+          onExitOverlay={() => setOverlayRunId(null)}
         />
       )}
     </div>

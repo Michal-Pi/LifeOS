@@ -19,11 +19,15 @@ import { useDialecticalState } from '@/hooks/useDialecticalState'
 import { useOracleKGState } from '@/hooks/useOracleKGState'
 import { useRunEvents } from '@/hooks/useRunEvents'
 import { useRunMessages } from '@/hooks/useRunMessages'
+import { useNodeStateTimeline } from '@/hooks/useNodeStateTimeline'
 import { useEvaluationActions } from '@/hooks/useEvaluationActions'
 import { markdownToJsonContent } from '@/lib/noteImport'
 
 const KnowledgeGraphVisualization = lazy(() => import('./KnowledgeGraphVisualization'))
 const DialecticalCycleVisualization = lazy(() => import('./DialecticalCycleVisualization'))
+const StateTimeline = lazy(() =>
+  import('./StateTimeline').then((m) => ({ default: m.StateTimeline }))
+)
 
 interface RunDetailModalProps {
   run: Run
@@ -75,6 +79,10 @@ export function RunDetailModal({
   // Oracle KG state
   const isOracle = workflow.workflowType === 'oracle'
   const oracleKGState = useOracleKGState(isOracle ? run : null, events)
+
+  // Node state timeline for graph-based workflows
+  const isGraphWorkflow = workflow.workflowType === 'graph' || workflow.workflowType === 'custom'
+  const nodeStateEntries = useNodeStateTimeline(isGraphWorkflow ? events : [])
 
   // Memoize derived values from events to avoid recomputing on every render
   const streamingOutput = useMemo(
@@ -334,6 +342,12 @@ export function RunDetailModal({
             pendingInput={run.pendingInput}
             agentName={getAgentNameFromMessages()}
           />
+
+          {isGraphWorkflow && nodeStateEntries.length > 0 && (
+            <Suspense fallback={null}>
+              <StateTimeline entries={nodeStateEntries} />
+            </Suspense>
+          )}
 
           {isDeepResearch && kgState && (
             <Suspense
